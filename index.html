@@ -91,7 +91,6 @@ Point.copy = function (p)
 // Projection constants
 var half_circumference_meters = 20037508.34;
 var map_origin_meters = Point(-half_circumference_meters, half_circumference_meters);
-
 var min_zoom_meters_per_pixel = 156543.0339;
 var meters_per_pixel = [];
 var max_zoom = 18;
@@ -221,7 +220,6 @@ function renderTile (tile, tile_min, tile_max, context)
     // Water
     var waters = tile['water-areas'].features;
     waters.forEach(function(feature) {
-        // var coordinates;
         if (feature.geometry.type == 'Polygon') {
             feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
             renderPolygon(feature.geometry.pixels, feature.properties, styles.water, context);
