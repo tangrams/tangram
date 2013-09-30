@@ -264,10 +264,12 @@ window.onresize = resizeMap;
 resizeMap();
 
 var map = L.map('map').setView([51.508, -0.105], 15); // [40.784702, -73.965452], [40.7180764, -73.9790335]
+map.attributionControl.setPrefix('');
 
 var layer = L.tileLayer.canvas({
     async: true,
-    maxZoom: max_zoom
+    maxZoom: max_zoom,
+    attribution: '<a href="https://github.com/bcamper/canvas-map">Source Code</a>'
 });
 
 layer.drawTile = function(canvas, tilePoint, zoom) {
