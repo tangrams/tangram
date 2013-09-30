@@ -1,0 +1,307 @@
+<!doctype html>
+<!--
+Canvas Vector Map
+
+Demo of client-side map rendering, using GeoJSON vector tiles as the remote source,
+and the HTML Canvas API as the rendering engine. Uses Leaflet for standard slippy map functionality.
+
+Brett Camper
+-->
+<html lang="en-us">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Canvas vector map</title>
+<style>
+body {
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+</style>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+</head>
+
+<body>
+
+<div id="map"></div>
+<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+
+<script>
+
+// Makeshift style-sheet
+var styles = {
+    water: {
+        color: {
+            default: [25, 150, 220]
+        }
+    },
+    land: {
+        color: {
+            default: [32, 200, 125]
+        }
+    },
+    buildings: {
+        color: {
+            default: [150, 150, 150]
+        },
+        border: [75, 75, 75],
+        // dash: {
+        //     default: [4, 2]
+        // }
+    },
+    roads: {
+        color: {
+            'highway': [0, 0, 0],
+            'major_road': [100, 100, 100],
+            'minor_road': [150, 150, 150],
+            'path': [255, 255, 255],
+            'rail': [0, 0, 0]
+        },
+        size: {
+            'highway': 5,
+            'major_road': 2.5,
+            'minor_road': 1.5,
+            'path': 0.5,
+            'rail': 0.5
+        },
+        dash: {
+            // 'rail': [4, 2]
+        }
+    }
+};
+
+// Point
+function Point (x, y)
+{
+    return {
+        x: x,
+        y: y
+    };
+}
+
+Point.copy = function (p)
+{
+    if (p == null) {
+        return null;
+    }
+    return { x: p.x, y: p.y };
+};
+
+// Projection constants
+var half_circumference_meters = 20037508.34;
+var map_origin_meters = Point(-half_circumference_meters, half_circumference_meters);
+
+var min_zoom_meters_per_pixel = 156543.0339;
+var meters_per_pixel = [];
+var max_zoom = 18;
+for (var z=1; z <= max_zoom; z++) {
+    meters_per_pixel[z] = min_zoom_meters_per_pixel / Math.pow(2, z);
+}
+
+// Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
+var tile_size = Point(256, 256);
+function metersForTile (tile)
+{
+    return Point(
+        (tile.x * tile_size.x * meters_per_pixel[tile.z]) + map_origin_meters.x,
+        ((tile.y * tile_size.y * meters_per_pixel[tile.z]) * -1) + map_origin_meters.y
+    );
+}
+
+// Convert mercator meters to lat-lng
+function metersToLatLng (meters)
+{
+    var c = Point.copy(meters);
+
+    c.x /= half_circumference_meters;
+    c.y /= half_circumference_meters;
+
+    c.y = (2 * Math.atan(Math.exp(c.y * Math.PI)) - (Math.PI / 2)) / Math.PI;
+
+    c.x *= 180;
+    c.y *= 180;
+
+    return c;
+}
+
+// Scale array of coordinates (2-element arrays each) bewteen [min, max] to tile pixels
+// coordinates = [[x, y], [x, y], ...]
+// returns array of Points = [Point, Point, ...]
+function scaleToPixels (coordinates, min, max)
+{
+    return coordinates.map(function (coordinate) {
+        return Point(
+            Math.round((coordinate[0] - min.x) * tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
+            Math.round((coordinate[1] - min.y) * tile_size.y / (max.y - min.y))
+        );
+    });
+}
+
+// Renders a line given as an array of Points
+// line = [Point, Point, ...]
+function renderLine (line, properties, style, context) {
+    var segments = line;
+    var style = style || {};
+    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
+    var size = (style.size && style.size[properties.kind]) || 1;
+    var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
+
+    var c = context;
+    c.beginPath();
+    c.strokeStyle = 'rgb(' + color.join(',') + ')';
+    c.lineCap = 'round';
+    c.lineWidth = size;
+    if (dash) {
+        c.setLineDash(dash.map(function (d) { return d * size; }));
+    }
+    else {
+        c.setLineDash([]);
+    }
+
+    for (var r=0; r < segments.length - 1; r ++) {
+        var segment = [
+            segments[r].x, segments[r].y,
+            segments[r + 1].x, segments[r + 1].y
+        ];
+
+        c.moveTo(segment[0], segment[1]);
+        c.lineTo(segment[2], segment[3]);
+    };
+
+    c.closePath();
+    c.stroke();
+}
+
+// Renders a polygon given as an array of Points
+// polygon = [Point, Point, ...]
+function renderPolygon (polygon, properties, style, context) {
+    var segments = polygon;
+    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
+    var size = (style.size && style.size[properties.kind]) || 1;
+    var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
+
+    var c = context;
+    c.beginPath();
+    c.fillStyle = 'rgb(' + color.join(',') + ')';
+    c.moveTo(segments[0].x, segments[0].y);
+
+    for (var r=1; r < segments.length; r ++) {
+        c.lineTo(segments[r].x, segments[r].y);
+    };
+
+    c.closePath();
+    c.fill();
+
+    // Border
+    if (style.border) {
+        c.strokeStyle = 'rgb(' + style.border.join(',') + ')';
+        c.lineCap = 'round';
+        c.lineWidth = size;
+        if (dash) {
+            c.setLineDash(dash.map(function (d) { return d * size; }));
+        }
+        else {
+            c.setLineDash([]);
+        }
+        c.stroke();
+    }
+}
+
+// Render a GeoJSON tile onto canvas
+function renderTile (tile, tile_min, tile_max, context)
+{
+    // Land
+    var land = tile['land-usages'].features;
+    land.forEach(function(feature) {
+        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
+        renderPolygon(feature.geometry.pixels, feature.properties, styles.land, context);
+    });
+
+    // Water
+    var waters = tile['water-areas'].features;
+    waters.forEach(function(feature) {
+        // var coordinates;
+        if (feature.geometry.type == 'Polygon') {
+            feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
+            renderPolygon(feature.geometry.pixels, feature.properties, styles.water, context);
+        }
+        else if (feature.geometry.type == 'MultiPolygon')  {
+            feature.geometry.pixels = [];
+            for (var g=0; g < feature.geometry.coordinates.length; g++) {
+                feature.geometry.pixels[g] = scaleToPixels(feature.geometry.coordinates[g][0], tile_min, tile_max);
+                renderPolygon(feature.geometry.pixels[g], feature.properties, styles.water, context);
+            }
+        }
+    });
+
+    // Roads
+    var roads = tile['highroad'].features;
+
+    // Sort
+    roads.sort(function(a, b) {
+        return (a.properties.sort_key > b.properties.sort_key);
+    });
+
+    roads.forEach(function(feature) {
+        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates, tile_min, tile_max);
+        renderLine(feature.geometry.pixels, feature.properties, styles.roads, context);
+    });
+
+    // Buildings
+    var buildings = tile['buildings'].features;
+    buildings.forEach(function(feature) {
+        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
+        renderPolygon(feature.geometry.pixels, feature.properties, styles.buildings, context);
+    });
+}
+
+// Leaflet map
+function resizeMap () {
+    document.getElementById('map').style.height = window.innerHeight + 'px';
+}
+window.onresize = resizeMap;
+resizeMap();
+
+var map = L.map('map').setView([51.508, -0.105], 15); // [40.784702, -73.965452], [40.7180764, -73.9790335]
+
+var layer = L.tileLayer.canvas({
+    async: true,
+    maxZoom: max_zoom
+});
+
+layer.drawTile = function(canvas, tilePoint, zoom) {
+    var tile_key = [tilePoint.x, tilePoint.y, zoom].join('/');
+    var context = canvas.getContext('2d');
+    if (!context.setLineDash) {
+        context.setLineDash = function () {};
+    }
+    canvas.style.background = 'rgb(200, 200, 200)';
+
+    // Tile info for debugging
+    canvas.setAttribute('data-tile-position', tile_key);
+    // canvas.setAttribute('data-tile-json', JSON.stringify(tile));
+
+    // Calculate tile bounds
+    // NB: This is a huge/fast hack since we only do projection at the tile corners and then linearly interpolate the main
+    //     geometry to pixels within the tile. This isn't really visible at high zoom levels, but causes serious warping at lower zooms.
+    var tile_min = metersToLatLng(metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }));
+    var tile_max = metersToLatLng(metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom }));
+
+    // Load tile
+    var tile_url = 'http://tile.openstreetmap.us/vectiles-all/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    var req = new XMLHttpRequest();
+    req.onload = function () {
+        var tile = JSON.parse(req.response);
+        renderTile(tile, tile_min, tile_max, context);
+        layer.tileDrawn(canvas);
+    };
+    req.open('GET', tile_url, true /* async flag */);
+    req.send();
+}
+
+layer.addTo(map);
+
+</script>
+</body>
+</html>
