@@ -142,22 +142,47 @@ function metersToLatLng (meters)
     return c;
 }
 
-// Scale array of coordinates (2-element arrays each) bewteen [min, max] to tile pixels
-// coordinates = [[x, y], [x, y], ...]
-// returns array of Points = [Point, Point, ...]
-function scaleToPixels (coordinates, min, max)
+// Run a transform function on each cooordinate in a GeoJSON geometry
+function transformGeometry (geometry, transform)
 {
-    return coordinates.map(function (coordinate) {
+    if (geometry.type == 'Point') {
+        return transform(geometry.coordinates);
+    }
+    else if (geometry.type == 'LineString' || geometry.type == 'MultiPoint') {
+        return geometry.coordinates.map(transform);
+    }
+    else if (geometry.type == 'Polygon' || geometry.type == 'MultiLineString') {
+        return geometry.coordinates.map(function (coordinates) {
+            return coordinates.map(transform);
+        });
+    }
+    else if (geometry.type == 'MultiPolygon') {
+        return geometry.coordinates.map(function (polygon) {
+            return polygon.map(function (coordinates) {
+                return coordinates.map(transform);
+            });
+        });
+    }
+    // TODO: support GeometryCollection
+    return {};
+}
+
+// Scale a GeoJSON coordinate (2-element array) from [min, max] to tile pixels
+// returns a copy of geometry.coordinates transformed into Points
+function scaleGeometryToPixels (geometry, min, max)
+{
+    return transformGeometry(geometry, function (coordinates) {
         return Point(
-            Math.round((coordinate[0] - min.x) * tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
-            Math.round((coordinate[1] - min.y) * tile_size.y / (max.y - min.y))
+            Math.round((coordinates[0] - min.x) * tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
+            Math.round((coordinates[1] - min.y) * tile_size.y / (max.y - min.y))
         );
     });
 }
 
 // Renders a line given as an array of Points
 // line = [Point, Point, ...]
-function renderLine (line, properties, style, context) {
+function renderLine (line, properties, style, context)
+{
     var segments = line;
     var style = style || {};
     var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
@@ -192,7 +217,8 @@ function renderLine (line, properties, style, context) {
 
 // Renders a polygon given as an array of Points
 // polygon = [Point, Point, ...]
-function renderPolygon (polygon, properties, style, context) {
+function renderPolygon (polygon, properties, style, context)
+{
     var segments = polygon;
     var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
     var size = (style.size && (style.size[properties.kind] || style.size.default)) || 1;
@@ -225,6 +251,28 @@ function renderPolygon (polygon, properties, style, context) {
     }
 }
 
+function renderGeometry (geometry, properties, style, context)
+{
+    var g;
+    if (geometry.type == 'LineString') {
+        renderLine(geometry.pixels, properties, style, context);
+    }
+    else if (geometry.type == 'MultiLineString') {
+        for (g=0; g < geometry.pixels.length; g++) {
+            renderLine(geometry.pixels[g], properties, style, context);
+        }
+    }
+    else if (geometry.type == 'Polygon') {
+        renderPolygon(geometry.pixels[0], properties, style, context); // TODO: support polygons w/holes
+    }
+    else if (geometry.type == 'MultiPolygon') {
+        for (g=0; g < geometry.pixels.length; g++) {
+            renderPolygon(geometry.pixels[g][0], properties, style, context); // TODO: support polygons w/holes
+        }
+    }
+    // TODO: support Point, MultiPoint
+}
+
 // Generates a random color not yet present in the provided hash of colors
 function generateColor (color_map)
 {
@@ -241,7 +289,6 @@ function generateColor (color_map)
             break;
         }
     }
-    // return key;
     return color_map[key];
 }
 
@@ -266,78 +313,38 @@ function renderTile (tile, tile_min, tile_max, context)
     // Land
     var land = tile['land-usages'].features;
     land.forEach(function(feature) {
-        selection_color = null;
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+
         if (feature.properties.name != null && feature.properties.name != '') {
             selection_color = generateColor(selection.colors);
             selection_color.properties = feature.properties;
             selection_count++;
+
+            // Draw named land areas in a darker shade
+            renderGeometry(feature.geometry, feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
+            renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color } }, selection_context);
         }
-
-        if (feature.geometry.type == 'Polygon') {
-            feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
-
-            if (selection_color != null) {
-                // Draw named land areas in a darker shade
-                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
-                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: selection_color.color } }, selection_context);
-            }
-            else {
-                renderPolygon(feature.geometry.pixels, feature.properties, styles.land, context);
-                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-            }
-        }
-        else if (feature.geometry.type == 'MultiPolygon')  {
-            feature.geometry.pixels = [];
-            for (var g=0; g < feature.geometry.coordinates.length; g++) {
-                feature.geometry.pixels[g] = scaleToPixels(feature.geometry.coordinates[g][0], tile_min, tile_max);
-
-                if (selection_color != null) {
-                    // Draw named land areas in a darker shade
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: selection_color.color } }, selection_context);
-                }
-                else {
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, styles.land, context);
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-                }
-            }
+        else {
+            renderGeometry(feature.geometry, feature.properties, styles.land, context);
+            renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
         }
     });
 
     // Water
     var waters = tile['water-areas'].features;
     waters.forEach(function(feature) {
-        selection_color = null;
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        renderGeometry(feature.geometry, feature.properties, styles.water, context);
+
         if (feature.properties.name != null && feature.properties.name != '') {
             selection_color = generateColor(selection.colors);
             selection_color.properties = feature.properties;
             selection_count++;
+            renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color } }, selection_context);
         }
+        else {
 
-        if (feature.geometry.type == 'Polygon') {
-            feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
-            renderPolygon(feature.geometry.pixels, feature.properties, styles.water, context);
-
-            if (selection_color != null) {
-                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: selection_color.color } }, selection_context);
-            }
-            else {
-                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-            }
-        }
-        else if (feature.geometry.type == 'MultiPolygon')  {
-            feature.geometry.pixels = [];
-            for (var g=0; g < feature.geometry.coordinates.length; g++) {
-                feature.geometry.pixels[g] = scaleToPixels(feature.geometry.coordinates[g][0], tile_min, tile_max);
-                renderPolygon(feature.geometry.pixels[g], feature.properties, styles.water, context);
-
-                if (selection_color != null) {
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: selection_color.color } }, selection_context);
-                }
-                else {
-                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-                }
-            }
+            renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
         }
     });
 
@@ -345,22 +352,22 @@ function renderTile (tile, tile_min, tile_max, context)
     var roads = tile['highroad'].features;
     roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     roads.forEach(function(feature) {
-        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates, tile_min, tile_max);
-        renderLine(feature.geometry.pixels, feature.properties, styles.roads, context);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        renderGeometry(feature.geometry, feature.properties, styles.roads, context);
     });
 
     // Road labels
     var road_labels = tile['skeletron'].features;
     road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     road_labels.forEach(function(feature) {
-        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
 
         if (feature.properties.name != null && feature.properties.name != '') {
             selection_color = generateColor(selection.colors);
             selection_color.properties = feature.properties;
             selection_count++;
 
-            renderLine(feature.geometry.pixels, feature.properties,
+            renderGeometry(feature.geometry, feature.properties,
                 {
                     color: { default: selection_color.color },
                     size: { default: 15 }
@@ -373,14 +380,14 @@ function renderTile (tile, tile_min, tile_max, context)
     // Buildings
     var buildings = tile['buildings'].features;
     buildings.forEach(function(feature) {
-        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
-        renderPolygon(feature.geometry.pixels, feature.properties, styles.buildings, context);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        renderGeometry(feature.geometry, feature.properties, styles.buildings, context);
     });
 
     // POIs
     var pois = tile['pois'].features;
     pois.forEach(function(feature) {
-        feature.geometry.pixels = scaleToPixels([feature.geometry.coordinates], tile_min, tile_max)[0];
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
 
         if (feature.properties.name != null && feature.properties.name != '') {
             context.fillStyle = 'rgb(240, 0, 0)';
