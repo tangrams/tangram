@@ -143,7 +143,7 @@ function renderLine (line, properties, style, context) {
     var segments = line;
     var style = style || {};
     var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var size = (style.size && style.size[properties.kind]) || 1;
+    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 1;
     var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
 
     var c = context;
@@ -177,7 +177,7 @@ function renderLine (line, properties, style, context) {
 function renderPolygon (polygon, properties, style, context) {
     var segments = polygon;
     var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var size = (style.size && style.size[properties.kind]) || 1;
+    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 1;
     var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
 
     var c = context;
