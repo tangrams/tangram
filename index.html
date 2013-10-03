@@ -13,11 +13,27 @@ Brett Camper
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>Canvas vector map</title>
 <style>
+
 body {
     margin: 0px;
     border: 0px;
     padding: 0px;
 }
+
+.label {
+    width: 200px;
+    margin-left: -100px;
+    position: absolute;
+    z-index: 1;
+    text-align: center;
+}
+
+.labelInner {
+    padding: 2px;
+    background: white;
+    opacity: 0.75;
+}
+
 </style>
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
 </head>
@@ -28,6 +44,8 @@ body {
 <script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
 
 <script>
+
+var tiles = {};
 
 // Makeshift style-sheet
 var styles = {
@@ -207,43 +225,149 @@ function renderPolygon (polygon, properties, style, context) {
     }
 }
 
+// Generates a random color not yet present in the provided hash of colors
+function generateColor (color_map)
+{
+    var r, g, b, key;
+    color_map = color_map || {};
+    while (true) {
+        r = ~~(Math.random() * 256);
+        g = ~~(Math.random() * 256);
+        b = ~~(Math.random() * 256);
+        key = (r + (g << 8) + (b << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
+
+        if (color_map[key] === undefined) {
+            color_map[key] = { color: [r, g, b] };
+            break;
+        }
+    }
+    // return key;
+    return color_map[key];
+}
+
+// Selection info shown on hover
+var selection_info = document.createElement('div');
+selection_info.setAttribute('class', 'label');
+selection_info.style['z-index'] = 1;
+selection_info.style.display = 'none';
+
 // Render a GeoJSON tile onto canvas
 function renderTile (tile, tile_min, tile_max, context)
 {
+    // Selection rendering - off-screen canvas to render a collision map for feature selection
+    var selection = { colors: {} };
+    var selection_canvas = document.createElement('canvas');
+    selection_canvas.width = tile_size.x;
+    selection_canvas.height = tile_size.y;
+    var selection_context = selection_canvas.getContext('2d');
+    var selection_color;
+    var selection_count = 0;
+
     // Land
     var land = tile['land-usages'].features;
     land.forEach(function(feature) {
-        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
-        renderPolygon(feature.geometry.pixels, feature.properties, styles.land, context);
+        selection_color = null;
+        if (feature.properties.name != null && feature.properties.name != '') {
+            selection_color = generateColor(selection.colors);
+            selection_color.properties = feature.properties;
+            selection_count++;
+        }
+
+        if (feature.geometry.type == 'Polygon') {
+            feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
+
+            if (selection_color != null) {
+                // Draw named land areas in a darker shade
+                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
+                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: selection_color.color } }, selection_context);
+            }
+            else {
+                renderPolygon(feature.geometry.pixels, feature.properties, styles.land, context);
+                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
+            }
+        }
+        else if (feature.geometry.type == 'MultiPolygon')  {
+            feature.geometry.pixels = [];
+            for (var g=0; g < feature.geometry.coordinates.length; g++) {
+                feature.geometry.pixels[g] = scaleToPixels(feature.geometry.coordinates[g][0], tile_min, tile_max);
+
+                if (selection_color != null) {
+                    // Draw named land areas in a darker shade
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: selection_color.color } }, selection_context);
+                }
+                else {
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, styles.land, context);
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
+                }
+            }
+        }
     });
 
     // Water
     var waters = tile['water-areas'].features;
     waters.forEach(function(feature) {
+        selection_color = null;
+        if (feature.properties.name != null && feature.properties.name != '') {
+            selection_color = generateColor(selection.colors);
+            selection_color.properties = feature.properties;
+            selection_count++;
+        }
+
         if (feature.geometry.type == 'Polygon') {
             feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
             renderPolygon(feature.geometry.pixels, feature.properties, styles.water, context);
+
+            if (selection_color != null) {
+                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: selection_color.color } }, selection_context);
+            }
+            else {
+                renderPolygon(feature.geometry.pixels, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
+            }
         }
         else if (feature.geometry.type == 'MultiPolygon')  {
             feature.geometry.pixels = [];
             for (var g=0; g < feature.geometry.coordinates.length; g++) {
                 feature.geometry.pixels[g] = scaleToPixels(feature.geometry.coordinates[g][0], tile_min, tile_max);
                 renderPolygon(feature.geometry.pixels[g], feature.properties, styles.water, context);
+
+                if (selection_color != null) {
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: selection_color.color } }, selection_context);
+                }
+                else {
+                    renderPolygon(feature.geometry.pixels[g], feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
+                }
             }
         }
     });
 
     // Roads
     var roads = tile['highroad'].features;
-
-    // Sort
-    roads.sort(function(a, b) {
-        return (a.properties.sort_key > b.properties.sort_key);
-    });
-
+    roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     roads.forEach(function(feature) {
         feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates, tile_min, tile_max);
         renderLine(feature.geometry.pixels, feature.properties, styles.roads, context);
+    });
+
+    // Road labels
+    var road_labels = tile['skeletron'].features;
+    road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
+    road_labels.forEach(function(feature) {
+        feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates, tile_min, tile_max);
+
+        if (feature.properties.name != null && feature.properties.name != '') {
+            selection_color = generateColor(selection.colors);
+            selection_color.properties = feature.properties;
+            selection_count++;
+
+            renderLine(feature.geometry.pixels, feature.properties,
+                {
+                    color: { default: selection_color.color },
+                    size: { default: 15 }
+                },
+                selection_context
+            );
+        }
     });
 
     // Buildings
@@ -252,6 +376,73 @@ function renderTile (tile, tile_min, tile_max, context)
         feature.geometry.pixels = scaleToPixels(feature.geometry.coordinates[0], tile_min, tile_max);
         renderPolygon(feature.geometry.pixels, feature.properties, styles.buildings, context);
     });
+
+    // POIs
+    var pois = tile['pois'].features;
+    pois.forEach(function(feature) {
+        feature.geometry.pixels = scaleToPixels([feature.geometry.coordinates], tile_min, tile_max)[0];
+
+        if (feature.properties.name != null && feature.properties.name != '') {
+            context.fillStyle = 'rgb(240, 0, 0)';
+            context.strokeStyle = 'rgb(240, 240, 240)';
+            context.lineWidth = 2;
+            context.beginPath();
+            context.arc(feature.geometry.pixels.x, feature.geometry.pixels.y, 5, 0, 2 * Math.PI);
+            context.closePath();
+            context.fill();
+            context.stroke();
+
+            selection_color = generateColor(selection.colors);
+            selection_color.properties = feature.properties;
+            selection_count++;
+
+            selection_context.fillStyle = 'rgb(' + selection_color.color.join(',') + ')';
+            selection_context.beginPath();
+            selection_context.arc(feature.geometry.pixels.x, feature.geometry.pixels.y, 5, 0, 2 * Math.PI);
+            selection_context.closePath();
+            selection_context.fill();
+        }
+    });
+
+    // Selection events
+    if (selection_count > 0) {
+        if (tiles[tile.key] == null) {
+            tiles[tile.key] = {};
+        }
+        tiles[tile.key].selection = selection;
+
+        selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
+
+        context.canvas.onmousemove = function (event) {
+            var off = event.offsetY * tile_size.x + event.offsetX;
+            var color = selection.pixels[off];
+            var feature = selection.colors[color];
+            if (feature != null) {
+                context.canvas.style.cursor = 'crosshair';
+                selection_info.style.left = (parseInt(context.canvas.style.left) + event.offsetX + 5) + 'px';
+                selection_info.style.top = (parseInt(context.canvas.style.top) + event.offsetY + 5) + 'px';
+                selection_info.innerHTML = '<span class="labelInner">' + feature.properties.name + /*' [' + feature.properties.kind + ']*/'</span>';
+                selection_info.style.display = 'block';
+                context.canvas.parentNode.appendChild(selection_info);
+            }
+            else {
+                context.canvas.style.cursor = null;
+                selection_info.style.display = 'none';
+                if (selection_info.parentNode == context.canvas.parentNode) {
+                    context.canvas.parentNode.removeChild(selection_info);
+                }
+            }
+        };
+    }
+    else {
+        context.canvas.onmousemove = function (event) {
+            context.canvas.style.cursor = null;
+            selection_info.style.display = 'none';
+            if (selection_info.parentNode == context.canvas.parentNode) {
+                context.canvas.parentNode.removeChild(selection_info);
+            }
+        };
+    }
 }
 
 // Leaflet map
@@ -286,8 +477,14 @@ var layer = L.tileLayer.canvas({
     attribution: '<a href="https://github.com/bcamper/canvas-map">Source Code</a>'
 });
 
+layer.on('tileunload', function (event) {
+    var canvas = event.tile;
+    var key = canvas.getAttribute('data-tile-key');
+    delete tiles[key];
+});
+
 layer.drawTile = function(canvas, tilePoint, zoom) {
-    var tile_key = [tilePoint.x, tilePoint.y, zoom].join('/');
+    tile_key = [tilePoint.x, tilePoint.y, zoom].join('/');
     var context = canvas.getContext('2d');
     if (!context.setLineDash) {
         context.setLineDash = function () {};
@@ -295,8 +492,7 @@ layer.drawTile = function(canvas, tilePoint, zoom) {
     canvas.style.background = 'rgb(200, 200, 200)';
 
     // Tile info for debugging
-    canvas.setAttribute('data-tile-position', tile_key);
-    // canvas.setAttribute('data-tile-json', JSON.stringify(tile));
+    canvas.setAttribute('data-tile-key', tile_key);
 
     // Calculate tile bounds
     // NB: This is a huge/fast hack since we only do projection at the tile corners and then linearly interpolate the main
@@ -309,6 +505,7 @@ layer.drawTile = function(canvas, tilePoint, zoom) {
     var req = new XMLHttpRequest();
     req.onload = function () {
         var tile = JSON.parse(req.response);
+        tile.key = tile_key;
         renderTile(tile, tile_min, tile_max, context);
         layer.tileDrawn(canvas);
     };
