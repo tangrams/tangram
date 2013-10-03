@@ -107,6 +107,7 @@ Point.copy = function (p)
 };
 
 // Projection constants
+var tile_size = Point(256, 256);
 var half_circumference_meters = 20037508.34;
 var map_origin_meters = Point(-half_circumference_meters, half_circumference_meters);
 var min_zoom_meters_per_pixel = 156543.0339;
@@ -117,7 +118,6 @@ for (var z=1; z <= max_zoom; z++) {
 }
 
 // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
-var tile_size = Point(256, 256);
 function metersForTile (tile)
 {
     return Point(
@@ -299,7 +299,7 @@ selection_info.style['z-index'] = 1;
 selection_info.style.display = 'none';
 
 // Render a GeoJSON tile onto canvas
-function renderTile (tile, tile_min, tile_max, context)
+function renderTile (tile, context)
 {
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
@@ -313,7 +313,7 @@ function renderTile (tile, tile_min, tile_max, context)
     // Land
     var land = tile['land-usages'].features;
     land.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
         if (feature.properties.name != null && feature.properties.name != '') {
             selection_color = generateColor(selection.colors);
@@ -333,7 +333,7 @@ function renderTile (tile, tile_min, tile_max, context)
     // Water
     var waters = tile['water-areas'].features;
     waters.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         renderGeometry(feature.geometry, feature.properties, styles.water, context);
 
         if (feature.properties.name != null && feature.properties.name != '') {
@@ -352,7 +352,7 @@ function renderTile (tile, tile_min, tile_max, context)
     var roads = tile['highroad'].features;
     roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     roads.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         renderGeometry(feature.geometry, feature.properties, styles.roads, context);
     });
 
@@ -360,7 +360,7 @@ function renderTile (tile, tile_min, tile_max, context)
     var road_labels = tile['skeletron'].features;
     road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     road_labels.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
         if (feature.properties.name != null && feature.properties.name != '') {
             selection_color = generateColor(selection.colors);
@@ -380,14 +380,14 @@ function renderTile (tile, tile_min, tile_max, context)
     // Buildings
     var buildings = tile['buildings'].features;
     buildings.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         renderGeometry(feature.geometry, feature.properties, styles.buildings, context);
     });
 
     // POIs
     var pois = tile['pois'].features;
     pois.forEach(function(feature) {
-        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile_min, tile_max);
+        feature.geometry.pixels = scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
         if (feature.properties.name != null && feature.properties.name != '') {
             context.fillStyle = 'rgb(240, 0, 0)';
@@ -491,29 +491,27 @@ layer.on('tileunload', function (event) {
 });
 
 layer.drawTile = function(canvas, tilePoint, zoom) {
-    tile_key = [tilePoint.x, tilePoint.y, zoom].join('/');
     var context = canvas.getContext('2d');
     if (!context.setLineDash) {
         context.setLineDash = function () {};
     }
     canvas.style.background = 'rgb(200, 200, 200)';
 
-    // Tile info for debugging
-    canvas.setAttribute('data-tile-key', tile_key);
-
-    // Calculate tile bounds
-    // NB: This is a huge/fast hack since we only do projection at the tile corners and then linearly interpolate the main
-    //     geometry to pixels within the tile. This isn't really visible at high zoom levels, but causes serious warping at lower zooms.
-    var tile_min = metersToLatLng(metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }));
-    var tile_max = metersToLatLng(metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom }));
-
     // Load tile
     var tile_url = 'http://tile.openstreetmap.us/vectiles-all/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     var req = new XMLHttpRequest();
     req.onload = function () {
         var tile = JSON.parse(req.response);
-        tile.key = tile_key;
-        renderTile(tile, tile_min, tile_max, context);
+        tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
+        canvas.setAttribute('data-tile-key', tile.key); // tile info for debugging
+
+        // Calculate tile bounds
+        // NB: This is a huge/fast hack since we only do projection at the tile corners and then linearly interpolate the main
+        //     geometry to pixels within the tile. This isn't really visible at high zoom levels, but causes serious warping at lower zooms.
+        tile.min = metersToLatLng(metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }));
+        tile.max = metersToLatLng(metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom }));
+
+        renderTile(tile, context);
         layer.tileDrawn(canvas);
     };
     req.open('GET', tile_url, true /* async flag */);
