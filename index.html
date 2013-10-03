@@ -261,8 +261,24 @@ function resizeMap () {
 window.onresize = resizeMap;
 resizeMap();
 
-var map = L.map('map').setView([51.508, -0.105], 15); // [40.784702, -73.965452], [40.7180764, -73.9790335]
+var map = L.map('map');
 map.attributionControl.setPrefix('');
+
+// Get location from URL or use default
+var map_default_location = [51.508, -0.105]; // [40.784702, -73.965452], [40.7180764, -73.9790335]
+var map_default_zoom = 15;
+var url_latlng = window.location.hash.slice(1, window.location.hash.length).split(',');
+if (url_latlng.length == 3) {
+    map.setView([url_latlng[0], url_latlng[1]], url_latlng[2]);
+}
+else {
+    map.setView(map_default_location, map_default_zoom);
+}
+
+map.on('moveend', function () {
+    var map_latlng = map.getCenter();
+    window.location.hash = [map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
+});
 
 var layer = L.tileLayer.canvas({
     async: true,
