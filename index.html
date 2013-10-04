@@ -251,9 +251,11 @@ function renderPolygon (polygon, properties, style, context)
     }
 }
 
+var cutout_context = document.createElement('canvas').getContext('2d');
 function renderGeometry (geometry, properties, style, context)
 {
-    var g;
+    var g, h, polys;
+
     if (geometry.type == 'LineString') {
         renderLine(geometry.pixels, properties, style, context);
     }
@@ -262,12 +264,44 @@ function renderGeometry (geometry, properties, style, context)
             renderLine(geometry.pixels[g], properties, style, context);
         }
     }
-    else if (geometry.type == 'Polygon') {
-        renderPolygon(geometry.pixels[0], properties, style, context); // TODO: support polygons w/holes
-    }
-    else if (geometry.type == 'MultiPolygon') {
-        for (g=0; g < geometry.pixels.length; g++) {
-            renderPolygon(geometry.pixels[g][0], properties, style, context); // TODO: support polygons w/holes
+    else if (geometry.type == 'Polygon' || geometry.type == 'MultiPolygon') {
+        if (geometry.type == 'Polygon') {
+            polys = [geometry.pixels]; // treat Polygon as a degenerate MultiPolygon to avoid duplicating code
+        }
+        else {
+            polys = geometry.pixels;
+        }
+
+        for (g=0; g < polys.length; g++) {
+            // Polygons with holes:
+            // Render to a separate canvas, using composite operations to cut holes out of polygon, then copy back to the main canvas
+            if (polys[g].length > 1) {
+                if (cutout_context.canvas.width != context.canvas.width || cutout_context.canvas.height != context.canvas.height) {
+                    cutout_context.canvas.width = context.canvas.width;
+                    cutout_context.canvas.height = context.canvas.height;
+                }
+                cutout_context.clearRect(0, 0, cutout_context.canvas.width, cutout_context.canvas.height);
+
+                cutout_context.globalCompositeOperation = 'source-over';
+                renderPolygon(polys[g][0], properties, style, cutout_context);
+
+                cutout_context.globalCompositeOperation = 'destination-out';
+                for (h=1; h < polys[g].length; h++) {
+                    renderPolygon(polys[g][h], properties, style, cutout_context);
+                }
+                context.drawImage(cutout_context.canvas, 0, 0);
+
+                // After compositing back to main canvas, draw outlines on holes
+                if (style.border) {
+                    for (h=1; h < polys[g].length; h++) {
+                        renderLine(polys[g][h], properties, { color: { default: style.border }, size: style.size, dash: style.dash }, context);
+                    }
+                }
+            }
+            // Regular closed polygons
+            else {
+                renderPolygon(polys[g][0], properties, style, context);
+            }
         }
     }
     // TODO: support Point, MultiPoint
