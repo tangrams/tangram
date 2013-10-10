@@ -194,11 +194,13 @@ function renderLine (line, properties, style, context)
     c.strokeStyle = 'rgb(' + color.join(',') + ')';
     c.lineCap = 'round';
     c.lineWidth = size;
-    if (dash) {
-        c.setLineDash(dash.map(function (d) { return d * size; }));
-    }
-    else {
-        c.setLineDash([]);
+    if (c.setLineDash) {
+        if (dash) {
+            c.setLineDash(dash.map(function (d) { return d * size; }));
+        }
+        else {
+            c.setLineDash([]);
+        }
     }
 
     for (var r=0; r < segments.length - 1; r ++) {
@@ -241,11 +243,13 @@ function renderPolygon (polygon, properties, style, context)
         c.strokeStyle = 'rgb(' + style.border.join(',') + ')';
         c.lineCap = 'round';
         c.lineWidth = size;
-        if (dash) {
-            c.setLineDash(dash.map(function (d) { return d * size; }));
-        }
-        else {
-            c.setLineDash([]);
+        if (c.setLineDash) {
+            if (dash) {
+                c.setLineDash(dash.map(function (d) { return d * size; }));
+            }
+            else {
+                c.setLineDash([]);
+            }
         }
         c.stroke();
     }
@@ -526,9 +530,6 @@ layer.on('tileunload', function (event) {
 
 layer.drawTile = function(canvas, tilePoint, zoom) {
     var context = canvas.getContext('2d');
-    if (!context.setLineDash) {
-        context.setLineDash = function () {};
-    }
     canvas.style.background = 'rgb(200, 200, 200)';
 
     // Load tile
