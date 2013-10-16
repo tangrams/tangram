@@ -20,6 +20,11 @@ body {
     padding: 0px;
 }
 
+#map {
+    background: rgba(0, 0, 0, 0);
+    /*opacity: 0.5;*/
+}
+
 .label {
     width: 200px;
     margin-left: -100px;
@@ -41,7 +46,16 @@ body {
 <body>
 
 <div id="map"></div>
+<canvas id="webgl-canvas" style="position: absolute; left: 0px; top: 0px; z-index: -1;"></canvas>
+
 <script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+<!-- <script src="../libs/Leaflet/dist/leaflet.js"></script> -->
+<script src="lib/TileLayer.DivGrid.js"></script>
+<script src="lib/libtess.cat.js"></script>
+<script src="triangulate.js"></script>
+<script src="gl.js"></script>
+<script src="canvas_renderer.js"></script>
+<script src="gl_renderer.js"></script>
 
 <script>
 
@@ -206,29 +220,50 @@ map.on('moveend', function () {
     window.location.hash = [map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
-var layer = L.tileLayer.canvas({
+// var layer = L.tileLayer.canvas({
+var layer = L.tileLayer.divGrid({
     async: true,
     maxZoom: max_zoom,
-    attribution: '<a href="https://github.com/bcamper/canvas-map">Source Code</a>'
+    attribution: '<a href="https://github.com/bcamper/canvas-map">Source Code</a>',
+    unloadInvisibleTiles: false,
+    updateWhenIdle: false,
+    preloadInvisibleTiles: 0
 });
 
 layer.on('tileunload', function (event) {
-    var canvas = event.tile;
-    var key = canvas.getAttribute('data-tile-key');
+    var tile = event.tile;
+    var key = tile.getAttribute('data-tile-key');
+    console.log("unload " + key);
+    if (key && tiles[key]) {
+        renderers.forEach(function (renderer) { renderer.removeTile(tiles[key]); });
+    }
+
     delete tiles[key];
 });
 
-layer.drawTile = function(canvas, tilePoint, zoom) {
-    var context = canvas.getContext('2d');
-    canvas.style.background = 'rgb(200, 200, 200)';
-
+// layer.drawTile = function(canvas, tilePoint, zoom) {
+layer.drawTile = function(tileDiv, tilePoint, zoom) {
     // Load tile
-    var tile_url = 'http://tile.openstreetmap.us/vectiles-all/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    var single_layer = null; //'water-areas';
+    var tile_url = 'http://tile.openstreetmap.us/vectiles-' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    // var tile_url = 'http://localhost:8080/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     var req = new XMLHttpRequest();
     req.onload = function () {
         var tile = JSON.parse(req.response);
+        if (single_layer != null) {
+            var t = tile;
+            tile = {};
+            tile[single_layer] = t;
+        }
         tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
-        canvas.setAttribute('data-tile-key', tile.key); // tile info for debugging
+        tileDiv.setAttribute('data-tile-key', tile.key); // tile info for debugging
+
+        var debug_overlay = document.createElement('div');
+        debug_overlay.textContent = tile.key;
+        debug_overlay.style.position = 'absolute';
+        debug_overlay.style.left = 0;
+        debug_overlay.style.top = 0;
+        // tileDiv.appendChild(debug_overlay);
 
         // Calculate tile bounds
         // NB: This is a huge/fast hack since we only do projection at the tile corners and then linearly interpolate the main
@@ -236,15 +271,153 @@ layer.drawTile = function(canvas, tilePoint, zoom) {
         tile.min = metersToLatLng(metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }));
         tile.max = metersToLatLng(metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom }));
 
-        renderTile(tile, context);
-        layer.tileDrawn(canvas);
+        tiles[tile.key] = {};
+        tiles[tile.key].key = tile.key;
+        tiles[tile.key].properties = tile.properties;
+
+        renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
+
+        layer.tileDrawn(tileDiv);
     };
     req.open('GET', tile_url, true /* async flag */);
     req.send();
 }
 
-layer.addTo(map);
+window.addEventListener('load', function () {
+    requestAnimationFrameCompatibility();
+    renderers.forEach(function (renderer) { renderer.init(); });
+    layer.addTo(map);
+    frame();
+});
+
+/***** Animation loop *****/
+
+// Cross-browser compatibility for requestAnimationFrame
+// (function requestAnimationFrameCompatibility ()
+function requestAnimationFrameCompatibility ()
+{
+  if (window.requestAnimationFrame == undefined) {
+      window.requestAnimationFrame =
+          (function () {
+              return (
+                  window.requestAnimationFrame       ||
+                  window.webkitRequestAnimationFrame ||
+                  window.mozRequestAnimationFrame    ||
+                  window.oRequestAnimationFrame      ||
+                  window.msRequestAnimationFrame     ||
+                  function (callback) {
+                      window.setTimeout(callback, 1000 / 60);
+                  }
+              );
+          })();
+  }
+}
+// }());
+
+function frame () {
+    render();
+    requestAnimationFrame(frame);
+}
+
+function render () {
+    renderers.forEach(function (renderer) { renderer.render(); });
+}
 
 </script>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+    // precision highp float;
+
+    uniform vec2 resolution;
+    uniform vec2 map_center;
+    uniform vec2 map_zoom;
+    // uniform float map_zoom;
+
+    attribute vec3 position;
+    attribute vec3 color;
+
+    varying vec3 fcolor;
+
+    // Project lat-lng to mercator
+    vec2 latLngToMeters (vec2 coordinate) {
+        const float pi = 3.1415926;
+        const float half_circumference_meters = 20037508.34;
+
+        vec2 projected;
+
+        // Latitude
+        projected.y = log(tan((coordinate.y + 90.0) * pi / 360.0)) / (pi / 180.0);
+        projected.y = projected.y * half_circumference_meters / 180.0;
+
+        // Longitude
+        projected.x = coordinate.x * half_circumference_meters / 180.0;
+
+        return projected;
+    }
+
+    void main() {
+        vec3 pos_trans = position;
+
+        // mercator projection
+        // const float min_zoom_meters_per_pixel = 156543.0339;
+        // float meters_per_pixel = min_zoom_meters_per_pixel / pow(2.0, map_zoom);
+        // vec2 center = latLngToMeters(map_center); // TODO: do this once in JS and pass to shader
+        // vec2 zoom = vec2(resolution.x / 2.0 * meters_per_pixel, resolution.y / 2.0 * meters_per_pixel);
+
+        // pos_trans.xy = latLngToMeters(pos_trans.xy);
+        // pos_trans.xy -= center;
+        // pos_trans.xy /= zoom;
+
+        pos_trans.xy -= map_center;
+        pos_trans.xy /= map_zoom;
+        pos_trans.y *= -1.0;
+
+        // pos_trans.y *= abs(sin(position.x * 100.0));
+        // float mult = sin(position.x * 100.0);
+        // float tol = 0.5;
+        // if (mult > 0.0 && mult < tol) {
+        //     mult = tol;
+        // }
+        // else if (mult < 0.0 && mult > -tol) {
+        //     mult = -tol;
+        // }
+        // pos_trans.y *= mult;
+
+        fcolor = color;
+
+        gl_Position = vec4(pos_trans, 1.0);
+    }
+
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+    uniform vec2 resolution;
+    // uniform vec2 map_center;
+
+    varying vec3 fcolor;
+
+    // http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+    // float rand (vec2 co) {
+    //    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    // }
+
+    void main (void) {
+        vec2 position = gl_FragCoord.xy / resolution.xy;    // scale coords to [0.0, 1.0]
+        position = position * 2.0 - 1.0;                    // scale coords to [-1.0, 1.0]
+        position.y *= resolution.y / resolution.x;          // correct aspect ratio
+
+        vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.15);
+
+        // vec3 color = fcolor;
+
+        // vec3 color = fcolor * (1.0 - dot(normalize(vec3(rand(gl_FragCoord.xy * 0.01) * 10.0, 0.0, -1.0)), vec3(0, 0, 1.0)));
+
+        gl_FragColor = vec4(color, 1.0);
+        // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+
+</script>
+
 </body>
 </html>
