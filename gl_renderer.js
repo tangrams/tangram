@@ -15,11 +15,11 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
     this.removeTile(tile); // addTile may be called multiple times on existing tile, clean-up first
 
     // TODO: unify w/canvas style object
-    var layers = {
-        land:  'land-usages',
-        water: 'water-areas',
-        buildings: 'buildings'
-    };
+    var layers = [
+        { name: 'land', key: 'land-usages' },
+        { name: 'water', key: 'water-areas' },
+        { name: 'buildings', key: 'buildings' }
+    ];
 
     var colors = {
         land: [0.5, 0.875, 0.5],
@@ -33,9 +33,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
     var count = 0;
     var z, color;
 
-    for (var layer in layers) {
-        if (layers.hasOwnProperty(layer) && tile[layers[layer]] != null) {
-            tile[layers[layer]].features.forEach(function(feature) {
+    for (var layer_num=0; layer_num < layers.length; layer_num++) {
+        var layer = layers[layer_num];
+        if (tile[layer.key] != null) {
+            tile[layer.key].features.forEach(function(feature) {
                 var polygons;
                 if (feature.geometry.type == 'Polygon') {
                     polygons = [feature.geometry.coordinates];
@@ -44,8 +45,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
                     polygons = feature.geometry.coordinates;
                 }
 
-                z = (feature.properties && feature.properties.sort_key) || 0;
-                color = colors[layer] || colors.default;
+                z = (feature.properties && feature.properties.sort_key) || layer_num;
+                z = (-z + 32768) / 65536; // reverse and scale to 0-1
+
+                color = colors[layer.name] || colors.default;
 
                 polygons.forEach(function (polygon) {
                     // Use libtess,js to tesselate complex OSM polygons
