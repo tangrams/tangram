@@ -311,7 +311,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
 
         context.canvas.onmousemove = function (event) {
-            console.log(event.offsetX + ', ' + event.offsetY);
+            // console.log(event.offsetX + ', ' + event.offsetY);
             var off = event.offsetY * tile_size.x + event.offsetX;
             var color = selection.pixels[off];
             var feature = selection.colors[color];

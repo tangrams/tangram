@@ -105,15 +105,12 @@ GLRenderer.prototype.render = function GLRendererRender ()
     // gl.uniform1f(gl.getUniformLocation(program, 'time'), ((new Date().getTime()) - start_time) / 1000);
     gl.uniform2f(gl.getUniformLocation(program, 'resolution'), canvas.width, canvas.height);
 
-    gl.uniform2f(gl.getUniformLocation(program, 'map_center'), map.getCenter().lng, map.getCenter().lat);
-    gl.uniform2f(gl.getUniformLocation(program, 'map_zoom'),
-        map.getBounds().getNorthEast().lng - map.getBounds().getCenter().lng,
-        map.getBounds().getSouthWest().lat - map.getBounds().getCenter().lat
-    ); // 300
-    // gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), map.getZoom());
+    var center = map.getCenter(); // TODO: move map center tracking/projection to central class?
+    center = latLngToMeters(Point(center.lng, center.lat));
+    gl.uniform2f(gl.getUniformLocation(program, 'map_center'), center.x, center.y);
+    gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), map.getZoom());
 
     // gl.clearColor(200 / 255, 200 / 255, 200 / 255, 1.0);
-    // gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
