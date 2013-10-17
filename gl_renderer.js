@@ -24,7 +24,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
     var colors = {
         land: [0.5, 0.875, 0.5],
         water: [0.5, 0.5, 0.875],
-        buildings: [0.5, 0.5, 0.5],
+        // buildings: [0.5, 0.5, 0.5],
+        buildings: function () { return [0.5, 0.5, 0.5].map(function(c) { return c *= Math.random(); }); }, // random color
         default: [1.0, 0, 0]
     };
 
@@ -49,6 +50,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
                 z = (-z + 32768) / 65536; // reverse and scale to 0-1
 
                 color = colors[layer.name] || colors.default;
+                if (typeof color == 'function') { // dynamic/function-based color
+                    color = color(feature);
+                }
 
                 polygons.forEach(function (polygon) {
                     // Use libtess,js to tesselate complex OSM polygons
