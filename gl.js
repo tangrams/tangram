@@ -10,7 +10,7 @@ GL.getContext = function getContext (canvas)
         document.body.appendChild(canvas);
     }
 
-    gl = canvas.getContext('experimental-webgl');
+    gl = canvas.getContext('experimental-webgl', { /*preserveDrawingBuffer: true*/ }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)
     if (!gl) {
         throw "Couldn't create WebGL context";
     }
