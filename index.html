@@ -126,7 +126,7 @@ var half_circumference_meters = 20037508.34;
 var map_origin_meters = Point(-half_circumference_meters, half_circumference_meters);
 var min_zoom_meters_per_pixel = 156543.0339;
 var meters_per_pixel = [];
-var max_zoom = 18;
+var max_zoom = 20;
 for (var z=1; z <= max_zoom; z++) {
     meters_per_pixel[z] = min_zoom_meters_per_pixel / Math.pow(2, z);
 }
