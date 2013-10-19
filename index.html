@@ -392,6 +392,8 @@ function render () {
 
         // pos_trans.y *= abs(sin(pos_trans.x));
 
+        pos_trans.z = (-pos_trans.z + 32768.0) / 65536.0; // reverse and scale to 0-1
+
         fcolor = color;
 
         gl_Position = vec4(pos_trans, 1.0);

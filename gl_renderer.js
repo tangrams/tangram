@@ -47,7 +47,6 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile)
                 }
 
                 z = (feature.properties && feature.properties.sort_key) || layer_num;
-                z = (-z + 32768) / 65536; // reverse and scale to 0-1
 
                 color = colors[layer.name] || colors.default;
                 if (typeof color == 'function') { // dynamic/function-based color
