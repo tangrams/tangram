@@ -274,6 +274,8 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         }
         tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
         tileDiv.setAttribute('data-tile-key', tile.key); // tile info for debugging
+        tileDiv.style.width = '256px';
+        tileDiv.style.height = '256px';
 
         var debug_overlay = document.createElement('div');
         debug_overlay.textContent = tile.key;
