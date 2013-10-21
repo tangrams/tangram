@@ -129,9 +129,6 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.useProgram(program);
 
     // Set values to program variables
-    // gl.uniform1f(gl.getUniformLocation(program, 'seed'), seed);
-    // gl.uniform1f(gl.getUniformLocation(program, 'start_time'), start_time / 1000);
-    // gl.uniform1f(gl.getUniformLocation(program, 'time'), ((new Date().getTime()) - start_time) / 1000);
     gl.uniform2f(gl.getUniformLocation(program, 'resolution'), canvas.width, canvas.height);
 
     var center = map.getCenter(); // TODO: move map center tracking/projection to central class?
