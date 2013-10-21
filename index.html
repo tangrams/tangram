@@ -266,11 +266,13 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
     // var tile_url = 'http://localhost:8080/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     var req = new XMLHttpRequest();
     req.onload = function () {
-        var tile = JSON.parse(req.response);
-        if (single_layer != null) {
-            var t = tile;
-            tile = {};
-            tile[single_layer] = t;
+        var tile = {};
+        if (single_layer == null) {
+            tile.layers = JSON.parse(req.response);
+        }
+        else {
+            tile.layers = {};
+            tile.layers[single_layer] = JSON.parse(req.response);
         }
         tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
         tileDiv.setAttribute('data-tile-key', tile.key); // tile info for debugging
@@ -286,9 +288,9 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         // tileDiv.appendChild(debug_overlay);
 
         // Mercator projection for geometry and bounds
-        for (var t in tile) {
-            if (tile.hasOwnProperty(t) && typeof tile[t] == 'object') {
-                tile[t].features.forEach(function (feature) {
+        for (var t in tile.layers) {
+            if (tile.layers.hasOwnProperty(t)) {
+                tile.layers[t].features.forEach(function (feature) {
                     feature.geometry.coordinates = transformGeometry(feature.geometry, function (coordinates) {
                         var m = latLngToMeters(Point(coordinates[0], coordinates[1]));
                         return [m.x, m.y];

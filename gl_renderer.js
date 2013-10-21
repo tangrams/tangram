@@ -32,13 +32,14 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // Build triangles
     var triangles = [];
     var count = 0;
+    var layer;
+    var polygons, tess;
     var z, color;
 
     for (var layer_num=0; layer_num < layers.length; layer_num++) {
-        var layer = layers[layer_num];
-        if (tile[layer.key] != null) {
-            tile[layer.key].features.forEach(function(feature) {
-                var polygons;
+        layer = layers[layer_num];
+        if (tile.layers[layer.key] != null) {
+            tile.layers[layer.key].features.forEach(function(feature) {
                 if (feature.geometry.type == 'Polygon') {
                     polygons = [feature.geometry.coordinates];
                 }

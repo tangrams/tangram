@@ -204,7 +204,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     var selection_count = 0;
 
     // Land
-    var land = tile['land-usages'].features;
+    var land = tile.layers['land-usages'].features;
     land.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
@@ -224,7 +224,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Water
-    var waters = tile['water-areas'].features;
+    var waters = tile.layers['water-areas'].features;
     waters.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         this.renderGeometry(feature.geometry, feature.properties, styles.water, context);
@@ -241,7 +241,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Roads
-    var roads = tile['highroad'].features;
+    var roads = tile.layers['highroad'].features;
     roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     roads.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
@@ -249,7 +249,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Road labels
-    var road_labels = tile['skeletron'].features;
+    var road_labels = tile.layers['skeletron'].features;
     road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     road_labels.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
@@ -270,14 +270,14 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Buildings
-    var buildings = tile['buildings'].features;
+    var buildings = tile.layers['buildings'].features;
     buildings.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         this.renderGeometry(feature.geometry, feature.properties, styles.buildings, context);
     }, this);
 
     // POIs
-    var pois = tile['pois'].features;
+    var pois = tile.layers['pois'].features;
     pois.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
