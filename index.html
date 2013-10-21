@@ -264,6 +264,7 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
     // var tile_url = 'http://tile.openstreetmap.us/vectiles-' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     var tile_url = 'http://api-vector-test.mapzen.com/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     // var tile_url = 'http://localhost:8080/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    var timer = +new Date();
     var req = new XMLHttpRequest();
     req.onload = function () {
         var tile = {};
@@ -275,6 +276,9 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
             tile.layers[single_layer] = JSON.parse(req.response);
         }
         tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
+        tile.timers = {};
+        tile.timers.network = +new Date() - timer; // network/JSON parsing
+
         tileDiv.setAttribute('data-tile-key', tile.key); // tile info for debugging
         tileDiv.style.width = '256px';
         tileDiv.style.height = '256px';
@@ -288,6 +292,7 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         // tileDiv.appendChild(debug_overlay);
 
         // Mercator projection for geometry and bounds
+        timer = +new Date();
         for (var t in tile.layers) {
             if (tile.layers.hasOwnProperty(t)) {
                 tile.layers[t].features.forEach(function (feature) {
@@ -302,10 +307,21 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         tile.max = metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom });
         tile.coords = { x: tilePoint.x, y: tilePoint.y, z: zoom };
 
-        // Track and render
+        tile.timers.projection = +new Date() - timer; // mercator projection
+
+        // Render
+        timer = +new Date();
         tiles[tile.key] = {};
         tiles[tile.key].key = tile.key;
         renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
+
+        tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
+        console.log("timers for tile " + tile.key +
+            ": network: " + (tile.timers.network) +
+            ", projection: " + (tile.timers.projection) +
+            ", rendering: " + (tile.timers.rendering)
+        );
+
         layer.tileDrawn(tileDiv);
     };
     req.open('GET', tile_url, true /* async flag */);
