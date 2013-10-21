@@ -26,15 +26,17 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         water: [0.5, 0.5, 0.875],
         // buildings: [0.5, 0.5, 0.5],
         buildings: function () { return [0.5, 0.5, 0.5].map(function(c) { return c *= Math.random(); }); }, // random color
+        // buildings: function (f) { return [0.5, 0.5, 0.5].map(function(c) { return c += ((parseInt(f.id) || 0) % 16) * 2 / 256; }); }, // slight grayscale striping
         default: [1.0, 0, 0]
     };
 
     // Build triangles
-    var triangles = [];
-    var count = 0;
-    var layer;
-    var polygons, tess;
+    var triangles = [], count = 0;
+    var layer, polygons, vertices;
     var z, color;
+    var height, wall_vertices, shade;
+    var brighten = 1.3, darken = 0.7;
+    var t, p, w;
 
     for (var layer_num=0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
@@ -55,18 +57,65 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 }
 
                 polygons.forEach(function (polygon) {
-                    // Use libtess,js to tesselate complex OSM polygons
-                    var tess = triangulate(polygon);
+                    // Use libtess.js port of gluTesselator for complex OSM polygons
+                    vertices = triangulate(polygon);
 
-                    for (var p=0; p < tess.length; p++) {
-                        triangles.push(
-                            tess[p][0],
-                            tess[p][1],
-                            z,
-                            color[0], color[1], color[2]
-                        );
+                    // 3D buildings
+                    // TODO: try moving this into a style-specific post-processing/filter function?
+                    if (layer.name == 'buildings' && tile.coords.z >= 16) {
+                        height = 20; // TODO: add this to vector tiles
+
+                        for (t=0; t < vertices.length; t++) {
+                            triangles.push(
+                                vertices[t][0],
+                                vertices[t][1] + height,
+                                z + height,
+                                Math.min(color[0]*1.2, 1), Math.min(color[1]*1.2, 1), Math.min(color[2]*1.2, 1)
+                            );
+                        }
+                        count += vertices.length;
+
+                        for (p=0; p < polygon.length; p++) {
+                            for (w=0; w < polygon[p].length - 1; w++) {
+                                wall_vertices = [];
+
+                                // Two triangles for the quad formed by each vertex pair, going from ground to building height
+                                wall_vertices.push(
+                                    // Triangle
+                                    [polygon[p][w+1][0], polygon[p][w+1][1] + height, z + height],
+                                    [polygon[p][w+1][0], polygon[p][w+1][1], z],
+                                    [polygon[p][w][0], polygon[p][w][1], z],
+                                    // Triangle
+                                    [polygon[p][w][0], polygon[p][w][1], z],
+                                    [polygon[p][w][0], polygon[p][w][1] + height, z + height],
+                                    [polygon[p][w+1][0], polygon[p][w+1][1] + height, z + height]
+                                );
+
+                                shade = polygon[p][w][1] < polygon[p][w+1][1] ? brighten : darken;
+                                for (t=0; t < wall_vertices.length; t++) {
+                                    triangles.push(
+                                        wall_vertices[t][0],
+                                        wall_vertices[t][1],
+                                        wall_vertices[t][2],
+                                        Math.min(color[0] * shade, 1), Math.min(color[1] * shade, 1), Math.min(color[2] * shade, 1)
+                                    );
+                                }
+                                count += wall_vertices.length;
+                            }
+                        }
                     }
-                    count += tess.length;
+                    // Regular polygon
+                    else {
+                        for (t=0; t < vertices.length; t++) {
+                            triangles.push(
+                                vertices[t][0],
+                                vertices[t][1],
+                                z,
+                                color[0], color[1], color[2]
+                            );
+                        }
+                        count += vertices.length;
+                    }
                 });
             });
         }
@@ -140,6 +189,8 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
 
     // this.background.render();
 

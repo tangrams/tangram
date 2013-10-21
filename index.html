@@ -300,6 +300,7 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         }
         tile.min = metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom });
         tile.max = metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom });
+        tile.coords = { x: tilePoint.x, y: tilePoint.y, z: zoom };
 
         // Track and render
         tiles[tile.key] = {};
