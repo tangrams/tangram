@@ -121,10 +121,6 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         }
     }
 
-    if (tiles[tile.key].gl_geometry != null) {
-        tiles[tile.key].gl_geometry.destroy();
-        tiles[tile.key].gl_geometry = null;
-    }
     tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles), count);
     console.log("created " + count + " triangles for tile " + tile.key);
 
@@ -160,9 +156,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (tile)
 {
-    if (tile.gl_geometry) {
-        tile.gl_geometry.destroy();
-        tile.gl_geometry = null;
+    if (tiles[tile.key].gl_geometry != null) {
+        tiles[tile.key].gl_geometry.destroy();
+        tiles[tile.key].gl_geometry = null;
     }
 };
 
