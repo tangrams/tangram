@@ -25,7 +25,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         land: [0.5, 0.875, 0.5],
         water: [0.5, 0.5, 0.875],
         // buildings: [0.5, 0.5, 0.5],
-        buildings: function () { return [0.5, 0.5, 0.5].map(function(c) { return c *= Math.random(); }); }, // random color
+        buildings: function () { return [0.7, 0.7, 0.7].map(function(c) { return c *= Math.random(); }); }, // random color
         // buildings: function (f) { return [0.5, 0.5, 0.5].map(function(c) { return c += ((parseInt(f.id) || 0) % 16) * 2 / 256; }); }, // slight grayscale striping
         default: [1.0, 0, 0]
     };
@@ -70,7 +70,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                                 vertices[t][0],
                                 vertices[t][1] + height,
                                 z + height,
-                                Math.min(color[0]*1.2, 1), Math.min(color[1]*1.2, 1), Math.min(color[2]*1.2, 1)
+                                Math.min(color[0], 1), Math.min(color[1], 1), Math.min(color[2], 1)
                             );
                         }
                         count += vertices.length;
