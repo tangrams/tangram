@@ -212,7 +212,7 @@ function resizeMap () {
 window.addEventListener('resize', resizeMap);
 resizeMap();
 
-var map = L.map('map', { inertia: false });
+var map = L.map('map', { inertia: false, keyboard: false });
 map.attributionControl.setPrefix('');
 
 // Get location from URL or use default
@@ -311,8 +311,10 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 
         // Render
         timer = +new Date();
-        tiles[tile.key] = {};
-        tiles[tile.key].key = tile.key;
+        if (tiles[tile.key] == null) {
+            tiles[tile.key] = {};
+            tiles[tile.key].key = tile.key;
+        }
         renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
 
         tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
@@ -332,10 +334,31 @@ window.addEventListener('load', function () {
     requestAnimationFrameCompatibility();
     renderers.forEach(function (renderer) { renderer.init(); });
     layer.addTo(map);
-    frame();
+    frameLoop();
 });
 
 /***** Animation loop *****/
+
+// Keyboard input
+var key = null;
+document.onkeydown = function (event) {
+    if (event.keyCode == 37) {
+        key = 'left';
+    }
+    else if (event.keyCode == 39) {
+        key = 'right';
+    }
+    else if (event.keyCode == 38) {
+        key = 'up';
+    }
+    else if (event.keyCode == 40) {
+        key = 'down';
+    }
+}
+
+document.onkeyup = function (event) {
+    key = null;
+}
 
 // Cross-browser compatibility for requestAnimationFrame
 // (function requestAnimationFrameCompatibility ()
@@ -359,12 +382,23 @@ function requestAnimationFrameCompatibility ()
 }
 // }());
 
-function frame () {
-    render();
-    requestAnimationFrame(frame);
+function frameLoop () {
+    frame();
+    requestAnimationFrame(frameLoop);
 }
 
-function render () {
+function frame () {
+    // Fractional zoom
+    if (gl_renderer != null) {
+        if (key == 'up') {
+            gl_renderer.setZoom(gl_renderer.zoom + 0.02);
+        }
+        else if (key == 'down') {
+            gl_renderer.setZoom(gl_renderer.zoom - 0.02);
+        }
+    }
+
+    // Renderers
     renderers.forEach(function (renderer) { renderer.render(); });
 }
 

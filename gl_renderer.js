@@ -8,6 +8,7 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.program = GL.createProgramFromElements(this.gl, 'vertex-shader', 'fragment-shader');
     // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
+    this.zoom = map.getZoom();
 };
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
@@ -162,6 +163,26 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (tile)
     }
 };
 
+// Fractional zoom
+GLRenderer.prototype.setZoom = function (z) {
+    var base = Math.floor(z);
+    var fraction = z % 1.0;
+    if (base != map.getZoom()) {
+        if (base > map.getMaxZoom()) {
+            base = map.getMaxZoom();
+            fraction = 0.99;
+        }
+        else if (base < map.getMinZoom()) {
+            base = map.getMinZoom();
+        }
+        this.zoom = base + fraction;
+        map.setZoom(base, { animate: false });
+    }
+    else {
+        this.zoom = z;
+    }
+};
+
 GLRenderer.prototype.render = function GLRendererRender ()
 {
     var canvas = this.gl.canvas;
@@ -173,13 +194,18 @@ GLRenderer.prototype.render = function GLRendererRender ()
     }
     gl.useProgram(program);
 
+    // Sync zoom w/leaflet
+    if (Math.floor(this.zoom) != map.getZoom()) {
+        this.zoom = map.getZoom();
+    }
+
     // Set values to program variables
     gl.uniform2f(gl.getUniformLocation(program, 'resolution'), canvas.width, canvas.height);
 
     var center = map.getCenter(); // TODO: move map center tracking/projection to central class?
     center = latLngToMeters(Point(center.lng, center.lat));
     gl.uniform2f(gl.getUniformLocation(program, 'map_center'), center.x, center.y);
-    gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), map.getZoom());
+    gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), this.zoom);
 
     // gl.clearColor(200 / 255, 200 / 255, 200 / 255, 1.0);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
