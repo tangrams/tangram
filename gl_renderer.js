@@ -59,7 +59,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
                 polygons.forEach(function (polygon) {
                     // Use libtess.js port of gluTesselator for complex OSM polygons
-                    vertices = triangulate(polygon);
+                    vertices = GL.triangulate(polygon);
 
                     // 3D buildings
                     // TODO: try moving this into a style-specific post-processing/filter function?
