@@ -219,12 +219,13 @@ GLRenderer.prototype.render = function GLRendererRender ()
     // Render tile GL geometries
     var count = 0;
     for (var t in tiles) {
-        if (tiles.hasOwnProperty(t)) {
-            if (tiles[t].gl_geometry != null) {
-                tiles[t].gl_geometry.render();
-                count += tiles[t].gl_geometry.count;
-            }
+        if (tiles[t].coords.z == (this.zoom << 0) && tiles[t].gl_geometry != null) {
+            tiles[t].gl_geometry.render();
+            count += tiles[t].gl_geometry.count;
         }
+        // else {
+        //     console.log("didn't render " + tiles[t].key);
+        // }
     }
 
     if (count != this.last_render_count) {

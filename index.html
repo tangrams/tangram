@@ -293,14 +293,12 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         // Mercator projection for geometry and bounds
         timer = +new Date();
         for (var t in tile.layers) {
-            if (tile.layers.hasOwnProperty(t)) {
-                tile.layers[t].features.forEach(function (feature) {
-                    feature.geometry.coordinates = transformGeometry(feature.geometry, function (coordinates) {
-                        var m = latLngToMeters(Point(coordinates[0], coordinates[1]));
-                        return [m.x, m.y];
-                    });
+            tile.layers[t].features.forEach(function (feature) {
+                feature.geometry.coordinates = transformGeometry(feature.geometry, function (coordinates) {
+                    var m = latLngToMeters(Point(coordinates[0], coordinates[1]));
+                    return [m.x, m.y];
                 });
-            }
+            });
         }
         tile.min = metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom });
         tile.max = metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom });
