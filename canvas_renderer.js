@@ -315,14 +315,14 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
 
         context.canvas.onmousemove = function (event) {
-            // console.log(event.offsetX + ', ' + event.offsetY);
-            var off = event.offsetY * tile_size.x + event.offsetX;
+            var hit = { x: event.layerX, y: event.layerY };
+            var off = hit.y * tile_size.x + hit.x;
             var color = selection.pixels[off];
             var feature = selection.colors[color];
             if (feature != null) {
                 context.canvas.style.cursor = 'crosshair';
-                selection_info.style.left = (/*parseInt(context.canvas.style.left) + */ event.offsetX + 5) + 'px';
-                selection_info.style.top = (/*parseInt(context.canvas.style.top) + */ event.offsetY + 5) + 'px';
+                selection_info.style.left = (hit.x + 5) + 'px';
+                selection_info.style.top = (hit.y + 5) + 'px';
                 selection_info.innerHTML = '<span class="labelInner">' + feature.properties.name + /*' [' + feature.properties.kind + ']*/'</span>';
                 selection_info.style.display = 'block';
                 context.canvas.parentNode.appendChild(selection_info);
