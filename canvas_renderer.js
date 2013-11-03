@@ -59,11 +59,13 @@ CanvasRenderer.prototype.renderLine = function renderLine (line, properties, sty
     c.strokeStyle = 'rgb(' + color.join(',') + ')';
     c.lineCap = 'round';
     c.lineWidth = size;
-    if (dash) {
-        c.setLineDash(dash.map(function (d) { return d * size; }));
-    }
-    else {
-        c.setLineDash([]);
+    if (c.setLineDash) {
+        if (dash) {
+            c.setLineDash(dash.map(function (d) { return d * size; }));
+        }
+        else {
+            c.setLineDash([]);
+        }
     }
 
     for (var r=0; r < segments.length - 1; r ++) {
@@ -106,11 +108,13 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, proper
         c.strokeStyle = 'rgb(' + style.border.join(',') + ')';
         c.lineCap = 'round';
         c.lineWidth = size;
-        if (dash) {
-            c.setLineDash(dash.map(function (d) { return d * size; }));
-        }
-        else {
-            c.setLineDash([]);
+        if (c.setLineDash) {
+            if (dash) {
+                c.setLineDash(dash.map(function (d) { return d * size; }));
+            }
+            else {
+                c.setLineDash([]);
+            }
         }
         c.stroke();
     }
