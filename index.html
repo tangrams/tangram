@@ -235,6 +235,38 @@ map.on('moveend', function () {
     window.location.hash = [map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
+var map_last_zoom;
+var map_zooming = false;
+map.on('zoomstart', function () {
+    console.log("map.zoomstart " + map.getZoom());
+    map_last_zoom = map.getZoom();
+    map_zooming = true;
+});
+
+map.on('zoomend', function () {
+    console.log("map.zoomend " + map.getZoom());
+    map_zooming = false;
+
+    // Schedule GL tiles for removal on zoom
+    if (gl_renderer != null) {
+        // console.log("map_last_zoom: " + map_last_zoom);
+        var below = map.getZoom();
+        var above = map.getZoom();
+        if (Math.abs(map.getZoom() - map_last_zoom) == 1) {
+            if (map.getZoom() > map_last_zoom) {
+                below = map.getZoom() - 1;
+                above = map.getZoom();
+            }
+            else {
+                below = map.getZoom();
+                above = map.getZoom() + 1;
+            }
+        }
+        gl_renderer.removeTilesOutsideZoomRange(below, above);
+    }
+    map_last_zoom = map.getZoom();
+});
+
 // var layer = L.tileLayer.canvas({
 var layer = L.tileLayer.divGrid({
     async: true,
@@ -248,20 +280,21 @@ var layer = L.tileLayer.divGrid({
 layer.on('tileunload', function (event) {
     var tile = event.tile;
     var key = tile.getAttribute('data-tile-key');
-    console.log("unload " + key);
     if (key && tiles[key]) {
-        renderers.forEach(function (renderer) { renderer.removeTile(tiles[key]); });
+        if (map_zooming == false || gl_renderer == null) {
+            console.log("unload " + key);
+            renderers.forEach(function (renderer) { renderer.removeTile(tiles[key]); });
+            delete tiles[key];
+        }
     }
-
-    delete tiles[key];
 });
 
 // layer.drawTile = function(canvas, tilePoint, zoom) {
 layer.drawTile = function(tileDiv, tilePoint, zoom) {
     // Load tile
     var single_layer = null; //'water-areas';
-    // var tile_url = 'http://tile.openstreetmap.us/vectiles-' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
-    var tile_url = 'http://api-vector-test.mapzen.com/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    var tile_url = 'http://tile.openstreetmap.us/vectiles-' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
+    // var tile_url = 'http://api-vector-test.mapzen.com/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     // var tile_url = 'http://localhost:8080/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
     var timer = +new Date();
     var req = new XMLHttpRequest();
@@ -311,6 +344,7 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
         if (tiles[tile.key] == null) {
             tiles[tile.key] = {};
             tiles[tile.key].key = tile.key;
+            tiles[tile.key].coords = tile.coords;
         }
         renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
 
@@ -327,6 +361,7 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
     req.send();
 }
 
+// Start render loop
 window.addEventListener('load', function () {
     requestAnimationFrameCompatibility();
     renderers.forEach(function (renderer) { renderer.init(); });

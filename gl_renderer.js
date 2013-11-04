@@ -157,13 +157,25 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (tile)
 {
-    if (tiles[tile.key].gl_geometry != null) {
+    if (tiles[tile.key] != null && tiles[tile.key].gl_geometry != null) {
         tiles[tile.key].gl_geometry.destroy();
         tiles[tile.key].gl_geometry = null;
     }
 };
 
-// Fractional zoom
+GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
+{
+    console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
+    for (var t in tiles) {
+        if (tiles[t].coords.z < below || tiles[t].coords.z > above) {
+            console.log("removed " + tiles[t].key + " (outside range [" + below + ", " + above + "])");
+            this.removeTile(tiles[t]);
+            delete tiles[t];
+        }
+    }
+};
+
+// Continuous zoom: maintains a floating point zoom and syncs with leaflet to set an integer zoom
 GLRenderer.prototype.setZoom = function (z) {
     var base = Math.floor(z);
     var fraction = z % 1.0;
