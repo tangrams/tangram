@@ -136,22 +136,6 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     //     );
     //     gl_renderer.gl.readPixels(p.x, p.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
     //     console.log(p.x + ', ' + p.y + ': (' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ', ' + pixel[3] + ')');
-    //     var feature = selection.colors[color];
-    //     if (feature != null) {
-    //         context.canvas.style.cursor = 'crosshair';
-    //         selection_info.style.left = (/*parseInt(context.canvas.style.left) + */ event.offsetX + 5) + 'px';
-    //         selection_info.style.top = (/*parseInt(context.canvas.style.top) + */ event.offsetY + 5) + 'px';
-    //         selection_info.innerHTML = '<span class="labelInner">' + feature.properties.name + ' [' + feature.properties.kind + ']'</span>';
-    //         selection_info.style.display = 'block';
-    //         context.canvas.parentNode.appendChild(selection_info);
-    //     }
-    //     else {
-    //         context.canvas.style.cursor = null;
-    //         selection_info.style.display = 'none';
-    //         if (selection_info.parentNode == context.canvas.parentNode) {
-    //             context.canvas.parentNode.removeChild(selection_info);
-    //         }
-    //     }
     // };
 };
 
