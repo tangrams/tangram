@@ -203,7 +203,7 @@ var renderers = [];
 // renderers.push(canvas_renderer);
 renderers.push(gl_renderer);
 
-// Leaflet map
+// Resize map
 function resizeMap () {
     document.getElementById('map').style.width = window.innerWidth + 'px';
     document.getElementById('map').style.height = window.innerHeight + 'px';
@@ -211,7 +211,11 @@ function resizeMap () {
 window.addEventListener('resize', resizeMap);
 resizeMap();
 
-var map = L.map('map', { inertia: false, keyboard: false });
+// Leaflet map
+var map = L.map('map', {
+    inertia: false,
+    keyboard: false
+});
 map.attributionControl.setPrefix('');
 
 // Get location from URL or use default

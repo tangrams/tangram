@@ -7,7 +7,6 @@ CanvasRenderer.prototype.init = function CanvasRendererInit ()
     // Selection info shown on hover
     this.selection_info = document.createElement('div');
     this.selection_info.setAttribute('class', 'label');
-    this.selection_info.style['z-index'] = 1;
     this.selection_info.style.display = 'none';
 };
 
