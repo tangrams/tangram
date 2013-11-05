@@ -204,6 +204,7 @@ GLRenderer.prototype.render = function GLRendererRender ()
     center = latLngToMeters(Point(center.lng, center.lat));
     gl.uniform2f(gl.getUniformLocation(program, 'map_center'), center.x, center.y);
     gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), this.zoom);
+    // gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
 
     // gl.clearColor(200 / 255, 200 / 255, 200 / 255, 1.0);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
