@@ -53,6 +53,7 @@ body {
 <script src="lib/TileLayer.DivGrid.js"></script>
 <script src="lib/libtess.cat.js"></script>
 <script src="gl.js"></script>
+<script src="layers.js"></script>
 <script src="vector_renderer.js"></script>
 <script src="canvas_renderer.js"></script>
 <script src="gl_renderer.js"></script>
@@ -244,8 +245,8 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 }
 
 // Renderers
-// var renderer = new CanvasRenderer({ map: map, layer: layer });
-var renderer = new GLRenderer({ map: map, layer: layer });
+var renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
+// var renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
 
 // Start render loop
 window.addEventListener('load', function () {

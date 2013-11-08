@@ -1,6 +1,7 @@
-function VectorRenderer (leaflet)
+function VectorRenderer (leaflet, layers)
 {
     this.leaflet = leaflet;
+    this.layers = layers;
     this.tiles = {};
 }
 
@@ -37,6 +38,13 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // debug_overlay.style.top = 0;
         // debug_overlay.style.color = 'white';
         // div.appendChild(debug_overlay);
+
+        // Extract desired layers from full GeoJSON response
+        var layers = {};
+        for (var t=0; t < renderer.layers.length; t++) {
+            layers[renderer.layers[t].name]= renderer.layers[t].data(tile.layers);
+        }
+        tile.layers = layers;
 
         // Mercator projection for geometry and bounds
         timer = +new Date();

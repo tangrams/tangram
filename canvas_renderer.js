@@ -1,6 +1,6 @@
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (leaflet)
+function CanvasRenderer (leaflet, layers)
 {
     VectorRenderer.apply(this, arguments);
 }
@@ -223,7 +223,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     var selection_count = 0;
 
     // Land
-    var land = tile.layers['land-usages'].features;
+    var land = tile.layers['land'].features;
     land.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
@@ -243,7 +243,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Water
-    var waters = tile.layers['water-areas'].features;
+    var waters = tile.layers['water'].features;
     waters.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
         this.renderGeometry(feature.geometry, feature.properties, styles.water, context);
@@ -260,7 +260,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Roads
-    var roads = tile.layers['highroad'].features;
+    var roads = tile.layers['roads'].features;
     roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     roads.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
@@ -268,7 +268,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     }, this);
 
     // Road labels
-    var road_labels = tile.layers['skeletron'].features;
+    var road_labels = tile.layers['road_labels'].features;
     road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
     road_labels.forEach(function(feature) {
         feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);

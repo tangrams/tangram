@@ -1,6 +1,6 @@
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function GLRenderer (leaflet)
+function GLRenderer (leaflet, layers)
 {
     VectorRenderer.apply(this, arguments);
 }
@@ -94,11 +94,11 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
     // TODO: unify w/canvas style object
-    var layers = [
-        { name: 'land', key: 'land-usages' },
-        { name: 'water', key: 'water-areas' },
-        { name: 'buildings', key: 'buildings' }
-    ];
+    // var layers = [
+    //     { name: 'land', key: 'land-usages' },
+    //     { name: 'water', key: 'water-areas' },
+    //     { name: 'buildings', key: 'buildings' }
+    // ];
 
     var colors = {
         land: [0.5, 0.875, 0.5],
@@ -119,10 +119,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     var brighten = 1.3, darken = 0.7;
     var t, p, w;
 
-    for (var layer_num=0; layer_num < layers.length; layer_num++) {
-        layer = layers[layer_num];
-        if (tile.layers[layer.key] != null) {
-            tile.layers[layer.key].features.forEach(function(feature) {
+    for (var layer_num=0; layer_num < this.layers.length; layer_num++) {
+        layer = this.layers[layer_num];
+        if (tile.layers[layer.name] != null) {
+            tile.layers[layer.name].features.forEach(function(feature) {
                 if (feature.geometry.type == 'Polygon') {
                     polygons = [feature.geometry.coordinates];
                 }
