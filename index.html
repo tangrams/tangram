@@ -240,83 +240,17 @@ var layer = L.tileLayer.divGrid({
 });
 
 layer.drawTile = function(tileDiv, tilePoint, zoom) {
-    // Load tile
-    var single_layer = null; //'water-areas';
-    var tile_url = 'http://tile.openstreetmap.us/vectiles-' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
-    // var tile_url = 'http://api-vector-test.mapzen.com/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
-    // var tile_url = 'http://localhost:8080/vector/' + (single_layer || 'all') + '/' + zoom + '/' + tilePoint.x + '/' + tilePoint.y + '.json';
-    var timer = +new Date();
-    var req = new XMLHttpRequest();
-    req.onload = function () {
-        var tile = {};
-        if (single_layer == null) {
-            tile.layers = JSON.parse(req.response);
-        }
-        else {
-            tile.layers = {};
-            tile.layers[single_layer] = JSON.parse(req.response);
-        }
-        tile.key = [tilePoint.x, tilePoint.y, zoom].join('/');
-        tile.timers = {};
-        tile.timers.network = +new Date() - timer; // network/JSON parsing
-
-        tileDiv.setAttribute('data-tile-key', tile.key); // tile info for debugging
-        tileDiv.style.width = '256px';
-        tileDiv.style.height = '256px';
-
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = tile.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        // tileDiv.appendChild(debug_overlay);
-
-        // Mercator projection for geometry and bounds
-        timer = +new Date();
-        for (var t in tile.layers) {
-            tile.layers[t].features.forEach(function (feature) {
-                feature.geometry.coordinates = transformGeometry(feature.geometry, function (coordinates) {
-                    var m = latLngToMeters(Point(coordinates[0], coordinates[1]));
-                    return [m.x, m.y];
-                });
-            });
-        }
-        tile.min = metersForTile({ x: tilePoint.x, y: tilePoint.y, z: zoom });
-        tile.max = metersForTile({ x: tilePoint.x + 1, y: tilePoint.y + 1, z: zoom });
-        tile.coords = { x: tilePoint.x, y: tilePoint.y, z: zoom };
-
-        tile.timers.projection = +new Date() - timer; // mercator projection
-
-        // Render
-        timer = +new Date();
-        renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
-
-        tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
-        console.log("timers for tile " + tile.key +
-            ": network: " + (tile.timers.network) +
-            ", projection: " + (tile.timers.projection) +
-            ", rendering: " + (tile.timers.rendering)
-        );
-
-        layer.tileDrawn(tileDiv);
-    };
-    req.open('GET', tile_url, true /* async flag */);
-    req.send();
+    renderer.loadTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }, tileDiv);
 }
 
 // Renderers
-var canvas_renderer = new CanvasRenderer(map, layer);
-var gl_renderer = new GLRenderer(map, layer);
-
-var renderers = [];
-// renderers.push(canvas_renderer);
-renderers.push(gl_renderer);
+// var renderer = new CanvasRenderer(map, layer);
+var renderer = new GLRenderer(map, layer);
 
 // Start render loop
 window.addEventListener('load', function () {
     requestAnimationFrameCompatibility();
-    renderers.forEach(function (renderer) { renderer.init(); });
+    renderer.init();
     layer.addTo(map);
     frameLoop();
 });
@@ -351,8 +285,7 @@ function frameLoop () {
 }
 
 function frame () {
-    // Renderers
-    renderers.forEach(function (renderer) { renderer.render(); });
+    renderer.render();
 }
 
 </script>

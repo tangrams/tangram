@@ -59,8 +59,7 @@ GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
         if (key && renderer.tiles[key]) {
             if (renderer.map_zooming == false) {
                 console.log("unload " + key);
-                renderer.removeTile(renderer.tiles[key]);
-                delete renderer.tiles[key];
+                renderer.removeTile(key);
             }
         }
     });
@@ -94,9 +93,6 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
-    this.removeTile(tile); // addTile may be called multiple times on existing tile, clean-up first
-    VectorRenderer.prototype.addTile.apply(this, arguments);
-
     // TODO: unify w/canvas style object
     var layers = [
         { name: 'land', key: 'land-usages' },
@@ -223,11 +219,11 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // };
 };
 
-GLRenderer.prototype.removeTile = function GLRendererRemoveTile (tile)
+GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
 {
-    if (this.tiles[tile.key] != null && this.tiles[tile.key].gl_geometry != null) {
-        this.tiles[tile.key].gl_geometry.destroy();
-        this.tiles[tile.key].gl_geometry = null;
+    if (this.tiles[key] != null && this.tiles[key].gl_geometry != null) {
+        this.tiles[key].gl_geometry.destroy();
+        this.tiles[key].gl_geometry = null;
     }
     VectorRenderer.prototype.removeTile.apply(this, arguments);
 };
@@ -238,8 +234,7 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
     for (var t in this.tiles) {
         if (this.tiles[t].coords.z < below || this.tiles[t].coords.z > above) {
             console.log("removed " + this.tiles[t].key + " (outside range [" + below + ", " + above + "])");
-            this.removeTile(this.tiles[t]);
-            delete this.tiles[t];
+            this.removeTile(t);
         }
     }
 };

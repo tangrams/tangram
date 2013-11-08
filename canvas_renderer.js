@@ -25,16 +25,13 @@ CanvasRenderer.prototype.initMapHandlers = function CanvasRendererInitMapHandler
         var key = tile.getAttribute('data-tile-key');
         if (key && renderer.tiles[key]) {
             console.log("unload " + key);
-            renderer.removeTile(renderer.tiles[key]);
-            delete renderer.tiles[key];
+            renderer.removeTile(key);
         }
     });
 };
 
 CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
 {
-    VectorRenderer.prototype.addTile.apply(this, arguments);
-
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
@@ -45,10 +42,6 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     this.renderTile(tile, context);
     tileDiv.appendChild(canvas);
 };
-
-// CanvasRenderer.prototype.removeTile = function CanvasRendererRemoveTile ()
-// {
-// };
 
 CanvasRenderer.prototype.render = function CanvasRendererRender ()
 {
