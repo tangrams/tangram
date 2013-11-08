@@ -1,5 +1,8 @@
-function GLRenderer ()
+GLRenderer.prototype = Object.create(VectorRenderer.prototype);
+
+function GLRenderer (map, layer)
 {
+    VectorRenderer.apply(this, arguments);
 }
 
 GLRenderer.prototype.init = function GLRendererInit ()
@@ -8,12 +11,91 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.program = GL.createProgramFromElements(this.gl, 'vertex-shader', 'fragment-shader');
     // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
-    this.zoom = map.getZoom();
+
+    this.zoom = this.map.getZoom();
+    this.zoom_step = 0.02; // for fractional zoom user adjustment
+    this.map_last_zoom = map.getZoom();
+    this.map_zooming = false;
+
+    this.initMapHandlers();
+    this.initInputHandlers();
+};
+
+// Leaflet map/layer handlers
+GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
+{
+    var renderer = this;
+
+    this.map.on('zoomstart', function () {
+        console.log("map.zoomstart " + renderer.map.getZoom());
+        renderer.map_last_zoom = renderer.map.getZoom();
+        renderer.map_zooming = true;
+    });
+
+    this.map.on('zoomend', function () {
+        console.log("map.zoomend " + renderer.map.getZoom());
+        renderer.map_zooming = false;
+
+        // Schedule GL tiles for removal on zoom
+        // console.log("renderer.map_last_zoom: " + renderer.map_last_zoom);
+        var map_zoom = renderer.map.getZoom();
+        var below = map_zoom;
+        var above = map_zoom;
+        if (Math.abs(map_zoom - renderer.map_last_zoom) == 1) {
+            if (map_zoom > renderer.map_last_zoom) {
+                below = map_zoom - 1;
+            }
+            else {
+                above = map_zoom + 1;
+            }
+        }
+        renderer.removeTilesOutsideZoomRange(below, above);
+        renderer.map_last_zoom = renderer.map.getZoom();
+    });
+
+    this.layer.on('tileunload', function (event) {
+        var tile = event.tile;
+        var key = tile.getAttribute('data-tile-key');
+        if (key && renderer.tiles[key]) {
+            if (renderer.map_zooming == false) {
+                console.log("unload " + key);
+                renderer.removeTile(renderer.tiles[key]);
+                delete renderer.tiles[key];
+            }
+        }
+    });
+};
+
+// User input
+GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
+{
+    var gl_renderer = this;
+    gl_renderer.key = null;
+
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode == 37) {
+            gl_renderer.key = 'left';
+        }
+        else if (event.keyCode == 39) {
+            gl_renderer.key = 'right';
+        }
+        else if (event.keyCode == 38) {
+            gl_renderer.key = 'up';
+        }
+        else if (event.keyCode == 40) {
+            gl_renderer.key = 'down';
+        }
+    });
+
+    document.addEventListener('keyup', function (event) {
+        gl_renderer.key = null;
+    });
 };
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
     this.removeTile(tile); // addTile may be called multiple times on existing tile, clean-up first
+    VectorRenderer.prototype.addTile.apply(this, arguments);
 
     // TODO: unify w/canvas style object
     var layers = [
@@ -124,7 +206,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         }
     }
 
-    tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles), count);
+    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles), count);
     console.log("created " + count + " triangles for tile " + tile.key);
 
     // Selection
@@ -143,20 +225,21 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (tile)
 {
-    if (tiles[tile.key] != null && tiles[tile.key].gl_geometry != null) {
-        tiles[tile.key].gl_geometry.destroy();
-        tiles[tile.key].gl_geometry = null;
+    if (this.tiles[tile.key] != null && this.tiles[tile.key].gl_geometry != null) {
+        this.tiles[tile.key].gl_geometry.destroy();
+        this.tiles[tile.key].gl_geometry = null;
     }
+    VectorRenderer.prototype.removeTile.apply(this, arguments);
 };
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 {
     console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
-    for (var t in tiles) {
-        if (tiles[t].coords.z < below || tiles[t].coords.z > above) {
-            console.log("removed " + tiles[t].key + " (outside range [" + below + ", " + above + "])");
-            this.removeTile(tiles[t]);
-            delete tiles[t];
+    for (var t in this.tiles) {
+        if (this.tiles[t].coords.z < below || this.tiles[t].coords.z > above) {
+            console.log("removed " + this.tiles[t].key + " (outside range [" + below + ", " + above + "])");
+            this.removeTile(this.tiles[t]);
+            delete this.tiles[t];
         }
     }
 };
@@ -165,46 +248,57 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 GLRenderer.prototype.setZoom = function (z) {
     var base = Math.floor(z);
     var fraction = z % 1.0;
-    if (base != map.getZoom()) {
-        if (base > map.getMaxZoom()) {
-            base = map.getMaxZoom();
+    if (base != this.map.getZoom()) {
+        if (base > this.map.getMaxZoom()) {
+            base = this.map.getMaxZoom();
             fraction = 0.99;
         }
-        else if (base < map.getMinZoom()) {
-            base = map.getMinZoom();
+        else if (base < this.map.getMinZoom()) {
+            base = this.map.getMinZoom();
         }
         this.zoom = base + fraction;
-        map.setZoom(base, { animate: false });
+        this.map.setZoom(base, { animate: false });
     }
     else {
         this.zoom = z;
     }
 };
 
+GLRenderer.prototype.input = function GLRendererInput ()
+{
+    // Fractional zoom scaling
+    if (this.key == 'up') {
+        this.setZoom(this.zoom + this.zoom_step);
+    }
+    else if (this.key == 'down') {
+        this.setZoom(this.zoom - this.zoom_step);
+    }
+};
+
 GLRenderer.prototype.render = function GLRendererRender ()
 {
-    var canvas = this.gl.canvas;
     var gl = this.gl;
-    var program = this.program;
 
-    if (!program) {
+    this.input();
+
+    if (!this.program) {
         return;
     }
-    gl.useProgram(program);
+    gl.useProgram(this.program);
 
     // Sync zoom w/leaflet
-    if (Math.floor(this.zoom) != map.getZoom()) {
-        this.zoom = map.getZoom();
+    if (Math.floor(this.zoom) != this.map.getZoom()) {
+        this.zoom = this.map.getZoom();
     }
 
-    // Set values to program variables
-    gl.uniform2f(gl.getUniformLocation(program, 'resolution'), canvas.width, canvas.height);
+    // Set values to this.program variables
+    gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
 
-    var center = map.getCenter(); // TODO: move map center tracking/projection to central class?
+    var center = this.map.getCenter(); // TODO: move map center tracking/projection to central class?
     center = latLngToMeters(Point(center.lng, center.lat));
-    gl.uniform2f(gl.getUniformLocation(program, 'map_center'), center.x, center.y);
-    gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), this.zoom);
-    // gl.uniform1f(gl.getUniformLocation(program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
+    gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
+    gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
+    // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
 
     // gl.clearColor(200 / 255, 200 / 255, 200 / 255, 1.0);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -217,13 +311,13 @@ GLRenderer.prototype.render = function GLRendererRender ()
 
     // Render tile GL geometries
     var count = 0;
-    for (var t in tiles) {
-        if (tiles[t].coords.z == (this.zoom << 0) && tiles[t].gl_geometry != null) {
-            tiles[t].gl_geometry.render();
-            count += tiles[t].gl_geometry.count;
+    for (var t in this.tiles) {
+        if (this.tiles[t].coords.z == (this.zoom << 0) && this.tiles[t].gl_geometry != null) {
+            this.tiles[t].gl_geometry.render();
+            count += this.tiles[t].gl_geometry.count;
         }
         // else {
-        //     console.log("didn't render " + tiles[t].key);
+        //     console.log("didn't render " + this.tiles[t].key);
         // }
     }
 

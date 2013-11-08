@@ -1,5 +1,8 @@
-function CanvasRenderer ()
+CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
+
+function CanvasRenderer (map, layer)
 {
+    VectorRenderer.apply(this, arguments);
 }
 
 CanvasRenderer.prototype.init = function CanvasRendererInit ()
@@ -8,10 +11,30 @@ CanvasRenderer.prototype.init = function CanvasRendererInit ()
     this.selection_info = document.createElement('div');
     this.selection_info.setAttribute('class', 'label');
     this.selection_info.style.display = 'none';
+
+    this.initMapHandlers();
+};
+
+// Leaflet map/layer handlers
+CanvasRenderer.prototype.initMapHandlers = function CanvasRendererInitMapHandlers ()
+{
+    var renderer = this;
+
+    this.layer.on('tileunload', function (event) {
+        var tile = event.tile;
+        var key = tile.getAttribute('data-tile-key');
+        if (key && renderer.tiles[key]) {
+            console.log("unload " + key);
+            renderer.removeTile(renderer.tiles[key]);
+            delete renderer.tiles[key];
+        }
+    });
 };
 
 CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
 {
+    VectorRenderer.prototype.addTile.apply(this, arguments);
+
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
@@ -23,9 +46,9 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     tileDiv.appendChild(canvas);
 };
 
-CanvasRenderer.prototype.removeTile = function CanvasRendererRemoveTile ()
-{
-};
+// CanvasRenderer.prototype.removeTile = function CanvasRendererRemoveTile ()
+// {
+// };
 
 CanvasRenderer.prototype.render = function CanvasRendererRender ()
 {
@@ -309,12 +332,12 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     // Selection events
     var selection_info = this.selection_info;
     if (selection_count > 0) {
-        tiles[tile.key].selection = selection;
+        this.tiles[tile.key].selection = selection;
 
         selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
 
         context.canvas.onmousemove = function (event) {
-            var hit = { x: event.layerX, y: event.layerY };
+            var hit = { x: event.offsetX, y: event.offsetY }; // layerX/Y
             var off = hit.y * tile_size.x + hit.x;
             var color = selection.pixels[off];
             var feature = selection.colors[color];

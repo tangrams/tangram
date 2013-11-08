@@ -53,12 +53,11 @@ body {
 <script src="lib/TileLayer.DivGrid.js"></script>
 <script src="lib/libtess.cat.js"></script>
 <script src="gl.js"></script>
+<script src="vector_renderer.js"></script>
 <script src="canvas_renderer.js"></script>
 <script src="gl_renderer.js"></script>
 
 <script>
-
-var tiles = {};
 
 // Makeshift style-sheet
 var styles = {
@@ -195,14 +194,6 @@ function transformGeometry (geometry, transform)
     return {};
 }
 
-// Renderers
-var canvas_renderer = new CanvasRenderer();
-var gl_renderer = new GLRenderer();
-
-var renderers = [];
-// renderers.push(canvas_renderer);
-renderers.push(gl_renderer);
-
 // Resize map
 function resizeMap () {
     document.getElementById('map').style.width = window.innerWidth + 'px';
@@ -239,39 +230,6 @@ map.on('moveend', function () {
     window.location.hash = [map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
-var map_last_zoom;
-var map_zooming = false;
-map.on('zoomstart', function () {
-    console.log("map.zoomstart " + map.getZoom());
-    map_last_zoom = map.getZoom();
-    map_zooming = true;
-});
-
-map.on('zoomend', function () {
-    console.log("map.zoomend " + map.getZoom());
-    map_zooming = false;
-
-    // Schedule GL tiles for removal on zoom
-    if (gl_renderer != null) {
-        // console.log("map_last_zoom: " + map_last_zoom);
-        var below = map.getZoom();
-        var above = map.getZoom();
-        if (Math.abs(map.getZoom() - map_last_zoom) == 1) {
-            if (map.getZoom() > map_last_zoom) {
-                below = map.getZoom() - 1;
-                above = map.getZoom();
-            }
-            else {
-                below = map.getZoom();
-                above = map.getZoom() + 1;
-            }
-        }
-        gl_renderer.removeTilesOutsideZoomRange(below, above);
-    }
-    map_last_zoom = map.getZoom();
-});
-
-// var layer = L.tileLayer.canvas({
 var layer = L.tileLayer.divGrid({
     async: true,
     maxZoom: max_zoom,
@@ -281,19 +239,6 @@ var layer = L.tileLayer.divGrid({
     preloadInvisibleTiles: 0
 });
 
-layer.on('tileunload', function (event) {
-    var tile = event.tile;
-    var key = tile.getAttribute('data-tile-key');
-    if (key && tiles[key]) {
-        if (map_zooming == false || gl_renderer == null) {
-            console.log("unload " + key);
-            renderers.forEach(function (renderer) { renderer.removeTile(tiles[key]); });
-            delete tiles[key];
-        }
-    }
-});
-
-// layer.drawTile = function(canvas, tilePoint, zoom) {
 layer.drawTile = function(tileDiv, tilePoint, zoom) {
     // Load tile
     var single_layer = null; //'water-areas';
@@ -345,11 +290,6 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 
         // Render
         timer = +new Date();
-        if (tiles[tile.key] == null) {
-            tiles[tile.key] = {};
-            tiles[tile.key].key = tile.key;
-            tiles[tile.key].coords = tile.coords;
-        }
         renderers.forEach(function (renderer) { renderer.addTile(tile, tileDiv); });
 
         tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
@@ -365,6 +305,14 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
     req.send();
 }
 
+// Renderers
+var canvas_renderer = new CanvasRenderer(map, layer);
+var gl_renderer = new GLRenderer(map, layer);
+
+var renderers = [];
+// renderers.push(canvas_renderer);
+renderers.push(gl_renderer);
+
 // Start render loop
 window.addEventListener('load', function () {
     requestAnimationFrameCompatibility();
@@ -374,27 +322,6 @@ window.addEventListener('load', function () {
 });
 
 /***** Animation loop *****/
-
-// Keyboard input
-var key = null;
-document.onkeydown = function (event) {
-    if (event.keyCode == 37) {
-        key = 'left';
-    }
-    else if (event.keyCode == 39) {
-        key = 'right';
-    }
-    else if (event.keyCode == 38) {
-        key = 'up';
-    }
-    else if (event.keyCode == 40) {
-        key = 'down';
-    }
-}
-
-document.onkeyup = function (event) {
-    key = null;
-}
 
 // Cross-browser compatibility for requestAnimationFrame
 // (function requestAnimationFrameCompatibility ()
@@ -424,16 +351,6 @@ function frameLoop () {
 }
 
 function frame () {
-    // Fractional zoom
-    if (gl_renderer != null) {
-        if (key == 'up') {
-            gl_renderer.setZoom(gl_renderer.zoom + 0.02);
-        }
-        else if (key == 'down') {
-            gl_renderer.setZoom(gl_renderer.zoom - 0.02);
-        }
-    }
-
     // Renderers
     renderers.forEach(function (renderer) { renderer.render(); });
 }
