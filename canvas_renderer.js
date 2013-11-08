@@ -1,6 +1,6 @@
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (map, layer)
+function CanvasRenderer (leaflet)
 {
     VectorRenderer.apply(this, arguments);
 }
@@ -20,7 +20,7 @@ CanvasRenderer.prototype.initMapHandlers = function CanvasRendererInitMapHandler
 {
     var renderer = this;
 
-    this.layer.on('tileunload', function (event) {
+    this.leaflet.layer.on('tileunload', function (event) {
         var tile = event.tile;
         var key = tile.getAttribute('data-tile-key');
         if (key && renderer.tiles[key]) {

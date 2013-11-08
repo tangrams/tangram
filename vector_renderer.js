@@ -1,7 +1,6 @@
-function VectorRenderer (map, layer)
+function VectorRenderer (leaflet)
 {
-    this.map = map;
-    this.layer = layer;
+    this.leaflet = leaflet;
     this.tiles = {};
 }
 
@@ -64,7 +63,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
             ", rendering: " + (tile.timers.rendering)
         );
 
-        renderer.layer.tileDrawn(div);
+        renderer.leaflet.layer.tileDrawn(div);
     };
     req.open('GET', tile_url, true /* async flag */);
     req.send();

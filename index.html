@@ -244,8 +244,8 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 }
 
 // Renderers
-// var renderer = new CanvasRenderer(map, layer);
-var renderer = new GLRenderer(map, layer);
+// var renderer = new CanvasRenderer({ map: map, layer: layer });
+var renderer = new GLRenderer({ map: map, layer: layer });
 
 // Start render loop
 window.addEventListener('load', function () {

@@ -1,6 +1,6 @@
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function GLRenderer (map, layer)
+function GLRenderer (leaflet)
 {
     VectorRenderer.apply(this, arguments);
 }
@@ -12,9 +12,9 @@ GLRenderer.prototype.init = function GLRendererInit ()
     // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
 
-    this.zoom = this.map.getZoom();
+    this.zoom = this.leaflet.map.getZoom();
     this.zoom_step = 0.02; // for fractional zoom user adjustment
-    this.map_last_zoom = map.getZoom();
+    this.map_last_zoom = this.leaflet.map.getZoom();
     this.map_zooming = false;
 
     this.initMapHandlers();
@@ -26,19 +26,19 @@ GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
 {
     var renderer = this;
 
-    this.map.on('zoomstart', function () {
-        console.log("map.zoomstart " + renderer.map.getZoom());
-        renderer.map_last_zoom = renderer.map.getZoom();
+    this.leaflet.map.on('zoomstart', function () {
+        console.log("map.zoomstart " + renderer.leaflet.map.getZoom());
+        renderer.map_last_zoom = renderer.leaflet.map.getZoom();
         renderer.map_zooming = true;
     });
 
-    this.map.on('zoomend', function () {
-        console.log("map.zoomend " + renderer.map.getZoom());
+    this.leaflet.map.on('zoomend', function () {
+        console.log("map.zoomend " + renderer.leaflet.map.getZoom());
         renderer.map_zooming = false;
 
         // Schedule GL tiles for removal on zoom
         // console.log("renderer.map_last_zoom: " + renderer.map_last_zoom);
-        var map_zoom = renderer.map.getZoom();
+        var map_zoom = renderer.leaflet.map.getZoom();
         var below = map_zoom;
         var above = map_zoom;
         if (Math.abs(map_zoom - renderer.map_last_zoom) == 1) {
@@ -50,10 +50,10 @@ GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
             }
         }
         renderer.removeTilesOutsideZoomRange(below, above);
-        renderer.map_last_zoom = renderer.map.getZoom();
+        renderer.map_last_zoom = renderer.leaflet.map.getZoom();
     });
 
-    this.layer.on('tileunload', function (event) {
+    this.leaflet.layer.on('tileunload', function (event) {
         var tile = event.tile;
         var key = tile.getAttribute('data-tile-key');
         if (key && renderer.tiles[key]) {
@@ -243,16 +243,17 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 GLRenderer.prototype.setZoom = function (z) {
     var base = Math.floor(z);
     var fraction = z % 1.0;
-    if (base != this.map.getZoom()) {
-        if (base > this.map.getMaxZoom()) {
-            base = this.map.getMaxZoom();
+    var map = this.leaflet.map;
+    if (base != map.getZoom()) {
+        if (base > map.getMaxZoom()) {
+            base = map.getMaxZoom();
             fraction = 0.99;
         }
-        else if (base < this.map.getMinZoom()) {
-            base = this.map.getMinZoom();
+        else if (base < map.getMinZoom()) {
+            base = map.getMinZoom();
         }
         this.zoom = base + fraction;
-        this.map.setZoom(base, { animate: false });
+        map.setZoom(base, { animate: false });
     }
     else {
         this.zoom = z;
@@ -282,14 +283,14 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.useProgram(this.program);
 
     // Sync zoom w/leaflet
-    if (Math.floor(this.zoom) != this.map.getZoom()) {
-        this.zoom = this.map.getZoom();
+    if (Math.floor(this.zoom) != this.leaflet.map.getZoom()) {
+        this.zoom = this.leaflet.map.getZoom();
     }
 
     // Set values to this.program variables
     gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
 
-    var center = this.map.getCenter(); // TODO: move map center tracking/projection to central class?
+    var center = this.leaflet.map.getCenter(); // TODO: move map center tracking/projection to central class?
     center = latLngToMeters(Point(center.lng, center.lat));
     gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
