@@ -105,8 +105,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         water: [0.5, 0.5, 0.875],
         // buildings: [0.5, 0.5, 0.5],
         // buildings: function () { return [0.7, 0.7, 0.7].map(function(c) { return c *= Math.random(); }); }, // random color
-        buildings: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pswudo-random color by geometry id
-        // buildings: function (f) { var c = ((parseInt(f.id, 16) % 100) / 100); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // random grayscale
+        buildings: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
+        // buildings: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // random grayscale
         // buildings: function (f) { return [0.5, 0.5, 0.5].map(function(c) { return c += ((parseInt(f.id) || 0) % 16) * 2 / 256; }); }, // slight grayscale striping
         default: [1.0, 0, 0]
     };
