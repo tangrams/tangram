@@ -130,7 +130,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     polygons = feature.geometry.coordinates;
                 }
 
-                z = (feature.properties && feature.properties.sort_key) || layer_num;
+                // TODO: use glPolygonOffset for layer_num instead of modifying z coord in geom
+                // z = (feature.properties && feature.properties.sort_key) || layer_num;
+                z = 0;
 
                 color = colors[layer.name] || colors.default;
                 if (typeof color == 'function') { // dynamic/function-based color
@@ -149,7 +151,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                         for (t=0; t < vertices.length; t++) {
                             triangles.push(
                                 vertices[t][0],
-                                vertices[t][1] + height,
+                                vertices[t][1],
                                 z + height,
                                 Math.min(color[0], 1), Math.min(color[1], 1), Math.min(color[2], 1)
                             );
@@ -163,13 +165,13 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                                 // Two triangles for the quad formed by each vertex pair, going from ground to building height
                                 wall_vertices.push(
                                     // Triangle
-                                    [polygon[p][w+1][0], polygon[p][w+1][1] + height, z + height],
+                                    [polygon[p][w+1][0], polygon[p][w+1][1], z + height],
                                     [polygon[p][w+1][0], polygon[p][w+1][1], z],
                                     [polygon[p][w][0], polygon[p][w][1], z],
                                     // Triangle
                                     [polygon[p][w][0], polygon[p][w][1], z],
-                                    [polygon[p][w][0], polygon[p][w][1] + height, z + height],
-                                    [polygon[p][w+1][0], polygon[p][w+1][1] + height, z + height]
+                                    [polygon[p][w][0], polygon[p][w][1], z + height],
+                                    [polygon[p][w+1][0], polygon[p][w+1][1], z + height]
                                 );
 
                                 shade = polygon[p][w][1] < polygon[p][w+1][1] ? brighten : darken;

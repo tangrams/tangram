@@ -359,6 +359,8 @@ function frame () {
         vec2 meter_zoom = vec2(resolution.x / 2.0 * meters_per_pixel, resolution.y / 2.0 * meters_per_pixel);
 
         pos_trans.xy -= map_center;
+
+        pos_trans.y += pos_trans.z; // z coordinate is a simple translation up along y axis, ala isometric
         pos_trans.xy /= meter_zoom;
 
         // Rotation test
@@ -369,9 +371,9 @@ function frame () {
         // pr.y = pos_trans.x * sin(theta * pi / 180.0) + pos_trans.y * cos(theta * pi / 180.0);
         // pos_trans.xy = pr;
 
-        // pos_trans.y *= abs(sin(pos_trans.x));
+        // pos_trans.y *= abs(sin(pos_trans.x)); // hourglass effect
 
-        pos_trans.z = (-pos_trans.z + 32768.0) / 65536.0; // reverse and scale to 0-1
+        pos_trans.z = (-pos_trans.z + 32768.0) / 65536.0; // reverse and scale to 0-1 for GL depth buffer
 
         fcolor = color;
 
