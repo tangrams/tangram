@@ -67,19 +67,28 @@ var styles = {
             default: [25, 150, 220]
         }
     },
-    land: {
+    land_unlabeled: {
         color: {
             default: [32, 200, 125]
+        }
+    },
+    land_labeled: {
+        color: {
+            default: [2, 170, 95]
         }
     },
     buildings: {
         color: {
             default: [150, 150, 150]
         },
-        border: [75, 75, 75],
-        // dash: {
-        //     default: [4, 2]
-        // }
+        border: {
+            color: {
+                default: [75, 75, 75]
+            },
+            size: {
+                default: 1
+            }
+        }
     },
     roads: {
         color: {
@@ -98,6 +107,27 @@ var styles = {
         },
         dash: {
             // 'rail': [4, 2]
+        }
+    },
+    road_labels: {
+        size: {
+            default: 15
+        }
+    },
+    pois: {
+        color: {
+            default: [240, 0, 0]
+        },
+        size: {
+            default: 5
+        },
+        border: {
+            color: {
+                default: [240, 240, 240]
+            },
+            size: {
+                default: 2
+            }
         }
     }
 };
@@ -245,8 +275,8 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 }
 
 // Renderers
-var renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
-// var renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
+// var renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
+var renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
 
 // Start render loop
 window.addEventListener('load', function () {

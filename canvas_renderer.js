@@ -45,6 +45,8 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 
 CanvasRenderer.prototype.render = function CanvasRendererRender ()
 {
+    // Render is a no-op because canvas only needs to be rendered once at the time the tile is added
+    // TODO: perhaps add some 'dirty' tile support to enable things like animation or style changes
 };
 
 // Scale a GeoJSON coordinate (2-element array) from [min, max] to tile pixels
@@ -103,8 +105,9 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, proper
 {
     var segments = polygon;
     var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 1;
-    var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
+    var border_color = style.border && ((style.border.color && (style.border.color[properties.kind] || style.border.color.default)) || [255, 0, 0]);
+    var border_size = style.border && ((style.border.size && (style.border.size[properties.kind] || style.border.size.default)) || 1);
+    var border_dash = style.border && (style.border.dash && (style.border.dash[properties.kind] || style.border.dash.default));
 
     var c = context;
     c.beginPath();
@@ -120,12 +123,45 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, proper
 
     // Border
     if (style.border) {
-        c.strokeStyle = 'rgb(' + style.border.join(',') + ')';
+        c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
         c.lineCap = 'round';
-        c.lineWidth = size;
+        c.lineWidth = border_size;
         if (c.setLineDash) {
-            if (dash) {
-                c.setLineDash(dash.map(function (d) { return d * size; }));
+            if (border_dash) {
+                c.setLineDash(border_dash.map(function (d) { return d * border_size; }));
+            }
+            else {
+                c.setLineDash([]);
+            }
+        }
+        c.stroke();
+    }
+};
+
+// Renders a point given as a Point object
+CanvasRenderer.prototype.renderPoint = function renderPoint (point, properties, style, context)
+{
+    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
+    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 5;
+    var border_color = style.border && ((style.border.color && (style.border.color[properties.kind] || style.border.color.default)) || [255, 0, 0]);
+    var border_size = style.border && ((style.border.size && (style.border.size[properties.kind] || style.border.size.default)) || 1);
+    var border_dash = style.border && (style.border.dash && (style.border.dash[properties.kind] || style.border.dash.default));
+
+    var c = context;
+    c.fillStyle = 'rgb(' + color.join(',') + ')';
+
+    c.beginPath();
+    c.arc(point.x, point.y, size, 0, 2 * Math.PI);
+    c.closePath();
+    c.fill();
+
+    // Border
+    if (style.border) {
+        c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
+        c.lineWidth = border_size;
+        if (c.setLineDash) {
+            if (border_dash) {
+                c.setLineDash(border_dash.map(function (d) { return d * border_size; }));
             }
             else {
                 c.setLineDash([]);
@@ -178,7 +214,7 @@ CanvasRenderer.prototype.renderGeometry = function renderGeometry (geometry, pro
                 // After compositing back to main canvas, draw outlines on holes
                 if (style.border) {
                     for (h=1; h < polys[g].length; h++) {
-                        this.renderLine(polys[g][h], properties, { color: { default: style.border }, size: style.size, dash: style.dash }, context);
+                        this.renderLine(polys[g][h], properties, style.border, context);
                     }
                 }
             }
@@ -188,7 +224,14 @@ CanvasRenderer.prototype.renderGeometry = function renderGeometry (geometry, pro
             }
         }
     }
-    // TODO: support Point, MultiPoint
+    else if (geometry.type == 'Point') {
+        this.renderPoint(geometry.pixels, properties, style, context);
+    }
+    else if (geometry.type == 'MultiPoint') {
+        for (g=0; g < geometry.pixels.length; g++) {
+            this.renderPoint(geometry.pixels[g], properties, style, context);
+        }
+    }
 };
 
 // Generates a random color not yet present in the provided hash of colors
@@ -213,6 +256,8 @@ CanvasRenderer.prototype.generateColor = function generateColor (color_map)
 // Render a GeoJSON tile onto canvas
 CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
 {
+    var renderer = this;
+
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
     var selection_canvas = document.createElement('canvas');
@@ -222,105 +267,32 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     var selection_color;
     var selection_count = 0;
 
-    // Land
-    var land = tile.layers['land'].features;
-    land.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
+    // Render layers
+    for (var t in renderer.layers) {
+        var layer = renderer.layers[t];
+        tile.layers[layer.name].features.forEach(function(feature) {
+            // Scale mercator coords to tile pixels
+            feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
 
-        if (feature.properties.name != null && feature.properties.name != '') {
-            selection_color = this.generateColor(selection.colors);
-            selection_color.properties = feature.properties;
-            selection_count++;
+            // Draw visible geometry
+            if (layer.visible != false) {
+                this.renderGeometry(feature.geometry, feature.properties, styles[layer.name], context);
+            }
 
-            // Draw named land areas in a darker shade
-            this.renderGeometry(feature.geometry, feature.properties, { color: { default: styles.land.color.default.map(function (c) { return Math.max(c - 30, 0); }) } }, context);
-            this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color } }, selection_context);
-        }
-        else {
-            this.renderGeometry(feature.geometry, feature.properties, styles.land, context);
-            this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-        }
-    }, this);
+            // Draw mask for interactivity
+            if (layer.selection == true && feature.properties.name != null && feature.properties.name != '') {
+                selection_color = this.generateColor(selection.colors);
+                selection_color.properties = feature.properties;
+                selection_count++;
+                this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color }, size: styles[layer.name].size }, selection_context);
+            }
+            else {
+                // If this geometry isn't interactive, mask it out so geometry under it doesn't appear to pop through
+                this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] }, size: styles[layer.name].size }, selection_context);
+            }
 
-    // Water
-    var waters = tile.layers['water'].features;
-    waters.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
-        this.renderGeometry(feature.geometry, feature.properties, styles.water, context);
-
-        if (feature.properties.name != null && feature.properties.name != '') {
-            selection_color = this.generateColor(selection.colors);
-            selection_color.properties = feature.properties;
-            selection_count++;
-            this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color } }, selection_context);
-        }
-        else {
-            this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] } }, selection_context);
-        }
-    }, this);
-
-    // Roads
-    var roads = tile.layers['roads'].features;
-    roads.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
-    roads.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
-        this.renderGeometry(feature.geometry, feature.properties, styles.roads, context);
-    }, this);
-
-    // Road labels
-    var road_labels = tile.layers['road_labels'].features;
-    road_labels.sort(function(a, b) { return (a.properties.sort_key > b.properties.sort_key); });
-    road_labels.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
-
-        if (feature.properties.name != null && feature.properties.name != '') {
-            selection_color = this.generateColor(selection.colors);
-            selection_color.properties = feature.properties;
-            selection_count++;
-
-            this.renderGeometry(feature.geometry, feature.properties,
-                {
-                    color: { default: selection_color.color },
-                    size: { default: 15 }
-                },
-                selection_context
-            );
-        }
-    }, this);
-
-    // Buildings
-    var buildings = tile.layers['buildings'].features;
-    buildings.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
-        this.renderGeometry(feature.geometry, feature.properties, styles.buildings, context);
-    }, this);
-
-    // POIs
-    var pois = tile.layers['pois'].features;
-    pois.forEach(function(feature) {
-        feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
-
-        if (feature.properties.name != null && feature.properties.name != '') {
-            context.fillStyle = 'rgb(240, 0, 0)';
-            context.strokeStyle = 'rgb(240, 240, 240)';
-            context.lineWidth = 2;
-            context.beginPath();
-            context.arc(feature.geometry.pixels.x, feature.geometry.pixels.y, 5, 0, 2 * Math.PI);
-            context.closePath();
-            context.fill();
-            context.stroke();
-
-            selection_color = this.generateColor(selection.colors);
-            selection_color.properties = feature.properties;
-            selection_count++;
-
-            selection_context.fillStyle = 'rgb(' + selection_color.color.join(',') + ')';
-            selection_context.beginPath();
-            selection_context.arc(feature.geometry.pixels.x, feature.geometry.pixels.y, 5, 0, 2 * Math.PI);
-            selection_context.closePath();
-            selection_context.fill();
-        }
-    }, this);
+        }, this);
+    }
 
     // Selection events
     var selection_info = this.selection_info;
@@ -329,6 +301,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
 
         selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
 
+        // TODO: fire events on selection to enable custom behavior
         context.canvas.onmousemove = function (event) {
             var hit = { x: event.offsetX, y: event.offsetY }; // layerX/Y
             var off = hit.y * tile_size.x + hit.x;
