@@ -94,12 +94,6 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
     // TODO: unify w/canvas style object
-    // var layers = [
-    //     { name: 'land', key: 'land-usages' },
-    //     { name: 'water', key: 'water-areas' },
-    //     { name: 'buildings', key: 'buildings' }
-    // ];
-
     var colors = {
         land: [0.5, 0.875, 0.5],
         water: [0.5, 0.5, 0.875],
@@ -115,8 +109,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     var triangles = [], count = 0;
     var layer, polygons, vertices;
     var z, color;
-    var height, wall_vertices, shade;
-    var brighten = 1.3, darken = 0.7;
+    var height, wall_vertices;
     var t, p, w;
 
     for (var layer_num=0; layer_num < this.layers.length; layer_num++) {
@@ -153,7 +146,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                                 vertices[t][0],
                                 vertices[t][1],
                                 z + height,
-                                Math.min(color[0], 1), Math.min(color[1], 1), Math.min(color[2], 1)
+                                0, 0, 1, // flat surfaces point straight up
+                                color[0], color[1], color[2]
                             );
                         }
                         count += vertices.length;
@@ -174,13 +168,19 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                                     [polygon[p][w+1][0], polygon[p][w+1][1], z + height]
                                 );
 
-                                shade = polygon[p][w][1] < polygon[p][w+1][1] ? brighten : darken;
+                                // Calc the normal of the wall from up vector and one segment of the wall triangles
+                                var normal = Vector.cross(
+                                    [0, 0, 1],
+                                    Vector.normalize([polygon[p][w+1][0] - polygon[p][w][0], polygon[p][w+1][1] - polygon[p][w][1], 0])
+                                );
+
                                 for (t=0; t < wall_vertices.length; t++) {
                                     triangles.push(
                                         wall_vertices[t][0],
                                         wall_vertices[t][1],
                                         wall_vertices[t][2],
-                                        Math.min(color[0] * shade, 1), Math.min(color[1] * shade, 1), Math.min(color[2] * shade, 1)
+                                        normal[0], normal[1], normal[2],
+                                        color[0], color[1], color[2]
                                     );
                                 }
                                 count += wall_vertices.length;
@@ -194,6 +194,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                                 vertices[t][0],
                                 vertices[t][1],
                                 z,
+                                0, 0, 1, // flat surfaces point straight up
                                 color[0], color[1], color[2]
                             );
                         }

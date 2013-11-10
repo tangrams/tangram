@@ -168,7 +168,10 @@ function GLTriangles (gl, program, data, count)
 
     this.gl.useProgram(this.program);
     this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-    this.vertex_color = this.gl.getAttribLocation(this.program, 'color'); // TODO: colors/other props configurable?
+
+    // TODO: configurable properties?
+    this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
+    this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, this.data, this.gl.STATIC_DRAW);
@@ -180,10 +183,13 @@ GLTriangles.prototype.render = function ()
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
 
     this.gl.enableVertexAttribArray(this.vertex_position);
-    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
+    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 0);
+
+    this.gl.enableVertexAttribArray(this.vertex_normal);
+    this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 
     this.gl.enableVertexAttribArray(this.vertex_color);
-    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
+    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);
 
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.count);
 };
@@ -231,4 +237,30 @@ GLBackground.prototype.render = function ()
     this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+};
+
+/*** Vector functions - vectors provided as [x, y, z] arrays ***/
+
+var Vector = {};
+
+// Normalize a vector
+Vector.normalize = function (v)
+{
+    var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    d = Math.sqrt(d);
+
+    if (d != 0) {
+        return [v[0] / d, v[1] / d, v[2] / d];
+    }
+    return [0, 0, 0];
+};
+
+// Cross product of two vectors
+Vector.cross  = function (v1, v2)
+{
+    return [
+        (v1[1] * v2[2]) - (v1[2] * v2[1]),
+        (v1[2] * v2[0]) - (v1[0] * v2[2]),
+        (v1[0] * v2[1]) - (v1[1] * v2[0])
+    ];
 };
