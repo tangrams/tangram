@@ -8,7 +8,7 @@ function GLRenderer (leaflet, layers)
 GLRenderer.prototype.init = function GLRendererInit ()
 {
     this.gl = GL.getContext();
-    this.program = GL.createProgramFromElements(this.gl, 'vertex-shader', 'fragment-shader');
+    this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
 
