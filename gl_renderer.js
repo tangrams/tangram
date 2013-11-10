@@ -123,9 +123,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     polygons = feature.geometry.coordinates;
                 }
 
-                // TODO: use glPolygonOffset for layer_num instead of modifying z coord in geom
-                // z = (feature.properties && feature.properties.sort_key) || layer_num;
-                z = 0;
+                // To ensure layers draw in order, offset z coordinate by one centimeter per layer
+                // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
+                z = (feature.properties && feature.properties.sort_key) || layer_num;
+                z /= 100;
 
                 color = colors[layer.name] || colors.default;
                 if (typeof color == 'function') { // dynamic/function-based color
