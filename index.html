@@ -242,18 +242,17 @@ map.attributionControl.setPrefix('');
 
 // Get location from URL or use default
 var locations = {
-    'London': [51.508, -0.105],
-    'New York': [40.7180764, -73.9790335],
-    'Seattle': [47.609722, -122.333056]
+    'London': [51.508, -0.105, 15],
+    'New York': [40.70531887544228, -74.00976419448853, 16],
+    'Seattle': [47.609722, -122.333056, 15]
 };
-var map_default_location = locations['London'];
-var map_default_zoom = 15;
+var map_default_location = locations['New York'];
 var url_latlng = window.location.hash.slice(1, window.location.hash.length).split(',');
 if (url_latlng.length == 3) {
     map.setView([url_latlng[0], url_latlng[1]], url_latlng[2]);
 }
 else {
-    map.setView(map_default_location, map_default_zoom);
+    map.setView(map_default_location.slice(0, 2), map_default_location[2]);
 }
 
 map.on('moveend', function () {
