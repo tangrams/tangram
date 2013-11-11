@@ -246,18 +246,24 @@ var locations = {
     'New York': [40.70531887544228, -74.00976419448853, 16],
     'Seattle': [47.609722, -122.333056, 15]
 };
-var map_default_location = locations['New York'];
-var url_latlng = window.location.hash.slice(1, window.location.hash.length).split(',');
-if (url_latlng.length == 3) {
-    map.setView([url_latlng[0], url_latlng[1]], url_latlng[2]);
+var map_start_location = locations['New York'];
+
+// URL hash pattern is one of:
+// #[gl|canvas]
+// #[gl|canvas],[lat],[lng],[zoom]
+// #[gl|canvas],[location name]
+var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+if (url_hash.length == 4) {
+    map_start_location = url_hash.slice(1, 4);
 }
-else {
-    map.setView(map_default_location.slice(0, 2), map_default_location[2]);
+else if (url_hash.length == 2) {
+    map_start_location = locations[url_hash[1]];
 }
+map.setView(map_start_location.slice(0, 2), map_start_location[2]);
 
 map.on('moveend', function () {
     var map_latlng = map.getCenter();
-    window.location.hash = [map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
+    window.location.hash = [renderer_type, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
 var layer = L.tileLayer.divGrid({
@@ -274,8 +280,14 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 }
 
 // Renderers
-// var renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
-var renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
+var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
+var renderer;
+if (renderer_type == 'gl') {
+   renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
+}
+else {
+    renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
+}
 
 // Start render loop
 window.addEventListener('load', function () {
