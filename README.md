@@ -3,9 +3,9 @@ WebGL & Canvas for OpenStreetMap
 
 This is a demo of dynamic client-side map rendering using both WebGL and Canvas, with GeoJSON vector tiles of OpenStreetMap data as the source.
 
-It's available here:
+**WebGL:** http://vector.io/vector-map#gl
 
-http://vector.io/vector-map
+**Canvas:** http://vector.io/vector-map#canvas
 
 It uses Michal Migurski's experimental GeoJSON vector tile service of OpenStreetMap data:
 
