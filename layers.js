@@ -78,7 +78,7 @@ var canvas_layers = [
     {
         name: 'pois',
         data: function (json) {
-            // Only land features WITH names
+            // Only features WITH names
             return {
                 type: 'FeatureCollection',
                 features: json['pois'].features.filter(function (feature) {
