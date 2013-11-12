@@ -3,14 +3,40 @@ GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 function GLRenderer (leaflet, layers)
 {
     VectorRenderer.apply(this, arguments);
+
+    // Defines the vertex buffer layout for the program
+    this.program_layout = {
+        attribs: [
+            {
+                name: 'position',
+                components: 3,
+                type: WebGLRenderingContext.FLOAT,
+                normalized: false
+            },
+            {
+                name: 'normal',
+                components: 3,
+                type: WebGLRenderingContext.FLOAT,
+                normalized: false
+            },
+            {
+                name: 'color',
+                components: 3,
+                type: WebGLRenderingContext.FLOAT,
+                normalized: false
+            }
+        ]
+    };
 }
 
 GLRenderer.prototype.init = function GLRendererInit ()
 {
     this.gl = GL.getContext();
-    this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
+
+    this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
+    this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
 
     this.zoom = this.leaflet.map.getZoom();
     this.zoom_step = 0.02; // for fractional zoom user adjustment
@@ -206,8 +232,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         }
     }
 
-    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles), count);
-    console.log("created " + count + " triangles for tile " + tile.key);
+    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
+    console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection
     // var gl_renderer = this;
@@ -322,7 +348,7 @@ GLRenderer.prototype.render = function GLRendererRender ()
     }
 
     if (count != this.last_render_count) {
-        console.log("rendered " + count + " triangles");
+        console.log("rendered " + count/3 + " triangles");
     }
     this.last_render_count = count;
 };

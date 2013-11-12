@@ -106,6 +106,34 @@ GL.createShader = function GLcreateShader (gl, source, type)
     return shader;
 }
 
+// Determine layout for vertex data
+GL.makeProgramLayout = function (gl, program, program_layout)
+{
+    var p = program_layout;
+    p.program = program;
+    p.attrib_stride = 0;
+
+    // Determine buffer layout
+    for (var a in program_layout.attribs) {
+        var attrib = program_layout.attribs[a];
+        attrib.location = gl.getAttribLocation(p.program, attrib.name);
+
+        var elem_size = 0;
+        if (attrib.type == gl.FLOAT) {
+            elem_size = Float32Array.BYTES_PER_ELEMENT;
+        }
+        // TODO: add other GL types
+
+        attrib.size = attrib.components * elem_size;
+        attrib.offset = p.attrib_stride;
+        p.attrib_stride += attrib.size;
+    }
+
+    // TODO: support for uniforms?
+
+    return p;
+};
+
 // Triangulation using libtess.js port of gluTesselator
 GL.tesselator = (function initTesselator() {
     // function called for each vertex of tesselator output
@@ -175,24 +203,23 @@ GL.triangulate = function GLTriangulate (contours)
 
 /*** Manage rendering for primitives ***/
 
-// Draws a set of triangles, expects triangle vertex buffer with xyz position and color data (6 floats per vertex)
-function GLTriangles (gl, program, data, count)
+// Draws a set of triangles, expects triangle vertex buffer defined by program_layout
+function GLTriangles (gl, program_layout, vertex_data)
 {
     this.gl = gl;
-    this.program = program;
-    this.data = data; // Float32Array
-    this.count = count; // TODO: calc count from buffer size/attributes/buffer layout?
+    this.program = program_layout.program;
+    this.program_layout = program_layout;
+    this.vertex_data = vertex_data; // Float32Array
+    this.count = this.vertex_data.byteLength / this.program_layout.attrib_stride; // calc vertex count from buffer size and layout
     this.buffer = this.gl.createBuffer();
 
-    this.gl.useProgram(this.program);
-    this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-
-    // TODO: configurable properties?
-    this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
-    this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
+    // this.gl.useProgram(this.program);
+    // this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
+    // this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
+    // this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.data, this.gl.STATIC_DRAW);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.gl.STATIC_DRAW);
 }
 
 GLTriangles.prototype.render = function ()
@@ -200,62 +227,68 @@ GLTriangles.prototype.render = function ()
     this.gl.useProgram(this.program);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
 
-    this.gl.enableVertexAttribArray(this.vertex_position);
-    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 0);
+    // this.gl.enableVertexAttribArray(this.vertex_position);
+    // this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 0);
 
-    this.gl.enableVertexAttribArray(this.vertex_normal);
-    this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
+    // this.gl.enableVertexAttribArray(this.vertex_normal);
+    // this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 
-    this.gl.enableVertexAttribArray(this.vertex_color);
-    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);
+    // this.gl.enableVertexAttribArray(this.vertex_color);
+    // this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);
+
+    for (var a in this.program_layout.attribs) {
+        var attrib = this.program_layout.attribs[a];
+        this.gl.enableVertexAttribArray(attrib.location);
+        this.gl.vertexAttribPointer(attrib.location, attrib.components, attrib.type, attrib.normalized, this.program_layout.attrib_stride, attrib.offset);
+    }
 
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.count);
 };
 
 GLTriangles.prototype.destroy = function ()
 {
-    console.log("glTriangles.destroy: delete buffer of size " + this.data.byteLength);
+    console.log("glTriangles.destroy: delete buffer of size " + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
-    delete this.data;
+    delete this.vertex_data;
 };
 
 // Draws a background via 2 triangles covering the whole viewport
-function GLBackground (gl, program)
-{
-    this.gl = gl;
-    this.program = program;
-    this.gl.useProgram(this.program);
+// function GLBackground (gl, program)
+// {
+//     this.gl = gl;
+//     this.program = program;
+//     this.gl.useProgram(this.program);
 
-    // Create vertex buffer (2 triangles covering whole viewport)
-    this.buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER,
-        new Float32Array([
-            -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-             1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-            -1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
-             1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-             1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
-            -1.0,  1.0, 0.0, 1.0, 0.0, 0.0
-        ]),
-        this.gl.STATIC_DRAW
-    );
-    this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-    this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
-}
+//     // Create vertex buffer (2 triangles covering whole viewport)
+//     this.buffer = this.gl.createBuffer();
+//     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+//     this.gl.bufferData(this.gl.ARRAY_BUFFER,
+//         new Float32Array([
+//             -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
+//              1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
+//             -1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
+//              1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
+//              1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
+//             -1.0,  1.0, 0.0, 1.0, 0.0, 0.0
+//         ]),
+//         this.gl.STATIC_DRAW
+//     );
+//     this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
+//     this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
+// }
 
-GLBackground.prototype.render = function ()
-{
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+// GLBackground.prototype.render = function ()
+// {
+//     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
 
-    this.gl.enableVertexAttribArray(this.vertex_position);
-    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
+//     this.gl.enableVertexAttribArray(this.vertex_position);
+//     this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
 
-    this.gl.enableVertexAttribArray(this.vertex_color);
-    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
+//     this.gl.enableVertexAttribArray(this.vertex_color);
+//     this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-};
+//     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+// };
 
 /*** Vector functions - vectors provided as [x, y, z] arrays ***/
 
