@@ -5,28 +5,28 @@ function GLRenderer (leaflet, layers)
     VectorRenderer.apply(this, arguments);
 
     // Defines the vertex buffer layout for the program
-    this.program_layout = {
-        attribs: [
-            {
-                name: 'position',
-                components: 3,
-                type: WebGLRenderingContext.FLOAT,
-                normalized: false
-            },
-            {
-                name: 'normal',
-                components: 3,
-                type: WebGLRenderingContext.FLOAT,
-                normalized: false
-            },
-            {
-                name: 'color',
-                components: 3,
-                type: WebGLRenderingContext.FLOAT,
-                normalized: false
-            }
-        ]
-    };
+    // this.program_layout = {
+    //     attribs: [
+    //         {
+    //             name: 'position',
+    //             components: 3,
+    //             type: WebGLRenderingContext.FLOAT,
+    //             normalized: false
+    //         },
+    //         {
+    //             name: 'normal',
+    //             components: 3,
+    //             type: WebGLRenderingContext.FLOAT,
+    //             normalized: false
+    //         },
+    //         {
+    //             name: 'color',
+    //             components: 3,
+    //             type: WebGLRenderingContext.FLOAT,
+    //             normalized: false
+    //         }
+    //     ]
+    // };
 }
 
 GLRenderer.prototype.init = function GLRendererInit ()
@@ -36,7 +36,33 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.last_render_count = null;
 
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
-    this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
+    // this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
+
+    this.program_strategy = {
+        program: this.program,
+        gl: this.gl,
+        vertex_stride: 9 * Float32Array.BYTES_PER_ELEMENT,
+        init: function () {
+            this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
+            this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
+            this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
+        },
+        pre_render: function () {
+            var vertex_offset = 0;
+
+            this.gl.enableVertexAttribArray(this.vertex_position);
+            this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
+            vertex_offset += 3 * Float32Array.BYTES_PER_ELEMENT;
+
+            this.gl.enableVertexAttribArray(this.vertex_normal);
+            this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
+            vertex_offset += 3 * Float32Array.BYTES_PER_ELEMENT;
+
+            this.gl.enableVertexAttribArray(this.vertex_color);
+            this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
+        }
+    };
+    this.program_strategy.init();
 
     this.zoom = this.leaflet.map.getZoom();
     this.zoom_step = 0.02; // for fractional zoom user adjustment
@@ -232,7 +258,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         }
     }
 
-    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
+    // this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
+    this.tiles[tile.key].gl_geometry = new GLTriangles(this.program_strategy, new Float32Array(triangles));
     console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection

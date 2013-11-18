@@ -204,13 +204,14 @@ GL.triangulate = function GLTriangulate (contours)
 /*** Manage rendering for primitives ***/
 
 // Draws a set of triangles, expects triangle vertex buffer defined by program_layout
-function GLTriangles (gl, program_layout, vertex_data)
+// function GLTriangles (gl, program_layout, vertex_data)
+function GLTriangles (program_strategy, vertex_data)
 {
-    this.gl = gl;
-    this.program = program_layout.program;
-    this.program_layout = program_layout;
+    this.program_strategy = program_strategy;
+    this.gl = this.program_strategy.gl;
+    this.program = this.program_strategy.program;
     this.vertex_data = vertex_data; // Float32Array
-    this.count = this.vertex_data.byteLength / this.program_layout.attrib_stride; // calc vertex count from buffer size and layout
+    this.count = this.vertex_data.byteLength / this.program_strategy.vertex_stride; // calc vertex count from buffer size and layout
     this.buffer = this.gl.createBuffer();
 
     // this.gl.useProgram(this.program);
@@ -236,11 +237,13 @@ GLTriangles.prototype.render = function ()
     // this.gl.enableVertexAttribArray(this.vertex_color);
     // this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);
 
-    for (var a in this.program_layout.attribs) {
-        var attrib = this.program_layout.attribs[a];
-        this.gl.enableVertexAttribArray(attrib.location);
-        this.gl.vertexAttribPointer(attrib.location, attrib.components, attrib.type, attrib.normalized, this.program_layout.attrib_stride, attrib.offset);
-    }
+    // for (var a in this.program_layout.attribs) {
+    //     var attrib = this.program_layout.attribs[a];
+    //     this.gl.enableVertexAttribArray(attrib.location);
+    //     this.gl.vertexAttribPointer(attrib.location, attrib.components, attrib.type, attrib.normalized, this.program_layout.attrib_stride, attrib.offset);
+    // }
+
+    this.program_strategy.pre_render();
 
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.count);
 };
