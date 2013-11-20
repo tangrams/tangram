@@ -41,6 +41,10 @@ void main() {
     vposition.xy -= map_center;
 
     vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric
+
+    // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
+    // vposition.x -= vposition.z * 0.5;
+
     vposition.xy /= meter_zoom;
 
     // Rotation test
