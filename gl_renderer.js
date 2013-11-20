@@ -259,7 +259,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     }
 
     // this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
-    this.tiles[tile.key].gl_geometry = new GLTriangles(this.program_strategy, new Float32Array(triangles));
+    // this.tiles[tile.key].gl_geometry = new GLTriangles(this.program_strategy, new Float32Array(triangles));
+    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles));
     console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection
@@ -365,9 +366,11 @@ GLRenderer.prototype.render = function GLRendererRender ()
     // Render tile GL geometries
     var count = 0;
     for (var t in this.tiles) {
-        if (this.tiles[t].coords.z == (this.zoom << 0) && this.tiles[t].gl_geometry != null) {
-            this.tiles[t].gl_geometry.render();
-            count += this.tiles[t].gl_geometry.count;
+        if (this.tiles[t].coords.z == (this.zoom << 0)) {
+            if (this.tiles[t].gl_geometry != null) {
+                this.tiles[t].gl_geometry.render();
+                count += this.tiles[t].gl_geometry.vertex_count;
+            }
         }
         // else {
         //     console.log("didn't render " + this.tiles[t].key);

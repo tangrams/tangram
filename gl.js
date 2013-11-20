@@ -203,56 +203,63 @@ GL.triangulate = function GLTriangulate (contours)
 
 /*** Manage rendering for primitives ***/
 
-// Draws a set of triangles, expects triangle vertex buffer defined by program_layout
-// function GLTriangles (gl, program_layout, vertex_data)
-function GLTriangles (program_strategy, vertex_data)
+function GLGeometry (gl, program, vertex_data, vertex_stride, options)
 {
-    this.program_strategy = program_strategy;
-    this.gl = this.program_strategy.gl;
-    this.program = this.program_strategy.program;
-    this.vertex_data = vertex_data; // Float32Array
-    this.count = this.vertex_data.byteLength / this.program_strategy.vertex_stride; // calc vertex count from buffer size and layout
-    this.buffer = this.gl.createBuffer();
+    options = options || {};
 
-    // this.gl.useProgram(this.program);
-    // this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-    // this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
-    // this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
+    this.gl = gl;
+    this.program = program;
+    this.vertex_data = vertex_data; // Float32Array
+    this.vertex_stride = vertex_stride;
+    this.vertex_count = this.vertex_data.byteLength / this.vertex_stride;
+    this.buffer = this.gl.createBuffer();
+    this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
+    this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.gl.STATIC_DRAW);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
 }
 
-GLTriangles.prototype.render = function ()
+GLGeometry.prototype.render = function ()
 {
     this.gl.useProgram(this.program);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
 
-    // this.gl.enableVertexAttribArray(this.vertex_position);
-    // this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 0);
+    this._render();
 
-    // this.gl.enableVertexAttribArray(this.vertex_normal);
-    // this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
-
-    // this.gl.enableVertexAttribArray(this.vertex_color);
-    // this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 9 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);
-
-    // for (var a in this.program_layout.attribs) {
-    //     var attrib = this.program_layout.attribs[a];
-    //     this.gl.enableVertexAttribArray(attrib.location);
-    //     this.gl.vertexAttribPointer(attrib.location, attrib.components, attrib.type, attrib.normalized, this.program_layout.attrib_stride, attrib.offset);
-    // }
-
-    this.program_strategy.pre_render();
-
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, this.count);
+    this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
 };
 
-GLTriangles.prototype.destroy = function ()
+GLGeometry.prototype.destroy = function ()
 {
-    console.log("glTriangles.destroy: delete buffer of size " + this.vertex_data.byteLength);
+    console.log("GLGeometry.destroy: delete buffer of size " + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
     delete this.vertex_data;
+};
+
+// Draws a set of triangles
+GLTriangles.prototype = Object.create(GLGeometry.prototype);
+
+function GLTriangles (gl, program, vertex_data)
+{
+    GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+
+    this.gl.useProgram(this.program);
+    this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
+    this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
+    this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
+}
+
+GLTriangles.prototype._render = function ()
+{
+    this.gl.enableVertexAttribArray(this.vertex_position);
+    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, 0);
+
+    this.gl.enableVertexAttribArray(this.vertex_normal);
+    this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, this.vertex_stride, 3 * Float32Array.BYTES_PER_ELEMENT);
+
+    this.gl.enableVertexAttribArray(this.vertex_color);
+    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 6 * Float32Array.BYTES_PER_ELEMENT);
 };
 
 // Draws a background via 2 triangles covering the whole viewport
