@@ -1,11 +1,29 @@
 var gl_layers = [
     {
-        name: 'land',
-        data: function (json) { return json['land-usages']; }
+       name: 'water_ocean',
+       data: function (json) {
+           return {
+               type: 'FeatureCollection',
+               features: json['water-areas'].features.filter(function (feature) {
+                   return feature.properties.kind == 'ocean';
+               })
+           };
+       }
     },
     {
-        name: 'water',
-        data: function (json) { return json['water-areas']; }
+       name: 'land',
+       data: function (json) { return json['land-usages']; }
+    },
+    {
+       name: 'water_areas',
+       data: function (json) {
+           return {
+               type: 'FeatureCollection',
+               features: json['water-areas'].features.filter(function (feature) {
+                   return feature.properties.kind != 'ocean';
+               })
+           };
+       }
     },
     {
         name: 'buildings',

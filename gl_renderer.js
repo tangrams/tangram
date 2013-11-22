@@ -128,7 +128,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // TODO: unify w/canvas style object
     var colors = {
         land: [0.5, 0.875, 0.5],
-        water: [0.5, 0.5, 0.875],
+        // water: [0.5, 0.5, 0.875],
+        water_ocean: [0.5, 0.5, 0.875],
+        water_areas: [0.5, 0.5, 0.875],
         // buildings: [0.5, 0.5, 0.5],
         // buildings: function () { return [0.7, 0.7, 0.7].map(function(c) { return c *= Math.random(); }); }, // random color
         buildings: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
