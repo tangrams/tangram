@@ -40,12 +40,16 @@ void main() {
 
     vposition.xy -= map_center;
 
-    vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric
-
+    // Isometric-style projections
+    // vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric
     // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
     // vposition.x -= vposition.z * 0.5;
 
     vposition.xy /= meter_zoom;
+
+    // Perspective-style projections
+    vposition.x += vposition.z * vposition.x / meter_zoom.x; // perspective from center of screen
+    vposition.y += vposition.z * vposition.y / meter_zoom.y;
 
     // Rotation test
     // float theta = 0;
@@ -62,6 +66,7 @@ void main() {
     fcolor = color;
 
     // Flat shading between surface normal and light
+    light = normalize(vec3(vposition.x, vposition.y, 0) - vec3(0.1, 0.1, 0.35)); // point light to vertex
     fcolor *= dot(vnormal, light * -1.0) + ambient;
     fcolor = min(fcolor, 1.0);
 
