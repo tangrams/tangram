@@ -262,6 +262,24 @@ GLTriangles.prototype._render = function ()
     this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 6 * Float32Array.BYTES_PER_ELEMENT);
 };
 
+// Draws a set of lines
+// Shares all characteristics with triangles except for draw mode
+GLLines.prototype = Object.create(GLTriangles.prototype);
+
+function GLLines (gl, program, vertex_data, options)
+{
+    options = options || {};
+    GLTriangles.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    this.draw_mode = this.gl.LINES;
+    this.line_width = options.line_width || 3.0;
+}
+
+GLLines.prototype._render = function ()
+{
+    this.gl.lineWidth(this.line_width);
+    GLTriangles.prototype._render.call(this);
+};
+
 // Draws a background via 2 triangles covering the whole viewport
 // function GLBackground (gl, program)
 // {

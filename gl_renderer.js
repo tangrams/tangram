@@ -143,6 +143,12 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
     });
 };
 
+GLRenderer.aboutEqual = function (a, b, tolerance)
+{
+    tolerance = tolerance || 1;
+    return (Math.abs(a - b) < tolerance);
+};
+
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
     // TODO: unify w/canvas style object
@@ -158,9 +164,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     };
 
     // Build triangles
-    var triangles = [], count = 0;
+    var triangles = [];
+    var lines = [];
     var layer, polygons, vertices;
-    var z, color;
+    var count = 0, z, color;
     var height, wall_vertices;
     var t, p, w;
 
@@ -186,6 +193,54 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 }
 
                 polygons.forEach(function (polygon) {
+
+                    // Outlines
+                    for (t=0; t < polygon.length; t++) {
+                        for (p=0; p < polygon[t].length - 1; p++) {
+                            // Point A to B
+                            var pa = polygon[t][p];
+                            var pb = polygon[t][p+1];
+
+                            // Edge detection
+                            var edge = null;
+                            var pointTest = GLRenderer.aboutEqual;
+                            var tol = 2;
+
+                            if (pointTest(pa[0], tile.min.x, tol) && pointTest(pb[0], tile.min.x, tol)) {
+                                edge = 'left';
+                            }
+                            else if (pointTest(pa[0], tile.max.x, tol) && pointTest(pb[0], tile.max.x, tol)) {
+                                edge = 'right';
+                            }
+                            else if (pointTest(pa[1], tile.min.y, tol) && pointTest(pb[1], tile.min.y, tol)) {
+                                edge = 'top';
+                            }
+                            else if (pointTest(pa[1], tile.max.y, tol) && pointTest(pb[1], tile.max.y, tol)) {
+                                edge = 'bottom';
+                            }
+
+                            if (edge != null) {
+                                console.log("tile " + tile.key + " edge detected: " + edge);
+                                continue;
+                            }
+
+                            lines.push(
+                                // Point A
+                                pa[0],
+                                pa[1],
+                                z + 0,
+                                0, 0, 1, // flat surfaces point straight up
+                                1, 1, 1, // white
+                                // Point B
+                                pb[0],
+                                pb[1],
+                                z + 0,
+                                0, 0, 1, // flat surfaces point straight up
+                                1, 1, 1 // white
+                            );
+                        }
+                    }
+
                     // Use libtess.js port of gluTesselator for complex OSM polygons
                     vertices = GL.triangulate(polygon);
 
@@ -260,7 +315,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
     // this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
     // this.tiles[tile.key].gl_geometry = new GLTriangles(this.program_strategy, new Float32Array(triangles));
-    this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program, new Float32Array(triangles));
+    this.tiles[tile.key].gl_geometry = [];
+    this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
+    this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines)));
     console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection
@@ -280,7 +337,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
 {
     if (this.tiles[key] != null && this.tiles[key].gl_geometry != null) {
-        this.tiles[key].gl_geometry.destroy();
+        this.tiles[key].gl_geometry.forEach(function (gl_geometry) { gl_geometry.destroy(); });
         this.tiles[key].gl_geometry = null;
     }
     VectorRenderer.prototype.removeTile.apply(this, arguments);
@@ -368,8 +425,10 @@ GLRenderer.prototype.render = function GLRendererRender ()
     for (var t in this.tiles) {
         if (this.tiles[t].coords.z == (this.zoom << 0)) {
             if (this.tiles[t].gl_geometry != null) {
-                this.tiles[t].gl_geometry.render();
-                count += this.tiles[t].gl_geometry.vertex_count;
+                this.tiles[t].gl_geometry.forEach(function (gl_geometry) {
+                    gl_geometry.render();
+                    count += gl_geometry.vertex_count;
+                });
             }
         }
         // else {
