@@ -38,32 +38,6 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     // this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
 
-    this.program_strategy = {
-        program: this.program,
-        gl: this.gl,
-        vertex_stride: 9 * Float32Array.BYTES_PER_ELEMENT,
-        init: function () {
-            this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-            this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
-            this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
-        },
-        pre_render: function () {
-            var vertex_offset = 0;
-
-            this.gl.enableVertexAttribArray(this.vertex_position);
-            this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
-            vertex_offset += 3 * Float32Array.BYTES_PER_ELEMENT;
-
-            this.gl.enableVertexAttribArray(this.vertex_normal);
-            this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
-            vertex_offset += 3 * Float32Array.BYTES_PER_ELEMENT;
-
-            this.gl.enableVertexAttribArray(this.vertex_color);
-            this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, vertex_offset);
-        }
-    };
-    this.program_strategy.init();
-
     this.zoom = this.leaflet.map.getZoom();
     this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.map_last_zoom = this.leaflet.map.getZoom();
@@ -314,7 +288,6 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     }
 
     // this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
-    // this.tiles[tile.key].gl_geometry = new GLTriangles(this.program_strategy, new Float32Array(triangles));
     this.tiles[tile.key].gl_geometry = [];
     this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
     this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines)));
