@@ -292,7 +292,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // this.tiles[tile.key].gl_geometry = new GLTriangles(this.gl, this.program_layout, new Float32Array(triangles));
     this.tiles[tile.key].gl_geometry = [];
     this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
-    this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines)));
+    // this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines)));
     console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection
