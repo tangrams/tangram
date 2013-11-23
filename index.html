@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-Vector maps with Canvas and WebGL
+Vector maps with WebGL & Canvas
 
 Demo of client-side map rendering, using GeoJSON vector tiles as the remote source,
 and the HTML Canvas and WebGL APIs as the rendering engines. Uses Leaflet for standard slippy map functionality.
@@ -277,7 +277,7 @@ map.on('moveend', function () {
 var layer = L.tileLayer.divGrid({
     async: true,
     maxZoom: max_zoom,
-    attribution: '<a href="https://github.com/bcamper/canvas-map">Source Code</a>',
+    attribution: '<a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false,
     preloadInvisibleTiles: 0
