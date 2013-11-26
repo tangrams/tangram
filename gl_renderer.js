@@ -125,30 +125,18 @@ GLRenderer.aboutEqual = function (a, b, tolerance)
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
-    // TODO: unify w/canvas style object
-    var colors = {
-        land: [0.5, 0.875, 0.5],
-        // water: [0.5, 0.5, 0.875],
-        water_ocean: [0.5, 0.5, 0.875],
-        water_areas: [0.5, 0.5, 0.875],
-        // buildings: [0.5, 0.5, 0.5],
-        // buildings: function () { return [0.7, 0.7, 0.7].map(function(c) { return c *= Math.random(); }); }, // random color
-        buildings: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-        // buildings: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // random grayscale
-        // buildings: function (f) { return [0.5, 0.5, 0.5].map(function(c) { return c += ((parseInt(f.id) || 0) % 16) * 2 / 256; }); }, // slight grayscale striping
-        default: [1.0, 0, 0]
-    };
-
     // Build triangles
     var triangles = [];
     var lines = [];
-    var layer, polygons, vertices;
+    var layer, style, polygons, vertices;
     var count = 0, z, color;
     var height, wall_vertices;
     var t, p, w;
 
     for (var layer_num=0; layer_num < this.layers.length; layer_num++) {
         layer = this.layers[layer_num];
+        style = this.styles[layer.name];
+
         if (tile.layers[layer.name] != null) {
             tile.layers[layer.name].features.forEach(function(feature) {
                 if (feature.geometry.type == 'Polygon') {
@@ -163,7 +151,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 z = (feature.properties && feature.properties.sort_key) || layer_num;
                 z /= 100;
 
-                color = colors[layer.name] || colors.default;
+                color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
                 if (typeof color == 'function') { // dynamic/function-based color
                     color = color(feature);
                 }

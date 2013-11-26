@@ -37,7 +37,7 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 
     canvas.width = Geo.tile_size.x;
     canvas.height = Geo.tile_size.y;
-    canvas.style.background = 'rgb(200, 200, 200)';
+    canvas.style.background = 'rgb(' + this.styles.default.join(',') + ')';
 
     this.renderTile(tile, context);
     tileDiv.appendChild(canvas);
@@ -276,7 +276,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
 
             // Draw visible geometry
             if (layer.visible != false) {
-                this.renderGeometry(feature.geometry, feature.properties, styles[layer.name], context);
+                this.renderGeometry(feature.geometry, feature.properties, this.styles[layer.name], context);
             }
 
             // Draw mask for interactivity
@@ -284,11 +284,11 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
                 selection_color = this.generateColor(selection.colors);
                 selection_color.properties = feature.properties;
                 selection_count++;
-                this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color }, size: styles[layer.name].size }, selection_context);
+                this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color }, size: this.styles[layer.name].size }, selection_context);
             }
             else {
                 // If this geometry isn't interactive, mask it out so geometry under it doesn't appear to pop through
-                this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] }, size: styles[layer.name].size }, selection_context);
+                this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] }, size: this.styles[layer.name].size }, selection_context);
             }
 
         }, this);

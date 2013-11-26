@@ -1,7 +1,8 @@
-function VectorRenderer (leaflet, layers)
+function VectorRenderer (leaflet, layers, styles)
 {
     this.leaflet = leaflet;
     this.layers = layers;
+    this.styles = styles;
     this.tiles = {};
 }
 

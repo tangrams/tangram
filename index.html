@@ -55,91 +55,12 @@ body {
 <script src="geo.js"></script>
 <script src="gl.js"></script>
 <script src="layers.js"></script>
+<script src="styles.js"></script>
 <script src="vector_renderer.js"></script>
 <script src="canvas_renderer.js"></script>
 <script src="gl_renderer.js"></script>
 
 <script>
-
-// Makeshift style-sheet
-var styles = {
-    water: {
-        color: {
-            default: [25, 150, 220]
-        }
-    },
-    land_unlabeled: {
-        color: {
-            default: [32, 200, 125]
-        }
-    },
-    land_labeled: {
-        color: {
-            default: [2, 170, 95]
-        }
-        // border: {
-        //     color: {
-        //         default: [255, 255, 255]
-        //     },
-        //     size: {
-        //         default: 1
-        //     }
-        // }
-    },
-    buildings: {
-        color: {
-            default: [150, 150, 150]
-        },
-        border: {
-            color: {
-                default: [75, 75, 75]
-            },
-            size: {
-                default: 1
-            }
-        }
-    },
-    roads: {
-        color: {
-            'highway': [0, 0, 0],
-            'major_road': [100, 100, 100],
-            'minor_road': [150, 150, 150],
-            'path': [255, 255, 255],
-            'rail': [0, 0, 0]
-        },
-        size: {
-            'highway': 5,
-            'major_road': 2.5,
-            'minor_road': 1.5,
-            'path': 0.5,
-            'rail': 0.5
-        },
-        dash: {
-            // 'rail': [4, 2]
-        }
-    },
-    road_labels: {
-        size: {
-            default: 15
-        }
-    },
-    pois: {
-        color: {
-            default: [240, 0, 0]
-        },
-        size: {
-            default: 5
-        },
-        border: {
-            color: {
-                default: [240, 240, 240]
-            },
-            size: {
-                default: 2
-            }
-        }
-    }
-};
 
 // Resize map
 function resizeMap () {
@@ -199,10 +120,10 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
 var renderer;
 if (renderer_type == 'gl') {
-   renderer = new GLRenderer({ map: map, layer: layer }, gl_layers);
+   renderer = new GLRenderer({ map: map, layer: layer }, gl_layers, gl_styles);
 }
 else {
-    renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers);
+    renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers, canvas_styles);
 }
 
 // Start render loop
