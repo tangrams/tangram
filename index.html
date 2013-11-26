@@ -52,6 +52,7 @@ body {
 <!-- <script src="../libs/Leaflet/dist/leaflet.js"></script> -->
 <script src="lib/TileLayer.DivGrid.js"></script>
 <script src="lib/libtess.cat.js"></script>
+<script src="geo.js"></script>
 <script src="gl.js"></script>
 <script src="layers.js"></script>
 <script src="vector_renderer.js"></script>
@@ -140,99 +141,6 @@ var styles = {
     }
 };
 
-// Point
-function Point (x, y)
-{
-    return {
-        x: x,
-        y: y
-    };
-}
-
-Point.copy = function (p)
-{
-    if (p == null) {
-        return null;
-    }
-    return { x: p.x, y: p.y };
-};
-
-// Projection constants
-var tile_size = Point(256, 256);
-var half_circumference_meters = 20037508.34;
-var map_origin_meters = Point(-half_circumference_meters, half_circumference_meters);
-var min_zoom_meters_per_pixel = 156543.0339;
-var meters_per_pixel = [];
-var max_zoom = 20;
-for (var z=1; z <= max_zoom; z++) {
-    meters_per_pixel[z] = min_zoom_meters_per_pixel / Math.pow(2, z);
-}
-
-// Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
-function metersForTile (tile)
-{
-    return Point(
-        (tile.x * tile_size.x * meters_per_pixel[tile.z]) + map_origin_meters.x,
-        ((tile.y * tile_size.y * meters_per_pixel[tile.z]) * -1) + map_origin_meters.y
-    );
-}
-
-// Convert mercator meters to lat-lng
-function metersToLatLng (meters)
-{
-    var c = Point.copy(meters);
-
-    c.x /= half_circumference_meters;
-    c.y /= half_circumference_meters;
-
-    c.y = (2 * Math.atan(Math.exp(c.y * Math.PI)) - (Math.PI / 2)) / Math.PI;
-
-    c.x *= 180;
-    c.y *= 180;
-
-    return c;
-}
-
-// Convert lat-lng to mercator meters
-function latLngToMeters (latlng)
-{
-    var c = Point.copy(latlng);
-
-    // Latitude
-    c.y = Math.log(Math.tan((c.y + 90) * Math.PI / 360)) / (Math.PI / 180);
-    c.y = c.y * half_circumference_meters / 180;
-
-    // Longitude
-    c.x = c.x * half_circumference_meters / 180;
-
-    return c;
-}
-
-// Run a transform function on each cooordinate in a GeoJSON geometry
-function transformGeometry (geometry, transform)
-{
-    if (geometry.type == 'Point') {
-        return transform(geometry.coordinates);
-    }
-    else if (geometry.type == 'LineString' || geometry.type == 'MultiPoint') {
-        return geometry.coordinates.map(transform);
-    }
-    else if (geometry.type == 'Polygon' || geometry.type == 'MultiLineString') {
-        return geometry.coordinates.map(function (coordinates) {
-            return coordinates.map(transform);
-        });
-    }
-    else if (geometry.type == 'MultiPolygon') {
-        return geometry.coordinates.map(function (polygon) {
-            return polygon.map(function (coordinates) {
-                return coordinates.map(transform);
-            });
-        });
-    }
-    // TODO: support GeometryCollection
-    return {};
-}
-
 // Resize map
 function resizeMap () {
     document.getElementById('map').style.width = window.innerWidth + 'px';
@@ -276,7 +184,7 @@ map.on('moveend', function () {
 
 var layer = L.tileLayer.divGrid({
     async: true,
-    maxZoom: max_zoom,
+    maxZoom: Geo.max_zoom,
     attribution: '<a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false,

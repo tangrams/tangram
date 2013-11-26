@@ -35,8 +35,8 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
-    canvas.width = tile_size.x;
-    canvas.height = tile_size.y;
+    canvas.width = Geo.tile_size.x;
+    canvas.height = Geo.tile_size.y;
     canvas.style.background = 'rgb(200, 200, 200)';
 
     this.renderTile(tile, context);
@@ -53,10 +53,10 @@ CanvasRenderer.prototype.render = function CanvasRendererRender ()
 // returns a copy of geometry.coordinates transformed into Points
 CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels (geometry, min, max)
 {
-    return transformGeometry(geometry, function (coordinates) {
+    return Geo.transformGeometry(geometry, function (coordinates) {
         return Point(
-            Math.round((coordinates[0] - min.x) * tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
-            Math.round((coordinates[1] - min.y) * tile_size.y / (max.y - min.y))
+            Math.round((coordinates[0] - min.x) * Geo.tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
+            Math.round((coordinates[1] - min.y) * Geo.tile_size.y / (max.y - min.y))
         );
     });
 };
@@ -261,8 +261,8 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
     var selection_canvas = document.createElement('canvas');
-    selection_canvas.width = tile_size.x;
-    selection_canvas.height = tile_size.y;
+    selection_canvas.width = Geo.tile_size.x;
+    selection_canvas.height = Geo.tile_size.y;
     var selection_context = selection_canvas.getContext('2d');
     var selection_color;
     var selection_count = 0;
@@ -304,7 +304,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         // TODO: fire events on selection to enable custom behavior
         context.canvas.onmousemove = function (event) {
             var hit = { x: event.offsetX, y: event.offsetY }; // layerX/Y
-            var off = hit.y * tile_size.x + hit.x;
+            var off = hit.y * Geo.tile_size.x + hit.x;
             var color = selection.pixels[off];
             var feature = selection.colors[color];
             if (feature != null) {

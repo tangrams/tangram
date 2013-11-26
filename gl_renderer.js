@@ -381,7 +381,7 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
 
     var center = this.leaflet.map.getCenter(); // TODO: move map center tracking/projection to central class?
-    center = latLngToMeters(Point(center.lng, center.lat));
+    center = Geo.latLngToMeters(Point(center.lng, center.lat));
     gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log

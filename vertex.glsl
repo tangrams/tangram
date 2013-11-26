@@ -16,7 +16,7 @@ const float ambient = 0.45;
 // Project lat-lng to mercator
 // vec2 latLngToMeters (vec2 coordinate) {
 //     const float pi = 3.1415926;
-//     const float half_circumference_meters = 20037508.34;
+//     const float half_circumference_meters = 20037508.342789244;
 //     vec2 projected;
 
 //     // Latitude
@@ -34,7 +34,7 @@ void main() {
     vec3 vnormal = normal;
 
     // Scale mercator meters to viewport
-    const float min_zoom_meters_per_pixel = 156543.0339;
+    const float min_zoom_meters_per_pixel = 20037508.342789244 * 2.0 / 256.0;
     float meters_per_pixel = min_zoom_meters_per_pixel / pow(2.0, map_zoom);
     vec2 meter_zoom = vec2(resolution.x / 2.0 * meters_per_pixel, resolution.y / 2.0 * meters_per_pixel);
 

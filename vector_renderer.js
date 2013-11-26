@@ -50,14 +50,14 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         timer = +new Date();
         for (var t in tile.layers) {
             tile.layers[t].features.forEach(function (feature) {
-                feature.geometry.coordinates = transformGeometry(feature.geometry, function (coordinates) {
-                    var m = latLngToMeters(Point(coordinates[0], coordinates[1]));
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                    var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
                     return [m.x, m.y];
                 });
             });
         }
-        tile.min = metersForTile(tile.coords);
-        tile.max = metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
+        tile.min = Geo.metersForTile(tile.coords);
+        tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
         tile.timers.projection = +new Date() - timer; // mercator projection
 
         // Render
