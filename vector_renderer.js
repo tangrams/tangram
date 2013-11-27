@@ -43,7 +43,8 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // Extract desired layers from full GeoJSON response
         var layers = {};
         for (var t=0; t < renderer.layers.length; t++) {
-            layers[renderer.layers[t].name]= renderer.layers[t].data(tile.layers);
+            renderer.layers[t].number = t;
+            layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers);
         }
         tile.layers = layers;
 

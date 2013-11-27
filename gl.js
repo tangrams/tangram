@@ -243,6 +243,7 @@ GLTriangles.prototype = Object.create(GLGeometry.prototype);
 function GLTriangles (gl, program, vertex_data)
 {
     GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    this.geometry_count = this.vertex_count / 3;
 
     this.gl.useProgram(this.program);
     this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
@@ -272,6 +273,7 @@ function GLLines (gl, program, vertex_data, options)
     GLTriangles.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
     this.draw_mode = this.gl.LINES;
     this.line_width = options.line_width || 2;
+    this.geometry_count = this.vertex_count / 2;
 }
 
 GLLines.prototype._render = function ()
