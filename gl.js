@@ -271,7 +271,7 @@ function GLLines (gl, program, vertex_data, options)
     options = options || {};
     GLTriangles.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
     this.draw_mode = this.gl.LINES;
-    this.line_width = options.line_width || 3.0;
+    this.line_width = options.line_width || 2;
 }
 
 GLLines.prototype._render = function ()

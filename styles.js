@@ -5,14 +5,24 @@ var gl_styles = {
             default: [0.5, 0.5, 0.875]
         }
     },
+    land: {
+        color: {
+            default: [0.5, 0.875, 0.5]
+        }
+    },
     water_areas: {
         color: {
             default: [0.5, 0.5, 0.875]
         }
     },
-    land: {
+    roads: {
         color: {
-            default: [0.5, 0.875, 0.5]
+            default: [0.4, 0.4, 0.4],
+            'highway': [1.0, 1.0, 1.0],
+            'major_road': [0.6, 0.6, 0.6],
+            // 'minor_road': [1.0, 0, 0],
+            'path': [0.8, 0.8, 0.8],
+            'rail': [0.5, 0.0, 0.0]
         }
     },
     buildings: {

@@ -25,7 +25,7 @@ Geo.map_origin_meters = Point(-Geo.half_circumference_meters, Geo.half_circumfer
 Geo.min_zoom_meters_per_pixel = Geo.half_circumference_meters * 2 / Geo.tile_size.x; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
 Geo.max_zoom = 20;
-for (var z=1; z <= Geo.max_zoom; z++) {
+for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
 }
 
