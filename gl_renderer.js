@@ -123,7 +123,7 @@ GLRenderer.aboutEqual = function (a, b, tolerance)
     return (Math.abs(a - b) < tolerance);
 };
 
-GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, tile)
+GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data)
 {
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
@@ -135,11 +135,11 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
         color = color(feature);
     }
 
-    var triangles = [];
     var height, wall_vertices;
-    var t, p, w;
 
-    polygons.forEach(function (polygon) {
+    var num_polygons = polygons.length;
+    for (var p=0; p < num_polygons; p++) {
+        var polygon = polygons[p];
 
         // Polygon outlines & edge detection - experimental
         // for (t=0; t < polygon.length; t++) {
@@ -196,8 +196,8 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
         if (layer.name == 'buildings' && tile.coords.z >= 15) {
             height = (feature.properties && feature.properties.height) || 20;
 
-            for (t=0; t < vertices.length; t++) {
-                triangles.push(
+            for (var t=0; t < vertices.length; t++) {
+                vertex_data.push(
                     vertices[t][0],
                     vertices[t][1],
                     z + height,
@@ -207,30 +207,32 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
             }
             // count += vertices.length;
 
-            for (p=0; p < polygon.length; p++) {
-                for (w=0; w < polygon[p].length - 1; w++) {
+            for (var q=0; q < polygon.length; q++) {
+                var polygon_countour = polygon[q];
+
+                for (var w=0; w < polygon_countour.length - 1; w++) {
                     wall_vertices = [];
 
                     // Two triangles for the quad formed by each vertex pair, going from ground to building height
                     wall_vertices.push(
                         // Triangle
-                        [polygon[p][w+1][0], polygon[p][w+1][1], z + height],
-                        [polygon[p][w+1][0], polygon[p][w+1][1], z],
-                        [polygon[p][w][0], polygon[p][w][1], z],
+                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z + height],
+                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z],
+                        [polygon_countour[w][0], polygon_countour[w][1], z],
                         // Triangle
-                        [polygon[p][w][0], polygon[p][w][1], z],
-                        [polygon[p][w][0], polygon[p][w][1], z + height],
-                        [polygon[p][w+1][0], polygon[p][w+1][1], z + height]
+                        [polygon_countour[w][0], polygon_countour[w][1], z],
+                        [polygon_countour[w][0], polygon_countour[w][1], z + height],
+                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z + height]
                     );
 
                     // Calc the normal of the wall from up vector and one segment of the wall triangles
                     var normal = Vector.cross(
                         [0, 0, 1],
-                        Vector.normalize([polygon[p][w+1][0] - polygon[p][w][0], polygon[p][w+1][1] - polygon[p][w][1], 0])
+                        Vector.normalize([polygon_countour[w+1][0] - polygon_countour[w][0], polygon_countour[w+1][1] - polygon_countour[w][1], 0])
                     );
 
-                    for (t=0; t < wall_vertices.length; t++) {
-                        triangles.push(
+                    for (var t=0; t < wall_vertices.length; t++) {
+                        vertex_data.push(
                             wall_vertices[t][0],
                             wall_vertices[t][1],
                             wall_vertices[t][2],
@@ -244,8 +246,8 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
         }
         // Regular polygon
         else {
-            for (t=0; t < vertices.length; t++) {
-                triangles.push(
+            for (var t=0; t < vertices.length; t++) {
+                vertex_data.push(
                     vertices[t][0],
                     vertices[t][1],
                     z,
@@ -255,12 +257,12 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
             }
             // count += vertices.length;
         }
-    });
+    }
 
-    return triangles;
+    return vertex_data;
 };
 
-GLRenderer.prototype.buildLines = function (lines, feature, layer, style, tile)
+GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data)
 {
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
@@ -272,15 +274,16 @@ GLRenderer.prototype.buildLines = function (lines, feature, layer, style, tile)
         color = color(feature);
     }
 
-    var segments = [];
+    var num_lines = lines.length;
+    for (var ln=0; ln < num_lines; ln++) {
+        var line = lines[ln];
 
-    lines.forEach(function (line) {
         for (var p=0; p < line.length - 1; p++) {
             // Point A to B
             var pa = line[p];
             var pb = line[p+1];
 
-            segments.push(
+            vertex_data.push(
                 // Point A
                 pa[0],
                 pa[1],
@@ -295,9 +298,9 @@ GLRenderer.prototype.buildLines = function (lines, feature, layer, style, tile)
                 color[0], color[1], color[2]
             );
         }
-    });
+    };
 
-    return segments;
+    return vertex_data;
 }
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
@@ -313,20 +316,23 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         style = this.styles[layer.name] || {};
 
         if (tile.layers[layer.name] != null) {
-            tile.layers[layer.name].features.forEach(function(feature) {
+            var num_features = tile.layers[layer.name].features.length;
+            for (var f=0; f < num_features; f++) {
+                var feature = tile.layers[layer.name].features[f];
+
                 if (feature.geometry.type == 'Polygon') {
-                    triangles = triangles.concat(renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile));
+                    renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, triangles);
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
-                    triangles = triangles.concat(renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile));
+                    renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, triangles);
                 }
                 else if (feature.geometry.type == 'LineString') {
-                    lines = lines.concat(renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile));
+                    renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
                 }
                 else if (feature.geometry.type == 'MultiLineString') {
-                    lines = lines.concat(renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile));
+                    renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
                 }
-            });
+            }
         }
     }
 

@@ -51,12 +51,14 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // Mercator projection for geometry and bounds
         timer = +new Date();
         for (var t in tile.layers) {
-            tile.layers[t].features.forEach(function (feature) {
+            var num_features = tile.layers[t].features.length;
+            for (var f=0; f < num_features; f++) {
+                var feature = tile.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
                     var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
                     return [m.x, m.y];
                 });
-            });
+            };
         }
         tile.min = Geo.metersForTile(tile.coords);
         tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
