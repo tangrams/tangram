@@ -48,8 +48,8 @@ void main() {
     vposition.xy /= meter_zoom;
 
     // Perspective-style projections
-    vposition.x += vposition.z * vposition.x / meter_zoom.x; // perspective from center of screen
-    vposition.y += vposition.z * vposition.y / meter_zoom.y;
+    vec2 perspective_offset = vec2(-0.25, -0.25);
+    vposition.xy += vposition.z * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
 
     // Rotation test
     // float theta = 0;
@@ -66,7 +66,8 @@ void main() {
     fcolor = color;
 
     // Flat shading between surface normal and light
-    light = normalize(vec3(vposition.x, vposition.y, 0) - vec3(0.1, 0.1, 0.35)); // point light to vertex
+    light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
+    light = normalize(vec3(vposition.x, vposition.y, 0) - light); // light angle from light point to vertex
     fcolor *= dot(vnormal, light * -1.0) + ambient;
     fcolor = min(fcolor, 1.0);
 
