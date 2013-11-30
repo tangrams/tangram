@@ -116,7 +116,8 @@ var canvas_layers = [
     },
     {
         name: 'buildings',
-        data: function (json) { return json['buildings']; }
+        data: function (json) { return json['buildings']; },
+        selection: true
     },
     {
         name: 'pois',
