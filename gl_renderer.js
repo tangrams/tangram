@@ -193,8 +193,8 @@ GLRenderer.prototype.buildPolygons = function (polygons, feature, layer, style, 
 
         // 3D buildings
         // TODO: try moving this into a style-specific post-processing/filter function?
-        if (layer.name == 'buildings' && tile.coords.z >= 16) {
-            height = 20; // TODO: add this to vector tiles
+        if (layer.name == 'buildings' && tile.coords.z >= 15) {
+            height = (feature.properties && feature.properties.height) || 20;
 
             for (t=0; t < vertices.length; t++) {
                 triangles.push(
