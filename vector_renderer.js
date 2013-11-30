@@ -44,7 +44,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         var layers = {};
         for (var t=0; t < renderer.layers.length; t++) {
             renderer.layers[t].number = t;
-            layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers);
+            layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
         }
         tile.layers = layers;
 
