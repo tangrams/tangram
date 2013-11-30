@@ -11,7 +11,11 @@ var gl_layers = [
        }
     },
     {
-       name: 'land',
+       name: 'land_areas',
+       data: function (json) { return json['land-areas']; }
+    },
+    {
+       name: 'land_usages',
        data: function (json) { return json['land-usages']; }
     },
     {

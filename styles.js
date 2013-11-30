@@ -5,7 +5,12 @@ var gl_styles = {
             default: [0.5, 0.5, 0.875]
         }
     },
-    land: {
+    land_areas: {
+        color: {
+            default: [0.175, 0.175, 0.175]
+        }
+    },
+    land_usages: {
         color: {
             default: [0.5, 0.875, 0.5]
         }
