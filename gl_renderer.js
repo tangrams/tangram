@@ -76,7 +76,7 @@ GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
             }
         }
         renderer.removeTilesOutsideZoomRange(below, above);
-        renderer.map_last_zoom = renderer.leaflet.map.getZoom();
+        renderer.map_last_zoom = map_zoom;
     });
 
     this.leaflet.layer.on('tileunload', function (event) {
@@ -369,11 +369,17 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 {
     console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
+    var remove_tiles = [];
     for (var t in this.tiles) {
-        if (this.tiles[t].coords.z < below || this.tiles[t].coords.z > above) {
-            console.log("removed " + this.tiles[t].key + " (outside range [" + below + ", " + above + "])");
-            this.removeTile(t);
+        var tile = this.tiles[t];
+        if (tile.coords.z < below || tile.coords.z > above) {
+            remove_tiles.push(t);
         }
+    }
+    for (var r=0; r < remove_tiles.length; r++) {
+        var key = remove_tiles[r];
+        console.log("removed " + key + " (outside range [" + below + ", " + above + "])");
+        this.removeTile(key);
     }
 };
 
@@ -446,16 +452,17 @@ GLRenderer.prototype.render = function GLRendererRender ()
     // Render tile GL geometries
     var count = 0;
     for (var t in this.tiles) {
-        if (this.tiles[t].coords.z == (this.zoom << 0)) {
-            if (this.tiles[t].gl_geometry != null) {
-                this.tiles[t].gl_geometry.forEach(function (gl_geometry) {
+        var tile = this.tiles[t];
+        if (tile.loaded == true && tile.coords.z == (this.zoom << 0)) {
+            if (tile.gl_geometry != null) {
+                tile.gl_geometry.forEach(function (gl_geometry) {
                     gl_geometry.render();
                     count += gl_geometry.geometry_count;
                 });
             }
         }
         // else {
-        //     console.log("didn't render " + this.tiles[t].key);
+        //     console.log("didn't render " + tile.key);
         // }
     }
 

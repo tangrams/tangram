@@ -15,19 +15,28 @@ VectorRenderer.prototype.loadTile = function (coords, div)
     // var tile_url = 'http://localhost:8080/all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json'; // local tilestache server
 
     var key = [coords.x, coords.y, coords.z].join('/');
-    var timer = +new Date();
     var req = new XMLHttpRequest();
     var renderer = this;
 
-    req.onload = function () {
-        renderer.removeTile(key);
+    this.removeTile(key);
 
-        var tile = renderer.tiles[key] = {};
+    var tile = this.tiles[key] = this.tiles[key] || {};
+    tile.key = key;
+    tile.coords = coords;
+    tile.xhr = req;
+    tile.timers = {};
+    tile.timers.network_start = +new Date();
+    tile.loading = true;
+    tile.loaded = false;
+
+    req.onload = function () {
+        var tile = renderer.tiles[key]; // = {};
+        if (tile == null) {
+            return;
+        }
+
         tile.layers = JSON.parse(req.response);
-        tile.key = key;
-        tile.coords = coords;
-        tile.timers = {};
-        tile.timers.network = +new Date() - timer; // network/JSON parsing
+        tile.timers.network = +new Date() - tile.timers.network_start; // network/JSON parsing
 
         div.setAttribute('data-tile-key', tile.key); // tile info for debugging
         div.style.width = '256px';
@@ -65,6 +74,9 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
         tile.timers.projection = +new Date() - timer; // mercator projection
 
+        tile.loading = false;
+        tile.loaded = true;
+
         // Render
         timer = +new Date();
         renderer.addTile(tile, div);
@@ -84,5 +96,15 @@ VectorRenderer.prototype.loadTile = function (coords, div)
 
 VectorRenderer.prototype.removeTile = function (key)
 {
+    console.log("tile unload for " + key);
+    var tile = renderer.tiles[key];
+    if (tile != null && tile.loading == true) {
+        console.log("cancel tile load for " + key);
+        tile.loaded = false;
+        tile.xhr.abort();
+        tile.xhr = null;
+        tile.loading = false;
+    }
+
     delete this.tiles[key];
 };
