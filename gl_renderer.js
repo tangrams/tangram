@@ -193,8 +193,9 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 
         // 3D buildings
         // TODO: try moving this into a style-specific post-processing/filter function?
-        if (layer.name == 'buildings' && tile.coords.z >= 15) {
-            height = (feature.properties && feature.properties.height) || 20;
+        height = (feature.properties && feature.properties.height) || 20;
+        if (layer.name == 'buildings' &&
+            ((tile.coords.z >= 15 && height > 20) || tile.coords.z >= 16)) {
 
             for (var t=0; t < vertices.length; t++) {
                 vertex_data.push(
