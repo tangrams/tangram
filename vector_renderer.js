@@ -11,7 +11,8 @@ VectorRenderer.prototype.loadTile = function (coords, div)
     // Load tile
     var tile_url = 'http://tile.openstreetmap.us/vectiles-all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json';
     // var tile_url = 'http://api-vector-test.mapzen.com/vector/all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json';
-    // var tile_url = 'http://localhost:8080/vector/all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json';
+    // var tile_url = 'http://localhost:8080/vector/all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json'; // local mapzenuff vagrant server
+    // var tile_url = 'http://localhost:8080/all/' + coords.z + '/' + coords.x + '/' + coords.y + '.json'; // local tilestache server
 
     var key = [coords.x, coords.y, coords.z].join('/');
     var timer = +new Date();
