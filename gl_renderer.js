@@ -209,27 +209,27 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
             // count += vertices.length;
 
             for (var q=0; q < polygon.length; q++) {
-                var polygon_countour = polygon[q];
+                var contour = polygon[q];
 
-                for (var w=0; w < polygon_countour.length - 1; w++) {
+                for (var w=0; w < contour.length - 1; w++) {
                     wall_vertices = [];
 
                     // Two triangles for the quad formed by each vertex pair, going from ground to building height
                     wall_vertices.push(
                         // Triangle
-                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z + height],
-                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z],
-                        [polygon_countour[w][0], polygon_countour[w][1], z],
+                        [contour[w+1][0], contour[w+1][1], z + height],
+                        [contour[w+1][0], contour[w+1][1], z],
+                        [contour[w][0], contour[w][1], z],
                         // Triangle
-                        [polygon_countour[w][0], polygon_countour[w][1], z],
-                        [polygon_countour[w][0], polygon_countour[w][1], z + height],
-                        [polygon_countour[w+1][0], polygon_countour[w+1][1], z + height]
+                        [contour[w][0], contour[w][1], z],
+                        [contour[w][0], contour[w][1], z + height],
+                        [contour[w+1][0], contour[w+1][1], z + height]
                     );
 
                     // Calc the normal of the wall from up vector and one segment of the wall triangles
                     var normal = Vector.cross(
                         [0, 0, 1],
-                        Vector.normalize([polygon_countour[w+1][0] - polygon_countour[w][0], polygon_countour[w+1][1] - polygon_countour[w][1], 0])
+                        Vector.normalize([contour[w+1][0] - contour[w][0], contour[w+1][1] - contour[w][1], 0])
                     );
 
                     for (var t=0; t < wall_vertices.length; t++) {
