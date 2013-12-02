@@ -263,6 +263,61 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
     return vertex_data;
 };
 
+GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data)
+{
+    // To ensure layers draw in order, offset z coordinate by one centimeter per layer
+    // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
+    var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    z /= 100;
+
+    var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
+    if (typeof color == 'function') { // dynamic/function-based color
+        color = color(feature);
+    }
+
+    var width = 5; // TODO: get width from style
+
+    // Build triangles (vertex only)
+    var vertices = [];
+    var num_lines = lines.length;
+    for (var ln=0; ln < num_lines; ln++) {
+        var line = lines[ln];
+
+        for (var p=0; p < line.length - 1; p++) {
+            // Point A to B
+            var pa = line[p];
+            var pb = line[p+1];
+
+            var slope = Vector.normalize([(pb[1] - pa[1]) * -1, pb[0] - pa[0], z]);
+
+            var pa_outer = [pa[0] + slope[0] * width/2, pa[1] + slope[1] * width/2, z];
+            var pa_inner = [pa[0] - slope[0] * width/2, pa[1] - slope[1] * width/2, z];
+
+            var pb_outer = [pb[0] + slope[0] * width/2, pb[1] + slope[1] * width/2, z];
+            var pb_inner = [pb[0] - slope[0] * width/2, pb[1] - slope[1] * width/2, z];
+
+            vertices.push(
+                // pa_inner, pa_outer, pb_inner,
+                // pb_inner, pa_outer, pb_outer
+                pb_inner, pb_outer, pa_inner,
+                pa_inner, pb_outer, pa_outer
+            );
+        }
+    };
+
+    // Add normals and colors
+    for (var v=0; v < vertices.length; v++) {
+        var vertex = vertices[v];
+        vertex_data.push(
+            vertex[0], vertex[1], vertex[2],
+            0, 0, 1, // flat surfaces point straight up
+            color[0], color[1], color[2]
+        );
+    }
+
+    return vertex_data;
+};
+
 GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data)
 {
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
@@ -302,7 +357,7 @@ GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature,
     };
 
     return vertex_data;
-}
+};
 
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
@@ -328,10 +383,12 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, triangles);
                 }
                 else if (feature.geometry.type == 'LineString') {
-                    renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
+                    // renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
+                    renderer.buildPolylines([feature.geometry.coordinates], feature, layer, style, tile, triangles);
                 }
                 else if (feature.geometry.type == 'MultiLineString') {
-                    renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
+                    // renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
+                    renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, triangles);
                 }
             }
         }
@@ -340,7 +397,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // Create GL geometry objects
     this.tiles[tile.key].gl_geometry = [];
     this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
-    this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 5 / Geo.meters_per_pixel[Math.floor(this.zoom)] }));
+    // this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 5 / Geo.meters_per_pixel[Math.floor(this.zoom)] }));
     // console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection - experimental/future
