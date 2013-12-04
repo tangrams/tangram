@@ -282,12 +282,37 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     var num_lines = lines.length;
     for (var ln=0; ln < num_lines; ln++) {
         var line = lines[ln];
+        // Multiple line segments
+        if (line.length > 2) {
+            // Find midpoints
+            var mid = [];
+            mid.push(line[0]); // use line start instead of first midpoint
+            if (line.length > 3) {
+                for (var p=1; p < line.length - 2; p++) {
+                    var pa = line[p];
+                    var pb = line[p+1];
+                    mid.push([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2]);
+                }
+            }
+            mid.push(line[line.length-1]); // use line end instead of last midpoint
 
-        for (var p=0; p < line.length - 1; p++) {
-            // Point A to B
-            var pa = line[p];
-            var pb = line[p+1];
+            // Make anchors (3-point segments connecting line joints and midpoints)
+            var anchors = [];
+            for (var p=0; p < mid.length - 1; p++)  {
+                anchors.push([mid[p], line[p+1], mid[p+1]]);
+            }
 
+            for (var p=0; p < anchors.length; p++) {
+                buildSegment(anchors[p][0], anchors[p][1]);
+                buildSegment(anchors[p][1], anchors[p][2]);
+            }
+        }
+        // Single line segment
+        else if (line.length == 2) {
+            buildSegment(line[0], line[1]);
+        }
+
+        function buildSegment (pa, pb) {
             var slope = Vector.normalize([(pb[1] - pa[1]) * -1, pb[0] - pa[0], z]);
 
             var pa_outer = [pa[0] + slope[0] * width/2, pa[1] + slope[1] * width/2, z];
@@ -297,8 +322,6 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
             var pb_inner = [pb[0] - slope[0] * width/2, pb[1] - slope[1] * width/2, z];
 
             vertices.push(
-                // pa_inner, pa_outer, pb_inner,
-                // pb_inner, pa_outer, pb_outer
                 pb_inner, pb_outer, pa_inner,
                 pa_inner, pb_outer, pa_outer
             );
