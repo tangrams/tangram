@@ -28,6 +28,9 @@ var gl_styles = {
             // 'minor_road': [1.0, 0, 0],
             'path': [0.8, 0.8, 0.8],
             'rail': [0.5, 0.0, 0.0]
+        },
+        width: {
+            default: function (f, t) { return Math.log(t.coords.z) * 3; }
         }
     },
     buildings: {

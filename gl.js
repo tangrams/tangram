@@ -324,6 +324,19 @@ GLLines.prototype._render = function ()
 
 var Vector = {};
 
+// Vector length squared
+Vector.lengthSq = function (v)
+{
+    return (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+};
+
+// Vector length
+Vector.length = function (v)
+{
+    var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    return Math.sqrt(d);
+};
+
 // Normalize a vector
 Vector.normalize = function (v)
 {

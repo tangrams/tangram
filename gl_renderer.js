@@ -1,4 +1,5 @@
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
+GLRenderer.debug = false;
 
 function GLRenderer (leaflet, layers)
 {
@@ -206,7 +207,6 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
                     color[0], color[1], color[2]
                 );
             }
-            // count += vertices.length;
 
             for (var q=0; q < polygon.length; q++) {
                 var contour = polygon[q];
@@ -241,7 +241,6 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
                             color[0], color[1], color[2]
                         );
                     }
-                    // count += wall_vertices.length;
                 }
             }
         }
@@ -256,14 +255,14 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
                     color[0], color[1], color[2]
                 );
             }
-            // count += vertices.length;
         }
     }
 
     return vertex_data;
 };
 
-GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data)
+// Build tessellated triangles for a polyline
+GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines)
 {
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
@@ -271,19 +270,43 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     z /= 100;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
-    if (typeof color == 'function') { // dynamic/function-based color
+    if (typeof color == 'function') {
         color = color(feature);
     }
 
-    var width = 5; // TODO: get width from style
+    var width = (style.width && (style.width[feature.properties.kind] || style.width.default)) || 1;
+    if (typeof width == 'function') {
+        width = width(feature, tile);
+    }
 
-    // Build triangles (vertex only)
+    // Line center - debugging
+    // if (GLRenderer.debug) {
+    //     var num_lines = lines.length;
+    //     for (var ln=0; ln < num_lines; ln++) {
+    //         var line = lines[ln];
+
+    //         for (var p=0; p < line.length - 1; p++) {
+    //             // Point A to B
+    //             var pa = line[p];
+    //             var pb = line[p+1];
+
+    //             vertex_lines.push(
+    //                 pa[0], pa[1], z + 0.001,
+    //                 0, 0, 1, 1.0, 0, 0,
+    //                 pb[0], pb[1], z + 0.001,
+    //                 0, 0, 1, 1.0, 0, 0
+    //             );
+    //         }
+    //     };
+    // }
+
+    // Build triangles
     var vertices = [];
     var num_lines = lines.length;
     for (var ln=0; ln < num_lines; ln++) {
         var line = lines[ln];
         // Multiple line segments
-        if (line.length > 2) {
+        if (line.length > 3) {
             // Find midpoints
             var mid = [];
             mid.push(line[0]); // use line start instead of first midpoint
@@ -303,28 +326,18 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
             }
 
             for (var p=0; p < anchors.length; p++) {
-                buildSegment(anchors[p][0], anchors[p][1]);
-                buildSegment(anchors[p][1], anchors[p][2]);
+                buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
+                // buildSegment(anchors[p][0], anchors[p][1]); // use these to draw extruded segments w/o join, for debugging
+                // buildSegment(anchors[p][1], anchors[p][2]);
             }
         }
-        // Single line segment
+        // Single 3-point anchor
+        else if (line.length == 3) {
+            buildAnchor(line[0], line[1], line[2]);
+        }
+        // Single 2-point segment
         else if (line.length == 2) {
             buildSegment(line[0], line[1]);
-        }
-
-        function buildSegment (pa, pb) {
-            var slope = Vector.normalize([(pb[1] - pa[1]) * -1, pb[0] - pa[0], z]);
-
-            var pa_outer = [pa[0] + slope[0] * width/2, pa[1] + slope[1] * width/2, z];
-            var pa_inner = [pa[0] - slope[0] * width/2, pa[1] - slope[1] * width/2, z];
-
-            var pb_outer = [pb[0] + slope[0] * width/2, pb[1] + slope[1] * width/2, z];
-            var pb_inner = [pb[0] - slope[0] * width/2, pb[1] - slope[1] * width/2, z];
-
-            vertices.push(
-                pb_inner, pb_outer, pa_inner,
-                pa_inner, pb_outer, pa_outer
-            );
         }
     };
 
@@ -332,15 +345,173 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     for (var v=0; v < vertices.length; v++) {
         var vertex = vertices[v];
         vertex_data.push(
-            vertex[0], vertex[1], vertex[2],
+            vertex[0], vertex[1], z,
             0, 0, 1, // flat surfaces point straight up
             color[0], color[1], color[2]
         );
     }
 
+    // Build triangles for a single line segment, extruded by the provided width
+    function buildSegment (pa, pb) {
+        var slope = Vector.normalize([(pb[1] - pa[1]) * -1, pb[0] - pa[0], 0]);
+
+        var pa_outer = [pa[0] + slope[0] * width/2, pa[1] + slope[1] * width/2, 0];
+        var pa_inner = [pa[0] - slope[0] * width/2, pa[1] - slope[1] * width/2, 0];
+
+        var pb_outer = [pb[0] + slope[0] * width/2, pb[1] + slope[1] * width/2, 0];
+        var pb_inner = [pb[0] - slope[0] * width/2, pb[1] - slope[1] * width/2, 0];
+
+        vertices.push(
+            pb_inner, pb_outer, pa_inner,
+            pa_inner, pb_outer, pa_outer
+        );
+    }
+
+    // Build triangles for a 3-point 'anchor' shape, consisting of two line segments with a joint
+    // TODO: move these functions out of closures?
+    function buildAnchor (pa, joint, pb) {
+        // Inner and outer line segments for [pa, joint] and [joint, pb]
+        var pa_slope = Vector.normalize([(joint[1] - pa[1]) * -1, joint[0] - pa[0], 0]);
+        var pa_outer = [
+            [pa[0] + pa_slope[0] * width/2, pa[1] + pa_slope[1] * width/2, 0],
+            [joint[0] + pa_slope[0] * width/2, joint[1] + pa_slope[1] * width/2, 0]
+        ];
+        var pa_inner = [
+            [pa[0] - pa_slope[0] * width/2, pa[1] - pa_slope[1] * width/2, 0],
+            [joint[0] - pa_slope[0] * width/2, joint[1] - pa_slope[1] * width/2, 0]
+        ];
+
+        var pb_slope = Vector.normalize([(pb[1] - joint[1]) * -1, pb[0] - joint[0], 0]);
+        var pb_outer = [
+            [joint[0] + pb_slope[0] * width/2, joint[1] + pb_slope[1] * width/2, 0],
+            [pb[0] + pb_slope[0] * width/2, pb[1] + pb_slope[1] * width/2, 0]
+        ];
+        var pb_inner = [
+            [joint[0] - pb_slope[0] * width/2, joint[1] - pb_slope[1] * width/2, 0],
+            [pb[0] - pb_slope[0] * width/2, pb[1] - pb_slope[1] * width/2, 0]
+        ];
+
+        // Miter join
+        // Solve for the intersection between the two outer line segments
+        // a1x + b1y = c1, a2x + b2y = c2
+        // TODO: check coefficient variable names
+        var a1 = pa_outer[0][1] - pa_outer[1][1]; // y1 - y2
+        var a2 = pb_outer[0][1] - pb_outer[1][1]; // y3 - y4
+        var b1 = pa_outer[0][0] - pa_outer[1][0]; // x1 - x2
+        var b2 = pb_outer[0][0] - pb_outer[1][0]; // x3 - x4
+        var c1 = (pa_outer[0][0] * pa_outer[1][1]) - (pa_outer[0][1] * pa_outer[1][0]); // x1*y2 - y1*x2
+        var c2 = (pb_outer[0][0] * pb_outer[1][1]) - (pb_outer[0][1] * pb_outer[1][0]); // x3*y4 - y3*x4
+        var denom = (b1 * a2) - (a1 * b2);
+
+        // Find the intersection point
+        var intersect_outer;
+        var line_debug = null;
+        if (denom != 0) {
+            intersect_outer = [
+                ((c1 * b2) - (b1 * c2)) / denom,
+                ((c1 * a2) - (a1 * c2)) / denom
+            ];
+
+            // Cap the intersection point to a reasonable distance (as join angle becomes sharper, miter joint distance would approach infinity)
+            var len_sq = Vector.lengthSq([intersect_outer[0] - joint[0], intersect_outer[1] - joint[1], 0]);
+            var miter_len_max = 2; // multiplier on line width for max distance miter join can be from joint
+            if (len_sq > (width * width * miter_len_max * miter_len_max)) {
+                line_debug = 'distance';
+                intersect_outer = Vector.normalize([intersect_outer[0] - joint[0], intersect_outer[1] - joint[1], 0]);
+                intersect_outer = [
+                    joint[0] + intersect_outer[0] * miter_len_max,
+                    joint[1] + intersect_outer[1] * miter_len_max
+                ]
+            }
+        }
+        else {
+            // Line segments are parallel, use the first outer line segment as join instead
+            line_debug = 'parallel';
+            intersect_outer = pa_outer[1];
+        }
+
+        var intersect_inner = [
+            (joint[0] - intersect_outer[0]) + joint[0],
+            (joint[1] - intersect_outer[1]) + joint[1]
+        ];
+
+        vertices.push(
+            intersect_inner, intersect_outer, pa_inner[0],
+            pa_inner[0], intersect_outer, pa_outer[0],
+
+            pb_inner[1], pb_outer[1], intersect_inner,
+            intersect_inner, pb_outer[1], intersect_outer
+        );
+
+        // Extruded segments, no intersection/joint - debugging
+        // vertices.push(
+        //     pa_inner[1], intersect_outer, pa_inner[0],
+        //     pa_inner[0], intersect_outer, pa_outer[0],
+
+        //     pb_inner[1], pb_outer[1], pb_inner[0],
+        //     pb_inner[0], pb_outer[1], intersect_outer
+        // );
+
+        // Line outer edge - debugging
+        // vertex_lines.push(
+        //     pa_outer[0][0], pa_outer[0][1], z + 0.001,
+        //     0, 0, 1, 0, 1.0, 0,
+        //     pa_outer[1][0], pa_outer[1][1], z + 0.001,
+        //     0, 0, 1, 0, 1.0, 0,
+        //     pb_outer[0][0], pb_outer[0][1], z + 0.001,
+        //     0, 0, 1, 0, 1.0, 0,
+        //     pb_outer[1][0], pb_outer[1][1], z + 0.001,
+        //     0, 0, 1, 0, 1.0, 0
+        // );
+
+        if (GLRenderer.debug && line_debug) {
+            var dcolor;
+            if (line_debug == 'parallel') {
+                console.log("!!! lines are parallel !!!");
+                dcolor = [0, 1, 0];
+            }
+            else if (line_debug == 'distance') {
+                console.log("!!! miter intersection point exceeded allowed distance from joint !!!");
+                dcolor = [1, 0, 0];
+            }
+            console.log('OSM id: ' + feature.id); // TODO: if this function is moved out of a closure, this feature debug info won't be available
+            console.log([pa, joint, pb]);
+            console.log(feature);
+            vertex_lines.push(
+                pa[0], pa[1], z + 0.002,
+                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
+                joint[0], joint[1], z + 0.002,
+                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
+                joint[0], joint[1], z + 0.002,
+                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
+                pb[0], pb[1], z + 0.002,
+                0, 0, 1, dcolor[0], dcolor[1], dcolor[2]
+            );
+
+            var num_lines = lines.length;
+            for (var ln=0; ln < num_lines; ln++) {
+                var line2 = lines[ln];
+
+                for (var p=0; p < line2.length - 1; p++) {
+                    // Point A to B
+                    var pa = line2[p];
+                    var pb = line2[p+1];
+
+                    vertex_lines.push(
+                        pa[0], pa[1], z + 0.0005,
+                        0, 0, 1, 0, 0, 1.0,
+                        pb[0], pb[1], z + 0.0005,
+                        0, 0, 1, 0, 0, 1.0
+                    );
+                }
+            };
+        }
+    }
+
     return vertex_data;
 };
 
+// Build native GL lines for a polyline
 GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data)
 {
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
@@ -407,11 +578,11 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 }
                 else if (feature.geometry.type == 'LineString') {
                     // renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
-                    renderer.buildPolylines([feature.geometry.coordinates], feature, layer, style, tile, triangles);
+                    renderer.buildPolylines([feature.geometry.coordinates], feature, layer, style, tile, triangles, lines);
                 }
                 else if (feature.geometry.type == 'MultiLineString') {
                     // renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
-                    renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, triangles);
+                    renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, triangles, lines);
                 }
             }
         }
@@ -420,7 +591,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // Create GL geometry objects
     this.tiles[tile.key].gl_geometry = [];
     this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
-    // this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 5 / Geo.meters_per_pixel[Math.floor(this.zoom)] }));
+    this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
     // console.log("created " + count/3 + " triangles for tile " + tile.key);
 
     // Selection - experimental/future
