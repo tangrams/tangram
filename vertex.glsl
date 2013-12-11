@@ -47,9 +47,17 @@ void main() {
 
     vposition.xy /= meter_zoom;
 
+    // Flat shading between surface normal and light
+    fcolor = color;
+    light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
+    light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
+    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z / meter_zoom.x, 0.0, 0.25);
+    fcolor = min(fcolor, 1.0);
+
     // Perspective-style projections
     vec2 perspective_offset = vec2(-0.25, -0.25);
-    vposition.xy += vposition.z * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
+    vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
+    vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
 
     // Rotation test
     // float theta = 0;
@@ -62,14 +70,6 @@ void main() {
     // vposition.y *= abs(sin(vposition.x)); // hourglass effect
 
     vposition.z = (-vposition.z + 32768.0) / 65536.0; // reverse and scale to 0-1 for GL depth buffer
-
-    fcolor = color;
-
-    // Flat shading between surface normal and light
-    light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
-    light = normalize(vec3(vposition.x, vposition.y, 0) - light); // light angle from light point to vertex
-    fcolor *= dot(vnormal, light * -1.0) + ambient;
-    fcolor = min(fcolor, 1.0);
 
     gl_Position = vec4(vposition, 1.0);
 }
