@@ -33,7 +33,6 @@ function GLRenderer (leaflet, layers)
 GLRenderer.prototype.init = function GLRendererInit ()
 {
     this.gl = GL.getContext();
-    // this.background = new GLBackground(this.gl, this.program); // TODO: passthrough vertex shader needed for background (no map translation)
     this.last_render_count = null;
 
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
@@ -697,8 +696,6 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
-
-    // this.background.render();
 
     // Render tile GL geometries
     var count = 0;

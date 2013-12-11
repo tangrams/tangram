@@ -282,43 +282,6 @@ GLLines.prototype._render = function ()
     GLTriangles.prototype._render.call(this);
 };
 
-// Draws a background via 2 triangles covering the whole viewport
-// function GLBackground (gl, program)
-// {
-//     this.gl = gl;
-//     this.program = program;
-//     this.gl.useProgram(this.program);
-
-//     // Create vertex buffer (2 triangles covering whole viewport)
-//     this.buffer = this.gl.createBuffer();
-//     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-//     this.gl.bufferData(this.gl.ARRAY_BUFFER,
-//         new Float32Array([
-//             -1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-//              1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-//             -1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
-//              1.0, -1.0, 0.0, 1.0, 0.0, 0.0,
-//              1.0,  1.0, 0.0, 1.0, 0.0, 0.0,
-//             -1.0,  1.0, 0.0, 1.0, 0.0, 0.0
-//         ]),
-//         this.gl.STATIC_DRAW
-//     );
-//     this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-//     this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
-// }
-
-// GLBackground.prototype.render = function ()
-// {
-//     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-
-//     this.gl.enableVertexAttribArray(this.vertex_position);
-//     this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
-
-//     this.gl.enableVertexAttribArray(this.vertex_color);
-//     this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
-
-//     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-// };
 
 /*** Vector functions - vectors provided as [x, y, z] arrays ***/
 
