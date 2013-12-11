@@ -135,6 +135,7 @@ GL.createShader = function GLcreateShader (gl, source, type)
 // };
 
 // Triangulation using libtess.js port of gluTesselator
+// https://github.com/brendankenny/libtess.js
 GL.tesselator = (function initTesselator() {
     // function called for each vertex of tesselator output
     function vertexCallback(data, polyVertArray) {

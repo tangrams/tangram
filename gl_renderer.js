@@ -33,10 +33,9 @@ function GLRenderer (leaflet, layers)
 GLRenderer.prototype.init = function GLRendererInit ()
 {
     this.gl = GL.getContext();
-    this.last_render_count = null;
-
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     // this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
+    this.last_render_count = null;
 
     this.zoom = this.leaflet.map.getZoom();
     this.zoom_step = 0.02; // for fractional zoom user adjustment
@@ -392,11 +391,13 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 
         // Miter join
         // Solve for the intersection between the two outer line segments
-        // a1x + b1y = c1, a2x + b2y = c2
-        // TODO: check coefficient variable names
+        // http://en.wikipedia.org/wiki/Line-line_intersection
+        // http://en.wikipedia.org/wiki/Cramer's_rule
+        // a1*x + b1*y = c1 for line (x1, y1) to (x2, y2)
+        // a2*x + b2*y = c2 for line (x3, y3) to (x4, y4)
         var a1 = pa_outer[0][1] - pa_outer[1][1]; // y1 - y2
-        var a2 = pb_outer[0][1] - pb_outer[1][1]; // y3 - y4
         var b1 = pa_outer[0][0] - pa_outer[1][0]; // x1 - x2
+        var a2 = pb_outer[0][1] - pb_outer[1][1]; // y3 - y4
         var b2 = pb_outer[0][0] - pb_outer[1][0]; // x3 - x4
         var c1 = (pa_outer[0][0] * pa_outer[1][1]) - (pa_outer[0][1] * pa_outer[1][0]); // x1*y2 - y1*x2
         var c2 = (pb_outer[0][0] * pb_outer[1][1]) - (pb_outer[0][1] * pb_outer[1][0]); // x3*y4 - y3*x4
@@ -589,9 +590,14 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
     // Create GL geometry objects
     this.tiles[tile.key].gl_geometry = [];
-    this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
-    this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
-    // console.log("created " + count/3 + " triangles for tile " + tile.key);
+    if (triangles.length > 0) {
+        this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
+    }
+    if (lines.length > 0) {
+        this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+    }
+    this.tiles[tile.key].geometry_count = this.tiles[tile.key].gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
+    // console.log("created " + this.tiles[tile.key].geometry_count + " primitives for tile " + tile.key);
 
     // Selection - experimental/future
     // var gl_renderer = this;
@@ -690,7 +696,6 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
 
-    // gl.clearColor(200 / 255, 200 / 255, 200 / 255, 1.0);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
@@ -709,9 +714,6 @@ GLRenderer.prototype.render = function GLRendererRender ()
                 });
             }
         }
-        // else {
-        //     console.log("didn't render " + tile.key);
-        // }
     }
 
     if (count != this.last_render_count) {
