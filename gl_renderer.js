@@ -406,7 +406,7 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
         // Find the intersection point
         var intersect_outer;
         var line_debug = null;
-        if (denom != 0) {
+        if (denom > 0.01) {
             intersect_outer = [
                 ((c1 * b2) - (b1 * c2)) / denom,
                 ((c1 * a2) - (a1 * c2)) / denom
@@ -414,7 +414,7 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 
             // Cap the intersection point to a reasonable distance (as join angle becomes sharper, miter joint distance would approach infinity)
             var len_sq = Vector.lengthSq([intersect_outer[0] - joint[0], intersect_outer[1] - joint[1], 0]);
-            var miter_len_max = 2; // multiplier on line width for max distance miter join can be from joint
+            var miter_len_max = 3; // multiplier on line width for max distance miter join can be from joint
             if (len_sq > (width * width * miter_len_max * miter_len_max)) {
                 line_debug = 'distance';
                 intersect_outer = Vector.normalize([intersect_outer[0] - joint[0], intersect_outer[1] - joint[1], 0]);
