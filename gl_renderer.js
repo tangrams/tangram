@@ -406,7 +406,7 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
         // Find the intersection point
         var intersect_outer;
         var line_debug = null;
-        if (denom > 0.01) {
+        if (Math.abs(denom) > 0.01) {
             intersect_outer = [
                 ((c1 * b2) - (b1 * c2)) / denom,
                 ((c1 * a2) - (a1 * c2)) / denom
