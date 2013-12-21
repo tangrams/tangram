@@ -41,11 +41,13 @@ var gl_styles = {
             'major_road': [0.6, 0.6, 0.6],
             // 'minor_road': [1.0, 0, 0],
             'path': [0.8, 0.8, 0.8],
-            'rail': [0.5, 0.0, 0.0]
+            'rail': [0.5, 0.0, 0.0],
+            'debug': [1, 0, 0]
         },
         width: {
             // default: function (f, t) { return Style.width.pixels(5, f, t); }
-            default: function (f, t) { return Math.log(t.coords.z) * 3; }
+            default: function (f, t) { return Math.log(t.coords.z) * 3; },
+            'debug': 30
         }
     },
     buildings: {
