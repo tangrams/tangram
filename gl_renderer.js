@@ -603,12 +603,14 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // }
 
     // Build raw geometry arrays
+    tile.debug.features = 0;
     for (var ln=0; ln < this.layers.length; ln++) {
         layer = this.layers[ln];
         style = this.styles[layer.name] || {};
 
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
+            tile.debug.features += num_features;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[layer.name].features[f];
 
@@ -631,15 +633,17 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     }
 
     // Create GL geometry objects
-    this.tiles[tile.key].gl_geometry = [];
+    tile.gl_geometry = [];
     if (triangles.length > 0) {
-        this.tiles[tile.key].gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
+        tile.gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(triangles)));
     }
     if (lines.length > 0) {
-        this.tiles[tile.key].gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+        tile.gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
     }
-    this.tiles[tile.key].geometry_count = this.tiles[tile.key].gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
-    // console.log("created " + this.tiles[tile.key].geometry_count + " primitives for tile " + tile.key);
+    tile.geometry_count = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
+    tile.debug.geometries = tile.geometry_count;
+    tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
+    // console.log("created " + tile.geometry_count + " primitives for tile " + tile.key);
 
     // Selection - experimental/future
     // var gl_renderer = this;

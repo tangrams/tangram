@@ -24,8 +24,8 @@ VectorRenderer.prototype.loadTile = function (coords, div)
     tile.key = key;
     tile.coords = coords;
     tile.xhr = req;
-    tile.timers = {};
-    tile.timers.network = +new Date();
+    tile.debug = {};
+    tile.debug.network = +new Date();
     tile.loading = true;
     tile.loaded = false;
 
@@ -36,7 +36,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         }
 
         tile.layers = JSON.parse(req.response);
-        tile.timers.network = +new Date() - tile.timers.network; // network/JSON parsing
+        tile.debug.network = +new Date() - tile.debug.network; // network/JSON parsing
 
         div.setAttribute('data-tile-key', tile.key); // tile info for debugging
         div.style.width = '256px';
@@ -64,12 +64,12 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // Render
         var timer = +new Date();
         renderer.addTile(tile, div);
-        tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
+        tile.debug.rendering = +new Date() - timer; // rendering/geometry prep
 
         // Processing time
         console.log(
-            "timers for " + tile.key + ': [ ' + 
-            Object.keys(tile.timers).map(function (t) { return t + ': ' + tile.timers[t]; }).join(', ') + ' ]'
+            "debug for " + tile.key + ': [ ' + 
+            Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
         );
 
         renderer.leaflet.layer.tileDrawn(div);
@@ -119,6 +119,6 @@ VectorRenderer.prototype.projectTile = function (tile)
             });
         };
     }
-    tile.timers.projection = +new Date() - timer;
+    tile.debug.projection = +new Date() - timer;
     return tile;
 };
