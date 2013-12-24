@@ -25,7 +25,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
     tile.coords = coords;
     tile.xhr = req;
     tile.timers = {};
-    tile.timers.network_start = +new Date();
+    tile.timers.network = +new Date();
     tile.loading = true;
     tile.loaded = false;
 
@@ -36,7 +36,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         }
 
         tile.layers = JSON.parse(req.response);
-        tile.timers.network = +new Date() - tile.timers.network_start; // network/JSON parsing
+        tile.timers.network = +new Date() - tile.timers.network; // network/JSON parsing
 
         div.setAttribute('data-tile-key', tile.key); // tile info for debugging
         div.style.width = '256px';
@@ -51,41 +51,25 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // div.appendChild(debug_overlay);
 
         // Extract desired layers from full GeoJSON response
-        var layers = {};
-        for (var t=0; t < renderer.layers.length; t++) {
-            renderer.layers[t].number = t;
-            layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
-        }
-        tile.layers = layers;
+        renderer.processLayersForTile(tile);
 
         // Mercator projection for geometry and bounds
-        timer = +new Date();
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
-            for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
-                    var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
-                    return [m.x, m.y];
-                });
-            };
-        }
         tile.min = Geo.metersForTile(tile.coords);
         tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-        tile.timers.projection = +new Date() - timer; // mercator projection
+        renderer.projectTile(tile);
 
         tile.loading = false;
         tile.loaded = true;
 
         // Render
-        timer = +new Date();
+        var timer = +new Date();
         renderer.addTile(tile, div);
-
         tile.timers.rendering = +new Date() - timer; // rendering/geometry prep
-        console.log("timers for tile " + tile.key +
-            ": network: " + (tile.timers.network) +
-            ", projection: " + (tile.timers.projection) +
-            ", rendering: " + (tile.timers.rendering)
+
+        // Processing time
+        console.log(
+            "timers for " + tile.key + ': [ ' + 
+            Object.keys(tile.timers).map(function (t) { return t + ': ' + tile.timers[t]; }).join(', ') + ' ]'
         );
 
         renderer.leaflet.layer.tileDrawn(div);
@@ -107,4 +91,34 @@ VectorRenderer.prototype.removeTile = function (key)
     }
 
     delete this.tiles[key];
+};
+
+// Processes the tile response to create layers as defined by this renderer
+// Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
+VectorRenderer.prototype.processLayersForTile = function (tile)
+{
+    var layers = {};
+    for (var t=0; t < renderer.layers.length; t++) {
+        renderer.layers[t].number = t;
+        layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
+    }
+    tile.layers = layers;
+    return tile;
+};
+
+VectorRenderer.prototype.projectTile = function (tile)
+{
+    var timer = +new Date();
+    for (var t in tile.layers) {
+        var num_features = tile.layers[t].features.length;
+        for (var f=0; f < num_features; f++) {
+            var feature = tile.layers[t].features[f];
+            feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
+                return [m.x, m.y];
+            });
+        };
+    }
+    tile.timers.projection = +new Date() - timer;
+    return tile;
 };
