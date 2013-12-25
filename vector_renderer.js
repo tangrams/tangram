@@ -66,12 +66,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         renderer.addTile(tile, div);
         tile.debug.rendering = +new Date() - timer; // rendering/geometry prep
 
-        // Processing time
-        console.log(
-            "debug for " + tile.key + ': [ ' + 
-            Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
-        );
-
+        renderer.printDebugForTile(tile);
         renderer.leaflet.layer.tileDrawn(div);
     };
     req.open('GET', tile_url, true /* async flag */);
@@ -121,4 +116,12 @@ VectorRenderer.prototype.projectTile = function (tile)
     }
     tile.debug.projection = +new Date() - timer;
     return tile;
+};
+
+VectorRenderer.prototype.printDebugForTile = function (tile)
+{
+    console.log(
+        "debug for " + tile.key + ': [ ' + 
+        Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
+    );
 };
