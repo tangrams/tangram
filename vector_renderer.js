@@ -76,7 +76,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
 VectorRenderer.prototype.removeTile = function (key)
 {
     console.log("tile unload for " + key);
-    var tile = renderer.tiles[key];
+    var tile = this.tiles[key];
     if (tile != null && tile.loading == true) {
         console.log("cancel tile load for " + key);
         tile.loaded = false;
@@ -93,9 +93,9 @@ VectorRenderer.prototype.removeTile = function (key)
 VectorRenderer.prototype.processLayersForTile = function (tile)
 {
     var layers = {};
-    for (var t=0; t < renderer.layers.length; t++) {
-        renderer.layers[t].number = t;
-        layers[renderer.layers[t].name] = renderer.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
+    for (var t=0; t < this.layers.length; t++) {
+        this.layers[t].number = t;
+        layers[this.layers[t].name] = this.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
     }
     tile.layers = layers;
     return tile;
