@@ -1,3 +1,4 @@
+// Layers: pass an object directly, or a URL as string to load remotely
 function VectorRenderer (leaflet, layers, styles)
 {
     // this.tile_base_url = 'http://tile.openstreetmap.us/vectiles-all/';
@@ -5,11 +6,29 @@ function VectorRenderer (leaflet, layers, styles)
     this.tile_base_url = 'http://api-vector-dev.mapzen.com/vector/all/';
     // this.tile_base_url = 'http://localhost:8080/all/';
 
-    this.leaflet = leaflet;
-    this.layers = layers;
-    this.styles = styles;
     this.tiles = {};
+    
+    this.leaflet = leaflet;
+
+    if (typeof(layers) == 'string') {
+        this.layers = VectorRenderer.loadLayers(layers);
+    }
+    else {
+        this.layers = layers;
+    }
+
+    this.styles = styles;
 }
+
+VectorRenderer.loadLayers = function (url)
+{
+    var layers;
+    var req = new XMLHttpRequest();
+    req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
+    req.open('GET', url, false /* async flag */);
+    req.send();
+    return layers;
+};
 
 VectorRenderer.prototype.loadTile = function (coords, div)
 {

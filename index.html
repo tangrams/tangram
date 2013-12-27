@@ -120,10 +120,10 @@ layer.drawTile = function(tileDiv, tilePoint, zoom) {
 var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
 var renderer;
 if (renderer_type == 'gl') {
-   renderer = new GLRenderer({ map: map, layer: layer }, gl_layers, gl_styles);
+    renderer = new GLRenderer({ map: map, layer: layer }, 'gl_layers.js', gl_styles);
 }
 else {
-    renderer = new CanvasRenderer({ map: map, layer: layer }, canvas_layers, canvas_styles);
+    renderer = new CanvasRenderer({ map: map, layer: layer }, 'canvas_layers.js', canvas_styles);
 }
 
 // Start render loop
