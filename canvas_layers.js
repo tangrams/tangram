@@ -57,8 +57,27 @@
         selection: true
     },
     {
-        name: 'buildings',
-        data: function (json) { return json['buildings']; },
+        name: 'buildings_unlabeled',
+        data: function (json) {
+            return {
+                type: 'FeatureCollection',
+                features: json['buildings'].features.filter(function (feature) {
+                    return !(feature.properties.name != null && feature.properties.name != '');
+                })
+            };
+        },
+        selection: true
+    },
+    {
+        name: 'buildings_labeled',
+        data: function (json) {
+            return {
+                type: 'FeatureCollection',
+                features: json['buildings'].features.filter(function (feature) {
+                    return (feature.properties.name != null && feature.properties.name != '');
+                })
+            };
+        },
         selection: true
     },
     {

@@ -75,18 +75,23 @@ var canvas_styles = {
         color: {
             default: [2, 170, 95]
         }
-        // border: {
-        //     color: {
-        //         default: [255, 255, 255]
-        //     },
-        //     size: {
-        //         default: 1
-        //     }
-        // }
     },
-    buildings: {
+    buildings_unlabeled: {
         color: {
             default: [150, 150, 150]
+        },
+        border: {
+            color: {
+                default: [75, 75, 75]
+            },
+            size: {
+                default: 1
+            }
+        }
+    },
+    buildings_labeled: {
+        color: {
+            default: [200, 150, 150]
         },
         border: {
             color: {
