@@ -1,6 +1,10 @@
 uniform vec2 resolution;
 uniform vec2 map_center;
 uniform float map_zoom;
+uniform vec2 meter_zoom;
+uniform vec2 tile_min;
+uniform vec2 tile_max;
+uniform float tile_scale; // geometries are scaled to this range within each tile
 // uniform float time;
 
 attribute vec3 position;
@@ -33,18 +37,18 @@ void main() {
     vec3 vposition = position;
     vec3 vnormal = normal;
 
-    // Scale mercator meters to viewport
-    const float min_zoom_meters_per_pixel = 20037508.342789244 * 2.0 / 256.0;
-    float meters_per_pixel = min_zoom_meters_per_pixel / pow(2.0, map_zoom);
-    vec2 meter_zoom = vec2(resolution.x / 2.0 * meters_per_pixel, resolution.y / 2.0 * meters_per_pixel);
-
-    vposition.xy -= map_center;
+    // Calc position of vertex in meters, relative to center of screen
+    vposition.y *= -1.0; // adjust for flipped y-coords
+    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
+    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
+    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
 
     // Isometric-style projections
     // vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric
     // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
     // vposition.x -= vposition.z * 0.5;
 
+    // Adjust for zoom in meters to get clip space coords
     vposition.xy /= meter_zoom;
 
     // Flat shading between surface normal and light

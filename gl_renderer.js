@@ -276,6 +276,7 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     if (typeof width == 'function') {
         width = width(feature, tile);
     }
+    width *= tile.units_per_meter;
 
     // Line center - debugging
     if (GLRenderer.debug) {
@@ -540,6 +541,12 @@ GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature,
         color = color(feature);
     }
 
+    var width = (style.width && (style.width[feature.properties.kind] || style.width.default)) || 1;
+    if (typeof width == 'function') {
+        width = width(feature, tile);
+    }
+    width *= tile.units_per_meter;
+
     var num_lines = lines.length;
     for (var ln=0; ln < num_lines; ln++) {
         var line = lines[ln];
@@ -577,30 +584,31 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     var lines = [];
 
     // Miter join line test pattern
-    // if (GLRenderer.debug) {
-    //     var min = tile.min;
-    //     var max = tile.max;
-    //     var g = {
-    //         id: 123,
-    //         geometry: {
-    //             type: 'LineString',
-    //             coordinates: [
-    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25], 
-    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
-    //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
-    //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
-    //                 [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
-    //                 [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
-    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
-    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
-    //             ]
-    //         },
-    //         properties: {
-    //             kind: 'debug'
-    //         }
-    //     };
-    //     tile.layers['roads'].features.push(g);
-    // }
+    if (GLRenderer.debug) {
+        var min = Point(0, 0); // tile.min;
+        var max = Point(4096, 4096); // tile.max;
+        var g = {
+            id: 123,
+            geometry: {
+                type: 'LineString',
+                coordinates: [
+                    [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25], 
+                    [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
+                    [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
+                    [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
+                    [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
+                    [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
+                    [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
+                    [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
+                ]
+            },
+            properties: {
+                kind: 'debug'
+            }
+        };
+        // console.log(g.geometry.coordinates);
+        tile.layers['buildings'].features.push(g);
+    }
 
     // Build raw geometry arrays
     tile.debug.features = 0;
@@ -742,6 +750,12 @@ GLRenderer.prototype.render = function GLRendererRender ()
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
 
+    var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
+    var meter_zoom = Point(gl.canvas.width / 2 * meters_per_pixel, gl.canvas.height / 2 * meters_per_pixel);
+    gl.uniform2f(gl.getUniformLocation(this.program, 'meter_zoom'), meter_zoom.x, meter_zoom.y);
+    
+    gl.uniform1f(gl.getUniformLocation(this.program, 'tile_scale'), this.tile_scale);
+
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
@@ -754,6 +768,9 @@ GLRenderer.prototype.render = function GLRendererRender ()
         var tile = this.tiles[t];
         if (tile.loaded == true && tile.coords.z == (this.zoom << 0)) {
             if (tile.gl_geometry != null) {
+                gl.uniform2f(gl.getUniformLocation(this.program, 'tile_min'), tile.min.x, tile.min.y);
+                gl.uniform2f(gl.getUniformLocation(this.program, 'tile_max'), tile.max.x, tile.max.y);
+
                 tile.gl_geometry.forEach(function (gl_geometry) {
                     gl_geometry.render();
                     count += gl_geometry.geometry_count;
