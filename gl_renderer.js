@@ -584,31 +584,31 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     var lines = [];
 
     // Miter join line test pattern
-    if (GLRenderer.debug) {
-        var min = Point(0, 0); // tile.min;
-        var max = Point(4096, 4096); // tile.max;
-        var g = {
-            id: 123,
-            geometry: {
-                type: 'LineString',
-                coordinates: [
-                    [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25], 
-                    [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
-                    [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
-                    [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
-                    [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
-                    [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
-                    [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
-                    [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
-                ]
-            },
-            properties: {
-                kind: 'debug'
-            }
-        };
-        // console.log(g.geometry.coordinates);
-        tile.layers['buildings'].features.push(g);
-    }
+    // if (GLRenderer.debug) {
+    //     var min = Point(0, 0); // tile.min;
+    //     var max = Point(4096, 4096); // tile.max;
+    //     var g = {
+    //         id: 123,
+    //         geometry: {
+    //             type: 'LineString',
+    //             coordinates: [
+    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25], 
+    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
+    //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
+    //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
+    //                 [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
+    //                 [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
+    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
+    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
+    //             ]
+    //         },
+    //         properties: {
+    //             kind: 'debug'
+    //         }
+    //     };
+    //     // console.log(g.geometry.coordinates);
+    //     tile.layers['buildings'].features.push(g);
+    // }
 
     // Build raw geometry arrays
     tile.debug.features = 0;
