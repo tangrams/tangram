@@ -46,7 +46,11 @@ var gl_styles = {
         },
         width: {
             // default: function (f, t) { return Style.width.pixels(5, f, t); }
-            default: function (f, t) { return Math.log(t.coords.z) * 3; },
+            default: function (f, t) { return Math.log(t.coords.z) * 2; },
+            'highway': function (f, t) { return Math.log(t.coords.z) * 3; },
+            'major_road': function (f, t) { return Math.log(t.coords.z) * 2.5; },
+            'minor_road': function (f, t) { return Math.log(t.coords.z) * 2; },
+            'path': function (f, t) { return Math.log(t.coords.z) * 1; },
             'debug': 30
         }
     },
