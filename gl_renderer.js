@@ -624,9 +624,13 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
                 if (feature.geometry.type == 'Polygon') {
                     renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, triangles);
+                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: { default: [1, 0, 0] }, width: { default: 5 } }, tile, triangles, lines);
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
                     renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, triangles);
+                    // for (var mpc=0; mpc < feature.geometry.coordinates.length; mpc++) {
+                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: { default: [1, 0, 0] }, width: { default: 5 } }, tile, triangles, lines);
+                    // }
                 }
                 else if (feature.geometry.type == 'LineString') {
                     // renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
