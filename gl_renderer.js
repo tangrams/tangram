@@ -128,9 +128,12 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    var z = layer.number;
+    if (feature.properties.sort_key) {
+        z += feature.properties.sort_key / 1000;
+    }
     z += options.z_offset || 0;
-    z /= 100;
+    z /= 10;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') { // dynamic/function-based color
@@ -269,10 +272,13 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    var z = layer.number;
+    if (feature.properties.sort_key) {
+        z += feature.properties.sort_key / 1000;
+    }
     z += options.z_offset || 0;
-    z /= 100;
-
+    z /= 10;
+    
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') {
         color = color(feature);
@@ -541,9 +547,12 @@ GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature,
 
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    var z = layer.number;
+    if (feature.properties.sort_key) {
+        z += feature.properties.sort_key / 1000;
+    }
     z += options.z_offset || 0;
-    z /= 100;
+    z /= 10;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') { // dynamic/function-based color
