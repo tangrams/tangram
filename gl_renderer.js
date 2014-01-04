@@ -122,11 +122,14 @@ GLRenderer.aboutEqual = function (a, b, tolerance)
     return (Math.abs(a - b) < tolerance);
 };
 
-GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data)
+GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data, options)
 {
+    options = options || {};
+
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
     var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    z += options.z_offset || 0;
     z /= 100;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
@@ -260,11 +263,14 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 };
 
 // Build tessellated triangles for a polyline
-GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines)
+GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines, options)
 {
+    options = options || {};
+
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
     var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    z += options.z_offset || 0;
     z /= 100;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
@@ -529,11 +535,14 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 };
 
 // Build native GL lines for a polyline
-GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data)
+GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data, options)
 {
+    options = options || {};
+
     // To ensure layers draw in order, offset z coordinate by one centimeter per layer
     // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
     var z = (feature.properties && feature.properties.sort_key) || layer.number;
+    z += options.z_offset || 0;
     z /= 100;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
