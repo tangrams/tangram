@@ -12,6 +12,9 @@ CanvasRenderer.prototype.init = function CanvasRendererInit ()
     this.selection_info.setAttribute('class', 'label');
     this.selection_info.style.display = 'none';
 
+    this.tile_min = Point(0, 0);
+    this.tile_max = Point(this.tile_scale, -this.tile_scale);
+
     this.initMapHandlers();
 };
 
@@ -272,7 +275,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         var layer = renderer.layers[t];
         tile.layers[layer.name].features.forEach(function(feature) {
             // Scale mercator coords to tile pixels
-            feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, tile.min, tile.max);
+            feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, renderer.tile_min, renderer.tile_max);
 
             // Draw visible geometry
             if (layer.visible != false) {
