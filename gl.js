@@ -12,6 +12,7 @@ GL.getContext = function getContext (canvas)
 
     gl = canvas.getContext('experimental-webgl', { /*preserveDrawingBuffer: true*/ }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)
     if (!gl) {
+        alert("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
         throw "Couldn't create WebGL context";
     }
 
