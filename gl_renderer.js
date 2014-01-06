@@ -127,8 +127,8 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
     options = options || {};
     options.z_offset = options.z_offset || 0;
 
-    var z = layer.number / 256;
-    z += 1 - (1 / tile.feature_count);
+    var z = layer.number / 16;
+    z += (1 - (1 / (tile.feature_count + 1))) / 16;
     z += options.z_offset;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
@@ -267,8 +267,8 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     options = options || {};
     options.z_offset = options.z_offset || 0;
 
-    var z = layer.number / 256;
-    z += 1 - (1 / tile.feature_count);
+    var z = layer.number / 16;
+    z += (1 - (1 / (tile.feature_count + 1))) / 16;
     z += options.z_offset;
     
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
@@ -538,8 +538,8 @@ GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature,
     options = options || {};
     options.z_offset = options.z_offset || 0;
 
-    var z = layer.number / 256;
-    z += 1 - (1 / tile.feature_count);
+    var z = layer.number / 16;
+    z += (1 - (1 / (tile.feature_count + 1))) / 16;
     z += options.z_offset;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
