@@ -125,15 +125,11 @@ GLRenderer.aboutEqual = function (a, b, tolerance)
 GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data, options)
 {
     options = options || {};
+    options.z_offset = options.z_offset || 0;
 
-    // To ensure layers draw in order, offset z coordinate by one centimeter per layer
-    // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = layer.number;
-    if (feature.properties.sort_key) {
-        z += feature.properties.sort_key / 1000;
-    }
-    z += options.z_offset || 0;
-    z /= 10;
+    var z = layer.number / 256;
+    z += 1 - (1 / tile.feature_count);
+    z += options.z_offset;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') { // dynamic/function-based color
@@ -269,15 +265,11 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines, options)
 {
     options = options || {};
+    options.z_offset = options.z_offset || 0;
 
-    // To ensure layers draw in order, offset z coordinate by one centimeter per layer
-    // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = layer.number;
-    if (feature.properties.sort_key) {
-        z += feature.properties.sort_key / 1000;
-    }
-    z += options.z_offset || 0;
-    z /= 10;
+    var z = layer.number / 256;
+    z += 1 - (1 / tile.feature_count);
+    z += options.z_offset;
     
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') {
@@ -544,15 +536,11 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data, options)
 {
     options = options || {};
+    options.z_offset = options.z_offset || 0;
 
-    // To ensure layers draw in order, offset z coordinate by one centimeter per layer
-    // TODO: use glPolygonOffset instead of modifying z coord in geom? or store as separate field that doesn't affect y coord in vertex shader
-    var z = layer.number;
-    if (feature.properties.sort_key) {
-        z += feature.properties.sort_key / 1000;
-    }
-    z += options.z_offset || 0;
-    z /= 10;
+    var z = layer.number / 256;
+    z += 1 - (1 / tile.feature_count);
+    z += options.z_offset;
 
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') { // dynamic/function-based color
@@ -629,14 +617,13 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     // }
 
     // Build raw geometry arrays
-    tile.debug.features = 0;
+    tile.feature_count = 0;
     for (var ln=0; ln < this.layers.length; ln++) {
         layer = this.layers[ln];
         style = this.styles[layer.name] || {};
 
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
-            tile.debug.features += num_features;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[layer.name].features[f];
 
@@ -658,6 +645,8 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
                     renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, triangles, lines);
                 }
+
+                tile.feature_count++;
             }
         }
     }
@@ -672,6 +661,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     }
     tile.geometry_count = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
     tile.debug.geometries = tile.geometry_count;
+    tile.debug.features = tile.feature_count;
     tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
     // console.log("created " + tile.geometry_count + " primitives for tile " + tile.key);
 

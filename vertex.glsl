@@ -73,7 +73,7 @@ void main() {
 
     // vposition.y *= abs(sin(vposition.x)); // hourglass effect
 
-    vposition.z = (-vposition.z + 32768.0) / 65536.0; // reverse and scale to 0-1 for GL depth buffer
+    vposition.z = (-vposition.z + 2048.0) / 4096.0; // reverse and scale to 0-1 for GL depth buffer
 
     gl_Position = vec4(vposition, 1.0);
 }
