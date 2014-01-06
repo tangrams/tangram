@@ -25,7 +25,9 @@ var gl_styles = {
     },
     land_usages: {
         color: {
-            default: [0.5, 0.875, 0.5]
+            default: [0.5, 0.875, 0.5],
+            'pitch': [0.3, 0.675, 0.3]
+            // 'pitch': function(f, t) { return f.id == 161219053 ? [1, 0, 1] : [0.3, 0.675, 0.3]; }
         }
     },
     water_areas: {
@@ -38,8 +40,8 @@ var gl_styles = {
             // default: Style.color.randomColor
             default: [0.4, 0.4, 0.4],
             'highway': [1.0, 1.0, 1.0],
-            'major_road': [0.6, 0.6, 0.6],
-            // 'minor_road': [1.0, 0, 0],
+            'major_road': [0.5, 0.5, 0.5],
+            'minor_road': [0.65, 0.65, 0.65],
             'path': [0.8, 0.8, 0.8],
             'rail': [0.5, 0.0, 0.0],
             'debug': [1, 0, 0]
