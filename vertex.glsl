@@ -55,7 +55,7 @@ void main() {
     fcolor = color;
     light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
     light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
-    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z / meter_zoom.x, 0.0, 0.25);
+    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
     fcolor = min(fcolor, 1.0);
 
     // Perspective-style projections
