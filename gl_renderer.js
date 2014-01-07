@@ -109,6 +109,9 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         else if (event.keyCode == 40) {
             gl_renderer.key = 'down';
         }
+        else if (event.keyCode == 82) { /* r */
+            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program,'vertex.glsl', 'fragment.glsl');
+        }
     });
 
     document.addEventListener('keyup', function (event) {

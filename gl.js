@@ -34,12 +34,19 @@ GL.createProgramFromElements = function GLcreateProgramFromElements (gl, vertex_
 {
     var vertex_shader_source = document.getElementById(vertex_shader_id).textContent;
     var fragment_shader_source = document.getElementById(fragment_shader_id).textContent;
-    return GL.createProgram(gl, vertex_shader_source, fragment_shader_source);
+    var program = gl.createProgram();
+    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
 };
 
 // Compile & link a WebGL program from provided vertex and shader source URLs
 // NOTE: loads via synchronous XHR for simplicity, could be made async
-GL.createProgramFromURLs = function GLcreateProgramFromElements (gl, vertex_shader_url, fragment_shader_url)
+GL.createProgramFromURLs = function GLcreateProgramFromURLs (gl, vertex_shader_url, fragment_shader_url)
+{
+    var program = gl.createProgram();
+    return GL.updateProgramFromURLs(gl, program, vertex_shader_url, fragment_shader_url);
+};
+
+GL.updateProgramFromURLs = function GLUpdateProgramFromURLs (gl, program, vertex_shader_url, fragment_shader_url)
 {
     var vertex_shader_source, fragment_shader_source;
     var req = new XMLHttpRequest();
@@ -50,21 +57,39 @@ GL.createProgramFromURLs = function GLcreateProgramFromElements (gl, vertex_shad
 
     req.onload = function () { fragment_shader_source = req.response; };
     req.open('GET', fragment_shader_url, false /* async flag */);
-    req.send();
+    req.send();    
+    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
+}
 
-    return GL.createProgram(gl, vertex_shader_source, fragment_shader_source);
-};
 
 // Compile & link a WebGL program from provided vertex and fragment shader sources
-GL.createProgram = function GLcreateProgram (gl, vertex_shader_source, fragment_shader_source)
+// update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
+GL.updateProgram = function GLupdateProgram(gl, program, vertex_shader_source, fragment_shader_source) 
 {
-    var program = gl.createProgram();
 
-    var vertex_shader = GL.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
-    var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
+    try {
+        var vertex_shader = GL.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
+        var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
+    }
+    catch(err)
+    {
+        alert(err);
+        return program;
+    }
+
+    gl.useProgram(null);
+    if(program != null) {
+        var oldShaders = gl.getAttachedShaders(program);
+        for(var i = 0; i < oldShaders.length; i++) {
+            console.log('Detaching old shader ' + i)
+            gl.detachShader(program, oldShaders[i]);
+        }
+    } else {
+        program = gl.createProgram();
+    }
 
     if (vertex_shader == null || fragment_shader == null) {
-        return null;
+        return program;
     }
 
     gl.attachShader(program, vertex_shader);
