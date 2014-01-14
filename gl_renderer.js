@@ -119,12 +119,6 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
     });
 };
 
-GLRenderer.aboutEqual = function (a, b, tolerance)
-{
-    tolerance = tolerance || 1;
-    return (Math.abs(a - b) < tolerance);
-};
-
 GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data, options)
 {
     options = options || {};
@@ -265,15 +259,21 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 };
 
 // Build tessellated triangles for a polyline
+// Basically following the method described here for miter joints:
+// http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
 GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines, options)
 {
     options = options || {};
     options.z_offset = options.z_offset || 0;
+    options.closed_polygon = options.closed_polygon || false;
+    options.remove_tile_edges = options.remove_tile_edges || false;
+
+    var renderer = this;
 
     var z = layer.number / 16;
     z += (1 - (1 / (tile.feature_count + 1))) / 16;
     z += options.z_offset;
-    
+
     var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
     if (typeof color == 'function') {
         color = color(feature);
@@ -310,38 +310,79 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
     for (var ln=0; ln < num_lines; ln++) {
         var line = lines[ln];
         // Multiple line segments
-        if (line.length > 3) {
-            // Find midpoints
-            var mid = [];
-            mid.push(line[0]); // use line start instead of first midpoint
+        if (line.length > 2) {
+            // Build anchors for line segments:
+            // anchors are 3 points, each connecting 2 line segments that share a joint (start point, joint point, end point)
+
+            var anchors = [];
+
             if (line.length > 3) {
-                for (var p=1; p < line.length - 2; p++) {
+                // Find midpoints of each line segment
+                // For closed polygons, calculate all midpoints since segments will wrap around to first midpoint
+                var mid = [];
+                var p, pmax;
+                if (options.closed_polygon == true) {
+                    p = 0; // start on first point
+                    pmax = line.length - 1;
+                }
+                // For open polygons, skip first midpoint and use line start instead
+                else {
+                    p = 1; // start on second point
+                    pmax = line.length - 2;
+                    mid.push(line[0]); // use line start instead of first midpoint
+                }
+
+                // Calc midpoints
+                for (; p < pmax; p++) {
                     var pa = line[p];
                     var pb = line[p+1];
                     mid.push([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2]);
                 }
-            }
-            mid.push(line[line.length-1]); // use line end instead of last midpoint
 
-            // Make anchors (3-point segments connecting line joints and midpoints)
-            var anchors = [];
-            for (var p=0; p < mid.length - 1; p++)  {
-                anchors.push([mid[p], line[p+1], mid[p+1]]);
+                // Same closed/open polygon logic as above: keep last midpoint for closed, skip for open
+                var mmax;
+                if (options.closed_polygon == true) {
+                    mmax = mid.length;
+                }
+                else {
+                    mid.push(line[line.length-1]); // use line end instead of last midpoint
+                    mmax = mid.length - 1;
+                }
+
+                // Make anchors by connecting midpoints to line joints
+                for (p=0; p < mmax; p++)  {
+                    anchors.push([mid[p], line[(p+1) % line.length], mid[(p+1) % mid.length]]);
+                }
+            }
+            else {
+                // Degenerate case, a 3-point line is just a single anchor
+                anchors = [[line[0], line[1], line[2]]];
             }
 
             for (var p=0; p < anchors.length; p++) {
-                buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
-                // buildSegment(anchors[p][0], anchors[p][1]); // use these to draw extruded segments w/o join, for debugging
-                // buildSegment(anchors[p][1], anchors[p][2]);
+                if (!options.remove_tile_edges) {
+                    buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
+                    // buildSegment(anchors[p][0], anchors[p][1]); // use these to draw extruded segments w/o join, for debugging
+                    // buildSegment(anchors[p][1], anchors[p][2]);
+                }
+                else {
+                    var edge1 = renderer.isOnTileEdge(anchors[p][0], anchors[p][1]);
+                    var edge2 = renderer.isOnTileEdge(anchors[p][1], anchors[p][2]);
+                    if (!edge1 && !edge2) {
+                        buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
+                    }
+                    else if (!edge1) {
+                        buildSegment(anchors[p][0], anchors[p][1]);
+                    }
+                    else if (!edge2) {
+                        buildSegment(anchors[p][1], anchors[p][2]);
+                    }
+                }
             }
-        }
-        // Single 3-point anchor
-        else if (line.length == 3) {
-            buildAnchor(line[0], line[1], line[2]);
         }
         // Single 2-point segment
         else if (line.length == 2) {
-            buildSegment(line[0], line[1]);
+            buildSegment(line[0], line[1]); // TODO: replace buildSegment with a degenerate form of buildAnchor? buildSegment is still useful for debugging
         }
     };
 
@@ -491,16 +532,16 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
         if (GLRenderer.debug && line_debug) {
             var dcolor;
             if (line_debug == 'parallel') {
-                console.log("!!! lines are parallel !!!");
+                // console.log("!!! lines are parallel !!!");
                 dcolor = [0, 1, 0];
             }
             else if (line_debug == 'distance') {
-                console.log("!!! miter intersection point exceeded allowed distance from joint !!!");
+                // console.log("!!! miter intersection point exceeded allowed distance from joint !!!");
                 dcolor = [1, 0, 0];
             }
-            console.log('OSM id: ' + feature.id); // TODO: if this function is moved out of a closure, this feature debug info won't be available
-            console.log([pa, joint, pb]);
-            console.log(feature);
+            // console.log('OSM id: ' + feature.id); // TODO: if this function is moved out of a closure, this feature debug info won't be available
+            // console.log([pa, joint, pb]);
+            // console.log(feature);
             vertex_lines.push(
                 pa[0], pa[1], z + 0.002,
                 0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
@@ -601,7 +642,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
     //         geometry: {
     //             type: 'LineString',
     //             coordinates: [
-    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25], 
+    //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25],
     //                 [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
     //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
     //                 [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
@@ -632,12 +673,12 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
                 if (feature.geometry.type == 'Polygon') {
                     renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, triangles);
-                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: { default: [1, 0, 0] }, width: { default: 5 } }, tile, triangles, lines);
+                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: { default: [1, 0, 0] /*[Math.random(), Math.random(), Math.random()]*/ }, width: { default: function (f, t) { return Style.width.pixels(2, f, t); } } }, tile, triangles, lines, { z_offset: 0.01, closed_polygon: true, remove_tile_edges: true });
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
                     renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, triangles);
                     // for (var mpc=0; mpc < feature.geometry.coordinates.length; mpc++) {
-                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: { default: [1, 0, 0] }, width: { default: 5 } }, tile, triangles, lines);
+                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: { default: [1, 0, 0] [Math.random(), Math.random(), Math.random()] }, width: { default: function (f, t) { return Style.width.pixels(2, f, t); } } }, tile, triangles, lines, { z_offset: 0.01, closed_polygon: true, remove_tile_edges: true });
                     // }
                 }
                 else if (feature.geometry.type == 'LineString') {
@@ -729,15 +770,30 @@ GLRenderer.prototype.setZoom = function (z) {
     }
 };
 
-GLRenderer.prototype.input = function GLRendererInput ()
+// Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
+GLRenderer.prototype.isOnTileEdge = function (pa, pb, options)
 {
-    // Fractional zoom scaling
-    if (this.key == 'up') {
-        this.setZoom(this.zoom + this.zoom_step);
+    options = options || {};
+
+    var tolerance_function = options.tolerance_function || GLRenderer.valuesWithinTolerance;
+    var tolerance = options.tolerance || 1; // tweak this adjust if catching too few/many line segments near tile edges
+    var tile_min = Point(0, 0);
+    var tile_max = Point(this.tile_scale, -this.tile_scale);
+    var edge = null;
+
+    if (tolerance_function(pa[0], tile_min.x, tolerance) && tolerance_function(pb[0], tile_min.x, tolerance)) {
+        edge = 'left';
     }
-    else if (this.key == 'down') {
-        this.setZoom(this.zoom - this.zoom_step);
+    else if (tolerance_function(pa[0], tile_max.x, tolerance) && tolerance_function(pb[0], tile_max.x, tolerance)) {
+        edge = 'right';
     }
+    else if (tolerance_function(pa[1], tile_min.y, tolerance) && tolerance_function(pb[1], tile_min.y, tolerance)) {
+        edge = 'top';
+    }
+    else if (tolerance_function(pa[1], tile_max.y, tolerance) && tolerance_function(pb[1], tile_max.y, tolerance)) {
+        edge = 'bottom';
+    }
+    return edge;
 };
 
 GLRenderer.prototype.render = function GLRendererRender ()
@@ -768,7 +824,7 @@ GLRenderer.prototype.render = function GLRendererRender ()
     var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
     var meter_zoom = Point(gl.canvas.width / 2 * meters_per_pixel, gl.canvas.height / 2 * meters_per_pixel);
     gl.uniform2f(gl.getUniformLocation(this.program, 'meter_zoom'), meter_zoom.x, meter_zoom.y);
-    
+
     gl.uniform1f(gl.getUniformLocation(this.program, 'tile_scale'), this.tile_scale);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -798,4 +854,23 @@ GLRenderer.prototype.render = function GLRendererRender ()
         console.log("rendered " + count + " primitives");
     }
     this.last_render_count = count;
+};
+
+/* Utility functions */
+
+GLRenderer.valuesWithinTolerance = function (a, b, tolerance)
+{
+    tolerance = tolerance || 1;
+    return (Math.abs(a - b) < tolerance);
+};
+
+GLRenderer.prototype.input = function GLRendererInput ()
+{
+    // Fractional zoom scaling
+    if (this.key == 'up') {
+        this.setZoom(this.zoom + this.zoom_step);
+    }
+    else if (this.key == 'down') {
+        this.setZoom(this.zoom - this.zoom_step);
+    }
 };
