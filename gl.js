@@ -52,21 +52,20 @@ GL.updateProgramFromURLs = function GLUpdateProgramFromURLs (gl, program, vertex
     var req = new XMLHttpRequest();
 
     req.onload = function () { vertex_shader_source = req.response; };
-    req.open('GET', vertex_shader_url, false /* async flag */);
+    req.open('GET', vertex_shader_url + '?' + (+new Date()), false /* async flag */);
     req.send();
 
     req.onload = function () { fragment_shader_source = req.response; };
-    req.open('GET', fragment_shader_url, false /* async flag */);
-    req.send();    
-    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
-}
+    req.open('GET', fragment_shader_url + '?' + (+new Date()), false /* async flag */);
+    req.send();
 
+    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
+};
 
 // Compile & link a WebGL program from provided vertex and fragment shader sources
 // update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
-GL.updateProgram = function GLupdateProgram(gl, program, vertex_shader_source, fragment_shader_source) 
+GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, fragment_shader_source)
 {
-
     try {
         var vertex_shader = GL.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
         var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
@@ -78,11 +77,10 @@ GL.updateProgram = function GLupdateProgram(gl, program, vertex_shader_source, f
     }
 
     gl.useProgram(null);
-    if(program != null) {
-        var oldShaders = gl.getAttachedShaders(program);
-        for(var i = 0; i < oldShaders.length; i++) {
-            console.log('Detaching old shader ' + i)
-            gl.detachShader(program, oldShaders[i]);
+    if (program != null) {
+        var old_shaders = gl.getAttachedShaders(program);
+        for(var i = 0; i < old_shaders.length; i++) {
+            gl.detachShader(program, old_shaders[i]);
         }
     } else {
         program = gl.createProgram();
@@ -130,7 +128,7 @@ GL.createShader = function GLcreateShader (gl, source, type)
     }
 
     return shader;
-}
+};
 
 // Determine layout for vertex data
 // GL.makeProgramLayout = function (gl, program, program_layout)

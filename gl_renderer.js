@@ -110,7 +110,8 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
             gl_renderer.key = 'down';
         }
         else if (event.keyCode == 82) { /* r */
-            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program,'vertex.glsl', 'fragment.glsl');
+            console.log("reloading shaders");
+            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
         }
     });
 
