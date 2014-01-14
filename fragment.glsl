@@ -1,5 +1,5 @@
 uniform vec2 resolution;
-// uniform vec2 map_center;
+uniform float time;
 
 varying vec3 fcolor;
 
@@ -17,8 +17,9 @@ void main (void) {
     // vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.15);
     // vec3 color = fcolor * (1.0 - dot(normalize(vec3(rand(gl_FragCoord.xy * 0.01) * 10.0, 0.0, -1.0)), vec3(0, 0, 1.0)));
 
-    // Mutate colors by screen position
+    // Mutate colors by screen position or time
     // color += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);
+    // color.r += sin(time);
 
     gl_FragColor = vec4(color, 1.0);
     // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);

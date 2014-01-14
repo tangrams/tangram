@@ -41,6 +41,7 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.map_last_zoom = this.leaflet.map.getZoom();
     this.map_zooming = false;
+    this.start_time = +new Date();
 
     this.initMapHandlers();
     this.initInputHandlers();
@@ -815,6 +816,7 @@ GLRenderer.prototype.render = function GLRendererRender ()
 
     // Set values to this.program variables
     gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
+    gl.uniform1f(gl.getUniformLocation(this.program, 'time'), ((+new Date()) - this.start_time) / 1000);
 
     var center = this.leaflet.map.getCenter(); // TODO: move map center tracking/projection to central class?
     center = Geo.latLngToMeters(Point(center.lng, center.lat));

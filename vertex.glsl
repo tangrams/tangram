@@ -5,7 +5,7 @@ uniform vec2 meter_zoom;
 uniform vec2 tile_min;
 uniform vec2 tile_max;
 uniform float tile_scale; // geometries are scaled to this range within each tile
-// uniform float time;
+uniform float time;
 
 attribute vec3 position;
 attribute vec3 normal;
@@ -41,6 +41,14 @@ void main() {
     vposition.y *= -1.0; // adjust for flipped y-coords
     // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
+
+    // Vertex displacement tests
+    // if (vposition.z > 1.0) {
+    //     // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
+    //     // vposition.y += cos(vposition.z + time) * 10.0;
+    //     vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+    // }
+
     vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
 
     // Isometric-style projections
@@ -53,6 +61,7 @@ void main() {
 
     // Flat shading between surface normal and light
     fcolor = color;
+    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
     light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
     light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
     fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);

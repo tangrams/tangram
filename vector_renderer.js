@@ -8,7 +8,7 @@ function VectorRenderer (leaflet, layers, styles)
 
     this.tile_scale = 4096;
     this.tiles = {};
-    
+
     this.leaflet = leaflet;
 
     if (typeof(layers) == 'string') {
@@ -81,7 +81,7 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         // Re-scale from meters to local tile coords
         renderer.scaleTile(tile, renderer.tile_scale);
 
-        tile.xhr = null;        
+        tile.xhr = null;
         tile.loading = false;
         tile.loaded = true;
 
@@ -166,7 +166,7 @@ VectorRenderer.prototype.scaleTile = function (tile, scale)
 VectorRenderer.prototype.printDebugForTile = function (tile)
 {
     console.log(
-        "debug for " + tile.key + ': [ ' + 
+        "debug for " + tile.key + ': [ ' +
         Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
     );
 };
