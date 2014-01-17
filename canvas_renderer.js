@@ -38,8 +38,8 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
-    canvas.width = Geo.tile_size.x;
-    canvas.height = Geo.tile_size.y;
+    canvas.width = Geo.tile_size;
+    canvas.height = Geo.tile_size;
     canvas.style.background = 'rgb(' + this.styles.default.join(',') + ')';
 
     this.renderTile(tile, context);
@@ -58,8 +58,8 @@ CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels 
 {
     return Geo.transformGeometry(geometry, function (coordinates) {
         return Point(
-            Math.round((coordinates[0] - min.x) * Geo.tile_size.x / (max.x - min.x)), // rounding removes seams but causes aliasing
-            Math.round((coordinates[1] - min.y) * Geo.tile_size.y / (max.y - min.y))
+            Math.round((coordinates[0] - min.x) * Geo.tile_size / (max.x - min.x)), // rounding removes seams but causes aliasing
+            Math.round((coordinates[1] - min.y) * Geo.tile_size / (max.y - min.y))
         );
     });
 };
@@ -264,8 +264,8 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
     var selection_canvas = document.createElement('canvas');
-    selection_canvas.width = Geo.tile_size.x;
-    selection_canvas.height = Geo.tile_size.y;
+    selection_canvas.width = Geo.tile_size;
+    selection_canvas.height = Geo.tile_size;
     var selection_context = selection_canvas.getContext('2d');
     var selection_color;
     var selection_count = 0;
@@ -307,7 +307,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         // TODO: fire events on selection to enable custom behavior
         context.canvas.onmousemove = function (event) {
             var hit = { x: event.offsetX, y: event.offsetY }; // layerX/Y
-            var off = hit.y * Geo.tile_size.x + hit.x;
+            var off = hit.y * Geo.tile_size + hit.x;
             var color = selection.pixels[off];
             var feature = selection.colors[color];
             if (feature != null) {

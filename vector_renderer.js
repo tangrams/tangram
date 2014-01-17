@@ -1,3 +1,9 @@
+VectorRenderer.tile_scale = 4096;
+VectorRenderer.units_per_meter = [];
+for (var z=0; z <= Geo.max_zoom; z++) {
+    VectorRenderer.units_per_meter[z] = VectorRenderer.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
+}
+
 // Layers: pass an object directly, or a URL as string to load remotely
 function VectorRenderer (leaflet, layers, styles)
 {
@@ -146,16 +152,14 @@ VectorRenderer.prototype.projectTile = function (tile)
 // TODO: clip vertices at edges? right now vertices can have values outside [0, scale] (over or under bounds); this would pose a problem if we wanted to binary encode the vertices in fewer bits (e.g. 12 bits each for scale of 4096)
 VectorRenderer.prototype.scaleTile = function (tile, scale)
 {
-    tile.units_per_meter = scale / (tile.max.x - tile.min.x); // TODO: enforce square tiles instead of assuming XY coords are same
-
     for (var t in tile.layers) {
         var num_features = tile.layers[t].features.length;
         for (var f=0; f < num_features; f++) {
             var feature = tile.layers[t].features[f];
             feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
-                coordinates[0] = (coordinates[0] - tile.min.x) * tile.units_per_meter;
-                coordinates[1] = (coordinates[1] - tile.min.y) * tile.units_per_meter; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
-                // coordinates[1] = (coordinates[1] - tile.max.y) * tile.units_per_meter; // alternate to force y-coords to be positive, subtract tile max instead of min
+                coordinates[0] = (coordinates[0] - tile.min.x) * VectorRenderer.units_per_meter[tile.coords.z];
+                coordinates[1] = (coordinates[1] - tile.min.y) * VectorRenderer.units_per_meter[tile.coords.z]; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
+                // coordinates[1] = (coordinates[1] - tile.max.y) * VectorRenderer.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                 return coordinates;
             });
         };

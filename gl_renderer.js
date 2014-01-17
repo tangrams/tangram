@@ -121,20 +121,42 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
     });
 };
 
-GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, vertex_data, options)
+// Determine final style properties (color, width, etc.)
+GLRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
 {
-    options = options || {};
-    options.z_offset = options.z_offset || 0;
+    var layer_style = this.styles[layer.name] || {};
+    var style = {};
 
-    var z = layer.number / 16;
-    z += (1 - (1 / (tile.feature_count + 1))) / 16;
-    z += options.z_offset;
-
-    var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
-    if (typeof color == 'function') { // dynamic/function-based color
-        color = color(feature);
+    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || [1.0, 0, 0];
+    if (typeof style.color == 'function') { // dynamic/function-based color
+        style.color = style.color(feature);
     }
 
+    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || 1;
+    if (typeof style.width == 'function') {
+        style.width = style.width(feature, tile);
+    }
+    style.width *= VectorRenderer.units_per_meter[tile.coords.z];
+
+    return style;
+};
+
+// Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
+// Features are assumed to be already sorted in desired draw order by the layer pre-processor
+GLRenderer.prototype.calculateZ = function (layer, tile, offset)
+{
+    offset = offset || 0;
+    var z = layer.number / 16;
+    z += (1 - (1 / (tile.feature_count + 1))) / 16;
+    z += offset;
+    return z;
+};
+
+GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons, feature, layer, style, tile, z, vertex_data, options)
+{
+    options = options || {};
+
+    var color = style.color;
     var height, wall_vertices;
 
     var num_polygons = polygons.length;
@@ -263,29 +285,15 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
 // Build tessellated triangles for a polyline
 // Basically following the method described here for miter joints:
 // http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
-GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, vertex_data, vertex_lines, options)
+GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, feature, layer, style, tile, z, vertex_data, vertex_lines, options)
 {
     options = options || {};
-    options.z_offset = options.z_offset || 0;
     options.closed_polygon = options.closed_polygon || false;
     options.remove_tile_edges = options.remove_tile_edges || false;
 
     var renderer = this;
-
-    var z = layer.number / 16;
-    z += (1 - (1 / (tile.feature_count + 1))) / 16;
-    z += options.z_offset;
-
-    var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
-    if (typeof color == 'function') {
-        color = color(feature);
-    }
-
-    var width = (style.width && (style.width[feature.properties.kind] || style.width.default)) || 1;
-    if (typeof width == 'function') {
-        width = width(feature, tile);
-    }
-    width *= tile.units_per_meter;
+    var color = style.color;
+    var width = style.width;
 
     // Line center - debugging
     if (GLRenderer.debug) {
@@ -579,25 +587,12 @@ GLRenderer.prototype.buildPolylines = function GLRendererBuildPolylines (lines, 
 };
 
 // Build native GL lines for a polyline
-GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, vertex_data, options)
+GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature, layer, style, tile, z, vertex_data, options)
 {
     options = options || {};
-    options.z_offset = options.z_offset || 0;
 
-    var z = layer.number / 16;
-    z += (1 - (1 / (tile.feature_count + 1))) / 16;
-    z += options.z_offset;
-
-    var color = (style.color && (style.color[feature.properties.kind] || style.color.default)) || [1.0, 0, 0];
-    if (typeof color == 'function') { // dynamic/function-based color
-        color = color(feature);
-    }
-
-    var width = (style.width && (style.width[feature.properties.kind] || style.width.default)) || 1;
-    if (typeof width == 'function') {
-        width = width(feature, tile);
-    }
-    width *= tile.units_per_meter;
+    var color = style.color;
+    var width = style.width;
 
     var num_lines = lines.length;
     for (var ln=0; ln < num_lines; ln++) {
@@ -631,7 +626,7 @@ GLRenderer.prototype.buildLines = function GLRendererBuildLines (lines, feature,
 GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 {
     var renderer = this;
-    var layer, style;
+    var layer, style, feature, z;
     var triangles = [];
     var lines = [];
 
@@ -671,25 +666,27 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[layer.name].features[f];
+                feature = tile.layers[layer.name].features[f];
+                style = this.parseStyleForFeature(feature, layer, tile);
+                z = this.calculateZ(layer, tile);
 
                 if (feature.geometry.type == 'Polygon') {
-                    renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, triangles);
-                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: { default: [1, 0, 0] /*[Math.random(), Math.random(), Math.random()]*/ }, width: { default: function (f, t) { return Style.width.pixels(2, f, t); } } }, tile, triangles, lines, { z_offset: 0.01, closed_polygon: true, remove_tile_edges: true });
+                    renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, z, triangles);
+                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: [1, 0, 0] /*[Math.random(), Math.random(), Math.random()]*/, width: (Style.width.pixels(2, tile) * VectorRenderer.units_per_meter[tile.coords.z]) }, tile, this.calculateZ(layer, tile, 0.01), triangles, lines, { closed_polygon: true, remove_tile_edges: true });
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
-                    renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, triangles);
+                    renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, z, triangles);
                     // for (var mpc=0; mpc < feature.geometry.coordinates.length; mpc++) {
-                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: { default: [1, 0, 0] [Math.random(), Math.random(), Math.random()] }, width: { default: function (f, t) { return Style.width.pixels(2, f, t); } } }, tile, triangles, lines, { z_offset: 0.01, closed_polygon: true, remove_tile_edges: true });
+                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: [1, 0, 0], width: (Style.width.pixels(2, tile) * VectorRenderer.units_per_meter[tile.coords.z]) }, tile, this.calculateZ(layer, tile, 0.01), triangles, lines, { closed_polygon: true, remove_tile_edges: true });
                     // }
                 }
                 else if (feature.geometry.type == 'LineString') {
                     // renderer.buildLines([feature.geometry.coordinates], feature, layer, style, tile, lines);
-                    renderer.buildPolylines([feature.geometry.coordinates], feature, layer, style, tile, triangles, lines);
+                    renderer.buildPolylines([feature.geometry.coordinates], feature, layer, style, tile, z, triangles, lines);
                 }
                 else if (feature.geometry.type == 'MultiLineString') {
                     // renderer.buildLines(feature.geometry.coordinates, feature, layer, style, tile, lines);
-                    renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, triangles, lines);
+                    renderer.buildPolylines(feature.geometry.coordinates, feature, layer, style, tile, z, triangles, lines);
                 }
 
                 tile.feature_count++;

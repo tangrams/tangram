@@ -8,7 +8,7 @@ Style.color = {
 };
 
 Style.width = {
-    pixels: function (p, f, t) { return p * Geo.meters_per_pixel[Math.floor(t.coords.z)]; }
+    pixels: function (p, t) { return p * Geo.meters_per_pixel[Math.floor(t.coords.z)]; }
 };
 
 // Makeshift style-sheet
@@ -47,7 +47,7 @@ var gl_styles = {
             'debug': [1, 0, 0]
         },
         width: {
-            // default: function (f, t) { return Style.width.pixels(5, f, t); }
+            // default: function (f, t) { return Style.width.pixels(5, t); }
             default: function (f, t) { return Math.log(t.coords.z) * 2; },
             'highway': function (f, t) { return Math.log(t.coords.z) * 3; },
             'major_road': function (f, t) { return Math.log(t.coords.z) * 2.5; },

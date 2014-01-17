@@ -20,7 +20,7 @@
             return {
                 type: 'FeatureCollection',
                 features: json['land-usages'].features.sort(function(a, b) {
-                    return (b.properties.area - a.properties.area); // order roads by prodivded polygon area
+                    return (b.properties.area - a.properties.area);
                 })
             };
         }
@@ -42,7 +42,7 @@
             return {
                 type: 'FeatureCollection',
                 features: json['highroad'].features.sort(function(a, b) {
-                    return (a.properties.sort_key - b.properties.sort_key); // order roads by prodivded 'sort_key'
+                    return (a.properties.sort_key - b.properties.sort_key);
                 })
             };
         }
