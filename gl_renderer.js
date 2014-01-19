@@ -162,53 +162,6 @@ GLRenderer.prototype.buildPolygons = function GLRendererBuildPolygons (polygons,
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
 
-        // Polygon outlines & edge detection - experimental
-        // for (t=0; t < polygon.length; t++) {
-        //     for (p=0; p < polygon[t].length - 1; p++) {
-        //         // Point A to B
-        //         var pa = polygon[t][p];
-        //         var pb = polygon[t][p+1];
-
-        //         // Edge detection
-        //         var edge = null;
-        //         var pointTest = GLRenderer.aboutEqual;
-        //         var tol = 2;
-
-        //         if (pointTest(pa[0], tile.min.x, tol) && pointTest(pb[0], tile.min.x, tol)) {
-        //             edge = 'left';
-        //         }
-        //         else if (pointTest(pa[0], tile.max.x, tol) && pointTest(pb[0], tile.max.x, tol)) {
-        //             edge = 'right';
-        //         }
-        //         else if (pointTest(pa[1], tile.min.y, tol) && pointTest(pb[1], tile.min.y, tol)) {
-        //             edge = 'top';
-        //         }
-        //         else if (pointTest(pa[1], tile.max.y, tol) && pointTest(pb[1], tile.max.y, tol)) {
-        //             edge = 'bottom';
-        //         }
-
-        //         if (edge != null) {
-        //             console.log("tile " + tile.key + " edge detected: " + edge);
-        //             continue;
-        //         }
-
-        //         lines.push(
-        //             // Point A
-        //             pa[0],
-        //             pa[1],
-        //             z + 0,
-        //             0, 0, 1, // flat surfaces point straight up
-        //             1, 1, 1, // white
-        //             // Point B
-        //             pb[0],
-        //             pb[1],
-        //             z + 0,
-        //             0, 0, 1, // flat surfaces point straight up
-        //             1, 1, 1 // white
-        //         );
-        //     }
-        // }
-
         // Use libtess.js port of gluTesselator for complex OSM polygons
         var vertices = GL.triangulate(polygon);
 
