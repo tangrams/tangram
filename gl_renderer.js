@@ -136,7 +136,6 @@ GLRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
     if (typeof style.width == 'function') {
         style.width = style.width(feature, tile);
     }
-    style.width *= VectorRenderer.units_per_meter[tile.coords.z];
 
     return style;
 };
@@ -672,12 +671,12 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
                 if (feature.geometry.type == 'Polygon') {
                     renderer.buildPolygons([feature.geometry.coordinates], feature, layer, style, tile, z, triangles);
-                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: [1, 0, 0] /*[Math.random(), Math.random(), Math.random()]*/, width: (Style.width.pixels(2, tile) * VectorRenderer.units_per_meter[tile.coords.z]) }, tile, this.calculateZ(layer, tile, 0.01), triangles, lines, { closed_polygon: true, remove_tile_edges: true });
+                    // renderer.buildPolylines(feature.geometry.coordinates, feature, layer, { color: [1, 0, 0] /*[Math.random(), Math.random(), Math.random()]*/, width: Style.width.pixels(1, tile) }, tile, z + 0.01, triangles, lines, { closed_polygon: true, remove_tile_edges: true });
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
                     renderer.buildPolygons(feature.geometry.coordinates, feature, layer, style, tile, z, triangles);
                     // for (var mpc=0; mpc < feature.geometry.coordinates.length; mpc++) {
-                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: [1, 0, 0], width: (Style.width.pixels(2, tile) * VectorRenderer.units_per_meter[tile.coords.z]) }, tile, this.calculateZ(layer, tile, 0.01), triangles, lines, { closed_polygon: true, remove_tile_edges: true });
+                    //     renderer.buildPolylines(feature.geometry.coordinates[mpc], feature, layer, { color: [1, 0, 0], width: Style.width.pixels(1, tile) }, tile, z + 0.01, triangles, lines, { closed_polygon: true, remove_tile_edges: true });
                     // }
                 }
                 else if (feature.geometry.type == 'LineString') {

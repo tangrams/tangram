@@ -8,7 +8,8 @@ Style.color = {
 };
 
 Style.width = {
-    pixels: function (p, t) { return p * Geo.meters_per_pixel[Math.floor(t.coords.z)]; }
+    pixels: function (p, t) { return p * VectorRenderer.units_per_pixel[t.coords.z]; },
+    meters: function (p, t) { return p * VectorRenderer.units_per_meter[t.coords.z]; }
 };
 
 // Makeshift style-sheet
@@ -27,7 +28,6 @@ var gl_styles = {
         color: {
             default: [0.5, 0.875, 0.5],
             'pitch': [0.3, 0.675, 0.3]
-            // 'pitch': function(f, t) { return f.id == 161219053 ? [1, 0, 1] : [0.3, 0.675, 0.3]; }
         }
     },
     water_areas: {
@@ -48,11 +48,11 @@ var gl_styles = {
         },
         width: {
             // default: function (f, t) { return Style.width.pixels(5, t); }
-            default: function (f, t) { return Math.log(t.coords.z) * 2; },
-            'highway': function (f, t) { return Math.log(t.coords.z) * 3; },
-            'major_road': function (f, t) { return Math.log(t.coords.z) * 2.5; },
-            'minor_road': function (f, t) { return Math.log(t.coords.z) * 2; },
-            'path': function (f, t) { return Math.log(t.coords.z) * 1; },
+            default: function (f, t) { return 2 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
+            'highway': function (f, t) { return 3 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
+            'major_road': function (f, t) { return 2.5 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
+            'minor_road': function (f, t) { return 2 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
+            'path': function (f, t) { return 1 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'debug': 30
         }
     },

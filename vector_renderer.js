@@ -1,7 +1,9 @@
 VectorRenderer.tile_scale = 4096;
 VectorRenderer.units_per_meter = [];
+VectorRenderer.units_per_pixel = [];
 for (var z=0; z <= Geo.max_zoom; z++) {
     VectorRenderer.units_per_meter[z] = VectorRenderer.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
+    VectorRenderer.units_per_pixel[z] = VectorRenderer.tile_scale / Geo.tile_size;
 }
 
 // Layers: pass an object directly, or a URL as string to load remotely
