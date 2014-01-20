@@ -123,19 +123,35 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
 };
 
 // Determine final style properties (color, width, etc.)
+GLRenderer.prototype.style_defaults = {
+    color: [1.0, 0, 0],
+    width: 1,
+    extrude: false,
+    height: 20
+};
 GLRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
 {
     var layer_style = this.styles[layer.name] || {};
     var style = {};
 
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || [1.0, 0, 0];
+    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || this.style_defaults.color;
     if (typeof style.color == 'function') { // dynamic/function-based color
-        style.color = style.color(feature);
+        style.color = style.color(feature, tile);
     }
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || 1;
+    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || this.style_defaults.width;
     if (typeof style.width == 'function') {
         style.width = style.width(feature, tile);
+    }
+
+    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || this.style_defaults.extrude;
+    if (typeof style.extrude == 'function') {
+        style.extrude = style.extrude(feature, tile); // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
+    }
+
+    style.height = (feature.properties && feature.properties.height) || this.style_defaults.height;
+    if (typeof style.extrude == 'number') {
+        style.height = style.extrude; // height defaults to feature height, but extrude style can dynamically adjust height by returning a number (instead of a boolean)
     }
 
     return style;
@@ -199,15 +215,13 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 }
 
                 if (polygons != null) {
-                    // 3D buildings
-                    // TODO: move hard-coded logic into styles
-                    var height = (feature.properties && feature.properties.height) || 20;
-                    if (layer.name == 'buildings' && ((tile.coords.z >= 15 && height > 20) || tile.coords.z >= 16)) {
-                        GLBuilders.buildExtrudedPolygons(polygons, z, height, vertex_triangles, { vertex_constants: vertex_constants });
-                    }
                     // Regular polygons
-                    else {
+                    if (!style.extrude) {
                         GLBuilders.buildPolygons(polygons, z, vertex_triangles, { vertex_constants: vertex_constants });
+                    }
+                    // Extruded polygons (e.g. 3D buildings)
+                    else {
+                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, vertex_triangles, { vertex_constants: vertex_constants });
                     }
 
                     // Polygon outlines
