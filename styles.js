@@ -53,7 +53,7 @@ var gl_styles = {
             'major_road': function (f, t) { return 2.5 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'minor_road': function (f, t) { return 2 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'path': function (f, t) { return 1 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
-            'debug': 30
+            'debug': function (f, t) { return 5 * VectorRenderer.units_per_meter[t.coords.z]; }
         }
     },
     buildings: {

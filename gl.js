@@ -226,6 +226,29 @@ GL.triangulate = function GLTriangulate (contours)
     return triangleVerts;
 };
 
+// Add one or more vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
+// Used for adding values that are often constant per geometry or polygon, like colors, normals (for polys sitting flat on map), layer and material info, etc.
+GL.addVertices = function (vertices, vertex_data, vertex_constants)
+{
+    // Array of vertices
+    if (typeof vertices[0] == 'object') {
+        for (var v=0; v < vertices.length; v++) {
+            vertex_data.push.apply(vertex_data, vertices[v]);
+            if (vertex_constants) {
+                vertex_data.push.apply(vertex_data, vertex_constants);
+            }
+        }
+    }
+    // Single vertex
+    else {
+        vertex_data.push.apply(vertex_data, vertices);
+        if (vertex_constants) {
+            vertex_data.push.apply(vertex_data, vertex_constants);
+        }
+    }
+    return vertex_data;
+};
+
 /*** Manage rendering for primitives ***/
 
 function GLGeometry (gl, program, vertex_data, vertex_stride, options)

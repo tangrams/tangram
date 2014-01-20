@@ -1,4 +1,4 @@
-VectorRenderer.tile_scale = 4096;
+VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 VectorRenderer.units_per_meter = [];
 VectorRenderer.units_per_pixel = [];
 for (var z=0; z <= Geo.max_zoom; z++) {
