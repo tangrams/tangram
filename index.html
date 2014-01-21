@@ -40,7 +40,7 @@ body {
 }
 
 </style>
-<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+<link rel="stylesheet" href="lib/leaflet-0.8-dev.css" />
 </head>
 
 <body>
@@ -48,10 +48,9 @@ body {
 <div id="map"></div>
 <canvas id="webgl-canvas" style="position: absolute; left: 0px; top: 0px; z-index: -1;"></canvas>
 
-<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
-<!-- <script src="../libs/Leaflet/dist/leaflet.js"></script> -->
-<script src="lib/TileLayer.DivGrid.js"></script>
+<script src="lib/leaflet-0.8-dev.js"></script>
 <script src="lib/libtess.cat.js"></script>
+
 <script src="geo.js"></script>
 <script src="gl.js"></script>
 <script src="layers.js"></script>
@@ -104,18 +103,18 @@ map.on('moveend', function () {
     window.location.hash = [renderer_type, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
-var layer = L.tileLayer.divGrid({
-    async: true,
+var layer = L.gridLayer({
     maxZoom: Geo.max_zoom,
     attribution: '<a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
-    updateWhenIdle: false,
-    preloadInvisibleTiles: 0
+    updateWhenIdle: false
 });
 
-layer.drawTile = function(tileDiv, tilePoint, zoom) {
-    renderer.loadTile({ x: tilePoint.x, y: tilePoint.y, z: zoom }, tileDiv);
-}
+layer.createTile = function(coords, done) {
+    var div = document.createElement('div');
+    renderer.loadTile(coords, div, done);
+    return div;
+};
 
 // Renderers
 var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';

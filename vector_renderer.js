@@ -39,7 +39,7 @@ VectorRenderer.loadLayers = function (url)
     return layers;
 };
 
-VectorRenderer.prototype.loadTile = function (coords, div)
+VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
     var tile_url = this.tile_base_url + coords.z + '/' + coords.x + '/' + coords.y + '.json';
     var key = [coords.x, coords.y, coords.z].join('/');
@@ -99,8 +99,11 @@ VectorRenderer.prototype.loadTile = function (coords, div)
         tile.debug.rendering = +new Date() - timer; // rendering/geometry prep
 
         renderer.printDebugForTile(tile);
-        renderer.leaflet.layer.tileDrawn(div);
+        if (callback) {
+            callback(null, div);
+        }
     };
+    // TODO: add XHR error handling
     req.open('GET', tile_url, true /* async flag */);
     req.send();
 };
