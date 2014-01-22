@@ -87,7 +87,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         renderer.projectTile(tile);
 
         // Re-scale from meters to local tile coords
-        renderer.scaleTile(tile, renderer.tile_scale);
+        renderer.scaleTile(tile);
 
         tile.xhr = null;
         tile.loading = false;
@@ -155,7 +155,7 @@ VectorRenderer.prototype.projectTile = function (tile)
 
 // Re-scale geometries within each tile to the range [0, scale]
 // TODO: clip vertices at edges? right now vertices can have values outside [0, scale] (over or under bounds); this would pose a problem if we wanted to binary encode the vertices in fewer bits (e.g. 12 bits each for scale of 4096)
-VectorRenderer.prototype.scaleTile = function (tile, scale)
+VectorRenderer.prototype.scaleTile = function (tile)
 {
     for (var t in tile.layers) {
         var num_features = tile.layers[t].features.length;
@@ -170,6 +170,70 @@ VectorRenderer.prototype.scaleTile = function (tile, scale)
         };
     }
     return tile;
+};
+
+// Determine final style properties (color, width, etc.)
+VectorRenderer.prototype.style_defaults = {
+    color: [1.0, 0, 0],
+    width: 1,
+    size: 1,
+    extrude: false,
+    height: 20,
+    border: {
+        // color: [1.0, 0, 0],
+        // width: 1,
+        // dash: null
+    }
+};
+
+VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
+{
+    var layer_style = this.styles[layer.name] || {};
+    var style = {};
+
+    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || this.style_defaults.color;
+    if (typeof style.color == 'function') {
+        style.color = style.color(feature, tile);
+    }
+
+    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || this.style_defaults.width;
+    if (typeof style.width == 'function') {
+        style.width = style.width(feature, tile);
+    }
+
+    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || this.style_defaults.size;
+    if (typeof style.size == 'function') {
+        style.size = style.size(feature, tile);
+    }
+
+    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || this.style_defaults.extrude;
+    if (typeof style.extrude == 'function') {
+        style.extrude = style.extrude(feature, tile); // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
+    }
+
+    style.height = (feature.properties && feature.properties.height) || this.style_defaults.height;
+    if (typeof style.extrude == 'number') {
+        style.height = style.extrude; // height defaults to feature height, but extrude style can dynamically adjust height by returning a number (instead of a boolean)
+    }
+
+    style.border = {};
+    layer_style.border = layer_style.border || {};
+    style.border.color = (layer_style.border.color && (layer_style.border.color[feature.properties.kind] || layer_style.border.color.default)) || this.style_defaults.border.color;
+    if (typeof style.border.color == 'function') {
+        style.border.color = style.border.color(feature, tile);
+    }
+
+    style.border.width = (layer_style.border.width && (layer_style.border.width[feature.properties.kind] || layer_style.border.width.default)) || this.style_defaults.border.width;
+    if (typeof style.border.width == 'function') {
+        style.border.width = style.border.width(feature, tile);
+    }
+
+    style.border.dash = (layer_style.border.dash && (layer_style.border.dash[feature.properties.kind] || layer_style.border.dash.default)) || this.style_defaults.border.dash;
+    if (typeof style.border.dash == 'function') {
+        style.border.dash = style.border.dash(feature, tile);
+    }
+
+    return style;
 };
 
 VectorRenderer.prototype.printDebugForTile = function (tile)

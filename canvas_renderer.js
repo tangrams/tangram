@@ -12,9 +12,6 @@ CanvasRenderer.prototype.init = function CanvasRendererInit ()
     this.selection_info.setAttribute('class', 'label');
     this.selection_info.style.display = 'none';
 
-    this.tile_min = Point(0, 0);
-    this.tile_max = Point(this.tile_scale, -this.tile_scale);
-
     this.initMapHandlers();
 };
 
@@ -40,7 +37,7 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 
     canvas.width = Geo.tile_size;
     canvas.height = Geo.tile_size;
-    canvas.style.background = 'rgb(' + this.styles.default.join(',') + ')';
+    canvas.style.background = 'rgb(' + this.styles.default.map(function(c) { return ~~(c * 256); }).join(',') + ')'; // TODO: extract/generalize map background color definition
 
     this.renderTile(tile, context);
     tileDiv.appendChild(canvas);
@@ -54,34 +51,36 @@ CanvasRenderer.prototype.render = function CanvasRendererRender ()
 
 // Scale a GeoJSON coordinate (2-element array) from [min, max] to tile pixels
 // returns a copy of geometry.coordinates transformed into Points
-CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels (geometry, min, max)
+CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels (geometry)
 {
+    var tile_scale = this.tile_scale;
     return Geo.transformGeometry(geometry, function (coordinates) {
         return Point(
-            Math.round((coordinates[0] - min.x) * Geo.tile_size / (max.x - min.x)), // rounding removes seams but causes aliasing
-            Math.round((coordinates[1] - min.y) * Geo.tile_size / (max.y - min.y))
+            // Math.round((coordinates[0] - min.x) * Geo.tile_size / (max.x - min.x)), // rounding removes seams but causes aliasing
+            // Math.round((coordinates[1] - min.y) * Geo.tile_size / (max.y - min.y))
+            coordinates[0] * Geo.tile_size / tile_scale,
+            coordinates[1] * Geo.tile_size / tile_scale * -1 // adjust for flipped y-coord
         );
     });
 };
 
 // Renders a line given as an array of Points
 // line = [Point, Point, ...]
-CanvasRenderer.prototype.renderLine = function renderLine (line, properties, style, context)
+CanvasRenderer.prototype.renderLine = function renderLine (line, style, context)
 {
     var segments = line;
-    var style = style || {};
-    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 1;
-    var dash = (style.dash && (style.dash[properties.kind] || style.dash.default));
+    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var width = style.width;
+    var dash = style.dash;
 
     var c = context;
     c.beginPath();
     c.strokeStyle = 'rgb(' + color.join(',') + ')';
     c.lineCap = 'round';
-    c.lineWidth = size;
+    c.lineWidth = width;
     if (c.setLineDash) {
         if (dash) {
-            c.setLineDash(dash.map(function (d) { return d * size; }));
+            c.setLineDash(dash.map(function (d) { return d * width; }));
         }
         else {
             c.setLineDash([]);
@@ -104,13 +103,14 @@ CanvasRenderer.prototype.renderLine = function renderLine (line, properties, sty
 
 // Renders a polygon given as an array of Points
 // polygon = [Point, Point, ...]
-CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, properties, style, context)
+CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style, context)
 {
     var segments = polygon;
-    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var border_color = style.border && ((style.border.color && (style.border.color[properties.kind] || style.border.color.default)) || [255, 0, 0]);
-    var border_size = style.border && ((style.border.size && (style.border.size[properties.kind] || style.border.size.default)) || 1);
-    var border_dash = style.border && (style.border.dash && (style.border.dash[properties.kind] || style.border.dash.default));
+    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var width = style.width;
+    var border_color = style.border && style.border.color && style.border.color.map(function(c) { return ~~(c * 256); });
+    var border_width = style.border && style.border.width;
+    var border_dash = style.border && style.border.dash;
 
     var c = context;
     c.beginPath();
@@ -125,13 +125,13 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, proper
     c.fill();
 
     // Border
-    if (style.border) {
+    if (border_color && border_width) {
         c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
         c.lineCap = 'round';
-        c.lineWidth = border_size;
+        c.lineWidth = border_width;
         if (c.setLineDash) {
             if (border_dash) {
-                c.setLineDash(border_dash.map(function (d) { return d * border_size; }));
+                c.setLineDash(border_dash.map(function (d) { return d * border_width; }));
             }
             else {
                 c.setLineDash([]);
@@ -142,13 +142,13 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, proper
 };
 
 // Renders a point given as a Point object
-CanvasRenderer.prototype.renderPoint = function renderPoint (point, properties, style, context)
+CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, context)
 {
-    var color = (style.color && (style.color[properties.kind] || style.color.default)) || [255, 0, 0];
-    var size = (style.size && (style.size[properties.kind] || style.size.default)) || 5;
-    var border_color = style.border && ((style.border.color && (style.border.color[properties.kind] || style.border.color.default)) || [255, 0, 0]);
-    var border_size = style.border && ((style.border.size && (style.border.size[properties.kind] || style.border.size.default)) || 1);
-    var border_dash = style.border && (style.border.dash && (style.border.dash[properties.kind] || style.border.dash.default));
+    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var size = style.size;
+    var border_color = style.border && style.border.color && style.border.color.map(function(c) { return ~~(c * 256); });
+    var border_width = style.border && style.border.width;
+    var border_dash = style.border && style.border.dash;
 
     var c = context;
     c.fillStyle = 'rgb(' + color.join(',') + ')';
@@ -159,12 +159,12 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, properties, 
     c.fill();
 
     // Border
-    if (style.border) {
+    if (border_color && border_width) {
         c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
-        c.lineWidth = border_size;
+        c.lineWidth = border_width;
         if (c.setLineDash) {
             if (border_dash) {
-                c.setLineDash(border_dash.map(function (d) { return d * border_size; }));
+                c.setLineDash(border_dash.map(function (d) { return d * border_width; }));
             }
             else {
                 c.setLineDash([]);
@@ -175,16 +175,17 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, properties, 
 };
 
 var cutout_context = document.createElement('canvas').getContext('2d');
-CanvasRenderer.prototype.renderGeometry = function renderGeometry (geometry, properties, style, context)
+CanvasRenderer.prototype.renderFeature = function renderFeature (feature, style, context)
 {
     var g, h, polys;
+    var geometry = feature.geometry;
 
     if (geometry.type == 'LineString') {
-        this.renderLine(geometry.pixels, properties, style, context);
+        this.renderLine(geometry.pixels, style, context);
     }
     else if (geometry.type == 'MultiLineString') {
         for (g=0; g < geometry.pixels.length; g++) {
-            this.renderLine(geometry.pixels[g], properties, style, context);
+            this.renderLine(geometry.pixels[g], style, context);
         }
     }
     else if (geometry.type == 'Polygon' || geometry.type == 'MultiPolygon') {
@@ -206,33 +207,33 @@ CanvasRenderer.prototype.renderGeometry = function renderGeometry (geometry, pro
                 cutout_context.clearRect(0, 0, cutout_context.canvas.width, cutout_context.canvas.height);
 
                 cutout_context.globalCompositeOperation = 'source-over';
-                this.renderPolygon(polys[g][0], properties, style, cutout_context);
+                this.renderPolygon(polys[g][0], style, cutout_context);
 
                 cutout_context.globalCompositeOperation = 'destination-out';
                 for (h=1; h < polys[g].length; h++) {
-                    this.renderPolygon(polys[g][h], properties, style, cutout_context);
+                    this.renderPolygon(polys[g][h], style, cutout_context);
                 }
                 context.drawImage(cutout_context.canvas, 0, 0);
 
                 // After compositing back to main canvas, draw outlines on holes
-                if (style.border) {
+                if (style.border && style.border.color) {
                     for (h=1; h < polys[g].length; h++) {
-                        this.renderLine(polys[g][h], properties, style.border, context);
+                        this.renderLine(polys[g][h], style.border, context);
                     }
                 }
             }
             // Regular closed polygons
             else {
-                this.renderPolygon(polys[g][0], properties, style, context);
+                this.renderPolygon(polys[g][0], style, context);
             }
         }
     }
     else if (geometry.type == 'Point') {
-        this.renderPoint(geometry.pixels, properties, style, context);
+        this.renderPoint(geometry.pixels, style, context);
     }
     else if (geometry.type == 'MultiPoint') {
         for (g=0; g < geometry.pixels.length; g++) {
-            this.renderPoint(geometry.pixels[g], properties, style, context);
+            this.renderPoint(geometry.pixels[g], style, context);
         }
     }
 };
@@ -240,13 +241,17 @@ CanvasRenderer.prototype.renderGeometry = function renderGeometry (geometry, pro
 // Generates a random color not yet present in the provided hash of colors
 CanvasRenderer.prototype.generateColor = function generateColor (color_map)
 {
-    var r, g, b, key;
+    var r, g, b, ir, ig, ib, key;
     color_map = color_map || {};
     while (true) {
-        r = ~~(Math.random() * 256);
-        g = ~~(Math.random() * 256);
-        b = ~~(Math.random() * 256);
-        key = (r + (g << 8) + (b << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
+        r = Math.random();
+        g = Math.random();
+        b = Math.random();
+
+        ir = ~~(r * 256);
+        ig = ~~(g * 256);
+        ib = ~~(b * 256);
+        key = (ir + (ig << 8) + (ib << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
         if (color_map[key] === undefined) {
             color_map[key] = { color: [r, g, b] };
@@ -260,6 +265,7 @@ CanvasRenderer.prototype.generateColor = function generateColor (color_map)
 CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
 {
     var renderer = this;
+    var style;
 
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
@@ -274,24 +280,27 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     for (var t in renderer.layers) {
         var layer = renderer.layers[t];
         tile.layers[layer.name].features.forEach(function(feature) {
-            // Scale mercator coords to tile pixels
+            // Scale local coords to tile pixels
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, renderer.tile_min, renderer.tile_max);
+            style = this.parseStyleForFeature(feature, layer, tile);
 
             // Draw visible geometry
             if (layer.visible != false) {
-                this.renderGeometry(feature.geometry, feature.properties, this.styles[layer.name], context);
+                this.renderFeature(feature, style, context);
             }
 
             // Draw mask for interactivity
+            // TODO: move selection filter logic to stylesheet
+            // TODO: only alter styles that are explicitly different, don't manually copy style values by property name
             if (layer.selection == true && feature.properties.name != null && feature.properties.name != '') {
                 selection_color = this.generateColor(selection.colors);
                 selection_color.properties = feature.properties;
                 selection_count++;
-                this.renderGeometry(feature.geometry, feature.properties, { color: { default: selection_color.color }, size: this.styles[layer.name].size }, selection_context);
+                this.renderFeature(feature, { color: selection_color.color, width: style.width, size: style.size }, selection_context);
             }
             else {
                 // If this geometry isn't interactive, mask it out so geometry under it doesn't appear to pop through
-                this.renderGeometry(feature.geometry, feature.properties, { color: { default: [0, 0, 0] }, size: this.styles[layer.name].size }, selection_context);
+                this.renderFeature(feature, { color: [0, 0, 0], width: style.width, size: style.size }, selection_context);
             }
 
         }, this);

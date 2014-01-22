@@ -69,44 +69,44 @@ var gl_styles = {
 };
 
 var canvas_styles = {
-    default: [200, 200, 200], // background
+    default: [200/255, 200/255, 200/255], // background
     water: {
         color: {
-            default: [25, 150, 220]
+            default: [25/255, 150/255, 220/255]
         }
     },
     land_unlabeled: {
         color: {
-            default: [32, 200, 125]
+            default: [32/255, 200/255, 125/255]
         }
     },
     land_labeled: {
         color: {
-            default: [2, 170, 95]
+            default: [2/255, 170/255, 95/255]
         }
     },
     buildings_unlabeled: {
         color: {
-            default: [150, 150, 150]
+            default: [150/255, 150/255, 150/255]
         },
         border: {
             color: {
-                default: [75, 75, 75]
+                default: [75/255, 75/255, 75/255]
             },
-            size: {
+            width: {
                 default: 1
             }
         }
     },
     buildings_labeled: {
         color: {
-            default: [200, 150, 150]
+            default: [200/255, 150/255, 150/255]
         },
         border: {
             color: {
-                default: [75, 75, 75]
+                default: [75/255, 75/255, 75/255]
             },
-            size: {
+            width: {
                 default: 1
             }
         }
@@ -114,12 +114,12 @@ var canvas_styles = {
     roads: {
         color: {
             'highway': [0, 0, 0],
-            'major_road': [100, 100, 100],
-            'minor_road': [150, 150, 150],
-            'path': [255, 255, 255],
+            'major_road': [100/255, 100/255, 100/255],
+            'minor_road': [150/255, 150/255, 150/255],
+            'path': [255/255, 255/255, 255/255],
             'rail': [0, 0, 0]
         },
-        size: {
+        width: {
             'highway': 5,
             'major_road': 2.5,
             'minor_road': 1.5,
@@ -131,22 +131,22 @@ var canvas_styles = {
         }
     },
     road_labels: {
-        size: {
+        width: {
             default: 15
         }
     },
     pois: {
         color: {
-            default: [240, 0, 0]
+            default: [240/255, 0, 0]
         },
         size: {
             default: 5
         },
         border: {
             color: {
-                default: [240, 240, 240]
+                default: [240/255, 240/255, 240/255]
             },
-            size: {
+            width: {
                 default: 2
             }
         }
