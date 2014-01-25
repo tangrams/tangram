@@ -37,7 +37,7 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 
     canvas.width = Geo.tile_size;
     canvas.height = Geo.tile_size;
-    canvas.style.background = 'rgb(' + this.styles.default.map(function(c) { return ~~(c * 256); }).join(',') + ')'; // TODO: extract/generalize map background color definition
+    canvas.style.background = this.colorToString(this.styles.default);
 
     this.renderTile(tile, context);
     tileDiv.appendChild(canvas);
@@ -69,13 +69,13 @@ CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels 
 CanvasRenderer.prototype.renderLine = function renderLine (line, style, context)
 {
     var segments = line;
-    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var color = style.color;
     var width = style.width;
     var dash = style.dash;
 
     var c = context;
     c.beginPath();
-    c.strokeStyle = 'rgb(' + color.join(',') + ')';
+    c.strokeStyle = this.colorToString(color);
     c.lineCap = 'round';
     c.lineWidth = width;
     if (c.setLineDash) {
@@ -106,15 +106,15 @@ CanvasRenderer.prototype.renderLine = function renderLine (line, style, context)
 CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style, context)
 {
     var segments = polygon;
-    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var color = style.color;
     var width = style.width;
-    var border_color = style.border && style.border.color && style.border.color.map(function(c) { return ~~(c * 256); });
+    var border_color = style.border && style.border.color;
     var border_width = style.border && style.border.width;
     var border_dash = style.border && style.border.dash;
 
     var c = context;
     c.beginPath();
-    c.fillStyle = 'rgb(' + color.join(',') + ')';
+    c.fillStyle = this.colorToString(color);
     c.moveTo(segments[0].x, segments[0].y);
 
     for (var r=1; r < segments.length; r ++) {
@@ -126,7 +126,7 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style,
 
     // Border
     if (border_color && border_width) {
-        c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
+        c.strokeStyle = this.colorToString(border_color);
         c.lineCap = 'round';
         c.lineWidth = border_width;
         if (c.setLineDash) {
@@ -144,14 +144,14 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style,
 // Renders a point given as a Point object
 CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, context)
 {
-    var color = style.color.map(function(c) { return ~~(c * 256); });
+    var color = style.color;
     var size = style.size;
-    var border_color = style.border && style.border.color && style.border.color.map(function(c) { return ~~(c * 256); });
+    var border_color = style.border && style.border.color;
     var border_width = style.border && style.border.width;
     var border_dash = style.border && style.border.dash;
 
     var c = context;
-    c.fillStyle = 'rgb(' + color.join(',') + ')';
+    c.fillStyle = this.colorToString(color);
 
     c.beginPath();
     c.arc(point.x, point.y, size, 0, 2 * Math.PI);
@@ -160,7 +160,7 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, conte
 
     // Border
     if (border_color && border_width) {
-        c.strokeStyle = 'rgb(' + border_color.join(',') + ')';
+        c.strokeStyle = this.colorToString(border_color);
         c.lineWidth = border_width;
         if (c.setLineDash) {
             if (border_dash) {
@@ -236,29 +236,6 @@ CanvasRenderer.prototype.renderFeature = function renderFeature (feature, style,
             this.renderPoint(geometry.pixels[g], style, context);
         }
     }
-};
-
-// Generates a random color not yet present in the provided hash of colors
-CanvasRenderer.prototype.generateColor = function generateColor (color_map)
-{
-    var r, g, b, ir, ig, ib, key;
-    color_map = color_map || {};
-    while (true) {
-        r = Math.random();
-        g = Math.random();
-        b = Math.random();
-
-        ir = ~~(r * 256);
-        ig = ~~(g * 256);
-        ib = ~~(b * 256);
-        key = (ir + (ig << 8) + (ib << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
-
-        if (color_map[key] === undefined) {
-            color_map[key] = { color: [r, g, b] };
-            break;
-        }
-    }
-    return color_map[key];
 };
 
 // Render a GeoJSON tile onto canvas
@@ -345,4 +322,35 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
             }
         };
     }
+};
+
+/* Color helpers */
+
+// Transform color components in 0-1 range to html RGB string for canvas
+CanvasRenderer.prototype.colorToString = function (color)
+{
+    return 'rgb(' + color.map(function(c) { return ~~(c * 256); }).join(',') + ')';
+};
+
+// Generates a random color not yet present in the provided hash of colors
+CanvasRenderer.prototype.generateColor = function generateColor (color_map)
+{
+    var r, g, b, ir, ig, ib, key;
+    color_map = color_map || {};
+    while (true) {
+        r = Math.random();
+        g = Math.random();
+        b = Math.random();
+
+        ir = ~~(r * 256);
+        ig = ~~(g * 256);
+        ib = ~~(b * 256);
+        key = (ir + (ig << 8) + (ib << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
+
+        if (color_map[key] === undefined) {
+            color_map[key] = { color: [r, g, b] };
+            break;
+        }
+    }
+    return color_map[key];
 };
