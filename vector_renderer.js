@@ -10,8 +10,8 @@ for (var z=0; z <= Geo.max_zoom; z++) {
 function VectorRenderer (leaflet, layers, styles)
 {
     // this.tile_base_url = 'http://tile.openstreetmap.us/vectiles-all/';
-    // this.tile_base_url = 'http://api-vector-test.mapzen.com/vector/all/';
-    this.tile_base_url = 'http://api-vector-dev.mapzen.com/vector/all/';
+    this.tile_base_url = 'http://vector.test.mapzen.com/vector/all/';
+    // this.tile_base_url = 'http://vector.dev.mapzen.com/vector/all/';
     // this.tile_base_url = 'http://localhost:8080/all/';
 
     this.tile_scale = 4096;
