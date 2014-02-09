@@ -42,9 +42,7 @@ GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
 
     this.leaflet.map.on('resize', function (e) {
         var size = renderer.leaflet.map.getSize();
-        renderer.canvas.width = size.x;
-        renderer.canvas.height = size.y;
-        renderer.gl.viewport(0, 0, renderer.canvas.width, renderer.canvas.height);
+        renderer.resizeMap(size.x, size.y);
     });
 
     this.leaflet.map.on('zoomstart', function () {
@@ -272,6 +270,13 @@ GLRenderer.prototype.setZoom = function (z) {
     else {
         this.zoom = z;
     }
+};
+
+GLRenderer.prototype.resizeMap = function (width, height)
+{
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
 GLRenderer.prototype.render = function GLRendererRender ()
