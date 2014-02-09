@@ -2,25 +2,17 @@
 var GL = {};
 
 // Setup a WebGL context
-// 'elem' can be one of:
-//    an existing canvas element
-//    an existing (non-canvas) element to be used as a container (a new canvas element is created and added as a child)
-//    null (a new canvas element is created and added as a child of the document body)
-GL.getContext = function getContext (elem)
+// If no canvas element is provided, one is created and added to the document body
+GL.getContext = function getContext (canvas)
 {
-    var canvas;
-    if (elem != null && elem.nodeName == 'CANVAS') {
-        canvas = elem;
-    }
-    else {
+    var canvas = canvas;
+    if (canvas == null) {
         canvas = document.createElement('canvas');
         canvas.style.position = 'absolute';
         canvas.style.top = 0;
         canvas.style.left = 0;
         canvas.style.zIndex = -1;
-
-        var parent = elem || document.body;
-        parent.appendChild(canvas);
+        document.body.appendChild(canvas);
     }
 
     gl = canvas.getContext('experimental-webgl', { /*preserveDrawingBuffer: true*/ }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)

@@ -9,7 +9,18 @@ function GLRenderer (leaflet, layers)
 
 GLRenderer.prototype.init = function GLRendererInit ()
 {
-    this.gl = GL.getContext(this.leaflet.layer.getContainer());
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = 0;
+    this.canvas.style.left = 0;
+    this.canvas.style.zIndex = -1;
+
+    // Insert after map container (leaflet transforms shouldn't be applied to the GL canvas)
+    // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
+    var map_container = this.leaflet.map.getContainer();
+    map_container.parentNode.insertBefore(this.canvas, map_container.nextSibling);
+
+    this.gl = GL.getContext(this.canvas);
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     this.last_render_count = null;
 
