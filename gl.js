@@ -143,34 +143,6 @@ GL.createShader = function GLcreateShader (gl, source, type)
     return shader;
 };
 
-// Determine layout for vertex data
-// GL.makeProgramLayout = function (gl, program, program_layout)
-// {
-//     var p = program_layout;
-//     p.program = program;
-//     p.attrib_stride = 0;
-
-//     // Determine buffer layout
-//     for (var a in program_layout.attribs) {
-//         var attrib = program_layout.attribs[a];
-//         attrib.location = gl.getAttribLocation(p.program, attrib.name);
-
-//         var elem_size = 0;
-//         if (attrib.type == gl.FLOAT) {
-//             elem_size = Float32Array.BYTES_PER_ELEMENT;
-//         }
-//         // TODO: add other GL types
-
-//         attrib.size = attrib.components * elem_size;
-//         attrib.offset = p.attrib_stride;
-//         p.attrib_stride += attrib.size;
-//     }
-
-//     // TODO: support for uniforms?
-
-//     return p;
-// };
-
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
 GL.tesselator = (function initTesselator() {

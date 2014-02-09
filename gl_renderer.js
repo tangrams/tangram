@@ -5,37 +5,12 @@ function GLRenderer (leaflet, layers)
 {
     VectorRenderer.apply(this, arguments);
     GLBuilders.setTileScale(VectorRenderer.tile_scale);
-
-    // Defines the vertex buffer layout for the program
-    // this.program_layout = {
-    //     attribs: [
-    //         {
-    //             name: 'position',
-    //             components: 3,
-    //             type: WebGLRenderingContext.FLOAT,
-    //             normalized: false
-    //         },
-    //         {
-    //             name: 'normal',
-    //             components: 3,
-    //             type: WebGLRenderingContext.FLOAT,
-    //             normalized: false
-    //         },
-    //         {
-    //             name: 'color',
-    //             components: 3,
-    //             type: WebGLRenderingContext.FLOAT,
-    //             normalized: false
-    //         }
-    //     ]
-    // };
 }
 
 GLRenderer.prototype.init = function GLRendererInit ()
 {
     this.gl = GL.getContext(this.leaflet.layer.getContainer());
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
-    // this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
     this.last_render_count = null;
 
     this.zoom = this.leaflet.map.getZoom();
