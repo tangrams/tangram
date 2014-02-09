@@ -45,9 +45,16 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     var req = new XMLHttpRequest();
     var renderer = this;
 
-    this.removeTile(key);
+    // Already loaded?
+    if (this.tiles[key]) {
+        console.log("use loaded tile " + key + " from cache");
+        if (callback) {
+            callback(null, div);
+        }
+        return;
+    }
 
-    var tile = this.tiles[key] = this.tiles[key] || {};
+    var tile = this.tiles[key] = {};
     tile.key = key;
     tile.coords = coords;
     tile.xhr = req;
