@@ -33,7 +33,7 @@ function GLRenderer (leaflet, layers)
 
 GLRenderer.prototype.init = function GLRendererInit ()
 {
-    this.gl = GL.getContext();
+    this.gl = GL.getContext(this.leaflet.layer.getContainer());
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     // this.program_layout = GL.makeProgramLayout(this.gl, this.program, this.program_layout);
     this.last_render_count = null;
