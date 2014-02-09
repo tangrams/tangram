@@ -14,7 +14,6 @@ function VectorRenderer (leaflet, layers, styles)
     // this.tile_base_url = 'http://vector.dev.mapzen.com/vector/all/';
     // this.tile_base_url = 'http://localhost:8080/all/';
 
-    this.tile_scale = 4096;
     this.tiles = {};
 
     this.leaflet = leaflet;

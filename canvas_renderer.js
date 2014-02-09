@@ -53,13 +53,12 @@ CanvasRenderer.prototype.render = function CanvasRendererRender ()
 // returns a copy of geometry.coordinates transformed into Points
 CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels (geometry)
 {
-    var tile_scale = this.tile_scale;
     return Geo.transformGeometry(geometry, function (coordinates) {
         return Point(
             // Math.round((coordinates[0] - min.x) * Geo.tile_size / (max.x - min.x)), // rounding removes seams but causes aliasing
             // Math.round((coordinates[1] - min.y) * Geo.tile_size / (max.y - min.y))
-            coordinates[0] * Geo.tile_size / tile_scale,
-            coordinates[1] * Geo.tile_size / tile_scale * -1 // adjust for flipped y-coord
+            coordinates[0] * Geo.tile_size / VectorRenderer.tile_scale,
+            coordinates[1] * Geo.tile_size / VectorRenderer.tile_scale * -1 // adjust for flipped y-coord
         );
     });
 };
