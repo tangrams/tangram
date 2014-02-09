@@ -98,6 +98,8 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         renderer.addTile(tile, div);
         tile.debug.rendering = +new Date() - timer; // rendering/geometry prep
 
+        delete tile.layers; // delete the source data in the tile to save memory
+
         renderer.printDebugForTile(tile);
         if (callback) {
             callback(null, div);
