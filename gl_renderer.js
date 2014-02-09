@@ -9,18 +9,19 @@ function GLRenderer (leaflet, layers)
 
 GLRenderer.prototype.init = function GLRendererInit ()
 {
+    // Make canvas element and insert after map container (leaflet transforms shouldn't be applied to the GL canvas)
+    // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
+    var map_container = this.leaflet.map.getContainer();
     this.canvas = document.createElement('canvas');
     this.canvas.style.position = 'absolute';
     this.canvas.style.top = 0;
     this.canvas.style.left = 0;
     this.canvas.style.zIndex = -1;
-
-    // Insert after map container (leaflet transforms shouldn't be applied to the GL canvas)
-    // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-    var map_container = this.leaflet.map.getContainer();
+    this.canvas.width = map_container.offsetWidth;
+    this.canvas.height = map_container.offsetHeight;
     map_container.parentNode.insertBefore(this.canvas, map_container.nextSibling);
 
-    this.gl = GL.getContext(this.canvas);
+    this.gl = GL.getContext(); //this.canvas);
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     this.last_render_count = null;
 
@@ -38,6 +39,13 @@ GLRenderer.prototype.init = function GLRendererInit ()
 GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
 {
     var renderer = this;
+
+    this.leaflet.map.on('resize', function (e) {
+        var size = renderer.leaflet.map.getSize();
+        renderer.canvas.width = size.x;
+        renderer.canvas.height = size.y;
+        renderer.gl.viewport(0, 0, renderer.canvas.width, renderer.canvas.height);
+    });
 
     this.leaflet.map.on('zoomstart', function () {
         console.log("map.zoomstart " + renderer.leaflet.map.getZoom());

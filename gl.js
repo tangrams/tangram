@@ -6,13 +6,17 @@ var GL = {};
 GL.getContext = function getContext (canvas)
 {
     var canvas = canvas;
+    var fullscreen = false;
     if (canvas == null) {
         canvas = document.createElement('canvas');
         canvas.style.position = 'absolute';
         canvas.style.top = 0;
         canvas.style.left = 0;
         canvas.style.zIndex = -1;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         document.body.appendChild(canvas);
+        fullscreen = true;
     }
 
     gl = canvas.getContext('experimental-webgl', { /*preserveDrawingBuffer: true*/ }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)
@@ -21,15 +25,14 @@ GL.getContext = function getContext (canvas)
         throw "Couldn't create WebGL context";
     }
 
-    function GLonWindowResize (event)
-    {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (fullscreen == true) {
+        window.addEventListener('resize', function () {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        });
     }
-
-    window.addEventListener('resize', GLonWindowResize);
-    GLonWindowResize();
 
     return gl;
 };
