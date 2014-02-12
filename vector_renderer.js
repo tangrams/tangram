@@ -7,15 +7,10 @@ for (var z=0; z <= Geo.max_zoom; z++) {
 }
 
 // Layers: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (leaflet, layers, styles)
+function VectorRenderer (url_template, leaflet, layers, styles)
 {
-    // this.tile_base_url = 'http://tile.openstreetmap.us/vectiles-all/';
-    this.tile_base_url = 'http://vector.test.mapzen.com/vector/all/';
-    // this.tile_base_url = 'http://vector.dev.mapzen.com/vector/all/';
-    // this.tile_base_url = 'http://localhost:8080/all/';
-
+    this.url_template = url_template;
     this.tiles = {};
-
     this.leaflet = leaflet;
 
     if (typeof(layers) == 'string') {
@@ -40,7 +35,7 @@ VectorRenderer.loadLayers = function (url)
 
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
-    var tile_url = this.tile_base_url + coords.z + '/' + coords.x + '/' + coords.y + '.json';
+    var tile_url = this.url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
     var key = [coords.x, coords.y, coords.z].join('/');
     var req = new XMLHttpRequest();
     var renderer = this;

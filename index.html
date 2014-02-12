@@ -60,7 +60,13 @@ body {
 
 <script>
 
-// Resize map
+var vector_tile_source =
+  'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json';
+  // 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json';
+  // 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json';
+  // 'http://localhost:8080/all/{z}/{x}/{y}.json';
+
+// Resize map to window
 function resizeMap () {
     document.getElementById('map').style.width = window.innerWidth + 'px';
     document.getElementById('map').style.height = window.innerHeight + 'px';
@@ -118,43 +124,20 @@ layer.createTile = function(coords, done) {
 var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
 var renderer;
 if (renderer_type == 'gl') {
-    renderer = new GLRenderer({ map: map, layer: layer }, 'gl_layers.js', gl_styles);
+    renderer = new GLRenderer(vector_tile_source, { map: map, layer: layer }, 'gl_layers.js', gl_styles);
 }
 else {
-    renderer = new CanvasRenderer({ map: map, layer: layer }, 'canvas_layers.js', canvas_styles);
+    renderer = new CanvasRenderer(vector_tile_source, { map: map, layer: layer }, 'canvas_layers.js', canvas_styles);
 }
 
 // Start render loop
 window.addEventListener('load', function () {
-    requestAnimationFrameCompatibility();
     layer.addTo(map);
     renderer.init();
     frameLoop();
 });
 
-/***** Animation loop *****/
-
-// Cross-browser compatibility for requestAnimationFrame
-// (function requestAnimationFrameCompatibility ()
-function requestAnimationFrameCompatibility ()
-{
-  if (window.requestAnimationFrame == undefined) {
-      window.requestAnimationFrame =
-          (function () {
-              return (
-                  window.requestAnimationFrame       ||
-                  window.webkitRequestAnimationFrame ||
-                  window.mozRequestAnimationFrame    ||
-                  window.oRequestAnimationFrame      ||
-                  window.msRequestAnimationFrame     ||
-                  function (callback) {
-                      window.setTimeout(callback, 1000 / 60);
-                  }
-              );
-          })();
-  }
-}
-// }());
+/***** Render loop *****/
 
 function frameLoop () {
     frame();
@@ -164,6 +147,24 @@ function frameLoop () {
 function frame () {
     renderer.render();
 }
+
+// Cross-browser compatibility for requestAnimationFrame
+(function requestAnimationFrameCompatibility () {
+    if (window.requestAnimationFrame == undefined) {
+        window.requestAnimationFrame = (function () {
+            return (
+                window.requestAnimationFrame       ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame    ||
+                window.oRequestAnimationFrame      ||
+                window.msRequestAnimationFrame     ||
+                function (callback) {
+                   window.setTimeout(callback, 1000 / 60);
+                }
+            );
+        })();
+    }
+}());
 
 </script>
 </body>

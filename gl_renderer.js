@@ -1,7 +1,7 @@
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-function GLRenderer (leaflet, layers)
+function GLRenderer (url_template, leaflet, layers, styles)
 {
     VectorRenderer.apply(this, arguments);
     GLBuilders.setTileScale(VectorRenderer.tile_scale);

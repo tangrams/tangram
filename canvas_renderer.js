@@ -1,6 +1,6 @@
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (leaflet, layers)
+function CanvasRenderer (url_template, leaflet, layers, styles)
 {
     VectorRenderer.apply(this, arguments);
 }
