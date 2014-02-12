@@ -52,7 +52,6 @@ body {
 
 <script src="geo.js"></script>
 <script src="gl.js"></script>
-<script src="styles.js"></script>
 <script src="vector_renderer.js"></script>
 <script src="canvas_renderer.js"></script>
 <script src="gl_renderer.js"></script>
@@ -124,10 +123,10 @@ layer.createTile = function(coords, done) {
 var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
 var renderer;
 if (renderer_type == 'gl') {
-    renderer = new GLRenderer(vector_tile_source, { map: map, layer: layer }, 'gl_layers.js', gl_styles);
+    renderer = new GLRenderer(vector_tile_source, { map: map, layer: layer }, 'gl_layers.js', 'gl_styles.js');
 }
 else {
-    renderer = new CanvasRenderer(vector_tile_source, { map: map, layer: layer }, 'canvas_layers.js', canvas_styles);
+    renderer = new CanvasRenderer(vector_tile_source, { map: map, layer: layer }, 'canvas_layers.js', 'canvas_styles.js');
 }
 
 // Start render loop

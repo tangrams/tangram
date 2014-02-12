@@ -20,7 +20,12 @@ function VectorRenderer (url_template, leaflet, layers, styles)
         this.layers = layers;
     }
 
-    this.styles = styles;
+    if (typeof(styles) == 'string') {
+        this.styles = VectorRenderer.loadStyles(styles);
+    }
+    else {
+        this.styles = styles;
+    }
 }
 
 VectorRenderer.loadLayers = function (url)
@@ -31,6 +36,16 @@ VectorRenderer.loadLayers = function (url)
     req.open('GET', url, false /* async flag */);
     req.send();
     return layers;
+};
+
+VectorRenderer.loadStyles = function (url)
+{
+    var styles;
+    var req = new XMLHttpRequest();
+    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
+    req.open('GET', url, false /* async flag */);
+    req.send();
+    return styles;
 };
 
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
@@ -245,4 +260,18 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
         "debug for " + tile.key + ': [ ' +
         Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
     );
+};
+
+// Style helpers
+var Style = {};
+
+Style.color = {
+    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
+    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
+    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+};
+
+Style.width = {
+    pixels: function (p, t) { return p * VectorRenderer.units_per_pixel[t.coords.z]; }, // local tile units for a given pixel width
+    meters: function (p, t) { return p * VectorRenderer.units_per_meter[t.coords.z]; }  // local tile units for a given meter width
 };
