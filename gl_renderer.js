@@ -19,7 +19,7 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.canvas.style.zIndex = -1;
     this.canvas.width = map_container.offsetWidth;
     this.canvas.height = map_container.offsetHeight;
-    map_container.parentNode.insertBefore(this.canvas, map_container.nextSibling);
+    map_container.appendChild(this.canvas);
 
     this.gl = GL.getContext(); //this.canvas);
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
