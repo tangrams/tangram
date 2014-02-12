@@ -70,6 +70,7 @@ resizeMap();
 
 // Leaflet map
 var map = L.map('map', {
+    maxZoom: Geo.max_zoom,
     inertia: false,
     keyboard: false
 });
@@ -102,7 +103,6 @@ map.on('moveend', function () {
 });
 
 var layer = L.gridLayer({
-    maxZoom: Geo.max_zoom,
     attribution: '<a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false
