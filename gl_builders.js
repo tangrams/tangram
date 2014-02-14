@@ -237,29 +237,11 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, feature, l
             [pb[0] - pb_slope[0] * width/2, pb[1] - pb_slope[1] * width/2, 0]
         ];
 
-        // Miter join
-        // Solve for the intersection between the two outer line segments
-        // http://en.wikipedia.org/wiki/Line-line_intersection
-        // http://en.wikipedia.org/wiki/Cramer's_rule
-        // a1*x + b1*y = c1 for line (x1, y1) to (x2, y2)
-        // a2*x + b2*y = c2 for line (x3, y3) to (x4, y4)
-        var a1 = pa_outer[0][1] - pa_outer[1][1]; // y1 - y2
-        var b1 = pa_outer[0][0] - pa_outer[1][0]; // x1 - x2
-        var a2 = pb_outer[0][1] - pb_outer[1][1]; // y3 - y4
-        var b2 = pb_outer[0][0] - pb_outer[1][0]; // x3 - x4
-        var c1 = (pa_outer[0][0] * pa_outer[1][1]) - (pa_outer[0][1] * pa_outer[1][0]); // x1*y2 - y1*x2
-        var c2 = (pb_outer[0][0] * pb_outer[1][1]) - (pb_outer[0][1] * pb_outer[1][0]); // x3*y4 - y3*x4
-        var denom = (b1 * a2) - (a1 * b2);
-
-        // Find the intersection point
+        // Miter join - solve for the intersection between the two outer line segments
+        var intersection = Vector.lineIntersection(pa_outer[0], pa_outer[1], pb_outer[0], pb_outer[1]);
         var line_debug = null;
-        if (Math.abs(denom) > 0.01) {
-            var intersect_outer, intersect_inner;
-
-            intersect_outer = [
-                ((c1 * b2) - (b1 * c2)) / denom,
-                ((c1 * a2) - (a1 * c2)) / denom
-            ];
+        if (intersection != null) {
+            var intersect_outer = intersection;
 
             // Cap the intersection point to a reasonable distance (as join angle becomes sharper, miter joint distance would approach infinity)
             var len_sq = Vector.lengthSq([intersect_outer[0] - joint[0], intersect_outer[1] - joint[1], 0]);
@@ -273,7 +255,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, feature, l
                 ]
             }
 
-            intersect_inner = [
+            var intersect_inner = [
                 (joint[0] - intersect_outer[0]) + joint[0],
                 (joint[1] - intersect_outer[1]) + joint[1]
             ];
