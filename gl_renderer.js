@@ -182,9 +182,11 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     }
 
                     // Polygon outlines
-                    // for (var mpc=0; mpc < polygons.length; mpc++) {
-                    //     GLBuilders.buildPolylines(polygons[mpc], feature, layer, { color: [1, 0, 0], width: Style.width.pixels(1, tile) }, tile, z + 0.01, vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
-                    // }
+                    if (style.border.color && style.border.width) {
+                        for (var mpc=0; mpc < polygons.length; mpc++) {
+                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.border, tile, z + 0.01, vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
+                        }
+                    }
                 }
 
                 if (lines != null) {
