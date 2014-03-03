@@ -72,6 +72,8 @@ function resizeMap () {
 }
 window.addEventListener('resize', resizeMap);
 resizeMap();
+var osm_debug = false;
+var osm_layer;
 
 // Leaflet map
 var map = L.map('map', {
@@ -133,6 +135,16 @@ else {
 window.addEventListener('load', function () {
     layer.addTo(map);
     renderer.init();
+
+    if (osm_debug == true) {
+        osm_layer =
+            L.tileLayer(
+                'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                { opacity: 0.5 })
+            .bringToFront()
+            .addTo(map);
+    }
+
     frameLoop();
 });
 
