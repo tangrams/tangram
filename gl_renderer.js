@@ -21,7 +21,7 @@ GLRenderer.prototype.init = function GLRendererInit ()
     this.canvas.height = map_container.offsetHeight;
     map_container.appendChild(this.canvas);
 
-    this.gl = GL.getContext(); //this.canvas);
+    this.gl = GL.getContext(this.canvas);
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     this.last_render_count = null;
 
