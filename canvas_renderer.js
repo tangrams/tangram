@@ -1,34 +1,15 @@
+VectorRenderer.types['canvas'] = CanvasRenderer;
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (url_template, leaflet, layers, styles)
+function CanvasRenderer (url_template, layers, styles)
 {
     VectorRenderer.apply(this, arguments);
-}
 
-CanvasRenderer.prototype.init = function CanvasRendererInit ()
-{
     // Selection info shown on hover
     this.selection_info = document.createElement('div');
     this.selection_info.setAttribute('class', 'label');
     this.selection_info.style.display = 'none';
-
-    this.initMapHandlers();
-};
-
-// Leaflet map/layer handlers
-CanvasRenderer.prototype.initMapHandlers = function CanvasRendererInitMapHandlers ()
-{
-    var renderer = this;
-
-    this.leaflet.layer.on('tileunload', function (event) {
-        var tile = event.tile;
-        var key = tile.getAttribute('data-tile-key');
-        if (key && renderer.tiles[key]) {
-            console.log("unload " + key);
-            renderer.removeTile(key);
-        }
-    });
-};
+}
 
 CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
 {
@@ -41,12 +22,6 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 
     this.renderTile(tile, context);
     tileDiv.appendChild(canvas);
-};
-
-CanvasRenderer.prototype.render = function CanvasRendererRender ()
-{
-    // Render is a no-op because canvas only needs to be rendered once at the time the tile is added
-    // TODO: perhaps add some 'dirty' tile support to enable things like animation or style changes
 };
 
 // Scale a GeoJSON coordinate (2-element array) from [min, max] to tile pixels

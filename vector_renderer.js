@@ -6,12 +6,13 @@ for (var z=0; z <= Geo.max_zoom; z++) {
     VectorRenderer.units_per_pixel[z] = VectorRenderer.tile_scale / Geo.tile_size;
 }
 
+VectorRenderer.types = {};
+
 // Layers: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (url_template, leaflet, layers, styles)
+function VectorRenderer (url_template, layers, styles)
 {
     this.url_template = url_template;
     this.tiles = {};
-    this.leaflet = leaflet;
 
     if (typeof(layers) == 'string') {
         this.layers = VectorRenderer.loadLayers(layers);
@@ -26,7 +27,20 @@ function VectorRenderer (url_template, leaflet, layers, styles)
     else {
         this.styles = styles;
     }
+
+    this.zoom = null;
+    this.center = null;
+    this.initialized = false;
 }
+
+VectorRenderer.prototype.init = function ()
+{
+    // Child class-specific initialization (e.g. GL context creation)
+    if (typeof(this._init) == 'function') {
+        this._init.apply(this, arguments);
+    }
+    this.initialized = true;
+};
 
 VectorRenderer.loadLayers = function (url)
 {
@@ -46,6 +60,44 @@ VectorRenderer.loadStyles = function (url)
     req.open('GET', url, false /* async flag */);
     req.send();
     return styles;
+};
+
+VectorRenderer.prototype.setCenter = function (lng, lat)
+{
+    this.center = { lng: lng, lat: lat };
+};
+
+VectorRenderer.prototype.setZoom = function (zoom)
+{
+    this.map_last_zoom = this.zoom;
+    this.zoom = zoom;
+    this.map_zooming = false;
+};
+
+VectorRenderer.prototype.startZoom = function ()
+{
+    this.map_last_zoom = this.zoom;
+    this.map_zooming = true;
+};
+
+VectorRenderer.prototype.resizeMap = function (width, height)
+{
+    // no op, can be overriden by child classes (e.g. used by GL renderer to adjust canvas and viewport)
+};
+
+VectorRenderer.prototype.render = function ()
+{
+    // TODO: perhaps add some 'dirty' tile support to enable things like animation or style changes
+    if (this.initialized == false) {
+        return false;
+    }
+
+    // Child class-specific rendering (e.g. GL draw calls)
+    if (typeof(this._render) == 'function') {
+        this._render.apply(this, arguments);
+    }
+
+    return true;
 };
 
 VectorRenderer.prototype.loadTile = function (coords, div, callback)

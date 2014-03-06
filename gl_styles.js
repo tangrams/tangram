@@ -14,6 +14,14 @@
             default: [0.5, 0.875, 0.5],
             'pitch': [0.3, 0.675, 0.3]
         }
+        // border: {
+        //     color: {
+        //         default: [1, 1, 1]
+        //     },
+        //     width: {
+        //         default: function (f, t) { return Style.width.meters(1, t); }
+        //     }
+        // }
     },
     water_areas: {
         color: {

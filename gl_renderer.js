@@ -1,117 +1,32 @@
+VectorRenderer.types['gl'] = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-function GLRenderer (url_template, leaflet, layers, styles)
+function GLRenderer (url_template, layers, styles)
 {
     VectorRenderer.apply(this, arguments);
     GLBuilders.setTileScale(VectorRenderer.tile_scale);
 }
 
-GLRenderer.prototype.init = function GLRendererInit ()
+GLRenderer.prototype._init = function GLRendererInit ()
 {
-    // Make canvas element and insert after map container (leaflet transforms shouldn't be applied to the GL canvas)
-    // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-    var map_container = this.leaflet.map.getContainer();
+    this.container = this.container || document.body;
     this.canvas = document.createElement('canvas');
     this.canvas.style.position = 'absolute';
     this.canvas.style.top = 0;
     this.canvas.style.left = 0;
     this.canvas.style.zIndex = -1;
-    this.canvas.width = map_container.offsetWidth;
-    this.canvas.height = map_container.offsetHeight;
-    map_container.appendChild(this.canvas);
+    this.canvas.width = this.container.offsetWidth;
+    this.canvas.height = this.container.offsetHeight;
+    this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
     this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
     this.last_render_count = null;
 
-    this.zoom = this.leaflet.map.getZoom();
-    this.zoom_step = 0.02; // for fractional zoom user adjustment
-    this.map_last_zoom = this.leaflet.map.getZoom();
-    this.map_zooming = false;
+    // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.start_time = +new Date();
-
-    this.initMapHandlers();
     this.initInputHandlers();
-};
-
-// Leaflet map/layer handlers
-GLRenderer.prototype.initMapHandlers = function GLRendererInitMapHandlers ()
-{
-    var renderer = this;
-
-    this.leaflet.map.on('resize', function (e) {
-        var size = renderer.leaflet.map.getSize();
-        renderer.resizeMap(size.x, size.y);
-    });
-
-    this.leaflet.map.on('zoomstart', function () {
-        console.log("map.zoomstart " + renderer.leaflet.map.getZoom());
-        renderer.map_last_zoom = renderer.leaflet.map.getZoom();
-        renderer.map_zooming = true;
-    });
-
-    this.leaflet.map.on('zoomend', function () {
-        console.log("map.zoomend " + renderer.leaflet.map.getZoom());
-        renderer.map_zooming = false;
-
-        // Schedule GL tiles for removal on zoom
-        // console.log("renderer.map_last_zoom: " + renderer.map_last_zoom);
-        var map_zoom = renderer.leaflet.map.getZoom();
-        var below = map_zoom;
-        var above = map_zoom;
-        if (Math.abs(map_zoom - renderer.map_last_zoom) == 1) {
-            if (map_zoom > renderer.map_last_zoom) {
-                below = map_zoom - 1;
-            }
-            else {
-                above = map_zoom + 1;
-            }
-        }
-        renderer.removeTilesOutsideZoomRange(below, above);
-        renderer.map_last_zoom = map_zoom;
-    });
-
-    this.leaflet.layer.on('tileunload', function (event) {
-        var tile = event.tile;
-        var key = tile.getAttribute('data-tile-key');
-        if (key && renderer.tiles[key]) {
-            if (renderer.map_zooming == false) {
-                console.log("unload " + key);
-                renderer.removeTile(key);
-            }
-        }
-    });
-};
-
-// User input
-GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
-{
-    var gl_renderer = this;
-    gl_renderer.key = null;
-
-    document.addEventListener('keydown', function (event) {
-        if (event.keyCode == 37) {
-            gl_renderer.key = 'left';
-        }
-        else if (event.keyCode == 39) {
-            gl_renderer.key = 'right';
-        }
-        else if (event.keyCode == 38) {
-            gl_renderer.key = 'up';
-        }
-        else if (event.keyCode == 40) {
-            gl_renderer.key = 'down';
-        }
-        else if (event.keyCode == 82) { /* r */
-            console.log("reloading shaders");
-            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
-        }
-    });
-
-    document.addEventListener('keyup', function (event) {
-        gl_renderer.key = null;
-    });
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
@@ -229,11 +144,36 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
 {
+    if (this.map_zooming == true) {
+        return; // short circuit tile removal, GL renderer will sweep out tiles by zoom level when zoom ends
+    }
+
     if (this.tiles[key] != null && this.tiles[key].gl_geometry != null) {
         this.tiles[key].gl_geometry.forEach(function (gl_geometry) { gl_geometry.destroy(); });
         this.tiles[key].gl_geometry = null;
     }
     VectorRenderer.prototype.removeTile.apply(this, arguments);
+};
+
+GLRenderer.prototype.setZoom = function (zoom)
+{
+    // Schedule GL tiles for removal on zoom
+    console.log("renderer.map_last_zoom: " + this.map_last_zoom);
+
+    this.map_zooming = false;
+    this.zoom = zoom;
+    var below = this.zoom;
+    var above = this.zoom;
+    if (Math.abs(this.zoom - this.map_last_zoom) == 1) {
+        if (this.zoom > this.map_last_zoom) {
+            below = this.zoom - 1;
+        }
+        else {
+            above = this.zoom + 1;
+        }
+    }
+    this.removeTilesOutsideZoomRange(below, above);
+    this.map_last_zoom = this.zoom;
 };
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
@@ -253,27 +193,7 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
     }
 };
 
-// Continuous zoom: maintains a floating point zoom and syncs with leaflet to set an integer zoom
-GLRenderer.prototype.setZoom = function (z) {
-    var base = Math.floor(z);
-    var fraction = z % 1.0;
-    var map = this.leaflet.map;
-    if (base != map.getZoom()) {
-        if (base > map.getMaxZoom()) {
-            base = map.getMaxZoom();
-            fraction = 0.99;
-        }
-        else if (base < map.getMinZoom()) {
-            base = map.getMinZoom();
-        }
-        this.zoom = base + fraction;
-        map.setZoom(base, { animate: false });
-    }
-    else {
-        this.zoom = z;
-    }
-};
-
+// Overrides base class method (a no op)
 GLRenderer.prototype.resizeMap = function (width, height)
 {
     this.canvas.width = width;
@@ -281,7 +201,7 @@ GLRenderer.prototype.resizeMap = function (width, height)
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-GLRenderer.prototype.render = function GLRendererRender ()
+GLRenderer.prototype._render = function GLRendererRender ()
 {
     var gl = this.gl;
 
@@ -292,17 +212,11 @@ GLRenderer.prototype.render = function GLRendererRender ()
     }
     gl.useProgram(this.program);
 
-    // Sync zoom w/leaflet
-    if (Math.floor(this.zoom) != this.leaflet.map.getZoom()) {
-        this.zoom = this.leaflet.map.getZoom();
-    }
-
     // Set values to this.program variables
     gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
     gl.uniform1f(gl.getUniformLocation(this.program, 'time'), ((+new Date()) - this.start_time) / 1000);
 
-    var center = this.leaflet.map.getCenter(); // TODO: move map center tracking/projection to central class?
-    center = Geo.latLngToMeters(Point(center.lng, center.lat));
+    var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
     gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
@@ -342,13 +256,45 @@ GLRenderer.prototype.render = function GLRendererRender ()
     this.last_render_count = count;
 };
 
+// User input
+// TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
+
+GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
+{
+    var gl_renderer = this;
+    gl_renderer.key = null;
+
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode == 37) {
+            gl_renderer.key = 'left';
+        }
+        else if (event.keyCode == 39) {
+            gl_renderer.key = 'right';
+        }
+        else if (event.keyCode == 38) {
+            gl_renderer.key = 'up';
+        }
+        else if (event.keyCode == 40) {
+            gl_renderer.key = 'down';
+        }
+        else if (event.keyCode == 82) { // r
+            console.log("reloading shaders");
+            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
+        }
+    });
+
+    document.addEventListener('keyup', function (event) {
+        gl_renderer.key = null;
+    });
+};
+
 GLRenderer.prototype.input = function GLRendererInput ()
 {
-    // Fractional zoom scaling
-    if (this.key == 'up') {
-        this.setZoom(this.zoom + this.zoom_step);
-    }
-    else if (this.key == 'down') {
-        this.setZoom(this.zoom - this.zoom_step);
-    }
+    // // Fractional zoom scaling
+    // if (this.key == 'up') {
+    //     this.setZoom(this.zoom + this.zoom_step);
+    // }
+    // else if (this.key == 'down') {
+    //     this.setZoom(this.zoom - this.zoom_step);
+    // }
 };

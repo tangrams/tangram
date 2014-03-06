@@ -22,7 +22,6 @@ body {
 
 #map {
     background: rgba(0, 0, 0, 0);
-    /*opacity: 0.5;*/
 }
 
 .label {
@@ -56,6 +55,7 @@ body {
 <script src="canvas_renderer.js"></script>
 <script src="gl_renderer.js"></script>
 <script src="gl_builders.js"></script>
+<script src="leaflet_vector_tile_layer.js"></script>
 
 <script>
 
@@ -65,17 +65,35 @@ var vector_tile_source =
   // 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json';
   // 'http://localhost:8080/all/{z}/{x}/{y}.json';
 
-// Resize map to window
-function resizeMap () {
-    document.getElementById('map').style.width = window.innerWidth + 'px';
-    document.getElementById('map').style.height = window.innerHeight + 'px';
-}
-window.addEventListener('resize', resizeMap);
-resizeMap();
-var osm_debug = false;
-var osm_layer;
+var locations = {
+    'London': [51.508, -0.105, 15],
+    'New York': [40.70531887544228, -74.00976419448853, 16],
+    'Seattle': [47.609722, -122.333056, 15]
+};
 
-// Leaflet map
+var osm_debug = false;
+
+/*** URL parsing ***/
+
+// URL hash pattern is one of:
+// #[gl|canvas]
+// #[gl|canvas],[lat],[lng],[zoom]
+// #[gl|canvas],[location name]
+var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
+
+// Get location from URL or use default
+var map_start_location = locations['New York'];
+if (url_hash.length == 4) {
+    map_start_location = url_hash.slice(1, 4);
+}
+else if (url_hash.length == 2) {
+    map_start_location = locations[url_hash[1]];
+}
+
+
+/*** Map ***/
+
 var map = L.map('map', {
     maxZoom: Geo.max_zoom,
     inertia: false,
@@ -83,58 +101,41 @@ var map = L.map('map', {
 });
 map.attributionControl.setPrefix('');
 
-// Get location from URL or use default
-var locations = {
-    'London': [51.508, -0.105, 15],
-    'New York': [40.70531887544228, -74.00976419448853, 16],
-    'Seattle': [47.609722, -122.333056, 15]
-};
-var map_start_location = locations['New York'];
-
-// URL hash pattern is one of:
-// #[gl|canvas]
-// #[gl|canvas],[lat],[lng],[zoom]
-// #[gl|canvas],[location name]
-var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
-if (url_hash.length == 4) {
-    map_start_location = url_hash.slice(1, 4);
-}
-else if (url_hash.length == 2) {
-    map_start_location = locations[url_hash[1]];
-}
-map.setView(map_start_location.slice(0, 2), map_start_location[2]);
-
 map.on('moveend', function () {
     var map_latlng = map.getCenter();
     window.location.hash = [renderer_type, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
-var layer = L.gridLayer({
-    attribution: '<a href="https://github.com/bcamper/vector-map">Source Code</a>',
+map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+
+// Resize map to window
+function resizeMap () {
+    document.getElementById('map').style.width = window.innerWidth + 'px';
+    document.getElementById('map').style.height = window.innerHeight + 'px';
+    map.invalidateSize(false);
+}
+window.addEventListener('resize', resizeMap);
+resizeMap();
+
+
+/*** Layer ***/
+
+var layer = L.vectorTileLayer({
+    vectorRenderer: renderer_type,
+    vectorTileSource: vector_tile_source,
+    vectorLayers: renderer_type + '_layers.js',
+    vectorStyles: renderer_type + '_styles.js',
+    attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false
 });
 
-layer.createTile = function(coords, done) {
-    var div = document.createElement('div');
-    renderer.loadTile(coords, div, done);
-    return div;
-};
 
-// Renderers
-var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
-var renderer;
-if (renderer_type == 'gl') {
-    renderer = new GLRenderer(vector_tile_source, { map: map, layer: layer }, 'gl_layers.js', 'gl_styles.js');
-}
-else {
-    renderer = new CanvasRenderer(vector_tile_source, { map: map, layer: layer }, 'canvas_layers.js', 'canvas_styles.js');
-}
+/***** Render loop *****/
 
-// Start render loop
+var osm_layer; // global so it's accessible on console for debugging
 window.addEventListener('load', function () {
     layer.addTo(map);
-    renderer.init();
 
     if (osm_debug == true) {
         osm_layer =
@@ -148,15 +149,13 @@ window.addEventListener('load', function () {
     frameLoop();
 });
 
-/***** Render loop *****/
+function frame () {
+    layer.render();
+}
 
 function frameLoop () {
     frame();
     requestAnimationFrame(frameLoop);
-}
-
-function frame () {
-    renderer.render();
 }
 
 // Cross-browser compatibility for requestAnimationFrame
