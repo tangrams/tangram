@@ -333,13 +333,25 @@ Vector.length = function (v)
 // Normalize a vector
 Vector.normalize = function (v)
 {
-    var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-    d = Math.sqrt(d);
+    var d;
+    if (v.length == 2) {
+        d = v[0]*v[0] + v[1]*v[1];
+        d = Math.sqrt(d);
 
-    if (d != 0) {
-        return [v[0] / d, v[1] / d, v[2] / d];
+        if (d != 0) {
+            return [v[0] / d, v[1] / d];
+        }
+        return [0, 0];
     }
-    return [0, 0, 0];
+    else {
+        var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+        d = Math.sqrt(d);
+
+        if (d != 0) {
+            return [v[0] / d, v[1] / d, v[2] / d];
+        }
+        return [0, 0, 0];
+    }
 };
 
 // Cross product of two vectors
