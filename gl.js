@@ -210,20 +210,22 @@ GL.triangulate = function GLTriangulate (contours)
 // Used for adding values that are often constant per geometry or polygon, like colors, normals (for polys sitting flat on map), layer and material info, etc.
 GL.addVertices = function (vertices, vertex_data, vertex_constants)
 {
-    // Array of vertices
-    if (typeof vertices[0] == 'object') {
-        for (var v=0; v < vertices.length; v++) {
-            vertex_data.push.apply(vertex_data, vertices[v]);
+    if (vertices != null && vertices.length > 0) {
+        // Array of vertices
+        if (typeof vertices[0] == 'object') {
+            for (var v=0; v < vertices.length; v++) {
+                vertex_data.push.apply(vertex_data, vertices[v]);
+                if (vertex_constants) {
+                    vertex_data.push.apply(vertex_data, vertex_constants);
+                }
+            }
+        }
+        // Single vertex
+        else {
+            vertex_data.push.apply(vertex_data, vertices);
             if (vertex_constants) {
                 vertex_data.push.apply(vertex_data, vertex_constants);
             }
-        }
-    }
-    // Single vertex
-    else {
-        vertex_data.push.apply(vertex_data, vertices);
-        if (vertex_constants) {
-            vertex_data.push.apply(vertex_data, vertex_constants);
         }
     }
     return vertex_data;
