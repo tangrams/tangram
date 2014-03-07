@@ -97,9 +97,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     }
 
                     // Polygon outlines
-                    if (style.border.color && style.border.width) {
+                    if (style.outline.color && style.outline.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.border, tile, this.calculateZ(layer, tile, 0.5), vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
+                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.outline, tile, this.calculateZ(layer, tile, 0.5), vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
                         }
                     }
                 }
@@ -108,8 +108,9 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // GLBuilders.buildLines(lines, feature, layer, style, tile, z, vertex_lines);
                     GLBuilders.buildPolylines(lines, feature, layer, style, tile, z, vertex_triangles, vertex_lines);
 
-                    if (style.border.color && style.border.width) {
-                        GLBuilders.buildPolylines(lines, feature, layer, { color: style.border.color, width: (style.width + 2 * style.border.width) }, tile, this.calculateZ(layer, tile, -0.5), vertex_triangles, vertex_lines);
+                    // Line outlines
+                    if (style.outline.color && style.outline.width) {
+                        GLBuilders.buildPolylines(lines, feature, layer, { color: style.outline.color, width: (style.width + 2 * style.outline.width) }, tile, this.calculateZ(layer, tile, -0.5), vertex_triangles, vertex_lines);
                     }
                 }
 

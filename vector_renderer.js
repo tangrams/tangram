@@ -249,7 +249,7 @@ VectorRenderer.prototype.style_defaults = {
     size: 1,
     extrude: false,
     height: 20,
-    border: {
+    outline: {
         // color: [1.0, 0, 0],
         // width: 1,
         // dash: null
@@ -286,21 +286,21 @@ VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
         style.height = style.extrude; // height defaults to feature height, but extrude style can dynamically adjust height by returning a number (instead of a boolean)
     }
 
-    style.border = {};
-    layer_style.border = layer_style.border || {};
-    style.border.color = (layer_style.border.color && (layer_style.border.color[feature.properties.kind] || layer_style.border.color.default)) || this.style_defaults.border.color;
-    if (typeof style.border.color == 'function') {
-        style.border.color = style.border.color(feature, tile);
+    style.outline = {};
+    layer_style.outline = layer_style.outline || {};
+    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || this.style_defaults.outline.color;
+    if (typeof style.outline.color == 'function') {
+        style.outline.color = style.outline.color(feature, tile);
     }
 
-    style.border.width = (layer_style.border.width && (layer_style.border.width[feature.properties.kind] || layer_style.border.width.default)) || this.style_defaults.border.width;
-    if (typeof style.border.width == 'function') {
-        style.border.width = style.border.width(feature, tile);
+    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || this.style_defaults.outline.width;
+    if (typeof style.outline.width == 'function') {
+        style.outline.width = style.outline.width(feature, tile);
     }
 
-    style.border.dash = (layer_style.border.dash && (layer_style.border.dash[feature.properties.kind] || layer_style.border.dash.default)) || this.style_defaults.border.dash;
-    if (typeof style.border.dash == 'function') {
-        style.border.dash = style.border.dash(feature, tile);
+    style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || this.style_defaults.outline.dash;
+    if (typeof style.outline.dash == 'function') {
+        style.outline.dash = style.outline.dash(feature, tile);
     }
 
     return style;

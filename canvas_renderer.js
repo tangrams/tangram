@@ -82,9 +82,9 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style,
     var segments = polygon;
     var color = style.color;
     var width = style.width;
-    var border_color = style.border && style.border.color;
-    var border_width = style.border && style.border.width;
-    var border_dash = style.border && style.border.dash;
+    var outline_color = style.outline && style.outline.color;
+    var outline_width = style.outline && style.outline.width;
+    var outline_dash = style.outline && style.outline.dash;
 
     var c = context;
     c.beginPath();
@@ -98,14 +98,14 @@ CanvasRenderer.prototype.renderPolygon = function renderPolygon (polygon, style,
     c.closePath();
     c.fill();
 
-    // Border
-    if (border_color && border_width) {
-        c.strokeStyle = this.colorToString(border_color);
+    // Outline
+    if (outline_color && outline_width) {
+        c.strokeStyle = this.colorToString(outline_color);
         c.lineCap = 'round';
-        c.lineWidth = border_width;
+        c.lineWidth = outline_width;
         if (c.setLineDash) {
-            if (border_dash) {
-                c.setLineDash(border_dash.map(function (d) { return d * border_width; }));
+            if (outline_dash) {
+                c.setLineDash(outline_dash.map(function (d) { return d * outline_width; }));
             }
             else {
                 c.setLineDash([]);
@@ -120,9 +120,9 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, conte
 {
     var color = style.color;
     var size = style.size;
-    var border_color = style.border && style.border.color;
-    var border_width = style.border && style.border.width;
-    var border_dash = style.border && style.border.dash;
+    var outline_color = style.outline && style.outline.color;
+    var outline_width = style.outline && style.outline.width;
+    var outline_dash = style.outline && style.outline.dash;
 
     var c = context;
     c.fillStyle = this.colorToString(color);
@@ -132,13 +132,13 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, conte
     c.closePath();
     c.fill();
 
-    // Border
-    if (border_color && border_width) {
-        c.strokeStyle = this.colorToString(border_color);
-        c.lineWidth = border_width;
+    // Outline
+    if (outline_color && outline_width) {
+        c.strokeStyle = this.colorToString(outline_color);
+        c.lineWidth = outline_width;
         if (c.setLineDash) {
-            if (border_dash) {
-                c.setLineDash(border_dash.map(function (d) { return d * border_width; }));
+            if (outline_dash) {
+                c.setLineDash(outline_dash.map(function (d) { return d * outline_width; }));
             }
             else {
                 c.setLineDash([]);
@@ -190,9 +190,9 @@ CanvasRenderer.prototype.renderFeature = function renderFeature (feature, style,
                 context.drawImage(cutout_context.canvas, 0, 0);
 
                 // After compositing back to main canvas, draw outlines on holes
-                if (style.border && style.border.color) {
+                if (style.outline && style.outline.color) {
                     for (h=1; h < polys[g].length; h++) {
-                        this.renderLine(polys[g][h], style.border, context);
+                        this.renderLine(polys[g][h], style.outline, context);
                     }
                 }
             }

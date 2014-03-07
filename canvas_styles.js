@@ -19,7 +19,7 @@
         color: {
             default: [150/255, 150/255, 150/255]
         },
-        border: {
+        outline: {
             color: {
                 default: [75/255, 75/255, 75/255]
             },
@@ -32,7 +32,7 @@
         color: {
             default: [200/255, 150/255, 150/255]
         },
-        border: {
+        outline: {
             color: {
                 default: [75/255, 75/255, 75/255]
             },
@@ -72,7 +72,7 @@
         size: {
             default: 5
         },
-        border: {
+        outline: {
             color: {
                 default: [240/255, 240/255, 240/255]
             },

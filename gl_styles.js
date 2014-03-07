@@ -14,7 +14,7 @@
             default: [0.5, 0.875, 0.5],
             'pitch': [0.3, 0.675, 0.3]
         }
-        // border: {
+        // outline: {
         //     color: {
         //         default: [1, 1, 1]
         //     },
@@ -48,7 +48,7 @@
             'path': function (f, t) { return 1 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'debug': function (f, t) { return 5 * VectorRenderer.units_per_meter[t.coords.z]; }
         },
-        border: {
+        outline: {
             color: {
                 default: [0.1, 0.7, 0.7]
             },
