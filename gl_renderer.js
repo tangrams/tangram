@@ -31,12 +31,12 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
-GLRenderer.prototype.calculateZ = function (layer, tile, offset)
+GLRenderer.prototype.calculateZ = function (layer, tile, layer_offset, feature_offset)
 {
-    offset = offset || 0;
-    var z = layer.number / 16;
-    z += (1 - (1 / (tile.feature_count + 1))) / 16;
-    z += offset;
+    var layer_offset = layer_offset || 0;
+    var feature_offset = feature_offset || 0;
+    var z = (layer.number + layer_offset) / 16;
+    z += (1 - (1 / (tile.feature_count + 1 + feature_offset))) / 16;
     return z;
 };
 
@@ -99,7 +99,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // Polygon outlines
                     if (style.border.color && style.border.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.border, tile, z + 0.01, vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
+                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.border, tile, this.calculateZ(layer, tile, 0.5), vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
                         }
                     }
                 }
@@ -107,6 +107,10 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 if (lines != null) {
                     // GLBuilders.buildLines(lines, feature, layer, style, tile, z, vertex_lines);
                     GLBuilders.buildPolylines(lines, feature, layer, style, tile, z, vertex_triangles, vertex_lines);
+
+                    if (style.border.color && style.border.width) {
+                        GLBuilders.buildPolylines(lines, feature, layer, { color: style.border.color, width: (style.width + 2 * style.border.width) }, tile, this.calculateZ(layer, tile, -0.5), vertex_triangles, vertex_lines);
+                    }
                 }
 
                 tile.feature_count++;

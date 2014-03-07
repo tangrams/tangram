@@ -47,6 +47,19 @@
             'minor_road': function (f, t) { return 2 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'path': function (f, t) { return 1 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'debug': function (f, t) { return 5 * VectorRenderer.units_per_meter[t.coords.z]; }
+        },
+        border: {
+            color: {
+                default: [0.1, 0.7, 0.7]
+            },
+            width: {
+                default: function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); },
+                'highway': function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); },
+                'major_road': function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); },
+                'minor_road': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); },
+                'path': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); },
+                'debug': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]) : null); }
+            }
         }
     },
     buildings: {
