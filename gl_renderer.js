@@ -70,6 +70,12 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // TODO: add layer, material info, etc.
                 ];
 
+                if (style.outline.color) {
+                    var outline_vertex_constants = [
+                        style.outline.color[0], style.outline.color[1], style.outline.color[2]
+                    ];
+                }
+
                 var polygons = null;
                 if (feature.geometry.type == 'Polygon') {
                     polygons = [feature.geometry.coordinates];
@@ -99,18 +105,18 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // Polygon outlines
                     if (style.outline.color && style.outline.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], feature, layer, style.outline, tile, this.calculateZ(layer, tile, 0.5), vertex_triangles, vertex_lines, { closed_polygon: true, remove_tile_edges: true });
+                            GLBuilders.buildPolylines(polygons[mpc], this.calculateZ(layer, tile, 0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
                         }
                     }
                 }
 
                 if (lines != null) {
                     // GLBuilders.buildLines(lines, feature, layer, style, tile, z, vertex_lines);
-                    GLBuilders.buildPolylines(lines, feature, layer, style, tile, z, vertex_triangles, vertex_lines);
+                    GLBuilders.buildPolylines(lines, z, style.width, vertex_triangles, { vertex_constants: vertex_constants, vertex_lines: vertex_lines });
 
                     // Line outlines
                     if (style.outline.color && style.outline.width) {
-                        GLBuilders.buildPolylines(lines, feature, layer, { color: style.outline.color, width: (style.width + 2 * style.outline.width) }, tile, this.calculateZ(layer, tile, -0.5), vertex_triangles, vertex_lines);
+                        GLBuilders.buildPolylines(lines, this.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_triangles, { vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
                     }
                 }
 
