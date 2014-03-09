@@ -2,10 +2,14 @@ VectorRenderer.types['gl'] = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-function GLRenderer (url_template, layers, styles)
+function GLRenderer (url_template, layers, styles, options)
 {
+    var options = options || {};
+
     VectorRenderer.apply(this, arguments);
     GLBuilders.setTileScale(VectorRenderer.tile_scale);
+
+    this.container = options.container;
 }
 
 GLRenderer.prototype._init = function GLRendererInit ()
@@ -21,7 +25,7 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
-    this.program = GL.createProgramFromURLs(this.gl, 'vertex.glsl', 'fragment.glsl');
+    this.program = GL.updateProgram(this.gl, null, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
     this.last_render_count = null;
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
@@ -288,10 +292,10 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         else if (event.keyCode == 40) {
             gl_renderer.key = 'down';
         }
-        else if (event.keyCode == 82) { // r
-            console.log("reloading shaders");
-            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
-        }
+        // else if (event.keyCode == 82) { // r
+        //     console.log("reloading shaders");
+        //     gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, this.shader_url + 'vertex.glsl', this.shader_url + 'fragment.glsl');
+        // }
     });
 
     document.addEventListener('keyup', function (event) {

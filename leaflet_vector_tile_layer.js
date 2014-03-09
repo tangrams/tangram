@@ -6,7 +6,7 @@ L.VectorTileLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
-        this._renderer = new VectorRenderer.types[this.options.vectorRenderer](this.options.vectorTileSource, this.options.vectorLayers, options.vectorStyles);
+        this._renderer = new VectorRenderer.types[this.options.vectorRenderer](this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles);
     },
 
     // Finish initializing renderer and setup events when layer is added to map

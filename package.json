@@ -1,0 +1,6 @@
+{
+  "title": "vector-map",
+  "devDependencies": {
+    "uglify-js": "latest"
+  }
+}

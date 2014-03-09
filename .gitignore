@@ -1,5 +1,7 @@
 # jshint config
 .jshintrc
 
+node_modules
+
 # storing some screenshots here
 screenshots
