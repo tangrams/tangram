@@ -13,8 +13,6 @@ GL.getContext = function getContext (canvas)
         canvas.style.top = 0;
         canvas.style.left = 0;
         canvas.style.zIndex = -1;
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
         document.body.appendChild(canvas);
         fullscreen = true;
     }
@@ -25,16 +23,24 @@ GL.getContext = function getContext (canvas)
         throw "Couldn't create WebGL context";
     }
 
-    gl.viewport(0, 0, canvas.width, canvas.height);
+    GL.resizeCanvas(gl, window.innerWidth, window.innerHeight);
     if (fullscreen == true) {
         window.addEventListener('resize', function () {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            gl.viewport(0, 0, canvas.width, canvas.height);
+            GL.resizeCanvas(gl, window.innerWidth, window.innerHeight);
         });
     }
 
     return gl;
+};
+
+GL.resizeCanvas = function (gl, width, height)
+{
+    var device_pixel_ratio = window.devicePixelRatio || 1;
+    gl.canvas.style.width = width + 'px';
+    gl.canvas.style.height = height + 'px';
+    gl.canvas.width = Math.round(gl.canvas.style.width * device_pixel_ratio);
+    gl.canvas.height = Math.round(gl.canvas.style.width * device_pixel_ratio);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 };
 
 // Compile & link a WebGL program from provided vertex and shader source elements

@@ -30,6 +30,7 @@ function VectorRenderer (url_template, layers, styles)
 
     this.zoom = null;
     this.center = null;
+    this.device_pixel_ratio = window.devicePixelRatio || 1;
     this.initialized = false;
 }
 

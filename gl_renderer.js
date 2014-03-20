@@ -20,13 +20,13 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.canvas.style.top = 0;
     this.canvas.style.left = 0;
     this.canvas.style.zIndex = -1;
-    this.canvas.width = this.container.offsetWidth;
-    this.canvas.height = this.container.offsetHeight;
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
     this.program = GL.updateProgram(this.gl, null, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
     this.last_render_count = null;
+
+    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.start_time = +new Date();
@@ -211,8 +211,13 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 // Overrides base class method (a no op)
 GLRenderer.prototype.resizeMap = function (width, height)
 {
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.css_size = { width: width, height: height };
+    this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
+
+    this.canvas.style.width = this.css_size.width + 'px';
+    this.canvas.style.height = this.css_size.height + 'px';
+    this.canvas.width = this.device_size.width;
+    this.canvas.height = this.device_size.height;
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
@@ -228,7 +233,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.useProgram(this.program);
 
     // Set values to this.program variables
-    gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), gl.canvas.width, gl.canvas.height);
+    gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), this.css_size.width, this.css_size.height);
     gl.uniform1f(gl.getUniformLocation(this.program, 'time'), ((+new Date()) - this.start_time) / 1000);
 
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
@@ -237,7 +242,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
 
     var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-    var meter_zoom = Point(gl.canvas.width / 2 * meters_per_pixel, gl.canvas.height / 2 * meters_per_pixel);
+    var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
     gl.uniform2f(gl.getUniformLocation(this.program, 'meter_zoom'), meter_zoom.x, meter_zoom.y);
 
     gl.uniform1f(gl.getUniformLocation(this.program, 'tile_scale'), VectorRenderer.tile_scale);
