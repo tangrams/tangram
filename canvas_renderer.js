@@ -16,8 +16,10 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
-    canvas.width = Geo.tile_size;
-    canvas.height = Geo.tile_size;
+    canvas.style.width = Geo.tile_size + 'px';
+    canvas.style.width = Geo.tile_size + 'px';
+    canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
+    canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
     canvas.style.background = this.colorToString(this.styles.default);
 
     this.renderTile(tile, context);
@@ -28,12 +30,13 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
 // returns a copy of geometry.coordinates transformed into Points
 CanvasRenderer.prototype.scaleGeometryToPixels = function scaleGeometryToPixels (geometry)
 {
+    var renderer = this;
     return Geo.transformGeometry(geometry, function (coordinates) {
         return Point(
             // Math.round((coordinates[0] - min.x) * Geo.tile_size / (max.x - min.x)), // rounding removes seams but causes aliasing
             // Math.round((coordinates[1] - min.y) * Geo.tile_size / (max.y - min.y))
-            coordinates[0] * Geo.tile_size / VectorRenderer.tile_scale,
-            coordinates[1] * Geo.tile_size / VectorRenderer.tile_scale * -1 // adjust for flipped y-coord
+            coordinates[0] * Geo.tile_size * renderer.device_pixel_ratio / VectorRenderer.tile_scale,
+            coordinates[1] * Geo.tile_size * renderer.device_pixel_ratio / VectorRenderer.tile_scale * -1 // adjust for flipped y-coord
         );
     });
 };
@@ -221,8 +224,11 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     // Selection rendering - off-screen canvas to render a collision map for feature selection
     var selection = { colors: {} };
     var selection_canvas = document.createElement('canvas');
-    selection_canvas.width = Geo.tile_size;
-    selection_canvas.height = Geo.tile_size;
+    selection_canvas.style.width = Geo.tile_size + 'px';
+    selection_canvas.style.width = Geo.tile_size + 'px';
+    selection_canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
+    selection_canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
+
     var selection_context = selection_canvas.getContext('2d');
     var selection_color;
     var selection_count = 0;
@@ -267,7 +273,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         // TODO: fire events on selection to enable custom behavior
         context.canvas.onmousemove = function (event) {
             var hit = { x: event.offsetX, y: event.offsetY }; // layerX/Y
-            var off = hit.y * Geo.tile_size + hit.x;
+            var off = (hit.y * renderer.device_pixel_ratio) * (Geo.tile_size * renderer.device_pixel_ratio) + (hit.x * renderer.device_pixel_ratio);
             var color = selection.pixels[off];
             var feature = selection.colors[color];
             if (feature != null) {
