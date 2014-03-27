@@ -97,13 +97,13 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                 }
 
                 if (polygons != null) {
-                    // Regular polygons
-                    if (!style.extrude) {
-                        GLBuilders.buildPolygons(polygons, z, vertex_triangles, { vertex_constants: vertex_constants });
-                    }
                     // Extruded polygons (e.g. 3D buildings)
+                    if (style.extrude && style.height) {
+                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, style.min_height, vertex_triangles, { vertex_constants: vertex_constants });
+                    }
+                    // Regular polygons
                     else {
-                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, vertex_triangles, { vertex_constants: vertex_constants });
+                        GLBuilders.buildPolygons(polygons, z, vertex_triangles, { vertex_constants: vertex_constants });
                     }
 
                     // Polygon outlines

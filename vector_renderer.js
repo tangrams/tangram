@@ -250,6 +250,7 @@ VectorRenderer.prototype.style_defaults = {
     size: 1,
     extrude: false,
     height: 20,
+    min_height: 0,
     outline: {
         // color: [1.0, 0, 0],
         // width: 1,
@@ -283,8 +284,17 @@ VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
     }
 
     style.height = (feature.properties && feature.properties.height) || this.style_defaults.height;
-    if (typeof style.extrude == 'number') {
-        style.height = style.extrude; // height defaults to feature height, but extrude style can dynamically adjust height by returning a number (instead of a boolean)
+    style.min_height = (feature.properties && feature.properties.min_height) || this.style_defaults.min_height;
+
+    // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
+    if (style.extrude) {
+        if (typeof style.extrude == 'number') {
+            style.height = style.extrude;
+        }
+        else if (typeof style.extrude == 'object' && style.extrude.length >= 2) {
+            style.min_height = style.extrude[0];
+            style.height = style.extrude[1];
+        }
     }
 
     style.outline = {};

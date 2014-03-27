@@ -20,12 +20,14 @@ GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex
 };
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (polygons, z, height, vertex_data, options)
+GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (polygons, z, height, min_height, vertex_data, options)
 {
     options = options || {};
+    var min_z = z + (min_height || 0);
+    var max_z = z + height;
 
     // Top
-    GLBuilders.buildPolygons(polygons, z + height, vertex_data, { vertex_constants: options.vertex_constants });
+    GLBuilders.buildPolygons(polygons, max_z, vertex_data, { vertex_constants: options.vertex_constants });
 
     // Walls
     var wall_vertex_constants = [null, null, null]; // normals will be calculated below
@@ -46,13 +48,13 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 wall_vertices.push(
                     // Triangle
-                    [contour[w+1][0], contour[w+1][1], z + height],
-                    [contour[w+1][0], contour[w+1][1], z],
-                    [contour[w][0], contour[w][1], z],
+                    [contour[w+1][0], contour[w+1][1], max_z],
+                    [contour[w+1][0], contour[w+1][1], min_z],
+                    [contour[w][0], contour[w][1], min_z],
                     // Triangle
-                    [contour[w][0], contour[w][1], z],
-                    [contour[w][0], contour[w][1], z + height],
-                    [contour[w+1][0], contour[w+1][1], z + height]
+                    [contour[w][0], contour[w][1], min_z],
+                    [contour[w][0], contour[w][1], max_z],
+                    [contour[w+1][0], contour[w+1][1], max_z]
                 );
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
