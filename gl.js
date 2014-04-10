@@ -326,14 +326,18 @@ var Vector = {};
 // Vector length squared
 Vector.lengthSq = function (v)
 {
-    return (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (v.length == 2) {
+        return (v[0]*v[0] + v[1]*v[1]);
+    }
+    else {
+        return (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    }
 };
 
 // Vector length
 Vector.length = function (v)
 {
-    var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-    return Math.sqrt(d);
+    return Math.sqrt(Vector.lengthSq(v));
 };
 
 // Normalize a vector
