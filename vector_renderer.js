@@ -126,13 +126,15 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.loading = true;
     tile.loaded = false;
 
+    req.responseType = "arraybuffer";
     req.onload = function () {
         var tile = renderer.tiles[key]; // = {};
         if (tile == null) {
             return;
         }
 
-        tile.layers = JSON.parse(req.response);
+        // tile.layers = JSON.parse(req.response);
+        tile.data = new Mapbox.VectorTile(new Uint8Array(req.response));
         tile.debug.network = +new Date() - tile.debug.network; // network/JSON parsing
 
         div.setAttribute('data-tile-key', tile.key); // tile info for debugging
@@ -147,16 +149,33 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         // debug_overlay.style.color = 'white';
         // div.appendChild(debug_overlay);
 
+        // Convert Mapbox vector tile to GeoJSON
+        tile.layers = tile.data.toGeoJSON();
+
+        // Post-processing: flip tile y and assign OSM id
+        for (var t in tile.layers) {
+            var num_features = tile.layers[t].features.length;
+            for (var f=0; f < num_features; f++) {
+                var feature = tile.layers[t].features[f];
+
+                feature.properties.id = feature.properties.osm_id;
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                    coordinates[1] = -coordinates[1];
+                    return coordinates;
+                });
+            };
+        }
+
         // Extract desired layers from full GeoJSON response
         renderer.processLayersForTile(tile);
 
         // Mercator projection for geometry and bounds
         tile.min = Geo.metersForTile(tile.coords);
         tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-        renderer.projectTile(tile);
+        // renderer.projectTile(tile);
 
         // Re-scale from meters to local tile coords
-        renderer.scaleTile(tile);
+        // renderer.scaleTile(tile);
 
         tile.xhr = null;
         tile.loading = false;
@@ -337,4 +356,66 @@ Style.color = {
 Style.width = {
     pixels: function (p, t) { return p * VectorRenderer.units_per_pixel[t.coords.z]; }, // local tile units for a given pixel width
     meters: function (p, t) { return p * VectorRenderer.units_per_meter[t.coords.z]; }  // local tile units for a given meter width
+};
+
+// For Mapbox vector tile support
+var Mapbox = {};
+Mapbox.VectorTile = require('vectortile');
+Mapbox.VectorTileLayer = require('vectortilelayer');
+
+// Mapbox vector tile extensions
+// Returns a dictionary of layers as individual GeoJSON objects, keyed by layer name
+Mapbox.VectorTile.prototype.toGeoJSON = function ()
+{
+    var json = {};
+    var layer_names = Object.keys(this.layers);
+    for (var n=0; n < layer_names.length; n++) {
+        json[layer_names[n]] = this.layers[layer_names[n]].toGeoJSON();
+    }
+    return json;
+};
+
+Mapbox.VectorTileLayer.prototype.toGeoJSON = function ()
+{
+    var VectorTileFeature = require('vectortilefeature');
+    var geojson = {
+        type: 'FeatureCollection',
+        features: []
+    };
+
+    for (var f=0; f < this.length; f++) {
+        var vector_feature = this.feature(f);
+        var json_feature = {
+            type: 'Feature',
+            geometry: {},
+            properties: {}
+        };
+
+        for (var p=0; p < this._keys.length; p++) {
+            json_feature.properties[this._keys[p]] = vector_feature[this._keys[p]];
+        }
+
+        json_feature.geometry.coordinates = vector_feature.loadGeometry();
+        for (var r=0; r < json_feature.geometry.coordinates.length; r++) {
+            for (var c=0; c < json_feature.geometry.coordinates[r].length; c++) {
+                json_feature.geometry.coordinates[r][c] = [
+                    json_feature.geometry.coordinates[r][c].x,
+                    json_feature.geometry.coordinates[r][c].y
+                ];
+            }
+        }
+
+        if (vector_feature._type == VectorTileFeature.Point) {
+            json_feature.geometry.type = 'Point';
+        }
+        else if (vector_feature._type == VectorTileFeature.LineString) {
+            json_feature.geometry.type = 'MultiLineString';
+        }
+        else if (vector_feature._type == VectorTileFeature.Polygon) {
+            json_feature.geometry.type = 'Polygon';
+        }
+
+        geojson.features.push(json_feature);
+    }
+    return geojson;
 };

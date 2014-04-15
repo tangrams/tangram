@@ -1,6 +1,10 @@
 {
   "title": "vector-map",
+  "dependencies": {
+    "vector-tile": "latest"
+  },
   "devDependencies": {
-    "uglify-js": "latest"
+    "uglify-js": "latest",
+    "browserify": "latest"
   }
 }
