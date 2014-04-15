@@ -29,6 +29,7 @@ function VectorRenderer (url_template, layers, styles)
     }
 
     this.zoom = null;
+    this.max_zoom = 14; // overzoom will apply for zooms higher than this
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
     this.initialized = false;
@@ -103,14 +104,30 @@ VectorRenderer.prototype.render = function ()
 
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
-    var tile_url = this.url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+    if (coords.z > this.max_zoom) {
+        var zgap = coords.z - this.max_zoom;
+        var original_tile = [coords.x, coords.y, coords.z].join('/');
+        coords.x = ~~(coords.x / Math.pow(2, zgap));
+        coords.y = ~~(coords.y / Math.pow(2, zgap));
+        coords.display_z = z; // z without overzoom
+        coords.z -= zgap;
+        console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
+    }
+
     var key = [coords.x, coords.y, coords.z].join('/');
+    var tile_url = this.url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
     var req = new XMLHttpRequest();
     var renderer = this;
 
-    // Already loaded?
+    // Already loading/loaded?
     if (this.tiles[key]) {
-        console.log("use loaded tile " + key + " from cache");
+        if (this.tiles[key].loaded == true) {
+            console.log("use loaded tile " + key + " from cache");
+        }
+        if (this.tiles[key].loading == true) {
+            console.log("already loading tile " + key + ", skip");
+        }
+
         if (callback) {
             callback(null, div);
         }
