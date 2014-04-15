@@ -179,7 +179,7 @@ GLRenderer.prototype.setZoom = function (zoom)
     this.zoom = zoom;
     var below = this.zoom;
     var above = this.zoom;
-    if (Math.abs(this.zoom - this.map_last_zoom) == 1) {
+    if (Math.abs(this.zoom - this.map_last_zoom) == 1 && (below <= this.max_zoom || above <= this.max_zoom)) {
         if (this.zoom > this.map_last_zoom) {
             below = this.zoom - 1;
         }
@@ -193,6 +193,7 @@ GLRenderer.prototype.setZoom = function (zoom)
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 {
+    below = Math.min(below, this.max_zoom);
     console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
     var remove_tiles = [];
     for (var t in this.tiles) {
@@ -257,7 +258,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     var count = 0;
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded == true && tile.coords.z == (this.zoom << 0)) {
+        if (tile.loaded == true && ((tile.coords.z == ~~this.zoom) || (this.zoom > this.max_zoom))) {
             if (tile.gl_geometry != null) {
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_min'), tile.min.x, tile.min.y);
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_max'), tile.max.x, tile.max.y);
