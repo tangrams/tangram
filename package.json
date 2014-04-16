@@ -1,7 +1,7 @@
 {
   "title": "vector-map",
   "dependencies": {
-    "vector-tile": "latest"
+    "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson"
   },
   "devDependencies": {
     "uglify-js": "latest",
