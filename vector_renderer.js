@@ -9,9 +9,9 @@ for (var z=0; z <= Geo.max_zoom; z++) {
 VectorRenderer.types = {};
 
 // Layers: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (url_template, layers, styles)
+function VectorRenderer (tile_source, layers, styles)
 {
-    // this.url_template = url_template;
+    this.tile_source = tile_source;
     this.tiles = {};
 
     if (typeof(layers) == 'string') {
@@ -29,12 +29,9 @@ function VectorRenderer (url_template, layers, styles)
     }
 
     this.zoom = null;
-    // this.max_zoom = 14; // overzoom will apply for zooms higher than this
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
     this.initialized = false;
-
-    this.tile_source = new TileSource(this, url_template, { max_zoom: 14 });
 }
 
 VectorRenderer.prototype.init = function ()
@@ -109,24 +106,24 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     // Overzoom?
     if (coords.z > this.tile_source.max_zoom) {
         var zgap = coords.z - this.tile_source.max_zoom;
-        var original_tile = [coords.x, coords.y, coords.z].join('/');
+        // var original_tile = [coords.x, coords.y, coords.z].join('/');
         coords.x = ~~(coords.x / Math.pow(2, zgap));
         coords.y = ~~(coords.y / Math.pow(2, zgap));
         coords.display_z = z; // z without overzoom
         coords.z -= zgap;
-        console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
+        // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
     }
 
     var key = [coords.x, coords.y, coords.z].join('/');
 
     // Already loading/loaded?
     if (this.tiles[key]) {
-        if (this.tiles[key].loaded == true) {
-            console.log("use loaded tile " + key + " from cache");
-        }
-        if (this.tiles[key].loading == true) {
-            console.log("already loading tile " + key + ", skip");
-        }
+        // if (this.tiles[key].loaded == true) {
+        //     console.log("use loaded tile " + key + " from cache");
+        // }
+        // if (this.tiles[key].loading == true) {
+        //     console.log("already loading tile " + key + ", skip");
+        // }
 
         if (callback) {
             callback(null, div);
@@ -144,7 +141,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.loaded = false;
 
     var renderer = this;
-    this.tile_source.loadTile(tile, function () {
+    this.tile_source.loadTile(tile, renderer, function () {
         // Render
         tile.debug.rendering = +new Date();
         renderer.addTile(tile, div);
@@ -171,119 +168,6 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     // debug_overlay.style.top = 0;
     // debug_overlay.style.color = 'white';
     // div.appendChild(debug_overlay);
-
-    /*
-    // Overzoom?
-    if (coords.z > this.max_zoom) {
-        var zgap = coords.z - this.max_zoom;
-        var original_tile = [coords.x, coords.y, coords.z].join('/');
-        coords.x = ~~(coords.x / Math.pow(2, zgap));
-        coords.y = ~~(coords.y / Math.pow(2, zgap));
-        coords.display_z = z; // z without overzoom
-        coords.z -= zgap;
-        console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
-    }
-
-    var key = [coords.x, coords.y, coords.z].join('/');
-    var tile_url = this.url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
-    var req = new XMLHttpRequest();
-    var renderer = this;
-
-    // Already loading/loaded?
-    if (this.tiles[key]) {
-        if (this.tiles[key].loaded == true) {
-            console.log("use loaded tile " + key + " from cache");
-        }
-        if (this.tiles[key].loading == true) {
-            console.log("already loading tile " + key + ", skip");
-        }
-
-        if (callback) {
-            callback(null, div);
-        }
-        return;
-    }
-
-    var tile = this.tiles[key] = {};
-    tile.key = key;
-    tile.coords = coords;
-    tile.xhr = req;
-    tile.debug = {};
-    tile.debug.network = +new Date();
-    tile.loading = true;
-    tile.loaded = false;
-
-    req.responseType = "arraybuffer";
-    req.onload = function () {
-        var tile = renderer.tiles[key]; // = {};
-        if (tile == null) {
-            return;
-        }
-
-        // tile.layers = JSON.parse(req.response);
-        tile.data = new Mapbox.VectorTile(new Uint8Array(req.response));
-        tile.debug.network = +new Date() - tile.debug.network; // network/JSON parsing
-
-        div.setAttribute('data-tile-key', tile.key); // tile info for debugging
-        div.style.width = '256px';
-        div.style.height = '256px';
-
-        // var debug_overlay = document.createElement('div');
-        // debug_overlay.textContent = tile.key;
-        // debug_overlay.style.position = 'absolute';
-        // debug_overlay.style.left = 0;
-        // debug_overlay.style.top = 0;
-        // debug_overlay.style.color = 'white';
-        // div.appendChild(debug_overlay);
-
-        // Convert Mapbox vector tile to GeoJSON
-        tile.layers = tile.data.toGeoJSON();
-
-        // Post-processing: flip tile y and assign OSM id
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
-            for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
-
-                feature.properties.id = feature.properties.osm_id;
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
-                    coordinates[1] = -coordinates[1];
-                    return coordinates;
-                });
-            };
-        }
-
-        // Extract desired layers from full GeoJSON response
-        renderer.processLayersForTile(tile);
-
-        // Mercator projection for geometry and bounds
-        tile.min = Geo.metersForTile(tile.coords);
-        tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-        // renderer.projectTile(tile);
-
-        // Re-scale from meters to local tile coords
-        // renderer.scaleTile(tile);
-
-        tile.xhr = null;
-        tile.loading = false;
-        tile.loaded = true;
-
-        // Render
-        var timer = +new Date();
-        renderer.addTile(tile, div);
-        tile.debug.rendering = +new Date() - timer; // rendering/geometry prep
-
-        delete tile.layers; // delete the source data in the tile to save memory
-
-        renderer.printDebugForTile(tile);
-        if (callback) {
-            callback(null, div);
-        }
-    };
-    // TODO: add XHR error handling
-    req.open('GET', tile_url, true);
-    req.send();
-    */
 };
 
 VectorRenderer.prototype.removeTile = function (key)
@@ -305,13 +189,13 @@ VectorRenderer.prototype.removeTile = function (key)
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
 VectorRenderer.prototype.processLayersForTile = function (tile)
 {
-    var layers = {};
+    var tile_layers = {};
     for (var t=0; t < this.layers.length; t++) {
         this.layers[t].number = t;
-        layers[this.layers[t].name] = this.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
+        tile_layers[this.layers[t].name] = this.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
     }
-    tile.layers = layers;
-    return tile;
+    tile.layers = tile_layers;
+    return tile_layers;
 };
 
 VectorRenderer.prototype.projectTile = function (tile)

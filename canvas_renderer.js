@@ -1,7 +1,7 @@
 VectorRenderer.types['canvas'] = CanvasRenderer;
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (url_template, layers, styles)
+function CanvasRenderer (tile_source, layers, styles)
 {
     VectorRenderer.apply(this, arguments);
 

@@ -2,7 +2,7 @@ VectorRenderer.types['gl'] = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-function GLRenderer (url_template, layers, styles, options)
+function GLRenderer (tile_source, layers, styles, options)
 {
     var options = options || {};
 

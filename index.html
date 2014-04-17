@@ -51,12 +51,42 @@ body {
 
 <script>
 
-var vector_tile_source =
-  // 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json';
-  // 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json';
-  // 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json';
-  // 'http://localhost:8080/all/{z}/{x}/{y}.json';
-  "http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf";
+// var vector_tile_source =
+    // 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json';
+    // 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json';
+    // 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json';
+    // 'http://localhost:8080/all/{z}/{x}/{y}.json';
+    // 'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf';
+
+var vector_tile_source = 'mapbox';
+
+var vector_tile_sources = {
+    'mapzen': {
+        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        layers: 'gl_layers_json.js',
+        styles: 'gl_styles.js'
+    },
+    'mapzen-dev': {
+        source: new GeoJSONTileSource('http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        layers: 'gl_layers_json.js',
+        styles: 'gl_styles.js'
+    },
+    'mapzen-local': {
+        source: new GeoJSONTileSource('http://localhost:8080/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        layers: 'gl_layers_json.js',
+        styles: 'gl_styles.js'
+    },
+    'osm': {
+        source: new GeoJSONTileSource('http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        layers: 'gl_layers_json.js',
+        styles: 'gl_styles.js'
+    },
+    'mapbox': {
+        source: new MapboxTileSource('http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf', { max_zoom: 14 }),
+        layers: 'gl_layers_mvt.js',
+        styles: 'gl_styles.js'
+    }
+};
 
 var locations = {
     'London': [51.508, -0.105, 15],
@@ -115,8 +145,10 @@ resizeMap();
 
 var layer = L.vectorTileLayer({
     vectorRenderer: renderer_type,
-    vectorTileSource: vector_tile_source,
-    vectorLayers: renderer_type + '_layers.js',
+    // vectorTileSource: vector_tile_source,
+    // vectorLayers: renderer_type + '_layers.js',
+    vectorTileSource: vector_tile_sources[vector_tile_source].source,
+    vectorLayers: vector_tile_sources[vector_tile_source].layers,
     vectorStyles: renderer_type + '_styles.js',
     attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
