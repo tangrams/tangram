@@ -51,33 +51,32 @@ body {
 
 <script>
 
-// var vector_tile_source =
-    // 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json';
-    // 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json';
-    // 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json';
-    // 'http://localhost:8080/all/{z}/{x}/{y}.json';
-    // 'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf';
+var tile_source = 'mapzen'; // default source, can be overriden by URL
 
-var vector_tile_source = 'mapbox';
-
-var vector_tile_sources = {
+var tile_sources = {
     'mapzen': {
-        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'),
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapzen-dev': {
-        source: new GeoJSONTileSource('http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        source: new GeoJSONTileSource('http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json'),
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapzen-local': {
-        source: new GeoJSONTileSource('http://localhost:8080/all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        source: new GeoJSONTileSource('http://localhost:8080/all/{z}/{x}/{y}.json'),
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
+    'mapzen-canvas': {
+        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'),
+        layers: 'canvas_layers.js',
+        styles: 'canvas_styles.js',
+        renderer: 'canvas'
+    },
     'osm': {
-        source: new GeoJSONTileSource('http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json', { max_zoom: 16 }),
+        source: new GeoJSONTileSource('http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'),
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
@@ -99,14 +98,22 @@ var osm_debug = false;
 /*** URL parsing ***/
 
 // URL hash pattern is one of:
-// #[gl|canvas]
-// #[gl|canvas],[lat],[lng],[zoom]
-// #[gl|canvas],[location name]
+// #[source]
+// #[lat],[lng],[zoom]
+// #[source],[lat],[lng],[zoom]
+// #[source],[location name]
 var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
-var renderer_type = (url_hash.length > 0 && url_hash[0] != '') ? url_hash[0] : 'gl';
 
-// Get location from URL or use default
+// Get tile source from URL
+if ((url_hash.length == 1 || url_hash.length == 4) && url_hash[0] != '' && tile_sources[url_hash[0]] != null) {
+    tile_source = url_hash[0];
+}
+
+// Get location from URL
 var map_start_location = locations['New York'];
+if (url_hash.length == 3) {
+    map_start_location = url_hash.slice(0, 3);
+}
 if (url_hash.length == 4) {
     map_start_location = url_hash.slice(1, 4);
 }
@@ -126,7 +133,7 @@ map.attributionControl.setPrefix('');
 
 map.on('moveend', function () {
     var map_latlng = map.getCenter();
-    window.location.hash = [renderer_type, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
+    window.location.hash = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
 });
 
 map.setView(map_start_location.slice(0, 2), map_start_location[2]);
@@ -144,12 +151,10 @@ resizeMap();
 /*** Layer ***/
 
 var layer = L.vectorTileLayer({
-    vectorRenderer: renderer_type,
-    // vectorTileSource: vector_tile_source,
-    // vectorLayers: renderer_type + '_layers.js',
-    vectorTileSource: vector_tile_sources[vector_tile_source].source,
-    vectorLayers: vector_tile_sources[vector_tile_source].layers,
-    vectorStyles: renderer_type + '_styles.js',
+    vectorRenderer: tile_sources[tile_source].renderer || 'gl',
+    vectorTileSource: tile_sources[tile_source].source,
+    vectorLayers: tile_sources[tile_source].layers,
+    vectorStyles: tile_sources[tile_source].styles,
     attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false
