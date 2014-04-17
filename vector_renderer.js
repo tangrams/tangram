@@ -11,7 +11,7 @@ VectorRenderer.types = {};
 // Layers: pass an object directly, or a URL as string to load remotely
 function VectorRenderer (url_template, layers, styles)
 {
-    this.url_template = url_template;
+    // this.url_template = url_template;
     this.tiles = {};
 
     if (typeof(layers) == 'string') {
@@ -29,10 +29,12 @@ function VectorRenderer (url_template, layers, styles)
     }
 
     this.zoom = null;
-    this.max_zoom = 14; // overzoom will apply for zooms higher than this
+    // this.max_zoom = 14; // overzoom will apply for zooms higher than this
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
     this.initialized = false;
+
+    this.tile_source = new TileSource(this, url_template, { max_zoom: 14 });
 }
 
 VectorRenderer.prototype.init = function ()
@@ -104,6 +106,74 @@ VectorRenderer.prototype.render = function ()
 
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
+    // Overzoom?
+    if (coords.z > this.tile_source.max_zoom) {
+        var zgap = coords.z - this.tile_source.max_zoom;
+        var original_tile = [coords.x, coords.y, coords.z].join('/');
+        coords.x = ~~(coords.x / Math.pow(2, zgap));
+        coords.y = ~~(coords.y / Math.pow(2, zgap));
+        coords.display_z = z; // z without overzoom
+        coords.z -= zgap;
+        console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
+    }
+
+    var key = [coords.x, coords.y, coords.z].join('/');
+
+    // Already loading/loaded?
+    if (this.tiles[key]) {
+        if (this.tiles[key].loaded == true) {
+            console.log("use loaded tile " + key + " from cache");
+        }
+        if (this.tiles[key].loading == true) {
+            console.log("already loading tile " + key + ", skip");
+        }
+
+        if (callback) {
+            callback(null, div);
+        }
+        return;
+    }
+
+    var tile = this.tiles[key] = {};
+    tile.key = key;
+    tile.coords = coords;
+    tile.min = Geo.metersForTile(tile.coords);
+    tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
+    tile.debug = {};
+    tile.loading = true;
+    tile.loaded = false;
+
+    var renderer = this;
+    this.tile_source.loadTile(tile, function () {
+        // Render
+        tile.debug.rendering = +new Date();
+        renderer.addTile(tile, div);
+        tile.debug.rendering = +new Date() - tile.debug.rendering; // rendering/geometry prep
+
+        delete tile.layers; // delete the source data in the tile to save memory
+
+        renderer.printDebugForTile(tile);
+
+        if (callback) {
+            callback(null, div);
+        }
+    });
+
+    // Debug info
+    div.setAttribute('data-tile-key', tile.key);
+    div.style.width = '256px';
+    div.style.height = '256px';
+
+    // var debug_overlay = document.createElement('div');
+    // debug_overlay.textContent = tile.key;
+    // debug_overlay.style.position = 'absolute';
+    // debug_overlay.style.left = 0;
+    // debug_overlay.style.top = 0;
+    // debug_overlay.style.color = 'white';
+    // div.appendChild(debug_overlay);
+
+    /*
+    // Overzoom?
     if (coords.z > this.max_zoom) {
         var zgap = coords.z - this.max_zoom;
         var original_tile = [coords.x, coords.y, coords.z].join('/');
@@ -211,8 +281,9 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         }
     };
     // TODO: add XHR error handling
-    req.open('GET', tile_url, true /* async flag */);
+    req.open('GET', tile_url, true);
     req.send();
+    */
 };
 
 VectorRenderer.prototype.removeTile = function (key)
