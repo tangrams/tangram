@@ -216,7 +216,7 @@ GLRenderer.prototype.setZoom = function (zoom)
     this.zoom = zoom;
     var below = this.zoom;
     var above = this.zoom;
-    if (Math.abs(this.zoom - this.map_last_zoom) == 1 && (below <= this.tile_source.max_zoom || above <= this.tile_source.max_zoom)) {
+    if (Math.abs(this.zoom - this.map_last_zoom) == 1) {
         if (this.zoom > this.map_last_zoom) {
             below = this.zoom - 1;
         }
@@ -230,7 +230,9 @@ GLRenderer.prototype.setZoom = function (zoom)
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 {
-    below = Math.min(below, this.tile_source.max_zoom);
+    below = Math.min(below, this.tile_source.max_zoom || below);
+    above = Math.min(above, this.tile_source.max_zoom || above);
+
     console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
     var remove_tiles = [];
     for (var t in this.tiles) {
