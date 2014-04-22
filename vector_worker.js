@@ -16,6 +16,8 @@ VectorWorker.worker = this;
 
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
+GLBuilders.setTileScale(VectorRenderer.tile_scale);
+
 // Load tile
 VectorWorker.worker.addEventListener('message', function (event) {
     if (event.data.type != 'loadTile') {
