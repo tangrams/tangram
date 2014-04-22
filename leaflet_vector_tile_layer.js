@@ -40,7 +40,6 @@ L.VectorTileLayer = L.GridLayer.extend({
         layer._map.on('zoomend', function () {
             console.log("map.zoomend " + layer._map.getZoom());
             layer._renderer.setZoom(layer._map.getZoom());
-            // layer.updateBounds();
         });
 
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
