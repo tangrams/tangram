@@ -14,6 +14,8 @@ importScripts('dist/vector-map-worker.min.js');
 var VectorWorker = {};
 VectorWorker.worker = this;
 
+VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
+
 // Load tile
 VectorWorker.worker.addEventListener('message', function (event) {
     if (event.data.type != 'loadTile') {
@@ -29,6 +31,8 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     VectorWorker.layers = VectorWorker.layers || VectorRenderer.loadLayers(event.data.layer_source);
     VectorWorker.styles = VectorWorker.styles || VectorRenderer.loadStyles(event.data.style_source);
+
+    VectorWorker.tiles[tile.key] = tile;
 
     tile_source.loadTile(tile, VectorWorker, function () {
         // Extract desired layers from full GeoJSON
@@ -46,4 +50,27 @@ VectorWorker.worker.addEventListener('message', function (event) {
             tile: tile
         });
     });
+});
+
+// Remove tile
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'removeTile') {
+        return;
+    }
+
+    var key = event.data.key;
+    var tile = VectorWorker.tiles[key];
+    // console.log("worker remove tile event for " + key);
+
+    if (tile != null) {
+        // TODO: let tile source do this
+        tile.loading = false;
+
+        if (tile.xhr != null) {
+            tile.xhr.abort();
+            // console.log("aborted XHR for tile " + tile.key);
+        }
+
+        delete VectorWorker.tiles[key];
+    }
 });

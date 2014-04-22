@@ -150,6 +150,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         layer_source: this.layer_source,
         style_source: this.style_source
     });
+    tile.worker = this.workers[this.next_worker];
     this.next_worker = (this.next_worker + 1) % this.workers.length;
 
     // Debug info
@@ -173,8 +174,14 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 // Called on main thread when a web worker completes processing for a single tile
 VectorRenderer.prototype.tileWorkerCompleted = function (event)
 {
-    // var tile = this.tiles[key];
     var tile = event.data.tile;
+
+    // Removed this tile during load?
+    if (this.tiles[tile.key] == null) {
+        console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
+        return;
+    }
+
     this.tiles[tile.key] = tile; // TODO: OK to just wipe out the tile here? or could pass back a list of properties to replace? feeling the lack of underscore here...
 
     // Child class-specific tile processing
@@ -193,13 +200,14 @@ VectorRenderer.prototype.removeTile = function (key)
     var tile = this.tiles[key];
     if (tile != null && tile.loading == true) {
         console.log("cancel tile load for " + key);
-        tile.loaded = false;
 
-        // TODO: move this to a web worker event since workers manage XHRs now
-        // tile.xhr.abort();
-        // tile.xhr = null;
-
-        tile.loading = false;
+        // Web worker will cancel XHR requests
+        if (tile.worker != null) {
+            tile.worker.postMessage({
+                type: 'removeTile',
+                key: tile.key
+            });
+        }
     }
 
     delete this.tiles[key];
