@@ -6,14 +6,16 @@ for (var z=0; z <= Geo.max_zoom; z++) {
     VectorRenderer.units_per_pixel[z] = VectorRenderer.tile_scale / Geo.tile_size;
 }
 
-VectorRenderer.types = {};
-
-// Layers: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (tile_source, layers, styles)
+// Layers & styles: pass an object directly, or a URL as string to load remotely
+function VectorRenderer (type, tile_source, layers, styles, options)
 {
+    var options = options || {};
+    this.type = type;
     this.tile_source = tile_source;
     this.tiles = {};
+    this.num_workers = options.num_workers || 1;
 
+    this.layer_source = layers; // TODO: fix this for layers provided as objects, this assumes a URL is passed
     if (typeof(layers) == 'string') {
         this.layers = VectorRenderer.loadLayers(layers);
     }
@@ -21,6 +23,7 @@ function VectorRenderer (tile_source, layers, styles)
         this.layers = layers;
     }
 
+    this.style_source = styles; // TODO: fix this for styles provided as objects, this assumes a URL is passed
     if (typeof(styles) == 'string') {
         this.styles = VectorRenderer.loadStyles(styles);
     }
@@ -31,8 +34,21 @@ function VectorRenderer (tile_source, layers, styles)
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
+
+    // Web workers handle heavy duty geometry processing
+    this.workers = [];
+    for (var w=0; w < this.num_workers; w++) {
+        this.workers.push(new Worker('vector_worker.js'));
+    }
+    this.next_worker = 0;
+
     this.initialized = false;
 }
+
+VectorRenderer.create = function (type, tile_source, layers, styles, options)
+{
+    return new VectorRenderer[type](tile_source, layers, styles, options);
+};
 
 VectorRenderer.prototype.init = function ()
 {
@@ -40,27 +56,13 @@ VectorRenderer.prototype.init = function ()
     if (typeof(this._init) == 'function') {
         this._init.apply(this, arguments);
     }
+
+    var renderer = this;
+    this.workers.forEach(function(worker) {
+        worker.addEventListener('message', renderer.tileWorkerCompleted.bind(renderer));
+    });
+
     this.initialized = true;
-};
-
-VectorRenderer.loadLayers = function (url)
-{
-    var layers;
-    var req = new XMLHttpRequest();
-    req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
-    req.send();
-    return layers;
-};
-
-VectorRenderer.loadStyles = function (url)
-{
-    var styles;
-    var req = new XMLHttpRequest();
-    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
-    req.send();
-    return styles;
 };
 
 VectorRenderer.prototype.setCenter = function (lng, lat)
@@ -140,21 +142,15 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.loading = true;
     tile.loaded = false;
 
-    var renderer = this;
-    this.tile_source.loadTile(tile, renderer, function () {
-        // Render
-        tile.debug.rendering = +new Date();
-        renderer.addTile(tile, div);
-        tile.debug.rendering = +new Date() - tile.debug.rendering; // rendering/geometry prep
-
-        delete tile.layers; // delete the source data in the tile to save memory
-
-        renderer.printDebugForTile(tile);
-
-        if (callback) {
-            callback(null, div);
-        }
+    this.workers[this.next_worker].postMessage({
+        type: 'loadTile',
+        tile: tile,
+        renderer_type: this.type,
+        tile_source: this.tile_source,
+        layer_source: this.layer_source,
+        style_source: this.style_source
     });
+    this.next_worker = (this.next_worker + 1) % this.workers.length;
 
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
@@ -168,6 +164,27 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     // debug_overlay.style.top = 0;
     // debug_overlay.style.color = 'white';
     // div.appendChild(debug_overlay);
+
+    if (callback) {
+        callback(null, div);
+    }
+};
+
+// Called on main thread when a web worker completes processing for a single tile
+VectorRenderer.prototype.tileWorkerCompleted = function (event)
+{
+    // var tile = this.tiles[key];
+    var tile = event.data.tile;
+    this.tiles[tile.key] = tile; // TODO: OK to just wipe out the tile here? or could pass back a list of properties to replace? feeling the lack of underscore here...
+
+    // Child class-specific tile processing
+    if (typeof(this._tileWorkerCompleted) == 'function') {
+        this._tileWorkerCompleted(tile);
+    }
+
+    delete tile.layers; // delete the source data in the tile to save memory
+
+    this.printDebugForTile(tile);
 };
 
 VectorRenderer.prototype.removeTile = function (key)
@@ -177,65 +194,63 @@ VectorRenderer.prototype.removeTile = function (key)
     if (tile != null && tile.loading == true) {
         console.log("cancel tile load for " + key);
         tile.loaded = false;
-        tile.xhr.abort();
-        tile.xhr = null;
+
+        // TODO: move this to a web worker event since workers manage XHRs now
+        // tile.xhr.abort();
+        // tile.xhr = null;
+
         tile.loading = false;
     }
 
     delete this.tiles[key];
 };
 
+VectorRenderer.prototype.printDebugForTile = function (tile)
+{
+    console.log(
+        "debug for " + tile.key + ': [ ' +
+        Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
+    );
+};
+
+
+/*** Class methods (stateless) ***/
+
+VectorRenderer.loadLayers = function (url)
+{
+    var layers;
+    var req = new XMLHttpRequest();
+    req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
+    req.open('GET', url, false /* async flag */);
+    req.send();
+    return layers;
+};
+
+VectorRenderer.loadStyles = function (url)
+{
+    var styles;
+    var req = new XMLHttpRequest();
+    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
+    req.open('GET', url, false /* async flag */);
+    req.send();
+    return styles;
+};
+
 // Processes the tile response to create layers as defined by this renderer
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
-VectorRenderer.prototype.processLayersForTile = function (tile)
+VectorRenderer.processLayersForTile = function (layers, tile)
 {
     var tile_layers = {};
-    for (var t=0; t < this.layers.length; t++) {
-        this.layers[t].number = t;
-        tile_layers[this.layers[t].name] = this.layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
+    for (var t=0; t < layers.length; t++) {
+        layers[t].number = t;
+        tile_layers[layers[t].name] = layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
     }
     tile.layers = tile_layers;
     return tile_layers;
 };
 
-VectorRenderer.prototype.projectTile = function (tile)
-{
-    var timer = +new Date();
-    for (var t in tile.layers) {
-        var num_features = tile.layers[t].features.length;
-        for (var f=0; f < num_features; f++) {
-            var feature = tile.layers[t].features[f];
-            feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
-                var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
-                return [m.x, m.y];
-            });
-        };
-    }
-    tile.debug.projection = +new Date() - timer;
-    return tile;
-};
-
-// Re-scale geometries within each tile to the range [0, scale]
-// TODO: clip vertices at edges? right now vertices can have values outside [0, scale] (over or under bounds); this would pose a problem if we wanted to binary encode the vertices in fewer bits (e.g. 12 bits each for scale of 4096)
-VectorRenderer.prototype.scaleTile = function (tile)
-{
-    for (var t in tile.layers) {
-        var num_features = tile.layers[t].features.length;
-        for (var f=0; f < num_features; f++) {
-            var feature = tile.layers[t].features[f];
-            feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
-                coordinates[0] = (coordinates[0] - tile.min.x) * VectorRenderer.units_per_meter[tile.coords.z];
-                coordinates[1] = (coordinates[1] - tile.min.y) * VectorRenderer.units_per_meter[tile.coords.z]; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
-                // coordinates[1] = (coordinates[1] - tile.max.y) * VectorRenderer.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
-                return coordinates;
-            });
-        };
-    }
-    return tile;
-};
-
 // Determine final style properties (color, width, etc.)
-VectorRenderer.prototype.style_defaults = {
+VectorRenderer.style_defaults = {
     color: [1.0, 0, 0],
     width: 1,
     size: 1,
@@ -249,33 +264,33 @@ VectorRenderer.prototype.style_defaults = {
     }
 };
 
-VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
+VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
 {
-    var layer_style = this.styles[layer.name] || {};
+    var layer_style = layer_style || {};
     var style = {};
 
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || this.style_defaults.color;
+    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || VectorRenderer.style_defaults.color;
     if (typeof style.color == 'function') {
         style.color = style.color(feature, tile);
     }
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || this.style_defaults.width;
+    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || VectorRenderer.style_defaults.width;
     if (typeof style.width == 'function') {
         style.width = style.width(feature, tile);
     }
 
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || this.style_defaults.size;
+    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || VectorRenderer.style_defaults.size;
     if (typeof style.size == 'function') {
         style.size = style.size(feature, tile);
     }
 
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || this.style_defaults.extrude;
+    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || VectorRenderer.style_defaults.extrude;
     if (typeof style.extrude == 'function') {
         style.extrude = style.extrude(feature, tile); // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
     }
 
-    style.height = (feature.properties && feature.properties.height) || this.style_defaults.height;
-    style.min_height = (feature.properties && feature.properties.min_height) || this.style_defaults.min_height;
+    style.height = (feature.properties && feature.properties.height) || VectorRenderer.style_defaults.height;
+    style.min_height = (feature.properties && feature.properties.min_height) || VectorRenderer.style_defaults.min_height;
 
     // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
     if (style.extrude) {
@@ -290,17 +305,17 @@ VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
 
     style.outline = {};
     layer_style.outline = layer_style.outline || {};
-    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || this.style_defaults.outline.color;
+    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || VectorRenderer.style_defaults.outline.color;
     if (typeof style.outline.color == 'function') {
         style.outline.color = style.outline.color(feature, tile);
     }
 
-    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || this.style_defaults.outline.width;
+    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || VectorRenderer.style_defaults.outline.width;
     if (typeof style.outline.width == 'function') {
         style.outline.width = style.outline.width(feature, tile);
     }
 
-    style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || this.style_defaults.outline.dash;
+    style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || VectorRenderer.style_defaults.outline.dash;
     if (typeof style.outline.dash == 'function') {
         style.outline.dash = style.outline.dash(feature, tile);
     }
@@ -308,15 +323,8 @@ VectorRenderer.prototype.parseStyleForFeature = function (feature, layer, tile)
     return style;
 };
 
-VectorRenderer.prototype.printDebugForTile = function (tile)
-{
-    console.log(
-        "debug for " + tile.key + ': [ ' +
-        Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
-    );
-};
 
-// Style helpers
+/*** Style helpers ***/
 var Style = {};
 
 Style.color = {
@@ -329,9 +337,3 @@ Style.width = {
     pixels: function (p, t) { return p * VectorRenderer.units_per_pixel[t.coords.z]; }, // local tile units for a given pixel width
     meters: function (p, t) { return p * VectorRenderer.units_per_meter[t.coords.z]; }  // local tile units for a given meter width
 };
-
-// For Mapbox vector tile support
-var Mapbox = {};
-Mapbox.VectorTile = require('vectortile');
-Mapbox.VectorTileLayer = require('vectortilelayer');
-Mapbox.VectorTileFeature = require('vectortilefeature');

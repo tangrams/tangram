@@ -6,7 +6,8 @@ L.VectorTileLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
-        this._renderer = new VectorRenderer.types[this.options.vectorRenderer](this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles);
+        this.options.vectorRenderer = this.options.vectorRenderer || 'GLRenderer';
+        this._renderer = VectorRenderer.create(this.options.vectorRenderer, this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
     },
 
     // Finish initializing renderer and setup events when layer is added to map

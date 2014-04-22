@@ -1,13 +1,16 @@
-VectorRenderer.types['gl'] = GLRenderer;
+VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
 function GLRenderer (tile_source, layers, styles, options)
 {
-    var options = options || {};
+    VectorRenderer.call(this, 'GLRenderer', tile_source, layers, styles, options);
 
-    VectorRenderer.apply(this, arguments);
-    GLBuilders.setTileScale(VectorRenderer.tile_scale);
+    // if (GLBuilders !== undefined) {
+       GLBuilders.setTileScale(VectorRenderer.tile_scale);
+    // }
+
+    var options = options || {};
 
     this.container = options.container;
 }
@@ -35,7 +38,7 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
-GLRenderer.prototype.calculateZ = function (layer, tile, layer_offset, feature_offset)
+GLRenderer.calculateZ = function (layer, tile, layer_offset, feature_offset)
 {
     var layer_offset = layer_offset || 0;
     var feature_offset = feature_offset || 0;
@@ -44,9 +47,12 @@ GLRenderer.prototype.calculateZ = function (layer, tile, layer_offset, feature_o
     return z;
 };
 
-GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
+// Process geometry for tile - called by web worker
+GLRenderer.addTile = function (tile, layers, styles)
 {
-    var renderer = this;
+    // var layers = VectorWorker.getLayers();
+    // var styles = VectorWorker.getStyles();
+
     var layer, style, feature, z;
     var vertex_triangles = [];
     var vertex_lines = [];
@@ -58,16 +64,15 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
     // Build raw geometry arrays
     tile.feature_count = 0;
-    for (var ln=0; ln < this.layers.length; ln++) {
-        layer = this.layers[ln];
-        style = this.styles[layer.name] || {};
+    for (var ln=0; ln < layers.length; ln++) {
+        layer = layers[ln];
 
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
             for (var f=0; f < num_features; f++) {
                 feature = tile.layers[layer.name].features[f];
-                style = this.parseStyleForFeature(feature, layer, tile);
-                z = this.calculateZ(layer, tile);
+                style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
+                z = GLRenderer.calculateZ(layer, tile);
 
                 var vertex_constants = [
                     style.color[0], style.color[1], style.color[2]
@@ -109,7 +114,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
                     // Polygon outlines
                     if (style.outline.color && style.outline.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], this.calculateZ(layer, tile, 0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
+                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, 0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
                         }
                     }
                 }
@@ -120,7 +125,7 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
 
                     // Line outlines
                     if (style.outline.color && style.outline.width) {
-                        GLBuilders.buildPolylines(lines, this.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_triangles, { vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
+                        GLBuilders.buildPolylines(lines, GLRenderer.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_triangles, { vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
                     }
                 }
 
@@ -129,32 +134,64 @@ GLRenderer.prototype.addTile = function GLRendererAddTile (tile, tileDiv)
         }
     }
 
+    tile.debug.features = tile.feature_count;
+    vertex_triangles = new Float32Array(vertex_triangles);
+    vertex_lines = new Float32Array(vertex_lines);
+
+    // NOTE: moved to generic event post from VectorRenderer (loses transferable objects for typed arrays, but gains flexibility)
+    // VectorWorker.worker.postMessage(
+    //     {
+    //         key: tile.key,
+    //         debug: tile.debug,
+    //         vertex_triangles: vertex_triangles,
+    //         vertex_lines: vertex_lines
+    //     },
+    //     [
+    //         vertex_triangles.buffer,
+    //         vertex_lines.buffer
+    //     ]
+    // );
+
+    tile.vertex_data = {
+        vertex_triangles: vertex_triangles,
+        vertex_lines: vertex_lines
+    };
+
+    return tile;
+};
+
+// Called on main thread when a web worker completes processing for a single tile
+GLRenderer.prototype._tileWorkerCompleted = function (tile)
+{
+    var vertex_triangles = tile.vertex_data.vertex_triangles;
+    var vertex_lines = tile.vertex_data.vertex_lines;
+
     // Create GL geometry objects
     tile.gl_geometry = [];
     if (vertex_triangles.length > 0) {
-        tile.gl_geometry.push(new GLTriangles(this.gl, this.program, new Float32Array(vertex_triangles)));
+        tile.gl_geometry.push(new GLTriangles(this.gl, this.program, vertex_triangles));
     }
     if (vertex_lines.length > 0) {
-        tile.gl_geometry.push(new GLLines(this.gl, this.program, new Float32Array(vertex_lines), { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+        tile.gl_geometry.push(new GLLines(this.gl, this.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
     }
-    tile.geometry_count = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
-    tile.debug.geometries = tile.geometry_count;
-    tile.debug.features = tile.feature_count;
+
+    tile.debug.geometries = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
     tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-    // console.log("created " + tile.geometry_count + " primitives for tile " + tile.key);
 
     // Selection - experimental/future
     // var gl_renderer = this;
     // var pixel = new Uint8Array(4);
     // tileDiv.onmousemove = function (event) {
-    //     // console.log(event.offsetX + ', ' + event.offsetY + ' | ' + parseInt(tileDiv.style.left) + ', ' + parseInt(tileDiv.style.top));
+    //     // console.log(event.offsetX + ', ' + event.offsetY + ' | ' + parseInt(tileDiv.style.left) + ', ' + parseInt
     //     var p = Point(
     //         event.offsetX + parseInt(tileDiv.style.left),
     //         event.offsetY + parseInt(tileDiv.style.top)
     //     );
     //     gl_renderer.gl.readPixels(p.x, p.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-    //     console.log(p.x + ', ' + p.y + ': (' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ', ' + pixel[3] + ')');
+    //     console.log(p.x + ', ' + p.y + ': (' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ', ' + pixel[3] + ')')
     // };
+
+    delete tile.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
 };
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
@@ -256,9 +293,11 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
     // Render tile GL geometries
     var count = 0;
+    var capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded == true && ((tile.coords.z == ~~this.zoom) || (this.zoom > this.tile_source.max_zoom))) {
+        if (tile.loaded == true &&
+            Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
             if (tile.gl_geometry != null) {
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_min'), tile.min.x, tile.min.y);
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_max'), tile.max.x, tile.max.y);

@@ -55,33 +55,52 @@ var tile_source = 'mapzen'; // default source, can be overriden by URL
 
 var tile_sources = {
     'mapzen': {
-        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'),
+        source: {
+            type: 'GeoJSONTileSource',
+            url: 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
+        },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapzen-dev': {
-        source: new GeoJSONTileSource('http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json'),
+        source: {
+            type: 'GeoJSONTileSource',
+            url: 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json'
+        },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapzen-local': {
-        source: new GeoJSONTileSource('http://localhost:8080/all/{z}/{x}/{y}.json'),
+        source: {
+            type: 'GeoJSONTileSource',
+            url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
+        },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapzen-canvas': {
-        source: new GeoJSONTileSource('http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'),
+        source: {
+            type:'GeoJSONTileSource',
+            url: 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
+        },
         layers: 'canvas_layers.js',
         styles: 'canvas_styles.js',
-        renderer: 'canvas'
+        renderer: 'CanvasRenderer'
     },
     'osm': {
-        source: new GeoJSONTileSource('http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'),
+        source: {
+            type: 'GeoJSONTileSource',
+            url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
+        },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
     'mapbox': {
-        source: new MapboxTileSource('http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf', { max_zoom: 14 }),
+        source: {
+            type: 'MapboxTileSource',
+            url: 'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf',
+            max_zoom: 14
+        },
         layers: 'gl_layers_mvt.js',
         styles: 'gl_styles.js'
     }
@@ -151,10 +170,11 @@ resizeMap();
 /*** Layer ***/
 
 var layer = L.vectorTileLayer({
-    vectorRenderer: tile_sources[tile_source].renderer || 'gl',
+    vectorRenderer: tile_sources[tile_source].renderer,
     vectorTileSource: tile_sources[tile_source].source,
     vectorLayers: tile_sources[tile_source].layers,
     vectorStyles: tile_sources[tile_source].styles,
+    numWorkers: 1,
     attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/vector-map">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false

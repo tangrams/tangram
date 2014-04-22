@@ -146,46 +146,48 @@ GL.createShader = function GLcreateShader (gl, source, type)
 
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
-GL.tesselator = (function initTesselator() {
-    // function called for each vertex of tesselator output
-    function vertexCallback(data, polyVertArray) {
-        // polyVertArray[polyVertArray.length] = data[0];
-        // polyVertArray[polyVertArray.length] = data[1];
-        polyVertArray[polyVertArray.length] = [data[0], data[1]];
-    }
-
-    function begincallback(type) {
-        if (type !== libtess.primitiveType.GL_TRIANGLES) {
-            console.log('GL.tesselator: expected TRIANGLES but got type: ' + type);
+// if (this.libtess !== undefined) {
+    GL.tesselator = (function initTesselator() {
+        // function called for each vertex of tesselator output
+        function vertexCallback(data, polyVertArray) {
+            // polyVertArray[polyVertArray.length] = data[0];
+            // polyVertArray[polyVertArray.length] = data[1];
+            polyVertArray[polyVertArray.length] = [data[0], data[1]];
         }
-    }
 
-    function errorcallback(errno) {
-        console.log('GL.tesselator: error callback');
-        console.log('GL.tesselator: error number: ' + errno);
-    }
+        function begincallback(type) {
+            if (type !== libtess.primitiveType.GL_TRIANGLES) {
+                console.log('GL.tesselator: expected TRIANGLES but got type: ' + type);
+            }
+        }
 
-    // callback for when segments intersect and must be split
-    function combinecallback(coords, data, weight) {
-        // console.log('GL.tesselator: combine callback');
-        return [coords[0], coords[1], coords[2]];
-    }
+        function errorcallback(errno) {
+            console.log('GL.tesselator: error callback');
+            console.log('GL.tesselator: error number: ' + errno);
+        }
 
-    function edgeCallback(flag) {
-        // don't really care about the flag, but need no-strip/no-fan behavior
-        // console.log('GL.tesselator: edge flag: ' + flag);
-    }
+        // callback for when segments intersect and must be split
+        function combinecallback(coords, data, weight) {
+            // console.log('GL.tesselator: combine callback');
+            return [coords[0], coords[1], coords[2]];
+        }
 
-    var tesselator = new libtess.GluTesselator();
-    // tesselator.gluTessProperty(libtess.gluEnum.GLU_TESS_WINDING_RULE, libtess.windingRule.GLU_TESS_WINDING_POSITIVE);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_BEGIN, begincallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_ERROR, errorcallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combinecallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+        function edgeCallback(flag) {
+            // don't really care about the flag, but need no-strip/no-fan behavior
+            // console.log('GL.tesselator: edge flag: ' + flag);
+        }
 
-    return tesselator;
-})();
+        var tesselator = new libtess.GluTesselator();
+        // tesselator.gluTessProperty(libtess.gluEnum.GLU_TESS_WINDING_RULE, libtess.windingRule.GLU_TESS_WINDING_POSITIVE);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_BEGIN, begincallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_ERROR, errorcallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combinecallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+
+        return tesselator;
+    })();
+// }
 
 GL.triangulate = function GLTriangulate (contours)
 {

@@ -1,17 +1,21 @@
-VectorRenderer.types['canvas'] = CanvasRenderer;
+VectorRenderer.CanvasRenderer = CanvasRenderer;
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
-function CanvasRenderer (tile_source, layers, styles)
+function CanvasRenderer (tile_source, layers, styles, options)
 {
-    VectorRenderer.apply(this, arguments);
+    VectorRenderer.call(this, 'CanvasRenderer', tile_source, layers, styles, options);
 
     // Selection info shown on hover
     this.selection_info = document.createElement('div');
     this.selection_info.setAttribute('class', 'label');
     this.selection_info.style.display = 'none';
+
+    // For drawing multipolygons w/canvas composite operations
+    this.cutout_context = document.createElement('canvas').getContext('2d');
 }
 
-CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
+// CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
+CanvasRenderer.prototype._tileWorkerCompleted = function (tile)
 {
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
@@ -23,6 +27,8 @@ CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv
     canvas.style.background = this.colorToString(this.styles.default);
 
     this.renderTile(tile, context);
+
+    var tileDiv = document.querySelector("div[data-tile-key='" + tile.key + "']");
     tileDiv.appendChild(canvas);
 };
 
@@ -151,7 +157,6 @@ CanvasRenderer.prototype.renderPoint = function renderPoint (point, style, conte
     }
 };
 
-var cutout_context = document.createElement('canvas').getContext('2d');
 CanvasRenderer.prototype.renderFeature = function renderFeature (feature, style, context)
 {
     var g, h, polys;
@@ -177,20 +182,20 @@ CanvasRenderer.prototype.renderFeature = function renderFeature (feature, style,
             // Polygons with holes:
             // Render to a separate canvas, using composite operations to cut holes out of polygon, then copy back to the main canvas
             if (polys[g].length > 1) {
-                if (cutout_context.canvas.width != context.canvas.width || cutout_context.canvas.height != context.canvas.height) {
-                    cutout_context.canvas.width = context.canvas.width;
-                    cutout_context.canvas.height = context.canvas.height;
+                if (this.cutout_context.canvas.width != context.canvas.width || this.cutout_context.canvas.height != context.canvas.height) {
+                    this.cutout_context.canvas.width = context.canvas.width;
+                    this.cutout_context.canvas.height = context.canvas.height;
                 }
-                cutout_context.clearRect(0, 0, cutout_context.canvas.width, cutout_context.canvas.height);
+                this.cutout_context.clearRect(0, 0, this.cutout_context.canvas.width, this.cutout_context.canvas.height);
 
-                cutout_context.globalCompositeOperation = 'source-over';
-                this.renderPolygon(polys[g][0], style, cutout_context);
+                this.cutout_context.globalCompositeOperation = 'source-over';
+                this.renderPolygon(polys[g][0], style, this.cutout_context);
 
-                cutout_context.globalCompositeOperation = 'destination-out';
+                this.cutout_context.globalCompositeOperation = 'destination-out';
                 for (h=1; h < polys[g].length; h++) {
-                    this.renderPolygon(polys[g][h], style, cutout_context);
+                    this.renderPolygon(polys[g][h], style, this.cutout_context);
                 }
-                context.drawImage(cutout_context.canvas, 0, 0);
+                context.drawImage(this.cutout_context.canvas, 0, 0);
 
                 // After compositing back to main canvas, draw outlines on holes
                 if (style.outline && style.outline.color) {
@@ -239,7 +244,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         tile.layers[layer.name].features.forEach(function(feature) {
             // Scale local coords to tile pixels
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, renderer.tile_min, renderer.tile_max);
-            style = this.parseStyleForFeature(feature, layer, tile);
+            style = VectorRenderer.parseStyleForFeature(feature, this.styles[layer.name], tile);
 
             // Draw visible geometry
             if (layer.visible != false) {
