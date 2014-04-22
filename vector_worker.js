@@ -49,6 +49,8 @@ VectorWorker.worker.addEventListener('message', function (event) {
             type: 'loadTileCompleted',
             tile: tile
         });
+
+        delete VectorWorker.tiles[tile.key];
     });
 });
 
