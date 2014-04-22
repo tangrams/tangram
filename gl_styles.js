@@ -26,6 +26,20 @@
     water_areas: {
         color: {
             default: [0.5, 0.5, 0.875]
+        },
+        outline: {
+            color: {
+                default: [0.6, 0.6, 0.975]
+            },
+            width: {
+                default: function (f, t) {
+                    return (
+                        t.coords.z >= 16 &&
+                        (f.properties.kind != 'ocean' && f.properties.kind != 'riverbank') &&
+                        (2.5 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z])
+                    );
+                }
+            }
         }
     },
     roads: {
