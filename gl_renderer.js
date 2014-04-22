@@ -209,6 +209,7 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
     VectorRenderer.prototype.removeTile.apply(this, arguments);
 };
 
+GLRenderer.prototype.preserve_tiles_within_zoom = 2;
 GLRenderer.prototype.setZoom = function (zoom)
 {
     // Schedule GL tiles for removal on zoom
@@ -218,12 +219,12 @@ GLRenderer.prototype.setZoom = function (zoom)
     this.zoom = zoom;
     var below = this.zoom;
     var above = this.zoom;
-    if (Math.abs(this.zoom - this.map_last_zoom) == 1) {
+    if (Math.abs(this.zoom - this.map_last_zoom) <= this.preserve_tiles_within_zoom) {
         if (this.zoom > this.map_last_zoom) {
-            below = this.zoom - 1;
+            below = this.zoom - this.preserve_tiles_within_zoom;
         }
         else {
-            above = this.zoom + 1;
+            above = this.zoom + this.preserve_tiles_within_zoom;
         }
     }
     this.removeTilesOutsideZoomRange(below, above);
