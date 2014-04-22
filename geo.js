@@ -94,4 +94,14 @@ Geo.transformGeometry = function (geometry, transform)
     return {};
 };
 
+Geo.boxIntersect = function (b1, b2)
+{
+    return !(
+        b2.sw.x > b1.ne.x ||
+        b2.ne.x < b1.sw.x ||
+        b2.sw.y > b1.ne.y ||
+        b2.ne.y < b1.sw.y
+    );
+};
+
 }());

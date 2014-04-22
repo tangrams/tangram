@@ -301,7 +301,9 @@ GLRenderer.prototype._render = function GLRendererRender ()
     for (var t in this.tiles) {
         var tile = this.tiles[t];
         if (tile.loaded == true &&
+            tile.visible == true &&
             Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
+
             if (tile.gl_geometry != null) {
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_min'), tile.min.x, tile.min.y);
                 gl.uniform2f(gl.getUniformLocation(this.program, 'tile_max'), tile.max.x, tile.max.y);

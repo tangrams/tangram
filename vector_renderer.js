@@ -83,6 +83,32 @@ VectorRenderer.prototype.startZoom = function ()
     this.map_zooming = true;
 };
 
+VectorRenderer.prototype.setBounds = function (sw, ne)
+{
+    this.bounds = {
+        sw: { lng: sw.lng, lat: sw.lat },
+        ne: { lng: ne.lng, lat: ne.lat }
+    };
+
+    this.bounds_mercator = {
+        sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
+        ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
+    };
+
+    // console.log("set renderer bounds to " + JSON.stringify(this.bounds));
+
+    // Mark tiles as visible/invisible
+    for (var t in this.tiles) {
+        this.updateVisibilityForTile(this.tiles[t]);
+    }
+};
+
+VectorRenderer.prototype.updateVisibilityForTile = function (tile)
+{
+    tile.visible = Geo.boxIntersect(tile.bounds, this.bounds_mercator);
+    return tile.visible;
+};
+
 VectorRenderer.prototype.resizeMap = function (width, height)
 {
     // no op, can be overriden by child classes (e.g. used by GL renderer to adjust canvas and viewport)
@@ -138,9 +164,11 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.coords = coords;
     tile.min = Geo.metersForTile(tile.coords);
     tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
+    tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
     tile.debug = {};
     tile.loading = true;
     tile.loaded = false;
+    this.updateVisibilityForTile(tile);
 
     this.workers[this.next_worker].postMessage({
         type: 'loadTile',

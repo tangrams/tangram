@@ -12,8 +12,6 @@ L.VectorTileLayer = L.GridLayer.extend({
 
     // Finish initializing renderer and setup events when layer is added to map
     onAdd: function (map) {
-        L.GridLayer.prototype.onAdd.apply(this, arguments);
-
         var layer = this;
 
         layer.on('tileunload', function (event) {
@@ -25,11 +23,13 @@ L.VectorTileLayer = L.GridLayer.extend({
         layer._map.on('resize', function () {
             var size = layer._map.getSize();
             layer._renderer.resizeMap(size.x, size.y);
+            layer.updateBounds();
         });
 
         layer._map.on('move', function () {
             var center = layer._map.getCenter();
             layer._renderer.setCenter(center.lng, center.lat);
+            layer.updateBounds();
         });
 
         layer._map.on('zoomstart', function () {
@@ -40,6 +40,7 @@ L.VectorTileLayer = L.GridLayer.extend({
         layer._map.on('zoomend', function () {
             console.log("map.zoomend " + layer._map.getZoom());
             layer._renderer.setZoom(layer._map.getZoom());
+            // layer.updateBounds();
         });
 
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
@@ -49,7 +50,9 @@ L.VectorTileLayer = L.GridLayer.extend({
         var center = layer._map.getCenter();
         layer._renderer.setCenter(center.lng, center.lat);
         layer._renderer.setZoom(layer._map.getZoom());
+        layer.updateBounds();
 
+        L.GridLayer.prototype.onAdd.apply(this, arguments);
         layer._renderer.init();
     },
 
@@ -62,6 +65,11 @@ L.VectorTileLayer = L.GridLayer.extend({
         var div = document.createElement('div');
         this._renderer.loadTile(coords, div, done);
         return div;
+    },
+
+    updateBounds: function () {
+        var bounds = layer._map.getBounds();
+        layer._renderer.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
     },
 
     render: function () {
