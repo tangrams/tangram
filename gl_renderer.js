@@ -200,9 +200,11 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
         return; // short circuit tile removal, GL renderer will sweep out tiles by zoom level when zoom ends
     }
 
-    if (this.tiles[key] != null && this.tiles[key].gl_geometry != null) {
-        this.tiles[key].gl_geometry.forEach(function (gl_geometry) { gl_geometry.destroy(); });
-        this.tiles[key].gl_geometry = null;
+    var tile = this.tiles[key];
+
+    if (tile != null && tile.gl_geometry != null) {
+        tile.gl_geometry.forEach(function (gl_geometry) { gl_geometry.destroy(); });
+        tile.gl_geometry = null;
     }
     VectorRenderer.prototype.removeTile.apply(this, arguments);
 };
