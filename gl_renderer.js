@@ -13,6 +13,7 @@ function GLRenderer (tile_source, layers, styles, options)
     var options = options || {};
 
     this.container = options.container;
+    this.continuous_animation = false; // request redraw every frame
 }
 
 GLRenderer.prototype._init = function GLRendererInit ()
@@ -229,6 +230,7 @@ GLRenderer.prototype.setZoom = function (zoom)
     }
     this.removeTilesOutsideZoomRange(below, above);
     this.map_last_zoom = this.zoom;
+    this.dirty = true; // calling because this is a full override of the parent class
 };
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
@@ -254,6 +256,8 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 // Overrides base class method (a no op)
 GLRenderer.prototype.resizeMap = function (width, height)
 {
+    VectorRenderer.prototype.resizeMap.apply(this, arguments);
+
     this.css_size = { width: width, height: height };
     this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
 
@@ -321,6 +325,12 @@ GLRenderer.prototype._render = function GLRendererRender ()
         console.log("rendered " + count + " primitives");
     }
     this.last_render_count = count;
+
+    if (this.continuous_animation == true) {
+        this.dirty = true;
+    }
+
+    return true;
 };
 
 // User input

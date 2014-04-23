@@ -8,6 +8,7 @@ L.VectorTileLayer = L.GridLayer.extend({
         L.setOptions(this, options);
         this.options.vectorRenderer = this.options.vectorRenderer || 'GLRenderer';
         this._renderer = VectorRenderer.create(this.options.vectorRenderer, this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
+        this._renderer.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
     },
 
     // Finish initializing renderer and setup events when layer is added to map

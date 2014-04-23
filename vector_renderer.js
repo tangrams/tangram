@@ -42,6 +42,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     }
     this.next_worker = 0;
 
+    this.dirty = true; // request a redraw
     this.initialized = false;
 }
 
@@ -68,6 +69,7 @@ VectorRenderer.prototype.init = function ()
 VectorRenderer.prototype.setCenter = function (lng, lat)
 {
     this.center = { lng: lng, lat: lat };
+    this.dirty = true;
 };
 
 VectorRenderer.prototype.setZoom = function (zoom)
@@ -75,6 +77,7 @@ VectorRenderer.prototype.setZoom = function (zoom)
     this.map_last_zoom = this.zoom;
     this.zoom = zoom;
     this.map_zooming = false;
+    this.dirty = true;
 };
 
 VectorRenderer.prototype.startZoom = function ()
@@ -101,6 +104,8 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     for (var t in this.tiles) {
         this.updateVisibilityForTile(this.tiles[t]);
     }
+
+    this.dirty = true;
 };
 
 VectorRenderer.prototype.updateVisibilityForTile = function (tile)
@@ -111,21 +116,27 @@ VectorRenderer.prototype.updateVisibilityForTile = function (tile)
 
 VectorRenderer.prototype.resizeMap = function (width, height)
 {
-    // no op, can be overriden by child classes (e.g. used by GL renderer to adjust canvas and viewport)
+    this.dirty = true;
+};
+
+VectorRenderer.prototype.requestRedraw = function ()
+{
+    this.dirty = true;
 };
 
 VectorRenderer.prototype.render = function ()
 {
-    // TODO: perhaps add some 'dirty' tile support to enable things like animation or style changes
-    if (this.initialized == false) {
+    if (this.dirty == false || this.initialized == false) {
         return false;
     }
+    this.dirty = false; // subclasses can set this back to true when animation is needed
 
     // Child class-specific rendering (e.g. GL draw calls)
     if (typeof(this._render) == 'function') {
         this._render.apply(this, arguments);
     }
 
+    // console.log("render map");
     return true;
 };
 
@@ -219,6 +230,7 @@ VectorRenderer.prototype.tileWorkerCompleted = function (event)
 
     delete tile.layers; // delete the source data in the tile to save memory
 
+    this.dirty = true;
     this.printDebugForTile(tile);
 };
 
@@ -239,6 +251,7 @@ VectorRenderer.prototype.removeTile = function (key)
     }
 
     delete this.tiles[key];
+    this.dirty = true;
 };
 
 VectorRenderer.prototype.printDebugForTile = function (tile)
