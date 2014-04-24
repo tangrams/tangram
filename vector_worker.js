@@ -1,4 +1,4 @@
-importScripts('dist/vector-map-worker.min.js');
+importScripts('dist/vector-map-worker.min.js' + '?' + (+new Date()));
 
 // Include individual scripts instead for debugging
 // importScripts('lib/libtess.cat.js');
