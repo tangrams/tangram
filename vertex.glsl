@@ -11,6 +11,7 @@ attribute vec3 position;
 attribute vec3 normal;
 attribute vec3 color;
 
+varying vec3 fposition;
 varying vec3 fcolor;
 
 // const vec3 light = vec3(0.2, 0.7, -0.5); // vec3(0.1, 0.2, -0.4)
@@ -51,6 +52,7 @@ void main() {
     //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave
     // }
 
+    fposition = vposition + vec3(tile_min.xy, 0.0);
     vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
 
     // Isometric-style projections

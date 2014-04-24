@@ -13,6 +13,7 @@ GLRenderer.vertex_shader_source =
 "attribute vec3 normal;\n" +
 "attribute vec3 color;\n" +
 "\n" +
+"varying vec3 fposition;\n" +
 "varying vec3 fcolor;\n" +
 "\n" +
 "// const vec3 light = vec3(0.2, 0.7, -0.5); // vec3(0.1, 0.2, -0.4)\n" +
@@ -53,6 +54,7 @@ GLRenderer.vertex_shader_source =
 "    //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave\n" +
 "    // }\n" +
 "\n" +
+"    fposition = vposition + vec3(tile_min.xy, 0.0);\n" +
 "    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
 "\n" +
 "    // Isometric-style projections\n" +
