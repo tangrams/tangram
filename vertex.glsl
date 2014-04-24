@@ -46,7 +46,9 @@ void main() {
     // if (vposition.z > 1.0) {
     //     // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
     //     // vposition.y += cos(vposition.z + time) * 10.0;
-    //     vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+
+    //     // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+    //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave
     // }
 
     vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center

@@ -48,7 +48,9 @@ GLRenderer.vertex_shader_source =
 "    // if (vposition.z > 1.0) {\n" +
 "    //     // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
 "    //     // vposition.y += cos(vposition.z + time) * 10.0;\n" +
-"    //     vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"\n" +
+"    //     // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"    //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave\n" +
 "    // }\n" +
 "\n" +
 "    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
