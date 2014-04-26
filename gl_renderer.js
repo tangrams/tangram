@@ -178,6 +178,7 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
 
     tile.debug.geometries = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
     tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
+    tile.debug.buffer_size = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.vertex_data.byteLength; }, 0);
 
     // Selection - experimental/future
     // var gl_renderer = this;
@@ -331,6 +332,17 @@ GLRenderer.prototype._render = function GLRendererRender ()
     }
 
     return true;
+};
+
+GLRenderer.prototype.getBufferSize = function (filter)
+{
+    var sum = 0;
+    for (var t in this.tiles) {
+        if (typeof filter != 'function' || filter(this.tiles[t]) == true) {
+            sum += this.tiles[t].debug.buffer_size;
+        }
+    }
+    return sum;
 };
 
 // User input
