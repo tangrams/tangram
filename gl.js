@@ -30,6 +30,8 @@ GL.getContext = function getContext (canvas)
         });
     }
 
+    GL.vertexArrayObject.init(gl); // TODO: this pattern doesn't support multiple active GL contexts, should that even be supported?
+
     return gl;
 };
 
@@ -239,6 +241,74 @@ GL.addVertices = function (vertices, vertex_data, vertex_constants)
     return vertex_data;
 };
 
+// Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
+GL.vertexArrayObject = {};
+GL.vertexArrayObject.disabled = false; // set to true to disable VAOs even if extension is available
+
+GL.vertexArrayObject.init = function (gl)
+{
+    if (GL.vertexArrayObject.ext == null) {
+        if (GL.vertexArrayObject.disabled != true) {
+            GL.vertexArrayObject.ext = gl.getExtension("OES_vertex_array_object");
+        }
+
+        if (GL.vertexArrayObject.ext != null) {
+            console.log("Vertex Array Object extension available");
+        }
+        else if (GL.vertexArrayObject.disabled != true) {
+            console.log("Vertex Array Object extension NOT available");
+        }
+        else {
+            console.log("Vertex Array Object extension force disabled");
+        }
+    }
+};
+
+GL.vertexArrayObject.create = function (setup, teardown)
+{
+    var vao = {};
+    vao.setup = setup;
+    vao.teardown = teardown;
+
+    if (GL.vertexArrayObject.ext != null) {
+        vao.vao = GL.vertexArrayObject.ext.createVertexArrayOES();
+        GL.vertexArrayObject.ext.bindVertexArrayOES(vao.vao);
+        vao.setup();
+        GL.vertexArrayObject.ext.bindVertexArrayOES(null);
+        if (typeof vao.teardown == 'function') {
+            vao.teardown();
+        }
+    }
+    else {
+        vao.setup();
+    }
+
+    return vao;
+};
+
+GL.vertexArrayObject.bind = function (vao)
+{
+    if (vao != null) {
+        if (GL.vertexArrayObject.ext != null && vao.vao != null) {
+            GL.vertexArrayObject.ext.bindVertexArrayOES(vao.vao);
+            GL.vertexArrayObject.boundVAO = vao;
+        }
+        else {
+            vao.setup();
+        }
+    }
+    else {
+        if (GL.vertexArrayObject.ext != null) {
+            GL.vertexArrayObject.ext.bindVertexArrayOES(null);
+        }
+        else if (GL.vertexArrayObject.boundVAO != null && typeof GL.vertexArrayObject.boundVAO.teardown == 'function') {
+            GL.vertexArrayObject.boundVAO.teardown();
+        }
+        GL.vertexArrayObject.boundVAO = null;
+    }
+};
+
+
 /*** Manage rendering for primitives ***/
 
 function GLGeometry (gl, program, vertex_data, vertex_stride, options)
@@ -254,18 +324,27 @@ function GLGeometry (gl, program, vertex_data, vertex_stride, options)
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+    this.vao = GL.vertexArrayObject.create(function() {
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+        if (typeof this._setup == 'function') {
+            this._setup();
+        }
+    }.bind(this));
+
     this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
 }
 
 GLGeometry.prototype.render = function ()
 {
     this.gl.useProgram(this.program);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+    GL.vertexArrayObject.bind(this.vao);
 
-    this._render();
+    if (typeof this._render == 'function') {
+        this._render();
+    }
 
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
+    GL.vertexArrayObject.bind(null);
 };
 
 GLGeometry.prototype.destroy = function ()
@@ -280,16 +359,18 @@ GLTriangles.prototype = Object.create(GLGeometry.prototype);
 
 function GLTriangles (gl, program, vertex_data)
 {
+    // Set program uniforms before calling parent constructor because they're needed to setup the VAO
+    gl.useProgram(program);
+    this.vertex_position = gl.getAttribLocation(program, 'position');
+    this.vertex_normal = gl.getAttribLocation(program, 'normal');
+    this.vertex_color = gl.getAttribLocation(program, 'color');
+
+    // Base class
     GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
     this.geometry_count = this.vertex_count / 3;
-
-    this.gl.useProgram(this.program);
-    this.vertex_position = this.gl.getAttribLocation(this.program, 'position');
-    this.vertex_normal = this.gl.getAttribLocation(this.program, 'normal');
-    this.vertex_color = this.gl.getAttribLocation(this.program, 'color');
 }
 
-GLTriangles.prototype._render = function ()
+GLTriangles.prototype._setup = function ()
 {
     this.gl.enableVertexAttribArray(this.vertex_position);
     this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, 0);
