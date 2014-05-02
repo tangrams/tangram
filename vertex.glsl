@@ -82,7 +82,8 @@ void main() {
     // pr.y = vposition.x * sin(theta * pi / 180.0) + vposition.y * cos(theta * pi / 180.0);
     // vposition.xy = pr;
 
-    // vposition.y *= abs(sin(vposition.x)); // hourglass effect
+    // vposition.y *= max(abs(sin(vposition.x)), 0.1); // hourglass effect
+    // vposition.y *= abs(max(sin(vposition.x), 0.1)); // funnel effect
 
     vposition.z = (-vposition.z + 2048.0) / 4096.0; // reverse and scale to 0-1 for GL depth buffer
 
