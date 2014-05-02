@@ -364,9 +364,10 @@ function GLTriangles (gl, program, vertex_data)
     this.vertex_position = gl.getAttribLocation(program, 'position');
     this.vertex_normal = gl.getAttribLocation(program, 'normal');
     this.vertex_color = gl.getAttribLocation(program, 'color');
+    this.vertex_layer = gl.getAttribLocation(program, 'layer');
 
     // Base class
-    GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    GLGeometry.call(this, gl, program, vertex_data, 10 * Float32Array.BYTES_PER_ELEMENT);
     this.geometry_count = this.vertex_count / 3;
 }
 
@@ -380,6 +381,9 @@ GLTriangles.prototype._setup = function ()
 
     this.gl.enableVertexAttribArray(this.vertex_color);
     this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 6 * Float32Array.BYTES_PER_ELEMENT);
+
+    this.gl.enableVertexAttribArray(this.vertex_layer);
+    this.gl.vertexAttribPointer(this.vertex_layer, 1, this.gl.FLOAT, false, this.vertex_stride, 9 * Float32Array.BYTES_PER_ELEMENT);
 };
 
 // Draws a set of lines

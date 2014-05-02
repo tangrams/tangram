@@ -7,11 +7,13 @@ GLRenderer.vertex_shader_source =
 "uniform vec2 tile_min;\n" +
 "uniform vec2 tile_max;\n" +
 "uniform float tile_scale; // geometries are scaled to this range within each tile\n" +
+"uniform float num_layers;\n" +
 "uniform float time;\n" +
 "\n" +
 "attribute vec3 position;\n" +
 "attribute vec3 normal;\n" +
 "attribute vec3 color;\n" +
+"attribute float layer;\n" +
 "\n" +
 "varying vec3 fcolor;\n" +
 "\n" +
@@ -66,7 +68,7 @@ GLRenderer.vertex_shader_source =
 "    // Flat shading between surface normal and light\n" +
 "    fcolor = color;\n" +
 "    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
-"    light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"    light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
 "    light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
 "    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
 "    fcolor = min(fcolor, 1.0);\n" +
@@ -87,7 +89,14 @@ GLRenderer.vertex_shader_source =
 "    // vposition.y *= max(abs(sin(vposition.x)), 0.1); // hourglass effect\n" +
 "    // vposition.y *= abs(max(sin(vposition.x), 0.1)); // funnel effect\n" +
 "\n" +
-"    vposition.z = (-vposition.z + 2048.0) / 4096.0; // reverse and scale to 0-1 for GL depth buffer\n" +
+"    // Reverse and scale to 0-1 for GL depth buffer\n" +
+"    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth\n" +
+"    float z_layer_scale = 4096.;\n" +
+"    float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"    float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"\n" +
+"    vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);\n" +
+"    vposition.z = (z_layer_range - vposition.z) / z_layer_range;\n" +
 "\n" +
 "    gl_Position = vec4(vposition, 1.0);\n" +
 "}\n" +

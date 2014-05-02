@@ -5,11 +5,13 @@ uniform vec2 meter_zoom;
 uniform vec2 tile_min;
 uniform vec2 tile_max;
 uniform float tile_scale; // geometries are scaled to this range within each tile
+uniform float num_layers;
 uniform float time;
 
 attribute vec3 position;
 attribute vec3 normal;
 attribute vec3 color;
+attribute float layer;
 
 varying vec3 fcolor;
 
@@ -64,7 +66,7 @@ void main() {
     // Flat shading between surface normal and light
     fcolor = color;
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
-    light = vec3(-0.25, -0.25, 0.35); // vec3(0.1, 0.1, 0.35); // point light location
+    light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
     light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
     fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
     fcolor = min(fcolor, 1.0);
@@ -85,7 +87,14 @@ void main() {
     // vposition.y *= max(abs(sin(vposition.x)), 0.1); // hourglass effect
     // vposition.y *= abs(max(sin(vposition.x), 0.1)); // funnel effect
 
-    vposition.z = (-vposition.z + 2048.0) / 4096.0; // reverse and scale to 0-1 for GL depth buffer
+    // Reverse and scale to 0-1 for GL depth buffer
+    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth
+    float z_layer_scale = 4096.;
+    float z_layer_range = (num_layers + 1.) * z_layer_scale;
+    float z_layer = (layer + 1.) * z_layer_scale;
+
+    vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);
+    vposition.z = (z_layer_range - vposition.z) / z_layer_range;
 
     gl_Position = vec4(vposition, 1.0);
 }

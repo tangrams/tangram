@@ -41,10 +41,9 @@ GLRenderer.prototype._init = function GLRendererInit ()
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
 GLRenderer.calculateZ = function (layer, tile, layer_offset, feature_offset)
 {
-    var layer_offset = layer_offset || 0;
-    var feature_offset = feature_offset || 0;
-    var z = (layer.number + layer_offset) / 16;
-    z += (1 - (1 / (tile.feature_count + 1 + feature_offset))) / 16;
+    // var layer_offset = layer_offset || 0;
+    // var feature_offset = feature_offset || 0;
+    var z = 0; // TODO: made this a no-op until revisiting where it should live - one-time calc here, in vertex layout/shader, etc.
     return z;
 };
 
@@ -70,19 +69,23 @@ GLRenderer.addTile = function (tile, layers, styles)
 
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
-            for (var f=0; f < num_features; f++) {
+
+            // Rendering reverse order aka top to bottom
+            for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
                 style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
                 z = GLRenderer.calculateZ(layer, tile);
 
                 var vertex_constants = [
-                    style.color[0], style.color[1], style.color[2]
-                    // TODO: add layer, material info, etc.
+                    style.color[0], style.color[1], style.color[2],
+                    ln
+                    // TODO: add material info, etc.
                 ];
 
                 if (style.outline.color) {
                     var outline_vertex_constants = [
-                        style.outline.color[0], style.outline.color[1], style.outline.color[2]
+                        style.outline.color[0], style.outline.color[1], style.outline.color[2],
+                        ln - 0.5 // outlines sit between layers, underneath current layer but above the one below
                     ];
                 }
 
@@ -115,7 +118,7 @@ GLRenderer.addTile = function (tile, layers, styles)
                     // Polygon outlines
                     if (style.outline.color && style.outline.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, 0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
+                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, -0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
                         }
                     }
                 }
@@ -288,6 +291,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
     gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
     // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
+    gl.uniform1f(gl.getUniformLocation(this.program, 'num_layers'), this.layers.length);
 
     var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
     var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
@@ -298,6 +302,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LESS);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
