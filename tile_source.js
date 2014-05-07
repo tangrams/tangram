@@ -75,10 +75,13 @@ NetworkTileSource.prototype.loadTile = function (tile, renderer, callback)
             return;
         }
 
-        if (tile_source._loadTile) {
-            tile_source._loadTile(tile, renderer);
-        }
         tile.debug.network = +new Date() - tile.debug.network;
+
+        if (tile_source._loadTile) {
+            tile.debug.parsing = +new Date();
+            tile_source._loadTile(tile, renderer);
+            tile.debug.parsing = +new Date() - tile.debug.parsing;
+        }
 
         tile.xhr = null;
         tile.loading = false;
