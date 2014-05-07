@@ -213,6 +213,10 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 // Called on main thread when a web worker completes processing for a single tile
 VectorRenderer.prototype.tileWorkerCompleted = function (event)
 {
+    if (event.data.type != 'loadTileCompleted') {
+        return;
+    }
+
     var tile = event.data.tile;
 
     // Removed this tile during load?
