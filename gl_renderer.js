@@ -371,10 +371,12 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         else if (event.keyCode == 40) {
             gl_renderer.key = 'down';
         }
-        // else if (event.keyCode == 82) { // r
-        //     console.log("reloading shaders");
-        //     gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, this.shader_url + 'vertex.glsl', this.shader_url + 'fragment.glsl');
-        // }
+        else if (event.keyCode == 83) { // s
+            console.log("reloading shaders");
+            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
+            // gl_renderer.program = GL.updateProgram(gl_renderer.gl, gl_renderer.program, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
+            gl_renderer.dirty = true;
+        }
     });
 
     document.addEventListener('keyup', function (event) {
