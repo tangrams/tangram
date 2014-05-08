@@ -1,5 +1,14 @@
 // Generated from vertex.glsl, don't edit
 GLRenderer.vertex_shader_source = 
+"#define PROJECTION_PERSPECTIVE\n" +
+"// #define PROJECTION_ISOMETRIC\n" +
+"\n" +
+"#define LIGHTING_POINT\n" +
+"// #define LIGHTING_DIRECTION\n" +
+"\n" +
+"// #define ANIMATION_ELEVATOR\n" +
+"// #define ANIMATION_WAVE\n" +
+"\n" +
 "uniform vec2 resolution;\n" +
 "uniform vec2 map_center;\n" +
 "uniform float map_zoom;\n" +
@@ -17,7 +26,6 @@ GLRenderer.vertex_shader_source =
 "\n" +
 "varying vec3 fcolor;\n" +
 "\n" +
-"// const vec3 light = vec3(0.2, 0.7, -0.5); // vec3(0.1, 0.2, -0.4)\n" +
 "vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)\n" +
 "const float ambient = 0.45;\n" +
 "\n" +
@@ -47,36 +55,48 @@ GLRenderer.vertex_shader_source =
 "    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
 "    // Vertex displacement tests\n" +
-"    // if (vposition.z > 1.0) {\n" +
-"    //     // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
-"    //     // vposition.y += cos(vposition.z + time) * 10.0;\n" +
+"    if (vposition.z > 1.0) {\n" +
+"        // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
+"        // vposition.y += cos(vposition.z + time) * 10.0;\n" +
 "\n" +
-"    //     // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
-"    //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave\n" +
-"    // }\n" +
+"        #if defined(ANIMATION_ELEVATOR)\n" +
+"            vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"        #elif defined(ANIMATION_WAVE)\n" +
+"            vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave\n" +
+"        #endif\n" +
+"    }\n" +
 "\n" +
 "    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
-"\n" +
-"    // Isometric-style projections\n" +
-"    // vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric\n" +
-"    // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric\n" +
-"    // vposition.x -= vposition.z * 0.5;\n" +
-"\n" +
-"    // Adjust for zoom in meters to get clip space coords\n" +
-"    vposition.xy /= meter_zoom;\n" +
+"    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
 "\n" +
 "    // Flat shading between surface normal and light\n" +
 "    fcolor = color;\n" +
 "    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
-"    light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
-"    light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
-"    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
-"    fcolor = min(fcolor, 1.0);\n" +
 "\n" +
-"    // Perspective-style projections\n" +
-"    vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
-"    vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
-"    vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
+"    #if defined(LIGHTING_POINT)\n" +
+"        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"        light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
+"        fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"    #elif defined(LIGHTING_DIRECTION)\n" +
+"        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
+"        // light = normalize(vec3(-1., 0.7, -.0));\n" +
+"        // light = normalize(vec3(-1., 0.7, -.75));\n" +
+"        // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;\n" +
+"        fcolor *= dot(vnormal, light * -1.0) + ambient;\n" +
+"    #endif\n" +
+"\n" +
+"    #if defined(PROJECTION_PERSPECTIVE)\n" +
+"        // Perspective-style projection\n" +
+"        vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
+"        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
+"        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
+"    #elif defined(PROJECTION_ISOMETRIC)\n" +
+"        // Isometric-style projection\n" +
+"        vposition.y += vposition.z / meter_zoom.x; // z coordinate is a simple translation up along y axis, ala isometric\n" +
+"        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric\n" +
+"        // vposition.x -= vposition.z * 0.5;\n" +
+"    #endif\n" +
+"\n" +
 "\n" +
 "    // Rotation test\n" +
 "    // float theta = 0;\n" +

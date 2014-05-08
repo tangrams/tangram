@@ -1,3 +1,12 @@
+#define PROJECTION_PERSPECTIVE
+// #define PROJECTION_ISOMETRIC
+
+#define LIGHTING_POINT
+// #define LIGHTING_DIRECTION
+
+// #define ANIMATION_ELEVATOR
+// #define ANIMATION_WAVE
+
 uniform vec2 resolution;
 uniform vec2 map_center;
 uniform float map_zoom;
@@ -15,7 +24,6 @@ attribute float layer;
 
 varying vec3 fcolor;
 
-// const vec3 light = vec3(0.2, 0.7, -0.5); // vec3(0.1, 0.2, -0.4)
 vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)
 const float ambient = 0.45;
 
@@ -45,36 +53,48 @@ void main() {
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
 
     // Vertex displacement tests
-    // if (vposition.z > 1.0) {
-    //     // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
-    //     // vposition.y += cos(vposition.z + time) * 10.0;
+    if (vposition.z > 1.0) {
+        // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
+        // vposition.y += cos(vposition.z + time) * 10.0;
 
-    //     // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
-    //     // vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave
-    // }
+        #if defined(ANIMATION_ELEVATOR)
+            vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+        #elif defined(ANIMATION_WAVE)
+            vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave
+        #endif
+    }
 
     vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
-
-    // Isometric-style projections
-    // vposition.y += vposition.z; // z coordinate is a simple translation up along y axis, ala isometric
-    // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
-    // vposition.x -= vposition.z * 0.5;
-
-    // Adjust for zoom in meters to get clip space coords
-    vposition.xy /= meter_zoom;
+    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
 
     // Flat shading between surface normal and light
     fcolor = color;
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
-    light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
-    light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
-    fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
-    fcolor = min(fcolor, 1.0);
 
-    // Perspective-style projections
-    vec2 perspective_offset = vec2(-0.25, -0.25);
-    vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
-    vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
+    #if defined(LIGHTING_POINT)
+        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
+        light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
+        fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+    #elif defined(LIGHTING_DIRECTION)
+        light = normalize(vec3(0.2, 0.7, -0.5));
+        // light = normalize(vec3(-1., 0.7, -.0));
+        // light = normalize(vec3(-1., 0.7, -.75));
+        // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;
+        fcolor *= dot(vnormal, light * -1.0) + ambient;
+    #endif
+
+    #if defined(PROJECTION_PERSPECTIVE)
+        // Perspective-style projection
+        vec2 perspective_offset = vec2(-0.25, -0.25);
+        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
+        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
+    #elif defined(PROJECTION_ISOMETRIC)
+        // Isometric-style projection
+        vposition.y += vposition.z / meter_zoom.x; // z coordinate is a simple translation up along y axis, ala isometric
+        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
+        // vposition.x -= vposition.z * 0.5;
+    #endif
+
 
     // Rotation test
     // float theta = 0;
