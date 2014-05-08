@@ -93,10 +93,15 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
         ne: { lng: ne.lng, lat: ne.lat }
     };
 
-    this.bounds_mercator = {
+    var buffer = 100 * Geo.meters_per_pixel[~~this.zoom]; // pixels -> meters
+    this.buffered_meter_bounds = {
         sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
         ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
     };
+    this.buffered_meter_bounds.sw.x -= buffer;
+    this.buffered_meter_bounds.sw.y -= buffer;
+    this.buffered_meter_bounds.ne.x += buffer;
+    this.buffered_meter_bounds.ne.y += buffer;
 
     // console.log("set renderer bounds to " + JSON.stringify(this.bounds));
 
@@ -110,7 +115,7 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
 
 VectorRenderer.prototype.updateVisibilityForTile = function (tile)
 {
-    tile.visible = Geo.boxIntersect(tile.bounds, this.bounds_mercator);
+    tile.visible = Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
     return tile.visible;
 };
 
