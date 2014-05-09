@@ -18,6 +18,8 @@ VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
+VectorWorker.tile_source = null;
+
 // Load tile
 VectorWorker.worker.addEventListener('message', function (event) {
     if (event.data.type != 'loadTile') {
@@ -27,16 +29,13 @@ VectorWorker.worker.addEventListener('message', function (event) {
     var tile = event.data.tile; // TODO: keep track of tiles being loaded by this worker
     var renderer_type = event.data.renderer_type;
 
-    // TODO: avoid creating tile source on each event
-    var tile_source = event.data.tile_source;
-    tile_source = TileSource.create(tile_source.type, tile_source.url, tile_source);
-
+    VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.layers = VectorWorker.layers || VectorRenderer.loadLayers(event.data.layer_source);
     VectorWorker.styles = VectorWorker.styles || VectorRenderer.loadStyles(event.data.style_source);
 
     VectorWorker.tiles[tile.key] = tile;
 
-    tile_source.loadTile(tile, VectorWorker, function () {
+    VectorWorker.tile_source.loadTile(tile, VectorWorker, function () {
         // Extract desired layers from full GeoJSON
         VectorRenderer.processLayersForTile(VectorWorker.layers, tile);
 
