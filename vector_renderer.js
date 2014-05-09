@@ -301,7 +301,24 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     var tile_layers = {};
     for (var t=0; t < layers.length; t++) {
         layers[t].number = t;
-        tile_layers[layers[t].name] = layers[t].data(tile.layers) || { type: 'FeatureCollection', features: [] };
+
+        if (layers[t] != null) {
+            // Just pass through data untouched if no data transform function defined
+            if (layers[t].data == null) {
+                tile_layers[layers[t].name] = tile.layers[layers[t].name];
+            }
+            // Pass through data but with different layer name in tile source data
+            else if (typeof layers[t].data == 'string') {
+                tile_layers[layers[t].name] = tile.layers[layers[t].data];
+            }
+            // Apply the transform function for post-processing
+            else if (typeof layers[t].data == 'function') {
+                tile_layers[layers[t].name] = layers[t].data(tile.layers);
+            }
+        }
+
+        // Handle cases where no data was found in tile or returned by post-processor
+        tile_layers[layers[t].name] = tile_layers[layers[t].name] || { type: 'FeatureCollection', features: [] };
     }
     tile.layers = tile_layers;
     return tile_layers;
