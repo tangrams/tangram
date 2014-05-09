@@ -339,15 +339,22 @@ GLRenderer.prototype._render = function GLRendererRender ()
     return true;
 };
 
-GLRenderer.prototype.getBufferSize = function (filter)
+// Sum of a debug property across tiles
+GLRenderer.prototype.getDebugSum = function (prop, filter)
 {
     var sum = 0;
     for (var t in this.tiles) {
-        if (typeof filter != 'function' || filter(this.tiles[t]) == true) {
-            sum += this.tiles[t].debug.buffer_size;
+        if (this.tiles[t].debug[prop] != null && (typeof filter != 'function' || filter(this.tiles[t]) == true)) {
+            sum += this.tiles[t].debug[prop];
         }
     }
     return sum;
+};
+
+// Average of a debug property across tiles
+GLRenderer.prototype.getDebugAverage = function (prop, filter)
+{
+    return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
 };
 
 // User input
