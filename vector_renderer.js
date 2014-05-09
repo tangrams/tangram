@@ -158,6 +158,12 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
     }
 
+    // Start tracking new tile set if no other tiles already loading
+    if (this.tile_set_loading == null) {
+        this.tile_set_loading = +new Date();
+        console.log("tile set load START");
+    }
+
     var key = [coords.x, coords.y, coords.z].join('/');
 
     // Already loading/loaded?
@@ -238,6 +244,23 @@ VectorRenderer.prototype.tileWorkerCompleted = function (event)
     }
 
     delete tile.layers; // delete the source data in the tile to save memory
+
+    // No more tiles actively loading?
+    if (this.tile_set_loading != null) {
+        var end_tile_set = true;
+        for (var t in this.tiles) {
+            if (this.tiles[t].loading == true) {
+                end_tile_set = false;
+                break;
+            }
+        }
+
+        if (end_tile_set == true) {
+            this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
+            this.tile_set_loading = null;
+            console.log("tile set load FINISHED in: " + this.last_tile_set_load);
+        }
+    }
 
     this.dirty = true;
     this.printDebugForTile(tile);
