@@ -87,6 +87,7 @@ NetworkTileSource.prototype.loadTile = function (tile, renderer, callback)
             return;
         }
 
+        tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
         tile.debug.network = +new Date() - tile.debug.network;
 
         if (tile_source._loadTile) {
