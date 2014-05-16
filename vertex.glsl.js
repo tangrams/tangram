@@ -92,7 +92,7 @@ GLRenderer.vertex_shader_source =
 "        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
 "    #elif defined(PROJECTION_ISOMETRIC)\n" +
 "        // Isometric-style projection\n" +
-"        vposition.y += vposition.z / meter_zoom.x; // z coordinate is a simple translation up along y axis, ala isometric\n" +
+"        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric\n" +
 "        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric\n" +
 "        // vposition.x -= vposition.z * 0.5;\n" +
 "    #endif\n" +
