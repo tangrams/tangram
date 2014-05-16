@@ -27,7 +27,7 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
-    this.program = GL.updateProgram(this.gl, null, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
+    this.gl_program = new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
     this.last_render_count = null;
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
@@ -173,10 +173,10 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
     // Create GL geometry objects
     tile.gl_geometry = [];
     if (vertex_triangles.length > 0) {
-        tile.gl_geometry.push(new GLTriangles(this.gl, this.program, vertex_triangles));
+        tile.gl_geometry.push(new GLTriangles(this.gl, this.gl_program.program, vertex_triangles));
     }
     if (vertex_lines.length > 0) {
-        tile.gl_geometry.push(new GLLines(this.gl, this.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+        tile.gl_geometry.push(new GLLines(this.gl, this.gl_program.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
     }
 
     tile.debug.geometries = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
@@ -278,26 +278,24 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
     this.input();
 
-    if (!this.program) {
+    if (!this.gl_program) {
         return;
     }
-    gl.useProgram(this.program);
+    gl.useProgram(this.gl_program.program);
 
-    // Set values to this.program variables
-    gl.uniform2f(gl.getUniformLocation(this.program, 'resolution'), this.css_size.width, this.css_size.height);
-    gl.uniform1f(gl.getUniformLocation(this.program, 'time'), ((+new Date()) - this.start_time) / 1000);
+    this.gl_program.uniform('2f', 'resolution', this.css_size.width, this.css_size.height);
+    this.gl_program.uniform('1f', 'time', ((+new Date()) - this.start_time) / 1000);
 
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-    gl.uniform2f(gl.getUniformLocation(this.program, 'map_center'), center.x, center.y);
-    gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), this.zoom);
-    // gl.uniform1f(gl.getUniformLocation(this.program, 'map_zoom'), Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2)); // scale fractional zoom by log
-    gl.uniform1f(gl.getUniformLocation(this.program, 'num_layers'), this.layers.length);
+    this.gl_program.uniform('2f', 'map_center', center.x, center.y);
+    this.gl_program.uniform('1f', 'map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+    this.gl_program.uniform('1f', 'num_layers', this.layers.length);
 
     var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
     var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
-    gl.uniform2f(gl.getUniformLocation(this.program, 'meter_zoom'), meter_zoom.x, meter_zoom.y);
+    this.gl_program.uniform('2f', 'meter_zoom', meter_zoom.x, meter_zoom.y);
 
-    gl.uniform1f(gl.getUniformLocation(this.program, 'tile_scale'), VectorRenderer.tile_scale);
+    this.gl_program.uniform('1f', 'tile_scale', VectorRenderer.tile_scale);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -316,8 +314,8 @@ GLRenderer.prototype._render = function GLRendererRender ()
             Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
 
             if (tile.gl_geometry != null) {
-                gl.uniform2f(gl.getUniformLocation(this.program, 'tile_min'), tile.min.x, tile.min.y);
-                gl.uniform2f(gl.getUniformLocation(this.program, 'tile_max'), tile.max.x, tile.max.y);
+                this.gl_program.uniform('2f', 'tile_min', tile.min.x, tile.min.y);
+                this.gl_program.uniform('2f', 'tile_max', tile.max.x, tile.max.y);
 
                 tile.gl_geometry.forEach(function (gl_geometry) {
                     gl_geometry.render();
@@ -380,8 +378,9 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         }
         else if (event.keyCode == 83) { // s
             console.log("reloading shaders");
-            gl_renderer.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.program, 'vertex.glsl', 'fragment.glsl');
-            // gl_renderer.program = GL.updateProgram(gl_renderer.gl, gl_renderer.program, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
+            gl_renderer.gl_program.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.gl_program.program, 'vertex.glsl', 'fragment.glsl');
+            gl_renderer.gl.useProgram(gl_renderer.gl_program.program);
+            gl_renderer.gl_program.refreshUniforms();
             gl_renderer.dirty = true;
         }
     });

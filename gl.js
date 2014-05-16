@@ -146,6 +146,80 @@ GL.createShader = function GLcreateShader (gl, source, type)
     return shader;
 };
 
+// Thin GL program layer to cache uniform locations/values, do compile-time pre-processing (injecting #defines into shaders), etc.
+GL.Program = function (gl, vertex_shader_source, fragment_shader_source)
+{
+    this.gl = gl;
+    this.program = null;
+    this.defines = {}; // key/values inserted into shaders at compile-time
+    this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
+    this.vertex_shader_source = vertex_shader_source;
+    this.fragment_shader_source = fragment_shader_source;
+    this.compile();
+};
+
+GL.Program.prototype.compile = function ()
+{
+    // Update sources
+    if (typeof this._vertex_shader_source == 'function') {
+        this.vertex_shader_source = this._vertex_shader_source();
+    }
+    if (typeof this._fragment_shader_source == 'function') {
+        this.fragment_shader_source = this._fragment_shader_source();
+    }
+
+    // Inject defines
+    var defines = "";
+    for (var d in this.defines) {
+        if (this.defines[d] == false) {
+            continue;
+        }
+        else if (typeof this.defines[d] == 'boolean' && this.defines[d] == true) {
+            defines += "#define " + d + "\n";
+        }
+        else {
+            defines += "#define " + d + " (" + this.defines[d] + ")\n";
+        }
+    }
+    this.processed_vertex_shader_source = defines + this.vertex_shader_source;
+    this.processed_fragment_shader_source = defines + this.fragment_shader_source;
+
+    // Compile & set uniforms to cached values
+    this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
+    this.gl.useProgram(this.program);
+    this.refreshUniforms();
+};
+
+// ex: program.uniform('3f', 'position', x, y, z);
+GL.Program.prototype.uniform = function (method, name) // method-appropriate arguments follow
+{
+    var uniform = (this.uniforms[name] = this.uniforms[name] || {});
+    uniform.name = name;
+    uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
+    uniform.method = 'uniform' + method;
+    uniform.values = Array.prototype.slice.call(arguments, 2);
+    this.updateUniform(name);
+};
+
+// Set a single uniform
+GL.Program.prototype.updateUniform = function (name)
+{
+    var uniform = this.uniforms[name];
+    if (uniform == null || uniform.location == null) {
+        return;
+    }
+    this.gl[uniform.method].apply(this.gl, [uniform.location].concat(uniform.values)); // call appropriate GL uniform method and pass through arguments
+};
+
+// Refresh uniform locations and set to last cached values
+GL.Program.prototype.refreshUniforms = function ()
+{
+    for (var u in this.uniforms) {
+        this.uniforms[u].location = this.gl.getUniformLocation(this.program, u);
+        this.updateUniform(u);
+    }
+};
+
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
 // if (this.libtess !== undefined) {
@@ -359,7 +433,7 @@ GLTriangles.prototype = Object.create(GLGeometry.prototype);
 
 function GLTriangles (gl, program, vertex_data)
 {
-    // Set program uniforms before calling parent constructor because they're needed to setup the VAO
+    // Set program attributes before calling parent constructor because they're needed to setup the VAO
     gl.useProgram(program);
     this.vertex_position = gl.getAttribLocation(program, 'position');
     this.vertex_normal = gl.getAttribLocation(program, 'normal');
