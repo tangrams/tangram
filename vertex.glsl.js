@@ -27,6 +27,10 @@ GLRenderer.vertex_shader_source =
 "\n" +
 "varying vec3 fcolor;\n" +
 "\n" +
+"#if defined(EFFECT_NOISE_TEXTURE)\n" +
+"    varying vec3 fposition;\n" +
+"#endif\n" +
+"\n" +
 "vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)\n" +
 "const float ambient = 0.45;\n" +
 "\n" +
@@ -55,6 +59,10 @@ GLRenderer.vertex_shader_source =
 "    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile\n" +
 "    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
+"    #if defined(EFFECT_NOISE_TEXTURE)\n" +
+"        fposition = vposition + vec3(tile_min.xy, 0.0);\n" +
+"    #endif\n" +
+"\n" +
 "    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
 "    vposition.xy += tile_min.xy;\n" +
 "\n" +
@@ -74,15 +82,17 @@ GLRenderer.vertex_shader_source =
 "    vposition.xy -= map_center;\n" +
 "    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
 "\n" +
-"    // Flat shading between surface normal and light\n" +
+"    // Shading\n" +
 "    fcolor = color;\n" +
 "    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
 "\n" +
 "    #if defined(LIGHTING_POINT)\n" +
+"        // Gouraud shading\n" +
 "        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
 "        light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
 "        fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
 "    #elif defined(LIGHTING_DIRECTION)\n" +
+"        // Flat shading\n" +
 "        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
 "        // light = normalize(vec3(-1., 0.7, -.0));\n" +
 "        // light = normalize(vec3(-1., 0.7, -.75));\n" +
@@ -96,6 +106,7 @@ GLRenderer.vertex_shader_source =
 "        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
 "        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
 "    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
+"        // Pop-up effect - 3d in center of viewport, fading to 2d at edges\n" +
 "        #if defined(PROJECTION_POPUP)\n" +
 "            if (vposition.z > 1.0) {\n" +
 "                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +

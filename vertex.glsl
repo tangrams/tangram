@@ -25,6 +25,10 @@ attribute float layer;
 
 varying vec3 fcolor;
 
+#if defined(EFFECT_NOISE_TEXTURE)
+    varying vec3 fposition;
+#endif
+
 vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)
 const float ambient = 0.45;
 
@@ -53,6 +57,10 @@ void main() {
     // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
 
+    #if defined(EFFECT_NOISE_TEXTURE)
+        fposition = vposition + vec3(tile_min.xy, 0.0);
+    #endif
+
     // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
     vposition.xy += tile_min.xy;
 
@@ -72,15 +80,17 @@ void main() {
     vposition.xy -= map_center;
     vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
 
-    // Flat shading between surface normal and light
+    // Shading
     fcolor = color;
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
 
     #if defined(LIGHTING_POINT)
+        // Gouraud shading
         light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
         light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
         fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
     #elif defined(LIGHTING_DIRECTION)
+        // Flat shading
         light = normalize(vec3(0.2, 0.7, -0.5));
         // light = normalize(vec3(-1., 0.7, -.0));
         // light = normalize(vec3(-1., 0.7, -.75));
@@ -94,6 +104,7 @@ void main() {
         vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
         vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
     #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
+        // Pop-up effect - 3d in center of viewport, fading to 2d at edges
         #if defined(PROJECTION_POPUP)
             if (vposition.z > 1.0) {
                 float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));
