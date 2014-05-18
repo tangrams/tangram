@@ -1,6 +1,5 @@
 uniform vec2 resolution;
 uniform float time;
-uniform vec2 tile_min;
 
 varying vec3 fcolor;
 

@@ -59,12 +59,12 @@ GLRenderer.vertex_shader_source =
 "    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile\n" +
 "    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
-"    #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"        fposition = vposition + vec3(tile_min.xy, 0.0);\n" +
-"    #endif\n" +
-"\n" +
 "    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
 "    vposition.xy += tile_min.xy;\n" +
+"\n" +
+"    #if defined(EFFECT_NOISE_TEXTURE)\n" +
+"        fposition = vposition;\n" +
+"    #endif\n" +
 "\n" +
 "    // Vertex displacement tests\n" +
 "    if (vposition.z > 1.0) {\n" +

@@ -57,12 +57,12 @@ void main() {
     // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
 
-    #if defined(EFFECT_NOISE_TEXTURE)
-        fposition = vposition + vec3(tile_min.xy, 0.0);
-    #endif
-
     // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
     vposition.xy += tile_min.xy;
+
+    #if defined(EFFECT_NOISE_TEXTURE)
+        fposition = vposition;
+    #endif
 
     // Vertex displacement tests
     if (vposition.z > 1.0) {

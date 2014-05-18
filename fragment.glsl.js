@@ -2,7 +2,6 @@
 GLRenderer.fragment_shader_source = 
 "uniform vec2 resolution;\n" +
 "uniform float time;\n" +
-"uniform vec2 tile_min;\n" +
 "\n" +
 "varying vec3 fcolor;\n" +
 "\n" +
