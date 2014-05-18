@@ -68,6 +68,7 @@ L.VectorTileLayer = L.GridLayer.extend({
     },
 
     updateBounds: function () {
+        var layer = this;
         var bounds = layer._map.getBounds();
         layer._renderer.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
     },

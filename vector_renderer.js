@@ -93,7 +93,7 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
         ne: { lng: ne.lng, lat: ne.lat }
     };
 
-    var buffer = 100 * Geo.meters_per_pixel[~~this.zoom]; // pixels -> meters
+    var buffer = 200 * Geo.meters_per_pixel[~~this.zoom]; // pixels -> meters
     this.buffered_meter_bounds = {
         sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
         ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))

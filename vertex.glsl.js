@@ -1,9 +1,10 @@
 // Generated from vertex.glsl, don't edit
 GLRenderer.vertex_shader_source = 
-"#define PROJECTION_PERSPECTIVE\n" +
+"// #define PROJECTION_PERSPECTIVE\n" +
 "// #define PROJECTION_ISOMETRIC\n" +
+"// #define PROJECTION_POPUP\n" +
 "\n" +
-"#define LIGHTING_POINT\n" +
+"// #define LIGHTING_POINT\n" +
 "// #define LIGHTING_DIRECTION\n" +
 "\n" +
 "// #define ANIMATION_ELEVATOR\n" +
@@ -54,19 +55,23 @@ GLRenderer.vertex_shader_source =
 "    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile\n" +
 "    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
+"    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
+"    vposition.xy += tile_min.xy;\n" +
+"\n" +
 "    // Vertex displacement tests\n" +
 "    if (vposition.z > 1.0) {\n" +
 "        // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
 "        // vposition.y += cos(vposition.z + time) * 10.0;\n" +
 "\n" +
 "        #if defined(ANIMATION_ELEVATOR)\n" +
-"            vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"            // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"            vposition.z *= max((sin(vposition.z + time) + 1.0) / 2.0, 0.05); // evelator buildings\n" +
 "        #elif defined(ANIMATION_WAVE)\n" +
-"            vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave\n" +
+"            vposition.z *= max((sin(vposition.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave\n" +
 "        #endif\n" +
 "    }\n" +
 "\n" +
-"    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
+"    vposition.xy -= map_center;\n" +
 "    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
 "\n" +
 "    // Flat shading between surface normal and light\n" +
@@ -90,13 +95,27 @@ GLRenderer.vertex_shader_source =
 "        vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
 "        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
 "        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
-"    #elif defined(PROJECTION_ISOMETRIC)\n" +
+"    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
+"        #if defined(PROJECTION_POPUP)\n" +
+"            if (vposition.z > 1.0) {\n" +
+"                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +
+"                const float popup_fade_inner = 0.5;\n" +
+"                const float popup_fade_outer = 0.75;\n" +
+"                if (cd > popup_fade_inner) {\n" +
+"                    vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);\n" +
+"                }\n" +
+"                const float zoom_boost_start = 15.0;\n" +
+"                const float zoom_boost_end = 17.0;\n" +
+"                const float zoom_boost_magnitude = 0.75;\n" +
+"                vposition.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;\n" +
+"            }\n" +
+"        #endif\n" +
+"\n" +
 "        // Isometric-style projection\n" +
 "        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric\n" +
 "        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric\n" +
 "        // vposition.x -= vposition.z * 0.5;\n" +
 "    #endif\n" +
-"\n" +
 "\n" +
 "    // Rotation test\n" +
 "    // float theta = 0;\n" +

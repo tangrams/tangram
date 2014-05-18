@@ -47,9 +47,12 @@ body {
 <div id="map"></div>
 
 <script src="lib/leaflet-0.8-dev.js"></script>
+<script src="lib/dat.gui.min.js"></script>
 <script src="dist/vector-map.debug.js"></script>
 
 <script>
+
+(function(){
 
 var tile_source = 'mapzen'; // default source, can be overriden by URL
 
@@ -123,6 +126,7 @@ var locations = {
 
 var osm_debug = false;
 
+
 /*** URL parsing ***/
 
 // URL hash pattern is one of:
@@ -189,12 +193,85 @@ var layer = L.vectorTileLayer({
     updateWhenIdle: false
 });
 
+// For easier debugging access
+window.layer = layer;
+window.renderer = layer._renderer;
+window.tiles = layer._renderer.tiles;
+
+/***** GUI/debug controls *****/
+
+var gl_controls = {
+    projection: {
+        projection: 'PROJECTION_PERSPECTIVE',
+        options: { 'None': '', 'Perspective': 'PROJECTION_PERSPECTIVE', 'Isometric': 'PROJECTION_ISOMETRIC', 'Pop-Up': 'PROJECTION_POPUP' }
+    },
+    lighting: {
+        lighting: 'LIGHTING_POINT',
+        options: { 'None': '', 'Point': 'LIGHTING_POINT', 'Directional': 'LIGHTING_DIRECTION' }
+    },
+    animation: {
+        animation: '',
+        options: { 'None': '', 'Elevator': 'ANIMATION_ELEVATOR', 'Wave': 'ANIMATION_WAVE' }
+    }
+};
+window.gl_controls = gl_controls;
+
+var gui = new dat.GUI({ autoPlace: true });
+gui.domElement.parentNode.style.zIndex = 5;
+// document.body.insertBefore(gui.domElement, document.body.firstChild);
+window.gui = gui;
+
+gl_controls.projection.control = gui.add(gl_controls.projection, 'projection', gl_controls.projection.options);
+gl_controls.projection.control.onChange(function(value) {
+    setGLProgramDefines(layer._renderer.gl_program, 'projection');
+});
+
+gl_controls.lighting.control = gui.add(gl_controls.lighting, 'lighting', gl_controls.lighting.options);
+gl_controls.lighting.control.onChange(function(value) {
+    setGLProgramDefines(layer._renderer.gl_program, 'lighting');
+});
+
+gl_controls.animation.control = gui.add(gl_controls.animation, 'animation', gl_controls.animation.options);
+gl_controls.animation.control.onChange(function(value) {
+    setGLProgramDefines(layer._renderer.gl_program, 'animation');
+    if (gl_controls.animation.animation != '') {
+        layer._renderer.continuous_animation = true;
+    }
+    else {
+        layer._renderer.continuous_animation = false
+    }
+});
+
+function setGLProgramDefines (program, set) {
+    var keys;
+    if (set) {
+        keys = [set];
+    }
+    else {
+        keys = Object.keys(gl_controls);
+    }
+
+    keys.forEach(function(key) {
+        setGLProgramDefinesForOptionSet(program, gl_controls[key][key], gl_controls[key].options);
+    });
+
+    program.compile();
+    layer._renderer.dirty = true;
+}
+
+function setGLProgramDefinesForOptionSet (program, current_value, options) {
+    for (var i in options) {
+        program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+    }
+}
+
 
 /***** Render loop *****/
 
 var osm_layer; // global so it's accessible on console for debugging
 window.addEventListener('load', function () {
     layer.addTo(map);
+    setGLProgramDefines(layer._renderer.gl_program);
 
     if (osm_debug == true) {
         osm_layer =
@@ -233,6 +310,8 @@ function frameLoop () {
             );
         })();
     }
+}());
+
 }());
 
 </script>

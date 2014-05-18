@@ -1,7 +1,8 @@
-#define PROJECTION_PERSPECTIVE
+// #define PROJECTION_PERSPECTIVE
 // #define PROJECTION_ISOMETRIC
+// #define PROJECTION_POPUP
 
-#define LIGHTING_POINT
+// #define LIGHTING_POINT
 // #define LIGHTING_DIRECTION
 
 // #define ANIMATION_ELEVATOR
@@ -52,19 +53,23 @@ void main() {
     // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
 
+    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
+    vposition.xy += tile_min.xy;
+
     // Vertex displacement tests
     if (vposition.z > 1.0) {
         // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
         // vposition.y += cos(vposition.z + time) * 10.0;
 
         #if defined(ANIMATION_ELEVATOR)
-            vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+            // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+            vposition.z *= max((sin(vposition.z + time) + 1.0) / 2.0, 0.05); // evelator buildings
         #elif defined(ANIMATION_WAVE)
-            vposition.z *= (sin(vposition.x / 100.0 + time) + 1.01); // wave
+            vposition.z *= max((sin(vposition.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave
         #endif
     }
 
-    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
+    vposition.xy -= map_center;
     vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
 
     // Flat shading between surface normal and light
@@ -88,13 +93,27 @@ void main() {
         vec2 perspective_offset = vec2(-0.25, -0.25);
         vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
         vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
-    #elif defined(PROJECTION_ISOMETRIC)
+    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
+        #if defined(PROJECTION_POPUP)
+            if (vposition.z > 1.0) {
+                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));
+                const float popup_fade_inner = 0.5;
+                const float popup_fade_outer = 0.75;
+                if (cd > popup_fade_inner) {
+                    vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);
+                }
+                const float zoom_boost_start = 15.0;
+                const float zoom_boost_end = 17.0;
+                const float zoom_boost_magnitude = 0.75;
+                vposition.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;
+            }
+        #endif
+
         // Isometric-style projection
         vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
         // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
         // vposition.x -= vposition.z * 0.5;
     #endif
-
 
     // Rotation test
     // float theta = 0;
