@@ -59,27 +59,29 @@ GLRenderer.vertex_shader_source =
 "    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile\n" +
 "    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
-"    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
-"    vposition.xy += tile_min.xy;\n" +
+"    // Vertex displacement + procedural effects\n" +
+"    #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
+"        vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)\n" +
 "\n" +
-"    #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"        fposition = vposition;\n" +
+"        #if defined(EFFECT_NOISE_TEXTURE)\n" +
+"            fposition = vposition_world;\n" +
+"        #endif\n" +
+"\n" +
+"        if (vposition_world.z > 1.0) {\n" +
+"            // vposition.x += sin(vposition_world.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
+"            // vposition.y += cos(vposition_world.z + time) * 10.0;\n" +
+"\n" +
+"            #if defined(ANIMATION_ELEVATOR)\n" +
+"                // vposition.z *= (sin(vposition_world.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
+"                vposition.z *= max((sin(vposition_world.z + time) + 1.0) / 2.0, 0.05); // evelator buildings\n" +
+"            #elif defined(ANIMATION_WAVE)\n" +
+"                vposition.z *= max((sin(vposition_world.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave\n" +
+"            #endif\n" +
+"        }\n" +
 "    #endif\n" +
 "\n" +
-"    // Vertex displacement tests\n" +
-"    if (vposition.z > 1.0) {\n" +
-"        // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
-"        // vposition.y += cos(vposition.z + time) * 10.0;\n" +
-"\n" +
-"        #if defined(ANIMATION_ELEVATOR)\n" +
-"            // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
-"            vposition.z *= max((sin(vposition.z + time) + 1.0) / 2.0, 0.05); // evelator buildings\n" +
-"        #elif defined(ANIMATION_WAVE)\n" +
-"            vposition.z *= max((sin(vposition.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave\n" +
-"        #endif\n" +
-"    }\n" +
-"\n" +
-"    vposition.xy -= map_center;\n" +
+"    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced\n" +
+"    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
 "    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
 "\n" +
 "    // Shading\n" +

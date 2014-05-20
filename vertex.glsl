@@ -57,27 +57,29 @@ void main() {
     // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
 
-    // vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
-    vposition.xy += tile_min.xy;
+    // Vertex displacement + procedural effects
+    #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)
+        vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)
 
-    #if defined(EFFECT_NOISE_TEXTURE)
-        fposition = vposition;
+        #if defined(EFFECT_NOISE_TEXTURE)
+            fposition = vposition_world;
+        #endif
+
+        if (vposition_world.z > 1.0) {
+            // vposition.x += sin(vposition_world.z + time) * 10.0 * sin(position.x); // swaying buildings
+            // vposition.y += cos(vposition_world.z + time) * 10.0;
+
+            #if defined(ANIMATION_ELEVATOR)
+                // vposition.z *= (sin(vposition_world.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
+                vposition.z *= max((sin(vposition_world.z + time) + 1.0) / 2.0, 0.05); // evelator buildings
+            #elif defined(ANIMATION_WAVE)
+                vposition.z *= max((sin(vposition_world.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave
+            #endif
+        }
     #endif
 
-    // Vertex displacement tests
-    if (vposition.z > 1.0) {
-        // vposition.x += sin(vposition.z + time) * 10.0 * sin(position.x); // swaying buildings
-        // vposition.y += cos(vposition.z + time) * 10.0;
-
-        #if defined(ANIMATION_ELEVATOR)
-            // vposition.z *= (sin(vposition.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
-            vposition.z *= max((sin(vposition.z + time) + 1.0) / 2.0, 0.05); // evelator buildings
-        #elif defined(ANIMATION_WAVE)
-            vposition.z *= max((sin(vposition.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave
-        #endif
-    }
-
-    vposition.xy -= map_center;
+    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced
+    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
     vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
 
     // Shading
