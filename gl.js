@@ -493,6 +493,38 @@ GLTriangles.prototype._setup = function ()
     this.gl.vertexAttribPointer(this.vertex_layer, 1, this.gl.FLOAT, false, this.vertex_stride, 9 * Float32Array.BYTES_PER_ELEMENT);
 };
 
+// Draws a set of points as quads, intended to be rendered as distance fields
+GLPolyPoints.prototype = Object.create(GLGeometry.prototype);
+
+function GLPolyPoints (gl, program, vertex_data)
+{
+    // Set program attributes before calling parent constructor because they're needed to setup the VAO
+    gl.useProgram(program);
+    this.vertex_position = gl.getAttribLocation(program, 'position');
+    this.vertex_texcoord = gl.getAttribLocation(program, 'texcoord');
+    this.vertex_color = gl.getAttribLocation(program, 'color');
+    this.vertex_layer = gl.getAttribLocation(program, 'layer');
+
+    // Base class
+    GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    this.geometry_count = this.vertex_count / 3;
+}
+
+GLPolyPoints.prototype._setup = function ()
+{
+    this.gl.enableVertexAttribArray(this.vertex_position);
+    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, 0);
+
+    this.gl.enableVertexAttribArray(this.vertex_texcoord);
+    this.gl.vertexAttribPointer(this.vertex_texcoord, 2, this.gl.FLOAT, false, this.vertex_stride, 3 * Float32Array.BYTES_PER_ELEMENT);
+
+    this.gl.enableVertexAttribArray(this.vertex_color);
+    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 5 * Float32Array.BYTES_PER_ELEMENT);
+
+    this.gl.enableVertexAttribArray(this.vertex_layer);
+    this.gl.vertexAttribPointer(this.vertex_layer, 1, this.gl.FLOAT, false, this.vertex_stride, 8 * Float32Array.BYTES_PER_ELEMENT);
+};
+
 // Draws a set of lines
 // Shares all characteristics with triangles except for draw mode
 GLLines.prototype = Object.create(GLTriangles.prototype);
