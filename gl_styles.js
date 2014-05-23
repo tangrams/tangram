@@ -1,13 +1,4 @@
 {
-    // buildings: {
-    //     color: {
-    //         default: [86/255, 53/255, 29/255]
-    //     },
-    //     extrude: {
-    //         default: function (f, t) { return ((t.coords.z >= 15 && f.properties.height > 20) || t.coords.z >= 16) }
-    //     }
-    // }
-
     water_ocean: {
         color: {
             default: [0.5, 0.5, 0.875]
