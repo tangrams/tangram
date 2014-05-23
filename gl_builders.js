@@ -387,6 +387,36 @@ GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, st
     return vertex_data;
 };
 
+GLBuilders.buildPolyPoints = function GLBuildersBuildPoints (points, z, radius, vertex_data, options)
+{
+    options = options || {};
+
+    var vertex_constants = []; // [0, 0, 1]; // upwards-facing normal
+    if (options.vertex_constants) {
+        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
+    }
+
+    var num_points = points.length;
+    for (var p=0; p < num_points; p++) {
+        var point = points[p];
+
+        // Position, texture coords
+        var vertices = [
+            [point[0] - radius, point[1] - radius, z, -1, -1],
+            [point[0] + radius, point[1] - radius, z, 1, -1],
+            [point[0] + radius, point[1] + radius, z, 1, 1],
+
+            [point[0] - radius, point[1] - radius, z, -1, -1],
+            [point[0] + radius, point[1] + radius, z, 1, 1],
+            [point[0] - radius, point[1] + radius, z, -1, 1]
+        ];
+
+        GL.addVertices(vertices, vertex_data, vertex_constants);
+    }
+
+    return vertex_data;
+};
+
 /* Utility functions */
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
