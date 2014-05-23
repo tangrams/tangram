@@ -27,13 +27,16 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
-    this.gl_program = new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
-    this.last_render_count = null;
+
+    this.gl_programs = {};
+    this.gl_programs['polygons'] = new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
+    this.gl_programs['points'] = new GL.Program.createProgramFromURLs(this.gl, 'shaders/point_vertex.glsl', 'shaders/point_fragment.glsl');
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.start_time = +new Date();
+    this.last_render_count = null;
     this.initInputHandlers();
 };
 
@@ -55,6 +58,7 @@ GLRenderer.addTile = function (tile, layers, styles)
 
     var layer, style, feature, z;
     var vertex_triangles = [];
+    var vertex_points = [];
     var vertex_lines = [];
 
     // Join line test pattern
@@ -89,20 +93,27 @@ GLRenderer.addTile = function (tile, layers, styles)
                     ];
                 }
 
-                var polygons = null;
+                var points = null,
+                    lines = null,
+                    polygons = null;
+
                 if (feature.geometry.type == 'Polygon') {
                     polygons = [feature.geometry.coordinates];
                 }
                 else if (feature.geometry.type == 'MultiPolygon') {
                     polygons = feature.geometry.coordinates;
                 }
-
-                var lines = null;
-                if (feature.geometry.type == 'LineString') {
+                else if (feature.geometry.type == 'LineString') {
                     lines = [feature.geometry.coordinates];
                 }
                 else if (feature.geometry.type == 'MultiLineString') {
                     lines = feature.geometry.coordinates;
+                }
+                else if (feature.geometry.type == 'Point') {
+                    points = [feature.geometry.coordinates];
+                }
+                else if (feature.geometry.type == 'MultiPoint') {
+                    points = feature.geometry.coordinates;
                 }
 
                 if (polygons != null) {
@@ -133,6 +144,11 @@ GLRenderer.addTile = function (tile, layers, styles)
                     }
                 }
 
+                if (points != null) {
+                    // NOTE: adding to z to experiment with "floating" POIs
+                    GLBuilders.buildPolyPoints(points, z + 25, style.size, vertex_points, { vertex_constants: vertex_constants });
+                }
+
                 tile.feature_count++;
             }
         }
@@ -140,6 +156,7 @@ GLRenderer.addTile = function (tile, layers, styles)
 
     tile.debug.features = tile.feature_count;
     vertex_triangles = new Float32Array(vertex_triangles);
+    vertex_points = new Float32Array(vertex_points);
     vertex_lines = new Float32Array(vertex_lines);
 
     // NOTE: moved to generic event post from VectorRenderer (loses transferable objects for typed arrays, but gains flexibility)
@@ -158,6 +175,7 @@ GLRenderer.addTile = function (tile, layers, styles)
 
     tile.vertex_data = {
         vertex_triangles: vertex_triangles,
+        vertex_points: vertex_points,
         vertex_lines: vertex_lines
     };
 
@@ -168,20 +186,33 @@ GLRenderer.addTile = function (tile, layers, styles)
 GLRenderer.prototype._tileWorkerCompleted = function (tile)
 {
     var vertex_triangles = tile.vertex_data.vertex_triangles;
+    var vertex_points = tile.vertex_data.vertex_points;
     var vertex_lines = tile.vertex_data.vertex_lines;
 
     // Create GL geometry objects
-    tile.gl_geometry = [];
+    tile.gl_geometry = {};
+
     if (vertex_triangles.length > 0) {
-        tile.gl_geometry.push(new GLTriangles(this.gl, this.gl_program.program, vertex_triangles));
-    }
-    if (vertex_lines.length > 0) {
-        tile.gl_geometry.push(new GLLines(this.gl, this.gl_program.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+        tile.gl_geometry.polygons = new GLTriangles(this.gl, this.gl_programs.polygons.program, vertex_triangles);
     }
 
-    tile.debug.geometries = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.geometry_count; }, 0);
+    if (vertex_points.length > 0) {
+        tile.gl_geometry.points = new GLPolyPoints(this.gl, this.gl_programs.points.program, vertex_points);
+    }
+
+    // Disabling lines for now, till we have better handling for mulitple programs
+    // if (vertex_lines.length > 0) {
+    //     tile.gl_geometry.push(new GLLines(this.gl, this.gl_programs.polygons.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+    // }
+
+    tile.debug.geometries = 0;
+    tile.debug.buffer_size = 0;
+    for (var p in tile.gl_geometry) {
+        tile.debug.geometries += tile.gl_geometry[p].geometry_count;
+        tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
+    }
+
     tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-    tile.debug.buffer_size = tile.gl_geometry.reduce(function(sum, geom) { return sum + geom.vertex_data.byteLength; }, 0);
 
     // Selection - experimental/future
     // var gl_renderer = this;
@@ -208,7 +239,9 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
     var tile = this.tiles[key];
 
     if (tile != null && tile.gl_geometry != null) {
-        tile.gl_geometry.forEach(function (gl_geometry) { gl_geometry.destroy(); });
+        for (var p in tile.gl_geometry) {
+            tile.gl_geometry[p].destroy();
+        }
         tile.gl_geometry = null;
     }
     VectorRenderer.prototype.removeTile.apply(this, arguments);
@@ -278,25 +311,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
     this.input();
 
-    if (!this.gl_program) {
-        return;
-    }
-    gl.useProgram(this.gl_program.program);
-
-    this.gl_program.uniform('2f', 'resolution', this.css_size.width, this.css_size.height);
-    this.gl_program.uniform('1f', 'time', ((+new Date()) - this.start_time) / 1000);
-
-    var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-    this.gl_program.uniform('2f', 'map_center', center.x, center.y);
-    this.gl_program.uniform('1f', 'map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-    this.gl_program.uniform('1f', 'num_layers', this.layers.length);
-
-    var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-    var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
-    this.gl_program.uniform('2f', 'meter_zoom', meter_zoom.x, meter_zoom.y);
-
-    this.gl_program.uniform('1f', 'tile_scale', VectorRenderer.tile_scale);
-
+    // Reset frame state
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
@@ -304,23 +319,44 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
-    // Render tile GL geometries
+    // Render tiles grouped by program
     var count = 0;
-    var capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
-    for (var t in this.tiles) {
-        var tile = this.tiles[t];
-        if (tile.loaded == true &&
-            tile.visible == true &&
-            Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
+    for (var program_name in this.gl_programs) {
+        var gl_program = this.gl_programs[program_name];
 
-            if (tile.gl_geometry != null) {
-                this.gl_program.uniform('2f', 'tile_min', tile.min.x, tile.min.y);
-                this.gl_program.uniform('2f', 'tile_max', tile.max.x, tile.max.y);
+        gl.useProgram(gl_program.program);
 
-                tile.gl_geometry.forEach(function (gl_geometry) {
-                    gl_geometry.render();
-                    count += gl_geometry.geometry_count;
-                });
+        // TODO: set these once per program, don't set when they haven't changed
+        gl_program.uniform('2f', 'resolution', this.css_size.width, this.css_size.height);
+        gl_program.uniform('1f', 'time', ((+new Date()) - this.start_time) / 1000);
+
+        var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
+        gl_program.uniform('2f', 'map_center', center.x, center.y);
+        gl_program.uniform('1f', 'map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+        gl_program.uniform('1f', 'num_layers', this.layers.length);
+
+        var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
+        var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
+        gl_program.uniform('2f', 'meter_zoom', meter_zoom.x, meter_zoom.y);
+
+        gl_program.uniform('1f', 'tile_scale', VectorRenderer.tile_scale); // TODO: move this to a constant or define
+
+        // TODO: make a list of renderable tiles once per frame, outside this loop
+        // Render tile GL geometries
+        var capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
+        for (var t in this.tiles) {
+            var tile = this.tiles[t];
+            if (tile.loaded == true &&
+                tile.visible == true &&
+                Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
+
+                if (tile.gl_geometry[program_name] != null) {
+                    gl_program.uniform('2f', 'tile_min', tile.min.x, tile.min.y);
+                    gl_program.uniform('2f', 'tile_max', tile.max.x, tile.max.y);
+
+                    tile.gl_geometry[program_name].render();
+                    count += tile.gl_geometry[program_name].geometry_count;
+                }
             }
         }
     }

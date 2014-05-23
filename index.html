@@ -223,17 +223,17 @@ window.gui = gui;
 
 gl_controls.projection.control = gui.add(gl_controls.projection, 'projection', gl_controls.projection.options);
 gl_controls.projection.control.onChange(function(value) {
-    setGLProgramDefines(layer._renderer.gl_program, 'projection');
+    setGLProgramDefines('projection');
 });
 
 gl_controls.lighting.control = gui.add(gl_controls.lighting, 'lighting', gl_controls.lighting.options);
 gl_controls.lighting.control.onChange(function(value) {
-    setGLProgramDefines(layer._renderer.gl_program, 'lighting');
+    setGLProgramDefines('lighting');
 });
 
 gl_controls.animation.control = gui.add(gl_controls.animation, 'animation', gl_controls.animation.options);
 gl_controls.animation.control.onChange(function(value) {
-    setGLProgramDefines(layer._renderer.gl_program, 'animation');
+    setGLProgramDefines('animation');
     if (gl_controls.animation.animation != '') {
         layer._renderer.continuous_animation = true;
     }
@@ -242,7 +242,7 @@ gl_controls.animation.control.onChange(function(value) {
     }
 });
 
-function setGLProgramDefines (program, set) {
+function setGLProgramDefines (set) {
     var keys;
     if (set) {
         keys = [set];
@@ -252,10 +252,16 @@ function setGLProgramDefines (program, set) {
     }
 
     keys.forEach(function(key) {
-        setGLProgramDefinesForOptionSet(program, gl_controls[key][key], gl_controls[key].options);
+        for (var p in layer._renderer.gl_programs) {
+            var gl_program = layer._renderer.gl_programs[p];
+            setGLProgramDefinesForOptionSet(gl_program, gl_controls[key][key], gl_controls[key].options);
+        }
     });
 
-    program.compile();
+    for (var p in layer._renderer.gl_programs) {
+        var gl_program = layer._renderer.gl_programs[p];
+        gl_program.compile();
+    }
     layer._renderer.dirty = true;
 }
 
@@ -271,7 +277,7 @@ function setGLProgramDefinesForOptionSet (program, current_value, options) {
 var osm_layer; // global so it's accessible on console for debugging
 window.addEventListener('load', function () {
     layer.addTo(map);
-    setGLProgramDefines(layer._renderer.gl_program);
+    setGLProgramDefines();
 
     if (osm_debug == true) {
         osm_layer =
