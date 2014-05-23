@@ -158,14 +158,44 @@ GL.Program = function (gl, vertex_shader_source, fragment_shader_source)
     this.compile();
 };
 
+// Creates a program that will refresh from source URLs each time it is compiled
+GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url)
+{
+    var program = Object.create(GL.Program.prototype);
+
+    program.vertex_shader_url = vertex_shader_url;
+    program.fragment_shader_url = fragment_shader_url;
+
+    program.updateVertexShaderSource = function () {
+        var source;
+        var req = new XMLHttpRequest();
+        req.onload = function () { source = req.response; };
+        req.open('GET', this.vertex_shader_url + '?' + (+new Date()), false /* async flag */);
+        req.send();
+        return source;
+    };
+
+    program.updateFragmentShaderSource = function () {
+        var source;
+        var req = new XMLHttpRequest();
+        req.onload = function () { source = req.response; };
+        req.open('GET', this.fragment_shader_url + '?' + (+new Date()), false /* async flag */);
+        req.send();
+        return source;
+    };
+
+    GL.Program.call(program, gl);
+    return program;
+};
+
 GL.Program.prototype.compile = function ()
 {
-    // Update sources
-    if (typeof this._vertex_shader_source == 'function') {
-        this.vertex_shader_source = this._vertex_shader_source();
+    // Optionally update sources
+    if (typeof this.updateVertexShaderSource == 'function') {
+        this.vertex_shader_source = this.updateVertexShaderSource();
     }
-    if (typeof this._fragment_shader_source == 'function') {
-        this.fragment_shader_source = this._fragment_shader_source();
+    if (typeof this.updateFragmentShaderSource == 'function') {
+        this.fragment_shader_source = this.updateFragmentShaderSource();
     }
 
     // Inject defines
