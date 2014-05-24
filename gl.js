@@ -273,9 +273,9 @@ GL.Program.prototype.attribute = function (name)
     attrib.name = name;
     attrib.location = this.gl.getAttribLocation(this.program, name);
 
-    var info = this.gl.getActiveAttrib(this.program, attrib.location);
-    attrib.type = info.type;
-    attrib.size = info.size;
+    // var info = this.gl.getActiveAttrib(this.program, attrib.location);
+    // attrib.type = info.type;
+    // attrib.size = info.size;
 
     return attrib;
 };
