@@ -153,6 +153,7 @@ GL.Program = function (gl, vertex_shader_source, fragment_shader_source)
     this.program = null;
     this.defines = {}; // key/values inserted into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
+    this.attribs = {}; // program locations of vertex attributes
     this.vertex_shader_source = vertex_shader_source;
     this.fragment_shader_source = fragment_shader_source;
     this.compile();
@@ -218,6 +219,7 @@ GL.Program.prototype.compile = function ()
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
     this.gl.useProgram(this.program);
     this.refreshUniforms();
+    this.refreshAttributes();
 };
 
 // ex: program.uniform('3f', 'position', x, y, z);
@@ -248,6 +250,34 @@ GL.Program.prototype.refreshUniforms = function ()
         this.uniforms[u].location = this.gl.getUniformLocation(this.program, u);
         this.updateUniform(u);
     }
+};
+
+GL.Program.prototype.refreshAttributes = function ()
+{
+    // var len = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_ATTRIBUTES);
+    // for (var i=0; i < len; i++) {
+    //     var a = this.gl.getActiveAttrib(this.program, i);
+    //     console.log(a);
+    // }
+    this.attribs = {};
+};
+
+// Get the location of a vertex attribute
+GL.Program.prototype.attribute = function (name)
+{
+    var attrib = (this.attribs[name] = this.attribs[name] || {});
+    if (attrib.location != null) {
+        return attrib;
+    }
+
+    attrib.name = name;
+    attrib.location = this.gl.getAttribLocation(this.program, name);
+
+    var info = this.gl.getActiveAttrib(this.program, attrib.location);
+    attrib.type = info.type;
+    attrib.size = info.size;
+
+    return attrib;
 };
 
 // Triangulation using libtess.js port of gluTesselator
