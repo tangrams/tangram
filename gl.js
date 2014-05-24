@@ -147,11 +147,13 @@ GL.createShader = function GLcreateShader (gl, source, type)
 };
 
 // Thin GL program layer to cache uniform locations/values, do compile-time pre-processing (injecting #defines into shaders), etc.
-GL.Program = function (gl, vertex_shader_source, fragment_shader_source)
+GL.Program = function (gl, vertex_shader_source, fragment_shader_source, options)
 {
+    options = options || {};
+
     this.gl = gl;
     this.program = null;
-    this.defines = {}; // key/values inserted into shaders at compile-time
+    this.defines = options.defines || {}; // key/values inserted into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
     this.attribs = {}; // program locations of vertex attributes
     this.vertex_shader_source = vertex_shader_source;
@@ -160,7 +162,7 @@ GL.Program = function (gl, vertex_shader_source, fragment_shader_source)
 };
 
 // Creates a program that will refresh from source URLs each time it is compiled
-GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url)
+GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url, options)
 {
     var program = Object.create(GL.Program.prototype);
 
@@ -185,7 +187,7 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
         return source;
     };
 
-    GL.Program.call(program, gl);
+    GL.Program.call(program, gl, null, null, options);
     return program;
 };
 
