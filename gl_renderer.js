@@ -193,16 +193,16 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
     tile.gl_geometry = {};
 
     if (vertex_triangles.length > 0) {
-        tile.gl_geometry.polygons = new GLTriangles(this.gl, this.gl_programs.polygons.program, vertex_triangles);
+        tile.gl_geometry.polygons = new GLTriangles(this.gl, this.gl_programs.polygons, vertex_triangles);
     }
 
     if (vertex_points.length > 0) {
-        tile.gl_geometry.points = new GLPolyPoints(this.gl, this.gl_programs.points.program, vertex_points);
+        tile.gl_geometry.points = new GLPolyPoints(this.gl, this.gl_programs.points, vertex_points);
     }
 
     // Disabling lines for now, till we have better handling for mulitple programs
     // if (vertex_lines.length > 0) {
-    //     tile.gl_geometry.push(new GLLines(this.gl, this.gl_programs.polygons.program, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
+    //     tile.gl_geometry.push(new GLLines(this.gl, this.gl_programs.polygons, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
     // }
 
     tile.debug.geometries = 0;

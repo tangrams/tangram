@@ -448,38 +448,73 @@ GL.VertexArrayObject.bind = function (vao)
 
 /*** Manage rendering for primitives ***/
 
-function GLGeometry (gl, program, vertex_data, vertex_stride, options)
+// Attribs are an array, in layout order, of: name, size, type, normalized
+// ex: { name: 'position', size: 3, type: gl.FLOAT, normalized: false }
+function GLGeometry (gl, gl_program, vertex_data, attribs, options)
 {
     options = options || {};
 
     this.gl = gl;
-    this.program = program;
+    this.gl_program = gl_program;
+    this.attribs = attribs;
     this.vertex_data = vertex_data; // Float32Array
-    this.vertex_stride = vertex_stride;
-    this.vertex_count = this.vertex_data.byteLength / this.vertex_stride;
     this.buffer = this.gl.createBuffer();
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
 
+    // Calc vertex stride
+    this.vertex_stride = 0;
+    for (var a=0; a < this.attribs.length; a++) {
+        var attrib = this.attribs[a];
+
+        attrib.location = this.gl_program.attribute(attrib.name).location;
+        attrib.byte_size = attrib.size;
+
+        switch (attrib.type) {
+            case this.gl.FLOAT:
+            case this.gl.INT:
+            case this.gl.UNSIGNED_INT:
+                attrib.byte_size *= 4;
+                break;
+            case this.gl.SHORT:
+            case this.gl.UNSIGNED_SHORT:
+                attrib.byte_size *= 2;
+                break;
+        }
+
+        attrib.offset = this.vertex_stride;
+        this.vertex_stride += attrib.byte_size;
+    }
+
+    this.vertex_count = this.vertex_data.byteLength / this.vertex_stride;
+
     this.vao = GL.VertexArrayObject.create(function() {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-        if (typeof this._setup == 'function') {
-            this._setup();
-        }
+        this.setup();
     }.bind(this));
 
     this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
 }
 
+GLGeometry.prototype.setup = function ()
+{
+    for (var a=0; a < this.attribs.length; a++) {
+        var attrib = this.attribs[a];
+        this.gl.enableVertexAttribArray(attrib.location);
+        this.gl.vertexAttribPointer(attrib.location, attrib.size, attrib.type, attrib.normalized, this.vertex_stride, attrib.offset);
+    }
+};
+
 GLGeometry.prototype.render = function ()
 {
-    this.gl.useProgram(this.program);
+    this.gl.useProgram(this.gl_program.program);
     GL.VertexArrayObject.bind(this.vao);
 
     if (typeof this._render == 'function') {
         this._render();
     }
 
+    // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
     GL.VertexArrayObject.bind(null);
 };
@@ -494,75 +529,39 @@ GLGeometry.prototype.destroy = function ()
 // Draws a set of triangles
 GLTriangles.prototype = Object.create(GLGeometry.prototype);
 
-function GLTriangles (gl, program, vertex_data)
+function GLTriangles (gl, gl_program, vertex_data)
 {
-    // Set program attributes before calling parent constructor because they're needed to setup the VAO
-    gl.useProgram(program);
-    this.vertex_position = gl.getAttribLocation(program, 'position');
-    this.vertex_normal = gl.getAttribLocation(program, 'normal');
-    this.vertex_color = gl.getAttribLocation(program, 'color');
-    this.vertex_layer = gl.getAttribLocation(program, 'layer');
-
-    // Base class
-    GLGeometry.call(this, gl, program, vertex_data, 10 * Float32Array.BYTES_PER_ELEMENT);
+    GLGeometry.call(this, gl, gl_program, vertex_data, [
+        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'normal', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
+    ]);
     this.geometry_count = this.vertex_count / 3;
 }
-
-GLTriangles.prototype._setup = function ()
-{
-    this.gl.enableVertexAttribArray(this.vertex_position);
-    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, 0);
-
-    this.gl.enableVertexAttribArray(this.vertex_normal);
-    this.gl.vertexAttribPointer(this.vertex_normal, 3, this.gl.FLOAT, false, this.vertex_stride, 3 * Float32Array.BYTES_PER_ELEMENT);
-
-    this.gl.enableVertexAttribArray(this.vertex_color);
-    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 6 * Float32Array.BYTES_PER_ELEMENT);
-
-    this.gl.enableVertexAttribArray(this.vertex_layer);
-    this.gl.vertexAttribPointer(this.vertex_layer, 1, this.gl.FLOAT, false, this.vertex_stride, 9 * Float32Array.BYTES_PER_ELEMENT);
-};
 
 // Draws a set of points as quads, intended to be rendered as distance fields
 GLPolyPoints.prototype = Object.create(GLGeometry.prototype);
 
-function GLPolyPoints (gl, program, vertex_data)
+function GLPolyPoints (gl, gl_program, vertex_data)
 {
-    // Set program attributes before calling parent constructor because they're needed to setup the VAO
-    gl.useProgram(program);
-    this.vertex_position = gl.getAttribLocation(program, 'position');
-    this.vertex_texcoord = gl.getAttribLocation(program, 'texcoord');
-    this.vertex_color = gl.getAttribLocation(program, 'color');
-    this.vertex_layer = gl.getAttribLocation(program, 'layer');
-
-    // Base class
-    GLGeometry.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    GLGeometry.call(this, gl, gl_program, vertex_data, [
+        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'texcoord', size: 2, type: gl.FLOAT, normalized: false },
+        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
+    ]);
     this.geometry_count = this.vertex_count / 3;
 }
-
-GLPolyPoints.prototype._setup = function ()
-{
-    this.gl.enableVertexAttribArray(this.vertex_position);
-    this.gl.vertexAttribPointer(this.vertex_position, 3, this.gl.FLOAT, false, this.vertex_stride, 0);
-
-    this.gl.enableVertexAttribArray(this.vertex_texcoord);
-    this.gl.vertexAttribPointer(this.vertex_texcoord, 2, this.gl.FLOAT, false, this.vertex_stride, 3 * Float32Array.BYTES_PER_ELEMENT);
-
-    this.gl.enableVertexAttribArray(this.vertex_color);
-    this.gl.vertexAttribPointer(this.vertex_color, 3, this.gl.FLOAT, false, this.vertex_stride, 5 * Float32Array.BYTES_PER_ELEMENT);
-
-    this.gl.enableVertexAttribArray(this.vertex_layer);
-    this.gl.vertexAttribPointer(this.vertex_layer, 1, this.gl.FLOAT, false, this.vertex_stride, 8 * Float32Array.BYTES_PER_ELEMENT);
-};
 
 // Draws a set of lines
 // Shares all characteristics with triangles except for draw mode
 GLLines.prototype = Object.create(GLTriangles.prototype);
 
-function GLLines (gl, program, vertex_data, options)
+function GLLines (gl, gl_program, vertex_data, options)
 {
     options = options || {};
-    GLTriangles.call(this, gl, program, vertex_data, 9 * Float32Array.BYTES_PER_ELEMENT);
+    GLTriangles.call(this, gl, program, vertex_data);
     this.draw_mode = this.gl.LINES;
     this.line_width = options.line_width || 2;
     this.geometry_count = this.vertex_count / 2;
@@ -571,7 +570,9 @@ function GLLines (gl, program, vertex_data, options)
 GLLines.prototype._render = function ()
 {
     this.gl.lineWidth(this.line_width);
-    GLTriangles.prototype._render.call(this);
+    if (typeof GLTriangles.prototype._render == 'function') {
+        GLTriangles.prototype._render.call(this);
+    }
 };
 
 
