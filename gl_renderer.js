@@ -10,6 +10,8 @@ function GLRenderer (tile_source, layers, styles, options)
        GLBuilders.setTileScale(VectorRenderer.tile_scale);
     // }
 
+    GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale + '.0';
+
     var options = options || {};
 
     this.container = options.container;
@@ -338,8 +340,6 @@ GLRenderer.prototype._render = function GLRendererRender ()
         var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
         var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
         gl_program.uniform('2f', 'meter_zoom', meter_zoom.x, meter_zoom.y);
-
-        gl_program.uniform('1f', 'tile_scale', VectorRenderer.tile_scale); // TODO: move this to a constant or define
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries

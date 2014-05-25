@@ -14,7 +14,6 @@ uniform float map_zoom;
 uniform vec2 meter_zoom;
 uniform vec2 tile_min;
 uniform vec2 tile_max;
-uniform float tile_scale; // geometries are scaled to this range within each tile
 uniform float num_layers;
 uniform float time;
 
@@ -54,8 +53,8 @@ void main() {
 
     // Calc position of vertex in meters, relative to center of screen
     vposition.y *= -1.0; // adjust for flipped y-coords
-    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile
-    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
+    // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile
+    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)
 
     // Vertex displacement + procedural effects
     #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)

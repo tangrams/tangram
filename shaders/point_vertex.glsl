@@ -3,7 +3,6 @@ uniform float map_zoom;
 uniform vec2 meter_zoom;
 uniform vec2 tile_min;
 uniform vec2 tile_max;
-uniform float tile_scale; // geometries are scaled to this range within each tile
 uniform float num_layers;
 // uniform float time;
 
@@ -26,7 +25,7 @@ void main() {
 
     // Calc position of vertex in meters, relative to center of screen
     vposition.y *= -1.0; // adjust for flipped y-coords
-    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)
+    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)
     vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
     vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
 

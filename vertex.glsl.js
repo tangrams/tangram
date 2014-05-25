@@ -16,7 +16,6 @@ GLRenderer.vertex_shader_source =
 "uniform vec2 meter_zoom;\n" +
 "uniform vec2 tile_min;\n" +
 "uniform vec2 tile_max;\n" +
-"uniform float tile_scale; // geometries are scaled to this range within each tile\n" +
 "uniform float num_layers;\n" +
 "uniform float time;\n" +
 "\n" +
@@ -56,8 +55,8 @@ GLRenderer.vertex_shader_source =
 "\n" +
 "    // Calc position of vertex in meters, relative to center of screen\n" +
 "    vposition.y *= -1.0; // adjust for flipped y-coords\n" +
-"    // vposition.y += tile_scale; // alternate, to also adjust for force-positive y coords in tile\n" +
-"    vposition.xy *= (tile_max - tile_min) / tile_scale; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
+"    // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile\n" +
+"    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
 "    // Vertex displacement + procedural effects\n" +
 "    #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
