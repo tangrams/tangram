@@ -252,10 +252,7 @@ function setGLProgramDefines (set) {
     }
 
     keys.forEach(function(key) {
-        for (var p in layer._renderer.gl_programs) {
-            var gl_program = layer._renderer.gl_programs[p];
-            setGLProgramDefinesForOptionSet(gl_program, gl_controls[key][key], gl_controls[key].options);
-        }
+        setGLProgramDefinesForOptionSet(gl_controls[key][key], gl_controls[key].options);
     });
 
     for (var p in layer._renderer.gl_programs) {
@@ -265,9 +262,9 @@ function setGLProgramDefines (set) {
     layer._renderer.dirty = true;
 }
 
-function setGLProgramDefinesForOptionSet (program, current_value, options) {
+function setGLProgramDefinesForOptionSet (current_value, options) {
     for (var i in options) {
-        program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+        GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
 }
 

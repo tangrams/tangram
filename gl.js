@@ -191,6 +191,9 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
     return program;
 };
 
+// Global defines applied to all programs (duplicate properties for a specific program will take precedence)
+GL.Program.defines = {};
+
 GL.Program.prototype.compile = function ()
 {
     // Optionally update sources
@@ -201,21 +204,29 @@ GL.Program.prototype.compile = function ()
         this.fragment_shader_source = this.updateFragmentShaderSource();
     }
 
-    // Inject defines
-    var defines = "";
+    // Inject defines (global, then program-specific)
+    var defines = {};
+    for (var d in GL.Program.defines) {
+        defines[d] = GL.Program.defines[d];
+    }
     for (var d in this.defines) {
-        if (this.defines[d] == false) {
+        defines[d] = this.defines[d];
+    }
+
+    var define_str = "";
+    for (var d in defines) {
+        if (defines[d] == false) {
             continue;
         }
-        else if (typeof this.defines[d] == 'boolean' && this.defines[d] == true) {
-            defines += "#define " + d + "\n";
+        else if (typeof defines[d] == 'boolean' && defines[d] == true) {
+            define_str += "#define " + d + "\n";
         }
         else {
-            defines += "#define " + d + " (" + this.defines[d] + ")\n";
+            define_str += "#define " + d + " (" + defines[d] + ")\n";
         }
     }
-    this.processed_vertex_shader_source = defines + this.vertex_shader_source;
-    this.processed_fragment_shader_source = defines + this.fragment_shader_source;
+    this.processed_vertex_shader_source = define_str + this.vertex_shader_source;
+    this.processed_fragment_shader_source = define_str + this.fragment_shader_source;
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
