@@ -148,7 +148,8 @@ GLRenderer.addTile = function (tile, layers, styles)
 
                 if (points != null) {
                     // NOTE: adding to z to experiment with "floating" POIs
-                    GLBuilders.buildPolyPoints(points, z + 25, style.size, vertex_points, { vertex_constants: vertex_constants });
+                    // console.log(JSON.stringify(feature));
+                    // GLBuilders.buildPolyPoints(points, z + 25, style.size, vertex_points, { vertex_constants: vertex_constants });
                 }
 
                 tile.feature_count++;
