@@ -222,7 +222,7 @@ GL.Program.prototype.compile = function ()
             define_str += "#define " + d + "\n";
         }
         else {
-            define_str += "#define " + d + " (" + defines[d] + ")\n";
+            define_str += "#define " + d + " " + defines[d] + "\n";
         }
     }
     this.processed_vertex_shader_source = define_str + this.vertex_shader_source;
