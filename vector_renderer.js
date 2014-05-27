@@ -1,3 +1,22 @@
+// Get base URL from which the library was loaded
+// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
+(function() {
+    try {
+        VectorRenderer.library_base_url = '';
+        var scripts = document.querySelectorAll('script[src*=".js"]');
+        for (var s=0; s < scripts.length; s++) {
+            var base_match = scripts[s].src.match(/(.*)vector-map.*.js/); // should match debug or minified versions
+            if (base_match != null && base_match.length > 1) {
+                VectorRenderer.library_base_url = base_match[1];
+                break;
+            }
+        }
+    }
+    catch (e) {
+        // skip in web worker
+    }
+}());
+
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 VectorRenderer.units_per_meter = [];
 VectorRenderer.units_per_pixel = [];
@@ -17,7 +36,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.tiles = {};
     this.num_workers = options.num_workers || 1;
 
-    this.layer_source = layers; // TODO: fix this for layers provided as objects, this assumes a URL is passed
+    this.layer_source = VectorRenderer.urlForPath(layers); // TODO: fix this for layers provided as objects, this assumes a URL is passed
     if (typeof(layers) == 'string') {
         this.layers = VectorRenderer.loadLayers(layers);
     }
@@ -25,7 +44,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
         this.layers = layers;
     }
 
-    this.style_source = styles; // TODO: fix this for styles provided as objects, this assumes a URL is passed
+    this.style_source = VectorRenderer.urlForPath(styles); // TODO: fix this for styles provided as objects, this assumes a URL is passed
     if (typeof(styles) == 'string') {
         this.styles = VectorRenderer.loadStyles(styles);
     }
@@ -40,7 +59,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     // Web workers handle heavy duty geometry processing
     this.workers = [];
     for (var w=0; w < this.num_workers; w++) {
-        this.workers.push(new Worker('vector_worker.js'));
+        this.workers.push(new Worker(VectorRenderer.library_base_url + 'vector-map-worker.min.js'));
     }
     this.next_worker = 0;
 
@@ -298,6 +317,15 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 
 
 /*** Class methods (stateless) ***/
+
+// Simplistic detection of relative paths, append base if necessary
+VectorRenderer.urlForPath = function (path) {
+    var protocol = path.toLowerCase().substr(0, 4);
+    if (protocol != 'http' || protocol != 'file') {
+        path = window.location.origin + window.location.pathname + path;
+    }
+    return path;
+};
 
 VectorRenderer.loadLayers = function (url)
 {

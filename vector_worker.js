@@ -1,5 +1,3 @@
-importScripts('dist/vector-map-worker.min.js' + '?' + (+new Date()));
-
 // Include individual scripts instead for debugging
 // importScripts('lib/libtess.cat.js');
 // importScripts('lib/mapbox-vector-tile.js');
