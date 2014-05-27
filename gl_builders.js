@@ -375,7 +375,7 @@ GLBuilders.buildQuads = function GLBuildersBuildQuads (points, width, height, ad
 
         if (options.texcoords == true) {
             var texcoords = [
-                [-1, -1]
+                [-1, -1],
                 [1, -1],
                 [1, 1],
 
