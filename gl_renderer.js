@@ -4,15 +4,12 @@ GLRenderer.debug = false;
 
 function GLRenderer (tile_source, layers, styles, options)
 {
+    var options = options || {};
+
     VectorRenderer.call(this, 'GLRenderer', tile_source, layers, styles, options);
 
-    // if (GLBuilders !== undefined) {
-       GLBuilders.setTileScale(VectorRenderer.tile_scale);
-    // }
-
+    GLBuilders.setTileScale(VectorRenderer.tile_scale);
     GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale + '.0';
-
-    var options = options || {};
 
     this.container = options.container;
     this.continuous_animation = false; // request redraw every frame
@@ -30,9 +27,28 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
     this.gl = GL.getContext(this.canvas);
 
-    this.gl_programs = {};
-    this.gl_programs['polygons'] = new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source);
-    this.gl_programs['points'] = new GL.Program.createProgramFromURLs(this.gl, 'shaders/point_vertex.glsl', 'shaders/point_fragment.glsl');
+    var renderer = this;
+
+    this.render_modes = {
+        'polygons': {
+            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source),
+            makeGLGeometry: function (vertex_data) {
+                return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
+            }
+        },
+        'polygons_noise': {
+            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source, { defines: { 'EFFECT_NOISE_TEXTURE': true } }),
+            makeGLGeometry: function (vertex_data) {
+                return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
+            }
+        }//,
+        // 'points': {
+        //     gl_program: new GL.Program.createProgramFromURLs(this.gl, 'shaders/point_vertex.glsl', 'shaders/point_fragment.glsl'),
+        //     makeGLGeometry: function (vertex_data) {
+        //         return new GLPolyPoints(renderer.gl, this.gl_program, vertex_data);
+        //     }
+        // }
+    };
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
@@ -55,13 +71,8 @@ GLRenderer.calculateZ = function (layer, tile, layer_offset, feature_offset)
 // Process geometry for tile - called by web worker
 GLRenderer.addTile = function (tile, layers, styles)
 {
-    // var layers = VectorWorker.getLayers();
-    // var styles = VectorWorker.getStyles();
-
-    var layer, style, feature, z;
-    var vertex_triangles = [];
-    var vertex_points = [];
-    var vertex_lines = [];
+    var layer, style, feature, z, mode;
+    var vertex_data = {};
 
     // Join line test pattern
     // if (GLRenderer.debug) {
@@ -69,7 +80,7 @@ GLRenderer.addTile = function (tile, layers, styles)
     // }
 
     // Build raw geometry arrays
-    tile.feature_count = 0;
+    tile.debug.features = 0;
     for (var ln=0; ln < layers.length; ln++) {
         layer = layers[ln];
 
@@ -81,6 +92,11 @@ GLRenderer.addTile = function (tile, layers, styles)
                 feature = tile.layers[layer.name].features[f];
                 style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
                 z = GLRenderer.calculateZ(layer, tile);
+                mode = style.render_mode;
+
+                if (vertex_data[mode] == null) {
+                    vertex_data[mode] = [];
+                }
 
                 var vertex_constants = [
                     style.color[0], style.color[1], style.color[2],
@@ -121,65 +137,59 @@ GLRenderer.addTile = function (tile, layers, styles)
                 if (polygons != null) {
                     // Extruded polygons (e.g. 3D buildings)
                     if (style.extrude && style.height) {
-                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, style.min_height, vertex_triangles, { vertex_constants: vertex_constants });
+                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, style.min_height, vertex_data[mode], { vertex_constants: vertex_constants });
                     }
                     // Regular polygons
                     else {
-                        GLBuilders.buildPolygons(polygons, z, vertex_triangles, { vertex_constants: vertex_constants });
+                        GLBuilders.buildPolygons(polygons, z, vertex_data[mode], { vertex_constants: vertex_constants });
+
+                        // var polygon_vertex_constants = [z, 0, 0, 1].concat(vertex_constants); // upwards-facing normal
+                        // GLBuilders.buildPolygons2(
+                        //     polygons,
+                        //     function (vertices) {
+                        //         GL.addVertices(vertices.positions, vertex_data[mode], polygon_vertex_constants);
+                        //     }
+                        // );
                     }
 
                     // Polygon outlines
                     if (style.outline.color && style.outline.width) {
                         for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, -0.5), style.outline.width, vertex_triangles, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
+                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, -0.5), style.outline.width, vertex_data[mode], { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants });
                         }
                     }
                 }
 
                 if (lines != null) {
-                    // GLBuilders.buildLines(lines, feature, layer, style, tile, z, vertex_lines);
-                    GLBuilders.buildPolylines(lines, z, style.width, vertex_triangles, { vertex_constants: vertex_constants, vertex_lines: vertex_lines });
+                    GLBuilders.buildPolylines(lines, z, style.width, vertex_data[mode], { vertex_constants: vertex_constants });
 
                     // Line outlines
                     if (style.outline.color && style.outline.width) {
-                        GLBuilders.buildPolylines(lines, GLRenderer.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_triangles, { vertex_constants: outline_vertex_constants, vertex_lines: vertex_lines });
+                        GLBuilders.buildPolylines(lines, GLRenderer.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_data[mode], { vertex_constants: outline_vertex_constants });
                     }
                 }
 
                 if (points != null) {
+                    // console.log(JSON.stringify(feature));
                     // NOTE: adding to z to experiment with "floating" POIs
-                    GLBuilders.buildPolyPoints(points, z + 25, style.size, vertex_points, { vertex_constants: vertex_constants });
+                    var point_vertex_constants = [z + 1, 0, 0, 1].concat(vertex_constants); // upwards-facing normal
+                    GLBuilders.buildQuads(
+                        points, style.size * 2, style.size * 2,
+                        function (vertices) {
+                            GL.addVertices(vertices.positions, vertex_data[mode], point_vertex_constants);
+                        }
+                    );
                 }
 
-                tile.feature_count++;
+                tile.debug.features++;
             }
         }
     }
 
-    tile.debug.features = tile.feature_count;
-    vertex_triangles = new Float32Array(vertex_triangles);
-    vertex_points = new Float32Array(vertex_points);
-    vertex_lines = new Float32Array(vertex_lines);
-
-    // NOTE: moved to generic event post from VectorRenderer (loses transferable objects for typed arrays, but gains flexibility)
-    // VectorWorker.worker.postMessage(
-    //     {
-    //         key: tile.key,
-    //         debug: tile.debug,
-    //         vertex_triangles: vertex_triangles,
-    //         vertex_lines: vertex_lines
-    //     },
-    //     [
-    //         vertex_triangles.buffer,
-    //         vertex_lines.buffer
-    //     ]
-    // );
-
-    tile.vertex_data = {
-        vertex_triangles: vertex_triangles,
-        vertex_points: vertex_points,
-        vertex_lines: vertex_lines
-    };
+    tile.vertex_data = {};
+    for (var s in vertex_data) {
+        tile.vertex_data[s] = new Float32Array(vertex_data[s]);
+    }
 
     return tile;
 };
@@ -187,25 +197,14 @@ GLRenderer.addTile = function (tile, layers, styles)
 // Called on main thread when a web worker completes processing for a single tile
 GLRenderer.prototype._tileWorkerCompleted = function (tile)
 {
-    var vertex_triangles = tile.vertex_data.vertex_triangles;
-    var vertex_points = tile.vertex_data.vertex_points;
-    var vertex_lines = tile.vertex_data.vertex_lines;
+    var vertex_data = tile.vertex_data;
 
     // Create GL geometry objects
     tile.gl_geometry = {};
 
-    if (vertex_triangles.length > 0) {
-        tile.gl_geometry.polygons = new GLTriangles(this.gl, this.gl_programs.polygons, vertex_triangles);
+    for (var s in vertex_data) {
+        tile.gl_geometry[s] = this.render_modes[s].makeGLGeometry(vertex_data[s]);
     }
-
-    if (vertex_points.length > 0) {
-        tile.gl_geometry.points = new GLPolyPoints(this.gl, this.gl_programs.points, vertex_points);
-    }
-
-    // Disabling lines for now, till we have better handling for mulitple programs
-    // if (vertex_lines.length > 0) {
-    //     tile.gl_geometry.push(new GLLines(this.gl, this.gl_programs.polygons, vertex_lines, { line_width: 1 /*5 / Geo.meters_per_pixel[Math.floor(this.zoom)]*/ }));
-    // }
 
     tile.debug.geometries = 0;
     tile.debug.buffer_size = 0;
@@ -321,10 +320,10 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
-    // Render tiles grouped by program
-    var count = 0;
-    for (var program_name in this.gl_programs) {
-        var gl_program = this.gl_programs[program_name];
+    // Render tiles grouped by renderg mode (GL program)
+    var render_count = 0;
+    for (var mode in this.render_modes) {
+        var gl_program = this.render_modes[mode].gl_program;
 
         gl.useProgram(gl_program.program);
 
@@ -350,21 +349,21 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 tile.visible == true &&
                 Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
 
-                if (tile.gl_geometry[program_name] != null) {
+                if (tile.gl_geometry[mode] != null) {
                     gl_program.uniform('2f', 'tile_min', tile.min.x, tile.min.y);
                     gl_program.uniform('2f', 'tile_max', tile.max.x, tile.max.y);
 
-                    tile.gl_geometry[program_name].render();
-                    count += tile.gl_geometry[program_name].geometry_count;
+                    tile.gl_geometry[mode].render();
+                    render_count += tile.gl_geometry[mode].geometry_count;
                 }
             }
         }
     }
 
-    if (count != this.last_render_count) {
-        console.log("rendered " + count + " primitives");
+    if (render_count != this.last_render_count) {
+        console.log("rendered " + render_count + " primitives");
     }
-    this.last_render_count = count;
+    this.last_render_count = render_count;
 
     if (this.continuous_animation == true) {
         this.dirty = true;
@@ -414,9 +413,9 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         }
         else if (event.keyCode == 83) { // s
             console.log("reloading shaders");
-            gl_renderer.gl_program.program = GL.updateProgramFromURLs(gl_renderer.gl, gl_renderer.gl_program.program, 'vertex.glsl', 'fragment.glsl');
-            gl_renderer.gl.useProgram(gl_renderer.gl_program.program);
-            gl_renderer.gl_program.refreshUniforms();
+            for (var mode in this.render_modes) {
+                this.render_modes[mode].gl_program.compile();
+            }
             gl_renderer.dirty = true;
         }
     });

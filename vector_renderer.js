@@ -359,7 +359,11 @@ VectorRenderer.style_defaults = {
         // color: [1.0, 0, 0],
         // width: 1,
         // dash: null
-    }
+    },
+    // render_mode: {
+    //     name: 'polygons'
+    // }
+    render_mode: 'polygons'
 };
 
 VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
@@ -417,6 +421,10 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     if (typeof style.outline.dash == 'function') {
         style.outline.dash = style.outline.dash(feature, tile);
     }
+
+    style.render_mode = layer_style.render_mode || VectorRenderer.style_defaults.render_mode;
+    // style.render_mode = {};
+    // style.render_mode.name = (layer_style.render_mode && layer_style.render_mode.name) || VectorRenderer.style_defaults.render_mode.name;
 
     return style;
 };

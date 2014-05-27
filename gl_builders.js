@@ -354,6 +354,45 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
     return vertex_data;
 };
 
+// Build a quad centered on a point
+GLBuilders.buildQuads = function GLBuildersBuildQuads (points, width, height, addGeometry, options)
+{
+    var options = options || {};
+
+    var num_points = points.length;
+    for (var p=0; p < num_points; p++) {
+        var point = points[p];
+
+        var positions = [
+            [point[0] - width/2, point[1] - height/2],
+            [point[0] + width/2, point[1] - height/2],
+            [point[0] + width/2, point[1] + height/2],
+
+            [point[0] - width/2, point[1] - height/2],
+            [point[0] + width/2, point[1] + height/2],
+            [point[0] - width/2, point[1] + height/2],
+        ];
+
+        if (options.texcoords == true) {
+            var texcoords = [
+                [-1, -1]
+                [1, -1],
+                [1, 1],
+
+                [-1, -1],
+                [1, 1],
+                [-1, 1]
+            ];
+        }
+
+        var vertices = {
+            positions: positions,
+            texcoords: (options.texcoords && texcoords)
+        };
+        addGeometry(vertices);
+    }
+};
+
 // Build native GL lines for a polyline
 GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, style, tile, z, vertex_data, options)
 {
@@ -383,36 +422,6 @@ GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, st
             );
         }
     };
-
-    return vertex_data;
-};
-
-GLBuilders.buildPolyPoints = function GLBuildersBuildPoints (points, z, radius, vertex_data, options)
-{
-    options = options || {};
-
-    var vertex_constants = []; // [0, 0, 1]; // upwards-facing normal
-    if (options.vertex_constants) {
-        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
-    }
-
-    var num_points = points.length;
-    for (var p=0; p < num_points; p++) {
-        var point = points[p];
-
-        // Position, texture coords
-        var vertices = [
-            [point[0] - radius, point[1] - radius, z, -1, -1],
-            [point[0] + radius, point[1] - radius, z, 1, -1],
-            [point[0] + radius, point[1] + radius, z, 1, 1],
-
-            [point[0] - radius, point[1] - radius, z, -1, -1],
-            [point[0] + radius, point[1] + radius, z, 1, 1],
-            [point[0] - radius, point[1] + radius, z, -1, 1]
-        ];
-
-        GL.addVertices(vertices, vertex_data, vertex_constants);
-    }
 
     return vertex_data;
 };
