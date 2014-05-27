@@ -209,9 +209,10 @@ var gl_controls = {
         lighting: 'LIGHTING_POINT',
         options: { 'None': '', 'Point': 'LIGHTING_POINT', 'Directional': 'LIGHTING_DIRECTION' }
     },
-    animation: {
-        animation: '',
-        options: { 'None': '', 'Elevator': 'ANIMATION_ELEVATOR', 'Wave': 'ANIMATION_WAVE', 'Noise texture': 'EFFECT_NOISE_TEXTURE' }
+    effect: {
+        effect: '',
+        options: { 'None': '', 'Elevator': 'ANIMATION_ELEVATOR', 'Wave': 'ANIMATION_WAVE', 'Noise texture': 'EFFECT_NOISE_TEXTURE' },
+        animated: ['ANIMATION_ELEVATOR', 'ANIMATION_WAVE']
     }
 };
 window.gl_controls = gl_controls;
@@ -231,14 +232,14 @@ gl_controls.lighting.control.onChange(function(value) {
     setGLProgramDefines('lighting');
 });
 
-gl_controls.animation.control = gui.add(gl_controls.animation, 'animation', gl_controls.animation.options);
-gl_controls.animation.control.onChange(function(value) {
-    setGLProgramDefines('animation');
-    if (gl_controls.animation.animation != '') {
+gl_controls.effect.control = gui.add(gl_controls.effect, 'effect', gl_controls.effect.options);
+gl_controls.effect.control.onChange(function(value) {
+    setGLProgramDefines('effect');
+    if (gl_controls.effect.animated.indexOf(gl_controls.effect.effect) > -1) {
         layer._renderer.continuous_animation = true;
     }
     else {
-        layer._renderer.continuous_animation = false
+        layer._renderer.continuous_animation = false;
     }
 });
 
