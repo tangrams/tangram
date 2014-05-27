@@ -84,6 +84,11 @@ GLRenderer.addTile = function (tile, layers, styles)
     for (var ln=0; ln < layers.length; ln++) {
         layer = layers[ln];
 
+        // Skip layers with no styles defined
+        if (styles[layer.name] == null) {
+            continue;
+        }
+
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
 
