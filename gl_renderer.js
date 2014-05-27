@@ -41,13 +41,13 @@ GLRenderer.prototype._init = function GLRendererInit ()
             makeGLGeometry: function (vertex_data) {
                 return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
             }
-        }//,
-        // 'points': {
-        //     gl_program: new GL.Program.createProgramFromURLs(this.gl, 'shaders/point_vertex.glsl', 'shaders/point_fragment.glsl'),
-        //     makeGLGeometry: function (vertex_data) {
-        //         return new GLPolyPoints(renderer.gl, this.gl_program, vertex_data);
-        //     }
-        // }
+        },
+        'points': {
+            gl_program: new GL.Program.createProgramFromURLs(this.gl, 'shaders/point_vertex.glsl', 'shaders/point_fragment.glsl', { defines: { 'EFFECT_SCREEN_COLOR': true } }),
+            makeGLGeometry: function (vertex_data) {
+                return new GLPolyPoints(renderer.gl, this.gl_program, vertex_data);
+            }
+        }
     };
 
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
@@ -102,6 +102,13 @@ GLRenderer.addTile = function (tile, layers, styles)
                 if (vertex_data[mode] == null) {
                     vertex_data[mode] = [];
                 }
+
+                // DEBUGGING line/tile intersections returned as points
+                // #mapzen,40.74733011589617,-73.97535145282747,17
+                // if (feature.id == 157964813 && feature.geometry.type == 'Point') {
+                //     style.color = [1, 1, 0];
+                //     style.size = Style.width.pixels(10, tile);
+                // }
 
                 var vertex_constants = [
                     style.color[0], style.color[1], style.color[2],
@@ -181,8 +188,21 @@ GLRenderer.addTile = function (tile, layers, styles)
                     GLBuilders.buildQuads(
                         points, style.size * 2, style.size * 2,
                         function (vertices) {
-                            GL.addVertices(vertices.positions, vertex_data[mode], point_vertex_constants);
-                        }
+                            var vs = vertices.positions;
+
+                            // Alternate vertex layout for 'points' shader
+                            if (mode == 'points') {
+                                point_vertex_constants = vertex_constants;
+
+                                for (var v in vertices.positions) {
+                                    vs[v] = vertices.positions[v].concat(z+ 1, vertices.texcoords[v]);
+                                }
+                            }
+
+                            // GL.addVertices(vertices.positions, vertex_data[mode], point_vertex_constants);
+                            GL.addVertices(vs, vertex_data[mode], point_vertex_constants);
+                        },
+                        { texcoords: (mode == 'points') }
                     );
                 }
 

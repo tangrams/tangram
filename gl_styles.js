@@ -91,7 +91,7 @@
         }
     },
     pois: {
-        // render_mode: 'points',
+        render_mode: 'points',
         color: {
             default: [1.0, 1.0, 0]
         },
