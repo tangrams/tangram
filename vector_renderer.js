@@ -347,11 +347,29 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     return tile_layers;
 };
 
+
+/*** Style helpers ***/
+var Style = {};
+
+Style.color = {
+    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
+    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
+    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+};
+
+Style.width = {
+    pixels: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * VectorRenderer.units_per_pixel[t.coords.z]; }; }, // local tile units for a given pixel width
+    meters: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * VectorRenderer.units_per_meter[t.coords.z]; }; }  // local tile units for a given meter width
+};
+
+
+/*** Style parsing & defaults ***/
+
 // Determine final style properties (color, width, etc.)
 VectorRenderer.style_defaults = {
     color: [1.0, 0, 0],
-    width: 1,
-    size: 1,
+    width: Style.width.pixels(5),
+    size: Style.width.pixels(5),
     extrude: false,
     height: 20,
     min_height: 0,
@@ -427,19 +445,4 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     // style.render_mode.name = (layer_style.render_mode && layer_style.render_mode.name) || VectorRenderer.style_defaults.render_mode.name;
 
     return style;
-};
-
-
-/*** Style helpers ***/
-var Style = {};
-
-Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
-};
-
-Style.width = {
-    pixels: function (p, t) { return p * VectorRenderer.units_per_pixel[t.coords.z]; }, // local tile units for a given pixel width
-    meters: function (p, t) { return p * VectorRenderer.units_per_meter[t.coords.z]; }  // local tile units for a given meter width
 };

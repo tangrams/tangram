@@ -20,7 +20,7 @@
         //         default: [1, 1, 1]
         //     },
         //     width: {
-        //         default: function (f, t) { return Style.width.meters(1, t); }
+        //         default: Style.width.meters(1)
         //     }
         // }
     },
@@ -56,7 +56,7 @@
             'debug': [1, 0, 0]
         },
         width: {
-            // default: function (f, t) { return Style.width.pixels(5, t); }
+            // default: Style.width.pixels(5),
             default: function (f, t) { return 2 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'highway': function (f, t) { return 3 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
             'major_road': function (f, t) { return 2.5 * Math.log(t.coords.z) * VectorRenderer.units_per_meter[t.coords.z]; },
@@ -96,8 +96,8 @@
             default: [1.0, 1.0, 0]
         },
         size: {
-            default: function (f, t) { return Style.width.pixels(5, t); }
-            // default: function (f, t) { return Style.width.pixels(2 * Math.pow(t.coords.z, 0.4), t); }
+            default: Style.width.pixels(5),
+            // default: Style.width.pixels(function(f, t) { return 2 * Math.pow(t.coords.z, 0.4); })
         }
     }
 }
