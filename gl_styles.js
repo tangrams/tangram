@@ -1,5 +1,6 @@
 {
     water_ocean: {
+        render_mode: 'polygons_noise',
         color: {
             default: [0.5, 0.5, 0.875]
         }
@@ -24,6 +25,7 @@
         // }
     },
     water_areas: {
+        render_mode: 'polygons_noise',
         color: {
             default: [0.5, 0.5, 0.875]
         },
@@ -80,10 +82,22 @@
         color: {
             // default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } //Style.color.pseudoRandomColor
             // default: Style.color.pseudoRandomColor
+            // default: Style.color.pseudoRandomGrayscale
             default: function (f) { return (f.properties.name || f.properties.kind) ? [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2] : [0.6, 0.6, 0.6]; }
+            // default: function (f) { return [0.6, 0.6, 0.6]; }
         },
         extrude: {
             default: function (f, t) { return ((t.coords.z >= 15 && f.properties.height > 20) || t.coords.z >= 16) }
+        }
+    },
+    pois: {
+        // render_mode: 'points',
+        color: {
+            default: [1.0, 1.0, 0]
+        },
+        size: {
+            default: function (f, t) { return Style.width.pixels(5, t); }
+            // default: function (f, t) { return Style.width.pixels(2 * Math.pow(t.coords.z, 0.4), t); }
         }
     }
 }

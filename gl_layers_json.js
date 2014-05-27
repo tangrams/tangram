@@ -66,5 +66,18 @@
     {
         name: 'buildings',
         data: 'buildings'
+    },
+    {
+        name: 'pois',
+        // data: 'pois'
+        data: function (json) {
+            // Only features WITH names
+            return {
+                type: 'FeatureCollection',
+                features: json['pois'].features.filter(function (feature) {
+                    return (feature.properties.name != null && feature.properties.name != '');
+                })
+            };
+        }
     }
 ]
