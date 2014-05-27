@@ -5,7 +5,7 @@
         VectorRenderer.library_base_url = '';
         var scripts = document.querySelectorAll('script[src*=".js"]');
         for (var s=0; s < scripts.length; s++) {
-            var base_match = scripts[s].src.match(/(.*)vector-map.*.js/); // should match debug or minified versions
+            var base_match = scripts[s].src.match(/(.*)vector-map.(debug|min).js/); // should match debug or minified versions
             if (base_match != null && base_match.length > 1) {
                 VectorRenderer.library_base_url = base_match[1];
                 break;
