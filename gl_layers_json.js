@@ -2,32 +2,32 @@
     {
         name: 'water_ocean',
         data: function (json) {
-            if (!json['water-areas'] || !json['water-areas'].features) {
+            if (!json['water'] || !json['water'].features) {
                 return null;
             }
 
             return {
                 type: 'FeatureCollection',
-                features: json['water-areas'].features.filter(function (feature) {
+                features: json['water'].features.filter(function (feature) {
                     return feature.properties.kind == 'ocean';
                 })
             };
         }
     },
     {
-        name: 'land_areas',
-        data: 'land-areas'
+        name: 'earth',
+        data: 'earth'
     },
     {
-        name: 'land_usages',
+        name: 'landuse',
         data: function (json) {
-            if (!json['land-usages'] || !json['land-usages'].features) {
+            if (!json['landuse'] || !json['landuse'].features) {
                 return null;
             }
 
             return {
                 type: 'FeatureCollection',
-                features: json['land-usages'].features.sort(function(a, b) {
+                features: json['landuse'].features.sort(function(a, b) {
                     return (b.properties.area - a.properties.area);
                 })
             };
@@ -36,13 +36,13 @@
     {
         name: 'water_areas',
         data: function (json) {
-            if (!json['water-areas'] || !json['water-areas'].features) {
+            if (!json['water'] || !json['water'].features) {
                 return null;
             }
 
             return {
                 type: 'FeatureCollection',
-                features: json['water-areas'].features.filter(function (feature) {
+                features: json['water'].features.filter(function (feature) {
                     return feature.properties.kind != 'ocean';
                 })
             };
@@ -51,13 +51,13 @@
     {
         name: 'roads',
         data: function (json) {
-            if (!json['highroad'] || !json['highroad'].features) {
+            if (!json['roads'] || !json['roads'].features) {
                 return null;
             }
 
             return {
                 type: 'FeatureCollection',
-                features: json['highroad'].features.sort(function(a, b) {
+                features: json['roads'].features.sort(function(a, b) {
                   return (a.properties.sort_key - b.properties.sort_key);
                 })
             };

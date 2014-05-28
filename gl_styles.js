@@ -5,12 +5,12 @@
             default: [0.5, 0.5, 0.875]
         }
     },
-    land_areas: {
+    earth: {
         color: {
             default: [0.175, 0.175, 0.175]
         }
     },
-    land_usages: {
+    landuse: {
         color: {
             default: [0.5, 0.875, 0.5],
             'pitch': [0.3, 0.675, 0.3]
