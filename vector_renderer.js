@@ -174,7 +174,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         // var original_tile = [coords.x, coords.y, coords.z].join('/');
         coords.x = ~~(coords.x / Math.pow(2, zgap));
         coords.y = ~~(coords.y / Math.pow(2, zgap));
-        coords.display_z = z; // z without overzoom
+        coords.display_z = coords.z; // z without overzoom
         coords.z -= zgap;
         // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
     }
