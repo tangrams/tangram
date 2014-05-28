@@ -259,10 +259,13 @@ GLRenderer.fragment_shader_source =
 "    // color += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);\n" +
 "    // color.r += sin(time);\n" +
 "\n" +
-"    #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"        // Mutate color by 3d noise\n" +
-"        color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;\n" +
-"        // color *= (abs(pnoise(fposition / 10.0, vec3(500.0))) / 4.0) + 0.75;\n" +
+"    // Mutate color by 3d noise\n" +
+"    #if defined (EFFECT_NOISE_TEXTURE)\n" +
+"        #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
+"            color *= (abs(cnoise((fposition + vec3(time * 5., time * 7.5, time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
+"        // #else\n" +
+"        //     color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;\n" +
+"        #endif\n" +
 "    #endif\n" +
 "\n" +
 "    gl_FragColor = vec4(color, 1.0);\n" +

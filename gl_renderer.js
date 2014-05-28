@@ -37,7 +37,7 @@ GLRenderer.prototype._init = function GLRendererInit ()
             }
         },
         'polygons_noise': {
-            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source, { defines: { 'EFFECT_NOISE_TEXTURE': true } }),
+            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source, { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
             makeGLGeometry: function (vertex_data) {
                 return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
             }

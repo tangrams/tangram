@@ -257,10 +257,13 @@ void main (void) {
     // color += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);
     // color.r += sin(time);
 
-    #if defined(EFFECT_NOISE_TEXTURE)
-        // Mutate color by 3d noise
-        color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;
-        // color *= (abs(pnoise(fposition / 10.0, vec3(500.0))) / 4.0) + 0.75;
+    // Mutate color by 3d noise
+    #if defined (EFFECT_NOISE_TEXTURE)
+        #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)
+            color *= (abs(cnoise((fposition + vec3(time * 5., time * 7.5, time * 10.)) / 10.0)) / 4.0) + 0.75;
+        // #else
+        //     color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;
+        #endif
     #endif
 
     gl_FragColor = vec4(color, 1.0);
