@@ -4,8 +4,8 @@ vector-map-dependencies=lib/libtess.cat.js geo.js gl.js tile_source.js vector_re
 vector-map-worker-dependencies=lib/libtess.cat.js lib/mapbox-vector-tile.js geo.js gl.js tile_source.js vector_renderer.js canvas_renderer.js gl_renderer.js gl_builders.js vector_worker.js
 
 # cd'ing into dist and then pathing back to source files to fix a source map relative URL issue (can probably fix with the right uglify options)
-build-vector-map=cd dist; ../node_modules/.bin/uglifyjs ../lib/libtess.cat.js ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../leaflet_vector_tile_layer.js ../vertex.glsl.js ../fragment.glsl.js -c
-build-vector-map-worker=cd dist; ../node_modules/.bin/uglifyjs ../lib/libtess.cat.js ../lib/mapbox-vector-tile.js ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../vector_worker.js -c
+build-vector-map=cd dist; ../node_modules/.bin/uglifyjs ../lib/libtess.cat.js ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../leaflet_vector_tile_layer.js ../vertex.glsl.js ../fragment.glsl.js -c -m
+build-vector-map-worker=cd dist; ../node_modules/.bin/uglifyjs ../lib/libtess.cat.js ../lib/mapbox-vector-tile.js ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../vector_worker.js -c -m
 
 dist/vector-map.min.js: $(vector-map-dependencies)
 	$(build-vector-map) > vector-map.min.js
