@@ -295,60 +295,65 @@ GL.Program.prototype.attribute = function (name)
 
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
-GL.tesselator = (function initTesselator() {
-    // Called for each vertex of tesselator output
-    function vertexCallback(data, polyVertArray) {
-        polyVertArray.push([data[0], data[1]]);
-    }
-
-    // Called when segments intersect and must be split
-    function combineCallback(coords, data, weight) {
-        return coords;
-    }
-
-    // Called when a vertex starts or stops a boundary edge of a polygon
-    function edgeCallback(flag) {
-        // No-op callback to force simple triangle primitives (no triangle strips or fans).
-        // See: http://www.glprogramming.com/red/chapter11.html
-        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
-        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
-        // called only with GL_TRIANGLES."
-        // console.log('GL.tesselator: edge flag: ' + flag);
-    }
-
-    var tesselator = new libtess.GluTesselator();
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
-
-    // Brendan Kenny:
-    // libtess will take 3d verts and flatten to a plane for tesselation
-    // since only doing 2d tesselation here, provide z=1 normal to skip
-    // iterating over verts only to get the same answer.
-    // comment out to test normal-generation code
-    tesselator.gluTessNormal(0, 0, 1);
-
-    return tesselator;
-})();
-
-GL.triangulatePolygon = function GLTriangulate (contours)
-{
-    var triangleVerts = [];
-    GL.tesselator.gluTessBeginPolygon(triangleVerts);
-
-    for (var i = 0; i < contours.length; i++) {
-        GL.tesselator.gluTessBeginContour();
-        var contour = contours[i];
-        for (var j = 0; j < contour.length; j ++) {
-            var coords = [contour[j][0], contour[j][1], 0];
-            GL.tesselator.gluTessVertex(coords, coords);
+try {
+    GL.tesselator = (function initTesselator() {
+        // Called for each vertex of tesselator output
+        function vertexCallback(data, polyVertArray) {
+            polyVertArray.push([data[0], data[1]]);
         }
-        GL.tesselator.gluTessEndContour();
-    }
 
-    GL.tesselator.gluTessEndPolygon();
-    return triangleVerts;
-};
+        // Called when segments intersect and must be split
+        function combineCallback(coords, data, weight) {
+            return coords;
+        }
+
+        // Called when a vertex starts or stops a boundary edge of a polygon
+        function edgeCallback(flag) {
+            // No-op callback to force simple triangle primitives (no triangle strips or fans).
+            // See: http://www.glprogramming.com/red/chapter11.html
+            // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
+            // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
+            // called only with GL_TRIANGLES."
+            // console.log('GL.tesselator: edge flag: ' + flag);
+        }
+
+        var tesselator = new libtess.GluTesselator();
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
+        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+
+        // Brendan Kenny:
+        // libtess will take 3d verts and flatten to a plane for tesselation
+        // since only doing 2d tesselation here, provide z=1 normal to skip
+        // iterating over verts only to get the same answer.
+        // comment out to test normal-generation code
+        tesselator.gluTessNormal(0, 0, 1);
+
+        return tesselator;
+    })();
+
+    GL.triangulatePolygon = function GLTriangulate (contours)
+    {
+        var triangleVerts = [];
+        GL.tesselator.gluTessBeginPolygon(triangleVerts);
+
+        for (var i = 0; i < contours.length; i++) {
+            GL.tesselator.gluTessBeginContour();
+            var contour = contours[i];
+            for (var j = 0; j < contour.length; j ++) {
+                var coords = [contour[j][0], contour[j][1], 0];
+                GL.tesselator.gluTessVertex(coords, coords);
+            }
+            GL.tesselator.gluTessEndContour();
+        }
+
+        GL.tesselator.gluTessEndPolygon();
+        return triangleVerts;
+    };
+}
+catch (e) {
+    // skip if libtess not defined
+}
 
 // Add one or more vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
 // Used for adding values that are often constant per geometry or polygon, like colors, normals (for polys sitting flat on map), layer and material info, etc.
