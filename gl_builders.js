@@ -12,7 +12,7 @@ GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
-        var vertices = GL.triangulate(polygons[p]);
+        var vertices = GL.triangulatePolygon(polygons[p]);
         GL.addVertices(vertices, vertex_data, vertex_constants);
     }
 

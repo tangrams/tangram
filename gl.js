@@ -295,57 +295,44 @@ GL.Program.prototype.attribute = function (name)
 
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
-// if (this.libtess !== undefined) {
-    GL.tesselator = (function initTesselator() {
-        // function called for each vertex of tesselator output
-        function vertexCallback(data, polyVertArray) {
-            // polyVertArray[polyVertArray.length] = data[0];
-            // polyVertArray[polyVertArray.length] = data[1];
-            polyVertArray[polyVertArray.length] = [data[0], data[1]];
-        }
+GL.tesselator = (function initTesselator() {
+    // Called for each vertex of tesselator output
+    function vertexCallback(data, polyVertArray) {
+        polyVertArray.push([data[0], data[1]]);
+    }
 
-        function begincallback(type) {
-            if (type !== libtess.primitiveType.GL_TRIANGLES) {
-                console.log('GL.tesselator: expected TRIANGLES but got type: ' + type);
-            }
-        }
+    // Called when segments intersect and must be split
+    function combineCallback(coords, data, weight) {
+        return coords;
+    }
 
-        function errorcallback(errno) {
-            console.log('GL.tesselator: error callback');
-            console.log('GL.tesselator: error number: ' + errno);
-        }
+    // Called when a vertex starts or stops a boundary edge of a polygon
+    function edgeCallback(flag) {
+        // No-op callback to force simple triangle primitives (no triangle strips or fans).
+        // See: http://www.glprogramming.com/red/chapter11.html
+        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
+        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
+        // called only with GL_TRIANGLES."
+        // console.log('GL.tesselator: edge flag: ' + flag);
+    }
 
-        // callback for when segments intersect and must be split
-        function combinecallback(coords, data, weight) {
-            // console.log('GL.tesselator: combine callback');
-            return [coords[0], coords[1], coords[2]];
-        }
+    var tesselator = new libtess.GluTesselator();
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
 
-        function edgeCallback(flag) {
-            // don't really care about the flag, but need no-strip/no-fan behavior
-            // console.log('GL.tesselator: edge flag: ' + flag);
-        }
-
-        var tesselator = new libtess.GluTesselator();
-        // tesselator.gluTessProperty(libtess.gluEnum.GLU_TESS_WINDING_RULE, libtess.windingRule.GLU_TESS_WINDING_POSITIVE);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_BEGIN, begincallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_ERROR, errorcallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combinecallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
-
-        return tesselator;
-    })();
-// }
-
-GL.triangulate = function GLTriangulate (contours)
-{
+    // Brendan Kenny:
     // libtess will take 3d verts and flatten to a plane for tesselation
     // since only doing 2d tesselation here, provide z=1 normal to skip
     // iterating over verts only to get the same answer.
     // comment out to test normal-generation code
-    GL.tesselator.gluTessNormal(0, 0, 1);
+    tesselator.gluTessNormal(0, 0, 1);
 
+    return tesselator;
+})();
+
+GL.triangulatePolygon = function GLTriangulate (contours)
+{
     var triangleVerts = [];
     GL.tesselator.gluTessBeginPolygon(triangleVerts);
 
