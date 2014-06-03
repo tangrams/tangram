@@ -4,7 +4,7 @@
        data: function (json) { return json['water']; }
     },
     {
-        name: 'land_usages',
+        name: 'landuse',
         data: function (json) {
           return {
               type: 'FeatureCollection',
@@ -45,5 +45,17 @@
     {
         name: 'buildings',
         data: function (json) { return json['building']; }
+    },
+    {
+        name: 'pois',
+        data: function (json) {
+          return {
+              type: 'FeatureCollection',
+              features: ((json['poi_labels']||{}).features||[]).filter(function (feature) {
+                  feature.properties.kind = feature.properties.type;
+                  return feature;
+              })
+          };
+        }
     }
 ]
