@@ -419,6 +419,14 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     var layer_style = layer_style || {};
     var style = {};
 
+    // Test whether features should be rendered at all
+    if (typeof layer_style.filter == 'function') {
+        if (layer_style.filter(feature, tile) == false) {
+            return null;
+        }
+    }
+
+    // Parse styles
     style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || VectorRenderer.style_defaults.color;
     if (typeof style.color == 'function') {
         style.color = style.color(feature, tile);

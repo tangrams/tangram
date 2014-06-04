@@ -96,10 +96,16 @@ GLRenderer.addTile = function (tile, layers, styles)
             // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
-                style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
                 z = GLRenderer.calculateZ(layer, tile);
-                mode = style.render_mode;
+                style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
 
+                // Skip feature?
+                if (style == null) {
+                    continue;
+                }
+
+                // First feature in this render mode?
+                mode = style.render_mode;
                 if (vertex_data[mode] == null) {
                     vertex_data[mode] = [];
                 }
