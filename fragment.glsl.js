@@ -263,8 +263,9 @@ GLRenderer.fragment_shader_source =
 "    #if defined (EFFECT_NOISE_TEXTURE)\n" +
 "        #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
 "            color *= (abs(cnoise((fposition + vec3(time * 5., time * 7.5, time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
-"        // #else\n" +
-"        //     color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;\n" +
+"        #endif\n" +
+"        #ifndef EFFECT_NOISE_ANIMATABLE\n" +
+"            color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;\n" +
 "        #endif\n" +
 "    #endif\n" +
 "\n" +

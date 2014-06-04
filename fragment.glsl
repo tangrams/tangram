@@ -261,8 +261,9 @@ void main (void) {
     #if defined (EFFECT_NOISE_TEXTURE)
         #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)
             color *= (abs(cnoise((fposition + vec3(time * 5., time * 7.5, time * 10.)) / 10.0)) / 4.0) + 0.75;
-        // #else
-        //     color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;
+        #endif
+        #ifndef EFFECT_NOISE_ANIMATABLE
+            color *= (abs(cnoise(fposition / 10.0)) / 4.0) + 0.75;
         #endif
     #endif
 
