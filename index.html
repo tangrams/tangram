@@ -137,7 +137,7 @@ var osm_debug = false;
 var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
 // Get tile source from URL
-if ((url_hash.length == 1 || url_hash.length == 4) && url_hash[0] != '' && tile_sources[url_hash[0]] != null) {
+if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
     tile_source = url_hash[0];
 }
 
@@ -146,7 +146,7 @@ var map_start_location = locations['New York'];
 if (url_hash.length == 3) {
     map_start_location = url_hash.slice(0, 3);
 }
-if (url_hash.length == 4) {
+if (url_hash.length > 3) {
     map_start_location = url_hash.slice(1, 4);
 }
 else if (url_hash.length == 2) {
@@ -217,44 +217,43 @@ var gl_controls = {
 };
 window.gl_controls = gl_controls;
 
+// UI settings on URL hash
+if (url_hash.length > 4) {
+    var url_ui = url_hash.slice(4);
+
+    for (var g in gl_controls) {
+        for (var p in gl_controls[g].options) {
+            if (url_ui.indexOf(gl_controls[g].options[p]) > -1) {
+                gl_controls[g][g] = gl_controls[g].options[p];
+            }
+        }
+    }
+}
+
 var gui = new dat.GUI({ autoPlace: true });
 gui.domElement.parentNode.style.zIndex = 5;
 // document.body.insertBefore(gui.domElement, document.body.firstChild);
 window.gui = gui;
 
-gl_controls.projection.control = gui.add(gl_controls.projection, 'projection', gl_controls.projection.options);
-gl_controls.projection.control.onChange(function(value) {
-    setGLProgramDefines('projection');
-});
-
-gl_controls.lighting.control = gui.add(gl_controls.lighting, 'lighting', gl_controls.lighting.options);
-gl_controls.lighting.control.onChange(function(value) {
-    setGLProgramDefines('lighting');
-});
-
-gl_controls.effect.control = gui.add(gl_controls.effect, 'effect', gl_controls.effect.options);
-gl_controls.effect.control.onChange(function(value) {
-    setGLProgramDefines('effect');
-    if (gl_controls.effect.animated.indexOf(gl_controls.effect.effect) > -1) {
-        layer._renderer.continuous_animation = true;
-    }
-    else {
-        layer._renderer.continuous_animation = false;
-    }
-});
-
-function setGLProgramDefines (set) {
-    var keys;
-    if (set) {
-        keys = [set];
-    }
-    else {
-        keys = Object.keys(gl_controls);
-    }
-
-    keys.forEach(function(key) {
-        setGLProgramDefinesForOptionSet(gl_controls[key][key], gl_controls[key].options);
+Object.keys(gl_controls).forEach(function(key) {
+    gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
+    gl_controls[key].control.onChange(function(value) {
+        setGLProgramDefines();
     });
+});
+
+function setGLProgramDefines () {
+    var animated = false;
+
+    Object.keys(gl_controls).forEach(function(key) {
+        setGLProgramDefinesForOptionSet(gl_controls[key][key], gl_controls[key].options);
+
+        // Animated?
+        if (gl_controls[key].animated && gl_controls[key].animated.indexOf(gl_controls[key][key]) > -1) {
+            animated = true;
+        }
+    });
+    layer._renderer.continuous_animation = animated;
 
     for (var m in layer._renderer.render_modes) {
         var gl_program = layer._renderer.render_modes[m].gl_program;
