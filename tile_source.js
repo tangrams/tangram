@@ -105,8 +105,8 @@ NetworkTileSource.prototype.loadTile = function (tile, renderer, callback)
         }
     };
     // TODO: add XHR error handling
-    req.responseType = this.response_type;
     req.open('GET', url, true); // async flag
+    req.responseType = this.response_type;
     req.send();
 };
 
