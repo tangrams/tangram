@@ -2,6 +2,8 @@ VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
+GLRenderer.shader_sources = {};
+
 function GLRenderer (tile_source, layers, styles, options)
 {
     var options = options || {};
@@ -31,13 +33,13 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
     this.render_modes = {
         'polygons': {
-            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source),
+            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment']),
             makeGLGeometry: function (vertex_data) {
                 return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
             }
         },
         'polygons_noise': {
-            gl_program: new GL.Program(this.gl, GLRenderer.vertex_shader_source, GLRenderer.fragment_shader_source, { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
+            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment'], { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
             makeGLGeometry: function (vertex_data) {
                 return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
             }

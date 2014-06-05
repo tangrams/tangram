@@ -3,5 +3,9 @@
 
 node_modules
 
+# temp build files
+.shaders
+dist/*.glsl.js
+
 # storing some screenshots here
 screenshots
