@@ -54,24 +54,26 @@
             };
         }
     },
-    // {
-    //     name: 'road_labels',
-    //     data: function (json) {
-    //         if (!json['skeletron'] || !json['skeletron'].features) {
-    //             return null;
-    //         }
+    {
+        name: 'road_labels',
+        data: function (json) {
+            // if (!json['skeletron'] || !json['skeletron'].features) {
+            if (!json['roads'] || !json['roads'].features) {
+                return null;
+            }
 
-    //         // Order roads using provided 'sort_key'
-    //         return {
-    //             type: 'FeatureCollection',
-    //             features: json['skeletron'].features.sort(function(a, b) {
-    //                 return (a.properties.sort_key > b.properties.sort_key);
-    //             })
-    //         };
-    //     },
-    //     visible: false,
-    //     selection: true
-    // },
+            // Order roads using provided 'sort_key'
+            return {
+                type: 'FeatureCollection',
+                // features: json['skeletron'].features.sort(function(a, b) {
+                features: json['roads'].features.sort(function(a, b) {
+                    return (a.properties.sort_key > b.properties.sort_key);
+                })
+            };
+        },
+        visible: false,
+        selection: true
+    },
     {
         name: 'buildings_unlabeled',
         data: function (json) {
