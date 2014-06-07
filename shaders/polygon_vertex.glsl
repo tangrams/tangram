@@ -85,11 +85,20 @@ void main() {
     fcolor = color;
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
 
-    #if defined(LIGHTING_POINT)
+    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
         // Gouraud shading
         light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
-        light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
-        fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+
+        #if defined(LIGHTING_NIGHT)
+            // "Night" effect by flipping vertex z
+            light = normalize(vec3(vposition.x, vposition.y, vposition.z) - light); // light angle from light point to vertex
+            fcolor *= dot(vnormal, light * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+        #else
+            // Point light-based gradient
+            light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
+            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+        #endif
+
     #elif defined(LIGHTING_DIRECTION)
         // Flat shading
         light = normalize(vec3(0.2, 0.7, -0.5));

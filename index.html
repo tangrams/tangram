@@ -203,16 +203,38 @@ window.tiles = layer._renderer.tiles;
 var gl_controls = {
     projection: {
         projection: 'PROJECTION_PERSPECTIVE',
-        options: { 'None': '', 'Perspective': 'PROJECTION_PERSPECTIVE', 'Isometric': 'PROJECTION_ISOMETRIC', 'Pop-Up': 'PROJECTION_POPUP' }
+        options: {
+            'None': '',
+            'Perspective': 'PROJECTION_PERSPECTIVE',
+            'Isometric': 'PROJECTION_ISOMETRIC',
+            'Pop-Up': 'PROJECTION_POPUP'
+        }
     },
     lighting: {
         lighting: 'LIGHTING_POINT',
-        options: { 'None': '', 'Point': 'LIGHTING_POINT', 'Directional': 'LIGHTING_DIRECTION' }
+        options: {
+            'None': '',
+            'Gradient': 'LIGHTING_POINT',
+            'Flat': 'LIGHTING_DIRECTION',
+            'Night': 'LIGHTING_NIGHT'
+        }
     },
     effect: {
         effect: '',
-        options: { 'None': '', 'Elevator': 'ANIMATION_ELEVATOR', 'Wave': 'ANIMATION_WAVE', 'Water animation': 'EFFECT_NOISE_ANIMATED' },
-        animated: ['ANIMATION_ELEVATOR', 'ANIMATION_WAVE', 'EFFECT_NOISE_ANIMATED']
+        options: {
+            'None': '',
+            'Elevator': 'ANIMATION_ELEVATOR',
+            'Wave': 'ANIMATION_WAVE',
+            'Water animation': 'EFFECT_NOISE_ANIMATED',
+            'Spotlight': 'EFFECT_SPOTLIGHT',
+            'Color bleed': 'EFFECT_COLOR_BLEED'
+        },
+        animated: [
+            'ANIMATION_ELEVATOR',
+            'ANIMATION_WAVE',
+            'EFFECT_NOISE_ANIMATED',
+            'EFFECT_COLOR_BLEED'
+        ]
     }
 };
 window.gl_controls = gl_controls;
