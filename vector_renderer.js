@@ -321,7 +321,7 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 // Simplistic detection of relative paths, append base if necessary
 VectorRenderer.urlForPath = function (path) {
     var protocol = path.toLowerCase().substr(0, 4);
-    if (protocol != 'http' || protocol != 'file') {
+    if (!(protocol == 'http' || protocol == 'file')) {
         path = window.location.origin + window.location.pathname + path;
     }
     return path;
