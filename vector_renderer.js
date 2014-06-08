@@ -3,11 +3,19 @@
 (function() {
     try {
         VectorRenderer.library_base_url = '';
-        var scripts = document.querySelectorAll('script[src*=".js"]');
+        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
         for (var s=0; s < scripts.length; s++) {
-            var base_match = scripts[s].src.match(/(.*)vector-map.(debug|min).js/); // should match debug or minified versions
-            if (base_match != null && base_match.length > 1) {
-                VectorRenderer.library_base_url = base_match[1];
+            // var base_match = scripts[s].src.match(/(.*)vector-map.(debug|min).js/); // should match debug or minified versions
+            // if (base_match != null && base_match.length > 1) {
+            //     VectorRenderer.library_base_url = base_match[1];
+            //     break;
+            // }
+            var match = scripts[s].src.indexOf('vector-map.debug.js');
+            if (match == -1) {
+                match = scripts[s].src.indexOf('vector-map.min.js');
+            }
+            if (match >= 0) {
+                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
                 break;
             }
         }
