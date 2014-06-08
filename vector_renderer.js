@@ -52,17 +52,11 @@ function VectorRenderer (type, tile_source, layers, styles, options)
         this.styles = styles;
     }
 
+    this.createWorkers();
+
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
-
-    // Web workers handle heavy duty geometry processing
-    this.workers = [];
-    for (var w=0; w < this.num_workers; w++) {
-        this.workers.push(new Worker(VectorRenderer.library_base_url + 'vector-map-worker.min.js'));
-    }
-    this.next_worker = 0;
-
     this.dirty = true; // request a redraw
     this.initialized = false;
 }
@@ -85,6 +79,27 @@ VectorRenderer.prototype.init = function ()
     });
 
     this.initialized = true;
+};
+
+// Web workers handle heavy duty geometry processing
+VectorRenderer.prototype.createWorkers = function ()
+{
+    var renderer = this;
+    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js';
+    var req = new XMLHttpRequest();
+
+    req.onload = function () {
+        var worker_local_url = window.URL.createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
+
+        renderer.workers = [];
+        for (var w=0; w < renderer.num_workers; w++) {
+            renderer.workers.push(new Worker(worker_local_url));
+        }
+    };
+    req.open('GET', url, false /* async flag */);
+    req.send();
+
+    this.next_worker = 0;
 };
 
 VectorRenderer.prototype.setCenter = function (lng, lat)
