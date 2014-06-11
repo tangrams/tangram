@@ -1,8 +1,19 @@
+var Point = require('./point.js');
+var Geo = require('./geo.js');
+var VectorRenderer = require('./vector_renderer.js');
+
+var GL = require('./gl.js');
+var GLBuilders = require('./gl_builders.js');
+var GLGeometry = require('./gl_geom.js').GLGeometry;
+var GLTriangles = require('./gl_geom.js').GLTriangles;
+var GLPolyPoints = require('./gl_geom.js').GLPolyPoints;
+var GLLines = require('./gl_geom.js').GLLines;
+
 VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-GLRenderer.shader_sources = {};
+GLRenderer.shader_sources = require('./shaders/gl_shaders.js');
 
 function GLRenderer (tile_source, layers, styles, options)
 {
@@ -470,3 +481,7 @@ GLRenderer.prototype.input = function GLRendererInput ()
     //     this.setZoom(this.zoom - this.zoom_step);
     // }
 };
+
+if (module !== undefined) {
+    module.exports = GLRenderer;
+}

@@ -54,6 +54,9 @@ body {
 
 (function(){
 
+// var Geo = require('./geo.js');
+// var GL = require('./gl.js');
+
 var tile_source = 'mapzen'; // default source, can be overriden by URL
 
 var tile_sources = {
@@ -61,7 +64,7 @@ var tile_sources = {
         source: {
             type: 'GeoJSONTileSource',
             // url: 'http://{s:[a,b,c,d]}.vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
-            url: 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
+            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
@@ -157,7 +160,7 @@ else if (url_hash.length == 2) {
 /*** Map ***/
 
 var map = L.map('map', {
-    maxZoom: Geo.max_zoom,
+    maxZoom: 20, //Geo.max_zoom,
     inertia: false,
     keyboard: false
 });
@@ -286,7 +289,8 @@ function setGLProgramDefines () {
 
 function setGLProgramDefinesForOptionSet (current_value, options) {
     for (var i in options) {
-        GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+        // GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+        layer.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
 }
 

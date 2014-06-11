@@ -1,3 +1,7 @@
+var Point = require('./point.js');
+var Geo = require('./geo.js');
+var Style = require('./style.js');
+
 // Get base URL from which the library was loaded
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
 (function() {
@@ -94,8 +98,9 @@ VectorRenderer.prototype.createWorkers = function ()
 {
     var renderer = this;
     var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js';
-    var req = new XMLHttpRequest();
 
+    // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
+    var req = new XMLHttpRequest();
     req.onload = function () {
         var worker_local_url = window.URL.createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
 
@@ -106,6 +111,12 @@ VectorRenderer.prototype.createWorkers = function ()
     };
     req.open('GET', url, false /* async flag */);
     req.send();
+
+    // Alternate for debugging - tradtional method of loading from remote URL instead of XHR-to-local-blob
+    // renderer.workers = [];
+    // for (var w=0; w < renderer.num_workers; w++) {
+    //     renderer.workers.push(new Worker(url));
+    // }
 
     this.next_worker = 0;
 };
@@ -231,6 +242,8 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.min = Geo.metersForTile(tile.coords);
     tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
     tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
+    tile.units_per_meter = VectorRenderer.units_per_meter[tile.coords.z];
+    tile.units_per_pixel = VectorRenderer.units_per_pixel[tile.coords.z];
     tile.debug = {};
     tile.loading = true;
     tile.loaded = false;
@@ -401,21 +414,6 @@ VectorRenderer.processLayersForTile = function (layers, tile)
 };
 
 
-/*** Style helpers ***/
-var Style = {};
-
-Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
-};
-
-Style.width = {
-    pixels: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * VectorRenderer.units_per_pixel[t.coords.z]; }; }, // local tile units for a given pixel width
-    meters: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * VectorRenderer.units_per_meter[t.coords.z]; }; }  // local tile units for a given meter width
-};
-
-
 /*** Style parsing & defaults ***/
 
 // Determine final style properties (color, width, etc.)
@@ -507,3 +505,7 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
 
     return style;
 };
+
+if (module !== undefined) {
+    module.exports = VectorRenderer;
+}
