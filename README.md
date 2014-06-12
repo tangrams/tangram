@@ -1,7 +1,7 @@
-WebGL & Canvas for OpenStreetMap
+Tangram: WebGL for OpenStreetMap
 ===
 
-This library provides dynamic client-side map rendering with WebGL (and to a lesser extent, Canvas), from GeoJSON or binary vector tiles.
+Tangram is a library for dynamic client-side map rendering with WebGL (with a less-maintained Canvas option), using GeoJSON or binary vector tiles.
 
 ## Vector Tiles
 
