@@ -99,5 +99,15 @@
             default: Style.width.pixels(5),
             // default: Style.width.pixels(function(f, t) { return 2 * Math.pow(t.coords.z, 0.4); })
         }
-    }
+    },
+    // places: {
+    //     filter: function(f, t) { return (t.coords.z >= 13); },
+    //     color: {
+    //         // default: [0.0, 1.0, 1.0]
+    //         default: function(f) { return f.properties.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
+    //     },
+    //     size: {
+    //         default: Style.width.pixels(5),
+    //     }
+    // }
 }

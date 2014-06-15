@@ -72,7 +72,7 @@ var tile_sources = {
     'mapzen-dev': {
         source: {
             type: 'GeoJSONTileSource',
-            url: 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.json'
+            url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
@@ -80,7 +80,7 @@ var tile_sources = {
     'mapzen-mvt-dev': {
         source: {
             type: 'MapboxTileSource',
-            url: 'http://vector.dev.mapzen.com/vector/all/{z}/{x}/{y}.mapbox'
+            url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
@@ -96,7 +96,7 @@ var tile_sources = {
     'mapzen-canvas': {
         source: {
             type:'GeoJSONTileSource',
-            url: 'http://vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
+            url: 'http://vector.mapzen.com/vector/osm/{z}/{x}/{y}.json'
         },
         layers: 'canvas_layers.js',
         styles: 'canvas_styles.js',

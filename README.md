@@ -7,7 +7,7 @@ This library provides dynamic client-side map rendering with WebGL (and to a les
 
 Instead of using traditional image tiles, we render from **vector tiles** that contain the underlying source geometry for each tile's bounding box. The following tile formats are currently supported:
 
-- **GeoJSON**: available from Mapzen or the OpenStreetMap.US server, roughly following the format defined [here](http://openstreetmap.us/~migurski/vector-datasource/) by Mike Migurski. Here's an [example GeoJSON tile](http://vector.test.mapzen.com/vector/all/14/4826/6161.json).
+- **GeoJSON**: available from Mapzen or the OpenStreetMap.US server, roughly following the format defined [here](http://openstreetmap.us/~migurski/vector-datasource/) by Mike Migurski. Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.json).
 - **Mapbox vector tiles**: in the binary format defined [here](https://github.com/mapbox/vector-tile-spec).
 
 The library also includes a [Leaflet](http://leafletjs.com) plugin, ` leaflet_vector_tile_layer.js`, to provide basic web map pan/zoom functionality.

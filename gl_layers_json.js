@@ -69,15 +69,23 @@
     },
     {
         name: 'pois',
-        // data: 'pois'
-        data: function (json) {
-            // Only features WITH names
-            return {
-                type: 'FeatureCollection',
-                features: json['pois'].features.filter(function (feature) {
-                    return (feature.properties.name != null && feature.properties.name != '');
-                })
-            };
-        }
+        data: 'pois'
+        // data: function (json) {
+        //     if (!json['pois'] || !json['pois'].features) {
+        //         return null;
+        //     }
+
+        //     // Only features WITH names
+        //     return {
+        //         type: 'FeatureCollection',
+        //         features: json['pois'].features.filter(function (feature) {
+        //             return (feature.properties.name != null && feature.properties.name != '');
+        //         })
+        //     };
+        // }
+    },
+    {
+        name: 'places',
+        data: 'places'
     }
 ]
