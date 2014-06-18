@@ -1,61 +1,21 @@
+BROWSERIFY = node_modules/.bin/browserify
+UGLIFY = node_modules/.bin/uglifyjs
+
 all: \
 	dist/vector-map.min.js \
 	dist/vector-map.debug.js \
 	dist/vector-map-worker.min.js
 
-# Dependencies for building the main library
-vector-map-dependencies= \
-	point.js \
-	geo.js \
-	gl.js \
-	tile_source.js \
-	style.js \
-	vector_renderer.js \
-	canvas_renderer.js \
-	gl_renderer.js \
-	gl_builders.js \
-	gl_geom.js \
-	shaders/gl_shaders.js \
-	leaflet_vector_tile_layer.js
-
-# Dependencies for building the web worker
-vector-map-worker-dependencies= \
-	vector_worker.js \
-	lib/libtess.cat.js \
-	point.js \
-	geo.js \
-	gl.js \
-	tile_source.js \
-	style.js \
-	vector_renderer.js \
-	canvas_renderer.js \
-	gl_renderer.js \
-	gl_builders.js \
-	gl_geom.js
-
 # browserify --debug adds source maps
-dist/vector-map.debug.js: $(vector-map-dependencies)
-	# $(build-vector-map) --source-map vector-map.debug.js.map > vector-map.debug.js
-	./node_modules/.bin/browserify \
-		leaflet_vector_tile_layer.js \
-		--debug \
-		> dist/vector-map.debug.js
+dist/vector-map.debug.js: shaders/gl_shaders.js $(shell $(BROWSERIFY) --list leaflet_vector_tile_layer.js)
+	$(BROWSERIFY) leaflet_vector_tile_layer.js --debug > dist/vector-map.debug.js
 
 dist/vector-map.min.js: dist/vector-map.debug.js
-	./node_modules/.bin/uglifyjs \
-		dist/vector-map.debug.js \
-		-c -m \
-		> dist/vector-map.min.js
+	$(UGLIFY) dist/vector-map.debug.js -c -m -o dist/vector-map.min.js
 
-dist/vector-map-worker.min.js: $(vector-map-worker-dependencies)
-	./node_modules/.bin/browserify \
-		vector_worker.js \
-		> dist/temp.vector-map-worker.js; \
-	./node_modules/.bin/uglifyjs \
-		lib/libtess.cat.js \
-		dist/temp.vector-map-worker.js \
-		-c -m \
-		> dist/vector-map-worker.min.js; \
+dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list vector_worker.js)
+	$(BROWSERIFY) vector_worker.js > dist/temp.vector-map-worker.js
+	$(UGLIFY) lib/libtess.cat.js dist/temp.vector-map-worker.js -c -m > dist/vector-map-worker.min.js
 	rm dist/temp.vector-map-worker.js
 
 # Process shaders into strings and export as a module
