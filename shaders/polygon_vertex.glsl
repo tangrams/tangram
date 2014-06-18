@@ -16,6 +16,11 @@ uniform vec2 tile_min;
 uniform vec2 tile_max;
 uniform float num_layers;
 uniform float time;
+uniform float u_heightVar;
+uniform float u_layerVar;
+uniform vec3 testUniformColor1;
+uniform vec3 testUniformColor2;
+uniform vec3 testUniformColor3;
 
 attribute vec3 position;
 attribute vec3 normal;
@@ -56,6 +61,8 @@ void main() {
     // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile
     vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)
 
+    // vposition.z *= testUniform;
+
     // Vertex displacement + procedural effects
     #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)
         vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)
@@ -83,11 +90,29 @@ void main() {
 
     // Shading
     fcolor = color;
+    // if (color[0] == 0.5) {
+    //     fcolor = testUniformColor1;
+    // } 
+    // if (color[0] == 0.6) {
+    //     fcolor = testUniformColor2;
+    // } 
+    if (layer == 1.0) {
+        fcolor = testUniformColor1;
+    } 
+    if (layer == 2.0) {
+        fcolor = testUniformColor2;
+    } 
+    if (layer == u_layerVar) {
+        fcolor = testUniformColor3;
+    } 
+
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
+    // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time
 
     #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
         // Gouraud shading
         light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
+        // light = vec3(-0.25, -0.25, 0.50+ testUniform); // vec3(0.1, 0.1, 0.35); // point light location
 
         #if defined(LIGHTING_NIGHT)
             // "Night" effect by flipping vertex z
@@ -97,6 +122,7 @@ void main() {
             // Point light-based gradient
             light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
             fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+            // fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * testUniform / meter_zoom.x, 0.0, 0.25);
         #endif
 
     #elif defined(LIGHTING_DIRECTION)
@@ -109,16 +135,20 @@ void main() {
     #endif
 
     #if defined(PROJECTION_PERSPECTIVE)
-        // Perspective-style projection
-        vec2 perspective_offset = vec2(-0.25, -0.25);
-        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
+        // // Perspective-style projection
+        vec2 perspective_offset = vec2(-0.5, -0.5);
+        // vec2 perspective_offset = vec2(0.0,0.0);
+        // vec2 perspective_offset = vec2(-0.25, -0.25) + vec2(testUniform);
+        // vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
+        vec2 perspective_factor = vec2(0.8, 0.8) + vec2(u_heightVar); // vec2(-0.25, 0.75);
         vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
+        // vposition.xy += vec2(vposition.z * testUniform/1000.0);
     #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
         // Pop-up effect - 3d in center of viewport, fading to 2d at edges
         #if defined(PROJECTION_POPUP)
             if (vposition.z > 1.0) {
                 float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));
-                const float popup_fade_inner = 0.5;
+                const float popup_fade_inner = 0.05;
                 const float popup_fade_outer = 0.75;
                 if (cd > popup_fade_inner) {
                     vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);

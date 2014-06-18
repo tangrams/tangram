@@ -264,6 +264,68 @@ Object.keys(gl_controls).forEach(function(key) {
     });
 });
 
+gui.height = 0.0;
+var heightVar = gui.add(gui, 'height', -40, 40);
+heightVar.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_heightVar', value);
+});
+
+gui.layer = 0.0;
+var layerVar = gui.add(gui, 'layer', 0, 5).step(1);
+layerVar.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_layerVar', value);
+});
+
+
+// for (x = 0; x < layer._renderer.layers.length; x++) {
+
+// }
+
+// gui.color1 = [0.0, 0.0, 0.0];
+// var testVar = gui.addColor(gui, 'color1');
+// testVar.onChange(function(value) {
+//     setGLProgramUniformColor('3f', 'testUniformColor1', value);
+// });
+
+these = [];
+these["color1"] = [0.0, 0.0, 0.0];
+var testVar = gui.addColor(these, 'color1');
+testVar.onChange(function(value) {
+    setGLProgramUniformColor('3f', 'testUniformColor1', value);
+});
+
+gui.color2 = [0.0, 0.0, 0.0];
+var testVar = gui.addColor(gui, 'color2');
+testVar.onChange(function(value) {
+    setGLProgramUniformColor('3f', 'testUniformColor2', value);
+});
+
+gui.color3 = [0.0, 0.0, 0.0];
+var testVar = gui.addColor(gui, 'color3');
+testVar.onChange(function(value) {
+    setGLProgramUniformColor('3f', 'testUniformColor3', value);
+});
+
+function log(v) {
+    console.log(v);
+}
+function setGLProgramUniform (type, name, value) {
+    for (var m in layer._renderer.render_modes) {
+        layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
+        layer._renderer.render_modes[m].gl_program.uniform(type, name, value);
+    }
+
+    layer._renderer.dirty = true;
+}
+function setGLProgramUniformColor (type, name, value) {
+    for (var m in layer._renderer.render_modes) {
+        layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
+        layer._renderer.render_modes[m].gl_program.uniform(type, name, value[0]/255, value[1]/255, value[2]/255);
+    }
+
+    layer._renderer.dirty = true;
+}
+
 function setGLProgramDefines () {
     var animated = false;
 
@@ -275,6 +337,7 @@ function setGLProgramDefines () {
             animated = true;
         }
     });
+    log(layer);
     layer._renderer.continuous_animation = animated;
 
     for (var m in layer._renderer.render_modes) {
