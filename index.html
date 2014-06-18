@@ -63,7 +63,6 @@ var tile_sources = {
     'mapzen': {
         source: {
             type: 'GeoJSONTileSource',
-            // url: 'http://{s:[a,b,c,d]}.vector.test.mapzen.com/vector/all/{z}/{x}/{y}.json'
             url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         layers: 'gl_layers_json.js',
@@ -77,14 +76,6 @@ var tile_sources = {
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
-    'mapzen-mvt-dev': {
-        source: {
-            type: 'MapboxTileSource',
-            url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
-        },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
-    },
     'mapzen-local': {
         source: {
             type: 'GeoJSONTileSource',
@@ -93,10 +84,18 @@ var tile_sources = {
         layers: 'gl_layers_json.js',
         styles: 'gl_styles.js'
     },
+    'mapzen-mvt': {
+        source: {
+            type: 'MapboxTileSource',
+            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+        },
+        layers: 'gl_layers_json.js',
+        styles: 'gl_styles.js'
+    },
     'mapzen-canvas': {
         source: {
             type:'GeoJSONTileSource',
-            url: 'http://vector.mapzen.com/vector/osm/{z}/{x}/{y}.json'
+            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         layers: 'canvas_layers.js',
         styles: 'canvas_styles.js',
