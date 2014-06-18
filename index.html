@@ -185,7 +185,7 @@ resizeMap();
 
 /*** Layer ***/
 
-var layer = L.vectorTileLayer({
+var layer = Tangram.leafletLayer({
     vectorRenderer: tile_sources[tile_source].renderer,
     vectorTileSource: tile_sources[tile_source].source,
     vectorLayers: tile_sources[tile_source].layers,

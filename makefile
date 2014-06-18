@@ -8,7 +8,7 @@ all: \
 
 # browserify --debug adds source maps
 dist/vector-map.debug.js: shaders/gl_shaders.js $(shell $(BROWSERIFY) --list leaflet_vector_tile_layer.js)
-	$(BROWSERIFY) leaflet_vector_tile_layer.js --debug > dist/vector-map.debug.js
+	$(BROWSERIFY) leaflet_vector_tile_layer.js --debug --standalone Tangram > dist/vector-map.debug.js
 
 dist/vector-map.min.js: dist/vector-map.debug.js
 	$(UGLIFY) dist/vector-map.debug.js -c -m -o dist/vector-map.min.js

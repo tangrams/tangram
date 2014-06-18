@@ -2,7 +2,7 @@ var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl_renderer.js');
 var CanvasRenderer = require('./canvas_renderer.js');
 
-L.VectorTileLayer = L.GridLayer.extend({
+var LeafletLayer = L.GridLayer.extend({
 
     options: {
         vectorRenderer: 'canvas'
@@ -86,6 +86,13 @@ L.VectorTileLayer = L.GridLayer.extend({
 
 });
 
-L.vectorTileLayer = function (options) {
-    return new L.VectorTileLayer(options);
+var leafletLayer = function (options) {
+    return new LeafletLayer(options);
 };
+
+if (module !== undefined) {
+    module.exports = {
+        LeafletLayer: LeafletLayer,
+        leafletLayer: leafletLayer
+    }
+}
