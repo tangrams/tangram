@@ -1,3 +1,8 @@
+# generated files
+*.min.js
+*.map
+*.debug.js
+
 # jshint config
 .jshintrc
 
