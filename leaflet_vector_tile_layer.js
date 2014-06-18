@@ -1,3 +1,7 @@
+var VectorRenderer = require('./vector_renderer.js');
+var GLRenderer = require('./gl_renderer.js');
+var CanvasRenderer = require('./canvas_renderer.js');
+
 L.VectorTileLayer = L.GridLayer.extend({
 
     options: {
@@ -8,7 +12,10 @@ L.VectorTileLayer = L.GridLayer.extend({
         L.setOptions(this, options);
         this.options.vectorRenderer = this.options.vectorRenderer || 'GLRenderer';
         this._renderer = VectorRenderer.create(this.options.vectorRenderer, this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
+        this._renderer.debug = this.options.debug;
         this._renderer.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
+
+        this.GL = require('./gl.js');
     },
 
     // Finish initializing renderer and setup events when layer is added to map

@@ -1,3 +1,7 @@
+var Geo = require('./geo.js');
+var Point = require('./point.js');
+var VectorRenderer = require('./vector_renderer.js');
+
 function TileSource (url_template, options)
 {
     var options = options || {};
@@ -66,7 +70,7 @@ function NetworkTileSource (url_template, options)
     }
 }
 
-NetworkTileSource.prototype.loadTile = function (tile, renderer, callback)
+NetworkTileSource.prototype.loadTile = function (tile, callback)
 {
     var tile_source = this;
     var req = new XMLHttpRequest();
@@ -92,7 +96,7 @@ NetworkTileSource.prototype.loadTile = function (tile, renderer, callback)
 
         if (tile_source._loadTile) {
             tile.debug.parsing = +new Date();
-            tile_source._loadTile(tile, renderer);
+            tile_source._loadTile(tile);
             tile.debug.parsing = +new Date() - tile.debug.parsing;
         }
 
@@ -121,7 +125,7 @@ function GeoJSONTileSource (url_template, options)
     NetworkTileSource.apply(this, arguments);
 }
 
-GeoJSONTileSource.prototype._loadTile = function (tile, renderer)
+GeoJSONTileSource.prototype._loadTile = function (tile)
 {
     tile.layers = JSON.parse(tile.xhr.response);
 
@@ -139,10 +143,10 @@ function MapboxTileSource (url_template, options)
 {
     NetworkTileSource.apply(this, arguments);
     this.response_type = "arraybuffer"; // binary data
-    this.VectorTile = require('vectortile'); // Mapbox vector tile lib
+    this.VectorTile = require('vector-tile'); // Mapbox vector tile lib
 }
 
-MapboxTileSource.prototype._loadTile = function (tile, renderer)
+MapboxTileSource.prototype._loadTile = function (tile)
 {
     // Convert Mapbox vector tile to GeoJSON
     tile.data = new this.VectorTile(new Uint8Array(tile.xhr.response));
@@ -163,3 +167,7 @@ MapboxTileSource.prototype._loadTile = function (tile, renderer)
         };
     }
 };
+
+if (module !== undefined) {
+    module.exports = TileSource;
+}

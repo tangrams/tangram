@@ -1,3 +1,7 @@
+var Point = require('./point.js');
+var Geo = require('./geo.js');
+var VectorRenderer = require('./vector_renderer.js');
+
 VectorRenderer.CanvasRenderer = CanvasRenderer;
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);
 
@@ -339,3 +343,7 @@ CanvasRenderer.prototype.generateColor = function generateColor (color_map)
     }
     return color_map[key];
 };
+
+if (module !== undefined) {
+    module.exports = CanvasRenderer;
+}

@@ -1,11 +1,12 @@
+.gitattributes
+
 # jshint config
 .jshintrc
 
 node_modules
 
 # temp build files
-.shaders
-shaders/*.glsl.js
+shaders/gl_shaders.js
 
 # storing some screenshots here
 screenshots
