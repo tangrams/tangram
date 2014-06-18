@@ -18,9 +18,16 @@ uniform float num_layers;
 uniform float time;
 uniform float u_heightVar;
 uniform float u_layerVar;
+uniform vec3 testUniformColor0;
 uniform vec3 testUniformColor1;
 uniform vec3 testUniformColor2;
 uniform vec3 testUniformColor3;
+uniform vec3 testUniformColor4;
+uniform vec3 testUniformColor5;
+uniform vec3 testUniformColor6;
+uniform vec3 testUniformColor7;
+uniform vec3 testUniformColor8;
+uniform vec3 testUniformColor9;
 
 attribute vec3 position;
 attribute vec3 normal;
@@ -96,15 +103,36 @@ void main() {
     // if (color[0] == 0.6) {
     //     fcolor = testUniformColor2;
     // } 
+    if (layer == 0.0) {
+        fcolor = testUniformColor0;
+    } 
     if (layer == 1.0) {
         fcolor = testUniformColor1;
     } 
     if (layer == 2.0) {
         fcolor = testUniformColor2;
     } 
-    if (layer == u_layerVar) {
+    if (layer == 3.0) {
         fcolor = testUniformColor3;
     } 
+    if (layer == 4.0) {
+        fcolor = testUniformColor4;
+    } 
+    if (layer == 5.0) {
+        fcolor = testUniformColor5;
+    } 
+    if (layer == 6.0) {
+        fcolor = testUniformColor6;
+    } 
+    if (layer == 7.0) {
+        fcolor = testUniformColor7;
+    } 
+    if (layer == 8.0) {
+        fcolor = testUniformColor8;
+    } 
+    // if (layer == u_layerVar) {
+    //     fcolor = testUniformColor1;
+    // } 
 
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
     // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time

@@ -271,7 +271,7 @@ heightVar.onChange(function(value) {
 });
 
 gui.layer = 0.0;
-var layerVar = gui.add(gui, 'layer', 0, 5).step(1);
+var layerVar = gui.add(gui, 'layer', 0, layer._renderer.layers.length).step(1);
 layerVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_layerVar', value);
 });
@@ -287,24 +287,39 @@ layerVar.onChange(function(value) {
 //     setGLProgramUniformColor('3f', 'testUniformColor1', value);
 // });
 
-these = [];
-these["color1"] = [0.0, 0.0, 0.0];
-var testVar = gui.addColor(these, 'color1');
-testVar.onChange(function(value) {
-    setGLProgramUniformColor('3f', 'testUniformColor1', value);
-});
+layers = [];
 
-gui.color2 = [0.0, 0.0, 0.0];
-var testVar = gui.addColor(gui, 'color2');
-testVar.onChange(function(value) {
-    setGLProgramUniformColor('3f', 'testUniformColor2', value);
-});
+for (x in layer._renderer.layers) {
+    log(layer._renderer.layers[x].name);
+    layers[layer._renderer.layers[x].name] = [0.0, 0.0, 0.0];
+    var control = gui.addColor(layers, layer._renderer.layers[x].name);
+    control.onChange(function(x) {
+        var u = 'testUniformColor' + x;
+        return function(value) {
+            setGLProgramUniformColor('3f', u, value);
+            log(u);
+            // setGLProgramUniformColor('3f', 'testUniformColor1', value);
+        };
+    }(x));
+}
 
-gui.color3 = [0.0, 0.0, 0.0];
-var testVar = gui.addColor(gui, 'color3');
-testVar.onChange(function(value) {
-    setGLProgramUniformColor('3f', 'testUniformColor3', value);
-});
+// layers["color1"] = [1.0, 0.0, 0.0];
+// var testVar = gui.addColor(layers, 'color1');
+// testVar.onChange(function(value) {
+//     setGLProgramUniformColor('3f', 'testUniformColor1', value);
+// });
+
+// layers["color2"] = [0.0, 1.0, 0.0];
+// var testVar = gui.addColor(layers, 'color2');
+// testVar.onChange(function(value) {
+//     setGLProgramUniformColor('3f', 'testUniformColor2', value);
+// });
+
+// layers["color3"] = [0.0, 0.0, 1.0];
+// var testVar = gui.addColor(layers, 'color3');
+// testVar.onChange(function(value) {
+//     setGLProgramUniformColor('3f', 'testUniformColor3', value);
+// });
 
 function log(v) {
     console.log(v);
