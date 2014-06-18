@@ -265,13 +265,21 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     div.style.width = '256px';
     div.style.height = '256px';
 
-    // var debug_overlay = document.createElement('div');
-    // debug_overlay.textContent = tile.key;
-    // debug_overlay.style.position = 'absolute';
-    // debug_overlay.style.left = 0;
-    // debug_overlay.style.top = 0;
-    // debug_overlay.style.color = 'white';
-    // div.appendChild(debug_overlay);
+    if (this.debug) {
+        var debug_overlay = document.createElement('div');
+        debug_overlay.textContent = tile.key;
+        debug_overlay.style.position = 'absolute';
+        debug_overlay.style.left = 0;
+        debug_overlay.style.top = 0;
+        debug_overlay.style.color = 'white';
+        debug_overlay.style.fontSize = '16px';
+        // debug_overlay.style.textOutline = '1px #000000';
+        div.appendChild(debug_overlay);
+
+        div.style.borderStyle = 'solid';
+        div.style.borderColor = 'white';
+        div.style.borderWidth = '1px';
+    }
 
     if (callback) {
         callback(null, div);
