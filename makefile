@@ -4,7 +4,8 @@ UGLIFY = node_modules/.bin/uglifyjs
 all: \
 	dist/vector-map.min.js \
 	dist/vector-map.debug.js \
-	dist/vector-map-worker.min.js
+	dist/vector-map-worker.min.js \
+	src/gl/gl_shaders.js
 
 # browserify --debug adds source maps
 # dist/vector-map.debug.js: src/gl/shaders/gl_shaders.js $(shell $(BROWSERIFY) --list src/leaflet_vector_tile_layer.js)
