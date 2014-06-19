@@ -490,6 +490,11 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
         }
     }
 
+    style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || VectorRenderer.style_defaults.z || 0;
+    if (typeof style.z == 'function') {
+        style.z = style.z(feature, tile);
+    }
+
     style.outline = {};
     layer_style.outline = layer_style.outline || {};
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || VectorRenderer.style_defaults.outline.color;

@@ -64,6 +64,9 @@
             'path': function (f, t) { return 1 * Math.log(t.coords.z) * t.units_per_meter; },
             'debug': function (f, t) { return 5 * t.units_per_meter; }
         },
+        // z: {
+        //     'path': Style.width.meters(25)
+        // },
         outline: {
             color: {
                 default: [0.1, 0.7, 0.7]

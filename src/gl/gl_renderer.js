@@ -110,8 +110,8 @@ GLRenderer.addTile = function (tile, layers, styles)
             // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
-                z = GLRenderer.calculateZ(layer, tile);
                 style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
+                z = GLRenderer.calculateZ(layer, tile) + style.z;
 
                 // Skip feature?
                 if (style == null) {
