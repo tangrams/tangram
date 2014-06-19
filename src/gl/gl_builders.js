@@ -1,4 +1,10 @@
-GLBuilders = {};
+var Vector = require('../vector.js');
+var Point = require('../point.js');
+var GL = require('./gl.js');
+
+var GLBuilders = {};
+
+GLBuilders.debug = false;
 
 // Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
 GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex_data, options)
@@ -90,7 +96,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
     }
 
     // Line center - debugging
-    if (GLRenderer.debug && options.vertex_lines) {
+    if (GLBuilders.debug && options.vertex_lines) {
         var num_lines = lines.length;
         for (var ln=0; ln < num_lines; ln++) {
             var line = lines[ln];
@@ -279,7 +285,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
         }
 
         // Extruded inner/outer edges - debugging
-        if (GLRenderer.debug && options.vertex_lines) {
+        if (GLBuilders.debug && options.vertex_lines) {
             options.vertex_lines.push(
                 pa_inner[0][0], pa_inner[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
                 pa_inner[1][0], pa_inner[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
@@ -307,7 +313,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
             );
         }
 
-        if (GLRenderer.debug && line_debug && options.vertex_lines) {
+        if (GLBuilders.debug && line_debug && options.vertex_lines) {
             var dcolor;
             if (line_debug == 'parallel') {
                 // console.log("!!! lines are parallel !!!");
@@ -495,3 +501,7 @@ GLBuilders.buildZigzagLineTestPattern = function ()
     // console.log(g.geometry.coordinates);
     return g;
 };
+
+if (module !== undefined) {
+    module.exports = GLBuilders;
+}

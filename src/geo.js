@@ -1,22 +1,7 @@
 // Miscellaneous geo functions
-
-// Point
-function Point (x, y)
-{
-    return { x: x, y: y };
-}
-
-Point.copy = function (p)
-{
-    if (p == null) {
-        return null;
-    }
-    return { x: p.x, y: p.y };
-};
+var Point = require('./point.js');
 
 var Geo = {};
-
-(function () {
 
 // Projection constants
 Geo.tile_size = 256;
@@ -166,4 +151,6 @@ Geo.splitFeatureLines  = function (feature, tolerance) {
     return feature;
 };
 
-}());
+if (module !== undefined) {
+    module.exports = Geo;
+}

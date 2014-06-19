@@ -1,16 +1,11 @@
-// Include individual scripts instead for debugging
-// importScripts('lib/libtess.cat.js');
-// importScripts('lib/mapbox-vector-tile.js');
-// importScripts('geo.js');
-// importScripts('gl.js');
-// importScripts('tile_source.js');
-// importScripts('vector_renderer.js');
-// importScripts('canvas_renderer.js');
-// importScripts('gl_renderer.js');
-// importScripts('gl_builders.js');
+var TileSource = require('./tile_source.js');
+var VectorRenderer = require('./vector_renderer.js');
+var GLRenderer = require('./gl/gl_renderer.js');
+var GLBuilders = require('./gl/gl_builders.js');
+var CanvasRenderer = require('./canvas/canvas_renderer.js');
 
 var VectorWorker = {};
-VectorWorker.worker = this;
+VectorWorker.worker = self;
 
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
@@ -33,7 +28,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     VectorWorker.tiles[tile.key] = tile;
 
-    VectorWorker.tile_source.loadTile(tile, VectorWorker, function () {
+    VectorWorker.tile_source.loadTile(tile, function () {
         // Extract desired layers from full GeoJSON
         VectorRenderer.processLayersForTile(VectorWorker.layers, tile);
 

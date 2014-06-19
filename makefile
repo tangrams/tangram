@@ -1,35 +1,36 @@
-all: dist/vector-map.min.js dist/vector-map.debug.js dist/vector-map-worker.min.js
+BROWSERIFY = node_modules/.bin/browserify
+UGLIFY = node_modules/.bin/uglifyjs
 
-vector-map-dependencies=.shaders geo.js gl.js tile_source.js vector_renderer.js canvas_renderer.js gl_renderer.js gl_builders.js leaflet_vector_tile_layer.js
-vector-map-worker-dependencies=lib/libtess.cat.js lib/mapbox-vector-tile.js geo.js gl.js tile_source.js vector_renderer.js canvas_renderer.js gl_renderer.js gl_builders.js vector_worker.js
+all: \
+	dist/vector-map.min.js \
+	dist/vector-map.debug.js \
+	dist/vector-map-worker.min.js
 
-# cd'ing into dist and then pathing back to source files to fix a source map relative URL issue (can probably fix with the right uglify options)
-build-vector-map=cd dist; ../node_modules/.bin/uglifyjs ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../leaflet_vector_tile_layer.js ../shaders/*.glsl.js -c -m
-build-vector-map-worker=cd dist; ../node_modules/.bin/uglifyjs ../lib/libtess.cat.js ../lib/mapbox-vector-tile.js ../geo.js ../gl.js ../tile_source.js ../vector_renderer.js ../canvas_renderer.js ../gl_renderer.js ../gl_builders.js ../vector_worker.js -c -m
+# browserify --debug adds source maps
+# dist/vector-map.debug.js: src/gl/shaders/gl_shaders.js $(shell $(BROWSERIFY) --list src/leaflet_vector_tile_layer.js)
+dist/vector-map.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
+	$(BROWSERIFY) src/module.js --debug --standalone Tangram > dist/vector-map.debug.js
 
-dist/vector-map.min.js: $(vector-map-dependencies)
-	$(build-vector-map) > vector-map.min.js
+dist/vector-map.min.js: dist/vector-map.debug.js
+	$(UGLIFY) dist/vector-map.debug.js -c -m -o dist/vector-map.min.js
 
-dist/vector-map.debug.js: $(vector-map-dependencies)
-	$(build-vector-map) --source-map vector-map.debug.js.map > vector-map.debug.js
+dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list src/vector_worker.js)
+	$(BROWSERIFY) src/vector_worker.js > dist/temp.vector-map-worker.js
+	$(UGLIFY) lib/libtess.cat.js dist/temp.vector-map-worker.js -c -m > dist/vector-map-worker.min.js
+	rm dist/temp.vector-map-worker.js
 
-dist/vector-map-worker.min.js: $(vector-map-worker-dependencies)
-	$(build-vector-map-worker) > vector-map-worker.min.js
-
-# Process shaders into strings and set as JS vars
-.shaders: $(wildcard shaders/*.glsl)
-	cd shaders; \
-	for f in *.glsl; do \
-		shader_name=`echo "$$f" | sed -e "s/\(.*\)\.glsl/\1/"`; \
-		(echo -n "// Generated from $$f, don't edit\nGLRenderer.shader_sources['$$shader_name'] ="; sed -e "s/'/\\\'/g" -e 's/"/\\\"/g' -e 's/^\(.*\)/"\1\\n" +/g' $$f; echo '"";';) > $$f.js; \
-	done;
-	touch .shaders;
-
-lib/mapbox-vector-tile.js: node_modules/vector-tile/lib/vectortile.js node_modules/vector-tile/lib/vectortilelayer.js node_modules/vector-tile/lib/vectortilefeature.js
-	./node_modules/.bin/browserify -r ./node_modules/vector-tile/lib/vectortile.js:vectortile -r ./node_modules/vector-tile/lib/vectortilelayer.js:vectortilelayer -r ./node_modules/vector-tile/lib/vectortilefeature.js:vectortilefeature > lib/mapbox-vector-tile.js
+# Process shaders into strings and export as a module
+src/gl/gl_shaders.js: $(wildcard src/gl/shaders/*.glsl)
+	{ \
+		cd src/gl/shaders; \
+		echo "// Generated from GLSL files, don't edit!"; \
+		echo "var shader_sources = {};\n"; \
+		for f in *.glsl; do \
+			shader_name=`echo "$$f" | sed -e "s/\(.*\)\.glsl/\1/"`; \
+			echo "shader_sources['$$shader_name'] ="; sed -e "s/'/\\\'/g" -e 's/"/\\\"/g' -e 's/^\(.*\)/"\1\\n" +/g' $$f; echo '"";\n'; \
+		done; \
+		echo "if (module.exports !== undefined) { module.exports = shader_sources; }\n"; \
+	} > src/gl/gl_shaders.js
 
 clean:
 	rm -f dist/*
-	rm -f shaders/*.glsl.js
-	touch shaders/*.glsl
-	rm -f lib/mapbox-vector-tile.js

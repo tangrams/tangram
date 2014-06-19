@@ -1,16 +1,9 @@
-# generated files
-*.min.js
-*.map
-*.debug.js
+.gitattributes
 
 # jshint config
 .jshintrc
 
 node_modules
-
-# temp build files
-.shaders
-shaders/*.glsl.js
 
 # storing some screenshots here
 screenshots
