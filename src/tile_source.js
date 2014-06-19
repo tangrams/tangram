@@ -134,6 +134,55 @@ GeoJSONTileSource.prototype._loadTile = function (tile)
 };
 
 
+/*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
+
+TileSource.TopoJSONTileSource = TopoJSONTileSource;
+TopoJSONTileSource.prototype = Object.create(NetworkTileSource.prototype);
+
+function TopoJSONTileSource (url_template, options)
+{
+    NetworkTileSource.apply(this, arguments);
+
+    // Loads TopoJSON library from official D3 source on demand
+    // Not including in base library to avoid the extra weight
+    if (typeof topojson == 'undefined') {
+        try {
+            importScripts('http://d3js.org/topojson.v1.min.js');
+            console.log("loaded TopoJSON library");
+        }
+        catch (e) {
+            console.log("failed to load TopoJSON library!");
+        }
+    }
+}
+
+TopoJSONTileSource.prototype._loadTile = function (tile)
+{
+    if (typeof topojson == 'undefined') {
+        tile.layers = {};
+        return;
+    }
+
+    tile.layers = JSON.parse(tile.xhr.response);
+
+    // Single layer
+    if (tile.layers.objects.vectiles != null) {
+        tile.layers = topojson.feature(tile.layers, tile.layers.objects.vectiles);
+    }
+    // Multiple layers
+    else {
+        var layers = {};
+        for (var t in tile.layers.objects) {
+            layers[t] = topojson.feature(tile.layers, tile.layers.objects[t]);
+        }
+        tile.layers = layers;
+    }
+
+    TileSource.projectTile(tile); // mercator projection
+    TileSource.scaleTile(tile); // re-scale from meters to local tile coords
+};
+
+
 /*** Mapbox vector tiles ***/
 
 TileSource.MapboxTileSource = MapboxTileSource;

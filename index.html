@@ -73,6 +73,14 @@ var tile_sources = {
         layers: 'demos/gl_layers_json.js',
         styles: 'demos/gl_styles.js'
     },
+    'mapzen-topojson': {
+        source: {
+            type: 'TopoJSONTileSource',
+            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+        },
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
+    },
     'mapzen-canvas': {
         source: {
             type:'GeoJSONTileSource',
