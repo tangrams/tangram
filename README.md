@@ -13,7 +13,7 @@ Tangram currently supports GeoJSON tiles as well as [Mapbox's binary format](htt
 
 Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.json).
 
-The library also includes a [Leaflet](http://leafletjs.com) plugin, ` leaflet_vector_tile_layer.js`, to provide basic web map pan/zoom functionality.
+The library also includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
 
 ## Installation
 
