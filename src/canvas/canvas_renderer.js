@@ -1,6 +1,6 @@
-var Point = require('./point.js');
-var Geo = require('./geo.js');
-var VectorRenderer = require('./vector_renderer.js');
+var Point = require('../point.js');
+var Geo = require('../geo.js');
+var VectorRenderer = require('../vector_renderer.js');
 
 VectorRenderer.CanvasRenderer = CanvasRenderer;
 CanvasRenderer.prototype = Object.create(VectorRenderer.prototype);

@@ -1,11 +1,9 @@
 <!doctype html>
 <!--
-Vector maps with WebGL & Canvas
+Tangram: real-time WebGL rendering for OpenStreetMap
 
-Demo of client-side map rendering, using GeoJSON vector tiles as the remote source,
-and the HTML Canvas and WebGL APIs as the rendering engines. Uses Leaflet for standard slippy map functionality.
-
-Brett Camper
+http://github.com/bcamper/tangram
+http://mapzen.com
 -->
 <html lang="en-us">
 <head>
@@ -22,20 +20,6 @@ body {
 
 #map {
     background: rgba(0, 0, 0, 0);
-}
-
-.label {
-    width: 200px;
-    margin-left: -100px;
-    position: absolute;
-    z-index: 10;
-    text-align: center;
-}
-
-.labelInner {
-    padding: 2px;
-    background: white;
-    opacity: 0.75;
 }
 
 </style>
@@ -62,40 +46,40 @@ var tile_sources = {
             type: 'GeoJSONTileSource',
             url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
     },
     'mapzen-dev': {
         source: {
             type: 'GeoJSONTileSource',
             url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
     },
     'mapzen-local': {
         source: {
             type: 'GeoJSONTileSource',
             url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
         },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
     },
     'mapzen-mvt': {
         source: {
             type: 'MapboxTileSource',
             url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
     },
     'mapzen-canvas': {
         source: {
             type:'GeoJSONTileSource',
             url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
-        layers: 'canvas_layers.js',
-        styles: 'canvas_styles.js',
+        layers: 'demos/canvas_layers.js',
+        styles: 'demos/canvas_styles.js',
         renderer: 'CanvasRenderer'
     },
     'osm': {
@@ -103,8 +87,8 @@ var tile_sources = {
             type: 'GeoJSONTileSource',
             url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         },
-        layers: 'gl_layers_json.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/gl_styles.js'
     },
     'mapbox': {
         source: {
@@ -112,8 +96,8 @@ var tile_sources = {
             url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v3/mapbox.mapbox-streets-v4/{z}/{x}/{y}.vector.pbf',
             max_zoom: 14
         },
-        layers: 'gl_layers_mvt.js',
-        styles: 'gl_styles.js'
+        layers: 'demos/gl_layers_mvt.js',
+        styles: 'demos/gl_styles.js'
     }
 };
 
@@ -156,7 +140,7 @@ else if (url_hash.length == 2) {
 /*** Map ***/
 
 var map = L.map('map', {
-    maxZoom: 20, //Geo.max_zoom,
+    maxZoom: 20,
     inertia: false,
     keyboard: false
 });
@@ -188,7 +172,7 @@ var layer = Tangram.leafletLayer({
     vectorStyles: tile_sources[tile_source].styles,
     numWorkers: 2,
     // debug: true,
-    attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/vector-map">Source Code</a>',
+    attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/tangram">Source Code</a>',
     unloadInvisibleTiles: false,
     updateWhenIdle: false
 });
@@ -286,8 +270,7 @@ function setGLProgramDefines () {
 
 function setGLProgramDefinesForOptionSet (current_value, options) {
     for (var i in options) {
-        // GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
-        layer.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+        Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
 }
 

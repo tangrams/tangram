@@ -1,5 +1,5 @@
-var Vector = require('./vector.js');
-var Point = require('./point.js');
+var Vector = require('../vector.js');
+var Point = require('../point.js');
 var GL = require('./gl.js');
 
 var GLBuilders = {};

@@ -1,6 +1,6 @@
-var Point = require('./point.js');
-var Geo = require('./geo.js');
-var VectorRenderer = require('./vector_renderer.js');
+var Point = require('../point.js');
+var Geo = require('../geo.js');
+var VectorRenderer = require('../vector_renderer.js');
 
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
@@ -13,7 +13,7 @@ VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
-GLRenderer.shader_sources = require('./shaders/gl_shaders.js');
+GLRenderer.shader_sources = require('./gl_shaders.js');
 
 function GLRenderer (tile_source, layers, styles, options)
 {
