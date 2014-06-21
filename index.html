@@ -234,6 +234,7 @@ window.gl_controls = gl_controls;
 // UI settings on URL hash
 if (url_hash.length > 4) {
     var url_ui = url_hash.slice(4);
+    log("hash!: "+url_ui);
 
     for (var g in gl_controls) {
         for (var p in gl_controls[g].options) {
@@ -242,12 +243,97 @@ if (url_hash.length > 4) {
             }
         }
     }
+} else {
+    log("no hash");
 }
 
-var gui = new dat.GUI({ autoPlace: true });
-gui.domElement.parentNode.style.zIndex = 5;
+// gui settings
+presets = {
+  "preset": (url_ui || "googlemaps"),
+  "remembered": {
+    "Default": {
+      "0": {
+        "height": 2.486028789161729,
+        "layer": 0,
+        "water_ocean": [
+          0,
+          0,
+          0
+        ],
+        "earth": [
+          230,
+          31.56862745098038,
+          31.56862745098038
+        ],
+        "landuse": [
+          39.58333333333333,
+          74.50980392156868,
+          237.5
+        ],
+        "water_areas": [
+          177.5,
+          121.81372549019608,
+          121.81372549019608
+        ],
+        "roads": [
+          255,
+          242.5,
+          242.5
+        ],
+        "buildings": [
+          137.5,
+          155.14705882352945,
+          212.5
+        ]
+      }
+    },
+    "googlemaps": {
+      "0": {
+        "height": 1,
+        "layer": 0,
+        "water_ocean": [
+          144,
+          187,
+          255
+        ],
+        "earth": [
+          233,
+          229,
+          220
+        ],
+        "landuse": [
+          202,
+          223,
+          170
+        ],
+        "water_areas": [
+          144,
+          187,
+          255
+        ],
+        "roads": [
+          255,
+          255,
+          255
+        ],
+        "buildings": [
+          241,
+          239,
+          232
+        ]
+      }
+    }
+  },
+  "closed": false,
+  "folders": {}
+}
+
+var mygui = new dat.GUI({ autoPlace: true, load: presets });
+mygui.domElement.parentNode.style.zIndex = 5;
 // document.body.insertBefore(gui.domElement, document.body.firstChild);
-window.gui = gui;
+window.gui = mygui;
+mygui.remember(gui);
+
 
 Object.keys(gl_controls).forEach(function(key) {
     gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
@@ -256,62 +342,51 @@ Object.keys(gl_controls).forEach(function(key) {
     });
 });
 
-gui.height = 0.0;
-var heightVar = gui.add(gui, 'height', -40, 40);
+mygui.height = 0.0;
+var heightVar = mygui.add(mygui, 'height', -40, 40);
 heightVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_heightVar', value);
 });
 
 gui.layer = 0.0;
-var layerVar = gui.add(gui, 'layer', 0, layer._renderer.layers.length).step(1);
+var layerVar = mygui.add(mygui, 'layer', 0, layer._renderer.layers.length).step(1);
 layerVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_layerVar', value);
 });
 
-
-// for (x = 0; x < layer._renderer.layers.length; x++) {
-
-// }
-
-// gui.color1 = [0.0, 0.0, 0.0];
-// var testVar = gui.addColor(gui, 'color1');
-// testVar.onChange(function(value) {
-//     setGLProgramUniformColor('3f', 'testUniformColor1', value);
-// });
-
 layers = [];
 
+// add a dat.gui color picker for each layer
 for (x in layer._renderer.layers) {
-    log(layer._renderer.layers[x].name);
-    layers[layer._renderer.layers[x].name] = [0.0, 0.0, 0.0];
-    var control = gui.addColor(layers, layer._renderer.layers[x].name);
+    // log(layer._renderer.layers[x].name);
+    mygui[layer._renderer.layers[x].name] = [0.0, 0.0, 0.0];
+    var control = mygui.addColor(mygui, layer._renderer.layers[x].name);
+    // dynamically set the associated pre-defined uniform
     control.onChange(function(x) {
         var u = 'testUniformColor' + x;
         return function(value) {
             setGLProgramUniformColor('3f', u, value);
-            log(u);
-            // setGLProgramUniformColor('3f', 'testUniformColor1', value);
+            // log(u);
         };
-    }(x));
+    }(x));  // this immediately calls the function.
+            // I don't know why this works or why it's necessary –
+            // something about closures
 }
 
-// layers["color1"] = [1.0, 0.0, 0.0];
-// var testVar = gui.addColor(layers, 'color1');
-// testVar.onChange(function(value) {
-//     setGLProgramUniformColor('3f', 'testUniformColor1', value);
-// });
-
-// layers["color2"] = [0.0, 1.0, 0.0];
-// var testVar = gui.addColor(layers, 'color2');
-// testVar.onChange(function(value) {
-//     setGLProgramUniformColor('3f', 'testUniformColor2', value);
-// });
-
-// layers["color3"] = [0.0, 0.0, 1.0];
-// var testVar = gui.addColor(layers, 'color3');
-// testVar.onChange(function(value) {
-//     setGLProgramUniformColor('3f', 'testUniformColor3', value);
-// });
+function updateUniforms() {
+    log("update");
+    // log(layer._renderer.layers);
+  for (x in layer._renderer.layers) {
+    // log("update "+x);
+        // log("u"+layer._renderer.layers[x].name);
+        var u = 'testUniformColor' + x;
+        function testfunc() {
+            // log('test');
+            setGLProgramUniformColor('3f', u, mygui[layer._renderer.layers[x].name]);
+            // log(u+": "+mygui[layer._renderer.layers[x].name]);
+        }(testfunc());
+    };
+}
 
 function log(v) {
     console.log(v);
@@ -344,7 +419,7 @@ function setGLProgramDefines () {
             animated = true;
         }
     });
-    log(layer);
+    // log(layer);
     layer._renderer.continuous_animation = animated;
 
     for (var m in layer._renderer.render_modes) {
@@ -407,7 +482,13 @@ function frameLoop () {
     }
 }());
 
+// refresh canvas to apply preloaded settings
+window.onload = function() {
+    updateUniforms();
+};
+
 }());
+
 
 </script>
 </body>
