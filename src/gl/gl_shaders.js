@@ -410,6 +410,18 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 tile_max;\n" +
 "uniform float num_layers;\n" +
 "uniform float time;\n" +
+"uniform float u_heightVar;\n" +
+"uniform float u_layerVar;\n" +
+"uniform vec3 testUniformColor0;\n" +
+"uniform vec3 testUniformColor1;\n" +
+"uniform vec3 testUniformColor2;\n" +
+"uniform vec3 testUniformColor3;\n" +
+"uniform vec3 testUniformColor4;\n" +
+"uniform vec3 testUniformColor5;\n" +
+"uniform vec3 testUniformColor6;\n" +
+"uniform vec3 testUniformColor7;\n" +
+"uniform vec3 testUniformColor8;\n" +
+"uniform vec3 testUniformColor9;\n" +
 "\n" +
 "attribute vec3 position;\n" +
 "attribute vec3 normal;\n" +
@@ -450,6 +462,8 @@ shader_sources['polygon_vertex'] =
 "    // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile\n" +
 "    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
+"    // vposition.z *= testUniform;\n" +
+"\n" +
 "    // Vertex displacement + procedural effects\n" +
 "    #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
 "        vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)\n" +
@@ -477,11 +491,50 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "    // Shading\n" +
 "    fcolor = color;\n" +
+"    // if (color[0] == 0.5) {\n" +
+"    //     fcolor = testUniformColor1;\n" +
+"    // } \n" +
+"    // if (color[0] == 0.6) {\n" +
+"    //     fcolor = testUniformColor2;\n" +
+"    // } \n" +
+"    if (layer == 0.0) {\n" +
+"        fcolor = testUniformColor0;\n" +
+"    } \n" +
+"    if (layer == 1.0) {\n" +
+"        fcolor = testUniformColor1;\n" +
+"    } \n" +
+"    if (layer == 2.0) {\n" +
+"        fcolor = testUniformColor2;\n" +
+"    } \n" +
+"    if (layer == 3.0) {\n" +
+"        fcolor = testUniformColor3;\n" +
+"    } \n" +
+"    if (layer == 4.0) {\n" +
+"        fcolor = testUniformColor4;\n" +
+"    } \n" +
+"    if (layer == 5.0) {\n" +
+"        fcolor = testUniformColor5;\n" +
+"    } \n" +
+"    if (layer == 6.0) {\n" +
+"        fcolor = testUniformColor6;\n" +
+"    } \n" +
+"    if (layer == 7.0) {\n" +
+"        fcolor = testUniformColor7;\n" +
+"    } \n" +
+"    if (layer == 8.0) {\n" +
+"        fcolor = testUniformColor8;\n" +
+"    } \n" +
+"    // if (layer == u_layerVar) {\n" +
+"    //     fcolor = testUniformColor1;\n" +
+"    // } \n" +
+"\n" +
 "    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
+"    // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time\n" +
 "\n" +
 "    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)\n" +
 "        // Gouraud shading\n" +
 "        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"        // light = vec3(-0.25, -0.25, 0.50+ testUniform); // vec3(0.1, 0.1, 0.35); // point light location\n" +
 "\n" +
 "        #if defined(LIGHTING_NIGHT)\n" +
 "            // \"Night\" effect by flipping vertex z\n" +
@@ -491,6 +544,7 @@ shader_sources['polygon_vertex'] =
 "            // Point light-based gradient\n" +
 "            light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
 "            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"            // fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * testUniform / meter_zoom.x, 0.0, 0.25);\n" +
 "        #endif\n" +
 "\n" +
 "    #elif defined(LIGHTING_DIRECTION)\n" +
@@ -503,16 +557,20 @@ shader_sources['polygon_vertex'] =
 "    #endif\n" +
 "\n" +
 "    #if defined(PROJECTION_PERSPECTIVE)\n" +
-"        // Perspective-style projection\n" +
-"        vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
-"        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
+"        // // Perspective-style projection\n" +
+"        vec2 perspective_offset = vec2(-0.5, -0.5);\n" +
+"        // vec2 perspective_offset = vec2(0.0,0.0);\n" +
+"        // vec2 perspective_offset = vec2(-0.25, -0.25) + vec2(testUniform);\n" +
+"        // vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
+"        vec2 perspective_factor = vec2(0.8, 0.8) + vec2(u_heightVar); // vec2(-0.25, 0.75);\n" +
 "        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
+"        // vposition.xy += vec2(vposition.z * testUniform/1000.0);\n" +
 "    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
 "        // Pop-up effect - 3d in center of viewport, fading to 2d at edges\n" +
 "        #if defined(PROJECTION_POPUP)\n" +
 "            if (vposition.z > 1.0) {\n" +
 "                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +
-"                const float popup_fade_inner = 0.5;\n" +
+"                const float popup_fade_inner = 0.05;\n" +
 "                const float popup_fade_outer = 0.75;\n" +
 "                if (cd > popup_fade_inner) {\n" +
 "                    vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);\n" +
