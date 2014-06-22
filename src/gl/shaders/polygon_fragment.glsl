@@ -253,7 +253,6 @@ void main (void) {
         position.y *= resolution.y / resolution.x;          // correct aspect ratio
 
         vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);
-        // vec3 color = fcolor * (1.0 - dot(normalize(vec3(rand(gl_FragCoord.xy * 0.01) * 10.0, 0.0, -1.0)), vec3(0, 0, 1.0)));
     #else
         vec3 color = fcolor;
     #endif
@@ -275,5 +274,4 @@ void main (void) {
     #endif
 
     gl_FragColor = vec4(color, 1.0);
-    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

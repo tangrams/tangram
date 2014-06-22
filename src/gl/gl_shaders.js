@@ -365,7 +365,6 @@ shader_sources['polygon_fragment'] =
 "        position.y *= resolution.y / resolution.x;          // correct aspect ratio\n" +
 "\n" +
 "        vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
-"        // vec3 color = fcolor * (1.0 - dot(normalize(vec3(rand(gl_FragCoord.xy * 0.01) * 10.0, 0.0, -1.0)), vec3(0, 0, 1.0)));\n" +
 "    #else\n" +
 "        vec3 color = fcolor;\n" +
 "    #endif\n" +
@@ -387,21 +386,10 @@ shader_sources['polygon_fragment'] =
 "    #endif\n" +
 "\n" +
 "    gl_FragColor = vec4(color, 1.0);\n" +
-"    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n" +
 "}\n" +
 "";
 
 shader_sources['polygon_vertex'] =
-"// #define PROJECTION_PERSPECTIVE\n" +
-"// #define PROJECTION_ISOMETRIC\n" +
-"// #define PROJECTION_POPUP\n" +
-"\n" +
-"// #define LIGHTING_POINT\n" +
-"// #define LIGHTING_DIRECTION\n" +
-"\n" +
-"// #define ANIMATION_ELEVATOR\n" +
-"// #define ANIMATION_WAVE\n" +
-"\n" +
 "uniform vec2 resolution;\n" +
 "uniform vec2 map_center;\n" +
 "uniform float map_zoom;\n" +
@@ -422,24 +410,8 @@ shader_sources['polygon_vertex'] =
 "    varying vec3 fposition;\n" +
 "#endif\n" +
 "\n" +
-"vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)\n" +
+"vec3 light;\n" +
 "const float ambient = 0.45;\n" +
-"\n" +
-"// Project lat-lng to mercator\n" +
-"// vec2 latLngToMeters (vec2 coordinate) {\n" +
-"//     const float pi = 3.1415926;\n" +
-"//     const float half_circumference_meters = 20037508.342789244;\n" +
-"//     vec2 projected;\n" +
-"\n" +
-"//     // Latitude\n" +
-"//     projected.y = log(tan((coordinate.y + 90.0) * pi / 360.0)) / (pi / 180.0);\n" +
-"//     projected.y = projected.y * half_circumference_meters / 180.0;\n" +
-"\n" +
-"//     // Longitude\n" +
-"//     projected.x = coordinate.x * half_circumference_meters / 180.0;\n" +
-"\n" +
-"//     return projected;\n" +
-"// }\n" +
 "\n" +
 "void main() {\n" +
 "    vec3 vposition = position;\n" +
@@ -459,11 +431,7 @@ shader_sources['polygon_vertex'] =
 "        #endif\n" +
 "\n" +
 "        if (vposition_world.z > 1.0) {\n" +
-"            // vposition.x += sin(vposition_world.z + time) * 10.0 * sin(position.x); // swaying buildings\n" +
-"            // vposition.y += cos(vposition_world.z + time) * 10.0;\n" +
-"\n" +
 "            #if defined(ANIMATION_ELEVATOR)\n" +
-"                // vposition.z *= (sin(vposition_world.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings\n" +
 "                vposition.z *= max((sin(vposition_world.z + time) + 1.0) / 2.0, 0.05); // evelator buildings\n" +
 "            #elif defined(ANIMATION_WAVE)\n" +
 "                vposition.z *= max((sin(vposition_world.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave\n" +
@@ -496,9 +464,6 @@ shader_sources['polygon_vertex'] =
 "    #elif defined(LIGHTING_DIRECTION)\n" +
 "        // Flat shading\n" +
 "        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
-"        // light = normalize(vec3(-1., 0.7, -.0));\n" +
-"        // light = normalize(vec3(-1., 0.7, -.75));\n" +
-"        // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;\n" +
 "        fcolor *= dot(vnormal, light * -1.0) + ambient;\n" +
 "    #endif\n" +
 "\n" +
@@ -526,20 +491,7 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "        // Isometric-style projection\n" +
 "        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric\n" +
-"        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric\n" +
-"        // vposition.x -= vposition.z * 0.5;\n" +
 "    #endif\n" +
-"\n" +
-"    // Rotation test\n" +
-"    // float theta = 0;\n" +
-"    // const float pi = 3.1415926;\n" +
-"    // vec2 pr;\n" +
-"    // pr.x = vposition.x * cos(theta * pi / 180.0) + vposition.y * -sin(theta * pi / 180.0);\n" +
-"    // pr.y = vposition.x * sin(theta * pi / 180.0) + vposition.y * cos(theta * pi / 180.0);\n" +
-"    // vposition.xy = pr;\n" +
-"\n" +
-"    // vposition.y *= max(abs(sin(vposition.x)), 0.1); // hourglass effect\n" +
-"    // vposition.y *= abs(max(sin(vposition.x), 0.1)); // funnel effect\n" +
 "\n" +
 "    // Reverse and scale to 0-1 for GL depth buffer\n" +
 "    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth\n" +

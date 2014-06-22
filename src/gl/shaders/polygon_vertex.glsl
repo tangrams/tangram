@@ -1,13 +1,3 @@
-// #define PROJECTION_PERSPECTIVE
-// #define PROJECTION_ISOMETRIC
-// #define PROJECTION_POPUP
-
-// #define LIGHTING_POINT
-// #define LIGHTING_DIRECTION
-
-// #define ANIMATION_ELEVATOR
-// #define ANIMATION_WAVE
-
 uniform vec2 resolution;
 uniform vec2 map_center;
 uniform float map_zoom;
@@ -28,24 +18,8 @@ varying vec3 fcolor;
     varying vec3 fposition;
 #endif
 
-vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)
+vec3 light;
 const float ambient = 0.45;
-
-// Project lat-lng to mercator
-// vec2 latLngToMeters (vec2 coordinate) {
-//     const float pi = 3.1415926;
-//     const float half_circumference_meters = 20037508.342789244;
-//     vec2 projected;
-
-//     // Latitude
-//     projected.y = log(tan((coordinate.y + 90.0) * pi / 360.0)) / (pi / 180.0);
-//     projected.y = projected.y * half_circumference_meters / 180.0;
-
-//     // Longitude
-//     projected.x = coordinate.x * half_circumference_meters / 180.0;
-
-//     return projected;
-// }
 
 void main() {
     vec3 vposition = position;
@@ -65,11 +39,7 @@ void main() {
         #endif
 
         if (vposition_world.z > 1.0) {
-            // vposition.x += sin(vposition_world.z + time) * 10.0 * sin(position.x); // swaying buildings
-            // vposition.y += cos(vposition_world.z + time) * 10.0;
-
             #if defined(ANIMATION_ELEVATOR)
-                // vposition.z *= (sin(vposition_world.z / 25.0 * time) + 1.0) / 2.0 + 0.1; // evelator buildings
                 vposition.z *= max((sin(vposition_world.z + time) + 1.0) / 2.0, 0.05); // evelator buildings
             #elif defined(ANIMATION_WAVE)
                 vposition.z *= max((sin(vposition_world.x / 100.0 + time) + 1.0) / 2.0, 0.05); // wave
@@ -102,9 +72,6 @@ void main() {
     #elif defined(LIGHTING_DIRECTION)
         // Flat shading
         light = normalize(vec3(0.2, 0.7, -0.5));
-        // light = normalize(vec3(-1., 0.7, -.0));
-        // light = normalize(vec3(-1., 0.7, -.75));
-        // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;
         fcolor *= dot(vnormal, light * -1.0) + ambient;
     #endif
 
@@ -132,20 +99,7 @@ void main() {
 
         // Isometric-style projection
         vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
-        // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
-        // vposition.x -= vposition.z * 0.5;
     #endif
-
-    // Rotation test
-    // float theta = 0;
-    // const float pi = 3.1415926;
-    // vec2 pr;
-    // pr.x = vposition.x * cos(theta * pi / 180.0) + vposition.y * -sin(theta * pi / 180.0);
-    // pr.y = vposition.x * sin(theta * pi / 180.0) + vposition.y * cos(theta * pi / 180.0);
-    // vposition.xy = pr;
-
-    // vposition.y *= max(abs(sin(vposition.x)), 0.1); // hourglass effect
-    // vposition.y *= abs(max(sin(vposition.x), 0.1)); // funnel effect
 
     // Reverse and scale to 0-1 for GL depth buffer
     // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth
