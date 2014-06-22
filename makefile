@@ -2,6 +2,7 @@ BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
 
 all: \
+	src/gl/gl_shaders.js \
 	dist/vector-map.min.js \
 	dist/vector-map.debug.js \
 	dist/vector-map-worker.min.js
