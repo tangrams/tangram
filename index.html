@@ -35,6 +35,7 @@ body {
 <script src="dist/vector-map.debug.js"></script>
 
 <script>
+var tiles_debug = false;
 
 (function(){
 
@@ -244,53 +245,60 @@ if (url_hash.length > 4) {
         }
     }
 } else {
-    log("no hash");
+    // log("no hash");
 }
 
 // gui settings
-presets = {
-  "preset": (url_ui || "googlemaps"),
+// NOTE: when updating presets, preserve the line: "preset": url_ui || "Default",
+
+presets = 
+{
+  "preset": url_ui || "Default", // don't replace!
   "remembered": {
     "Default": {
       "0": {
-        "height": 2.486028789161729,
-        "layer": 0,
+        "projection": "PROJECTION_PERSPECTIVE",
+        "lighting": "LIGHTING_POINT",
+        "effect": "",
+        "building_height": 1,
         "water_ocean": [
-          0,
-          0,
-          0
+          187.35294117647058,
+          216.1764705882353,
+          245
         ],
         "earth": [
-          230,
-          31.56862745098038,
-          31.56862745098038
+          120,
+          120,
+          120
         ],
         "landuse": [
-          39.58333333333333,
-          74.50980392156868,
-          237.5
+          164,
+          252,
+          164.00000000000003
         ],
         "water_areas": [
-          177.5,
-          121.81372549019608,
-          121.81372549019608
+          187.35294117647058,
+          216.1764705882353,
+          245
         ],
         "roads": [
           255,
-          242.5,
-          242.5
+          255,
+          255
         ],
         "buildings": [
-          137.5,
-          155.14705882352945,
-          212.5
+          162.5,
+          162.5,
+          162.5
         ]
       }
     },
     "googlemaps": {
       "0": {
-        "height": 1,
-        "layer": 0,
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 0.4,
         "water_ocean": [
           144,
           187,
@@ -322,11 +330,77 @@ presets = {
           232
         ]
       }
+    },
+    "spaceinvaders": {
+      "0": {
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 1,
+        "water_ocean": [
+          0,
+          0,
+          0
+        ],
+        "earth": "#ff00ff",
+        "landuse": "#0fff00",
+        "water_areas": [
+          0,
+          0,
+          0
+        ],
+        "roads": [
+          0,
+          255,
+          240.00000000000017
+        ],
+        "buildings": [
+          255,
+          255,
+          255
+        ]
+      }
+    },
+    "randmcnally": {
+      "0": {
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 0.1,
+        "water_ocean": [
+          212,
+          228,
+          244
+        ],
+        "earth": [
+          255,
+          255,
+          255
+        ],
+        "landuse": [
+          252,
+          229,
+          164
+        ],
+        "water_areas": [
+          212,
+          228,
+          244
+        ],
+        "roads": [
+228, 107, 139         ],
+        "buildings": [
+          192.5,
+          192.5,
+          192.5
+        ]
+      }
     }
   },
   "closed": false,
   "folders": {}
 }
+;
 
 var mygui = new dat.GUI({ autoPlace: true, load: presets });
 mygui.domElement.parentNode.style.zIndex = 5;
@@ -335,73 +409,101 @@ window.gui = mygui;
 mygui.remember(gui);
 
 
+// Object.keys(gl_controls).forEach(function(key) {
+//     gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
+//     gl_controls[key].control.onChange(function(value) {
+//         setGLProgramDefines();
+//     });
+// });
+// log("gl_controls setup");
+
+// set up gui controls for the #DEFINE parameters in gl_controls
 Object.keys(gl_controls).forEach(function(key) {
-    gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
-    gl_controls[key].control.onChange(function(value) {
+    mygui[key] = gl_controls[key].options;
+    var control = mygui.add(mygui, key, gl_controls[key].options);
+    control.onChange(function(value) {
+        // log("changed");
+        // log(value);
         setGLProgramDefines();
     });
+
+    // set initial values for those gui controls
+    // Object.keys(gl_controls).forEach(function(key) {
+        // log("mygui[key]: "+mygui[key]);
+        // log("gl_controls[key][key]: "+gl_controls[key][key]);
+        // mygui[key] = gl_controls[key][key];
+        // log(mygui[key]);
+// log("");
+        // Animated?
+        // if (gl_controls[key].animated && gl_controls[key].animated.indexOf(gl_controls[key][key]) > -1) {
+            // animated = true;
+        // }
+    // });
+    for (i in gui.__controllers){
+        gui.__controllers[i].updateDisplay();
+    }
 });
 
-mygui.height = 0.0;
-var heightVar = mygui.add(mygui, 'height', -40, 40);
+mygui.building_height = 1.0;
+var heightVar = mygui.add(mygui, 'building_height', -20.0, 20.0);
 heightVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_heightVar', value);
 });
 
-gui.layer = 0.0;
-var layerVar = mygui.add(mygui, 'layer', 0, layer._renderer.layers.length).step(1);
-layerVar.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_layerVar', value);
-});
 
 layers = [];
 
 // add a dat.gui color picker for each layer
 for (x in layer._renderer.layers) {
-    // log(layer._renderer.layers[x].name);
     mygui[layer._renderer.layers[x].name] = [0.0, 0.0, 0.0];
     var control = mygui.addColor(mygui, layer._renderer.layers[x].name);
+
     // dynamically set the associated pre-defined uniform
     control.onChange(function(x) {
         var u = 'testUniformColor' + x;
         return function(value) {
             setGLProgramUniformColor('3f', u, value);
-            // log(u);
         };
     }(x));  // this immediately calls the function.
-            // I don't know why this works or why it's necessary –
-            // something about closures
 }
 
 function updateUniforms() {
-    log("update");
-    // log(layer._renderer.layers);
-  for (x in layer._renderer.layers) {
-    // log("update "+x);
-        // log("u"+layer._renderer.layers[x].name);
+    for (x in layer._renderer.layers) {
         var u = 'testUniformColor' + x;
         function testfunc() {
-            // log('test');
             setGLProgramUniformColor('3f', u, mygui[layer._renderer.layers[x].name]);
-            // log(u+": "+mygui[layer._renderer.layers[x].name]);
         }(testfunc());
     };
+    setGLProgramUniform('1f', 'u_heightVar', mygui.building_height);
 }
 
 function log(v) {
     console.log(v);
 }
 function setGLProgramUniform (type, name, value) {
+    // log("setGLProgramUniform: "+type+", "+name+", "+value);
+    // log("modes:");
+    // log(layer._renderer.render_modes);  
     for (var m in layer._renderer.render_modes) {
+        // log("m: "+m);
+        // log(layer._renderer.gl.useProgram(layer._renderer.render_modes[m]));
         layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
         layer._renderer.render_modes[m].gl_program.uniform(type, name, value);
     }
-
+    // log("heightvar: "+layer._renderer.render_modes.polygons.gl_program.uniforms);
     layer._renderer.dirty = true;
 }
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
+}
+
 function setGLProgramUniformColor (type, name, value) {
     for (var m in layer._renderer.render_modes) {
         layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
+        // handle web colors, in case they are manually entered into the gui
+        if (value[0].toString()[0] == "#" ) value = hexToRgb(value);
         layer._renderer.render_modes[m].gl_program.uniform(type, name, value[0]/255, value[1]/255, value[2]/255);
     }
 
@@ -409,17 +511,24 @@ function setGLProgramUniformColor (type, name, value) {
 }
 
 function setGLProgramDefines () {
+    // log("setGLProgramDefines");
     var animated = false;
-
     Object.keys(gl_controls).forEach(function(key) {
-        setGLProgramDefinesForOptionSet(gl_controls[key][key], gl_controls[key].options);
+        // log("key: "+key);
+        // log("gl_controls[key]: "+gl_controls[key]);
+        // log("gl_controls[key][key]: "+gl_controls[key][key]);
+        // log("mygui[key]: "+mygui[key]);
+        setGLProgramDefinesForOptionSet(mygui[key], gl_controls[key].options);
 
         // Animated?
-        if (gl_controls[key].animated && gl_controls[key].animated.indexOf(gl_controls[key][key]) > -1) {
+        // log("gl_controls[key].animated: "+gl_controls[key].animated);
+        // log("gl_controls[key][key]: "+gl_controls[key][key]);
+        if (gl_controls[key].animated && gl_controls[key].animated.indexOf(mygui[key]) > -1) {
+            // log("gl_controls[key].animated.indexOf(gl_controls[key][key]): "+gl_controls[key].animated.indexOf(mygui[key]));
             animated = true;
         }
     });
-    // log(layer);
+// log("animated: "+animated);
     layer._renderer.continuous_animation = animated;
 
     for (var m in layer._renderer.render_modes) {
@@ -430,8 +539,12 @@ function setGLProgramDefines () {
 }
 
 function setGLProgramDefinesForOptionSet (current_value, options) {
+    // log("setGLProgramDefinesForOptionSet");
     for (var i in options) {
+        // log("current_value: "+current_value);
+        // log("before: "+options[i]+": "+Tangram.GL.Program.defines[options[i]]);
         Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
+        // log("after: "+Tangram.GL.Program.defines[options[i]]);
     }
 }
 
