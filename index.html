@@ -9,7 +9,7 @@ http://mapzen.com
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>Vector map</title>
+<title>Mapzen Vector map</title>
 <style>
 
 body {
@@ -33,6 +33,7 @@ body {
 <script src="lib/leaflet-0.8-dev.js"></script>
 <script src="lib/dat.gui.min.js"></script>
 <script src="dist/vector-map.debug.js"></script>
+<script type="text/javascript" src="presets.json"></script>
 
 <script>
 var tiles_debug = false;
@@ -113,7 +114,8 @@ var tile_sources = {
 var locations = {
     'London': [51.508, -0.105, 15],
     'New York': [40.70531887544228, -74.00976419448853, 16],
-    'Seattle': [47.609722, -122.333056, 15]
+    'Seattle': [47.609722, -122.333056, 15],
+    'San Francisco': [37.79310914816524,-122.39872455596925, 15]
 };
 
 var osm_debug = false;
@@ -126,7 +128,20 @@ var osm_debug = false;
 // #[lat],[lng],[zoom]
 // #[source],[lat],[lng],[zoom]
 // #[source],[location name]
-var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+
+// check for any additional parameters in format &param=value
+param_index = window.location.hash.indexOf("&");
+if (param_index == -1) {
+    var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+} else {
+    var url_hash = window.location.hash.slice(1, param_index).split(',');
+    var url_params = window.location.hash.slice(param_index+1, window.location.hash.length).split('&');
+
+    var params = []
+    for (x in url_params) {
+        params[url_params[x].split('=')[0]] = url_params[x].split('=')[1];
+    }
+}
 
 // Get tile source from URL
 if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
@@ -135,6 +150,7 @@ if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
 
 // Get location from URL
 var map_start_location = locations['New York'];
+
 if (url_hash.length == 3) {
     map_start_location = url_hash.slice(0, 3);
 }
@@ -146,12 +162,13 @@ else if (url_hash.length == 2) {
 }
 
 
-/*** Map ***/
-
+//
+// *** Map ***
+//
 var map = L.map('map', {
     maxZoom: 20,
     inertia: false,
-    keyboard: false
+    keyboard: true
 });
 map.attributionControl.setPrefix('');
 
@@ -232,175 +249,31 @@ var gl_controls = {
 };
 window.gl_controls = gl_controls;
 
-// UI settings on URL hash
-if (url_hash.length > 4) {
-    var url_ui = url_hash.slice(4);
-    log("hash!: "+url_ui);
 
-    for (var g in gl_controls) {
-        for (var p in gl_controls[g].options) {
-            if (url_ui.indexOf(gl_controls[g].options[p]) > -1) {
-                gl_controls[g][g] = gl_controls[g].options[p];
-            }
+function getQueryVariable(variable)
+{
+       var query = window.location.search.substring(1);
+       var vars = query.split("&");
+       for (var i=0;i<vars.length;i++) {
+               var pair = vars[i].split("=");
+               if(pair[0] == variable){return pair[1];}
+       }
+       return(false);
+}
+
+var url_ui = '';
+var valid_url_ui = false;
+// get gui preset from URL
+if (url_hash.length > 4) {
+    url_ui = url_hash.slice(4);
+    for (p in presets.remembered) {
+        // check that url_ui is actually a preset
+        if (url_ui in presets.remembered) {
+            valid_url_ui = true;
+            presets["preset"] = url_ui;
         }
     }
-} else {
-    // log("no hash");
 }
-
-// gui settings
-// NOTE: when updating presets, preserve the line: "preset": url_ui || "Default",
-
-presets = 
-{
-  "preset": url_ui || "Default", // don't replace!
-  "remembered": {
-    "Default": {
-      "0": {
-        "projection": "PROJECTION_PERSPECTIVE",
-        "lighting": "LIGHTING_POINT",
-        "effect": "",
-        "building_height": 1,
-        "water_ocean": [
-          187.35294117647058,
-          216.1764705882353,
-          245
-        ],
-        "earth": [
-          120,
-          120,
-          120
-        ],
-        "landuse": [
-          164,
-          252,
-          164.00000000000003
-        ],
-        "water_areas": [
-          187.35294117647058,
-          216.1764705882353,
-          245
-        ],
-        "roads": [
-          255,
-          255,
-          255
-        ],
-        "buildings": [
-          162.5,
-          162.5,
-          162.5
-        ]
-      }
-    },
-    "googlemaps": {
-      "0": {
-        "projection": "PROJECTION_ISOMETRIC",
-        "lighting": "LIGHTING_DIRECTION",
-        "effect": "",
-        "building_height": 0.4,
-        "water_ocean": [
-          144,
-          187,
-          255
-        ],
-        "earth": [
-          233,
-          229,
-          220
-        ],
-        "landuse": [
-          202,
-          223,
-          170
-        ],
-        "water_areas": [
-          144,
-          187,
-          255
-        ],
-        "roads": [
-          255,
-          255,
-          255
-        ],
-        "buildings": [
-          241,
-          239,
-          232
-        ]
-      }
-    },
-    "spaceinvaders": {
-      "0": {
-        "projection": "PROJECTION_ISOMETRIC",
-        "lighting": "LIGHTING_DIRECTION",
-        "effect": "",
-        "building_height": 1,
-        "water_ocean": [
-          0,
-          0,
-          0
-        ],
-        "earth": "#ff00ff",
-        "landuse": "#0fff00",
-        "water_areas": [
-          0,
-          0,
-          0
-        ],
-        "roads": [
-          0,
-          255,
-          240.00000000000017
-        ],
-        "buildings": [
-          255,
-          255,
-          255
-        ]
-      }
-    },
-    "randmcnally": {
-      "0": {
-        "projection": "PROJECTION_ISOMETRIC",
-        "lighting": "LIGHTING_DIRECTION",
-        "effect": "",
-        "building_height": 0.1,
-        "water_ocean": [
-          212,
-          228,
-          244
-        ],
-        "earth": [
-          255,
-          255,
-          255
-        ],
-        "landuse": [
-          252,
-          229,
-          164
-        ],
-        "water_areas": [
-          212,
-          228,
-          244
-        ],
-        "roads": [
-228, 107, 139         ],
-        "buildings": [
-          192.5,
-          192.5,
-          192.5
-        ]
-      }
-    }
-  },
-  "closed": false,
-  "folders": {}
-}
-;
 
 var mygui = new dat.GUI({ autoPlace: true, load: presets });
 mygui.domElement.parentNode.style.zIndex = 5;
@@ -408,48 +281,24 @@ mygui.domElement.parentNode.style.zIndex = 5;
 window.gui = mygui;
 mygui.remember(gui);
 
+// set up #DEFINE controls
 
-// Object.keys(gl_controls).forEach(function(key) {
-//     gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
-//     gl_controls[key].control.onChange(function(value) {
-//         setGLProgramDefines();
-//     });
-// });
-// log("gl_controls setup");
-
-// set up gui controls for the #DEFINE parameters in gl_controls
 Object.keys(gl_controls).forEach(function(key) {
     mygui[key] = gl_controls[key].options;
     var control = mygui.add(mygui, key, gl_controls[key].options);
     control.onChange(function(value) {
-        // log("changed");
-        // log(value);
         setGLProgramDefines();
     });
-
-    // set initial values for those gui controls
-    // Object.keys(gl_controls).forEach(function(key) {
-        // log("mygui[key]: "+mygui[key]);
-        // log("gl_controls[key][key]: "+gl_controls[key][key]);
-        // mygui[key] = gl_controls[key][key];
-        // log(mygui[key]);
-// log("");
-        // Animated?
-        // if (gl_controls[key].animated && gl_controls[key].animated.indexOf(gl_controls[key][key]) > -1) {
-            // animated = true;
-        // }
-    // });
-    for (i in gui.__controllers){
-        gui.__controllers[i].updateDisplay();
-    }
 });
 
+
+// set up uniform controls
+
 mygui.building_height = 1.0;
-var heightVar = mygui.add(mygui, 'building_height', -20.0, 20.0);
+var heightVar = mygui.add(mygui, 'building_height', 0.0, 20.0);
 heightVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_heightVar', value);
 });
-
 
 layers = [];
 
@@ -464,8 +313,81 @@ for (x in layer._renderer.layers) {
         return function(value) {
             setGLProgramUniformColor('3f', u, value);
         };
-    }(x));  // this immediately calls the function.
+    }(x));  // this immediately calls the function. not sure why this works
 }
+
+// generate a sharable url from the controls
+
+shareableLinkButtonName = "Link to map…";
+shareableLinkTextfieldName = "link:";
+
+mygui[shareableLinkButtonName] = function(){
+    url = window.location;
+    Object.keys(mygui.__controllers).forEach(function(key) {
+        control = mygui.__controllers[key].property;
+        value = mygui[control];
+        // don't encode the value of the "share link" button or textfield
+        if (control != shareableLinkButtonName && control != shareableLinkTextfieldName) {
+            // convert rgb to hex
+            if (value.length == 3) {
+                value = rgbToHex(value[0], value[1], value[2]);
+            }
+            // concatenate each control's settings onto the baseurl
+            url += "&" + control + "=" + value
+        }
+    });
+
+
+    // // add a new textfield to the gui, containing the url
+    // // if the textfield exists, this will update its value --
+    // // otherwise it adds the property to the gui
+    // linked = false;
+    // mygui[shareableLinkTextfieldName] = url;
+
+    // // if it's the first time, add the control, referencing the property
+    // if (!linked) {
+    //     mygui.add(mygui, shareableLinkTextfieldName);
+    //     linked = true; 
+    // } else {
+    //     // blank the textfield to show that something's changing,
+    //     // then update the textfield with the new value
+    //     mygui[shareableLinkTextfieldName] = "";
+    //     refreshLinkTextfield()
+    //     setTimeout(function() {
+    //         mygui[shareableLinkTextfieldName] = url;
+    //         refreshLinkTextfield();}
+    //     , 250);
+    // }
+
+    window.prompt("Copy to clipboard: Ctrl+C, Enter", url);
+}
+
+// function refreshLinkTextfield() {
+//     for (i in mygui.__controllers){
+//         if (mygui.__controllers[i].property == shareableLinkTextfieldName) {
+//             mygui.__controllers[i].updateDisplay();
+//         }
+//     }
+// }
+
+var generateShareURL = mygui.add(mygui, shareableLinkButtonName);
+
+
+
+// *** Load presets ***
+
+// if there's no valid preset parameter in the url, check for passed params
+if (!valid_url_ui && params) {
+    Object.keys(params).forEach(function(key) {
+        mygui[key] = params[key];
+    });
+    for (i in mygui.__controllers){
+        mygui.__controllers[i].updateDisplay();
+    }
+}
+
+
+/*** SET SHADER VARIABLES ***/
 
 function updateUniforms() {
     for (x in layer._renderer.layers) {
@@ -477,26 +399,12 @@ function updateUniforms() {
     setGLProgramUniform('1f', 'u_heightVar', mygui.building_height);
 }
 
-function log(v) {
-    console.log(v);
-}
 function setGLProgramUniform (type, name, value) {
-    // log("setGLProgramUniform: "+type+", "+name+", "+value);
-    // log("modes:");
-    // log(layer._renderer.render_modes);  
     for (var m in layer._renderer.render_modes) {
-        // log("m: "+m);
-        // log(layer._renderer.gl.useProgram(layer._renderer.render_modes[m]));
         layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
         layer._renderer.render_modes[m].gl_program.uniform(type, name, value);
     }
-    // log("heightvar: "+layer._renderer.render_modes.polygons.gl_program.uniforms);
     layer._renderer.dirty = true;
-}
-
-function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
 }
 
 function setGLProgramUniformColor (type, name, value) {
@@ -511,24 +419,15 @@ function setGLProgramUniformColor (type, name, value) {
 }
 
 function setGLProgramDefines () {
-    // log("setGLProgramDefines");
     var animated = false;
     Object.keys(gl_controls).forEach(function(key) {
-        // log("key: "+key);
-        // log("gl_controls[key]: "+gl_controls[key]);
-        // log("gl_controls[key][key]: "+gl_controls[key][key]);
-        // log("mygui[key]: "+mygui[key]);
         setGLProgramDefinesForOptionSet(mygui[key], gl_controls[key].options);
 
         // Animated?
-        // log("gl_controls[key].animated: "+gl_controls[key].animated);
-        // log("gl_controls[key][key]: "+gl_controls[key][key]);
         if (gl_controls[key].animated && gl_controls[key].animated.indexOf(mygui[key]) > -1) {
-            // log("gl_controls[key].animated.indexOf(gl_controls[key][key]): "+gl_controls[key].animated.indexOf(mygui[key]));
             animated = true;
         }
     });
-// log("animated: "+animated);
     layer._renderer.continuous_animation = animated;
 
     for (var m in layer._renderer.render_modes) {
@@ -539,13 +438,30 @@ function setGLProgramDefines () {
 }
 
 function setGLProgramDefinesForOptionSet (current_value, options) {
-    // log("setGLProgramDefinesForOptionSet");
     for (var i in options) {
-        // log("current_value: "+current_value);
-        // log("before: "+options[i]+": "+Tangram.GL.Program.defines[options[i]]);
         Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
-        // log("after: "+Tangram.GL.Program.defines[options[i]]);
     }
+}
+
+/*** HELPER FUNCTIONS ***/
+
+function componentToHex(c) {
+    var hex = Math.round(c).toString(16);
+    // var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
+}
+
+function log(v) {
+    console.log(v);
 }
 
 
@@ -595,10 +511,12 @@ function frameLoop () {
     }
 }());
 
-// refresh canvas to apply preloaded settings
-window.onload = function() {
-    updateUniforms();
-};
+    // refresh canvas to apply preloaded settings
+    window.onload = function() {
+        updateUniforms();
+        document.getElementById('map').focus();
+    }
+
 
 }());
 
