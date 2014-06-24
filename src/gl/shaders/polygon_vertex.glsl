@@ -21,18 +21,98 @@ varying vec3 fcolor;
 vec3 light;
 const float ambient = 0.45;
 
-void main() {
-    vec3 vposition = position;
-    vec3 vnormal = normal;
-
+vec3 modelTransform (vec3 position) {
     // Calc position of vertex in meters, relative to center of screen
-    vposition.y *= -1.0; // adjust for flipped y-coords
-    // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile
-    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)
+    position.y *= -1.0; // adjust for flipped y-coords
+    // position.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile
+    position.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)
 
+    return position;
+}
+
+vec3 modelViewTransform (vec3 position) {
+    position = modelTransform(position);
+
+    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced
+    position.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
+    position.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
+
+    return position;
+}
+
+vec3 perspectiveTransform (vec3 position) {
+    #if defined(PROJECTION_PERSPECTIVE)
+        // Perspective-style projection
+        const vec2 perspective_offset = vec2(-0.25, -0.25);
+        const vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
+        position.xy += position.z * perspective_factor * (position.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
+    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
+        // Pop-up effect - 3d in center of viewport, fading to 2d at edges
+        #if defined(PROJECTION_POPUP)
+            if (position.z > 1.0) {
+                float cd = distance(position.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));
+                const float popup_fade_inner = 0.5;
+                const float popup_fade_outer = 0.75;
+                if (cd > popup_fade_inner) {
+                    position.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);
+                }
+                const float zoom_boost_start = 15.0;
+                const float zoom_boost_end = 17.0;
+                const float zoom_boost_magnitude = 0.75;
+                position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;
+            }
+        #endif
+
+        // Isometric-style projection
+        position.y += position.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
+    #endif
+
+    return position;
+}
+
+float calculateZ (float z, float layer) {
+    // Reverse and scale to 0-1 for GL depth buffer
+    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth
+    float z_layer_scale = 4096.;
+    float z_layer_range = (num_layers + 1.) * z_layer_scale;
+    float z_layer = (layer + 1.) * z_layer_scale;
+
+    z = z_layer + clamp(z, 1., z_layer_scale);
+    z = (z_layer_range - z) / z_layer_range;
+
+    return z;
+}
+
+vec3 lighting (vec3 position, vec3 normal, vec3 color) {
+    // color += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
+
+    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
+        // Gouraud shading
+        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
+
+        #if defined(LIGHTING_NIGHT)
+            // "Night" effect by flipping vertex z
+            light = normalize(vec3(position.x, position.y, position.z) - light); // light angle from light point to vertex
+            color *= dot(normal, light * -1.0); // + ambient + clamp(position.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+        #else
+            // Point light-based gradient
+            light = normalize(vec3(position.x, position.y, -position.z) - light); // light angle from light point to vertex
+            color *= dot(normal, light * -1.0) + ambient + clamp(position.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+        #endif
+
+    #elif defined(LIGHTING_DIRECTION)
+        // Flat shading
+        light = normalize(vec3(0.2, 0.7, -0.5));
+        color *= dot(normal, light * -1.0) + ambient;
+    #endif
+
+    return color;
+}
+
+vec3 effects (vec3 position, vec3 vposition) {
     // Vertex displacement + procedural effects
     #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)
-        vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)
+        vec3 vposition_world = modelTransform(position) + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)
 
         #if defined(EFFECT_NOISE_TEXTURE)
             fposition = vposition_world;
@@ -47,68 +127,24 @@ void main() {
         }
     #endif
 
-    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced
-    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center
-    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords
+    return vposition;
+}
+
+void main() {
+    vec3 vposition = position;
+    vec3 vnormal = normal;
+
+    vposition = modelViewTransform(vposition);
+
+    // Vertex displacement + procedural effects
+    vposition = effects(position, vposition);
 
     // Shading
-    fcolor = color;
-    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
+    fcolor = lighting(vposition, vnormal, color);
 
-    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
-        // Gouraud shading
-        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
-
-        #if defined(LIGHTING_NIGHT)
-            // "Night" effect by flipping vertex z
-            light = normalize(vec3(vposition.x, vposition.y, vposition.z) - light); // light angle from light point to vertex
-            fcolor *= dot(vnormal, light * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
-        #else
-            // Point light-based gradient
-            light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
-            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
-        #endif
-
-    #elif defined(LIGHTING_DIRECTION)
-        // Flat shading
-        light = normalize(vec3(0.2, 0.7, -0.5));
-        fcolor *= dot(vnormal, light * -1.0) + ambient;
-    #endif
-
-    #if defined(PROJECTION_PERSPECTIVE)
-        // Perspective-style projection
-        vec2 perspective_offset = vec2(-0.25, -0.25);
-        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
-        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
-    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
-        // Pop-up effect - 3d in center of viewport, fading to 2d at edges
-        #if defined(PROJECTION_POPUP)
-            if (vposition.z > 1.0) {
-                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));
-                const float popup_fade_inner = 0.5;
-                const float popup_fade_outer = 0.75;
-                if (cd > popup_fade_inner) {
-                    vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);
-                }
-                const float zoom_boost_start = 15.0;
-                const float zoom_boost_end = 17.0;
-                const float zoom_boost_magnitude = 0.75;
-                vposition.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;
-            }
-        #endif
-
-        // Isometric-style projection
-        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
-    #endif
-
-    // Reverse and scale to 0-1 for GL depth buffer
-    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth
-    float z_layer_scale = 4096.;
-    float z_layer_range = (num_layers + 1.) * z_layer_scale;
-    float z_layer = (layer + 1.) * z_layer_scale;
-
-    vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);
-    vposition.z = (z_layer_range - vposition.z) / z_layer_range;
+    // Perspective
+    vposition = perspectiveTransform(vposition);
+    vposition.z = calculateZ(vposition.z, layer);
 
     gl_Position = vec4(vposition, 1.0);
 }

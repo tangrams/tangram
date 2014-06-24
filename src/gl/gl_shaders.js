@@ -413,18 +413,98 @@ shader_sources['polygon_vertex'] =
 "vec3 light;\n" +
 "const float ambient = 0.45;\n" +
 "\n" +
-"void main() {\n" +
-"    vec3 vposition = position;\n" +
-"    vec3 vnormal = normal;\n" +
-"\n" +
+"vec3 modelTransform (vec3 position) {\n" +
 "    // Calc position of vertex in meters, relative to center of screen\n" +
-"    vposition.y *= -1.0; // adjust for flipped y-coords\n" +
-"    // vposition.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile\n" +
-"    vposition.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
+"    position.y *= -1.0; // adjust for flipped y-coords\n" +
+"    // position.y += TILE_SCALE; // alternate, to also adjust for force-positive y coords in tile\n" +
+"    position.xy *= (tile_max - tile_min) / TILE_SCALE; // adjust for vertex location within tile (scaled from local coords to meters)\n" +
 "\n" +
+"    return position;\n" +
+"}\n" +
+"\n" +
+"vec3 modelViewTransform (vec3 position) {\n" +
+"    position = modelTransform(position);\n" +
+"\n" +
+"    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced\n" +
+"    position.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
+"    position.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
+"\n" +
+"    return position;\n" +
+"}\n" +
+"\n" +
+"vec3 perspectiveTransform (vec3 position) {\n" +
+"    #if defined(PROJECTION_PERSPECTIVE)\n" +
+"        // Perspective-style projection\n" +
+"        const vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
+"        const vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
+"        position.xy += position.z * perspective_factor * (position.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
+"    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
+"        // Pop-up effect - 3d in center of viewport, fading to 2d at edges\n" +
+"        #if defined(PROJECTION_POPUP)\n" +
+"            if (position.z > 1.0) {\n" +
+"                float cd = distance(position.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +
+"                const float popup_fade_inner = 0.5;\n" +
+"                const float popup_fade_outer = 0.75;\n" +
+"                if (cd > popup_fade_inner) {\n" +
+"                    position.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);\n" +
+"                }\n" +
+"                const float zoom_boost_start = 15.0;\n" +
+"                const float zoom_boost_end = 17.0;\n" +
+"                const float zoom_boost_magnitude = 0.75;\n" +
+"                position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;\n" +
+"            }\n" +
+"        #endif\n" +
+"\n" +
+"        // Isometric-style projection\n" +
+"        position.y += position.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric\n" +
+"    #endif\n" +
+"\n" +
+"    return position;\n" +
+"}\n" +
+"\n" +
+"float calculateZ (float z, float layer) {\n" +
+"    // Reverse and scale to 0-1 for GL depth buffer\n" +
+"    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth\n" +
+"    float z_layer_scale = 4096.;\n" +
+"    float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"    float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"\n" +
+"    z = z_layer + clamp(z, 1., z_layer_scale);\n" +
+"    z = (z_layer_range - z) / z_layer_range;\n" +
+"\n" +
+"    return z;\n" +
+"}\n" +
+"\n" +
+"vec3 lighting (vec3 position, vec3 normal, vec3 color) {\n" +
+"    // color += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
+"\n" +
+"    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)\n" +
+"        // Gouraud shading\n" +
+"        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"\n" +
+"        #if defined(LIGHTING_NIGHT)\n" +
+"            // \"Night\" effect by flipping vertex z\n" +
+"            light = normalize(vec3(position.x, position.y, position.z) - light); // light angle from light point to vertex\n" +
+"            color *= dot(normal, light * -1.0); // + ambient + clamp(position.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"        #else\n" +
+"            // Point light-based gradient\n" +
+"            light = normalize(vec3(position.x, position.y, -position.z) - light); // light angle from light point to vertex\n" +
+"            color *= dot(normal, light * -1.0) + ambient + clamp(position.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"        #endif\n" +
+"\n" +
+"    #elif defined(LIGHTING_DIRECTION)\n" +
+"        // Flat shading\n" +
+"        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
+"        color *= dot(normal, light * -1.0) + ambient;\n" +
+"    #endif\n" +
+"\n" +
+"    return color;\n" +
+"}\n" +
+"\n" +
+"vec3 effects (vec3 position, vec3 vposition) {\n" +
 "    // Vertex displacement + procedural effects\n" +
 "    #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
-"        vec3 vposition_world = vposition + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)\n" +
+"        vec3 vposition_world = modelTransform(position) + vec3(tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)\n" +
 "\n" +
 "        #if defined(EFFECT_NOISE_TEXTURE)\n" +
 "            fposition = vposition_world;\n" +
@@ -439,68 +519,24 @@ shader_sources['polygon_vertex'] =
 "        }\n" +
 "    #endif\n" +
 "\n" +
-"    // NOTE: due to unresolved floating point precision issues, tile and map center adjustment need to happen in ONE operation, or artifcats are introduced\n" +
-"    vposition.xy += tile_min.xy - map_center; // adjust for corner of tile relative to map center\n" +
-"    vposition.xy /= meter_zoom; // adjust for zoom in meters to get clip space coords\n" +
+"    return vposition;\n" +
+"}\n" +
+"\n" +
+"void main() {\n" +
+"    vec3 vposition = position;\n" +
+"    vec3 vnormal = normal;\n" +
+"\n" +
+"    vposition = modelViewTransform(vposition);\n" +
+"\n" +
+"    // Vertex displacement + procedural effects\n" +
+"    vposition = effects(position, vposition);\n" +
 "\n" +
 "    // Shading\n" +
-"    fcolor = color;\n" +
-"    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
+"    fcolor = lighting(vposition, vnormal, color);\n" +
 "\n" +
-"    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)\n" +
-"        // Gouraud shading\n" +
-"        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
-"\n" +
-"        #if defined(LIGHTING_NIGHT)\n" +
-"            // \"Night\" effect by flipping vertex z\n" +
-"            light = normalize(vec3(vposition.x, vposition.y, vposition.z) - light); // light angle from light point to vertex\n" +
-"            fcolor *= dot(vnormal, light * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
-"        #else\n" +
-"            // Point light-based gradient\n" +
-"            light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
-"            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
-"        #endif\n" +
-"\n" +
-"    #elif defined(LIGHTING_DIRECTION)\n" +
-"        // Flat shading\n" +
-"        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
-"        fcolor *= dot(vnormal, light * -1.0) + ambient;\n" +
-"    #endif\n" +
-"\n" +
-"    #if defined(PROJECTION_PERSPECTIVE)\n" +
-"        // Perspective-style projection\n" +
-"        vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
-"        vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);\n" +
-"        vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen\n" +
-"    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
-"        // Pop-up effect - 3d in center of viewport, fading to 2d at edges\n" +
-"        #if defined(PROJECTION_POPUP)\n" +
-"            if (vposition.z > 1.0) {\n" +
-"                float cd = distance(vposition.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +
-"                const float popup_fade_inner = 0.5;\n" +
-"                const float popup_fade_outer = 0.75;\n" +
-"                if (cd > popup_fade_inner) {\n" +
-"                    vposition.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);\n" +
-"                }\n" +
-"                const float zoom_boost_start = 15.0;\n" +
-"                const float zoom_boost_end = 17.0;\n" +
-"                const float zoom_boost_magnitude = 0.75;\n" +
-"                vposition.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;\n" +
-"            }\n" +
-"        #endif\n" +
-"\n" +
-"        // Isometric-style projection\n" +
-"        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric\n" +
-"    #endif\n" +
-"\n" +
-"    // Reverse and scale to 0-1 for GL depth buffer\n" +
-"    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth\n" +
-"    float z_layer_scale = 4096.;\n" +
-"    float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"    float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"\n" +
-"    vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);\n" +
-"    vposition.z = (z_layer_range - vposition.z) / z_layer_range;\n" +
+"    // Perspective\n" +
+"    vposition = perspectiveTransform(vposition);\n" +
+"    vposition.z = calculateZ(vposition.z, layer);\n" +
 "\n" +
 "    gl_Position = vec4(vposition, 1.0);\n" +
 "}\n" +
