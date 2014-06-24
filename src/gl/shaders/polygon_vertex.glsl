@@ -168,7 +168,7 @@ void main() {
         // vec2 perspective_offset = vec2(0.0,0.0);
         // vec2 perspective_offset = vec2(-0.25, -0.25) + vec2(testUniform);
         // vec2 perspective_factor = vec2(0.8, 0.8); // vec2(-0.25, 0.75);
-        vec2 perspective_factor = vec2(0.8, 0.8) + vec2(u_heightVar); // vec2(-0.25, 0.75);
+        vec2 perspective_factor = vec2(0.8, 0.8) * vec2(u_heightVar); // vec2(-0.25, 0.75);
         vposition.xy += vposition.z * perspective_factor * (vposition.xy - perspective_offset) / meter_zoom.xy; // perspective from offset center screen
         // vposition.xy += vec2(vposition.z * testUniform/1000.0);
     #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
@@ -189,7 +189,7 @@ void main() {
         #endif
 
         // Isometric-style projection
-        vposition.y += vposition.z / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
+        vposition.y += vposition.z * u_heightVar / meter_zoom.y; // z coordinate is a simple translation up along y axis, ala isometric
         // vposition.y += vposition.z * 0.5; // closer to Ultima 7-style axonometric
         // vposition.x -= vposition.z * 0.5;
     #endif
