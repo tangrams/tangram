@@ -1,0 +1,177 @@
+// gui settings
+// NOTE: when updating presets, preserve the line: "preset": url_ui || "Default",
+
+var presets = 
+{
+  "preset": "Default",
+  "remembered": {
+    "Default": {
+      "0": {
+        "projection": "PROJECTION_PERSPECTIVE",
+        "lighting": "LIGHTING_POINT",
+        "effect": "",
+        "building_height": 1,
+        "water_ocean": [
+          187.35294117647058,
+          216.1764705882353,
+          245
+        ],
+        "earth": [
+          120,
+          120,
+          120
+        ],
+        "landuse": [
+          164,
+          252,
+          164.00000000000003
+        ],
+        "water_areas": [
+          187.35294117647058,
+          216.1764705882353,
+          245
+        ],
+        "roads": [
+          255,
+          255,
+          255
+        ],
+        "buildings": [
+          162.5,
+          162.5,
+          162.5
+        ]
+      }
+    },
+    "googlemaps": {
+      "0": {
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 0.4,
+        "water_ocean": [
+          144,
+          187,
+          255
+        ],
+        "earth": [
+          233,
+          229,
+          220
+        ],
+        "landuse": [
+          202,
+          223,
+          170
+        ],
+        "water_areas": [
+          144,
+          187,
+          255
+        ],
+        "roads": [
+          255,
+          255,
+          255
+        ],
+        "buildings": [
+          241,
+          239,
+          232
+        ]
+      }
+    },
+    "comicbook": {
+      "0": {
+        "projection": "PROJECTION_PERSPECTIVE",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 1,
+        "water_ocean": [
+11,  72,  107         ],
+        "earth": [
+        255, 248, 240 
+        ],
+        "landuse": [175, 213, 189],
+        "water_areas": [
+11,  72,  107         ],
+        "roads": [
+        255, 248, 240 
+        ],
+        "buildings2": [
+144, 199, 169 
+        ],
+        "buildings": [
+65, 116, 134 
+        ]
+      }
+    },
+    "randmcnally": {
+      "0": {
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 0.1,
+        "water_ocean": [
+          212,
+          228,
+          244
+        ],
+        "earth": [
+          255,
+          255,
+          255
+        ],
+        "landuse": [
+          252,
+          229,
+          164
+        ],
+        "water_areas": [
+          212,
+          228,
+          244
+        ],
+        "roads": [
+          228,
+          107,
+          139
+        ],
+        "buildings": [
+          192.5,
+          192.5,
+          192.5
+        ]
+      }
+    },
+    "mapzen": {
+      "0": {
+        "projection": "PROJECTION_ISOMETRIC",
+        "lighting": "LIGHTING_DIRECTION",
+        "effect": "",
+        "building_height": 0.1,
+        "water_ocean": [
+142, 180, 183 
+        ],
+        "earth": [
+238, 241, 223 
+        ],
+        "landuse": [
+163, 162, 124 
+        ],
+        "water_areas": [
+142, 180, 183 
+        ],
+        "roads": [
+214, 218, 194 
+        ],
+        "buildings": [
+          234, 238, 215 
+        ]
+      }
+    }
+  },
+  "closed": false,
+  "folders": {}
+}
+;
