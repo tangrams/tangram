@@ -5,6 +5,7 @@
   },
   "devDependencies": {
     "uglify-js": "latest",
-    "browserify": "latest"
+    "browserify": "latest",
+    "glslify": "latest"
   }
 }

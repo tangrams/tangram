@@ -28,10 +28,14 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/*.glsl)
 		echo "var shader_sources = {};\n"; \
 		for f in *.glsl; do \
 			shader_name=`echo "$$f" | sed -e "s/\(.*\)\.glsl/\1/"`; \
-			echo "shader_sources['$$shader_name'] ="; sed -e "s/'/\\\'/g" -e 's/"/\\\"/g' -e 's/^\(.*\)/"\1\\n" +/g' $$f; echo '"";\n'; \
+			echo "shader_sources['$$shader_name'] ="; \
+			../../../node_modules/glslify/bin/glslify $$f -o temp.glsl; \
+			sed -e "s/'/\\\'/g" -e 's/"/\\\"/g' -e 's/^\(.*\)/"\1\\n" +/g' temp.glsl; \
+			echo '"";\n'; \
 		done; \
 		echo "if (module.exports !== undefined) { module.exports = shader_sources; }\n"; \
 	} > src/gl/gl_shaders.js
+	rm -f src/gl/shaders/temp.glsl
 
 clean:
 	rm -f dist/*
