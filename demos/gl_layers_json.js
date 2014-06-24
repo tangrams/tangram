@@ -67,9 +67,9 @@
         name: 'buildings',
         data: 'buildings'
     },
-    {
-        name: 'pois',
-        data: 'pois'
+    // {
+    //     name: 'pois',
+    //     data: 'pois'
         // data: function (json) {
         //     if (!json['pois'] || !json['pois'].features) {
         //         return null;
@@ -83,9 +83,9 @@
         //         })
         //     };
         // }
-    },
-    {
-        name: 'places',
-        data: 'places'
-    }
+    // },
+    // {
+    //     name: 'places',
+    //     data: 'places'
+    // }
 ]
