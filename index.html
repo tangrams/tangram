@@ -171,30 +171,40 @@ var map = L.map('map', {
     keyboard: true
 });
 map.attributionControl.setPrefix('');
-
-function generateURL() {
+var baseURL = "";
+function updateURL() {
     var map_latlng = map.getCenter();
-    window.location.hash = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
-
+    baseURL = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
+    generateURL();    
+}
+function generateURL() {
+    // log('generateurl');
     if (windowLoaded) {
+        var url = baseURL;
         // add all params as query objects
-        Object.keys(mygui.__controllers).forEach(function(key) {
-            control = mygui.__controllers[key].property;
-            value = mygui[control];
+        Object.keys(settings).forEach(function(key) {
+            value = settings[key];
             // don't encode the value of the "share link" button or textfield
             // if (control != shareableLinkButtonName && control != shareableLinkTextfieldName) {
                 // convert rgb to hex
                 if (value.length == 3) {
                     value = rgbToHex(value[0], value[1], value[2]);
+                    // update the settings object
+                    settings[key] = value;
                 }
                 // concatenate each control's settings onto the baseurl
-                window.location.hash += "&" + control + "=" + value
+                url += "&" + key + "=" + value;
+                
             // }
         });
+        // log(settings);
+        // log(url);
+        window.location.hash = url;
+        // log(window.location.hash.length);
     }
 
 }
-map.on('moveend', generateURL);
+map.on('moveend', updateURL);
 
 map.setView(map_start_location.slice(0, 2), map_start_location[2]);
 
@@ -306,11 +316,11 @@ Object.keys(gl_controls).forEach(function(key) {
     mygui[key] = gl_controls[key].options;
     var control = mygui.add(mygui, key, gl_controls[key].options);
     control.onChange(function(value) {
+        settings[key] = mygui[key];
         setGLProgramDefines();
         generateURL();
     });
 });
-
 
 // set up uniform controls
 
@@ -318,20 +328,26 @@ mygui.building_height = 1.0;
 var heightVar = mygui.add(mygui, 'building_height', 0.0, 20.0);
 heightVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_heightVar', value);
+    settings["building_height"] = value;
     generateURL();
 });
 
 layers = [];
+names = [];
 
 // add a dat.gui color picker for each layer
 for (x in layer._renderer.layers) {
-    mygui[layer._renderer.layers[x].name] = [0.0, 0.0, 0.0];
-    var control = mygui.addColor(mygui, layer._renderer.layers[x].name);
+    name = layer._renderer.layers[x].name;
+    names[x] = name;
+    mygui[name] = [0.0, 0.0, 0.0];
+    var control = mygui.addColor(mygui, name);
 
     // dynamically set the associated pre-defined uniform
     control.onChange(function(x) {
         var u = 'testUniformColor' + x;
         return function(value) {
+            // log(names[x]+": "+value);
+            settings[names[x]] = value;
             generateURL();
             setGLProgramUniformColor('3f', u, value);
         };
@@ -411,6 +427,13 @@ if (!valid_url_ui && params) {
     }
 }
 
+// save gui settings in an array for easy access, for generateURL()
+var settings = new Object();
+Object.keys(mygui.__controllers).forEach(function(key) {
+    settings[mygui.__controllers[key].property] = mygui[mygui.__controllers[key].property];
+});
+
+
 
 /*** SET SHADER VARIABLES ***/
 
@@ -471,8 +494,8 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
 /*** HELPER FUNCTIONS ***/
 
 function componentToHex(c) {
-    var hex = Math.round(c).toString(16);
-    // var hex = c.toString(16);
+    c = Math.round(c);
+    var hex = c.toString(16);
     return hex.length == 1 ? "0" + hex : hex;
 }
 
