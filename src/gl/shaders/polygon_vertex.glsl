@@ -73,9 +73,9 @@ const float ambient = .45;
 vec3 sphericalToCartesian( float azimuth, float elevation, float radius ) {
     // float z = sqrt(( pow(radius, 2.0) * pow(cos(azimuth), 2.0) )/(1.0 + pow(cos(azimuth), 2.0) * pow(tan(elevation), 2.0)));
     // float z = 1.0;
-    float z = sqrt(( pow(radius, 2.0) * pow(cos(azimuth), 2.0) ) / (1.0 + pow(cos(azimuth), 2.0) * pow(tan(elevation), 2.0)));
-    float x = tan(azimuth);
-    float y = tan(elevation);
+    float x = radius * sin(elevation) * cos(azimuth);
+    float y = radius * sin(elevation) * sin(azimuth);
+    float z = radius * cos(elevation);
     return vec3(x, y, z);
 }
 
@@ -160,17 +160,20 @@ void main() {
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
     // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time
 
-    float height_multiplier = u_lightHeight * 0.1;
+    float height_multiplier = u_lightHeight * 0.01;
     float height_factor = clamp(vposition.z * height_multiplier, 0.0, u_heightLimit);
 
     #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
         // Gouraud shading
         // light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
-        // light = u_lightPosition;
-        // light = vec3(u_lightPosition[0] - 128.0, u_lightPosition[1] - 128.0, u_lightPosition[2] - 128.0);
-        light = vec3(u_lightx, u_lighty, u_lightz);
-        // light = sphericalToCartesian(u_lightAzimuth, u_lightElevation, u_lightRadius);
-        // light = vec3(-0.25, -0.25, 0.50+ testUniform); // vec3(0.1, 0.1, 0.35); // point light location
+
+        // reverse azimuth rotation direction, rotate so 0 == north, and convert to raidans
+        float azimuth = ((360.0 - u_lightAzimuth + 90.0) * 3.14159) / 180.0;
+        // convert elevation range from 0..1 to pi/2..0 aka horizon to straight overhead
+        float elevation = (1.0 - u_lightElevation) * (3.14159 / 2.0);
+        // light = sphericalToCartesian(azimuth, elevation, u_lightRadius);
+        // fix light sphere radius so light is always offscreen
+        light = sphericalToCartesian(azimuth, elevation, 10.0);
 
         #if defined(LIGHTING_NIGHT)
             // "Night" effect by flipping vertex z
@@ -187,11 +190,8 @@ void main() {
     #elif defined(LIGHTING_DIRECTION)
         // Flat shading
         light = normalize(vec3(0.2, 0.7, -0.5));
-        // light = normalize(vec3(-1., 0.7, -.0));
-        // light = normalize(vec3(-1., 0.7, -.75));
         // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;
         fcolor *= dot(vnormal, light * -1.0) + u_lightAmbient + (height_factor);
-        // fcolor = vec3(height_factor);
     #endif
 
     #if defined(PROJECTION_PERSPECTIVE)

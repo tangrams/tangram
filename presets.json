@@ -46,6 +46,8 @@ var presets =
         "lightz": 3.4,
         "lightIntensity": 0.7,
         "lightAmbient": 0.45,
+        "lightHeight": 0.35,
+        "lightLimit": 0.75,
       }
     },
     "googlemaps": {
@@ -85,6 +87,7 @@ var presets =
           232
         ],
         "lightAmbient": 0.45,
+        "lightHeight": 0.0,
       }
     },
     "comicbook": {
@@ -111,6 +114,8 @@ var presets =
 65, 116, 134 
         ],
         "lightAmbient": 0.45,
+        "lightHeight": 0.35,
+        "lightLimit": 0.75,
       }
     },
     "randmcnally": {
@@ -150,6 +155,7 @@ var presets =
           192.5
         ],
         "lightAmbient": 0.45,
+        "lightHeight": 0.0,
       }
     },
     "mapzen": {
@@ -177,6 +183,7 @@ var presets =
           234, 238, 215 
         ],
         "lightAmbient": 0.45,
+        "lightHeight": 0.0,
       }
     }
   },
