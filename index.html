@@ -332,6 +332,94 @@ heightVar.onChange(function(value) {
     generateURL();
 });
 
+mygui.light_azimuth = 1.0;
+var azimuthVar = mygui.add(mygui, 'light_azimuth', 0.0, 3.14159);
+azimuthVar.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightAzimuth', value);
+    settings["light_azimuth"] = value;
+    generateURL();
+});
+
+mygui.light_elevation = 1.0;
+var elevationVar = mygui.add(mygui, 'light_elevation', 0.0, 3.14159);
+elevationVar.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightElevation', value);
+    settings["light_elevation"] = value;
+    generateURL();
+});
+
+mygui.light_radius = 1.0;
+var radiusVar = mygui.add(mygui, 'light_radius', 0.0, 1.0);
+radiusVar.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightRadius', value);
+    settings["light_radius"] = value;
+    generateURL();
+});
+
+mygui.lightx = 1.0;
+var lightx = mygui.add(mygui, 'lightx', -10.0, 10.0);
+lightx.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightx', value);
+    settings["lightx"] = value;
+    generateURL();
+});
+
+mygui.lighty = 1.0;
+var lighty = mygui.add(mygui, 'lighty', -10.0, 10.0);
+lighty.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lighty', value);
+    settings["lighty"] = value;
+    generateURL();
+});
+
+mygui.lightz = 1.0;
+var lightz = mygui.add(mygui, 'lightz', -10.0, 10.0);
+lightz.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightz', value);
+    settings["lightz"] = value;
+    generateURL();
+});
+
+mygui.lightIntensity = 1.0;
+var lightIntensity = mygui.add(mygui, 'lightIntensity', -1.0, 1.0);
+lightIntensity.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightIntensity', value);
+    settings["lightIntensity"] = value;
+    generateURL();
+});
+
+mygui.lightAmbient = 0.45;
+var lightAmbient = mygui.add(mygui, 'lightAmbient', -1.0, 1.0);
+lightAmbient.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightAmbient', value);
+    settings["lightAmbient"] = value;
+    generateURL();
+});
+
+mygui.lightHeight = 0.25;
+var lightHeight = mygui.add(mygui, 'lightHeight', 0.0, 1.0);
+lightHeight.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_lightHeight', value);
+    settings["lightHeight"] = value;
+    generateURL();
+});
+mygui.heightLimit = 0.45;
+var heightLimit = mygui.add(mygui, 'heightLimit', 0.0, 3.0);
+heightLimit.onChange(function(value) {
+    setGLProgramUniform('1f', 'u_heightLimit', value);
+    settings["heightLimit"] = value;
+    generateURL();
+});
+
+
+mygui.light_position = [0.0, 0.0, 0.0];
+var positionVar = mygui.addColor(mygui, 'light_position');
+positionVar.onChange(function(value) {
+    setGLProgramUniformColor('3f', 'u_lightPosition', value);
+    settings["light_position"] = value;
+    generateURL();
+});
+
 layers = [];
 names = [];
 
@@ -445,6 +533,10 @@ function updateUniforms() {
         }(testfunc());
     };
     setGLProgramUniform('1f', 'u_heightVar', mygui.building_height);
+    setGLProgramUniform('1f', 'u_lightIntensity', mygui.lightIntensity);
+    setGLProgramUniform('1f', 'u_lightAmbient', mygui.lightAmbient);
+    setGLProgramUniform('1f', 'u_lightHeight', mygui.lightHeight);
+    setGLProgramUniform('1f', 'u_heightLimit', mygui.heightLimit);
 }
 
 function setGLProgramUniform (type, name, value) {

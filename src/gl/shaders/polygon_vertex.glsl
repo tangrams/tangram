@@ -18,6 +18,17 @@ uniform float num_layers;
 uniform float time;
 uniform float u_heightVar;
 uniform float u_layerVar;
+uniform float u_lightAzimuth;
+uniform float u_lightElevation;
+uniform float u_lightRadius;
+uniform float u_lightx;
+uniform float u_lighty;
+uniform float u_lightz;
+uniform float u_lightIntensity;
+uniform float u_lightAmbient;
+uniform float u_lightHeight;
+uniform float u_heightLimit;
+uniform vec3 u_lightPosition;
 uniform vec3 testUniformColor0;
 uniform vec3 testUniformColor1;
 uniform vec3 testUniformColor2;
@@ -41,7 +52,7 @@ varying vec3 fcolor;
 #endif
 
 vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)
-const float ambient = 0.45;
+const float ambient = .45;
 
 // Project lat-lng to mercator
 // vec2 latLngToMeters (vec2 coordinate) {
@@ -58,6 +69,15 @@ const float ambient = 0.45;
 
 //     return projected;
 // }
+
+vec3 sphericalToCartesian( float azimuth, float elevation, float radius ) {
+    // float z = sqrt(( pow(radius, 2.0) * pow(cos(azimuth), 2.0) )/(1.0 + pow(cos(azimuth), 2.0) * pow(tan(elevation), 2.0)));
+    // float z = 1.0;
+    float z = sqrt(( pow(radius, 2.0) * pow(cos(azimuth), 2.0) ) / (1.0 + pow(cos(azimuth), 2.0) * pow(tan(elevation), 2.0)));
+    float x = tan(azimuth);
+    float y = tan(elevation);
+    return vec3(x, y, z);
+}
 
 void main() {
     vec3 vposition = position;
@@ -130,6 +150,9 @@ void main() {
     if (layer == 8.0) {
         fcolor = testUniformColor8;
     } 
+    if (layer == 9.0) {
+        fcolor = testUniformColor9;
+    } 
     // if (layer == u_layerVar) {
     //     fcolor = testUniformColor1;
     // } 
@@ -137,20 +160,28 @@ void main() {
     // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time
     // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time
 
+    float height_multiplier = u_lightHeight * 0.1;
+    float height_factor = clamp(vposition.z * height_multiplier, 0.0, u_heightLimit);
+
     #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
         // Gouraud shading
-        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
+        // light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
+        // light = u_lightPosition;
+        // light = vec3(u_lightPosition[0] - 128.0, u_lightPosition[1] - 128.0, u_lightPosition[2] - 128.0);
+        light = vec3(u_lightx, u_lighty, u_lightz);
+        // light = sphericalToCartesian(u_lightAzimuth, u_lightElevation, u_lightRadius);
         // light = vec3(-0.25, -0.25, 0.50+ testUniform); // vec3(0.1, 0.1, 0.35); // point light location
 
         #if defined(LIGHTING_NIGHT)
             // "Night" effect by flipping vertex z
             light = normalize(vec3(vposition.x, vposition.y, vposition.z) - light); // light angle from light point to vertex
             fcolor *= dot(vnormal, light * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
+            // fcolor *= dot(vnormal, light - u_lightAmbient * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
         #else
             // Point light-based gradient
             light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex
-            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);
             // fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * testUniform / meter_zoom.x, 0.0, 0.25);
+            fcolor *= dot(vnormal, light * -1.0 * u_lightIntensity) + u_lightAmbient + height_factor;
         #endif
 
     #elif defined(LIGHTING_DIRECTION)
@@ -159,7 +190,8 @@ void main() {
         // light = normalize(vec3(-1., 0.7, -.0));
         // light = normalize(vec3(-1., 0.7, -.75));
         // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;
-        fcolor *= dot(vnormal, light * -1.0) + ambient;
+        fcolor *= dot(vnormal, light * -1.0) + u_lightAmbient + (height_factor);
+        // fcolor = vec3(height_factor);
     #endif
 
     #if defined(PROJECTION_PERSPECTIVE)

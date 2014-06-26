@@ -40,7 +40,12 @@ var presets =
           162.5,
           162.5,
           162.5
-        ]
+        ],
+        "lightx": 0.0,
+        "lighty": 0.0,
+        "lightz": 3.4,
+        "lightIntensity": 0.7,
+        "lightAmbient": 0.45,
       }
     },
     "googlemaps": {
@@ -78,7 +83,8 @@ var presets =
           241,
           239,
           232
-        ]
+        ],
+        "lightAmbient": 0.45,
       }
     },
     "comicbook": {
@@ -103,7 +109,8 @@ var presets =
         ],
         "buildings": [
 65, 116, 134 
-        ]
+        ],
+        "lightAmbient": 0.45,
       }
     },
     "randmcnally": {
@@ -141,7 +148,8 @@ var presets =
           192.5,
           192.5,
           192.5
-        ]
+        ],
+        "lightAmbient": 0.45,
       }
     },
     "mapzen": {
@@ -167,7 +175,8 @@ var presets =
         ],
         "buildings": [
           234, 238, 215 
-        ]
+        ],
+        "lightAmbient": 0.45,
       }
     }
   },
