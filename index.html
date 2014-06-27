@@ -185,9 +185,9 @@ function generateURL() {
         Object.keys(settings).forEach(function(key) {
             value = settings[key];
             // don't encode the value of the "share link" button or textfield
-            // if (control != shareableLinkButtonName && control != shareableLinkTextfieldName) {
+            if (key != "search" && key != "redirects") {
                 // convert rgb to hex
-                if (value.length == 3) {
+                if (value.length == 3 && typeof value == "object") {
                     value = rgbToHex(value[0], value[1], value[2]);
                     // update the settings object
                     settings[key] = value;
@@ -195,7 +195,7 @@ function generateURL() {
                 // concatenate each control's settings onto the baseurl
                 url += "&" + key + "=" + value;
                 
-            // }
+            }
         });
         // log(settings);
         // log(url);
@@ -310,6 +310,54 @@ mygui.domElement.parentNode.style.zIndex = 5;
 window.gui = mygui;
 mygui.remember(gui);
 
+// simple search gui
+doSearch = function() {
+    searchterm = searchVar.domElement.getElementsByTagName("input")[0].value;
+    queryurl = "http://pelias.test.mapzen.com/suggest?query="+searchterm;
+
+    var xmlhttp;
+    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
+      xmlhttp=new XMLHttpRequest();
+    } else { // code for IE6, IE5
+      xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        r = JSON.parse(xmlhttp.responseText);
+        foundlocation = r.features[0].geometry.coordinates;
+        log(foundlocation);
+        // log(xmlhttp.responseText);
+        // log(response);
+
+        map_start_location = [foundlocation[1], foundlocation[0]];
+// log(map);
+log(map_start_location.slice(0, 2));
+log(map_start_location[2]);
+        map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+        updateURL();
+        layer._renderer.dirty = true;
+
+      }
+    }
+
+    xmlhttp.open("GET",queryurl,true);
+    xmlhttp.send();
+
+}
+
+mygui.search = "new york";
+var searchVar = mygui.add(mygui, "search");
+// searchVar.domElement.getElementsByTagName("input")[0].onblur = onBlurSearch;
+searchVar.domElement.getElementsByTagName("input")[0].onkeydown = function (e) {
+    e = e || window.event;
+    if (e.keyCode == 13) {
+        doSearch();
+    }
+};
+
+
+
 // set up #DEFINE controls
 
 Object.keys(gl_controls).forEach(function(key) {
@@ -388,13 +436,13 @@ heightLimit.onChange(function(value) {
 });
 
 
-mygui.light_position = [0.0, 0.0, 0.0];
-var positionVar = mygui.addColor(mygui, 'light_position');
-positionVar.onChange(function(value) {
-    setGLProgramUniformColor('3f', 'u_lightPosition', value);
-    settings["light_position"] = value;
-    generateURL();
-});
+// mygui.light_position = [0.0, 0.0, 0.0];
+// var positionVar = mygui.addColor(mygui, 'light_position');
+// positionVar.onChange(function(value) {
+//     setGLProgramUniformColor('3f', 'u_lightPosition', value);
+//     settings["light_position"] = value;
+//     generateURL();
+// });
 
 layers = [];
 names = [];
