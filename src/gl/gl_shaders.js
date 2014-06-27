@@ -412,6 +412,17 @@ shader_sources['polygon_vertex'] =
 "uniform float time;\n" +
 "uniform float u_heightVar;\n" +
 "uniform float u_layerVar;\n" +
+"uniform float u_lightAzimuth;\n" +
+"uniform float u_lightElevation;\n" +
+"uniform float u_lightRadius;\n" +
+"uniform float u_lightx;\n" +
+"uniform float u_lighty;\n" +
+"uniform float u_lightz;\n" +
+"uniform float u_lightIntensity;\n" +
+"uniform float u_lightAmbient;\n" +
+"uniform float u_lightHeight;\n" +
+"uniform float u_heightLimit;\n" +
+"uniform vec3 u_lightPosition;\n" +
 "uniform vec3 testUniformColor0;\n" +
 "uniform vec3 testUniformColor1;\n" +
 "uniform vec3 testUniformColor2;\n" +
@@ -435,7 +446,7 @@ shader_sources['polygon_vertex'] =
 "#endif\n" +
 "\n" +
 "vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)\n" +
-"const float ambient = 0.45;\n" +
+"const float ambient = .45;\n" +
 "\n" +
 "// Project lat-lng to mercator\n" +
 "// vec2 latLngToMeters (vec2 coordinate) {\n" +
@@ -452,6 +463,15 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "//     return projected;\n" +
 "// }\n" +
+"\n" +
+"vec3 sphericalToCartesian( float azimuth, float elevation, float radius ) {\n" +
+"    // float z = sqrt(( pow(radius, 2.0) * pow(cos(azimuth), 2.0) )/(1.0 + pow(cos(azimuth), 2.0) * pow(tan(elevation), 2.0)));\n" +
+"    // float z = 1.0;\n" +
+"    float x = radius * sin(elevation) * cos(azimuth);\n" +
+"    float y = radius * sin(elevation) * sin(azimuth);\n" +
+"    float z = radius * cos(elevation);\n" +
+"    return vec3(x, y, z);\n" +
+"}\n" +
 "\n" +
 "void main() {\n" +
 "    vec3 vposition = position;\n" +
@@ -524,6 +544,9 @@ shader_sources['polygon_vertex'] =
 "    if (layer == 8.0) {\n" +
 "        fcolor = testUniformColor8;\n" +
 "    } \n" +
+"    if (layer == 9.0) {\n" +
+"        fcolor = testUniformColor9;\n" +
+"    } \n" +
 "    // if (layer == u_layerVar) {\n" +
 "    //     fcolor = testUniformColor1;\n" +
 "    // } \n" +
@@ -531,29 +554,38 @@ shader_sources['polygon_vertex'] =
 "    // fcolor += vec3(sin(position.z + time), 0.0, 0.0); // color change on height + time\n" +
 "    // fcolor += vec3(position.z) * vec3(testUniform); // color change on height + time\n" +
 "\n" +
+"    float height_multiplier = u_lightHeight * 0.01;\n" +
+"    float height_factor = clamp(vposition.z * height_multiplier, 0.0, u_heightLimit);\n" +
+"\n" +
 "    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)\n" +
 "        // Gouraud shading\n" +
-"        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
-"        // light = vec3(-0.25, -0.25, 0.50+ testUniform); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"        // light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location\n" +
+"\n" +
+"        // reverse azimuth rotation direction, rotate so 0 == north, and convert to raidans\n" +
+"        float azimuth = ((360.0 - u_lightAzimuth + 90.0) * 3.14159) / 180.0;\n" +
+"        // convert elevation range from 0..1 to pi/2..0 aka horizon to straight overhead\n" +
+"        float elevation = (1.0 - u_lightElevation) * (3.14159 / 2.0);\n" +
+"        // light = sphericalToCartesian(azimuth, elevation, u_lightRadius);\n" +
+"        // fix light sphere radius so light is always offscreen\n" +
+"        light = sphericalToCartesian(azimuth, elevation, 10.0);\n" +
 "\n" +
 "        #if defined(LIGHTING_NIGHT)\n" +
 "            // \"Night\" effect by flipping vertex z\n" +
 "            light = normalize(vec3(vposition.x, vposition.y, vposition.z) - light); // light angle from light point to vertex\n" +
 "            fcolor *= dot(vnormal, light * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"            // fcolor *= dot(vnormal, light - u_lightAmbient * -1.0); // + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
 "        #else\n" +
 "            // Point light-based gradient\n" +
 "            light = normalize(vec3(vposition.x, vposition.y, -vposition.z) - light); // light angle from light point to vertex\n" +
-"            fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
 "            // fcolor *= dot(vnormal, light * -1.0) + ambient + clamp(vposition.z * testUniform / meter_zoom.x, 0.0, 0.25);\n" +
+"            fcolor *= dot(vnormal, light * -1.0 * u_lightIntensity) + u_lightAmbient + height_factor;\n" +
 "        #endif\n" +
 "\n" +
 "    #elif defined(LIGHTING_DIRECTION)\n" +
 "        // Flat shading\n" +
 "        light = normalize(vec3(0.2, 0.7, -0.5));\n" +
-"        // light = normalize(vec3(-1., 0.7, -.0));\n" +
-"        // light = normalize(vec3(-1., 0.7, -.75));\n" +
 "        // fcolor *= max(dot(vnormal, light * -1.0), 0.1) + ambient;\n" +
-"        fcolor *= dot(vnormal, light * -1.0) + ambient;\n" +
+"        fcolor *= dot(vnormal, light * -1.0) + u_lightAmbient + (height_factor);\n" +
 "    #endif\n" +
 "\n" +
 "    #if defined(PROJECTION_PERSPECTIVE)\n" +
