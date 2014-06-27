@@ -333,7 +333,7 @@ heightVar.onChange(function(value) {
 });
 
 mygui.light_azimuth = 1.0;
-var azimuthVar = mygui.add(mygui, 'light_azimuth', 0.0, 360.0);
+var azimuthVar = mygui.add(mygui, 'light_azimuth', 0, 360);
 azimuthVar.onChange(function(value) {
     setGLProgramUniform('1f', 'u_lightAzimuth', value);
     settings["light_azimuth"] = value;
@@ -509,8 +509,12 @@ function updateUniforms() {
         }(testfunc());
     };
     setGLProgramUniform('1f', 'u_heightVar', mygui.building_height);
+
+    setGLProgramUniform('1f', 'u_lightAzimuth', mygui.light_azimuth);
+    setGLProgramUniform('1f', 'u_lightElevation', mygui.light_elevation);
     setGLProgramUniform('1f', 'u_lightIntensity', mygui.lightIntensity);
     setGLProgramUniform('1f', 'u_lightAmbient', mygui.lightAmbient);
+
     setGLProgramUniform('1f', 'u_lightHeight', mygui.lightHeight);
     setGLProgramUniform('1f', 'u_heightLimit', mygui.heightLimit);
 }
