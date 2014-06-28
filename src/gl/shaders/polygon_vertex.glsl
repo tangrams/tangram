@@ -15,13 +15,14 @@ attribute float a_layer;
 varying vec3 v_color;
 
 #pragma glslify: perspectiveTransform = require(./modules/perspective, u_resolution=u_resolution, u_meter_zoom=u_meter_zoom)
+#pragma glslify: pointLight = require(./modules/point_light)
+#pragma glslify: directionalLight = require(./modules/directional_light)
 
 #if defined(EFFECT_NOISE_TEXTURE)
     varying vec3 v_position;
 #endif
 
-vec3 light;
-const float ambient = 0.45;
+const float light_ambient = 0.45;
 
 vec3 modelTransform (vec3 position) {
     // Calc position of vertex in meters, relative to center of screen
@@ -55,32 +56,6 @@ float calculateZ (float z, float layer) {
     return z;
 }
 
-vec3 lighting (vec3 position, vec3 normal, vec3 color) {
-    // color += vec3(sin(position.z + u_time), 0.0, 0.0); // color change on height + u_time
-
-    #if defined(LIGHTING_POINT) || defined(LIGHTING_NIGHT)
-        // Gouraud shading
-        light = vec3(-0.25, -0.25, 0.50); // vec3(0.1, 0.1, 0.35); // point light location
-
-        #if defined(LIGHTING_NIGHT)
-            // "Night" effect by flipping vertex z
-            light = normalize(vec3(position.x, position.y, position.z) - light); // light angle from light point to vertex
-            color *= dot(normal, light * -1.0); // + ambient + clamp(position.z * 2.0 / u_meter_zoom.x, 0.0, 0.25);
-        #else
-            // Point light-based gradient
-            light = normalize(vec3(position.x, position.y, -position.z) - light); // light angle from light point to vertex
-            color *= dot(normal, light * -1.0) + ambient + clamp(position.z * 2.0 / u_meter_zoom.x, 0.0, 0.25);
-        #endif
-
-    #elif defined(LIGHTING_DIRECTION)
-        // Flat shading
-        light = normalize(vec3(0.2, 0.7, -0.5));
-        color *= dot(normal, light * -1.0) + ambient;
-    #endif
-
-    return color;
-}
-
 vec3 effects (vec3 position, vec3 vposition) {
     // Vertex displacement + procedural effects
     #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)
@@ -112,7 +87,18 @@ void main() {
     vposition = effects(a_position, vposition);
 
     // Shading
-    v_color = lighting(vposition, vnormal, a_color);
+    #if defined(LIGHTING_POINT)
+        // Gouraud shading
+        v_color = pointLight(vposition * vec3(1., 1., -1.), vnormal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient, 2.0 / u_meter_zoom.x, 0.25);
+    #elif defined(LIGHTING_NIGHT)
+        // "Night" effect shading
+        v_color = pointLight(vposition, vnormal, a_color, vec3(-0.25, -0.25, 0.50), 0., 0., 0.);
+    #elif defined(LIGHTING_DIRECTION)
+        // Flat shading
+        v_color = directionalLight(vposition, vnormal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);
+    #else
+        v_color = a_color;
+    #endif
 
     // Perspective
     vposition = perspectiveTransform(vposition);
