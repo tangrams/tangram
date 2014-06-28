@@ -12,12 +12,12 @@ attribute vec3 a_normal;
 attribute vec3 a_color;
 attribute float a_layer;
 
-varying vec3 fcolor;
+varying vec3 v_color;
 
 #pragma glslify: perspectiveTransform = require(./modules/perspective, u_resolution=u_resolution, u_meter_zoom=u_meter_zoom)
 
 #if defined(EFFECT_NOISE_TEXTURE)
-    varying vec3 fposition;
+    varying vec3 v_position;
 #endif
 
 vec3 light;
@@ -87,7 +87,7 @@ vec3 effects (vec3 position, vec3 vposition) {
         vec3 vposition_world = modelTransform(position) + vec3(u_tile_min, 0.); // need vertex in world coords (before map center transform), hack to get around precision issues (see below)
 
         #if defined(EFFECT_NOISE_TEXTURE)
-            fposition = vposition_world;
+            v_position = vposition_world;
         #endif
 
         if (vposition_world.z > 1.0) {
@@ -112,7 +112,7 @@ void main() {
     vposition = effects(a_position, vposition);
 
     // Shading
-    fcolor = lighting(vposition, vnormal, a_color);
+    v_color = lighting(vposition, vnormal, a_color);
 
     // Perspective
     vposition = perspectiveTransform(vposition);

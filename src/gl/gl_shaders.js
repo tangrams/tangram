@@ -6,11 +6,11 @@ shader_sources['point_fragment'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
-"varying vec3 fcolor;\n" +
-"varying vec2 ftexcoord;\n" +
+"varying vec3 v_color;\n" +
+"varying vec2 v_texcoord;\n" +
 "void main(void) {\n" +
-"  vec4 color = vec4(fcolor, 1.);\n" +
-"  float len = length(ftexcoord);\n" +
+"  vec4 color = vec4(v_color, 1.);\n" +
+"  float len = length(v_texcoord);\n" +
 "  if(len > 1.) {\n" +
 "    discard;\n" +
 "  }\n" +
@@ -36,16 +36,16 @@ shader_sources['point_vertex'] =
 "attribute vec2 a_texcoord;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec3 fcolor;\n" +
-"varying vec2 ftexcoord;\n" +
+"varying vec3 v_color;\n" +
+"varying vec2 v_texcoord;\n" +
 "void main() {\n" +
 "  vec3 vposition = a_position;\n" +
 "  vposition.y *= -1.0;\n" +
 "  vposition.xy *= (u_tile_max - u_tile_min) / TILE_SCALE;\n" +
 "  vposition.xy += u_tile_min.xy - u_map_center;\n" +
 "  vposition.xy /= u_meter_zoom;\n" +
-"  fcolor = a_color;\n" +
-"  ftexcoord = a_texcoord;\n" +
+"  v_color = a_color;\n" +
+"  v_texcoord = a_texcoord;\n" +
 "  float z_layer_scale = 4096.;\n" +
 "  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
 "  float z_layer = (a_layer + 1.) * z_layer_scale;\n" +
@@ -61,10 +61,10 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "uniform vec2 u_resolution;\n" +
 "uniform float u_time;\n" +
-"varying vec3 fcolor;\n" +
+"varying vec3 v_color;\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
 "\n" +
-"varying vec3 fposition;\n" +
+"varying vec3 v_position;\n" +
 "vec3 a_x_mod289(vec3 x) {\n" +
 "  return x - floor(x * (1.0 / 289.0)) * 289.0;\n" +
 "}\n" +
@@ -148,9 +148,9 @@ shader_sources['polygon_fragment'] =
 "  vec2 position = gl_FragCoord.xy / u_resolution.xy;\n" +
 "  position = position * 2.0 - 1.0;\n" +
 "  position.y *= u_resolution.y / u_resolution.x;\n" +
-"  vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
+"  vec3 color = v_color * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
 "  #else\n" +
-"  vec3 color = fcolor;\n" +
+"  vec3 color = v_color;\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined(EFFECT_COLOR_BLEED)\n" +
@@ -161,11 +161,11 @@ shader_sources['polygon_fragment'] =
 "  #if defined (EFFECT_NOISE_TEXTURE)\n" +
 "  \n" +
 "  #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
-"  color *= (abs(a_x_cnoise((fposition + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
+"  color *= (abs(a_x_cnoise((v_position + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
 "  #endif\n" +
 "  \n" +
 "  #ifndef EFFECT_NOISE_ANIMATABLE\n" +
-"  color *= (abs(a_x_cnoise(fposition / 10.0)) / 4.0) + 0.75;\n" +
+"  color *= (abs(a_x_cnoise(v_position / 10.0)) / 4.0) + 0.75;\n" +
 "  #endif\n" +
 "  \n" +
 "  #endif\n" +
@@ -189,7 +189,7 @@ shader_sources['polygon_vertex'] =
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec3 fcolor;\n" +
+"varying vec3 v_color;\n" +
 "vec3 a_x_perspectiveTransform(vec3 position) {\n" +
 "  \n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
@@ -218,7 +218,7 @@ shader_sources['polygon_vertex'] =
 "}\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
 "\n" +
-"varying vec3 fposition;\n" +
+"varying vec3 v_position;\n" +
 "#endif\n" +
 "\n" +
 "vec3 light;\n" +
@@ -265,7 +265,7 @@ shader_sources['polygon_vertex'] =
 "  #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
 "  vec3 vposition_world = modelTransform(position) + vec3(u_tile_min, 0.);\n" +
 "  #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"  fposition = vposition_world;\n" +
+"  v_position = vposition_world;\n" +
 "  #endif\n" +
 "  if(vposition_world.z > 1.0) {\n" +
 "    \n" +
@@ -284,7 +284,7 @@ shader_sources['polygon_vertex'] =
 "  vec3 vnormal = a_normal;\n" +
 "  vposition = modelViewTransform(vposition);\n" +
 "  vposition = effects(a_position, vposition);\n" +
-"  fcolor = lighting(vposition, vnormal, a_color);\n" +
+"  v_color = lighting(vposition, vnormal, a_color);\n" +
 "  vposition = a_x_perspectiveTransform(vposition);\n" +
 "  vposition.z = calculateZ(vposition.z, a_layer);\n" +
 "  gl_Position = vec4(vposition, 1.0);\n" +

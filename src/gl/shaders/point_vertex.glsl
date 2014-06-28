@@ -12,8 +12,8 @@ attribute vec2 a_texcoord;
 attribute vec3 a_color;
 attribute float a_layer;
 
-varying vec3 fcolor;
-varying vec2 ftexcoord;
+varying vec3 v_color;
+varying vec2 v_texcoord;
 
 // vec3 light = normalize(vec3(0.2, 0.7, -0.5)); // vec3(0.1, 0.2, -0.4)
 // const float ambient = 0.45;
@@ -30,8 +30,8 @@ void main() {
     vposition.xy /= u_meter_zoom; // adjust for zoom in meters to get clip space coords
 
     // Shading & texture
-    fcolor = a_color;
-    ftexcoord = a_texcoord;
+    v_color = a_color;
+    v_texcoord = a_texcoord;
 
     // Reverse and scale to 0-1 for GL depth buffer
     // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth

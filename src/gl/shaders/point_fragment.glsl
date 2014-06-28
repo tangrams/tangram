@@ -1,17 +1,17 @@
 uniform vec2 u_resolution;
 
-varying vec3 fcolor;
-varying vec2 ftexcoord;
+varying vec3 v_color;
+varying vec2 v_texcoord;
 
 void main (void) {
-    vec4 color = vec4(fcolor, 1.);
+    vec4 color = vec4(v_color, 1.);
 
-    // if (length(ftexcoord.xy) > 10.) {
+    // if (length(v_texcoord.xy) > 10.) {
     //     // color = vec4(0., 0., 0., 0.);
     //     discard;
     // }
 
-    float len = length(ftexcoord);
+    float len = length(v_texcoord);
     if (len > 1.) {
         discard;
     }
