@@ -1,5 +1,6 @@
 uniform vec2 u_resolution;
 uniform vec2 u_meter_zoom;
+uniform vec2 u_map_zoom;
 
 vec3 perspectiveTransform (vec3 position) {
     #if defined(PROJECTION_PERSPECTIVE)
@@ -20,7 +21,7 @@ vec3 perspectiveTransform (vec3 position) {
                 const float zoom_boost_start = 15.0;
                 const float zoom_boost_end = 17.0;
                 const float zoom_boost_magnitude = 0.75;
-                position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;
+                position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, u_map_zoom)) * zoom_boost_magnitude;
             }
         #endif
 

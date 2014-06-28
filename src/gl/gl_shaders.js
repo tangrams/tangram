@@ -209,19 +209,27 @@ shader_sources['polygon_vertex'] =
 "    const float zoom_boost_start = 15.0;\n" +
 "    const float zoom_boost_end = 17.0;\n" +
 "    const float zoom_boost_magnitude = 0.75;\n" +
-"    position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;\n" +
+"    position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, u_map_zoom)) * zoom_boost_magnitude;\n" +
 "  }\n" +
 "  #endif\n" +
 "  position.y += position.z / u_meter_zoom.y;\n" +
 "  #endif\n" +
 "  return position;\n" +
 "}\n" +
-"vec3 b_x_pointLight(vec3 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient, float light_height_gradient_factor, float light_height_gradient_max) {\n" +
+"float b_x_calculateZ(float z, float layer) {\n" +
+"  const float z_layer_scale = 4096.;\n" +
+"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"  z = z_layer + clamp(z, 1., z_layer_scale);\n" +
+"  z = (z_layer_range - z) / z_layer_range;\n" +
+"  return z;\n" +
+"}\n" +
+"vec3 c_x_pointLight(vec3 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient, float light_height_gradient_factor, float light_height_gradient_max) {\n" +
 "  vec3 light_dir = normalize(vec3(position.x, position.y, position.z) - light_pos);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient + clamp(position.z * light_height_gradient_factor, 0.0, light_height_gradient_max);\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 c_x_directionalLight(vec3 position, vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 d_x_directionalLight(vec3 position, vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
@@ -242,14 +250,6 @@ shader_sources['polygon_vertex'] =
 "  position.xy += u_tile_min.xy - u_map_center;\n" +
 "  position.xy /= u_meter_zoom;\n" +
 "  return position;\n" +
-"}\n" +
-"float calculateZ(float z, float layer) {\n" +
-"  float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 1., z_layer_scale);\n" +
-"  z = (z_layer_range - z) / z_layer_range;\n" +
-"  return z;\n" +
 "}\n" +
 "vec3 effects(vec3 position, vec3 vposition) {\n" +
 "  \n" +
@@ -276,16 +276,16 @@ shader_sources['polygon_vertex'] =
 "  vposition = modelViewTransform(vposition);\n" +
 "  vposition = effects(a_position, vposition);\n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  v_color = b_x_pointLight(vposition * vec3(1., 1., -1.), vnormal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient, 2.0 / u_meter_zoom.x, 0.25);\n" +
+"  v_color = c_x_pointLight(vposition * vec3(1., 1., -1.), vnormal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient, 2.0 / u_meter_zoom.x, 0.25);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  v_color = b_x_pointLight(vposition, vnormal, a_color, vec3(-0.25, -0.25, 0.50), 0., 0., 0.);\n" +
+"  v_color = c_x_pointLight(vposition, vnormal, a_color, vec3(-0.25, -0.25, 0.50), 0., 0., 0.);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  v_color = c_x_directionalLight(vposition, vnormal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_color = d_x_directionalLight(vposition, vnormal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
 "  vposition = a_x_perspectiveTransform(vposition);\n" +
-"  vposition.z = calculateZ(vposition.z, a_layer);\n" +
+"  vposition.z = b_x_calculateZ(vposition.z, a_layer);\n" +
 "  gl_Position = vec4(vposition, 1.0);\n" +
 "}\n" +
 "";

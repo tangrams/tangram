@@ -14,7 +14,8 @@ attribute float a_layer;
 
 varying vec3 v_color;
 
-#pragma glslify: perspectiveTransform = require(./modules/perspective, u_resolution=u_resolution, u_meter_zoom=u_meter_zoom)
+#pragma glslify: perspectiveTransform = require(./modules/perspective, u_resolution=u_resolution, u_meter_zoom=u_meter_zoom, u_map_zoom=u_map_zoom)
+#pragma glslify: calculateZ = require(./modules/depth_scale)
 #pragma glslify: pointLight = require(./modules/point_light)
 #pragma glslify: directionalLight = require(./modules/directional_light)
 
@@ -41,19 +42,6 @@ vec3 modelViewTransform (vec3 position) {
     position.xy /= u_meter_zoom; // adjust for zoom in meters to get clip space coords
 
     return position;
-}
-
-float calculateZ (float z, float layer) {
-    // Reverse and scale to 0-1 for GL depth buffer
-    // Layers are force-ordered (higher layers guaranteed to render on top of lower), then by height/depth
-    float z_layer_scale = 4096.;
-    float z_layer_range = (u_num_layers + 1.) * z_layer_scale;
-    float z_layer = (layer + 1.) * z_layer_scale;
-
-    z = z_layer + clamp(z, 1., z_layer_scale);
-    z = (z_layer_range - z) / z_layer_range;
-
-    return z;
 }
 
 vec3 effects (vec3 position, vec3 vposition) {
