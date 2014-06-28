@@ -1,4 +1,4 @@
-uniform vec2 resolution;
+uniform vec2 u_resolution;
 
 varying vec3 fcolor;
 varying vec2 ftexcoord;
@@ -20,7 +20,7 @@ void main (void) {
 
     #if defined(EFFECT_SCREEN_COLOR)
         // Mutate colors by screen position
-        color.rgb += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);
+        color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
     #endif
 
     gl_FragColor = color;

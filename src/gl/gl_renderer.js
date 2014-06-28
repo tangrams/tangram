@@ -374,17 +374,17 @@ GLRenderer.prototype._render = function GLRendererRender ()
         gl.useProgram(gl_program.program);
 
         // TODO: set these once per program, don't set when they haven't changed
-        gl_program.uniform('2f', 'resolution', this.css_size.width, this.css_size.height);
-        gl_program.uniform('1f', 'time', ((+new Date()) - this.start_time) / 1000);
+        gl_program.uniform('2f', 'u_resolution', this.css_size.width, this.css_size.height);
+        gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
 
         var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-        gl_program.uniform('2f', 'map_center', center.x, center.y);
-        gl_program.uniform('1f', 'map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-        gl_program.uniform('1f', 'num_layers', this.layers.length);
+        gl_program.uniform('2f', 'u_map_center', center.x, center.y);
+        gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+        gl_program.uniform('1f', 'u_num_layers', this.layers.length);
 
         var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
         var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
-        gl_program.uniform('2f', 'meter_zoom', meter_zoom.x, meter_zoom.y);
+        gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
@@ -396,8 +396,8 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
 
                 if (tile.gl_geometry[mode] != null) {
-                    gl_program.uniform('2f', 'tile_min', tile.min.x, tile.min.y);
-                    gl_program.uniform('2f', 'tile_max', tile.max.x, tile.max.y);
+                    gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
+                    gl_program.uniform('2f', 'u_tile_max', tile.max.x, tile.max.y);
 
                     tile.gl_geometry[mode].render();
                     render_count += tile.gl_geometry[mode].geometry_count;

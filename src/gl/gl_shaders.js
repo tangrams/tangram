@@ -5,7 +5,7 @@ shader_sources['point_fragment'] =
 "\n" +
 "#define GLSLIFY 1\n" +
 "\n" +
-"uniform vec2 resolution;\n" +
+"uniform vec2 u_resolution;\n" +
 "varying vec3 fcolor;\n" +
 "varying vec2 ftexcoord;\n" +
 "void main(void) {\n" +
@@ -16,7 +16,7 @@ shader_sources['point_fragment'] =
 "  }\n" +
 "  color.rgb *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "  #if defined(EFFECT_SCREEN_COLOR)\n" +
-"  color.rgb += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);\n" +
+"  color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
 "  #endif\n" +
 "  gl_FragColor = color;\n" +
 "}\n" +
@@ -26,29 +26,29 @@ shader_sources['point_vertex'] =
 "\n" +
 "#define GLSLIFY 1\n" +
 "\n" +
-"uniform vec2 map_center;\n" +
-"uniform float map_zoom;\n" +
-"uniform vec2 meter_zoom;\n" +
-"uniform vec2 tile_min;\n" +
-"uniform vec2 tile_max;\n" +
-"uniform float num_layers;\n" +
-"attribute vec3 position;\n" +
-"attribute vec2 texcoord;\n" +
-"attribute vec3 color;\n" +
-"attribute float layer;\n" +
+"uniform vec2 u_map_center;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_meter_zoom;\n" +
+"uniform vec2 u_tile_min;\n" +
+"uniform vec2 u_tile_max;\n" +
+"uniform float u_num_layers;\n" +
+"attribute vec3 a_position;\n" +
+"attribute vec2 a_texcoord;\n" +
+"attribute vec3 a_color;\n" +
+"attribute float a_layer;\n" +
 "varying vec3 fcolor;\n" +
 "varying vec2 ftexcoord;\n" +
 "void main() {\n" +
-"  vec3 vposition = position;\n" +
+"  vec3 vposition = a_position;\n" +
 "  vposition.y *= -1.0;\n" +
-"  vposition.xy *= (tile_max - tile_min) / TILE_SCALE;\n" +
-"  vposition.xy += tile_min.xy - map_center;\n" +
-"  vposition.xy /= meter_zoom;\n" +
-"  fcolor = color;\n" +
-"  ftexcoord = texcoord;\n" +
+"  vposition.xy *= (u_tile_max - u_tile_min) / TILE_SCALE;\n" +
+"  vposition.xy += u_tile_min.xy - u_map_center;\n" +
+"  vposition.xy /= u_meter_zoom;\n" +
+"  fcolor = a_color;\n" +
+"  ftexcoord = a_texcoord;\n" +
 "  float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer = (a_layer + 1.) * z_layer_scale;\n" +
 "  vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);\n" +
 "  vposition.z = (z_layer_range - vposition.z) / z_layer_range;\n" +
 "  gl_Position = vec4(vposition, 1.0);\n" +
@@ -59,8 +59,8 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "#define GLSLIFY 1\n" +
 "\n" +
-"uniform vec2 resolution;\n" +
-"uniform float time;\n" +
+"uniform vec2 u_resolution;\n" +
+"uniform float u_time;\n" +
 "varying vec3 fcolor;\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
 "\n" +
@@ -145,23 +145,23 @@ shader_sources['polygon_fragment'] =
 "void main(void) {\n" +
 "  \n" +
 "  #if defined(EFFECT_SPOTLIGHT)\n" +
-"  vec2 position = gl_FragCoord.xy / resolution.xy;\n" +
+"  vec2 position = gl_FragCoord.xy / u_resolution.xy;\n" +
 "  position = position * 2.0 - 1.0;\n" +
-"  position.y *= resolution.y / resolution.x;\n" +
+"  position.y *= u_resolution.y / u_resolution.x;\n" +
 "  vec3 color = fcolor * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
 "  #else\n" +
 "  vec3 color = fcolor;\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined(EFFECT_COLOR_BLEED)\n" +
-"  color += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);\n" +
-"  color.r += sin(time / 3.0);\n" +
+"  color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
+"  color.r += sin(u_time / 3.0);\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined (EFFECT_NOISE_TEXTURE)\n" +
 "  \n" +
 "  #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
-"  color *= (abs(a_x_cnoise((fposition + vec3(time * 5., time * 7.5, time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
+"  color *= (abs(a_x_cnoise((fposition + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
 "  #endif\n" +
 "  \n" +
 "  #ifndef EFFECT_NOISE_ANIMATABLE\n" +
@@ -177,30 +177,30 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "#define GLSLIFY 1\n" +
 "\n" +
-"uniform vec2 resolution;\n" +
-"uniform vec2 map_center;\n" +
-"uniform float map_zoom;\n" +
-"uniform vec2 meter_zoom;\n" +
-"uniform vec2 tile_min;\n" +
-"uniform vec2 tile_max;\n" +
-"uniform float num_layers;\n" +
-"uniform float time;\n" +
-"attribute vec3 position;\n" +
-"attribute vec3 normal;\n" +
-"attribute vec3 color;\n" +
-"attribute float layer;\n" +
+"uniform vec2 u_resolution;\n" +
+"uniform float u_time;\n" +
+"uniform vec2 u_map_center;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_meter_zoom;\n" +
+"uniform vec2 u_tile_min;\n" +
+"uniform vec2 u_tile_max;\n" +
+"uniform float u_num_layers;\n" +
+"attribute vec3 a_position;\n" +
+"attribute vec3 a_normal;\n" +
+"attribute vec3 a_color;\n" +
+"attribute float a_layer;\n" +
 "varying vec3 fcolor;\n" +
 "vec3 a_x_perspectiveTransform(vec3 position) {\n" +
 "  \n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
 "  const vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
 "  const vec2 perspective_factor = vec2(0.8, 0.8);\n" +
-"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset) / meter_zoom.xy;\n" +
+"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset) / u_meter_zoom.xy;\n" +
 "  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
 "  \n" +
 "  #if defined(PROJECTION_POPUP)\n" +
 "  if(position.z > 1.0) {\n" +
-"    float cd = distance(position.xy * (resolution.xy / resolution.yy), vec2(0.0, 0.0));\n" +
+"    float cd = distance(position.xy * (u_resolution.xy / u_resolution.yy), vec2(0.0, 0.0));\n" +
 "    const float popup_fade_inner = 0.5;\n" +
 "    const float popup_fade_outer = 0.75;\n" +
 "    if(cd > popup_fade_inner) {\n" +
@@ -212,7 +212,7 @@ shader_sources['polygon_vertex'] =
 "    position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, map_zoom)) * zoom_boost_magnitude;\n" +
 "  }\n" +
 "  #endif\n" +
-"  position.y += position.z / meter_zoom.y;\n" +
+"  position.y += position.z / u_meter_zoom.y;\n" +
 "  #endif\n" +
 "  return position;\n" +
 "}\n" +
@@ -225,18 +225,18 @@ shader_sources['polygon_vertex'] =
 "const float ambient = 0.45;\n" +
 "vec3 modelTransform(vec3 position) {\n" +
 "  position.y *= -1.0;\n" +
-"  position.xy *= (tile_max - tile_min) / TILE_SCALE;\n" +
+"  position.xy *= (u_tile_max - u_tile_min) / TILE_SCALE;\n" +
 "  return position;\n" +
 "}\n" +
 "vec3 modelViewTransform(vec3 position) {\n" +
 "  position = modelTransform(position);\n" +
-"  position.xy += tile_min.xy - map_center;\n" +
-"  position.xy /= meter_zoom;\n" +
+"  position.xy += u_tile_min.xy - u_map_center;\n" +
+"  position.xy /= u_meter_zoom;\n" +
 "  return position;\n" +
 "}\n" +
 "float calculateZ(float z, float layer) {\n" +
 "  float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
 "  float z_layer = (layer + 1.) * z_layer_scale;\n" +
 "  z = z_layer + clamp(z, 1., z_layer_scale);\n" +
 "  z = (z_layer_range - z) / z_layer_range;\n" +
@@ -251,7 +251,7 @@ shader_sources['polygon_vertex'] =
 "  color *= dot(normal, light * -1.0);\n" +
 "  #else\n" +
 "  light = normalize(vec3(position.x, position.y, -position.z) - light);\n" +
-"  color *= dot(normal, light * -1.0) + ambient + clamp(position.z * 2.0 / meter_zoom.x, 0.0, 0.25);\n" +
+"  color *= dot(normal, light * -1.0) + ambient + clamp(position.z * 2.0 / u_meter_zoom.x, 0.0, 0.25);\n" +
 "  #endif\n" +
 "  \n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
@@ -263,16 +263,16 @@ shader_sources['polygon_vertex'] =
 "vec3 effects(vec3 position, vec3 vposition) {\n" +
 "  \n" +
 "  #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
-"  vec3 vposition_world = modelTransform(position) + vec3(tile_min, 0.);\n" +
+"  vec3 vposition_world = modelTransform(position) + vec3(u_tile_min, 0.);\n" +
 "  #if defined(EFFECT_NOISE_TEXTURE)\n" +
 "  fposition = vposition_world;\n" +
 "  #endif\n" +
 "  if(vposition_world.z > 1.0) {\n" +
 "    \n" +
 "    #if defined(ANIMATION_ELEVATOR)\n" +
-"    vposition.z *= max((sin(vposition_world.z + time) + 1.0) / 2.0, 0.05);\n" +
+"    vposition.z *= max((sin(vposition_world.z + u_time) + 1.0) / 2.0, 0.05);\n" +
 "    #elif defined(ANIMATION_WAVE)\n" +
-"    vposition.z *= max((sin(vposition_world.x / 100.0 + time) + 1.0) / 2.0, 0.05);\n" +
+"    vposition.z *= max((sin(vposition_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05);\n" +
 "    #endif\n" +
 "    \n" +
 "  }\n" +
@@ -280,13 +280,13 @@ shader_sources['polygon_vertex'] =
 "  return vposition;\n" +
 "}\n" +
 "void main() {\n" +
-"  vec3 vposition = position;\n" +
-"  vec3 vnormal = normal;\n" +
+"  vec3 vposition = a_position;\n" +
+"  vec3 vnormal = a_normal;\n" +
 "  vposition = modelViewTransform(vposition);\n" +
-"  vposition = effects(position, vposition);\n" +
-"  fcolor = lighting(vposition, vnormal, color);\n" +
+"  vposition = effects(a_position, vposition);\n" +
+"  fcolor = lighting(vposition, vnormal, a_color);\n" +
 "  vposition = a_x_perspectiveTransform(vposition);\n" +
-"  vposition.z = calculateZ(vposition.z, layer);\n" +
+"  vposition.z = calculateZ(vposition.z, a_layer);\n" +
 "  gl_Position = vec4(vposition, 1.0);\n" +
 "}\n" +
 "";

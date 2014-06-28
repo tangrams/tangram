@@ -85,10 +85,10 @@ GLTriangles.prototype = Object.create(GLGeometry.prototype);
 function GLTriangles (gl, gl_program, vertex_data)
 {
     GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
     this.geometry_count = this.vertex_count / 3;
 }
@@ -99,10 +99,10 @@ GLPolyPoints.prototype = Object.create(GLGeometry.prototype);
 function GLPolyPoints (gl, gl_program, vertex_data)
 {
     GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'texcoord', size: 2, type: gl.FLOAT, normalized: false },
-        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
     this.geometry_count = this.vertex_count / 3;
 }
