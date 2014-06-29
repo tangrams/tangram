@@ -1,12 +1,32 @@
 {
-  "title": "vector-map",
+  "name": "tangram",
+  "version": "0.0.1",
+  "description": "WebGL for OpenStreetMap",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/bcamper/tangram.git"
+  },
+  "homepage": "https://github.com/bcamper/tangram",
+  "keywords": [
+    "maps",
+    "graphics",
+    "rendering",
+    "visualization",
+    "WebGL",
+    "OpenStreetMap"
+  ],
+  "author": {
+    "name": "Brett Camper",
+    "email": "bcamper@alum.mit.edu"
+  },
+  "license": "MIT",
   "dependencies": {
     "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson",
     "glsl-noise": "0.0.0"
   },
   "devDependencies": {
-    "uglify-js": "latest",
-    "browserify": "latest",
-    "glslify": "latest"
+    "uglify-js": "^2.4.14",
+    "browserify": "^4.2.0",
+    "glslify": "^1.5.1"
   }
 }
