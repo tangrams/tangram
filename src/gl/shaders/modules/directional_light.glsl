@@ -1,5 +1,4 @@
 vec3 directionalLight (
-    vec3 position,
     vec3 normal,
     vec3 color,
     vec3 light_dir,
