@@ -92,17 +92,17 @@
         extrude: {
             default: function (f, t) { return ((t.coords.z >= 15 && f.properties.height > 20) || t.coords.z >= 16) }
         }
-    },
-    pois: {
-        render_mode: 'points',
-        color: {
-            default: [1.0, 1.0, 0]
-        },
-        size: {
-            default: Style.width.pixels(5),
-            // default: Style.width.pixels(function(f, t) { return 2 * Math.pow(t.coords.z, 0.4); })
-        }
-    },
+    }
+    // pois: {
+    //     render_mode: 'points',
+    //     color: {
+    //         default: [1.0, 1.0, 0]
+    //     },
+    //     size: {
+    //         default: Style.width.pixels(5),
+    //         // default: Style.width.pixels(function(f, t) { return 2 * Math.pow(t.coords.z, 0.4); })
+    //     }
+    // },
     // places: {
     //     filter: function(f, t) { return (t.coords.z >= 13); },
     //     color: {
