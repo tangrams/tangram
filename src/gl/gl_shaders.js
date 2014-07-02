@@ -179,27 +179,28 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "uniform vec2 u_resolution;\n" +
 "uniform float u_time;\n" +
-"uniform vec2 u_map_center;\n" +
 "uniform float u_map_zoom;\n" +
-"uniform vec2 u_meter_zoom;\n" +
-"uniform vec2 u_tile_min;\n" +
-"uniform vec2 u_tile_max;\n" +
+"uniform mat4 u_tile_view;\n" +
+"uniform mat4 u_tile_world;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
 "varying vec3 v_color;\n" +
-"vec3 a_x_perspectiveTransform(vec3 position) {\n" +
+"#if defined(EFFECT_NOISE_TEXTURE)\n" +
+"\n" +
+"varying vec3 v_position;\n" +
+"#endif\n" +
+"\n" +
+"vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
 "  \n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
-"  const vec2 perspective_offset = vec2(-0.25, -0.25);\n" +
-"  const vec2 perspective_factor = vec2(0.8, 0.8);\n" +
-"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset) / u_meter_zoom.xy;\n" +
+"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
 "  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
 "  \n" +
 "  #if defined(PROJECTION_POPUP)\n" +
-"  if(position.z > 1.0) {\n" +
+"  if(position.z > 0.) {\n" +
 "    float cd = distance(position.xy * (u_resolution.xy / u_resolution.yy), vec2(0.0, 0.0));\n" +
 "    const float popup_fade_inner = 0.5;\n" +
 "    const float popup_fade_outer = 0.75;\n" +
@@ -212,81 +213,62 @@ shader_sources['polygon_vertex'] =
 "    position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, u_map_zoom)) * zoom_boost_magnitude;\n" +
 "  }\n" +
 "  #endif\n" +
-"  position.y += position.z / u_meter_zoom.y;\n" +
+"  position.y += position.z;\n" +
 "  #endif\n" +
 "  return position;\n" +
 "}\n" +
 "float b_x_calculateZ(float z, float layer) {\n" +
-"  const float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 1., z_layer_scale);\n" +
+"  float z_layer_range = (u_num_layers + 1.) * 256.;\n" +
+"  float z_layer = (layer + 1.) * 256.;\n" +
+"  z = z_layer + clamp(z, 0., 256.);\n" +
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
-"vec3 c_x_pointLight(vec3 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient, float light_height_gradient_factor, float light_height_gradient_max) {\n" +
-"  vec3 light_dir = normalize(vec3(position.x, position.y, position.z) - light_pos);\n" +
-"  color *= dot(normal, light_dir * -1.0) + light_ambient + clamp(position.z * light_height_gradient_factor, 0.0, light_height_gradient_max);\n" +
+"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos);\n" +
+"  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 d_x_directionalLight(vec3 position, vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"#if defined(EFFECT_NOISE_TEXTURE)\n" +
-"\n" +
-"varying vec3 v_position;\n" +
-"#endif\n" +
-"\n" +
+"vec3 e_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
+"  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
+"  return color;\n" +
+"}\n" +
 "const float light_ambient = 0.45;\n" +
-"vec3 modelTransform(vec3 position) {\n" +
-"  position.y *= -1.0;\n" +
-"  position.xy *= (u_tile_max - u_tile_min) / TILE_SCALE;\n" +
-"  return position;\n" +
-"}\n" +
-"vec3 modelViewTransform(vec3 position) {\n" +
-"  position = modelTransform(position);\n" +
-"  position.xy += u_tile_min.xy - u_map_center;\n" +
-"  position.xy /= u_meter_zoom;\n" +
-"  return position;\n" +
-"}\n" +
-"vec3 effects(vec3 position, vec3 vposition) {\n" +
-"  \n" +
-"  #if defined(ANIMATION_ELEVATOR) || defined(ANIMATION_WAVE) || defined(EFFECT_NOISE_TEXTURE)\n" +
-"  vec3 vposition_world = modelTransform(position) + vec3(u_tile_min, 0.);\n" +
-"  #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"  v_position = vposition_world;\n" +
-"  #endif\n" +
-"  if(vposition_world.z > 1.0) {\n" +
+"void main() {\n" +
+"  vec4 position = vec4(a_position, 1.);\n" +
+"  position = u_tile_view * position;\n" +
+"  vec3 position_world = (u_tile_world * vec4(a_position, 1.)).xyz;\n" +
+"  if(position_world.z > 0.) {\n" +
 "    \n" +
 "    #if defined(ANIMATION_ELEVATOR)\n" +
-"    vposition.z *= max((sin(vposition_world.z + u_time) + 1.0) / 2.0, 0.05);\n" +
+"    position.z *= max((sin(position_world.z + u_time) + 1.0) / 2.0, 0.05);\n" +
 "    #elif defined(ANIMATION_WAVE)\n" +
-"    vposition.z *= max((sin(vposition_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05);\n" +
+"    position.z *= max((sin(position_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05);\n" +
 "    #endif\n" +
 "    \n" +
 "  }\n" +
+"  #if defined(EFFECT_NOISE_TEXTURE)\n" +
+"  v_position = (u_tile_world * vec4(a_position, 1.)).xyz;\n" +
 "  #endif\n" +
-"  return vposition;\n" +
-"}\n" +
-"void main() {\n" +
-"  vec3 vposition = a_position;\n" +
-"  vec3 vnormal = a_normal;\n" +
-"  vposition = modelViewTransform(vposition);\n" +
-"  vposition = effects(a_position, vposition);\n" +
+"  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  v_color = c_x_pointLight(vposition * vec3(1., 1., -1.), vnormal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient, 2.0 / u_meter_zoom.x, 0.25);\n" +
+"  v_color = c_x_pointLight(position * vec4(1., 1., -1., 1.), a_normal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient);\n" +
+"  v_color = e_x_heightBoostLight(position, v_color, 1.0, 0.5);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  v_color = c_x_pointLight(vposition, vnormal, a_color, vec3(-0.25, -0.25, 0.50), 0., 0., 0.);\n" +
+"  v_color = c_x_pointLight(position, a_normal, a_color, vec3(-0.25, -0.25, 0.50), 0.);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  v_color = d_x_directionalLight(vposition, vnormal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_color = d_x_directionalLight(a_normal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  vposition = a_x_perspectiveTransform(vposition);\n" +
-"  vposition.z = b_x_calculateZ(vposition.z, a_layer);\n" +
-"  gl_Position = vec4(vposition, 1.0);\n" +
+"  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
+"  position.z = b_x_calculateZ(position.z, a_layer);\n" +
+"  gl_Position = position;\n" +
 "}\n" +
 "";
 

@@ -9,6 +9,9 @@ var GLTriangles = require('./gl_geom.js').GLTriangles;
 var GLPolyPoints = require('./gl_geom.js').GLPolyPoints;
 var GLLines = require('./gl_geom.js').GLLines;
 
+var mat4 = require('gl-matrix').mat4;
+var vec3 = require('gl-matrix').vec3;
+
 VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
@@ -378,13 +381,20 @@ GLRenderer.prototype._render = function GLRendererRender ()
         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
 
         var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-        gl_program.uniform('2f', 'u_map_center', center.x, center.y);
+        // gl_program.uniform('2f', 'u_map_center', center.x, center.y);
         gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
 
         var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
         var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
-        gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
+        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
+
+        // Matrix transforms
+        var tile_view_mat = mat4.create();
+        var tile_world_mat = mat4.create();
+
+        var meter_view_mat = mat4.create();
+        mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y)); // convert meters to screen space
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
@@ -396,8 +406,22 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
 
                 if (tile.gl_geometry[mode] != null) {
-                    gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
-                    gl_program.uniform('2f', 'u_tile_max', tile.max.x, tile.max.y);
+                    // gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
+                    // gl_program.uniform('2f', 'u_tile_max', tile.max.x, tile.max.y);
+
+                    // Tile view matrix - transform tile space into view space
+                    mat4.identity(tile_view_mat);
+                    mat4.multiply(tile_view_mat, meter_view_mat, tile_view_mat);
+                    mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
+                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    gl_program.uniform('Matrix4fv', 'u_tile_view', gl.FALSE, tile_view_mat);
+
+                    // Tile world matrix - transform tile space into world space
+                    mat4.identity(tile_world_mat);
+                    mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
+                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    gl_program.uniform('Matrix4fv', 'u_tile_world', gl.FALSE, tile_world_mat);
+
 
                     tile.gl_geometry[mode].render();
                     render_count += tile.gl_geometry[mode].geometry_count;

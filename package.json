@@ -22,7 +22,8 @@
   "license": "MIT",
   "dependencies": {
     "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson",
-    "glsl-noise": "0.0.0"
+    "glsl-noise": "0.0.0",
+    "gl-matrix": "^2.1.0"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
