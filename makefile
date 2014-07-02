@@ -8,7 +8,6 @@ all: \
 	dist/vector-map-worker.min.js
 
 # browserify --debug adds source maps
-# dist/vector-map.debug.js: src/gl/shaders/gl_shaders.js $(shell $(BROWSERIFY) --list src/leaflet_vector_tile_layer.js)
 dist/vector-map.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
 	$(BROWSERIFY) src/module.js --debug --standalone Tangram > dist/vector-map.debug.js
 
@@ -21,7 +20,7 @@ dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list src/vector_worker.js
 	rm dist/temp.vector-map-worker.js
 
 # Process shaders into strings and export as a module
-src/gl/gl_shaders.js: $(wildcard src/gl/shaders/*.glsl)
+src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/gl/shaders/*.glsl)
 	{ \
 		cd src/gl/shaders; \
 		echo "// Generated from GLSL files, don't edit!"; \
