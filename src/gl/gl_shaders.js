@@ -9,16 +9,16 @@ shader_sources['point_fragment'] =
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "void main(void) {\n" +
-"  vec4 color = vec4(v_color, 1.);\n" +
+"  vec3 color = v_color;\n" +
 "  float len = length(v_texcoord);\n" +
 "  if(len > 1.) {\n" +
 "    discard;\n" +
 "  }\n" +
-"  color.rgb *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
+"  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "  #if defined(EFFECT_SCREEN_COLOR)\n" +
-"  color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
+"  color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
 "  #endif\n" +
-"  gl_FragColor = color;\n" +
+"  gl_FragColor = vec4(color, 1.);\n" +
 "}\n" +
 "";
 
@@ -26,11 +26,7 @@ shader_sources['point_vertex'] =
 "\n" +
 "#define GLSLIFY 1\n" +
 "\n" +
-"uniform vec2 u_map_center;\n" +
-"uniform float u_map_zoom;\n" +
-"uniform vec2 u_meter_zoom;\n" +
-"uniform vec2 u_tile_min;\n" +
-"uniform vec2 u_tile_max;\n" +
+"uniform mat4 u_tile_view;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
@@ -38,20 +34,19 @@ shader_sources['point_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
+"float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
+"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
+"  z = (z_layer_range - z) / z_layer_range;\n" +
+"  return z;\n" +
+"}\n" +
 "void main() {\n" +
-"  vec3 vposition = a_position;\n" +
-"  vposition.y *= -1.0;\n" +
-"  vposition.xy *= (u_tile_max - u_tile_min) / TILE_SCALE;\n" +
-"  vposition.xy += u_tile_min.xy - u_map_center;\n" +
-"  vposition.xy /= u_meter_zoom;\n" +
+"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
-"  float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (u_num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (a_layer + 1.) * z_layer_scale;\n" +
-"  vposition.z = z_layer + clamp(vposition.z, 1., z_layer_scale);\n" +
-"  vposition.z = (z_layer_range - vposition.z) / z_layer_range;\n" +
-"  gl_Position = vec4(vposition, 1.0);\n" +
+"  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
+"  gl_Position = position;\n" +
 "}\n" +
 "";
 
