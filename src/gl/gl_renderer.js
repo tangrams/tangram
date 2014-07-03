@@ -377,7 +377,8 @@ GLRenderer.prototype._render = function GLRendererRender ()
         gl.useProgram(gl_program.program);
 
         // TODO: set these once per program, don't set when they haven't changed
-        gl_program.uniform('2f', 'u_resolution', this.css_size.width, this.css_size.height);
+        gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+        gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
 
         var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
