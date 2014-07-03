@@ -1,10 +1,7 @@
 // Pop-up effect - 3d in center of viewport, fading to 2d at edges
-
-uniform vec2 u_aspect;
-
 vec4 popup (vec4 position, const vec2 center, const float radius) {
     if (position.z > 0.) {
-        float cd = distance(position.xy * u_aspect, center);
+        float cd = distance(position.xy, center);
         float popup_fade_inner = radius * 2. / 3.; // 0.5
         float popup_fade_outer = radius; // 0.75
         if (cd > popup_fade_inner) {

@@ -27,6 +27,7 @@ shader_sources['point_vertex'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform mat4 u_tile_view;\n" +
+"uniform mat4 u_meter_view;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
@@ -42,7 +43,7 @@ shader_sources['point_vertex'] =
 "  return z;\n" +
 "}\n" +
 "void main() {\n" +
-"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
 "  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
@@ -56,11 +57,19 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
+"uniform mat4 u_meter_view;\n" +
+"uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
 "varying vec3 v_color;\n" +
+"#if !defined(LIGHTING_VERTEX)\n" +
+"\n" +
+"varying vec4 v_position;\n" +
+"varying vec3 v_normal;\n" +
+"#endif\n" +
+"\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
 "\n" +
-"varying vec3 v_position;\n" +
+"varying vec4 v_position_world;\n" +
 "vec3 a_x_mod289(vec3 x) {\n" +
 "  return x - floor(x * (1.0 / 289.0)) * 289.0;\n" +
 "}\n" +
@@ -138,15 +147,47 @@ shader_sources['polygon_fragment'] =
 "}\n" +
 "#endif\n" +
 "\n" +
+"const float light_ambient = 0.5;\n" +
+"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  color *= dot(normalize(normal), light_dir * -1.0) + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"  light_dir = normalize(light_dir);\n" +
+"  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"vec3 e_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
+"  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
+"  return color;\n" +
+"}\n" +
+"vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
+"  \n" +
+"  #if defined(LIGHTING_POINT)\n" +
+"  color = c_x_pointLight(position * vec4(1., 1., -1., 1.), normal, color, light_pos, light_ambient);\n" +
+"  #elif defined(LIGHTING_NIGHT)\n" +
+"  color = c_x_pointLight(position, normal, color, night_light_pos, 0.);\n" +
+"  #elif defined(LIGHTING_DIRECTION)\n" +
+"  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  #else\n" +
+"  color = color;\n" +
+"  #endif\n" +
+"  return color;\n" +
+"}\n" +
 "void main(void) {\n" +
+"  vec3 color;\n" +
+"  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
+"  color = b_x_lighting(v_position, v_normal, v_color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  #else\n" +
+"  color = v_color;\n" +
+"  #endif\n" +
 "  \n" +
 "  #if defined(EFFECT_SPOTLIGHT)\n" +
 "  vec2 position = gl_FragCoord.xy / u_resolution.xy;\n" +
 "  position = position * 2.0 - 1.0;\n" +
 "  position *= u_aspect;\n" +
-"  vec3 color = v_color * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
-"  #else\n" +
-"  vec3 color = v_color;\n" +
+"  color *= max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined(EFFECT_COLOR_BLEED)\n" +
@@ -157,11 +198,11 @@ shader_sources['polygon_fragment'] =
 "  #if defined (EFFECT_NOISE_TEXTURE)\n" +
 "  \n" +
 "  #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
-"  color *= (abs(a_x_cnoise((v_position + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
+"  color *= (abs(a_x_cnoise((v_position_world.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
 "  #endif\n" +
 "  \n" +
 "  #ifndef EFFECT_NOISE_ANIMATABLE\n" +
-"  color *= (abs(a_x_cnoise(v_position / 10.0)) / 4.0) + 0.75;\n" +
+"  color *= (abs(a_x_cnoise(v_position_world.xyz / 10.0)) / 4.0) + 0.75;\n" +
 "  #endif\n" +
 "  \n" +
 "  #endif\n" +
@@ -176,19 +217,28 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
-"uniform mat4 u_tile_view;\n" +
 "uniform mat4 u_tile_world;\n" +
+"uniform mat4 u_tile_view;\n" +
+"uniform mat4 u_meter_view;\n" +
+"uniform float u_meters_per_pixel;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
 "varying vec3 v_color;\n" +
-"#if defined(EFFECT_NOISE_TEXTURE)\n" +
+"#if !defined(LIGHTING_VERTEX)\n" +
 "\n" +
-"varying vec3 v_position;\n" +
+"varying vec4 v_position;\n" +
+"varying vec3 v_normal;\n" +
 "#endif\n" +
 "\n" +
+"#if defined(EFFECT_NOISE_TEXTURE)\n" +
+"\n" +
+"varying vec4 v_position_world;\n" +
+"#endif\n" +
+"\n" +
+"const float light_ambient = 0.5;\n" +
 "vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
 "  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
 "  return position;\n" +
@@ -199,7 +249,7 @@ shader_sources['polygon_vertex'] =
 "}\n" +
 "vec4 c_x_popup(vec4 position, const vec2 center, const float radius) {\n" +
 "  if(position.z > 0.) {\n" +
-"    float cd = distance(position.xy * u_aspect, center);\n" +
+"    float cd = distance(position.xy, center);\n" +
 "    float popup_fade_inner = radius * 2. / 3.;\n" +
 "    float popup_fade_outer = radius;\n" +
 "    if(cd > popup_fade_inner) {\n" +
@@ -215,21 +265,33 @@ shader_sources['polygon_vertex'] =
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
-"vec3 e_x_pointLight(vec4 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient) {\n" +
-"  vec3 light_dir = normalize(position.xyz - light_pos);\n" +
-"  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
+"vec3 f_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  color *= dot(normalize(normal), light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 f_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 g_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
+"vec3 h_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
 "  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
 "  return color;\n" +
 "}\n" +
-"const float light_ambient = 0.45;\n" +
+"vec3 e_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
+"  \n" +
+"  #if defined(LIGHTING_POINT)\n" +
+"  color = f_x_pointLight(position * vec4(1., 1., -1., 1.), normal, color, light_pos, light_ambient);\n" +
+"  #elif defined(LIGHTING_NIGHT)\n" +
+"  color = f_x_pointLight(position, normal, color, night_light_pos, 0.);\n" +
+"  #elif defined(LIGHTING_DIRECTION)\n" +
+"  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  #else\n" +
+"  color = color;\n" +
+"  #endif\n" +
+"  return color;\n" +
+"}\n" +
 "void main() {\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
@@ -244,24 +306,21 @@ shader_sources['polygon_vertex'] =
 "  }\n" +
 "  #if defined(PROJECTION_POPUP)\n" +
 "  position.z *= 1.1;\n" +
-"  position = c_x_popup(position, vec2(0., 0.), 0.75);\n" +
+"  position = c_x_popup(position, vec2(0., 0.), 225. * u_meters_per_pixel);\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"  v_position = position_world.xyz;\n" +
+"  v_position_world = position_world;\n" +
 "  #endif\n" +
 "  \n" +
-"  #if defined(LIGHTING_POINT)\n" +
-"  v_color = e_x_pointLight(position * vec4(1., 1., -1., 1.), a_normal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient);\n" +
-"  v_color = g_x_heightBoostLight(position, v_color, 1.0, 0.5);\n" +
-"  #elif defined(LIGHTING_NIGHT)\n" +
-"  v_color = e_x_pointLight(position, a_normal, a_color, vec3(-0.25, -0.25, 0.50), 0.);\n" +
-"  #elif defined(LIGHTING_DIRECTION)\n" +
-"  v_color = f_x_directionalLight(a_normal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  #if defined(LIGHTING_VERTEX)\n" +
+"  v_color = e_x_lighting(position, a_normal, a_color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
+"  v_position = position;\n" +
+"  v_normal = a_normal;\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  \n" +
+"  position = u_meter_view * position;\n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
 "  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
 "  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +

@@ -216,13 +216,20 @@ var gl_controls = {
             'Pop-Up': 'PROJECTION_POPUP'
         }
     },
-    lighting: {
-        lighting: 'LIGHTING_POINT',
+    lighting_style: {
+        lighting_style: 'LIGHTING_POINT',
         options: {
             'None': '',
             'Gradient': 'LIGHTING_POINT',
             'Flat': 'LIGHTING_DIRECTION',
             'Night': 'LIGHTING_NIGHT'
+        }
+    },
+    lighting_mode: {
+        lighting_mode: 'LIGHTING_PIXEL',
+        options: {
+            'Per-Vertex': 'LIGHTING_VERTEX',
+            'Per-Pixel': 'LIGHTING_PIXEL'
         }
     },
     effect: {

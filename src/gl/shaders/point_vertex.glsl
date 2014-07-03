@@ -1,4 +1,5 @@
 uniform mat4 u_tile_view;
+uniform mat4 u_meter_view;
 uniform float u_num_layers;
 
 attribute vec3 a_position;
@@ -13,7 +14,7 @@ varying vec2 v_texcoord;
 #pragma glslify: calculateZ = require(./modules/depth_scale)
 
 void main() {
-    vec4 position = u_tile_view * vec4(a_position, 1.);
+    vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);
 
     v_color = a_color;
     v_texcoord = a_texcoord;
