@@ -60,6 +60,7 @@ shader_sources['polygon_fragment'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
+"uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
 "varying vec3 v_color;\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
@@ -147,7 +148,7 @@ shader_sources['polygon_fragment'] =
 "  #if defined(EFFECT_SPOTLIGHT)\n" +
 "  vec2 position = gl_FragCoord.xy / u_resolution.xy;\n" +
 "  position = position * 2.0 - 1.0;\n" +
-"  position.y *= u_resolution.y / u_resolution.x;\n" +
+"  position *= u_aspect;\n" +
 "  vec3 color = v_color * max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
 "  #else\n" +
 "  vec3 color = v_color;\n" +
@@ -178,8 +179,8 @@ shader_sources['polygon_vertex'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
+"uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
-"uniform float u_map_zoom;\n" +
 "uniform mat4 u_tile_view;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform float u_num_layers;\n" +
@@ -194,55 +195,49 @@ shader_sources['polygon_vertex'] =
 "#endif\n" +
 "\n" +
 "vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
-"  \n" +
-"  #if defined(PROJECTION_PERSPECTIVE)\n" +
 "  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
-"  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
-"  \n" +
-"  #if defined(PROJECTION_POPUP)\n" +
+"  return position;\n" +
+"}\n" +
+"vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" +
+"  position.xy += position.z * axis * multiplier / u_aspect;\n" +
+"  return position;\n" +
+"}\n" +
+"vec4 c_x_popup(vec4 position, const vec2 center, const float radius) {\n" +
 "  if(position.z > 0.) {\n" +
-"    float cd = distance(position.xy * (u_resolution.xy / u_resolution.yy), vec2(0.0, 0.0));\n" +
-"    const float popup_fade_inner = 0.5;\n" +
-"    const float popup_fade_outer = 0.75;\n" +
+"    float cd = distance(position.xy * u_aspect, center);\n" +
+"    float popup_fade_inner = radius * 2. / 3.;\n" +
+"    float popup_fade_outer = radius;\n" +
 "    if(cd > popup_fade_inner) {\n" +
 "      position.z *= 1.0 - smoothstep(popup_fade_inner, popup_fade_outer, cd);\n" +
 "    }\n" +
-"    const float zoom_boost_start = 15.0;\n" +
-"    const float zoom_boost_end = 17.0;\n" +
-"    const float zoom_boost_magnitude = 0.75;\n" +
-"    position.z *= 1.0 + (1.0 - smoothstep(zoom_boost_start, zoom_boost_end, u_map_zoom)) * zoom_boost_magnitude;\n" +
 "  }\n" +
-"  #endif\n" +
-"  position.y += position.z;\n" +
-"  #endif\n" +
 "  return position;\n" +
 "}\n" +
-"float b_x_calculateZ(float z, float layer) {\n" +
-"  float z_layer_range = (u_num_layers + 1.) * 256.;\n" +
-"  float z_layer = (layer + 1.) * 256.;\n" +
-"  z = z_layer + clamp(z, 0., 256.);\n" +
+"float d_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
+"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
-"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient) {\n" +
+"vec3 e_x_pointLight(vec4 position, vec3 normal, vec3 color, vec3 light_pos, float light_ambient) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 f_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 e_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
+"vec3 g_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
 "  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
 "  return color;\n" +
 "}\n" +
 "const float light_ambient = 0.45;\n" +
 "void main() {\n" +
-"  vec4 position = vec4(a_position, 1.);\n" +
-"  position = u_tile_view * position;\n" +
-"  vec3 position_world = (u_tile_world * vec4(a_position, 1.)).xyz;\n" +
+"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
 "  if(position_world.z > 0.) {\n" +
 "    \n" +
 "    #if defined(ANIMATION_ELEVATOR)\n" +
@@ -252,22 +247,32 @@ shader_sources['polygon_vertex'] =
 "    #endif\n" +
 "    \n" +
 "  }\n" +
+"  #if defined(PROJECTION_POPUP)\n" +
+"  position.z *= 1.1;\n" +
+"  position = c_x_popup(position, vec2(0., 0.), 0.75);\n" +
+"  #endif\n" +
+"  \n" +
 "  #if defined(EFFECT_NOISE_TEXTURE)\n" +
-"  v_position = (u_tile_world * vec4(a_position, 1.)).xyz;\n" +
+"  v_position = position_world.xyz;\n" +
 "  #endif\n" +
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  v_color = c_x_pointLight(position * vec4(1., 1., -1., 1.), a_normal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient);\n" +
-"  v_color = e_x_heightBoostLight(position, v_color, 1.0, 0.5);\n" +
+"  v_color = e_x_pointLight(position * vec4(1., 1., -1., 1.), a_normal, a_color, vec3(-0.25, -0.25, 0.50), light_ambient);\n" +
+"  v_color = g_x_heightBoostLight(position, v_color, 1.0, 0.5);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  v_color = c_x_pointLight(position, a_normal, a_color, vec3(-0.25, -0.25, 0.50), 0.);\n" +
+"  v_color = e_x_pointLight(position, a_normal, a_color, vec3(-0.25, -0.25, 0.50), 0.);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  v_color = d_x_directionalLight(a_normal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_color = f_x_directionalLight(a_normal, a_color, vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
+"  \n" +
+"  #if defined(PROJECTION_PERSPECTIVE)\n" +
 "  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
-"  position.z = b_x_calculateZ(position.z, a_layer);\n" +
+"  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
+"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
+"  #endif\n" +
+"  position.z = d_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";

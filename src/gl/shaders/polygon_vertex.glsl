@@ -22,10 +22,10 @@ varying vec3 v_color;
 #endif
 
 // Imported functions
-#pragma glslify: calculateZ = require(./modules/depth_scale, u_num_layers=u_num_layers, z_layer_scale=256.)
 #pragma glslify: perspective = require(./modules/perspective)
 #pragma glslify: isometric = require(./modules/isometric, u_aspect = u_aspect)
 #pragma glslify: popup = require(./modules/popup, u_aspect = u_aspect)
+#pragma glslify: calculateZ = require(./modules/depth_scale)
 #pragma glslify: pointLight = require(./modules/point_light)
 #pragma glslify: directionalLight = require(./modules/directional_light)
 #pragma glslify: heightBoostLight = require(./modules/height_light)
@@ -78,6 +78,7 @@ void main() {
         position = isometric(position, vec2(0., 1.), 1.);
     #endif
 
+    position.z = calculateZ(position.z, a_layer, u_num_layers, 256.);
 
     gl_Position = position;
 }
