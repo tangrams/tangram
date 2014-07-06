@@ -30,14 +30,7 @@ var Style = require('./style.js');
 }());
 
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
-VectorRenderer.units_per_meter = [];
-VectorRenderer.units_per_pixel = [];
-(function() {
-    for (var z=0; z <= Geo.max_zoom; z++) {
-        VectorRenderer.units_per_meter[z] = VectorRenderer.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
-        VectorRenderer.units_per_pixel[z] = VectorRenderer.tile_scale / Geo.tile_size;
-    }
-}());
+Geo.setTileScale(VectorRenderer.tile_scale);
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 function VectorRenderer (type, tile_source, layers, styles, options)
@@ -242,8 +235,6 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.min = Geo.metersForTile(tile.coords);
     tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
     tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
-    tile.units_per_meter = VectorRenderer.units_per_meter[tile.coords.z];
-    tile.units_per_pixel = VectorRenderer.units_per_pixel[tile.coords.z];
     tile.debug = {};
     tile.loading = true;
     tile.loaded = false;

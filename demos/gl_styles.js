@@ -38,7 +38,7 @@
                     return (
                         t.coords.z >= 16 &&
                         (f.properties.kind != 'ocean' && f.properties.kind != 'riverbank') &&
-                        (2.5 * Math.log(t.coords.z) * t.units_per_meter)
+                        (2.5 * Math.log(t.coords.z) * Style.units_per_meter(t))
                     );
                 }
             }
@@ -57,12 +57,12 @@
         },
         width: {
             // default: Style.width.pixels(5),
-            default: function (f, t) { return 2 * Math.log(t.coords.z) * t.units_per_meter; },
-            'highway': function (f, t) { return 3 * Math.log(t.coords.z) * t.units_per_meter; },
-            'major_road': function (f, t) { return 2.5 * Math.log(t.coords.z) * t.units_per_meter; },
-            'minor_road': function (f, t) { return 2 * Math.log(t.coords.z) * t.units_per_meter; },
-            'path': function (f, t) { return 1 * Math.log(t.coords.z) * t.units_per_meter; },
-            'debug': function (f, t) { return 5 * t.units_per_meter; }
+            default: function (f, t) { return 2 * Math.log(t.coords.z) * Style.units_per_meter(t); },
+            'highway': function (f, t) { return 3 * Math.log(t.coords.z) * Style.units_per_meter(t); },
+            'major_road': function (f, t) { return 2.5 * Math.log(t.coords.z) * Style.units_per_meter(t); },
+            'minor_road': function (f, t) { return 2 * Math.log(t.coords.z) * Style.units_per_meter(t); },
+            'path': function (f, t) { return 1 * Math.log(t.coords.z) * Style.units_per_meter(t); },
+            'debug': function (f, t) { return 5 * Style.units_per_meter(t); }
         },
         // z: {
         //     'path': Style.width.meters(25)
@@ -72,12 +72,12 @@
                 default: [0.1, 0.7, 0.7]
             },
             width: {
-                default: function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * t.units_per_meter) : null); },
-                'highway': function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z) * t.units_per_meter) : null); },
-                'major_road': function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z) * t.units_per_meter) : null); },
-                'minor_road': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * t.units_per_meter) : null); },
-                'path': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * t.units_per_meter) : null); },
-                'debug': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * t.units_per_meter) : null); }
+                default: function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); },
+                'highway': function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); },
+                'major_road': function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); },
+                'minor_road': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); },
+                'path': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); },
+                'debug': function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z) * Style.units_per_meter(t)) : null); }
             }
         }
     },
@@ -99,7 +99,8 @@
             default: [1.0, 1.0, 0]
         },
         size: {
-            default: Style.width.pixels(5),
+            default: Style.width.pixels(5)
+            // default: Style.width.meters(50)
             // default: Style.width.pixels(function(f, t) { return 2 * Math.pow(t.coords.z, 0.4); })
         }
     }
