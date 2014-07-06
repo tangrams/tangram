@@ -65,7 +65,7 @@ VectorRenderer.prototype.init = function ()
 VectorRenderer.prototype.createWorkers = function ()
 {
     var renderer = this;
-    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js';
+    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
 
     // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
     var req = new XMLHttpRequest();
@@ -342,7 +342,7 @@ VectorRenderer.loadLayers = function (url)
     var layers;
     var req = new XMLHttpRequest();
     req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
+    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
     return layers;
 };
@@ -352,7 +352,7 @@ VectorRenderer.loadStyles = function (url)
     var styles;
     var req = new XMLHttpRequest();
     req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
+    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
     return styles;
 };
