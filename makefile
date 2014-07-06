@@ -38,3 +38,4 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 
 clean:
 	rm -f dist/*
+	rm -f src/gl/gl_shaders.js
