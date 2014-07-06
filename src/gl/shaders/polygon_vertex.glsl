@@ -86,7 +86,7 @@ void main() {
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
     #endif
 
-    position.z = calculateZ(position.z, a_layer, u_num_layers, 256.);
+    position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
 
     gl_Position = position;
 }
