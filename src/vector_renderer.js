@@ -222,26 +222,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.worker = this.workers[this.next_worker];
     this.next_worker = (this.next_worker + 1) % this.workers.length;
 
-    // Debug info
-    div.setAttribute('data-tile-key', tile.key);
-    div.style.width = '256px';
-    div.style.height = '256px';
-
-    if (this.debug) {
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = tile.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        debug_overlay.style.fontSize = '16px';
-        // debug_overlay.style.textOutline = '1px #000000';
-        div.appendChild(debug_overlay);
-
-        div.style.borderStyle = 'solid';
-        div.style.borderColor = 'white';
-        div.style.borderWidth = '1px';
-    }
+    this.updateTileElement(tile, div);
 
     if (callback) {
         callback(null, div);
@@ -295,6 +276,31 @@ VectorRenderer.prototype.removeTile = function (key)
 
     delete this.tiles[key];
     this.dirty = true;
+};
+
+// Attaches tracking and debug into to the provided tile DOM element
+VectorRenderer.prototype.updateTileElement = function (tile, div)
+{
+    // Debug info
+    div.setAttribute('data-tile-key', tile.key);
+    div.style.width = '256px';
+    div.style.height = '256px';
+
+    if (this.debug) {
+        var debug_overlay = document.createElement('div');
+        debug_overlay.textContent = tile.key;
+        debug_overlay.style.position = 'absolute';
+        debug_overlay.style.left = 0;
+        debug_overlay.style.top = 0;
+        debug_overlay.style.color = 'white';
+        debug_overlay.style.fontSize = '16px';
+        // debug_overlay.style.textOutline = '1px #000000';
+        div.appendChild(debug_overlay);
+
+        div.style.borderStyle = 'solid';
+        div.style.borderColor = 'white';
+        div.style.borderWidth = '1px';
+    }
 };
 
 // Profiling methods used to track when sets of tiles start/stop loading together
