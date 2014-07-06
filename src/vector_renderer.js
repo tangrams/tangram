@@ -2,33 +2,8 @@ var Point = require('./point.js');
 var Geo = require('./geo.js');
 var Style = require('./style.js');
 
-// Get base URL from which the library was loaded
-// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
-(function() {
-    try {
-        VectorRenderer.library_base_url = '';
-        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
-        for (var s=0; s < scripts.length; s++) {
-            // var base_match = scripts[s].src.match(/(.*)vector-map.(debug|min).js/); // should match debug or minified versions
-            // if (base_match != null && base_match.length > 1) {
-            //     VectorRenderer.library_base_url = base_match[1];
-            //     break;
-            // }
-            var match = scripts[s].src.indexOf('vector-map.debug.js');
-            if (match == -1) {
-                match = scripts[s].src.indexOf('vector-map.min.js');
-            }
-            if (match >= 0) {
-                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
-                break;
-            }
-        }
-    }
-    catch (e) {
-        // skip in web worker
-    }
-}());
-
+// Global setup
+findBaseLibraryURL();
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(VectorRenderer.tile_scale);
 
@@ -508,6 +483,30 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     // style.render_mode.name = (layer_style.render_mode && layer_style.render_mode.name) || VectorRenderer.style_defaults.render_mode.name;
 
     return style;
+};
+
+// Private/internal
+// Get base URL from which the library was loaded
+// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
+function findBaseLibraryURL ()
+{
+    try {
+        VectorRenderer.library_base_url = '';
+        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
+        for (var s=0; s < scripts.length; s++) {
+            var match = scripts[s].src.indexOf('vector-map.debug.js');
+            if (match == -1) {
+                match = scripts[s].src.indexOf('vector-map.min.js');
+            }
+            if (match >= 0) {
+                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
+                break;
+            }
+        }
+    }
+    catch (e) {
+        // skip in web worker
+    }
 };
 
 if (module !== undefined) {
