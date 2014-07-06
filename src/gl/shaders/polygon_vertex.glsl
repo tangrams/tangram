@@ -65,8 +65,8 @@ void main() {
     #if defined(LIGHTING_VERTEX)
         v_color = lighting(
             position, a_normal, a_color,
-            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (150 pixels above ground)
-            vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (50 pixels above ground)
+            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
             vec3(0.2, 0.7, -0.5), // direction of light for flat shading
             light_ambient);
     #else

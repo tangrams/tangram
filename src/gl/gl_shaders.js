@@ -148,9 +148,9 @@ shader_sources['polygon_fragment'] =
 "#endif\n" +
 "\n" +
 "const float light_ambient = 0.5;\n" +
-"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient) {\n" +
+"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  color *= dot(normalize(normal), light_dir * -1.0) + light_ambient;\n" +
+"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
 "vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
@@ -158,16 +158,12 @@ shader_sources['polygon_fragment'] =
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 e_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
-"  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
-"  return color;\n" +
-"}\n" +
 "vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  color = c_x_pointLight(position * vec4(1., 1., -1., 1.), normal, color, light_pos, light_ambient);\n" +
+"  color = c_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = c_x_pointLight(position, normal, color, night_light_pos, 0.);\n" +
+"  color = c_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
 "  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
@@ -265,9 +261,9 @@ shader_sources['polygon_vertex'] =
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
-"vec3 f_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient) {\n" +
+"vec3 f_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  color *= dot(normalize(normal), light_dir * -1.0) + light_ambient;\n" +
+"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
 "vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
@@ -275,16 +271,12 @@ shader_sources['polygon_vertex'] =
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 h_x_heightBoostLight(vec4 position, vec3 color, float light_height_max, float light_factor) {\n" +
-"  color += color * mix(0., light_factor, smoothstep(0., light_height_max, position.z));\n" +
-"  return color;\n" +
-"}\n" +
 "vec3 e_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  color = f_x_pointLight(position * vec4(1., 1., -1., 1.), normal, color, light_pos, light_ambient);\n" +
+"  color = f_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = f_x_pointLight(position, normal, color, night_light_pos, 0.);\n" +
+"  color = f_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
 "  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
@@ -326,7 +318,7 @@ shader_sources['polygon_vertex'] =
 "  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
 "  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
 "  #endif\n" +
-"  position.z = d_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
+"  position.z = d_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
