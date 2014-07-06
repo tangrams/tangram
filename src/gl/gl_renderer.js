@@ -102,8 +102,8 @@ GLRenderer.addTile = function (tile, layers, styles)
     for (var ln=0; ln < layers.length; ln++) {
         layer = layers[ln];
 
-        // Skip layers with no styles defined
-        if (styles[layer.name] == null) {
+        // Skip layers with no styles defined, or layers set to not be visible
+        if (styles[layer.name] == null || !styles[layer.name].visible) {
             continue;
         }
 

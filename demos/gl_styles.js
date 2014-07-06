@@ -95,6 +95,7 @@
     },
     pois: {
         render_mode: 'points',
+        visible: true,
         color: {
             default: [1.0, 1.0, 0]
         },

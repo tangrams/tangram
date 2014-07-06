@@ -365,6 +365,12 @@ VectorRenderer.loadStyles = function (url)
     req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
+
+    // Process styles to prepare for renderer
+    for (var layer in styles) {
+        styles[layer].visible = !(styles[layer].visible === false); // layers are visible unless explicitly set to false
+    }
+
     return styles;
 };
 

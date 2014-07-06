@@ -245,6 +245,12 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     // Render layers
     for (var t in renderer.layers) {
         var layer = renderer.layers[t];
+
+        // Skip layers with no styles defined, or layers set to not be visible
+        if (this.styles[layer.name] == null || !this.styles[layer.name].visible) {
+            continue;
+        }
+
         tile.layers[layer.name].features.forEach(function(feature) {
             // Scale local coords to tile pixels
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, renderer.tile_min, renderer.tile_max);
