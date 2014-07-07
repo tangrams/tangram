@@ -248,9 +248,11 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
 {
     var vertex_data = tile.vertex_data;
 
-    // Create GL geometry objects
+    // Cleanup existing GL geometry objects
+    this.freeTileResources(tile);
     tile.gl_geometry = {};
 
+    // Create GL geometry objects
     for (var s in vertex_data) {
         tile.gl_geometry[s] = this.render_modes[s].makeGLGeometry(vertex_data[s]);
     }
@@ -286,15 +288,19 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
         return; // short circuit tile removal, GL renderer will sweep out tiles by zoom level when zoom ends
     }
 
-    var tile = this.tiles[key];
+    this.freeTileResources(this.tiles[key]);
+    VectorRenderer.prototype.removeTile.apply(this, arguments);
+};
 
+// Free any GL / owned resources
+GLRenderer.prototype.freeTileResources = function (tile)
+{
     if (tile != null && tile.gl_geometry != null) {
         for (var p in tile.gl_geometry) {
             tile.gl_geometry[p].destroy();
         }
         tile.gl_geometry = null;
     }
-    VectorRenderer.prototype.removeTile.apply(this, arguments);
 };
 
 GLRenderer.prototype.preserve_tiles_within_zoom = 2;

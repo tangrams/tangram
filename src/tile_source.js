@@ -99,7 +99,7 @@ NetworkTileSource.prototype.loadTile = function (tile, callback)
             tile.debug.parsing = +new Date() - tile.debug.parsing;
         }
 
-        tile.xhr = null;
+        delete tile.xhr;
         tile.loading = false;
         tile.loaded = true;
 

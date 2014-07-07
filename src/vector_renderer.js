@@ -55,7 +55,7 @@ VectorRenderer.prototype.init = function ()
 
     var renderer = this;
     this.workers.forEach(function(worker) {
-        worker.addEventListener('message', renderer.tileWorkerCompleted.bind(renderer));
+        worker.addEventListener('message', renderer.workerBuildTileCompleted.bind(renderer));
     });
 
     this.initialized = true;
@@ -87,6 +87,14 @@ VectorRenderer.prototype.createWorkers = function ()
     // }
 
     this.next_worker = 0;
+};
+
+// Post a message about a tile to the next worker (round robbin)
+VectorRenderer.prototype.workerPostMessageForTile = function (tile, message)
+{
+    tile.worker = this.next_worker;
+    this.workers[tile.worker].postMessage(message);
+    this.next_worker = (tile.worker + 1) % this.workers.length;
 };
 
 VectorRenderer.prototype.setCenter = function (lng, lat)
@@ -168,6 +176,7 @@ VectorRenderer.prototype.render = function ()
     return true;
 };
 
+// Load a single tile
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
     // Overzoom?
@@ -211,16 +220,20 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.loaded = false;
     this.updateVisibilityForTile(tile);
 
-    this.workers[this.next_worker].postMessage({
-        type: 'loadTile',
-        tile: tile,
+    this.workerPostMessageForTile(tile, {
+        type: 'buildTile',
+        tile: {
+            key: tile.key,
+            coords: tile.coords, // used by style helpers
+            min: tile.min, // used by TileSource to scale tile to local extents
+            max: tile.max, // used by TileSource to scale tile to local extents
+            debug: tile.debug
+        },
         renderer_type: this.type,
         tile_source: this.tile_source,
         layer_source: this.layer_source,
         style_source: this.style_source
     });
-    tile.worker = this.workers[this.next_worker];
-    this.next_worker = (this.next_worker + 1) % this.workers.length;
 
     this.updateTileElement(tile, div);
 
@@ -229,10 +242,40 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     }
 };
 
-// Called on main thread when a web worker completes processing for a single tile
-VectorRenderer.prototype.tileWorkerCompleted = function (event)
+// Rebuild all tiles
+// TODO: only rebuild certain layers?
+VectorRenderer.prototype.rebuildTiles = function ()
 {
-    if (event.data.type != 'loadTileCompleted') {
+    // Tell workers we're about to rebuild (so they can refresh styles, etc.)
+    this.workers.forEach(function(worker) {
+        worker.postMessage({
+            type: 'markForRebuild'
+        });
+    });
+
+    // TODO: rebuild visible tiles first, from center out
+    for (var t in this.tiles) {
+        var tile = this.tiles[t];
+
+        this.workerPostMessageForTile(tile, {
+            type: 'buildTile',
+            tile: {
+                key: tile.key,
+                coords: tile.coords, // used by style helpers
+                layers: tile.layers,
+                debug: tile.debug
+            },
+            renderer_type: this.type,
+            layer_source: this.layer_source,
+            style_source: this.style_source
+        });
+    }
+};
+
+// Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
+VectorRenderer.prototype.workerBuildTileCompleted = function (event)
+{
+    if (event.data.type != 'buildTileCompleted') {
         return;
     }
 
@@ -244,14 +287,16 @@ VectorRenderer.prototype.tileWorkerCompleted = function (event)
         return;
     }
 
-    this.tiles[tile.key] = tile; // TODO: OK to just wipe out the tile here? or could pass back a list of properties to replace? feeling the lack of underscore here...
+    // Update tile with properties from worker
+    tile = this.mergeTile(tile.key, tile);
 
     // Child class-specific tile processing
     if (typeof(this._tileWorkerCompleted) == 'function') {
         this._tileWorkerCompleted(tile);
     }
 
-    delete tile.layers; // delete the source data in the tile to save memory
+    // NOTE: was previously deleting source data to save memory, but now need to save for re-building geometry
+    // delete tile.layers;
 
     this.dirty = true;
     this.trackTileSetLoadEnd();
@@ -267,7 +312,7 @@ VectorRenderer.prototype.removeTile = function (key)
 
         // Web worker will cancel XHR requests
         if (tile.worker != null) {
-            tile.worker.postMessage({
+            this.workers[tile.worker].postMessage({
                 type: 'removeTile',
                 key: tile.key
             });
@@ -301,6 +346,26 @@ VectorRenderer.prototype.updateTileElement = function (tile, div)
         div.style.borderColor = 'white';
         div.style.borderWidth = '1px';
     }
+};
+
+// Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
+// Used for selectively updating properties of tiles passed between main thread and worker
+// (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
+VectorRenderer.prototype.mergeTile = function (key, source_tile)
+{
+    var tile = this.tiles[key];
+
+    if (tile == null) {
+        this.tiles[key] = source_tile;
+        return this.tiles[key];
+    }
+
+    for (var p in source_tile) {
+        // console.log("merging " + p + ": " + source_tile[p]);
+        tile[p] = source_tile[p];
+    }
+
+    return tile;
 };
 
 // Profiling methods used to track when sets of tiles start/stop loading together

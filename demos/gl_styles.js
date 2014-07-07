@@ -83,7 +83,7 @@
     },
     buildings: {
         color: {
-            // default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } //Style.color.pseudoRandomColor
+            // default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
             // default: Style.color.pseudoRandomColor
             // default: Style.color.pseudoRandomGrayscale
             default: function (f) { return (f.properties.name || f.properties.kind) ? [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2] : [0.6, 0.6, 0.6]; }
@@ -95,7 +95,7 @@
     },
     pois: {
         render_mode: 'points',
-        visible: true,
+        // visible: false,
         color: {
             default: [1.0, 1.0, 0]
         },

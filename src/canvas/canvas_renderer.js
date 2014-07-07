@@ -21,6 +21,7 @@ function CanvasRenderer (tile_source, layers, styles, options)
 // CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
 CanvasRenderer.prototype._tileWorkerCompleted = function (tile)
 {
+    // TODO: avoid creating duplicate canvas on rebuild
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
 
