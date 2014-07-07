@@ -253,6 +253,10 @@ VectorRenderer.prototype.rebuildTiles = function ()
         });
     });
 
+    // Reload on main thread
+    this.layers = VectorRenderer.loadLayers(this.layer_source);
+    this.styles = VectorRenderer.loadStyles(this.style_source);
+
     // TODO: rebuild visible tiles first, from center out
     for (var t in this.tiles) {
         var tile = this.tiles[t];

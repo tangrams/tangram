@@ -18,6 +18,7 @@
     buildings_unlabeled: {
         color: {
             default: [150/255, 150/255, 150/255]
+            // default: Style.color.pseudoRandomColor
         },
         outline: {
             color: {
@@ -61,6 +62,7 @@
         }
     },
     road_labels: {
+        visible: false,
         width: {
             default: 15
         }

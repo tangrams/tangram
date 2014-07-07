@@ -18,23 +18,29 @@ function CanvasRenderer (tile_source, layers, styles, options)
     this.cutout_context = document.createElement('canvas').getContext('2d');
 }
 
-// CanvasRenderer.prototype.addTile = function CanvasRendererAddTile (tile, tileDiv)
 CanvasRenderer.prototype._tileWorkerCompleted = function (tile)
 {
-    // TODO: avoid creating duplicate canvas on rebuild
-    var canvas = document.createElement('canvas');
-    var context = canvas.getContext('2d');
+    // Use existing canvas or create new one
+    if (tile.canvas == null) {
+        tile.canvas = document.createElement('canvas');
+        tile.context = tile.canvas.getContext('2d');
 
-    canvas.style.width = Geo.tile_size + 'px';
-    canvas.style.width = Geo.tile_size + 'px';
-    canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
-    canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
-    canvas.style.background = this.colorToString(this.styles.default);
+        tile.canvas.style.width = Geo.tile_size + 'px';
+        tile.canvas.style.width = Geo.tile_size + 'px';
+        tile.canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
+        tile.canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
+        tile.canvas.style.background = this.colorToString(this.styles.default);
+    }
+    else {
+        tile.context.clearRect(0, 0, tile.canvas.width, tile.canvas.height);
+    }
 
-    this.renderTile(tile, context);
+    this.renderTile(tile, tile.context);
 
-    var tileDiv = document.querySelector("div[data-tile-key='" + tile.key + "']");
-    tileDiv.appendChild(canvas);
+    if (tile.canvas.parentNode == null) {
+        var tileDiv = document.querySelector("div[data-tile-key='" + tile.key + "']");
+        tileDiv.appendChild(tile.canvas);
+    }
 };
 
 // Scale a GeoJSON coordinate (2-element array) from [min, max] to tile pixels
@@ -232,14 +238,17 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     var style;
 
     // Selection rendering - off-screen canvas to render a collision map for feature selection
-    var selection = { colors: {} };
-    var selection_canvas = document.createElement('canvas');
-    selection_canvas.style.width = Geo.tile_size + 'px';
-    selection_canvas.style.width = Geo.tile_size + 'px';
-    selection_canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
-    selection_canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
+    if (tile.selection_canvas == null) {
+        tile.selection_canvas = document.createElement('canvas');
+        tile.selection_context = tile.selection_canvas.getContext('2d');
 
-    var selection_context = selection_canvas.getContext('2d');
+        tile.selection_canvas.style.width = Geo.tile_size + 'px';
+        tile.selection_canvas.style.width = Geo.tile_size + 'px';
+        tile.selection_canvas.width = Math.round(Geo.tile_size * this.device_pixel_ratio);
+        tile.selection_canvas.height = Math.round(Geo.tile_size * this.device_pixel_ratio);
+    }
+
+    var selection = { colors: {} };
     var selection_color;
     var selection_count = 0;
 
@@ -254,13 +263,11 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
 
         tile.layers[layer.name].features.forEach(function(feature) {
             // Scale local coords to tile pixels
-            feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry, renderer.tile_min, renderer.tile_max);
+            feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry);
             style = VectorRenderer.parseStyleForFeature(feature, this.styles[layer.name], tile);
 
             // Draw visible geometry
-            if (layer.visible != false) {
-                this.renderFeature(feature, style, context);
-            }
+            this.renderFeature(feature, style, context);
 
             // Draw mask for interactivity
             // TODO: move selection filter logic to stylesheet
@@ -269,11 +276,11 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
                 selection_color = this.generateColor(selection.colors);
                 selection_color.properties = feature.properties;
                 selection_count++;
-                this.renderFeature(feature, { color: selection_color.color, width: style.width, size: style.size }, selection_context);
+                this.renderFeature(feature, { color: selection_color.color, width: style.width, size: style.size }, tile.selection_context);
             }
             else {
                 // If this geometry isn't interactive, mask it out so geometry under it doesn't appear to pop through
-                this.renderFeature(feature, { color: [0, 0, 0], width: style.width, size: style.size }, selection_context);
+                this.renderFeature(feature, { color: [0, 0, 0], width: style.width, size: style.size }, tile.selection_context);
             }
 
         }, this);
@@ -284,7 +291,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
     if (selection_count > 0) {
         this.tiles[tile.key].selection = selection;
 
-        selection.pixels = new Uint32Array(selection_context.getImageData(0, 0, selection_canvas.width, selection_canvas.height).data.buffer);
+        selection.pixels = new Uint32Array(tile.selection_context.getImageData(0, 0, tile.selection_canvas.width, tile.selection_canvas.height).data.buffer);
 
         // TODO: fire events on selection to enable custom behavior
         context.canvas.onmousemove = function (event) {
