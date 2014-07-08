@@ -108,8 +108,10 @@ VectorRenderer.prototype.setCenter = function (lng, lat)
 
 VectorRenderer.prototype.setZoom = function (zoom)
 {
+    // console.log("setZoom " + zoom);
     this.map_last_zoom = this.zoom;
     this.zoom = zoom;
+    this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     this.map_zooming = false;
     this.dirty = true;
 };
@@ -152,11 +154,18 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     this.dirty = true;
 };
 
+VectorRenderer.prototype.isTileInZoom = function (tile)
+{
+    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
+};
+
+// Update visibility and return true if changed
 VectorRenderer.prototype.updateVisibilityForTile = function (tile)
 {
-    tile.visible = Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
+    var visible = tile.visible;
+    tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-    return tile.visible;
+    return (visible != tile.visible);
 };
 
 VectorRenderer.prototype.resizeMap = function (width, height)
@@ -294,8 +303,12 @@ VectorRenderer.prototype.rebuildTiles = function ()
 
     // console.log("build invisible");
     for (var t in invisible) {
-        this.buildTile(invisible[t]);
-        // this.removeTile(invisible[t]);
+        if (this.isTileInZoom(this.tiles[invisible[t]]) == true) {
+            this.buildTile(invisible[t]);
+        }
+        else {
+            this.removeTile(invisible[t]);
+        }
     }
 };
 

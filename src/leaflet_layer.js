@@ -40,6 +40,7 @@ var LeafletLayer = L.GridLayer.extend({
         layer._map.on('zoomend', function () {
             console.log("map.zoomend " + layer._map.getZoom());
             layer.renderer.setZoom(layer._map.getZoom());
+            layer.updateBounds();
         });
 
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
@@ -48,6 +49,7 @@ var LeafletLayer = L.GridLayer.extend({
 
         var center = layer._map.getCenter();
         layer.renderer.setCenter(center.lng, center.lat);
+        console.log("zoom: " + layer._map.getZoom());
         layer.renderer.setZoom(layer._map.getZoom());
         layer.updateBounds();
 

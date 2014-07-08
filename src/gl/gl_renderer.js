@@ -309,23 +309,22 @@ GLRenderer.prototype.preserve_tiles_within_zoom = 2;
 GLRenderer.prototype.setZoom = function (zoom)
 {
     // Schedule GL tiles for removal on zoom
-    console.log("renderer.map_last_zoom: " + this.map_last_zoom);
-
-    this.map_zooming = false;
-    this.zoom = zoom;
-    var below = this.zoom;
-    var above = this.zoom;
-    if (Math.abs(this.zoom - this.map_last_zoom) <= this.preserve_tiles_within_zoom) {
-        if (this.zoom > this.map_last_zoom) {
-            below = this.zoom - this.preserve_tiles_within_zoom;
-        }
-        else {
-            above = this.zoom + this.preserve_tiles_within_zoom;
+    var below = zoom;
+    var above = zoom;
+    if (this.map_last_zoom != null) {
+        console.log("renderer.map_last_zoom: " + this.map_last_zoom);
+        if (Math.abs(zoom - this.map_last_zoom) <= this.preserve_tiles_within_zoom) {
+            if (zoom > this.map_last_zoom) {
+                below = zoom - this.preserve_tiles_within_zoom;
+            }
+            else {
+                above = zoom + this.preserve_tiles_within_zoom;
+            }
         }
     }
     this.removeTilesOutsideZoomRange(below, above);
-    this.map_last_zoom = this.zoom;
-    this.dirty = true; // calling because this is a full override of the parent class
+
+    VectorRenderer.prototype.setZoom.apply(this, arguments); // call super
 };
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
@@ -411,12 +410,9 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
-        var capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
         for (var t in this.tiles) {
             var tile = this.tiles[t];
-            if (tile.loaded == true &&
-                tile.visible == true &&
-                Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == capped_zoom) {
+            if (tile.loaded == true && tile.visible == true) {
 
                 if (tile.gl_geometry[mode] != null) {
                     // gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
