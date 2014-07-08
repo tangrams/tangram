@@ -1,5 +1,6 @@
 var Point = require('../point.js');
 var Geo = require('../geo.js');
+var Style = require('../style.js');
 var VectorRenderer = require('../vector_renderer.js');
 
 var GL = require('./gl.js');
@@ -113,7 +114,7 @@ GLRenderer.addTile = function (tile, layers, styles)
             // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
-                style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
+                style = Style.parseStyleForFeature(feature, styles[layer.name], tile);
 
                 // Skip feature?
                 if (style == null) {

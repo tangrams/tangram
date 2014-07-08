@@ -1,5 +1,6 @@
 var Point = require('../point.js');
 var Geo = require('../geo.js');
+var Style = require('../style.js');
 var VectorRenderer = require('../vector_renderer.js');
 
 VectorRenderer.CanvasRenderer = CanvasRenderer;
@@ -264,7 +265,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         tile.layers[layer.name].features.forEach(function(feature) {
             // Scale local coords to tile pixels
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry);
-            style = VectorRenderer.parseStyleForFeature(feature, this.styles[layer.name], tile);
+            style = Style.parseStyleForFeature(feature, this.styles[layer.name], tile);
 
             // Draw visible geometry
             this.renderFeature(feature, style, context);
