@@ -257,7 +257,7 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
         var layer = renderer.layers[t];
 
         // Skip layers with no styles defined, or layers set to not be visible
-        if (this.styles[layer.name] == null || !this.styles[layer.name].visible) {
+        if (this.styles[layer.name] == null || this.styles[layer.name].visible == false) {
             continue;
         }
 

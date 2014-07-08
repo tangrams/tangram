@@ -1,6 +1,7 @@
 var Point = require('./point.js');
 var Geo = require('./geo.js');
 var Style = require('./style.js');
+var Utils = require('./utils.js');
 
 // Global setup
 findBaseLibraryURL();
@@ -16,21 +17,23 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.tiles = {};
     this.num_workers = options.num_workers || 1;
 
-    this.layer_source = VectorRenderer.urlForPath(layers); // TODO: fix this for layers provided as objects, this assumes a URL is passed
     if (typeof(layers) == 'string') {
-        this.layers = VectorRenderer.loadLayers(layers);
+        this.layer_source = VectorRenderer.urlForPath(layers);
+        this.layers = VectorRenderer.loadLayers(this.layer_source);
     }
     else {
         this.layers = layers;
     }
+    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
 
-    this.style_source = VectorRenderer.urlForPath(styles); // TODO: fix this for styles provided as objects, this assumes a URL is passed
     if (typeof(styles) == 'string') {
-        this.styles = VectorRenderer.loadStyles(styles);
+        this.style_source = VectorRenderer.urlForPath(styles);
+        this.styles = VectorRenderer.loadStyles(this.style_source);
     }
     else {
         this.styles = styles;
     }
+    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
     this.createWorkers();
 
@@ -134,6 +137,11 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     this.buffered_meter_bounds.ne.x += buffer;
     this.buffered_meter_bounds.ne.y += buffer;
 
+    this.center_meters = Point(
+        (this.buffered_meter_bounds.sw.x + this.buffered_meter_bounds.ne.x) / 2,
+        (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
+    );
+
     // console.log("set renderer bounds to " + JSON.stringify(this.bounds));
 
     // Mark tiles as visible/invisible
@@ -147,6 +155,7 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
 VectorRenderer.prototype.updateVisibilityForTile = function (tile)
 {
     tile.visible = Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
+    tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
     return tile.visible;
 };
 
@@ -231,8 +240,8 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         },
         renderer_type: this.type,
         tile_source: this.tile_source,
-        layer_source: this.layer_source,
-        style_source: this.style_source
+        layers: this.layers_serialized,
+        styles: this.styles_serialized
     });
 
     this.updateTileElement(tile, div);
@@ -243,37 +252,69 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 };
 
 // Rebuild all tiles
-// TODO: only rebuild certain layers?
 VectorRenderer.prototype.rebuildTiles = function ()
 {
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
+    console.log("notify workers");
     this.workers.forEach(function(worker) {
         worker.postMessage({
             type: 'markForRebuild'
         });
     });
 
-    // Reload on main thread
-    this.layers = VectorRenderer.loadLayers(this.layer_source);
-    this.styles = VectorRenderer.loadStyles(this.style_source);
+    // Update layers & styles
+    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
-    // TODO: rebuild visible tiles first, from center out
+    // Rebuild visible tiles first, from center out
+    // console.log("find visible");
+    var visible = [], invisible = [];
     for (var t in this.tiles) {
-        var tile = this.tiles[t];
-
-        this.workerPostMessageForTile(tile, {
-            type: 'buildTile',
-            tile: {
-                key: tile.key,
-                coords: tile.coords, // used by style helpers
-                layers: tile.layers,
-                debug: tile.debug
-            },
-            renderer_type: this.type,
-            layer_source: this.layer_source,
-            style_source: this.style_source
-        });
+        if (this.tiles[t].visible == true) {
+            visible.push(t);
+        }
+        else {
+            invisible.push(t);
+        }
     }
+
+    // console.log("sort visible distance");
+    visible.sort(function(a, b) {
+        // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
+        // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
+        var ad = this.tiles[a].center_dist;
+        var bd = this.tiles[b].center_dist;
+        return (bd > ad ? -1 : (bd == ad ? 0 : 1));
+    }.bind(this));
+
+    // console.log("build visible");
+    for (var t in visible) {
+        this.buildTile(visible[t]);
+    }
+
+    // console.log("build invisible");
+    for (var t in invisible) {
+        this.buildTile(invisible[t]);
+        // this.removeTile(invisible[t]);
+    }
+};
+
+VectorRenderer.prototype.buildTile = function(key)
+{
+    var tile = this.tiles[key];
+
+    this.workerPostMessageForTile(tile, {
+        type: 'buildTile',
+        tile: {
+            key: tile.key,
+            coords: tile.coords, // used by style helpers
+            layers: tile.layers,
+            debug: tile.debug
+        },
+        renderer_type: this.type,
+        layers: this.layers_serialized,
+        styles: this.styles_serialized
+    });
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
@@ -372,6 +413,24 @@ VectorRenderer.prototype.mergeTile = function (key, source_tile)
     return tile;
 };
 
+// Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.
+VectorRenderer.prototype.reloadConfig = function ()
+{
+    if (this.layer_source != null) {
+        this.layers = VectorRenderer.loadLayers(this.layer_source);
+        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+    }
+
+    if (this.style_source != null) {
+        this.styles = VectorRenderer.loadStyles(this.style_source);
+        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+    }
+
+    if (this.layer_source != null || this.style_source != null) {
+        this.rebuildTiles();
+    }
+};
+
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
 VectorRenderer.prototype.trackTileSetLoadStart = function ()
@@ -440,12 +499,6 @@ VectorRenderer.loadStyles = function (url)
     req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
-
-    // Process styles to prepare for renderer
-    for (var layer in styles) {
-        styles[layer].visible = !(styles[layer].visible === false); // layers are visible unless explicitly set to false
-    }
-
     return styles;
 };
 
@@ -485,8 +538,8 @@ VectorRenderer.processLayersForTile = function (layers, tile)
 // Determine final style properties (color, width, etc.)
 VectorRenderer.style_defaults = {
     color: [1.0, 0, 0],
-    width: Style.width.pixels(5),
-    size: Style.width.pixels(5),
+    width: 1,
+    size: 1,
     extrude: false,
     height: 20,
     min_height: 0,
@@ -506,9 +559,16 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     var layer_style = layer_style || {};
     var style = {};
 
+    // helper functions passed to dynamic style functions
+    var helpers = {
+        Style: Style,
+        Geo: Geo,
+        zoom: tile.coords.z
+    };
+
     // Test whether features should be rendered at all
     if (typeof layer_style.filter == 'function') {
-        if (layer_style.filter(feature, tile) == false) {
+        if (layer_style.filter(feature, tile, helpers) == false) {
             return null;
         }
     }
@@ -516,22 +576,25 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
     // Parse styles
     style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || VectorRenderer.style_defaults.color;
     if (typeof style.color == 'function') {
-        style.color = style.color(feature, tile);
+        style.color = style.color(feature, tile, helpers);
     }
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || VectorRenderer.style_defaults.width;
     if (typeof style.width == 'function') {
-        style.width = style.width(feature, tile);
+        style.width = style.width(feature, tile, helpers);
     }
+    style.width *= Geo.units_per_meter[tile.coords.z];
 
     style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || VectorRenderer.style_defaults.size;
     if (typeof style.size == 'function') {
-        style.size = style.size(feature, tile);
+        style.size = style.size(feature, tile, helpers);
     }
+    style.size *= Geo.units_per_meter[tile.coords.z];
 
     style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || VectorRenderer.style_defaults.extrude;
     if (typeof style.extrude == 'function') {
-        style.extrude = style.extrude(feature, tile); // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
+        // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
+        style.extrude = style.extrude(feature, tile, helpers);
     }
 
     style.height = (feature.properties && feature.properties.height) || VectorRenderer.style_defaults.height;
@@ -550,24 +613,25 @@ VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
 
     style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || VectorRenderer.style_defaults.z || 0;
     if (typeof style.z == 'function') {
-        style.z = style.z(feature, tile);
+        style.z = style.z(feature, tile, helpers);
     }
 
     style.outline = {};
     layer_style.outline = layer_style.outline || {};
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || VectorRenderer.style_defaults.outline.color;
     if (typeof style.outline.color == 'function') {
-        style.outline.color = style.outline.color(feature, tile);
+        style.outline.color = style.outline.color(feature, tile, helpers);
     }
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || VectorRenderer.style_defaults.outline.width;
     if (typeof style.outline.width == 'function') {
-        style.outline.width = style.outline.width(feature, tile);
+        style.outline.width = style.outline.width(feature, tile, helpers);
     }
+    style.outline.width *= Geo.units_per_meter[tile.coords.z];
 
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || VectorRenderer.style_defaults.outline.dash;
     if (typeof style.outline.dash == 'function') {
-        style.outline.dash = style.outline.dash(feature, tile);
+        style.outline.dash = style.outline.dash(feature, tile, helpers);
     }
 
     style.render_mode = layer_style.render_mode || VectorRenderer.style_defaults.render_mode;

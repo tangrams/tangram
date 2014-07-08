@@ -103,7 +103,7 @@ GLRenderer.addTile = function (tile, layers, styles)
         layer = layers[ln];
 
         // Skip layers with no styles defined, or layers set to not be visible
-        if (styles[layer.name] == null || !styles[layer.name].visible) {
+        if (styles[layer.name] == null || styles[layer.name].visible == false) {
             continue;
         }
 
@@ -114,12 +114,13 @@ GLRenderer.addTile = function (tile, layers, styles)
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
                 style = VectorRenderer.parseStyleForFeature(feature, styles[layer.name], tile);
-                z = GLRenderer.calculateZ(layer, tile) + style.z;
 
                 // Skip feature?
                 if (style == null) {
                     continue;
                 }
+
+                z = GLRenderer.calculateZ(layer, tile) + style.z;
 
                 // First feature in this render mode?
                 mode = style.render_mode;

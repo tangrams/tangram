@@ -9,17 +9,12 @@ Style.color = {
     randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
 };
 
-Style.width = {
-    pixels: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * Geo.units_per_pixel; }; }, // local tile units for a given pixel width
-    meters: function (p) { return function (f, t) { return (typeof p == 'function' ? p(f, t) : p) * Geo.units_per_meter[t.coords.z]; }; }  // local tile units for a given meter width
-};
-
-Style.units_per_meter = function (t) {
-    return Geo.units_per_meter[t.coords.z];
-};
-
-Style.units_per_pixel = function() {
-    return Geo.units_per_pixel;
+// Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
+// The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
+Style.pixels = function (p, z) {
+    var f;
+    eval('f = function(f, t, h) { return ' + (typeof p == 'function' ? '(' + (p.toString() + '(f, t, h))') : p) + ' * h.Geo.meters_per_pixel[h.zoom]; }');
+    return f;
 };
 
 if (module !== undefined) {

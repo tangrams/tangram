@@ -3,6 +3,7 @@ var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var CanvasRenderer = require('./canvas/canvas_renderer.js');
+var Utils = require('./utils.js');
 
 var VectorWorker = {};
 VectorWorker.worker = self;
@@ -39,18 +40,11 @@ VectorWorker.worker.addEventListener('message', function (event) {
         return;
     }
 
-    // if (VectorWorker.layers == null) {
-    //     console.log("worker load layers");
-    // }
-    // if (VectorWorker.styles == null) {
-    //     console.log("worker load styles");
-    // }
-
     VectorWorker.renderer_type = event.data.renderer_type;
     VectorWorker.renderer = VectorRenderer[VectorWorker.renderer_type];
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
-    VectorWorker.layers = VectorWorker.layers || VectorRenderer.loadLayers(event.data.layer_source);
-    VectorWorker.styles = VectorWorker.styles || VectorRenderer.loadStyles(event.data.style_source);
+    VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
+    VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
 
     // First time building the tile
     if (tile.layers == null) {
