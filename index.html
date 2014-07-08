@@ -201,8 +201,8 @@ var layer = Tangram.leafletLayer({
 
 // For easier debugging access
 window.layer = layer;
-window.renderer = layer._renderer;
-window.tiles = layer._renderer.tiles;
+window.renderer = layer.renderer;
+window.tiles = layer.renderer.tiles;
 
 /***** GUI/debug controls *****/
 
@@ -288,13 +288,13 @@ function setGLProgramDefines () {
             animated = true;
         }
     });
-    layer._renderer.continuous_animation = animated;
+    layer.renderer.continuous_animation = animated;
 
-    for (var m in layer._renderer.render_modes) {
-        var gl_program = layer._renderer.render_modes[m].gl_program;
+    for (var m in layer.renderer.render_modes) {
+        var gl_program = layer.renderer.render_modes[m].gl_program;
         gl_program.compile();
     }
-    layer._renderer.dirty = true;
+    layer.renderer.dirty = true;
 }
 
 function setGLProgramDefinesForOptionSet (current_value, options) {
