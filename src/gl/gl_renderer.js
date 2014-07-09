@@ -322,9 +322,11 @@ GLRenderer.prototype.setZoom = function (zoom)
             }
         }
     }
-    this.removeTilesOutsideZoomRange(below, above);
 
     VectorRenderer.prototype.setZoom.apply(this, arguments); // call super
+
+    // Must be called after super call, so that zoom operation is ended
+    this.removeTilesOutsideZoomRange(below, above);
 };
 
 GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
