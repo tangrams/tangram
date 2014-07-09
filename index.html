@@ -270,6 +270,7 @@ gui.domElement.parentNode.style.zIndex = 5;
 // document.body.insertBefore(gui.domElement, document.body.firstChild);
 window.gui = gui;
 
+// GUI for GL rendering options
 Object.keys(gl_controls).forEach(function(key) {
     gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
     gl_controls[key].control.onChange(function(value) {
@@ -302,6 +303,24 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
         Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
 }
+
+// GUI for layers
+var layer_gui = gui.addFolder('Layers');
+// layer_gui.open();
+var layer_controls = {};
+layer.renderer.layers.forEach(function(l) {
+    if (layer.renderer.styles[l.name] == null) {
+        return;
+    }
+
+    layer_controls[l.name] = !(layer.renderer.styles[l.name].visible == false);
+    var control = layer_gui.add(layer_controls, l.name);
+
+    control.onChange(function(value) {
+        layer.renderer.styles[l.name].visible = value;
+        layer.renderer.rebuildTiles();
+    });
+});
 
 
 /***** Render loop *****/
