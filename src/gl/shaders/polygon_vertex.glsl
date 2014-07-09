@@ -38,7 +38,9 @@ const float light_ambient = 0.5;
 #pragma glslify: lighting = require(./modules/lighting)
 
 void main() {
+    // u_tile_view ~= model view
     vec4 position = u_tile_view * vec4(a_position, 1.);
+    // u_tile_world = model-world matrix
     vec4 position_world = u_tile_world * vec4(a_position, 1.);
 
     // Vertex displacement effects

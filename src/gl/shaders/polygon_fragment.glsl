@@ -27,7 +27,9 @@ void main (void) {
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
         color = lighting(
             v_position, v_normal, v_color,
-            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            // vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            // distortion away from screen origin
+            vec4(400. * u_meters_per_pixel, -200. * u_meters_per_pixel, 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
             vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
             vec3(0.2, 0.7, -0.5), // direction of light for flat shading
             light_ambient);
@@ -59,6 +61,11 @@ void main (void) {
             color *= (abs(cnoise(v_position_world.xyz / 10.0)) / 4.0) + 0.75;
         #endif
     #endif
+
+        // color = vec3(v_position);
+        // color = vec3(v_normal);
+        // color = vec3(v_color);
+        // color = vec3(u_meters_per_pixel);
 
     gl_FragColor = vec4(color, 1.0);
 }
