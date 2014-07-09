@@ -267,6 +267,17 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry);
             style = Style.parseStyleForFeature(feature, this.styles[layer.name], tile);
 
+            // Convert from meters to pixels for canvas drawing
+            if (style.width) {
+                style.width /= Geo.meters_per_pixel[tile.coords.z];
+            }
+            if (style.size) {
+                style.size /= Geo.meters_per_pixel[tile.coords.z];
+            }
+            if (style.outline && style.outline.width) {
+                style.outline.width /= Geo.meters_per_pixel[tile.coords.z];
+            }
+
             // Draw visible geometry
             this.renderFeature(feature, style, context);
 
