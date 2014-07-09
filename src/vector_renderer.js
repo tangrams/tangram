@@ -95,9 +95,11 @@ VectorRenderer.prototype.createWorkers = function ()
 // Post a message about a tile to the next worker (round robbin)
 VectorRenderer.prototype.workerPostMessageForTile = function (tile, message)
 {
-    tile.worker = this.next_worker;
+    if (tile.worker == null) {
+        tile.worker = this.next_worker;
+        this.next_worker = (tile.worker + 1) % this.workers.length;
+    }
     this.workers[tile.worker].postMessage(message);
-    this.next_worker = (tile.worker + 1) % this.workers.length;
 };
 
 VectorRenderer.prototype.setCenter = function (lng, lat)
@@ -236,24 +238,10 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.debug = {};
     tile.loading = true;
     tile.loaded = false;
-    this.updateVisibilityForTile(tile);
 
-    this.workerPostMessageForTile(tile, {
-        type: 'buildTile',
-        tile: {
-            key: tile.key,
-            coords: tile.coords, // used by style helpers
-            min: tile.min, // used by TileSource to scale tile to local extents
-            max: tile.max, // used by TileSource to scale tile to local extents
-            debug: tile.debug
-        },
-        renderer_type: this.type,
-        tile_source: this.tile_source,
-        layers: this.layers_serialized,
-        styles: this.styles_serialized
-    });
-
+    this.buildTile(tile.key);
     this.updateTileElement(tile, div);
+    this.updateVisibilityForTile(tile);
 
     if (callback) {
         callback(null, div);
@@ -263,17 +251,18 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 // Rebuild all tiles
 VectorRenderer.prototype.rebuildTiles = function ()
 {
-    // Tell workers we're about to rebuild (so they can refresh styles, etc.)
-    console.log("notify workers");
-    this.workers.forEach(function(worker) {
-        worker.postMessage({
-            type: 'markForRebuild'
-        });
-    });
-
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+
+    // Tell workers we're about to rebuild (so they can refresh styles, etc.)
+    this.workers.forEach(function(worker) {
+        worker.postMessage({
+            type: 'prepareForRebuild',
+            layers: this.layers_serialized,
+            styles: this.styles_serialized
+        });
+    }.bind(this));
 
     // Rebuild visible tiles first, from center out
     // console.log("find visible");
@@ -303,9 +292,11 @@ VectorRenderer.prototype.rebuildTiles = function ()
 
     // console.log("build invisible");
     for (var t in invisible) {
+        // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
         if (this.isTileInZoom(this.tiles[invisible[t]]) == true) {
             this.buildTile(invisible[t]);
         }
+        // Drop tiles outside current zoom
         else {
             this.removeTile(invisible[t]);
         }
@@ -321,10 +312,12 @@ VectorRenderer.prototype.buildTile = function(key)
         tile: {
             key: tile.key,
             coords: tile.coords, // used by style helpers
-            layers: tile.layers,
+            min: tile.min, // used by TileSource to scale tile to local extents
+            max: tile.max, // used by TileSource to scale tile to local extents
             debug: tile.debug
         },
         renderer_type: this.type,
+        tile_source: this.tile_source,
         layers: this.layers_serialized,
         styles: this.styles_serialized
     });
@@ -365,16 +358,12 @@ VectorRenderer.prototype.removeTile = function (key)
 {
     console.log("tile unload for " + key);
     var tile = this.tiles[key];
-    if (tile != null && tile.loading == true) {
-        console.log("cancel tile load for " + key);
-
+    if (tile != null) {
         // Web worker will cancel XHR requests
-        if (tile.worker != null) {
-            this.workers[tile.worker].postMessage({
-                type: 'removeTile',
-                key: tile.key
-            });
-        }
+        this.workerPostMessageForTile(tile, {
+            type: 'removeTile',
+            key: tile.key
+        });
     }
 
     delete this.tiles[key];

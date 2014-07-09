@@ -7,7 +7,6 @@ var Utils = require('./utils.js');
 
 var VectorWorker = {};
 VectorWorker.worker = self;
-
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
@@ -35,11 +34,21 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     var tile = event.data.tile;
 
-    // Already loading this tile?
+    // Tile cached?
     if (VectorWorker.tiles[tile.key] != null) {
-        return;
+        // Already loading?
+        if (VectorWorker.tiles[tile.key].loading == true) {
+            return;
+        }
+
+        // Get layers from cache
+        tile.layers = VectorWorker.tiles[tile.key].layers;
     }
 
+    // Update tile cache tile
+    VectorWorker.tiles[tile.key] = tile;
+
+    // Refresh config
     VectorWorker.renderer_type = event.data.renderer_type;
     VectorWorker.renderer = VectorRenderer[VectorWorker.renderer_type];
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
@@ -48,16 +57,23 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     // First time building the tile
     if (tile.layers == null) {
-        VectorWorker.tiles[tile.key] = tile; // track while loading
+        // Reset load state
+        tile.loaded = false;
+        tile.loading = true;
 
         VectorWorker.tile_source.loadTile(tile, function () {
             VectorRenderer.processLayersForTile(VectorWorker.layers, tile); // extract desired layers from full GeoJSON
             VectorWorker.buildTile(tile);
-            delete VectorWorker.tiles[tile.key];
         });
     }
     // Tile already loaded, just rebuild
     else {
+        console.log("used worker cache for tile " + tile.key);
+
+        // Update loading state
+        tile.loaded = true;
+        tile.loading = false;
+
         // TODO: should we rebuild layers here as well?
         // - if so, we need to save the raw un-processed tile data
         // - benchmark the layer processing time to see if it matters
@@ -77,26 +93,30 @@ VectorWorker.worker.addEventListener('message', function (event) {
     // console.log("worker remove tile event for " + key);
 
     if (tile != null) {
-        // TODO: let tile source do this
-        tile.loading = false;
+        if (tile.loading == true) {
+            console.log("cancel tile load for " + key);
+            // TODO: let tile source do this
+            tile.loading = false;
 
-        if (tile.xhr != null) {
-            tile.xhr.abort();
-            // console.log("aborted XHR for tile " + tile.key);
+            if (tile.xhr != null) {
+                tile.xhr.abort();
+                // console.log("aborted XHR for tile " + tile.key);
+            }
         }
 
+        // Remove from cache
         delete VectorWorker.tiles[key];
     }
 });
 
-// Mark layers/styles as needing reload
+// Make layers/styles refresh config
 VectorWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'markForRebuild') {
+    if (event.data.type != 'prepareForRebuild') {
         return;
     }
 
-    VectorWorker.layers = null;
-    VectorWorker.styles = null;
+    VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
+    VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
 
-    console.log("worker marked to prepare for tile rebuild");
+    console.log("worker refreshed config for tile rebuild");
 });
