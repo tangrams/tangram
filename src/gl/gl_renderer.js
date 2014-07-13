@@ -6,9 +6,6 @@ var VectorRenderer = require('../vector_renderer.js');
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js').GLGeometry;
-var GLTriangles = require('./gl_geom.js').GLTriangles;
-var GLPolyPoints = require('./gl_geom.js').GLPolyPoints;
-var GLLines = require('./gl_geom.js').GLLines;
 
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
@@ -44,37 +41,53 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
     this.gl = GL.getContext(this.canvas);
 
-    var renderer = this;
-
-    this.render_modes = {
-        'polygons': {
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment']),
-            makeGLGeometry: function (vertex_data) {
-                return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
-            }
-        },
-        'polygons_noise': {
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment'], { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
-            makeGLGeometry: function (vertex_data) {
-                return new GLTriangles(renderer.gl, this.gl_program, vertex_data);
-            }
-        },
-        'points': {
-            // TODO: replace relative shader paths with a better auto-pathing system
-            // gl_program: new GL.Program.createProgramFromURLs(this.gl, VectorRenderer.library_base_url + '../shaders/point_vertex.glsl', VectorRenderer.library_base_url + '../shaders/point_fragment.glsl', { defines: { 'EFFECT_SCREEN_COLOR': true } }),
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['point_vertex'], GLRenderer.shader_sources['point_fragment'], { defines: { 'EFFECT_SCREEN_COLOR': true } }),
-            makeGLGeometry: function (vertex_data) {
-                return new GLPolyPoints(renderer.gl, this.gl_program, vertex_data);
-            }
-        }
-    };
-
+    this.initRenderModes();
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.start_time = +new Date();
     this.last_render_count = null;
     this.initInputHandlers();
+};
+
+GLRenderer.prototype.initRenderModes = function ()
+{
+    var renderer = this;
+    this.render_modes = {
+        'polygons': {
+            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment']),
+            makeGLGeometry: function (vertex_data) {
+                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
+                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+                ]);
+            }
+        },
+        'polygons_noise': {
+            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment'], { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
+            makeGLGeometry: function (vertex_data) {
+                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
+                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+                ]);
+            }
+        },
+        'points': {
+            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['point_vertex'], GLRenderer.shader_sources['point_fragment'], { defines: { 'EFFECT_SCREEN_COLOR': true } }),
+            makeGLGeometry: function (vertex_data) {
+                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
+                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+                ]);
+            }
+        }
+    };
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer

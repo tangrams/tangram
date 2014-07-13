@@ -81,59 +81,28 @@ GLGeometry.prototype.destroy = function ()
     delete this.vertex_data;
 };
 
-// Draws a set of triangles
-GLTriangles.prototype = Object.create(GLGeometry.prototype);
-
-function GLTriangles (gl, gl_program, vertex_data)
-{
-    GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
-}
-
-// Draws a set of points as quads, intended to be rendered as distance fields
-GLPolyPoints.prototype = Object.create(GLGeometry.prototype);
-
-function GLPolyPoints (gl, gl_program, vertex_data)
-{
-    GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
-}
-
 // Draws a set of lines
-// Shares all characteristics with triangles except for draw mode
-GLLines.prototype = Object.create(GLTriangles.prototype);
+GLLines.prototype = Object.create(GLGeometry.prototype);
 
-function GLLines (gl, gl_program, vertex_data, options)
+function GLLines (gl, gl_program, vertex_data, attribs, options)
 {
     options = options || {};
-    this.draw_mode = this.gl.LINES;
+    options.draw_mode = this.gl.LINES;
+
     this.line_width = options.line_width || 2;
     this.vertices_per_geometry = 2;
 
-    GLTriangles.call(this, gl, program, vertex_data);
+    GLGeometry.call(this, gl, gl_program, vertex_data, attribs, options);
 }
 
 GLLines.prototype._render = function ()
 {
     this.gl.lineWidth(this.line_width);
-    if (typeof GLTriangles.prototype._render == 'function') {
-        GLTriangles.prototype._render.call(this);
-    }
 };
 
 if (module !== undefined) {
     module.exports = {
         GLGeometry: GLGeometry,
-        GLTriangles: GLTriangles,
-        GLPolyPoints: GLPolyPoints,
         GLLines: GLLines
     };
 }
