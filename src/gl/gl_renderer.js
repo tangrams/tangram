@@ -88,6 +88,7 @@ GLRenderer.calculateZ = function (layer, tile, layer_offset, feature_offset)
 };
 
 // Process geometry for tile - called by web worker
+// Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
 GLRenderer.addTile = function (tile, layers, styles)
 {
     var layer, style, feature, z, mode;
@@ -242,7 +243,9 @@ GLRenderer.addTile = function (tile, layers, styles)
         tile.vertex_data[s] = new Float32Array(vertex_data[s]);
     }
 
-    return tile;
+    return {
+        vertex_data: true
+    };
 };
 
 // Called on main thread when a web worker completes processing for a single tile

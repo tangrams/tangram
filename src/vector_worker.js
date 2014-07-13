@@ -13,16 +13,32 @@ GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
 VectorWorker.buildTile = function (tile)
 {
+    // Tile keys that will be sent back to main thread
+    // We send a minimal subset to avoid unnecessary data exchange
+    var keys;
+
     // Renderer-specific transforms
     if (typeof VectorWorker.renderer.addTile == 'function') {
         tile.debug.rendering = +new Date();
-        VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles);
+        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles);
         tile.debug.rendering = +new Date() - tile.debug.rendering;
+    }
+
+    // Make sure we send some core pieces of info
+    keys.key = true;
+    keys.loading = true;
+    keys.loaded = true;
+    keys.debug = true;
+
+    // Build the tile subset
+    var tile_subset = {};
+    for (var k in keys) {
+        tile_subset[k] = tile[k];
     }
 
     VectorWorker.worker.postMessage({
         type: 'buildTileCompleted',
-        tile: tile
+        tile: tile_subset
     });
 };
 
