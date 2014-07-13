@@ -14,6 +14,7 @@ function GLGeometry (gl, gl_program, vertex_data, attribs, options)
     this.buffer = this.gl.createBuffer();
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
+    this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
 
     // Calc vertex stride
     this.vertex_stride = 0;
@@ -40,6 +41,7 @@ function GLGeometry (gl, gl_program, vertex_data, attribs, options)
     }
 
     this.vertex_count = this.vertex_data.byteLength / this.vertex_stride;
+    this.geometry_count = this.vertex_count / this.vertices_per_geometry;
 
     this.vao = GL.VertexArrayObject.create(function() {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
@@ -90,7 +92,6 @@ function GLTriangles (gl, gl_program, vertex_data)
         { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
-    this.geometry_count = this.vertex_count / 3;
 }
 
 // Draws a set of points as quads, intended to be rendered as distance fields
@@ -104,7 +105,6 @@ function GLPolyPoints (gl, gl_program, vertex_data)
         { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
-    this.geometry_count = this.vertex_count / 3;
 }
 
 // Draws a set of lines
@@ -114,10 +114,11 @@ GLLines.prototype = Object.create(GLTriangles.prototype);
 function GLLines (gl, gl_program, vertex_data, options)
 {
     options = options || {};
-    GLTriangles.call(this, gl, program, vertex_data);
     this.draw_mode = this.gl.LINES;
     this.line_width = options.line_width || 2;
-    this.geometry_count = this.vertex_count / 2;
+    this.vertices_per_geometry = 2;
+
+    GLTriangles.call(this, gl, program, vertex_data);
 }
 
 GLLines.prototype._render = function ()
