@@ -22,6 +22,7 @@ body {
     background: rgba(0, 0, 0, 0);
 }
 
+<!-- For canvas feature picking demo -->
 .label {
     width: 200px;
     margin-left: -100px;
@@ -46,6 +47,8 @@ body {
 
 <script src="lib/leaflet-0.8-dev.js"></script>
 <script src="lib/dat.gui.min.js"></script>
+<script src="lib/rstats.js"></script>
+<script src="lib/rstats.extras.js"></script>
 <script src="dist/vector-map.debug.js"></script>
 
 <script>
@@ -159,51 +162,6 @@ else if (url_hash.length == 2) {
 }
 
 
-/*** Map ***/
-
-var map = L.map('map', {
-    maxZoom: 20,
-    inertia: false,
-    keyboard: false
-});
-map.attributionControl.setPrefix('');
-
-map.on('moveend', function () {
-    var map_latlng = map.getCenter();
-    window.location.hash = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()].join(',');
-});
-
-map.setView(map_start_location.slice(0, 2), map_start_location[2]);
-
-// Resize map to window
-function resizeMap () {
-    document.getElementById('map').style.width = window.innerWidth + 'px';
-    document.getElementById('map').style.height = window.innerHeight + 'px';
-    map.invalidateSize(false);
-}
-window.addEventListener('resize', resizeMap);
-resizeMap();
-
-
-/*** Layer ***/
-
-var layer = Tangram.leafletLayer({
-    vectorRenderer: tile_sources[tile_source].renderer,
-    vectorTileSource: tile_sources[tile_source].source,
-    vectorLayers: tile_sources[tile_source].layers,
-    vectorStyles: tile_sources[tile_source].styles,
-    numWorkers: 2,
-    // debug: true,
-    attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/tangram">Source Code</a>',
-    unloadInvisibleTiles: false,
-    updateWhenIdle: false
-});
-
-// For easier debugging access
-window.layer = layer;
-window.renderer = layer.renderer;
-window.tiles = layer.renderer.tiles;
-
 /***** GUI/debug controls *****/
 
 var gl_controls = {
@@ -256,6 +214,7 @@ window.gl_controls = gl_controls;
 if (url_hash.length > 4) {
     var url_ui = url_hash.slice(4);
 
+    // Match defined values to those passed on URL
     for (var g in gl_controls) {
         for (var p in gl_controls[g].options) {
             if (url_ui.indexOf(gl_controls[g].options[p]) > -1) {
@@ -304,6 +263,81 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
     }
 }
 
+// Render/GL stats: http://spite.github.io/rstats/
+// Activate with 'rstats' anywhere in options list in URL
+if (url_ui && url_ui.indexOf('rstats') >= 0) {
+    var glS = new glStats();
+    glS.fractions = []; // turn this off till we need it
+
+    var rS = new rStats({
+        values: {
+            frame: { caption: 'Total frame time (ms)', over: 16 },
+            raf: { caption: 'Time since last rAF (ms)' },
+            fps: { caption: 'Framerate (FPS)', below: 30 },
+            features: { caption: '# of geo features' },
+            glbuffers: { caption: 'GL buffers (MB)' }
+        },
+        CSSPath : 'lib/',
+        plugins: [glS]
+    });
+
+    // Move it to the bottom-left so it doesn't obscure zoom controls
+    var rSDOM = document.querySelector('.rs-base');
+    rSDOM.style.bottom = '0px';
+    rSDOM.style.top = 'inherit';
+}
+
+
+/*** Map ***/
+
+var map = L.map('map', {
+    maxZoom: 20,
+    inertia: false,
+    keyboard: false
+});
+map.attributionControl.setPrefix('');
+
+// Update URL hash on move
+map.on('moveend', function () {
+    var map_latlng = map.getCenter();
+    var url_options = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
+    if (rS) {
+        url_options.push('rstats');
+    }
+    window.location.hash = url_options.join(',');
+});
+
+map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+
+// Resize map to window
+function resizeMap () {
+    document.getElementById('map').style.width = window.innerWidth + 'px';
+    document.getElementById('map').style.height = window.innerHeight + 'px';
+    map.invalidateSize(false);
+}
+window.addEventListener('resize', resizeMap);
+resizeMap();
+
+
+/*** Map layer ***/
+
+var layer = Tangram.leafletLayer({
+    vectorRenderer: tile_sources[tile_source].renderer,
+    vectorTileSource: tile_sources[tile_source].source,
+    vectorLayers: tile_sources[tile_source].layers,
+    vectorStyles: tile_sources[tile_source].styles,
+    numWorkers: 2,
+    // debug: true,
+    attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/bcamper/tangram">Source Code</a>',
+    unloadInvisibleTiles: false,
+    updateWhenIdle: false
+});
+
+// For easier debugging access
+window.layer = layer;
+window.renderer = layer.renderer;
+window.tiles = layer.renderer.tiles;
+
 // GUI for layers
 var layer_gui = gui.addFolder('Layers');
 // layer_gui.open();
@@ -325,13 +359,12 @@ layer.renderer.layers.forEach(function(l) {
 
 /***** Render loop *****/
 
-var osm_layer; // global so it's accessible on console for debugging
 window.addEventListener('load', function () {
     layer.addTo(map);
     setGLProgramDefines();
 
     if (osm_debug == true) {
-        osm_layer =
+        window.osm_layer =
             L.tileLayer(
                 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 { opacity: 0.5 })
@@ -339,16 +372,30 @@ window.addEventListener('load', function () {
             .addTo(map);
     }
 
-    frameLoop();
+    frame();
 });
 
 function frame () {
-    layer.render();
-}
+    if (rS != null) { // rstats
+        rS('frame').start();
+        // rS('raf').tick();
+        rS('fps').frame();
 
-function frameLoop () {
-    frame();
-    requestAnimationFrame(frameLoop);
+        if (renderer.dirty) {
+            glS.start();
+        }
+    }
+
+    layer.render();
+
+    if (rS != null) { // rstats
+        rS('frame').end();
+        rS('glbuffers').set((renderer.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
+        rS('features').set(renderer.getDebugSum('features'));
+        rS().update();
+    }
+
+    requestAnimationFrame(frame);
 }
 
 // Cross-browser compatibility for requestAnimationFrame
