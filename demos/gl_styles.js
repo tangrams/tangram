@@ -1,6 +1,6 @@
 {
     water_ocean: {
-        render_mode: 'polygons_noise',
+        mode: 'polygons_noise',
         color: {
             default: [0.5, 0.5, 0.875]
         }
@@ -25,7 +25,7 @@
         // }
     },
     water_areas: {
-        render_mode: 'polygons_noise',
+        mode: 'polygons_noise',
         color: {
             default: [0.5, 0.5, 0.875]
         },
@@ -97,7 +97,7 @@
         }
     },
     pois: {
-        render_mode: 'points',
+        mode: 'points',
         // visible: false,
         color: {
             default: [1.0, 1.0, 0]

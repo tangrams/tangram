@@ -5,7 +5,6 @@ var VectorRenderer = require('../vector_renderer.js');
 
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
-var GLGeometry = require('./gl_geom.js').GLGeometry;
 
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
@@ -13,8 +12,6 @@ var vec3 = require('gl-matrix').vec3;
 VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
-
-GLRenderer.shader_sources = require('./gl_shaders.js');
 
 function GLRenderer (tile_source, layers, styles, options)
 {
@@ -52,42 +49,13 @@ GLRenderer.prototype._init = function GLRendererInit ()
 
 GLRenderer.prototype.initRenderModes = function ()
 {
-    var renderer = this;
-    this.render_modes = {
-        'polygons': {
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment']),
-            makeGLGeometry: function (vertex_data) {
-                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
-                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-                ]);
-            }
-        },
-        'polygons_noise': {
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['polygon_vertex'], GLRenderer.shader_sources['polygon_fragment'], { defines: { 'EFFECT_NOISE_TEXTURE': true, 'EFFECT_NOISE_ANIMATABLE': true } }),
-            makeGLGeometry: function (vertex_data) {
-                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
-                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-                ]);
-            }
-        },
-        'points': {
-            gl_program: new GL.Program(this.gl, GLRenderer.shader_sources['point_vertex'], GLRenderer.shader_sources['point_fragment'], { defines: { 'EFFECT_SCREEN_COLOR': true } }),
-            makeGLGeometry: function (vertex_data) {
-                return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
-                    { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
-                    { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-                    { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-                ]);
-            }
-        }
-    };
+    // Init rendering modes
+    // var mode_types = require('./gl_modes');
+    // this.modes = {};
+    this.modes = require('./gl_modes');
+    for (var m in this.modes) {
+        this.modes[m].init(this.gl);
+    }
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
@@ -102,7 +70,7 @@ GLRenderer.calculateZ = function (layer, tile, layer_offset, feature_offset)
 
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-GLRenderer.addTile = function (tile, layers, styles)
+GLRenderer.addTile = function (tile, layers, styles, modes)
 {
     var layer, style, feature, z, mode;
     var vertex_data = {};
@@ -114,8 +82,8 @@ GLRenderer.addTile = function (tile, layers, styles)
 
     // Build raw geometry arrays
     tile.debug.features = 0;
-    for (var ln=0; ln < layers.length; ln++) {
-        layer = layers[ln];
+    for (var layer_num=0; layer_num < layers.length; layer_num++) {
+        layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
         if (styles[layer.name] == null || styles[layer.name].visible == false) {
@@ -135,33 +103,8 @@ GLRenderer.addTile = function (tile, layers, styles)
                     continue;
                 }
 
-                z = GLRenderer.calculateZ(layer, tile) + style.z;
-
-                // First feature in this render mode?
-                mode = style.render_mode;
-                if (vertex_data[mode] == null) {
-                    vertex_data[mode] = [];
-                }
-
-                // DEBUGGING line/tile intersections returned as points
-                // #mapzen,40.74733011589617,-73.97535145282747,17
-                // if (feature.id == 157964813 && feature.geometry.type == 'Point') {
-                //     style.color = [1, 1, 0];
-                //     style.size = Style.width.pixels(10, tile);
-                // }
-
-                var vertex_constants = [
-                    style.color[0], style.color[1], style.color[2],
-                    ln
-                    // TODO: add material info, etc.
-                ];
-
-                if (style.outline.color) {
-                    var outline_vertex_constants = [
-                        style.outline.color[0], style.outline.color[1], style.outline.color[2],
-                        ln - 0.5 // outlines sit between layers, underneath current layer but above the one below
-                    ];
-                }
+                style.layer_num = layer_num;
+                style.z = GLRenderer.calculateZ(layer, tile) + style.z;
 
                 var points = null,
                     lines = null,
@@ -186,64 +129,22 @@ GLRenderer.addTile = function (tile, layers, styles)
                     points = feature.geometry.coordinates;
                 }
 
+                // First feature in this render mode?
+                mode = style.mode;
+                if (vertex_data[mode] == null) {
+                    vertex_data[mode] = [];
+                }
+
                 if (polygons != null) {
-                    // Extruded polygons (e.g. 3D buildings)
-                    if (style.extrude && style.height) {
-                        GLBuilders.buildExtrudedPolygons(polygons, z, style.height, style.min_height, vertex_data[mode], { vertex_constants: vertex_constants });
-                    }
-                    // Regular polygons
-                    else {
-                        GLBuilders.buildPolygons(polygons, z, vertex_data[mode], { vertex_constants: vertex_constants });
-
-                        // var polygon_vertex_constants = [z, 0, 0, 1].concat(vertex_constants); // upwards-facing normal
-                        // GLBuilders.buildPolygons2(
-                        //     polygons,
-                        //     function (vertices) {
-                        //         GL.addVertices(vertices.positions, vertex_data[mode], polygon_vertex_constants);
-                        //     }
-                        // );
-                    }
-
-                    // Polygon outlines
-                    if (style.outline.color && style.outline.width) {
-                        for (var mpc=0; mpc < polygons.length; mpc++) {
-                            GLBuilders.buildPolylines(polygons[mpc], GLRenderer.calculateZ(layer, tile, -0.5), style.outline.width, vertex_data[mode], { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants });
-                        }
-                    }
+                    modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
                 }
 
                 if (lines != null) {
-                    GLBuilders.buildPolylines(lines, z, style.width, vertex_data[mode], { vertex_constants: vertex_constants });
-
-                    // Line outlines
-                    if (style.outline.color && style.outline.width) {
-                        GLBuilders.buildPolylines(lines, GLRenderer.calculateZ(layer, tile, -0.5), style.width + 2 * style.outline.width, vertex_data[mode], { vertex_constants: outline_vertex_constants });
-                    }
+                    modes[mode].buildLines(lines, style, vertex_data[mode]);
                 }
 
                 if (points != null) {
-                    // console.log(JSON.stringify(feature));
-                    // NOTE: adding to z to experiment with "floating" POIs
-                    var point_vertex_constants = [z + 1, 0, 0, 1].concat(vertex_constants); // upwards-facing normal
-                    GLBuilders.buildQuads(
-                        points, style.size * 2, style.size * 2,
-                        function (vertices) {
-                            var vs = vertices.positions;
-
-                            // Alternate vertex layout for 'points' shader
-                            if (mode == 'points') {
-                                point_vertex_constants = vertex_constants;
-
-                                for (var v in vertices.positions) {
-                                    vs[v] = vertices.positions[v].concat(z+ 1, vertices.texcoords[v]);
-                                }
-                            }
-
-                            // GL.addVertices(vertices.positions, vertex_data[mode], point_vertex_constants);
-                            GL.addVertices(vs, vertex_data[mode], point_vertex_constants);
-                        },
-                        { texcoords: (mode == 'points') }
-                    );
+                    modes[mode].buildPoints(points, style, vertex_data[mode]);
                 }
 
                 tile.debug.features++;
@@ -272,7 +173,7 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
 
     // Create GL geometry objects
     for (var s in vertex_data) {
-        tile.gl_geometry[s] = this.render_modes[s].makeGLGeometry(vertex_data[s]);
+        tile.gl_geometry[s] = this.modes[s].makeGLGeometry(vertex_data[s]);
     }
 
     tile.debug.geometries = 0;
@@ -396,8 +297,8 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
     // Render tiles grouped by renderg mode (GL program)
     var render_count = 0;
-    for (var mode in this.render_modes) {
-        var gl_program = this.render_modes[mode].gl_program;
+    for (var mode in this.modes) {
+        var gl_program = this.modes[mode].gl_program;
 
         gl.useProgram(gl_program.program);
 
@@ -509,8 +410,8 @@ GLRenderer.prototype.initInputHandlers = function GLRendererInitInputHandlers ()
         }
         else if (event.keyCode == 83) { // s
             console.log("reloading shaders");
-            for (var mode in this.render_modes) {
-                this.render_modes[mode].gl_program.compile();
+            for (var mode in this.modes) {
+                this.modes[mode].gl_program.compile();
             }
             gl_renderer.dirty = true;
         }

@@ -34,10 +34,10 @@ Style.defaults = {
         // width: 1,
         // dash: null
     },
-    // render_mode: {
+    // mode: {
     //     name: 'polygons'
     // }
-    render_mode: 'polygons'
+    mode: 'polygons'
 };
 
 // Style parsing
@@ -122,9 +122,9 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
         style.outline.dash = style.outline.dash(feature, tile, helpers);
     }
 
-    style.render_mode = layer_style.render_mode || Style.defaults.render_mode;
-    // style.render_mode = {};
-    // style.render_mode.name = (layer_style.render_mode && layer_style.render_mode.name) || Style.defaults.render_mode.name;
+    style.mode = layer_style.mode || Style.defaults.mode;
+    // style.mode = {};
+    // style.mode.name = (layer_style.mode && layer_style.mode.name) || Style.defaults.mode.name;
 
     return style;
 };

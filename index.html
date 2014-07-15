@@ -250,8 +250,8 @@ function setGLProgramDefines () {
     });
     layer.renderer.continuous_animation = animated;
 
-    for (var m in layer.renderer.render_modes) {
-        var gl_program = layer.renderer.render_modes[m].gl_program;
+    for (var m in layer.renderer.modes) {
+        var gl_program = layer.renderer.modes[m].gl_program;
         gl_program.compile();
     }
     layer.renderer.dirty = true;

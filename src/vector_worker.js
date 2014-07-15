@@ -9,6 +9,9 @@ var VectorWorker = {};
 VectorWorker.worker = self;
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
+// TODO: sync render mode state between main thread and worker
+VectorWorker.modes = require('./gl/gl_modes');
+
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
 VectorWorker.buildTile = function (tile)
@@ -20,7 +23,7 @@ VectorWorker.buildTile = function (tile)
     // Renderer-specific transforms
     if (typeof VectorWorker.renderer.addTile == 'function') {
         tile.debug.rendering = +new Date();
-        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles);
+        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles, VectorWorker.modes);
         tile.debug.rendering = +new Date() - tile.debug.rendering;
     }
 

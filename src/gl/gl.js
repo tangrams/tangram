@@ -363,30 +363,85 @@ catch (e) {
     // skip if libtess not defined
 }
 
-// Add one or more vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
+// Add vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
+// Per-vertex attributes must be pre-packed into the vertices array
 // Used for adding values that are often constant per geometry or polygon, like colors, normals (for polys sitting flat on map), layer and material info, etc.
-GL.addVertices = function (vertices, vertex_data, vertex_constants)
+GL.addVertices = function (vertices, vertex_constants, vertex_data)
 {
-    if (vertices != null && vertices.length > 0) {
-        // Array of vertices
-        if (typeof vertices[0] == 'object') {
-            for (var v=0; v < vertices.length; v++) {
-                vertex_data.push.apply(vertex_data, vertices[v]);
-                if (vertex_constants) {
-                    vertex_data.push.apply(vertex_data, vertex_constants);
-                }
-            }
-        }
-        // Single vertex
-        else {
-            vertex_data.push.apply(vertex_data, vertices);
-            if (vertex_constants) {
-                vertex_data.push.apply(vertex_data, vertex_constants);
-            }
-        }
+    if (vertices == null) {
+        return vertex_data;
     }
+    vertex_constants = vertex_constants || [];
+
+    for (var v=0, vlen = vertices.length; v < vlen; v++) {
+        vertex_data.push.apply(vertex_data, vertices[v]);
+        vertex_data.push.apply(vertex_data, vertex_constants);
+    }
+
     return vertex_data;
 };
+
+// Add vertices to an array, 'striping' each vertex with constant data
+// Multiple, un-packed attribute arrays can be provided
+GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
+{
+    var dlen = dynamics.length;
+    var vlen = dynamics[0].length;
+    constants = constants || [];
+
+    for (var v=0; v < vlen; v++) {
+        for (var d=0; d < dlen; d++) {
+            vertex_data.push.apply(vertex_data, dynamics[d][v]);
+        }
+        vertex_data.push.apply(vertex_data, constants);
+    }
+
+    return vertex_data;
+};
+
+// Add vertices to an array, with a variable layout (both per-vertex dynamic and constant attribs)
+// GL.addVerticesByAttributeLayout = function (attribs, vertex_data)
+// {
+//     var max_length = 0;
+//     for (var a=0; a < attribs.length; a++) {
+//         // console.log(attribs[a].name);
+//         // console.log("a " + typeof attribs[a].data);
+//         if (typeof attribs[a].data == 'object') {
+//             // console.log("a[0] " + typeof attribs[a].data[0]);
+//             // Per-vertex list - array of array
+//             if (typeof attribs[a].data[0] == 'object') {
+//                 attribs[a].cursor = 0;
+//                 if (attribs[a].data.length > max_length) {
+//                     max_length = attribs[a].data.length;
+//                 }
+//             }
+//             // Static array for all vertices
+//             else {
+//                 attribs[a].next_vertex = attribs[a].data;
+//             }
+//         }
+//         else {
+//             // Static single value for all vertices, convert to array
+//             attribs[a].next_vertex = [attribs[a].data];
+//         }
+//     }
+
+//     for (var v=0; v < max_length; v++) {
+//         for (var a=0; a < attribs.length; a++) {
+//             if (attribs[a].cursor != null) {
+//                 // Next value in list
+//                 attribs[a].next_vertex = attribs[a].data[attribs[a].cursor];
+
+//                 // TODO: repeats if one list is shorter than others - desired behavior, or enforce same length?
+//                 if (attribs[a].cursor < attribs[a].data.length) {
+//                     attribs[a].cursor++;
+//                 }
+//             }
+//             vertex_data.push.apply(vertex_data, attribs[a].next_vertex);
+//         }
+//     }
+//     return vertex_data;
+// };
 
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
 GL.VertexArrayObject = {};

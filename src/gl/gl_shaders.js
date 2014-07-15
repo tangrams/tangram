@@ -67,9 +67,9 @@ shader_sources['polygon_fragment'] =
 "varying vec3 v_normal;\n" +
 "#endif\n" +
 "\n" +
+"varying vec4 v_position_world;\n" +
 "#if defined(EFFECT_NOISE_TEXTURE)\n" +
 "\n" +
-"varying vec4 v_position_world;\n" +
 "vec3 a_x_mod289(vec3 x) {\n" +
 "  return x - floor(x * (1.0 / 289.0)) * 289.0;\n" +
 "}\n" +
@@ -229,11 +229,7 @@ shader_sources['polygon_vertex'] =
 "varying vec3 v_normal;\n" +
 "#endif\n" +
 "\n" +
-"#if defined(EFFECT_NOISE_TEXTURE)\n" +
-"\n" +
 "varying vec4 v_position_world;\n" +
-"#endif\n" +
-"\n" +
 "const float light_ambient = 0.5;\n" +
 "vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
 "  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
@@ -300,11 +296,7 @@ shader_sources['polygon_vertex'] =
 "  position.z *= 1.1;\n" +
 "  position = c_x_popup(position, vec2(0., 0.), 225. * u_meters_per_pixel);\n" +
 "  #endif\n" +
-"  \n" +
-"  #if defined(EFFECT_NOISE_TEXTURE)\n" +
 "  v_position_world = position_world;\n" +
-"  #endif\n" +
-"  \n" +
 "  #if defined(LIGHTING_VERTEX)\n" +
 "  v_color = e_x_lighting(position, a_normal, a_color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
