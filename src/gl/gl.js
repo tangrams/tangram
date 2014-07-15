@@ -297,9 +297,16 @@ GL.Program.prototype.attribute = function (name)
 // https://github.com/brendankenny/libtess.js
 try {
     GL.tesselator = (function initTesselator() {
+        var tesselator = new libtess.GluTesselator();
+
         // Called for each vertex of tesselator output
         function vertexCallback(data, polyVertArray) {
-            polyVertArray.push([data[0], data[1]]);
+            if (tesselator.z != null) {
+                polyVertArray.push([data[0], data[1], tesselator.z]);
+            }
+            else {
+                polyVertArray.push([data[0], data[1]]);
+            }
         }
 
         // Called when segments intersect and must be split
@@ -317,7 +324,6 @@ try {
             // console.log('GL.tesselator: edge flag: ' + flag);
         }
 
-        var tesselator = new libtess.GluTesselator();
         tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
         tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
         tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
@@ -332,9 +338,10 @@ try {
         return tesselator;
     })();
 
-    GL.triangulatePolygon = function GLTriangulate (contours)
+    GL.triangulatePolygon = function GLTriangulate (contours, z)
     {
         var triangleVerts = [];
+        GL.tesselator.z = z;
         GL.tesselator.gluTessBeginPolygon(triangleVerts);
 
         for (var i = 0; i < contours.length; i++) {
