@@ -325,7 +325,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
 
         // Convert mercator meters to screen space
         mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
-        gl_program.uniform('Matrix4fv', 'u_meter_view', gl.FALSE, meter_view_mat);
+        gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
@@ -341,13 +341,13 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
                     mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_view', gl.FALSE, tile_view_mat);
+                    gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                     // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                     mat4.identity(tile_world_mat);
                     mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
                     mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_world', gl.FALSE, tile_world_mat);
+                    gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
 
                     tile.gl_geometry[mode].render();
