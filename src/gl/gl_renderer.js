@@ -369,6 +369,14 @@ GLRenderer.prototype._render = function GLRendererRender ()
     return true;
 };
 
+// Recompile all shaders
+GLRenderer.prototype.compileShaders = function ()
+{
+    for (var m in this.modes) {
+        this.modes[m].gl_program.compile();
+    }
+};
+
 // Sum of a debug property across tiles
 GLRenderer.prototype.getDebugSum = function (prop, filter)
 {
