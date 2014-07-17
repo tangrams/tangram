@@ -164,7 +164,7 @@ Modes['polygons'].buildLines = function (lines, style, vertex_data)
     if (style.outline.color && style.outline.width) {
         GLBuilders.buildPolylines(
             lines,
-            style.layer_num - 0.5,
+            style.z,
             style.width + 2 * style.outline.width,
             vertex_data,
             {
