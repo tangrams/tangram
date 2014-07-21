@@ -1,6 +1,7 @@
 var Point = require('./point.js');
 var Geo = require('./geo.js');
 var Style = require('./style.js');
+var ModeManager = require('./gl/gl_modes').ModeManager;
 var Utils = require('./utils.js');
 
 // Global setup
@@ -18,7 +19,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.num_workers = options.num_workers || 1;
 
     if (typeof(layers) == 'string') {
-        this.layer_source = VectorRenderer.urlForPath(layers);
+        this.layer_source = Utils.urlForPath(layers);
         this.layers = VectorRenderer.loadLayers(this.layer_source);
     }
     else {
@@ -27,7 +28,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
 
     if (typeof(styles) == 'string') {
-        this.style_source = VectorRenderer.urlForPath(styles);
+        this.style_source = Utils.urlForPath(styles);
         this.styles = VectorRenderer.loadStyles(this.style_source);
     }
     else {
@@ -35,13 +36,17 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     }
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
+    this.dirty = true; // request a redraw
+    this.animated = false; // request redraw every frame
+    this.initialized = false;
+
+    this.modes = VectorRenderer.createModes({}, this.styles);
+    this.updateActiveModes();
     this.createWorkers();
 
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
-    this.dirty = true; // request a redraw
-    this.initialized = false;
 }
 
 VectorRenderer.create = function (type, tile_source, layers, styles, options)
@@ -182,6 +187,7 @@ VectorRenderer.prototype.requestRedraw = function ()
 
 VectorRenderer.prototype.render = function ()
 {
+    // Render on demand
     if (this.dirty == false || this.initialized == false) {
         return false;
     }
@@ -190,6 +196,11 @@ VectorRenderer.prototype.render = function ()
     // Child class-specific rendering (e.g. GL draw calls)
     if (typeof(this._render) == 'function') {
         this._render.apply(this, arguments);
+    }
+
+    // Redraw every frame if animating
+    if (this.animated == true) {
+        this.dirty = true;
     }
 
     // console.log("render map");
@@ -249,6 +260,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 };
 
 // Rebuild all tiles
+// TODO: also rebuild modes? (detect if changed)
 VectorRenderer.prototype.rebuildTiles = function ()
 {
     // Update layers & styles
@@ -301,6 +313,8 @@ VectorRenderer.prototype.rebuildTiles = function ()
             this.removeTile(invisible[t]);
         }
     }
+
+    this.updateActiveModes();
 };
 
 VectorRenderer.prototype.buildTile = function(key)
@@ -319,8 +333,11 @@ VectorRenderer.prototype.buildTile = function(key)
         renderer_type: this.type,
         tile_source: this.tile_source,
         layers: this.layers_serialized,
-        styles: this.styles_serialized
+        styles: this.styles_serialized//,
+        // mode_states: VectorRenderer.getModeStates(this.modes)
     });
+    // console.log(this.modes);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
@@ -331,6 +348,10 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     }
 
     var tile = event.data.tile;
+
+    // Sync modes
+    // VectorRenderer.updateModeStates(this.modes, event.data.mode_states);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
@@ -433,6 +454,25 @@ VectorRenderer.prototype.reloadConfig = function ()
     }
 };
 
+VectorRenderer.prototype.updateActiveModes = function ()
+{
+    // Make a set of currently active modes (used in a layer)
+    this.active_modes = {};
+    var animated = false; // is any active mode animated?
+    for (var l in this.styles.layers) {
+        var mode = (this.styles.layers[l].mode && this.styles.layers[l].mode.name) || Style.defaults.mode.name;
+        if (this.styles.layers[l].visible !== false) {
+            this.active_modes[mode] = true;
+
+            // Check if this mode is animated
+            if (animated == false && this.modes[mode].animated == true) {
+                animated = true;
+            }
+        }
+    }
+    this.animated = animated;
+};
+
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
 VectorRenderer.prototype.trackTileSetLoadStart = function ()
@@ -474,15 +514,6 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 
 
 /*** Class methods (stateless) ***/
-
-// Simplistic detection of relative paths, append base if necessary
-VectorRenderer.urlForPath = function (path) {
-    var protocol = path.toLowerCase().substr(0, 4);
-    if (!(protocol == 'http' || protocol == 'file')) {
-        path = window.location.origin + window.location.pathname + path;
-    }
-    return path;
-};
 
 VectorRenderer.loadLayers = function (url)
 {
@@ -533,6 +564,41 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     tile.layers = tile_layers;
     return tile_layers;
 };
+
+VectorRenderer.createModes = function (modes, styles)
+{
+    // Built-in modes
+    var built_ins = require('./gl/gl_modes').Modes; // TODO: make this non-GL specific
+    for (var m in built_ins) {
+        modes[m] = built_ins[m];
+    }
+
+    // Stylesheet modes
+    for (var m in styles.modes) {
+        modes[m] = ModeManager.configureMode(m, styles.modes[m]);
+    }
+
+    return modes;
+};
+
+// Used for passing mode state information between main thread and worker (since entire object can't be exchanged due to cloning restrictions)
+// VectorRenderer.getModeStates = function (modes)
+// {
+//     var mode_states = {};
+//     for (var m in modes) {
+//         mode_states[m] = modes[m].state;
+//     }
+//     return mode_states;
+// };
+
+// VectorRenderer.updateModeStates = function (modes, mode_states)
+// {
+//     for (var m in mode_states) {
+//         if (modes[m] != null) {
+//             modes[m].updateState(mode_states[m]);
+//         }
+//     }
+// }
 
 // Private/internal
 

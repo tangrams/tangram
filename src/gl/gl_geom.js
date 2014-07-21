@@ -60,9 +60,15 @@ GLGeometry.prototype.setup = function ()
     }
 };
 
-GLGeometry.prototype.render = function ()
+GLGeometry.prototype.render = function (options)
 {
-    this.gl.useProgram(this.gl_program.program);
+    var options = options || {};
+
+    // Caller has already set program
+    if (options.set_program !== false) {
+        this.gl.useProgram(this.gl_program.program);
+    }
+
     GL.VertexArrayObject.bind(this.vao);
 
     if (typeof this._render == 'function') {

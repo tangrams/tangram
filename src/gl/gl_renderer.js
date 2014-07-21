@@ -5,6 +5,7 @@ var VectorRenderer = require('../vector_renderer.js');
 
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
+var ModeManager = require('./gl_modes').ModeManager;
 
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
@@ -20,10 +21,10 @@ function GLRenderer (tile_source, layers, styles, options)
     VectorRenderer.call(this, 'GLRenderer', tile_source, layers, styles, options);
 
     GLBuilders.setTileScale(VectorRenderer.tile_scale);
-    GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale + '.0';
+    GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale;
 
     this.container = options.container;
-    this.continuous_animation = false; // request redraw every frame
+    this.mode_manager = ModeManager;
 }
 
 GLRenderer.prototype._init = function GLRendererInit ()
@@ -37,8 +38,8 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
+    this.initModes(); // TODO: merge with or overload parent class mode init? needs to happen in init (not constructor) b/c needs access to GL context
 
-    this.initRenderModes();
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
@@ -47,12 +48,9 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.initInputHandlers();
 };
 
-GLRenderer.prototype.initRenderModes = function ()
+GLRenderer.prototype.initModes = function ()
 {
-    // Init rendering modes
-    // var mode_types = require('./gl_modes');
-    // this.modes = {};
-    this.modes = require('./gl_modes');
+    // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
         this.modes[m].init(this.gl);
     }
@@ -86,7 +84,7 @@ GLRenderer.addTile = function (tile, layers, styles, modes)
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
-        if (styles[layer.name] == null || styles[layer.name].visible == false) {
+        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible == false) {
             continue;
         }
 
@@ -96,7 +94,7 @@ GLRenderer.addTile = function (tile, layers, styles, modes)
             // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
-                style = Style.parseStyleForFeature(feature, styles[layer.name], tile);
+                style = Style.parseStyleForFeature(feature, styles.layers[layer.name], tile);
 
                 // Skip feature?
                 if (style == null) {
@@ -130,7 +128,7 @@ GLRenderer.addTile = function (tile, layers, styles, modes)
                 }
 
                 // First feature in this render mode?
-                mode = style.mode;
+                mode = style.mode.name;
                 if (vertex_data[mode] == null) {
                     vertex_data[mode] = [];
                 }
@@ -295,48 +293,68 @@ GLRenderer.prototype._render = function GLRendererRender ()
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
+    // Map transforms
+    var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
+    var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
+    var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
+
+    // Matrices
+    var tile_view_mat = mat4.create();
+    var tile_world_mat = mat4.create();
+    var meter_view_mat = mat4.create();
+
+    // Convert mercator meters to screen space
+    mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
+
+    // Renderable tile list
+    var renderable_tiles = [];
+    for (var t in this.tiles) {
+        var tile = this.tiles[t];
+        if (tile.loaded == true && tile.visible == true) {
+            renderable_tiles.push(tile);
+        }
+    }
+    this.renderable_tiles_count = renderable_tiles.length;
+
     // Render tiles grouped by renderg mode (GL program)
     var render_count = 0;
     for (var mode in this.modes) {
         var gl_program = this.modes[mode].gl_program;
-
-        gl.useProgram(gl_program.program);
-
-        // TODO: set these once per program, don't set when they haven't changed
-        gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-        gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
-        gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-
-        var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-        // gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-        gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-        gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-
-        var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-        gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-
-        var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
-        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
-
-        // Matrix transforms
-        var tile_view_mat = mat4.create();
-        var tile_world_mat = mat4.create();
-        var meter_view_mat = mat4.create();
-
-        // Convert mercator meters to screen space
-        mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
-        gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+        var first_for_mode = true;
 
         // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
-        for (var t in this.tiles) {
-            var tile = this.tiles[t];
+        for (var t in renderable_tiles) {
+            var tile = renderable_tiles[t];
             if (tile.loaded == true && tile.visible == true) {
 
                 if (tile.gl_geometry[mode] != null) {
+                    // Setup mode if encountering for first time this frame
+                    // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
+                    if (first_for_mode == true) {
+                        first_for_mode = false;
+
+                        gl.useProgram(gl_program.program);
+                        this.modes[mode].update();
+
+                        // TODO: don't set uniforms when they haven't changed
+                        gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                        gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+                        gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+
+                        // gl_program.uniform('2f', 'u_map_center', center.x, center.y);
+                        gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                        gl_program.uniform('1f', 'u_num_layers', this.layers.length);
+                        gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
+                        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
+                        gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+                    }
+
+                    // Render tile
                     // gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
                     // gl_program.uniform('2f', 'u_tile_max', tile.max.x, tile.max.y);
 
+                    // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
@@ -349,8 +367,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
-
-                    tile.gl_geometry[mode].render();
+                    tile.gl_geometry[mode].render({ set_program: false });
                     render_count += tile.gl_geometry[mode].geometry_count;
                 }
             }
@@ -361,10 +378,6 @@ GLRenderer.prototype._render = function GLRendererRender ()
         console.log("rendered " + render_count + " primitives");
     }
     this.last_render_count = render_count;
-
-    if (this.continuous_animation == true) {
-        this.dirty = true;
-    }
 
     return true;
 };

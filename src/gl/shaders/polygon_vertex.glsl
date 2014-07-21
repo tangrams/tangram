@@ -12,6 +12,9 @@ uniform mat4 u_meter_view;
 uniform float u_meters_per_pixel;
 uniform float u_num_layers;
 
+// uniform float u_scale;
+// uniform vec3 u_color;
+
 attribute vec3 a_position;
 attribute vec3 a_normal;
 attribute vec3 a_color;
@@ -24,9 +27,9 @@ varying vec3 v_color;
     varying vec3 v_normal;
 #endif
 
-#if defined(EFFECT_NOISE_TEXTURE)
+// #if defined(EFFECT_NOISE_TEXTURE)
     varying vec4 v_position_world;
-#endif
+// #endif
 
 const float light_ambient = 0.5;
 
@@ -37,29 +40,33 @@ const float light_ambient = 0.5;
 #pragma glslify: calculateZ = require(./modules/depth_scale)
 #pragma glslify: lighting = require(./modules/lighting)
 
+#pragma tangram: globals
+
 void main() {
     vec4 position = u_tile_view * vec4(a_position, 1.);
     vec4 position_world = u_tile_world * vec4(a_position, 1.);
 
-    // Vertex displacement effects
-    if (position_world.z > 0.) {
-        #if defined(ANIMATION_ELEVATOR)
-            position.z *= max((sin(position_world.z + u_time) + 1.0) / 2.0, 0.05); // evelator buildings
-        #elif defined(ANIMATION_WAVE)
-            position.z *= max((sin(position_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05); // wave
-        #endif
-    }
+    #pragma tangram: vertex
 
-    // Pop-up effect - 3d in center of viewport, fading to 2d at edges
-    #if defined(PROJECTION_POPUP)
-        position.z *= 1.1; // boost height for exaggerated visual effect
-        position = popup(position, vec2(0., 0.), 225. * u_meters_per_pixel);
-    #endif
+    // // Vertex displacement effects
+    // if (position_world.z > 0.) {
+    //     #if defined(ANIMATION_ELEVATOR)
+    //         position.z *= max((sin(position_world.z + u_time) + 1.0) / 2.0, 0.05); // evelator buildings
+    //     #elif defined(ANIMATION_WAVE)
+    //         position.z *= max((sin(position_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05); // wave
+    //     #endif
+    // }
+
+    // // Pop-up effect - 3d in center of viewport, fading to 2d at edges
+    // #if defined(PROJECTION_POPUP)
+    //     position.z *= 1.1; // boost height for exaggerated visual effect
+    //     position = popup(position, vec2(0., 0.), 225. * u_meters_per_pixel);
+    // #endif
 
     // Interpolate world coordinates for 3d procedural textures
-    #if defined(EFFECT_NOISE_TEXTURE)
+    // #if defined(EFFECT_NOISE_TEXTURE)
         v_position_world = position_world;
-    #endif
+    // #endif
 
     // Shading
     #if defined(LIGHTING_VERTEX)
@@ -81,7 +88,7 @@ void main() {
 
     #if defined(PROJECTION_PERSPECTIVE)
         position = perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));
-    #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)
+    #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
         position = isometric(position, vec2(0., 1.), 1.);
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
     #endif

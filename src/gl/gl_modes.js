@@ -5,7 +5,6 @@ var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js').GLGeometry;
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
-
 // Base
 
 var RenderMode = {
@@ -13,31 +12,141 @@ var RenderMode = {
         this.gl = gl;
         this.gl_program = this.makeGLProgram();
     },
+    // state: {},
+    // updateState: function (new_state) {
+    //     this.state = this.state || {};
+    //     if (new_state != null) {
+    //         for (var k in new_state) {
+    //             this.state[k] = this.new_state[k];
+    //         }
+    //     }
+    //     return this.state;
+    // },
+    defines: {},
     buildPolygons: function(){}, // build functions are no-ops until overriden
     buildLines: function(){},
     buildPoints: function(){}
 };
 
+// TODO: allow mode programs to be recompiled
+RenderMode.makeGLProgram = function ()
+{
+    // Add any custom defines to built-in mode defines
+    var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
+    if (this.defines != null) {
+        for (var d in this.defines) {
+            defines[d] = this.defines[d];
+        }
+    }
+    if (this.shaders != null && this.shaders.defines != null) {
+        for (var d in this.shaders.defines) {
+            defines[d] = this.shaders.defines[d];
+        }
+    }
+
+    // Get any custom code transforms
+    var transforms = (this.shaders && this.shaders.transforms);
+
+    // Create shader from custom URLs
+    if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
+        return new GL.Program.createProgramFromURLs(
+            this.gl,
+            this.shaders.vertex_url,
+            this.shaders.fragment_url,
+            { defines: defines, transforms: transforms }
+        );
+    }
+    // Create shader from built-in source
+    else {
+        return new GL.Program(
+            this.gl,
+            shader_sources[this.vertex_shader_key],
+            shader_sources[this.fragment_shader_key],
+            { defines: defines, transforms: transforms }
+        );
+    }
+};
+
+RenderMode.updateUniforms = function ()
+{
+    // TODO: only update uniforms when changed
+    if (this.uniforms != null) {
+        for (var u in this.uniforms) {
+            // Single float
+            if (typeof this.uniforms[u] == 'number') {
+                this.gl_program.uniform('1f', u, this.uniforms[u]);
+            }
+            else if (typeof this.uniforms[u] == 'object') {
+                // float vectors (vec2, vec3, vec4)
+                if (this.uniforms[u].length >= 2 && this.uniforms[u].length <= 4) {
+                    this.gl_program.uniform(this.uniforms[u].length + 'fv', u, this.uniforms[u]);
+                }
+                // TODO: support arrays for more than 4 components
+                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
+                // TODO: support non-float types? (int, texture sampler, etc.)
+                // this.gl_program.uniform('1fv', u, this.uniforms[u]);
+            }
+        }
+    }
+};
+
+RenderMode.update = function ()
+{
+    // Mode-specific animation
+    if (typeof this.animation == 'function') {
+        this.animation();
+    }
+
+    this.updateUniforms();
+};
+
+
+var Modes = {};
+var ModeManager = {};
+
+// Update built-in mode or create a new one
+ModeManager.configureMode = function (name, settings)
+{
+    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
+    for (var s in settings) {
+        Modes[name][s] = settings[s];
+    }
+    return Modes[name];
+};
+
 
 // Built-in rendering modes
 
-var Modes = {};
-
-
 /*** Plain polygons ***/
 
-Modes['polygons'] = Object.create(RenderMode);
+Modes.polygons = Object.create(RenderMode);
 
-Modes['polygons'].makeGLProgram = function ()
-{
-    return new GL.Program(
-        this.gl,
-        shader_sources['polygon_vertex'],
-        shader_sources['polygon_fragment']
-    );
+// Modes.polygons.init = function (gl)
+// {
+//     RenderMode.init.apply(this, arguments);
+//     // this.state.colors = {};
+// };
+
+// Count uses of colors
+// Modes.polygons.countColor = function (color)
+// {g
+//     var k = color.join(',');
+//     if (this.state.colors[k] != null) {
+//         this.state.colors[k]++;
+//     }
+//     else {
+//         this.state.colors[k] = 1;
+//     }
+// };
+
+Modes.polygons.vertex_shader_key = 'polygon_vertex';
+Modes.polygons.fragment_shader_key = 'polygon_fragment';
+
+Modes.polygons.uniforms = {
+    // scale: 1.0
 };
 
-Modes['polygons'].makeGLGeometry = function (vertex_data)
+Modes.polygons.makeGLGeometry = function (vertex_data)
 {
     var geom = new GLGeometry(this.gl, this.gl_program, vertex_data, [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -50,13 +159,14 @@ Modes['polygons'].makeGLGeometry = function (vertex_data)
     return geom;
 };
 
-Modes['polygons'].buildPolygons = function (polygons, style, vertex_data)
+Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 {
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
         style.layer_num
     ];
+    // this.countColor(style.color);
 
     // Outlines have a slightly different set of constants, because the layer number is modified
     if (style.outline.color) {
@@ -64,6 +174,7 @@ Modes['polygons'].buildPolygons = function (polygons, style, vertex_data)
             style.outline.color[0], style.outline.color[1], style.outline.color[2],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
+        // this.countColor(style.outline.color);
     }
 
     // Extruded polygons (e.g. 3D buildings)
@@ -132,7 +243,7 @@ Modes['polygons'].buildPolygons = function (polygons, style, vertex_data)
     }
 };
 
-Modes['polygons'].buildLines = function (lines, style, vertex_data)
+Modes.polygons.buildLines = function (lines, style, vertex_data)
 {
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
@@ -174,7 +285,7 @@ Modes['polygons'].buildLines = function (lines, style, vertex_data)
     }
 };
 
-Modes['polygons'].buildPoints = function (points, style, vertex_data)
+Modes.polygons.buildPoints = function (points, style, vertex_data)
 {
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
@@ -198,46 +309,26 @@ Modes['polygons'].buildPoints = function (points, style, vertex_data)
 };
 
 
-/*** Polygons with noise flag on ***/
+/*** Simplified polygon shader ***/
 
-Modes['polygons_noise'] = Object.create(Modes['polygons']);
+Modes.polygons_simple = Object.create(Modes.polygons);
 
-Modes['polygons_noise'].makeGLProgram = function ()
-{
-    return new GL.Program(
-        this.gl,
-        shader_sources['polygon_vertex'],
-        shader_sources['polygon_fragment'],
-        {
-            defines: {
-                'EFFECT_NOISE_TEXTURE': true,
-                'EFFECT_NOISE_ANIMATABLE': true
-            }
-        }
-    );
-};
+Modes.polygons_simple.vertex_shader_key = 'simple_polygon_vertex';
+Modes.polygons_simple.fragment_shader_key = 'simple_polygon_fragment';
 
 
 /*** Points w/simple distance field rendering ***/
 
-Modes['points'] = Object.create(RenderMode);
-// Modes['points'] = Object.create(Modes['polygons']);
+Modes.points = Object.create(RenderMode);
 
-Modes['points'].makeGLProgram = function ()
-{
-    return new GL.Program(
-        this.gl,
-        shader_sources['point_vertex'],
-        shader_sources['point_fragment'],
-        {
-            defines: {
-                'EFFECT_SCREEN_COLOR': true
-            }
-        }
-    );
+Modes.points.vertex_shader_key = 'point_vertex';
+Modes.points.fragment_shader_key = 'point_fragment';
+
+Modes.points.defines = {
+    'EFFECT_SCREEN_COLOR': true
 };
 
-Modes['points'].makeGLGeometry = function (vertex_data)
+Modes.points.makeGLGeometry = function (vertex_data)
 {
     return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -247,7 +338,7 @@ Modes['points'].makeGLGeometry = function (vertex_data)
     ]);
 };
 
-Modes['points'].buildPoints = function (points, style, vertex_data)
+Modes.points.buildPoints = function (points, style, vertex_data)
 {
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
@@ -271,5 +362,8 @@ Modes['points'].buildPoints = function (points, style, vertex_data)
 };
 
 if (module !== undefined) {
-    module.exports = Modes;
+    module.exports = {
+        ModeManager: ModeManager,
+        Modes: Modes
+    };
 }

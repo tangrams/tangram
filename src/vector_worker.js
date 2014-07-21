@@ -10,7 +10,7 @@ VectorWorker.worker = self;
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
 // TODO: sync render mode state between main thread and worker
-VectorWorker.modes = require('./gl/gl_modes');
+// VectorWorker.modes = require('./gl/gl_modes').Modes;
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
@@ -41,8 +41,11 @@ VectorWorker.buildTile = function (tile)
 
     VectorWorker.worker.postMessage({
         type: 'buildTileCompleted',
-        tile: tile_subset
+        tile: tile_subset//,
+        // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
     });
+    // console.log(JSON.stringify(VectorWorker.modes.polygons.state));
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(VectorWorker.modes)));
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
@@ -73,6 +76,10 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
+
+    // VectorRenderer.updateModeStates(VectorWorker.modes, event.data.mode_states);
+    // console.log(JSON.stringify(event.data.mode_states));
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
     // First time building the tile
     if (tile.layers == null) {

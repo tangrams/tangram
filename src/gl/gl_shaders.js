@@ -15,9 +15,7 @@ shader_sources['point_fragment'] =
 "    discard;\n" +
 "  }\n" +
 "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
-"  #if defined(EFFECT_SCREEN_COLOR)\n" +
-"  color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
-"  #endif\n" +
+"  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.);\n" +
 "}\n" +
 "";
@@ -42,8 +40,11 @@ shader_sources['point_vertex'] =
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
+"#pragma tangram: globals\n" +
+"\n" +
 "void main() {\n" +
 "  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
+"  #pragma tangram: vertex\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
 "  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
@@ -171,36 +172,21 @@ shader_sources['polygon_fragment'] =
 "  #endif\n" +
 "  return color;\n" +
 "}\n" +
+"#pragma tangram: globals\n" +
+"\n" +
 "void main(void) {\n" +
-"  vec3 color;\n" +
+"  vec3 color = v_color;\n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
-"  color = b_x_lighting(v_position, v_normal, v_color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
-"  #else\n" +
-"  color = v_color;\n" +
+"  color = b_x_lighting(v_position, v_normal, color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #endif\n" +
+"  \n" +
+"  #pragma tangram: fragment\n" +
 "  \n" +
 "  #if defined(EFFECT_SPOTLIGHT)\n" +
 "  vec2 position = gl_FragCoord.xy / u_resolution.xy;\n" +
 "  position = position * 2.0 - 1.0;\n" +
 "  position *= u_aspect;\n" +
 "  color *= max(1.0 - distance(position, vec2(0.0, 0.0)), 0.2);\n" +
-"  #endif\n" +
-"  \n" +
-"  #if defined(EFFECT_COLOR_BLEED)\n" +
-"  color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);\n" +
-"  color.r += sin(u_time / 3.0);\n" +
-"  #endif\n" +
-"  \n" +
-"  #if defined (EFFECT_NOISE_TEXTURE)\n" +
-"  \n" +
-"  #if defined(EFFECT_NOISE_ANIMATABLE) && defined(EFFECT_NOISE_ANIMATED)\n" +
-"  color *= (abs(a_x_cnoise((v_position_world.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0)) / 4.0) + 0.75;\n" +
-"  #endif\n" +
-"  \n" +
-"  #ifndef EFFECT_NOISE_ANIMATABLE\n" +
-"  color *= (abs(a_x_cnoise(v_position_world.xyz / 10.0)) / 4.0) + 0.75;\n" +
-"  #endif\n" +
-"  \n" +
 "  #endif\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
 "}\n" +
@@ -280,22 +266,12 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  return color;\n" +
 "}\n" +
+"#pragma tangram: globals\n" +
+"\n" +
 "void main() {\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
-"  if(position_world.z > 0.) {\n" +
-"    \n" +
-"    #if defined(ANIMATION_ELEVATOR)\n" +
-"    position.z *= max((sin(position_world.z + u_time) + 1.0) / 2.0, 0.05);\n" +
-"    #elif defined(ANIMATION_WAVE)\n" +
-"    position.z *= max((sin(position_world.x / 100.0 + u_time) + 1.0) / 2.0, 0.05);\n" +
-"    #endif\n" +
-"    \n" +
-"  }\n" +
-"  #if defined(PROJECTION_POPUP)\n" +
-"  position.z *= 1.1;\n" +
-"  position = c_x_popup(position, vec2(0., 0.), 225. * u_meters_per_pixel);\n" +
-"  #endif\n" +
+"  #pragma tangram: vertex\n" +
 "  v_position_world = position_world;\n" +
 "  #if defined(LIGHTING_VERTEX)\n" +
 "  v_color = e_x_lighting(position, a_normal, a_color, vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
@@ -307,10 +283,112 @@ shader_sources['polygon_vertex'] =
 "  position = u_meter_view * position;\n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
 "  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
-"  #elif defined(PROJECTION_ISOMETRIC) || defined(PROJECTION_POPUP)\n" +
+"  #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)\n" +
 "  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
 "  #endif\n" +
 "  position.z = d_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
+"  gl_Position = position;\n" +
+"}\n" +
+"";
+
+shader_sources['simple_polygon_fragment'] =
+"\n" +
+"#define GLSLIFY 1\n" +
+"\n" +
+"uniform float u_meters_per_pixel;\n" +
+"varying vec3 v_color;\n" +
+"#if !defined(LIGHTING_VERTEX)\n" +
+"\n" +
+"varying vec4 v_position;\n" +
+"varying vec3 v_normal;\n" +
+"#endif\n" +
+"\n" +
+"vec3 a_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"#pragma tangram: globals\n" +
+"\n" +
+"void main(void) {\n" +
+"  vec3 color;\n" +
+"  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
+"  vec4 light_pos = vec4(0., 0., 150. * u_meters_per_pixel, 1.);\n" +
+"  const float light_ambient = 0.5;\n" +
+"  const bool backlit = true;\n" +
+"  color = a_x_pointLight(v_position, v_normal, v_color, light_pos, light_ambient, backlit);\n" +
+"  #else\n" +
+"  color = v_color;\n" +
+"  #endif\n" +
+"  \n" +
+"  #pragma tangram: fragment\n" +
+"  gl_FragColor = vec4(color, 1.0);\n" +
+"}\n" +
+"";
+
+shader_sources['simple_polygon_vertex'] =
+"\n" +
+"#define GLSLIFY 1\n" +
+"\n" +
+"uniform vec2 u_aspect;\n" +
+"uniform mat4 u_tile_view;\n" +
+"uniform mat4 u_meter_view;\n" +
+"uniform float u_meters_per_pixel;\n" +
+"uniform float u_num_layers;\n" +
+"attribute vec3 a_position;\n" +
+"attribute vec3 a_normal;\n" +
+"attribute vec3 a_color;\n" +
+"attribute float a_layer;\n" +
+"varying vec3 v_color;\n" +
+"#if !defined(LIGHTING_VERTEX)\n" +
+"\n" +
+"varying vec4 v_position;\n" +
+"varying vec3 v_normal;\n" +
+"#endif\n" +
+"\n" +
+"vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
+"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
+"  return position;\n" +
+"}\n" +
+"vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" +
+"  position.xy += position.z * axis * multiplier / u_aspect;\n" +
+"  return position;\n" +
+"}\n" +
+"float c_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
+"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
+"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
+"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
+"  z = (z_layer_range - z) / z_layer_range;\n" +
+"  return z;\n" +
+"}\n" +
+"vec3 d_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"#pragma tangram: globals\n" +
+"\n" +
+"void main() {\n" +
+"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"  #pragma tangram: vertex\n" +
+"  \n" +
+"  #if defined(LIGHTING_VERTEX)\n" +
+"  vec4 light_pos = vec4(0., 0., 150. * u_meters_per_pixel, 1.);\n" +
+"  const float light_ambient = 0.5;\n" +
+"  const bool backlit = true;\n" +
+"  v_color = d_x_pointLight(position, a_normal, a_color, light_pos, light_ambient, backlit);\n" +
+"  #else\n" +
+"  v_position = position;\n" +
+"  v_normal = a_normal;\n" +
+"  v_color = a_color;\n" +
+"  #endif\n" +
+"  position = u_meter_view * position;\n" +
+"  #if defined(PROJECTION_PERSPECTIVE)\n" +
+"  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
+"  #elif defined(PROJECTION_ISOMETRIC)\n" +
+"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
+"  #endif\n" +
+"  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";

@@ -1,4 +1,7 @@
 // WebGL management and rendering functions
+
+var Utils = require('../utils.js');
+
 var GL = {};
 
 // Setup a WebGL context
@@ -68,11 +71,11 @@ GL.updateProgramFromURLs = function GLUpdateProgramFromURLs (gl, program, vertex
     var req = new XMLHttpRequest();
 
     req.onload = function () { vertex_shader_source = req.response; };
-    req.open('GET', vertex_shader_url + '?' + (+new Date()), false /* async flag */);
+    req.open('GET', Utils.urlForPath(vertex_shader_url) + '?' + (+new Date()), false /* async flag */);
     req.send();
 
     req.onload = function () { fragment_shader_source = req.response; };
-    req.open('GET', fragment_shader_url + '?' + (+new Date()), false /* async flag */);
+    req.open('GET', Utils.urlForPath(fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
     req.send();
 
     return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
@@ -86,9 +89,9 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
         var vertex_shader = GL.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
         var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
     }
-    catch(err)
-    {
-        alert(err);
+    catch(err) {
+        // alert(err);
+        console.log(err);
         return program;
     }
 
@@ -121,6 +124,7 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
             "ERROR: " + gl.getError() + "\n\n" +
             "--- Vertex Shader ---\n" + vertex_shader_source + "\n\n" +
             "--- Fragment Shader ---\n" + fragment_shader_source;
+        console.log(program_error);
         throw program_error;
     }
 
@@ -146,14 +150,16 @@ GL.createShader = function GLcreateShader (gl, source, type)
     return shader;
 };
 
-// Thin GL program layer to cache uniform locations/values, do compile-time pre-processing (injecting #defines into shaders), etc.
+// Thin GL program layer to cache uniform locations/values, do compile-time pre-processing
+// (injecting #defines and #pragma transforms into shaders), etc.
 GL.Program = function (gl, vertex_shader_source, fragment_shader_source, options)
 {
     options = options || {};
 
     this.gl = gl;
     this.program = null;
-    this.defines = options.defines || {}; // key/values inserted into shaders at compile-time
+    this.defines = options.defines || {}; // key/values inserted as #defines into shaders at compile-time
+    this.transforms = options.transforms; // key/values for URLs of blocks that can be injected into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
     this.attribs = {}; // program locations of vertex attributes
     this.vertex_shader_source = vertex_shader_source;
@@ -173,7 +179,7 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
         var source;
         var req = new XMLHttpRequest();
         req.onload = function () { source = req.response; };
-        req.open('GET', this.vertex_shader_url + '?' + (+new Date()), false /* async flag */);
+        req.open('GET', Utils.urlForPath(this.vertex_shader_url) + '?' + (+new Date()), false /* async flag */);
         req.send();
         return source;
     };
@@ -182,7 +188,7 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
         var source;
         var req = new XMLHttpRequest();
         req.onload = function () { source = req.response; };
-        req.open('GET', this.fragment_shader_url + '?' + (+new Date()), false /* async flag */);
+        req.open('GET', Utils.urlForPath(this.fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
         req.send();
         return source;
     };
@@ -218,15 +224,77 @@ GL.Program.prototype.compile = function ()
         if (defines[d] == false) {
             continue;
         }
-        else if (typeof defines[d] == 'boolean' && defines[d] == true) {
+        else if (typeof defines[d] == 'boolean' && defines[d] == true) { // booleans are simple defines with no value
             define_str += "#define " + d + "\n";
         }
-        else {
+        else if (typeof defines[d] == 'number' && Math.floor(defines[d]) == defines[d]) { // int to float conversion to satisfy GLSL floats
+            define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
+        }
+        else { // any other float or string value
             define_str += "#define " + d + " " + defines[d] + "\n";
         }
     }
     this.processed_vertex_shader_source = define_str + this.vertex_shader_source;
     this.processed_fragment_shader_source = define_str + this.fragment_shader_source;
+
+    // Inject user-defined transforms (arbitrary code blocks matching named #pragmas)
+    // TODO: flag to avoid re-retrieving transform URLs over network when rebuilding?
+    // TODO: support glslify #pragma export names for better compatibility? (e.g. rename main() functions)
+    // TODO: auto-insert uniforms referenced in mode definition, but not in shader base or transforms? (problem: don't have access to uniform list/type here)
+    var re;
+    if (this.transforms != null) {
+        // Replace according to this pattern:
+        // #pragma tangram: [key]
+        // e.g. #pragma tangram: globals
+        var source;
+        var req = new XMLHttpRequest();
+        req.onload = function () { source = req.response; };
+
+        for (var key in this.transforms) {
+            var transform_urls = this.transforms[key];
+            if (transform_urls == null) {
+                continue;
+            }
+
+            // Can be a single URL or a list of URLs, convert to array if single
+            if (typeof transform_urls == 'string') {
+                transform_urls = [transform_urls];
+            }
+
+            // First find code replace points in shaders
+            // var re = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'g');
+            re = new RegExp('#pragma\\s+tangram:\\s+' + key, 'g');
+            var inject_vertex = this.processed_vertex_shader_source.match(re);
+            var inject_fragment = this.processed_fragment_shader_source.match(re);
+
+            // Avoid network request if nothing to replace
+            if (inject_vertex == null && inject_fragment == null) {
+                continue;
+            }
+
+            // Get the code over the network
+            // TODO: use of synchronous XHR may be a speed issue
+            var combined_source = "";
+            for (var u in transform_urls) {
+                req.open('GET', Utils.urlForPath(transform_urls[u]) + '?' + (+new Date()), false /* async flag */);
+                req.send();
+                combined_source += source + '\n';
+            }
+
+            // Inject the code
+            if (inject_vertex != null) {
+                this.processed_vertex_shader_source = this.processed_vertex_shader_source.replace(re, combined_source);
+            }
+            if (inject_fragment != null) {
+                this.processed_fragment_shader_source = this.processed_fragment_shader_source.replace(re, combined_source);
+            }
+        }
+    }
+
+    // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
+    re = new RegExp('#pragma\\s+tangram:\\s+\\w+', 'g');
+    this.processed_vertex_shader_source = this.processed_vertex_shader_source.replace(re, '');
+    this.processed_fragment_shader_source = this.processed_fragment_shader_source.replace(re, '');
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
@@ -242,8 +310,59 @@ GL.Program.prototype.uniform = function (method, name) // method-appropriate arg
     uniform.name = name;
     uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
     uniform.method = 'uniform' + method;
-    uniform.values = Array.prototype.slice.call(arguments, 2);
-    this.updateUniform(name);
+
+    // // Check against cached values before setting
+    var vals = Array.prototype.slice.call(arguments, 2);
+    // if (uniform.values != null && uniform.values.length == vals.length) { // && uniform.method != 'uniformMatrix4fv') {
+    //     for (var v = 0, vlen = vals.length; v < vlen; v++) {
+    //         var replace = false;
+
+    //         // Different types (always update)
+    //         if (typeof uniform.values[v] != typeof vals[v]) {
+    //             replace = true;
+    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
+    //             break;
+    //         }
+    //         // Arrays, compare each value
+    //         else if (typeof uniform.values[v] == 'object') {
+    //             for (var a=0, alen = vals[v].length; a < alen; a++) {
+    //                 if (uniform.values[v][a] !== vals[v][a]) {
+    //                     replace = true;
+    //                     console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
+    //                     break;
+    //                 }
+    //             }
+    //             if (replace == true) {
+    //                 break;
+    //             }
+    //         }
+    //         // Plain value of same type
+    //         else if (uniform.values[v] !== vals[v]) {
+    //             replace = true;
+    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
+    //             break;
+    //         }
+    //         if (typeof uniform.values[v] == 'object') {
+    //             console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
+    //         }
+    //         else {
+    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
+    //         }
+    //     }
+
+    //     if (replace == true) {
+    //         uniform.values = vals;
+    //         this.updateUniform(name);
+    //     }
+    //     // if (v == vals.length) {
+    //     //     console.log("uniform " + uniform.name + ": don't update, matched cached value");
+    //     // }
+    // }
+    // else {
+    //     console.log("uniform " + uniform.name + ": set initial value, or new length");
+        uniform.values = vals;
+        this.updateUniform(name);
+    // }
 };
 
 // Set a single uniform
