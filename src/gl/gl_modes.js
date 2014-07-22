@@ -70,21 +70,21 @@ RenderMode.makeGLProgram = function ()
 RenderMode.updateUniforms = function ()
 {
     // TODO: only update uniforms when changed
-    if (this.uniforms != null) {
-        for (var u in this.uniforms) {
+    if (this.shaders != null && this.shaders.uniforms != null) {
+        for (var u in this.shaders.uniforms) {
             // Single float
-            if (typeof this.uniforms[u] == 'number') {
-                this.gl_program.uniform('1f', u, this.uniforms[u]);
+            if (typeof this.shaders.uniforms[u] == 'number') {
+                this.gl_program.uniform('1f', u, this.shaders.uniforms[u]);
             }
-            else if (typeof this.uniforms[u] == 'object') {
+            else if (typeof this.shaders.uniforms[u] == 'object') {
                 // float vectors (vec2, vec3, vec4)
-                if (this.uniforms[u].length >= 2 && this.uniforms[u].length <= 4) {
-                    this.gl_program.uniform(this.uniforms[u].length + 'fv', u, this.uniforms[u]);
+                if (this.shaders.uniforms[u].length >= 2 && this.shaders.uniforms[u].length <= 4) {
+                    this.gl_program.uniform(this.shaders.uniforms[u].length + 'fv', u, this.shaders.uniforms[u]);
                 }
                 // TODO: support arrays for more than 4 components
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
                 // TODO: support non-float types? (int, texture sampler, etc.)
-                // this.gl_program.uniform('1fv', u, this.uniforms[u]);
+                // this.gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
             }
         }
     }
@@ -142,9 +142,9 @@ Modes.polygons = Object.create(RenderMode);
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
 
-Modes.polygons.uniforms = {
-    // scale: 1.0
-};
+// Modes.polygons.shaders.uniforms = {
+//     // scale: 1.0
+// };
 
 Modes.polygons.makeGLGeometry = function (vertex_data)
 {
