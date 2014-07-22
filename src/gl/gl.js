@@ -251,14 +251,14 @@ GL.Program.prototype.compile = function ()
         req.onload = function () { source = req.response; };
 
         for (var key in this.transforms) {
-            var transform_urls = this.transforms[key];
-            if (transform_urls == null) {
+            var transform = this.transforms[key];
+            if (transform == null) {
                 continue;
             }
 
-            // Can be a single URL or a list of URLs, convert to array if single
-            if (typeof transform_urls == 'string') {
-                transform_urls = [transform_urls];
+            // Can be a single item (string or object) or a list
+            if (typeof transform == 'string' || (typeof transform == 'object' && transform.length == null)) {
+                transform = [transform];
             }
 
             // First find code replace points in shaders
@@ -275,9 +275,33 @@ GL.Program.prototype.compile = function ()
             // Get the code over the network
             // TODO: use of synchronous XHR may be a speed issue
             var combined_source = "";
-            for (var u in transform_urls) {
-                req.open('GET', Utils.urlForPath(transform_urls[u]) + '?' + (+new Date()), false /* async flag */);
-                req.send();
+            for (var u in transform) {
+                // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
+                var type, value;
+                if (typeof transform[u] == 'object') {
+                    if (transform[u].url != null) {
+                        type = 'url';
+                        value = transform[u].url;
+                    }
+                    if (transform[u].inline != null) {
+                        type = 'inline';
+                        value = transform[u].inline;
+                    }
+                }
+                else {
+                    // Default to inline GLSL
+                    type = 'inline';
+                    value = transform[u];
+                }
+
+                if (type == 'inline') {
+                    source = value;
+                }
+                else if (type == 'url') {
+                    req.open('GET', Utils.urlForPath(value) + '?' + (+new Date()), false /* async flag */);
+                    req.send();
+                }
+
                 combined_source += source + '\n';
             }
 

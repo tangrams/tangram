@@ -3,27 +3,22 @@
         'water': {
             extends: 'polygons',
             animated: true,
-            shaders: {
+            shaders:{
                 defines: {
-                    // EFFECT_NOISE_TEXTURE: true,
-                    // EFFECT_NOISE_ANIMATABLE: true,
                     EFFECT_NOISE_ANIMATED: true
                 },
                 transforms: {
-                    globals: 'node_modules/glsl-noise/classic/3d.glsl',
-                    fragment: 'demos/shaders/noise.glsl'
+                    globals: { url: 'node_modules/glsl-noise/classic/3d.glsl' },
+                    fragment: { url: 'demos/shaders/noise.glsl' }
                 }
             }
         },
         'formica': {
             extends: 'polygons',
             shaders: {
-                defines: {
-                    EFFECT_NOISE_TEXTURE: true
-                },
                 transforms: {
-                    globals: 'node_modules/glsl-noise/classic/3d.glsl',
-                    fragment: 'demos/shaders/noise.glsl'
+                    globals: { url: 'node_modules/glsl-noise/classic/3d.glsl' },
+                    fragment: { url: 'demos/shaders/noise.glsl' }
                 }
             }
         },
@@ -31,13 +26,13 @@
             extends: 'polygons',
             animated: true,
             shaders: {
-                defines: {
-                    EFFECT_COLOR_BLEED_ANIMATED: true
-                },
                 transforms: {
-                    globals: 'src/gl/shaders/modules/popup.glsl',
-                    vertex: ['demos/shaders/elevator.glsl', 'demos/shaders/popup.glsl'],
-                    fragment: 'demos/shaders/color_bleed.glsl'
+                    globals: { url: 'src/gl/shaders/modules/popup.glsl' },
+                    vertex: [
+                        { url: 'demos/shaders/elevator.glsl' },
+                        { url: 'demos/shaders/popup.glsl' }
+                    ],
+                    fragment: { url: 'demos/shaders/color_bleed.glsl' }
                 }
             }
         },
@@ -46,7 +41,7 @@
             animated: true,
             shaders: {
                 transforms: {
-                    vertex: 'demos/shaders/elevator.glsl'
+                    vertex: { url: 'demos/shaders/elevator.glsl' }
                 }
             }
         },
@@ -54,21 +49,16 @@
             extends: 'polygons',
             animated: true,
             shaders: {
-                defines: {
-                    EXPLODE_SCALE: 10
-                },
+                // defines: {
+                //     EXPLODE_SCALE: 10
+                // },
                 uniforms: {
-                    // u_scale: 0,
-                    // u_color: [1, 1, 0]
+                    u_scale: 10
                 },
-                uniforms2: {
-                    scale2: { value: 0.5, type: 'vec3' }
-                },
-                globals2: [
-                    { type: 'inline', value: 'uniform float u_scale;' }
-                ],
                 transforms: {
-                    vertex: 'demos/shaders/explode.glsl'
+                    globals: 'uniform float u_scale;',
+                    vertex: 'position.xy += a_normal.xy * u_scale * smoothstep(0.25, 1., abs(sin(u_time)));'
+                    // vertex: { url: 'demos/shaders/explode.glsl' }
                 }
             }
         },
@@ -82,16 +72,16 @@
                     u_dot_color: [1, 1, 1]
                 },
                 transforms: {
-                    globals: 'demos/shaders/dots.glsl',
-                    fragment: { type: 'inline', value: 'color *= dots(v_position_world.xyz);' }
-                    // fragment: { type: 'inline', value: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' }
+                    globals: { url: 'demos/shaders/dots.glsl' },
+                    fragment: 'color *= dots(v_position_world.xyz);'
+                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' // apply only to up-facing surfaces
                 }
             }
         },
         'points': {
             shaders: {
                 transforms: {
-                    fragment: 'demos/shaders/color_bleed.glsl'
+                    fragment: { url: 'demos/shaders/color_bleed.glsl' }
                 }
             }
         },
@@ -191,8 +181,10 @@
         },
         buildings: {
             mode: {
-                name: 'popup'
+                // name: 'popup'
+                // name: 'explode'
                 // name: 'formica'
+                name: 'dots'
             },
             // filter: function (f) { return f.properties.name != null; },
             // filter: function (f) { return Math.random() < 0.25; },
