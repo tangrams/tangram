@@ -356,6 +356,40 @@ layer.renderer.layers.forEach(function(l) {
     });
 });
 
+// gui for uniforms
+
+val = renderer.modes.wood.shaders.uniforms.u_wood_color1;
+gui["woodColor1"] = [val[0] * 255, val[1] * 255, val[2] * 255];
+// gui["woodColor1"] = renderer.modes.wood.shaders.uniforms.u_wood_color1;
+var wcolor1Var = gui.addColor(gui, "woodColor1");
+wcolor1Var.onChange(function(value) {
+    renderer.modes.wood.shaders.uniforms.u_wood_color1 = [value[0]/255, value[1]/255, value[2]/255];
+});
+
+val = renderer.modes.wood.shaders.uniforms.u_wood_color2;
+gui["woodColor2"] = [val[0] * 255, val[1] * 255, val[2] * 255];
+var wcolor2Var = gui.addColor(gui, "woodColor2");
+wcolor2Var.onChange(function(value) {
+    renderer.modes.wood.shaders.uniforms.u_wood_color2 = [value[0]/255, value[1]/255, value[2]/255];
+});
+
+gui["eccentricity"] = renderer.modes.wood.shaders.uniforms.u_wood_eccentricity;
+var eccVar = gui.add(gui, "eccentricity", -1, 1);
+eccVar.onChange(function(value) {
+    renderer.modes.wood.shaders.uniforms.u_wood_eccentricity = value * 1;
+});
+
+gui["twist"] = renderer.modes.wood.shaders.uniforms.u_wood_twist / .001;
+var twistVar = gui.add(gui, "twist", 0, 1);
+twistVar.onChange(function(value) {
+    renderer.modes.wood.shaders.uniforms.u_wood_twist = value * .001;
+});
+
+gui["scale"] = renderer.modes.wood.shaders.uniforms.u_wood_scale / 100;
+var scaleVar = gui.add(gui, "scale", 0, 1);
+scaleVar.onChange(function(value) {
+    renderer.modes.wood.shaders.uniforms.u_wood_scale = value * 100;
+});
 
 /***** Render loop *****/
 

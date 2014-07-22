@@ -78,6 +78,24 @@
                 }
             }
         },
+        'wood': {
+            extends: 'polygons',
+            shaders: {
+                uniforms: {
+                    u_wood_color1: [.9, .5, .5],
+                    u_wood_color2: [.3, .6, .8],
+                    u_wood_eccentricity: .1,
+                    u_wood_twist: .00002,
+                    u_wood_scale: 50,
+                    u_wood_spacing: 1
+                },
+                transforms: {
+                    globals: { url: 'demos/shaders/wood.glsl' },
+                    fragment: 'color = wood(v_position_world.xyz);'
+                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' // apply only to up-facing surfaces
+                }
+            }
+        },
         'points': {
             shaders: {
                 transforms: {
@@ -184,7 +202,8 @@
                 // name: 'popup'
                 // name: 'explode'
                 // name: 'formica'
-                name: 'dots'
+                // name: 'dots'
+                name: 'wood'
             },
             // filter: function (f) { return f.properties.name != null; },
             // filter: function (f) { return Math.random() < 0.25; },
