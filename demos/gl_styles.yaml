@@ -1,0 +1,146 @@
+---
+modes:
+  water:
+    extends: polygons
+    animated: true
+    shaders:
+      defines:
+        EFFECT_NOISE_ANIMATED: true
+      transforms:
+        globals: node_modules/glsl-noise/classic/3d.glsl
+        fragment: demos/shaders/noise.glsl
+
+  formica:
+    extends: polygons
+    shaders:
+      defines:
+        EFFECT_NOISE_TEXTURE: true
+      transforms:
+        globals: node_modules/glsl-noise/classic/3d.glsl
+        fragment: demos/shaders/noise.glsl
+
+  popup:
+    extends: polygons
+    animated: true
+    shaders:
+      defines:
+        EFFECT_COLOR_BLEED_ANIMATED: true
+      transforms:
+        # globals: src/gl/shaders/modules/popup.glsl
+        vertex:
+          # - demos/shaders/elevator.glsl
+          # - demos/shaders/popup.glsl
+        fragment: demos/shaders/color_bleed.glsl
+
+  elevator:
+    extends: polygons
+    animated: true
+    shaders:
+      transforms:
+        vertex: demos/shaders/elevator.glsl
+
+  explode:
+    extends: polygons
+    animated: true
+    shaders:
+      defines:
+        EXPLODE_SCALE: 10
+      transforms:
+        globals:
+          # inline: uniform float u_scale;
+        vertex: demos/shaders/explode.glsl
+
+  points:
+    shaders:
+      transforms:
+        fragment: demos/shaders/color_bleed.glsl
+
+
+layers:
+  water_ocean:
+    mode:
+      name: water
+    color:
+      default: [0.5, 0.5, 0.875]
+
+  earth:
+    color:
+      default: [0.175, 0.175, 0.175]
+
+  landuse:
+    color:
+      default: [0.5, 0.875, 0.5]
+      pitch: [0.3, 0.675, 0.3]
+
+  water_areas:
+    mode:
+      name: water
+    color:
+      default: [0.5, 0.5, 0.875]
+    outline:
+      color:
+        default: [0.6, 0.6, 0.975]
+      width:
+        default:
+          function (f, t) {
+              return (
+                  t.coords.z >= 16 &&
+                  (f.properties.kind != 'ocean' && f.properties.kind != 'riverbank') &&
+                  (2.5 * Math.log(t.coords.z))
+              );
+          }
+
+  roads:
+    color:
+      default: [0.4, 0.4, 0.4]
+      highway: [1, 1, 1]
+      major_road: [0.5, 0.5, 0.5]
+      minor_road: [0.65, 0.65, 0.65]
+      path: [0.8, 0.8, 0.8]
+      rail: [0.5, 0, 0]
+      debug: [1, 0, 0]
+    width:
+      default: function (f, t) { return 2 * Math.log(t.coords.z); }
+      highway: function (f, t) { return 3 * Math.log(t.coords.z); }
+      major_road: function (f, t) { return 2.5 * Math.log(t.coords.z); }
+      minor_road: function (f, t) { return 2 * Math.log(t.coords.z); }
+      path: function (f, t) { return 1 * Math.log(t.coords.z); }
+      debug: function (f, t) { return 5; }
+    outline:
+      color:
+        default: [0.1, 0.7, 0.7]
+      width:
+        default:
+          function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+        highway:
+          function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z)) : null); }
+        major_road:
+          function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z)) : null); }
+        minor_road:
+          function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+        path:
+          function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+        debug:
+          function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+
+  buildings:
+    mode:
+      name: popup
+      # name: explode
+    color:
+      default: >
+        function (f) { return (f.properties.name || f.properties.kind) ? [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2] : [0.6, 0.6, 0.6]; }
+    extrude:
+      default:
+        function (f, t) {
+            return ((t.coords.z >= 15 && f.properties.height > 20) || t.coords.z >= 16);
+        }
+
+  pois:
+    mode:
+      name: points
+    color:
+      default: [1, 1, 0]
+    size:
+      default:
+        function (f, t, h) { return 5 * h.Geo.meters_per_pixel[h.zoom]; }

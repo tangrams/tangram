@@ -78,6 +78,7 @@ if (module !== undefined) {
     module.exports = {
         urlForPath: urlForPath,
         serializeWithFunctions: serializeWithFunctions,
-        deserializeWithFunctions: deserializeWithFunctions
+        deserializeWithFunctions: deserializeWithFunctions,
+        stringsToFunctions: stringsToFunctions
     };
 }

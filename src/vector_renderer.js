@@ -3,6 +3,7 @@ var Geo = require('./geo.js');
 var Style = require('./style.js');
 var ModeManager = require('./gl/gl_modes').ModeManager;
 var Utils = require('./utils.js');
+var yaml = require('js-yaml');
 
 // Global setup
 findBaseLibraryURL();
@@ -529,9 +530,11 @@ VectorRenderer.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
-    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
+    // req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
+    req.onload = function () { styles = yaml.load(req.response); }; // TODO: security!
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
+    styles = Utils.stringsToFunctions(styles);
     return styles;
 };
 
