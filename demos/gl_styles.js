@@ -72,6 +72,22 @@
                 }
             }
         },
+        'dots': {
+            extends: 'polygons',
+            shaders: {
+                uniforms: {
+                    u_dot_grid_scale: 0.1 / 5,
+                    u_dot_scale: 0.07,
+                    u_dot_background_color: [.5, .2, .2],
+                    u_dot_color: [1, 1, 1]
+                },
+                transforms: {
+                    globals: 'demos/shaders/dots.glsl',
+                    fragment: { type: 'inline', value: 'color *= dots(v_position_world.xyz);' }
+                    // fragment: { type: 'inline', value: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' }
+                }
+            }
+        },
         'points': {
             shaders: {
                 transforms: {
