@@ -7,7 +7,8 @@ all: \
 	src/gl/gl_shaders.js \
 	dist/vector-map.min.js \
 	dist/vector-map.debug.js \
-	dist/vector-map-worker.min.js
+	dist/vector-map-worker.min.js \
+	dist/js-yaml.js
 
 # browserify --debug adds source maps
 dist/vector-map.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
