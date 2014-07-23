@@ -74,11 +74,26 @@ function stringsToFunctions (obj) {
     return obj;
 };
 
+// Run a block if on the main thread (not in a web worker), with optional error (web worker) block
+function runIfInMainThread (block, err) {
+    try {
+        if (window.document !== undefined) {
+            block();
+        }
+    }
+    catch (e) {
+        if (typeof err == 'function') {
+            err();
+        }
+    }
+}
+
 if (module !== undefined) {
     module.exports = {
         urlForPath: urlForPath,
         serializeWithFunctions: serializeWithFunctions,
         deserializeWithFunctions: deserializeWithFunctions,
-        stringsToFunctions: stringsToFunctions
+        stringsToFunctions: stringsToFunctions,
+        runIfInMainThread: runIfInMainThread
     };
 }

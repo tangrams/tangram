@@ -3,10 +3,21 @@ var Geo = require('./geo.js');
 var Style = require('./style.js');
 var ModeManager = require('./gl/gl_modes').ModeManager;
 var Utils = require('./utils.js');
-var yaml = require('js-yaml');
+
+// Setup that happens on main thread only (skip in web worker)
+var yaml;
+Utils.runIfInMainThread(function() {
+    try {
+        yaml = require('js-yaml');
+    }
+    catch (e) {
+        console.log("no YAML support, js-yaml module not found");
+    }
+
+    findBaseLibraryURL();
+});
 
 // Global setup
-findBaseLibraryURL();
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(VectorRenderer.tile_scale);
 
@@ -530,11 +541,28 @@ VectorRenderer.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
-    // req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
-    req.onload = function () { styles = yaml.load(req.response); }; // TODO: security!
+    req.onload = function () { styles = req.response; }
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
-    styles = Utils.stringsToFunctions(styles);
+
+    // Try JSON first, then YAML (if available)
+    try {
+        eval('styles = ' + req.response);
+    }
+    catch (e) {
+        try {
+            styles = yaml.safeLoad(req.response);
+        }
+        catch (e) {
+            console.log("failed to parse styles!");
+            styles = null;
+        }
+    }
+
+    // Find generic functions & style macros
+    Utils.stringsToFunctions(styles);
+    Style.expandMacros(styles);
+
     return styles;
 };
 
@@ -609,22 +637,17 @@ VectorRenderer.createModes = function (modes, styles)
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
 function findBaseLibraryURL ()
 {
-    try {
-        VectorRenderer.library_base_url = '';
-        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
-        for (var s=0; s < scripts.length; s++) {
-            var match = scripts[s].src.indexOf('vector-map.debug.js');
-            if (match == -1) {
-                match = scripts[s].src.indexOf('vector-map.min.js');
-            }
-            if (match >= 0) {
-                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
-                break;
-            }
+    VectorRenderer.library_base_url = '';
+    var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
+    for (var s=0; s < scripts.length; s++) {
+        var match = scripts[s].src.indexOf('vector-map.debug.js');
+        if (match == -1) {
+            match = scripts[s].src.indexOf('vector-map.min.js');
         }
-    }
-    catch (e) {
-        // skip in web worker
+        if (match >= 0) {
+            VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
+            break;
+        }
     }
 };
 

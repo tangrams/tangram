@@ -142,5 +142,5 @@ layers:
     color:
       default: [1, 1, 0]
     size:
-      default:
-        function (f, t, h) { return 5 * h.Geo.meters_per_pixel[h.zoom]; }
+      default: Style.pixels(5)
+        # function (f, t, h) { return 5 * h.Geo.meters_per_pixel[h.zoom]; }

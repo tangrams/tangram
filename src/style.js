@@ -19,6 +19,43 @@ Style.pixels = function (p, z) {
     return f;
 };
 
+// Find and expand style macros
+Style.macros = [
+    'Style.color.pseudoRandomColor',
+    'Style.pixels'
+];
+
+Style.expandMacros = function expandMacros (obj) {
+    for (var p in obj) {
+        var val = obj[p];
+
+        // Loop through object properties
+        if (typeof val == 'object') {
+            obj[p] = expandMacros(val);
+        }
+        // Convert strings back into functions
+        else if (typeof val == 'string') {
+            for (var m in Style.macros) {
+                if (val.match(Style.macros[m])) {
+                    var f;
+                    try {
+                        eval('f = ' + val);
+                        obj[p] = f;
+                        break;
+                    }
+                    catch (e) {
+                        // fall-back to original value if parsing failed
+                        obj[p] = val;
+                    }
+                }
+            }
+        }
+    }
+
+    return obj;
+};
+
+
 // Style defaults
 
 // Determine final style properties (color, width, etc.)

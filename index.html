@@ -49,6 +49,7 @@ body {
 <script src="lib/dat.gui.min.js"></script>
 <script src="lib/rstats.js"></script>
 <script src="lib/rstats.extras.js"></script>
+<script src="dist/js-yaml.js"></script>
 <script src="dist/vector-map.debug.js"></script>
 
 <script>
@@ -64,6 +65,7 @@ var tile_sources = {
             url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         layers: 'demos/gl_layers_json.js',
+        // styles: 'demos/gl_styles.js'
         styles: 'demos/gl_styles.yaml'
     },
     'mapzen-dev': {
