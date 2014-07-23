@@ -32,7 +32,7 @@ modes:
             transforms:
                 fragment:
                     - url: demos/shaders/color_bleed.glsl
-                    # - url: demos/shaders/spotlight.glsl
+                    - url: demos/shaders/spotlight.glsl
     popup:
         extends: polygons
         animated: true
