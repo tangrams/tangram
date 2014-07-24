@@ -472,7 +472,7 @@ VectorRenderer.prototype.updateActiveModes = function ()
     this.active_modes = {};
     var animated = false; // is any active mode animated?
     for (var l in this.styles.layers) {
-        var mode = (this.styles.layers[l].mode && this.styles.layers[l].mode.name) || Style.defaults.mode.name;
+        var mode = this.styles.layers[l].mode.name;
         if (this.styles.layers[l].visible !== false) {
             this.active_modes[mode] = true;
 
@@ -562,6 +562,20 @@ VectorRenderer.loadStyles = function (url)
     // Find generic functions & style macros
     Utils.stringsToFunctions(styles);
     Style.expandMacros(styles);
+
+    // Post-process styles
+    for (var m in styles.layers) {
+        if (styles.layers[m].visible !== false) {
+            styles.layers[m].visible = true;
+        }
+
+        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
+            styles.layers[m].mode = {};
+            for (var p in Style.defaults.mode) {
+                styles.layers[m].mode[p] = Style.defaults.mode[p];
+            }
+        }
+    }
 
     return styles;
 };
