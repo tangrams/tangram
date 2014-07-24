@@ -54,18 +54,18 @@ modes:
                 vertex: position.z *= max((sin(position.z + u_time) + 1.0) / 2.0, 0.05); // evelator buildings
                 # vertex: { url: demos/shaders/elevator.glsl }
 
-    explode:
+    breathe:
         extends: polygons
         animated: true
         shaders:
             # defines:
-            #     EXPLODE_SCALE: 10
+            #     BREATHE_SCALE: 10
             uniforms:
-                u_scale: 10
+                u_breathe_scale: 10
             transforms:
-                globals: uniform float u_scale;
-                vertex: position.xy += a_normal.xy * u_scale * smoothstep(0.25, 1., abs(sin(u_time)));
-                # vertex: { url: demos/shaders/explode.glsl }
+                globals: uniform float u_breathe_scale;
+                vertex: position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time)));
+                # vertex: { url: demos/shaders/breathe.glsl }
 
     dots:
         extends: polygons
@@ -185,10 +185,10 @@ layers:
         mode:
             # name: rainbow
             # name: popup
-            # name: explode
+            # name: breathe
             # name: formica
             # name: dots
-            name: wood
+            # name: wood
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
