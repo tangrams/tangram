@@ -1,5 +1,11 @@
 ---
 modes:
+    # note: consider this syntax as a special case for global mode settings
+    # all:
+    #     shaders:
+    #         transforms:
+    #             fragment: { url: demos/shaders/spotlight.glsl }
+
     water:
         extends: polygons
         animated: true
@@ -32,7 +38,7 @@ modes:
             transforms:
                 fragment:
                     - url: demos/shaders/color_bleed.glsl
-                    - url: demos/shaders/spotlight.glsl
+                    # - url: demos/shaders/spotlight.glsl
     popup:
         extends: polygons
         animated: true
@@ -78,6 +84,7 @@ modes:
             transforms:
                 globals: { url: demos/shaders/dots.glsl }
                 fragment: color *= dots(v_position_world.xyz);
+                # fragment: color *= dots(v_position_world.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); } // apply only to up-facing surfaces
 
     wood:
@@ -85,14 +92,14 @@ modes:
         shaders:
             uniforms:
                 u_wood_color1: [.9, .5, .5]
-                u_wood_color2: [.3, .6, .8]
+                u_wood_color2: [.5, .3, .1]
                 u_wood_eccentricity: .1
                 u_wood_twist: .00002
                 u_wood_scale: 50
                 u_wood_spacing: 1
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = wood(v_position_world.xyz);
+                fragment: color = lighting * wood(v_position_world.xyz);
 
     points:
         shaders:
@@ -197,17 +204,16 @@ layers:
             # default: Style.color.pseudoRandomColor
             # default: Style.color.pseudoRandomGrayscale
             # default: function (f) { if (f.properties.name || f.properties.kind) { return [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default: |
+            default:
                 function (f) {
-                    return (
-                        (f.properties.name || f.properties.kind) ?
-                            [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2] :
-                            [0.6, 0.6, 0.6]
-                    );
+                    var c = [.6, .6, .6];
+                    if (f.properties.name || f.properties.kind) {
+                        c = [.2, .2, .2];
+                        c[0] = (f.properties.name && .6) || c[0];
+                        c[2] = (f.properties.kind && .6) || c[2];
+                    }
+                    return c;
                 }
-            # default: >
-            #     function (f) { return (f.properties.name || f.properties.kind) ? [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2] : [0.6, 0.6, 0.6]; }
-            # default: function (f) { return [0.6, 0.6, 0.6]; }
         extrude:
             default: function (f, t) { return ((t.coords.z >= 15 && f.properties.height > 20) || t.coords.z >= 16) }
 
@@ -215,22 +221,14 @@ layers:
         mode:
             name: points
             # name: formica
-        visible: false
-        color:
-            default: [1.0, 1.0, 0]
-        size:
-            default: 5
-            # default: Style.pixels(5)
-            # default: Style.pixels(function(f, t, h) { return 2 * Math.pow(h.zoom, 0.5); })
-            # default: function(f, t, h) { return 2 * h.zoom; }
-
-    pois:
-        mode:
-            name: points
+        # visible: false
         color:
             default: [1, 1, 0]
         size:
+            # default: 5
             default: Style.pixels(5)
+            # default: Style.pixels(function(f, t, h) { return 2 * Math.pow(h.zoom, 0.5); })
+            # default: function(f, t, h) { return 2 * h.zoom; }
 
     # places:
     #     filter: function(f, t) { return (t.coords.z >= 13); }

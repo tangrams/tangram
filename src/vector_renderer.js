@@ -628,7 +628,9 @@ VectorRenderer.createModes = function (modes, styles)
 
     // Stylesheet modes
     for (var m in styles.modes) {
-        modes[m] = ModeManager.configureMode(m, styles.modes[m]);
+        // if (m != 'all') {
+            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
+        // }
     }
 
     return modes;

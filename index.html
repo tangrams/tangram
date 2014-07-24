@@ -166,14 +166,106 @@ else if (url_hash.length == 2) {
 
 /***** GUI/debug controls *****/
 
-var gl_controls = {
+var gui = new dat.GUI({ autoPlace: true });
+gui.domElement.parentNode.style.zIndex = 5;
+// document.body.insertBefore(gui.domElement, document.body.firstChild);
+window.gui = gui;
+
+if (url_hash.length > 4) {
+    var url_ui = url_hash.slice(4);
+}
+
+// GUI options for rendering modes/effects
+var gl_mode_options = {
+    effect: '',
+    options: {
+        'None': '',
+        'Rainbow': 'rainbow',
+        'Pop-up': 'popup',
+        'Elevator': 'elevator',
+        'Breathe': 'breathe',
+        'Dots': 'dots',
+        'Wood': 'wood'
+    },
+    config: {
+        'popup': {
+            projection: 'PROJECTION_ISOMETRIC' // force isometric when switching to pop-up
+        }
+    }
+};
+
+var gl_initial = {};
+gui.
+    add(gl_mode_options, 'effect', gl_mode_options.options).
+    onChange(setRenderModeOptions);
+
+function setRenderModeOptions (value) {
+    var layer_styles = renderer.styles.layers;
+
+    // Save settings to restore later
+    gl_initial.projection = gl_initial.projection || gl_define_options.projection.projection;
+    gl_initial.buildings_mode = gl_initial.buildings_mode || layer_styles.buildings.mode.name;
+
+        // Restore initial state
+    if (value == '') {
+        gl_define_options.projection.projection = gl_initial.projection;
+        layer_styles.buildings.mode.name = gl_initial.buildings_mode;
+    }
+    // Mode-specific settings
+    else {
+        var settings = gl_mode_options.config[value];
+        gl_define_options.projection.projection = (settings && settings.projection) || gl_initial.projection;
+        layer_styles.buildings.mode.name = value;
+    }
+
+    setGLProgramDefines();
+    renderer.rebuildTiles();
+    updateURL();
+}
+
+// Wood GUI
+// val = renderer.modes.wood.shaders.uniforms.u_wood_color1;
+// gui["woodColor1"] = [val[0] * 255, val[1] * 255, val[2] * 255];
+// // gui["woodColor1"] = renderer.modes.wood.shaders.uniforms.u_wood_color1;
+// var wcolor1Var = gui.addColor(gui, "woodColor1");
+// wcolor1Var.onChange(function(value) {
+//     renderer.modes.wood.shaders.uniforms.u_wood_color1 = [value[0]/255, value[1]/255, value[2]/255];
+// });
+
+// val = renderer.modes.wood.shaders.uniforms.u_wood_color2;
+// gui["woodColor2"] = [val[0] * 255, val[1] * 255, val[2] * 255];
+// var wcolor2Var = gui.addColor(gui, "woodColor2");
+// wcolor2Var.onChange(function(value) {
+//     renderer.modes.wood.shaders.uniforms.u_wood_color2 = [value[0]/255, value[1]/255, value[2]/255];
+// });
+
+// gui["eccentricity"] = renderer.modes.wood.shaders.uniforms.u_wood_eccentricity;
+// var eccVar = gui.add(gui, "eccentricity", -1, 1);
+// eccVar.onChange(function(value) {
+//     renderer.modes.wood.shaders.uniforms.u_wood_eccentricity = value * 1;
+// });
+
+// gui["twist"] = renderer.modes.wood.shaders.uniforms.u_wood_twist / .001;
+// var twistVar = gui.add(gui, "twist", 0, 1);
+// twistVar.onChange(function(value) {
+//     renderer.modes.wood.shaders.uniforms.u_wood_twist = value * .001;
+// });
+
+// gui["scale"] = renderer.modes.wood.shaders.uniforms.u_wood_scale / 100;
+// var scaleVar = gui.add(gui, "scale", 0, 1);
+// scaleVar.onChange(function(value) {
+//     renderer.modes.wood.shaders.uniforms.u_wood_scale = value * 100;
+// });
+
+// GUI options for #define-based effects
+var gl_define_options = {
     projection: {
         projection: 'PROJECTION_PERSPECTIVE',
         options: {
             'None': '',
             'Perspective': 'PROJECTION_PERSPECTIVE',
-            'Isometric': 'PROJECTION_ISOMETRIC',
-            'Pop-Up': 'PROJECTION_POPUP'
+            'Isometric': 'PROJECTION_ISOMETRIC'//,
+            // 'Pop-Up': 'PROJECTION_POPUP'
         }
     },
     lighting_style: {
@@ -185,73 +277,44 @@ var gl_controls = {
             'Night': 'LIGHTING_NIGHT'
         }
     },
-    lighting_mode: {
-        lighting_mode: 'LIGHTING_PIXEL',
-        options: {
-            'Per-Vertex': 'LIGHTING_VERTEX',
-            'Per-Pixel': 'LIGHTING_PIXEL'
-        }
-    },
-    effect: {
-        effect: '',
-        options: {
-            'None': '',
-            'Elevator': 'ANIMATION_ELEVATOR',
-            'Wave': 'ANIMATION_WAVE',
-            'Water animation': 'EFFECT_NOISE_ANIMATED',
-            'Spotlight': 'EFFECT_SPOTLIGHT',
-            'Color bleed': 'EFFECT_COLOR_BLEED'
-        },
-        animated: [
-            'ANIMATION_ELEVATOR',
-            'ANIMATION_WAVE',
-            'EFFECT_NOISE_ANIMATED',
-            'EFFECT_COLOR_BLEED'
-        ]
-    }
+    // lighting_mode: {
+    //     lighting_mode: 'LIGHTING_PIXEL',
+    //     options: {
+    //         'Per-Vertex': 'LIGHTING_VERTEX',
+    //         'Per-Pixel': 'LIGHTING_PIXEL'
+    //     }
+    // },
 };
-window.gl_controls = gl_controls;
+window.gl_define_options = gl_define_options;
 
 // UI settings on URL hash
-if (url_hash.length > 4) {
-    var url_ui = url_hash.slice(4);
+// if (url_ui) {
+//     // Match defined values to those passed on URL
+//     for (var g in gl_define_options) {
+//         for (var p in gl_define_options[g].options) {
+//             if (url_ui.indexOf(gl_define_options[g].options[p]) > -1) {
+//                 gl_define_options[g][g] = gl_define_options[g].options[p];
+//             }
+//         }
+//     }
+// }
 
-    // Match defined values to those passed on URL
-    for (var g in gl_controls) {
-        for (var p in gl_controls[g].options) {
-            if (url_ui.indexOf(gl_controls[g].options[p]) > -1) {
-                gl_controls[g][g] = gl_controls[g].options[p];
-            }
-        }
-    }
-}
-
-var gui = new dat.GUI({ autoPlace: true });
-gui.domElement.parentNode.style.zIndex = 5;
-// document.body.insertBefore(gui.domElement, document.body.firstChild);
-window.gui = gui;
-
-// GUI for GL rendering options
-Object.keys(gl_controls).forEach(function(key) {
-    gl_controls[key].control = gui.add(gl_controls[key], key, gl_controls[key].options);
-    gl_controls[key].control.onChange(function(value) {
-        setGLProgramDefines();
-    });
+Object.keys(gl_define_options).forEach(function(key) {
+    gui.
+        add(gl_define_options[key], key, gl_define_options[key].options).
+        onChange(function(value) {
+            setGLProgramDefines();
+            updateURL();
+        }).
+        listen();
 });
 
 function setGLProgramDefines () {
-    var animated = false;
-
-    Object.keys(gl_controls).forEach(function(key) {
-        setGLProgramDefinesForOptionSet(gl_controls[key][key], gl_controls[key].options);
-
-        // Animated?
-        if (gl_controls[key].animated && gl_controls[key].animated.indexOf(gl_controls[key][key]) > -1) {
-            animated = true;
-        }
+    Object.keys(gl_define_options).forEach(function(key) {
+        setGLProgramDefinesForOptionSet(gl_define_options[key][key], gl_define_options[key].options);
     });
-    // layer.renderer.animated = animated; // TODO: cleanup, this is handled by renderer now by examining active modes
 
+    // TODO: replace with more generic render mode recompile - refreshModes?
     if (layer.renderer.compileShaders) {
         layer.renderer.compileShaders();
     }
@@ -300,15 +363,7 @@ var map = L.map('map', {
 map.attributionControl.setPrefix('');
 
 // Update URL hash on move
-map.on('moveend', function () {
-    var map_latlng = map.getCenter();
-    var url_options = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
-    if (rS) {
-        url_options.push('rstats');
-    }
-    window.location.hash = url_options.join(',');
-});
-
+map.on('moveend', updateURL);
 map.setView(map_start_location.slice(0, 2), map_start_location[2]);
 
 // Resize map to window
@@ -336,6 +391,7 @@ var layer = Tangram.leafletLayer({
 });
 
 // For easier debugging access
+var renderer = layer.renderer;
 window.layer = layer;
 window.renderer = layer.renderer;
 window.tiles = layer.renderer.tiles;
@@ -350,54 +406,62 @@ layer.renderer.layers.forEach(function(l) {
     }
 
     layer_controls[l.name] = !(layer.renderer.styles.layers[l.name].visible == false);
-    var control = layer_gui.add(layer_controls, l.name);
-
-    control.onChange(function(value) {
-        layer.renderer.styles.layers[l.name].visible = value;
-        layer.renderer.rebuildTiles();
-    });
+    layer_gui.
+        add(layer_controls, l.name).
+        onChange(function(value) {
+            layer.renderer.styles.layers[l.name].visible = value;
+            layer.renderer.rebuildTiles();
+        });
 });
 
-// gui for uniforms
+// Put current state on URL
+function updateURL () {
+    var map_latlng = map.getCenter();
+    var url_options = [tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
 
-val = renderer.modes.wood.shaders.uniforms.u_wood_color1;
-gui["woodColor1"] = [val[0] * 255, val[1] * 255, val[2] * 255];
-// gui["woodColor1"] = renderer.modes.wood.shaders.uniforms.u_wood_color1;
-var wcolor1Var = gui.addColor(gui, "woodColor1");
-wcolor1Var.onChange(function(value) {
-    renderer.modes.wood.shaders.uniforms.u_wood_color1 = [value[0]/255, value[1]/255, value[2]/255];
-});
+    if (rS) {
+        url_options.push('rstats');
+    }
 
-val = renderer.modes.wood.shaders.uniforms.u_wood_color2;
-gui["woodColor2"] = [val[0] * 255, val[1] * 255, val[2] * 255];
-var wcolor2Var = gui.addColor(gui, "woodColor2");
-wcolor2Var.onChange(function(value) {
-    renderer.modes.wood.shaders.uniforms.u_wood_color2 = [value[0]/255, value[1]/255, value[2]/255];
-});
+    if (gl_mode_options.effect != '') {
+        url_options.push('mode=' + gl_mode_options.effect);
+    }
 
-gui["eccentricity"] = renderer.modes.wood.shaders.uniforms.u_wood_eccentricity;
-var eccVar = gui.add(gui, "eccentricity", -1, 1);
-eccVar.onChange(function(value) {
-    renderer.modes.wood.shaders.uniforms.u_wood_eccentricity = value * 1;
-});
+    // TODO: need to load these URL options on initial page load
+    // Object.keys(gl_define_options).forEach(function(d) {
+    //     if (gl_define_options[d][d] != '') {
+    //         url_options.push(d + '=' + gl_define_options[d][d]);
+    //     }
+    // });
 
-gui["twist"] = renderer.modes.wood.shaders.uniforms.u_wood_twist / .001;
-var twistVar = gui.add(gui, "twist", 0, 1);
-twistVar.onChange(function(value) {
-    renderer.modes.wood.shaders.uniforms.u_wood_twist = value * .001;
-});
+    window.location.hash = url_options.join(',');
+}
 
-gui["scale"] = renderer.modes.wood.shaders.uniforms.u_wood_scale / 100;
-var scaleVar = gui.add(gui, "scale", 0, 1);
-scaleVar.onChange(function(value) {
-    renderer.modes.wood.shaders.uniforms.u_wood_scale = value * 100;
-});
 
 /***** Render loop *****/
 
 window.addEventListener('load', function () {
     layer.addTo(map);
-    setGLProgramDefines();
+
+    // Mode on URL?
+    var url_mode;
+    if (url_ui) {
+        var re = new RegExp(/mode=(\w+)/);
+        url_ui.forEach(function(u) {
+            var match = u.match(re);
+            url_mode = (match && match.length > 1 && match[1]);
+        });
+    }
+
+    // var url_mode = (url_ui && url_ui.match(new RegExp(/mode=(\w+)/)));
+    // url_mode = (url_mode && url_mode.length >= 2 && url_mode[1]);
+    if (url_mode) {
+        setRenderModeOptions(url_mode);
+    }
+    else {
+        setGLProgramDefines();
+    }
+
 
     if (osm_debug == true) {
         window.osm_layer =
