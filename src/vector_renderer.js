@@ -59,6 +59,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
+    this.resetTime();
 }
 
 VectorRenderer.create = function (type, tile_source, layers, styles, options)
@@ -327,6 +328,7 @@ VectorRenderer.prototype.rebuildTiles = function ()
     }
 
     this.updateActiveModes();
+    this.resetTime();
 };
 
 VectorRenderer.prototype.buildTile = function(key)
@@ -483,6 +485,12 @@ VectorRenderer.prototype.updateActiveModes = function ()
         }
     }
     this.animated = animated;
+};
+
+// Reset internal clock, mostly useful for consistent experience when changing modes/debugging
+VectorRenderer.prototype.resetTime = function ()
+{
+    this.start_time = +new Date();
 };
 
 // Profiling methods used to track when sets of tiles start/stop loading together

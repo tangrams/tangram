@@ -43,7 +43,6 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
-    this.start_time = +new Date();
     this.last_render_count = null;
     this.initInputHandlers();
 };
