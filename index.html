@@ -163,6 +163,20 @@ else if (url_hash.length == 2) {
     map_start_location = locations[url_hash[1]];
 }
 
+if (url_hash.length > 4) {
+    var url_ui = url_hash.slice(4);
+
+    // Mode on URL?
+    var url_mode;
+    if (url_ui) {
+        var re = new RegExp(/mode=(\w+)/);
+        url_ui.forEach(function(u) {
+            var match = u.match(re);
+            url_mode = (match && match.length > 1 && match[1]);
+        });
+    }
+}
+
 
 /***** GUI/debug controls *****/
 
@@ -183,10 +197,6 @@ gui.removeFolder = function(name) {
     this.__folders[name] = undefined;
     this.onResize();
 };
-
-if (url_hash.length > 4) {
-    var url_ui = url_hash.slice(4);
-}
 
 // GUI options for #define-based effects
 var gl_define_options = {
@@ -291,8 +301,8 @@ var map = L.map('map', {
 map.attributionControl.setPrefix('');
 
 // Update URL hash on move
-map.on('moveend', updateURL);
 map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+map.on('moveend', updateURL);
 
 // Resize map to window
 function resizeMap () {
@@ -344,7 +354,7 @@ layer.renderer.layers.forEach(function(l) {
 
 // GUI options for rendering modes/effects
 var gl_mode_options = {
-    effect: '',
+    effect: url_mode || '',
     options: {
         'None': '',
         'Rainbow': 'rainbow',
@@ -529,16 +539,6 @@ function updateURL () {
 window.addEventListener('load', function () {
     layer.addTo(map);
 
-    // Mode on URL?
-    var url_mode;
-    if (url_ui) {
-        var re = new RegExp(/mode=(\w+)/);
-        url_ui.forEach(function(u) {
-            var match = u.match(re);
-            url_mode = (match && match.length > 1 && match[1]);
-        });
-    }
-
     if (url_mode) {
         gl_mode_options.setup(url_mode);
     }
@@ -546,6 +546,7 @@ window.addEventListener('load', function () {
         setGLProgramDefines();
         renderer.refreshModes();
     }
+    updateURL();
 
     if (osm_debug == true) {
         window.osm_layer =
