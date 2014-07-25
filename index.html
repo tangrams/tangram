@@ -171,91 +171,22 @@ gui.domElement.parentNode.style.zIndex = 5;
 // document.body.insertBefore(gui.domElement, document.body.firstChild);
 window.gui = gui;
 
+// Add ability to remove a whole folder from DAT.gui
+gui.removeFolder = function(name) {
+    var folder = this.__folders[name];
+    if (folder == null) {
+        return;
+    }
+
+    folder.close();
+    folder.__ul.parentNode.removeChild(folder.__ul);
+    this.__folders[name] = undefined;
+    this.onResize();
+};
+
 if (url_hash.length > 4) {
     var url_ui = url_hash.slice(4);
 }
-
-// GUI options for rendering modes/effects
-var gl_mode_options = {
-    effect: '',
-    options: {
-        'None': '',
-        'Rainbow': 'rainbow',
-        'Pop-up': 'popup',
-        'Elevator': 'elevator',
-        'Breathe': 'breathe',
-        'Dots': 'dots',
-        'Wood': 'wood'
-    },
-    config: {
-        'popup': {
-            projection: 'PROJECTION_ISOMETRIC' // force isometric when switching to pop-up
-        }
-    }
-};
-
-var gl_initial = {};
-gui.
-    add(gl_mode_options, 'effect', gl_mode_options.options).
-    onChange(setRenderModeOptions);
-
-function setRenderModeOptions (value) {
-    var layer_styles = renderer.styles.layers;
-
-    // Save settings to restore later
-    gl_initial.projection = gl_initial.projection || gl_define_options.projection.projection;
-    gl_initial.buildings_mode = gl_initial.buildings_mode || layer_styles.buildings.mode.name;
-
-        // Restore initial state
-    if (value == '') {
-        gl_define_options.projection.projection = gl_initial.projection;
-        layer_styles.buildings.mode.name = gl_initial.buildings_mode;
-    }
-    // Mode-specific settings
-    else {
-        var settings = gl_mode_options.config[value];
-        gl_define_options.projection.projection = (settings && settings.projection) || gl_initial.projection;
-        layer_styles.buildings.mode.name = value;
-    }
-
-    setGLProgramDefines();
-    renderer.rebuildTiles();
-    updateURL();
-}
-
-// Wood GUI
-// val = renderer.modes.wood.shaders.uniforms.u_wood_color1;
-// gui["woodColor1"] = [val[0] * 255, val[1] * 255, val[2] * 255];
-// // gui["woodColor1"] = renderer.modes.wood.shaders.uniforms.u_wood_color1;
-// var wcolor1Var = gui.addColor(gui, "woodColor1");
-// wcolor1Var.onChange(function(value) {
-//     renderer.modes.wood.shaders.uniforms.u_wood_color1 = [value[0]/255, value[1]/255, value[2]/255];
-// });
-
-// val = renderer.modes.wood.shaders.uniforms.u_wood_color2;
-// gui["woodColor2"] = [val[0] * 255, val[1] * 255, val[2] * 255];
-// var wcolor2Var = gui.addColor(gui, "woodColor2");
-// wcolor2Var.onChange(function(value) {
-//     renderer.modes.wood.shaders.uniforms.u_wood_color2 = [value[0]/255, value[1]/255, value[2]/255];
-// });
-
-// gui["eccentricity"] = renderer.modes.wood.shaders.uniforms.u_wood_eccentricity;
-// var eccVar = gui.add(gui, "eccentricity", -1, 1);
-// eccVar.onChange(function(value) {
-//     renderer.modes.wood.shaders.uniforms.u_wood_eccentricity = value * 1;
-// });
-
-// gui["twist"] = renderer.modes.wood.shaders.uniforms.u_wood_twist / .001;
-// var twistVar = gui.add(gui, "twist", 0, 1);
-// twistVar.onChange(function(value) {
-//     renderer.modes.wood.shaders.uniforms.u_wood_twist = value * .001;
-// });
-
-// gui["scale"] = renderer.modes.wood.shaders.uniforms.u_wood_scale / 100;
-// var scaleVar = gui.add(gui, "scale", 0, 1);
-// scaleVar.onChange(function(value) {
-//     renderer.modes.wood.shaders.uniforms.u_wood_scale = value * 100;
-// });
 
 // GUI options for #define-based effects
 var gl_define_options = {
@@ -268,8 +199,8 @@ var gl_define_options = {
             // 'Pop-Up': 'PROJECTION_POPUP'
         }
     },
-    lighting_style: {
-        lighting_style: 'LIGHTING_POINT',
+    lighting: {
+        lighting: 'LIGHTING_POINT',
         options: {
             'None': '',
             'Gradient': 'LIGHTING_POINT',
@@ -304,6 +235,7 @@ Object.keys(gl_define_options).forEach(function(key) {
         add(gl_define_options[key], key, gl_define_options[key].options).
         onChange(function(value) {
             setGLProgramDefines();
+            renderer.refreshModes();
             updateURL();
         }).
         listen();
@@ -314,10 +246,6 @@ function setGLProgramDefines () {
         setGLProgramDefinesForOptionSet(gl_define_options[key][key], gl_define_options[key].options);
     });
 
-    // TODO: replace with more generic render mode recompile - refreshModes?
-    if (layer.renderer.compileShaders) {
-        layer.renderer.compileShaders();
-    }
     layer.renderer.dirty = true;
 }
 
@@ -414,6 +342,164 @@ layer.renderer.layers.forEach(function(l) {
         });
 });
 
+// GUI options for rendering modes/effects
+var gl_mode_options = {
+    effect: '',
+    options: {
+        'None': '',
+        'Rainbow': 'rainbow',
+        'Pop-up': 'popup',
+        'Elevator': 'elevator',
+        'Breathe': 'breathe',
+        'Dots': 'dots',
+        'Wood': 'wood'
+    },
+    setup: function (mode) {
+        var layer_styles = renderer.styles.layers;
+
+        // Restore initial state
+        if (mode == '') {
+            layer_styles.buildings.mode.name = this.initial.buildings_mode;
+            gl_define_options.projection.projection = this.initial.projection;
+        }
+        // Mode-specific settings
+        else {
+            // Save settings to restore later
+            this.initial.buildings_mode = this.initial.buildings_mode || layer_styles.buildings.mode.name;
+            this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
+
+            // Change rendering mode for buildings
+            layer_styles.buildings.mode.name = mode;
+
+            // Remove existing mode-specific controls
+            gui.removeFolder(this.folder);
+
+            if (this.settings[mode] != null) {
+                var settings = this.settings[mode] || {};
+
+                // Change projection if specified
+                gl_define_options.projection.projection = settings.projection || this.initial.projection;
+
+                // Mode-specific setup function
+                if (settings.setup) {
+                    settings.uniforms = (renderer.modes[mode].shaders && renderer.modes[mode].shaders.uniforms);
+                    settings.state = {}; // dat.gui needs a single object to old state
+
+                    this.folder = mode[0].toUpperCase() + mode.slice(1); // capitalize first letter
+                    settings.folder = gui.addFolder(this.folder);
+                    settings.folder.open();
+
+                    settings.setup();
+                }
+            }
+        }
+
+        // Recompile/rebuild
+        setGLProgramDefines();
+        renderer.refreshModes();
+        renderer.rebuildTiles();
+        updateURL();
+    },
+    settings: {
+        'rainbow': {
+            setup: function () {
+                this.state.animated = renderer.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
+                this.folder.add(this.state, 'animated').onChange(function(value) {
+                    renderer.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
+                    renderer.refreshModes();
+                });
+            }
+        },
+        'popup': {
+            // projection: 'PROJECTION_ISOMETRIC', // force isometric when switching to pop-up
+            setup: function () {
+                this.state.popup_radius = this.uniforms.u_popup_radius;
+                this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
+                    this.uniforms.u_popup_radius = value;
+                }.bind(this));
+
+                this.state.popup_height = this.uniforms.u_popup_height;
+                this.folder.add(this.state, 'popup_height', 0, 5).onChange(function(value) {
+                    this.uniforms.u_popup_height = value;
+                }.bind(this));
+            }
+        },
+        'breathe': {
+            setup: function () {
+                this.state.breathe_scale = this.uniforms.u_breathe_scale;
+                this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
+                    this.uniforms.u_breathe_scale = value;
+                }.bind(this));
+
+                this.state.breathe_speed = this.uniforms.u_breathe_speed;
+                this.folder.add(this.state, 'breathe_speed', 0, 3).onChange(function(value) {
+                    this.uniforms.u_breathe_speed = value;
+                }.bind(this));
+            }
+        },
+        'dots': {
+            setup: function (mode) {
+                this.state.background = gl_mode_options.scaleColor(this.uniforms.u_dot_background_color, 255);
+                this.folder.addColor(this.state, 'background').onChange(function(value) {
+                    this.uniforms.u_dot_background_color = gl_mode_options.scaleColor(value, 1 / 255);
+                }.bind(this));
+
+                this.state.dot_color = gl_mode_options.scaleColor(this.uniforms.u_dot_color, 255);
+                this.folder.addColor(this.state, 'dot_color').onChange(function(value) {
+                    this.uniforms.u_dot_color = gl_mode_options.scaleColor(value, 1 / 255);
+                }.bind(this));
+
+                this.state.grid_scale = this.uniforms.u_dot_grid_scale;
+                this.folder.add(this.state, 'grid_scale', 0, 0.1).onChange(function(value) {
+                    this.uniforms.u_dot_grid_scale = value;
+                }.bind(this));
+
+                this.state.dot_scale = this.uniforms.u_dot_scale;
+                this.folder.add(this.state, 'dot_scale', 0, 0.4).onChange(function(value) {
+                    this.uniforms.u_dot_scale = value;
+                }.bind(this));
+            }
+        },
+        'wood': {
+            setup: function (mode) {
+                this.state.wood_color1 = gl_mode_options.scaleColor(this.uniforms.u_wood_color1, 255);
+                this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
+                    this.uniforms.u_wood_color1 = gl_mode_options.scaleColor(value, 1 / 255);
+                }.bind(this));
+
+                this.state.wood_color2 = gl_mode_options.scaleColor(this.uniforms.u_wood_color2, 255);
+                this.folder.addColor(this.state, 'wood_color2').onChange(function(value) {
+                    this.uniforms.u_wood_color2 = gl_mode_options.scaleColor(value, 1 / 255);
+                }.bind(this));
+
+                this.state.eccentricity = this.uniforms.u_wood_eccentricity;
+                this.folder.add(this.state, 'eccentricity', -1, 1).onChange(function(value) {
+                    this.uniforms.u_wood_eccentricity = value;
+                }.bind(this));
+
+                this.state.twist = this.uniforms.u_wood_twist / .001;
+                this.folder.add(this.state, 'twist', 0, 1).onChange(function(value) {
+                    this.uniforms.u_wood_twist = value * .001;
+                }.bind(this));
+
+                this.state.scale = this.uniforms.u_wood_scale / 100;
+                this.folder.add(this.state, 'scale', 0, 1).onChange(function(value) {
+                    this.uniforms.u_wood_scale = value * 100;
+                }.bind(this));
+            }
+        }
+    },
+    initial: {}, // initial state to restore to on mode switch
+    folder: null, // set to current (if any) DAT.gui folder name, cleared on mode switch
+    scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
+        return [c[0] * factor, c[1] * factor, c[2] * factor];
+    }
+};
+window.gl_mode_options = gl_mode_options;
+
+gui.add(gl_mode_options, 'effect', gl_mode_options.options).
+    onChange(gl_mode_options.setup.bind(gl_mode_options));
+
 // Put current state on URL
 function updateURL () {
     var map_latlng = map.getCenter();
@@ -423,7 +509,7 @@ function updateURL () {
         url_options.push('rstats');
     }
 
-    if (gl_mode_options.effect != '') {
+    if (gl_mode_options && gl_mode_options.effect != '') {
         url_options.push('mode=' + gl_mode_options.effect);
     }
 
@@ -453,15 +539,13 @@ window.addEventListener('load', function () {
         });
     }
 
-    // var url_mode = (url_ui && url_ui.match(new RegExp(/mode=(\w+)/)));
-    // url_mode = (url_mode && url_mode.length >= 2 && url_mode[1]);
     if (url_mode) {
-        setRenderModeOptions(url_mode);
+        gl_mode_options.setup(url_mode);
     }
     else {
         setGLProgramDefines();
+        renderer.refreshModes();
     }
-
 
     if (osm_debug == true) {
         window.osm_layer =

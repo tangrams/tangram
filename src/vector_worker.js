@@ -76,9 +76,6 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
-
-    // VectorRenderer.updateModeStates(VectorWorker.modes, event.data.mode_states);
-    // console.log(JSON.stringify(event.data.mode_states));
     VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
     // First time building the tile
@@ -143,6 +140,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
     console.log("worker refreshed config for tile rebuild");
 });

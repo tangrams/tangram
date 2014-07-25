@@ -43,14 +43,20 @@ modes:
         extends: polygons
         animated: true
         shaders:
+            uniforms:
+                u_popup_radius: 330 # 225
+                u_popup_height: 5 # 1.1
             transforms:
                 globals:
-                    url: src/gl/shaders/modules/popup.glsl
-                vertex:
-                    # - url: demos/shaders/elevator.glsl
-                    - url: demos/shaders/popup.glsl
-                # fragment:
-                #     url: demos/shaders/color_bleed.glsl
+                    - url: src/gl/shaders/modules/popup.glsl
+                    -
+                        uniform float u_popup_radius;
+                        uniform float u_popup_height;
+                vertex: |
+                    position.z *= u_popup_height; // boost height for exaggerated visual effect
+                    position = popup(position, vec2(0., 0.), u_popup_radius * u_meters_per_pixel);
+                # vertex: { url: demos/shaders/popup.glsl }
+                # fragment: { url: demos/shaders/color_bleed.glsl }
 
     elevator:
         extends: polygons
@@ -68,9 +74,13 @@ modes:
             #     BREATHE_SCALE: 10
             uniforms:
                 u_breathe_scale: 10
+                u_breathe_speed: 1
             transforms:
-                globals: uniform float u_breathe_scale;
-                vertex: position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time)));
+                globals:
+                    uniform float u_breathe_scale;
+                    uniform float u_breathe_speed;
+                vertex:
+                    position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time * u_breathe_speed)));
                 # vertex: { url: demos/shaders/breathe.glsl }
 
     dots:

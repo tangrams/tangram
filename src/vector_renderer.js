@@ -364,7 +364,7 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     var tile = event.data.tile;
 
     // Sync modes
-    // VectorRenderer.updateModeStates(this.modes, event.data.mode_states);
+    // VectorRenderer.refreshModeStates(this.modes, event.data.mode_states);
     // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 
     // Removed this tile during load?
@@ -466,6 +466,12 @@ VectorRenderer.prototype.reloadConfig = function ()
     if (this.layer_source != null || this.style_source != null) {
         this.rebuildTiles();
     }
+};
+
+// Called (currently manually) after modes are updated in stylesheet
+VectorRenderer.prototype.refreshModes = function ()
+{
+    this.modes = VectorRenderer.refreshModes(this.modes, this.styles);
 };
 
 VectorRenderer.prototype.updateActiveModes = function ()
@@ -618,6 +624,7 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     return tile_layers;
 };
 
+// Called once on instantiation
 VectorRenderer.createModes = function (modes, styles)
 {
     // Built-in modes
@@ -636,6 +643,24 @@ VectorRenderer.createModes = function (modes, styles)
     return modes;
 };
 
+VectorRenderer.refreshModes = function (modes, styles)
+{
+    // Copy stylesheet modes
+    // TODO: is this the best way to copy stylesheet changes to mode instances?
+    for (var m in styles.modes) {
+        // if (m != 'all') {
+            ModeManager.configureMode(m, styles.modes[m]);
+        // }
+    }
+
+    // Refresh all modes
+    for (m in modes) {
+        modes[m].refresh();
+    }
+
+    return modes;
+};
+
 // Used for passing mode state information between main thread and worker (since entire object can't be exchanged due to cloning restrictions)
 // VectorRenderer.getModeStates = function (modes)
 // {
@@ -646,7 +671,7 @@ VectorRenderer.createModes = function (modes, styles)
 //     return mode_states;
 // };
 
-// VectorRenderer.updateModeStates = function (modes, mode_states)
+// VectorRenderer.refreshModeStates = function (modes, mode_states)
 // {
 //     for (var m in mode_states) {
 //         if (modes[m] != null) {

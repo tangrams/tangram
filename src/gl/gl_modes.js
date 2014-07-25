@@ -10,7 +10,11 @@ var shader_sources = require('./gl_shaders.js'); // built-in shaders
 var RenderMode = {
     init: function (gl) {
         this.gl = gl;
-        this.gl_program = this.makeGLProgram();
+        // this.gl_program = this.makeGLProgram();
+        this.makeGLProgram();
+    },
+    refresh: function () {
+        this.makeGLProgram();
     },
     // state: {},
     // updateState: function (new_state) {
@@ -49,7 +53,7 @@ RenderMode.makeGLProgram = function ()
 
     // Create shader from custom URLs
     if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        return new GL.Program.createProgramFromURLs(
+        this.gl_program = GL.Program.createProgramFromURLs(
             this.gl,
             this.shaders.vertex_url,
             this.shaders.fragment_url,
@@ -58,7 +62,7 @@ RenderMode.makeGLProgram = function ()
     }
     // Create shader from built-in source
     else {
-        return new GL.Program(
+        this.gl_program = new GL.Program(
             this.gl,
             shader_sources[this.vertex_shader_key],
             shader_sources[this.fragment_shader_key],
