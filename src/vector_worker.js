@@ -14,6 +14,15 @@ VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
+// Initialize worker
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'init') {
+        return;
+    }
+
+    VectorWorker.id = event.data.id;
+});
+
 VectorWorker.buildTile = function (tile)
 {
     // Tile keys that will be sent back to main thread
@@ -44,8 +53,6 @@ VectorWorker.buildTile = function (tile)
         tile: tile_subset//,
         // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
     });
-    // console.log(JSON.stringify(VectorWorker.modes.polygons.state));
-    // console.log(JSON.stringify(VectorRenderer.getModeStates(VectorWorker.modes)));
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
@@ -91,7 +98,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     }
     // Tile already loaded, just rebuild
     else {
-        console.log("used worker cache for tile " + tile.key);
+        VectorWorker.log("used worker cache for tile " + tile.key);
 
         // Update loading state
         tile.loaded = true;
@@ -113,17 +120,17 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     var key = event.data.key;
     var tile = VectorWorker.tiles[key];
-    // console.log("worker remove tile event for " + key);
+    // VectorWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
         if (tile.loading == true) {
-            console.log("cancel tile load for " + key);
+            VectorWorker.log("cancel tile load for " + key);
             // TODO: let tile source do this
             tile.loading = false;
 
             if (tile.xhr != null) {
                 tile.xhr.abort();
-                // console.log("aborted XHR for tile " + tile.key);
+                // VectorWorker.log("aborted XHR for tile " + tile.key);
             }
         }
 
@@ -142,5 +149,10 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
     VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
-    console.log("worker refreshed config for tile rebuild");
+    VectorWorker.log("worker refreshed config for tile rebuild");
 });
+
+// Log wrapper to include worker id #
+VectorWorker.log = function (msg) {
+    console.log("worker " + VectorWorker.id + ": " + msg);
+};

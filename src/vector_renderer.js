@@ -96,6 +96,10 @@ VectorRenderer.prototype.createWorkers = function ()
         renderer.workers = [];
         for (var w=0; w < renderer.num_workers; w++) {
             renderer.workers.push(new Worker(worker_local_url));
+            renderer.workers[w].postMessage({
+                type: 'init',
+                id: w
+            })
         }
     };
     req.open('GET', url, false /* async flag */);
