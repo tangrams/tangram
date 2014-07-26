@@ -328,65 +328,15 @@ GL.Program.prototype.compile = function ()
 };
 
 // ex: program.uniform('3f', 'position', x, y, z);
+// TODO: only update uniforms when changed
 GL.Program.prototype.uniform = function (method, name) // method-appropriate arguments follow
 {
     var uniform = (this.uniforms[name] = this.uniforms[name] || {});
     uniform.name = name;
     uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
     uniform.method = 'uniform' + method;
-
-    // // Check against cached values before setting
-    var vals = Array.prototype.slice.call(arguments, 2);
-    // if (uniform.values != null && uniform.values.length == vals.length) { // && uniform.method != 'uniformMatrix4fv') {
-    //     for (var v = 0, vlen = vals.length; v < vlen; v++) {
-    //         var replace = false;
-
-    //         // Different types (always update)
-    //         if (typeof uniform.values[v] != typeof vals[v]) {
-    //             replace = true;
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //             break;
-    //         }
-    //         // Arrays, compare each value
-    //         else if (typeof uniform.values[v] == 'object') {
-    //             for (var a=0, alen = vals[v].length; a < alen; a++) {
-    //                 if (uniform.values[v][a] !== vals[v][a]) {
-    //                     replace = true;
-    //                     console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
-    //                     break;
-    //                 }
-    //             }
-    //             if (replace == true) {
-    //                 break;
-    //             }
-    //         }
-    //         // Plain value of same type
-    //         else if (uniform.values[v] !== vals[v]) {
-    //             replace = true;
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //             break;
-    //         }
-    //         if (typeof uniform.values[v] == 'object') {
-    //             console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
-    //         }
-    //         else {
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //         }
-    //     }
-
-    //     if (replace == true) {
-    //         uniform.values = vals;
-    //         this.updateUniform(name);
-    //     }
-    //     // if (v == vals.length) {
-    //     //     console.log("uniform " + uniform.name + ": don't update, matched cached value");
-    //     // }
-    // }
-    // else {
-    //     console.log("uniform " + uniform.name + ": set initial value, or new length");
-        uniform.values = vals;
-        this.updateUniform(name);
-    // }
+    uniform.values = Array.prototype.slice.call(arguments, 2);
+    this.updateUniform(name);
 };
 
 // Set a single uniform

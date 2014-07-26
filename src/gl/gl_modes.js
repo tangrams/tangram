@@ -10,29 +10,17 @@ var shader_sources = require('./gl_shaders.js'); // built-in shaders
 var RenderMode = {
     init: function (gl) {
         this.gl = gl;
-        // this.gl_program = this.makeGLProgram();
         this.makeGLProgram();
     },
     refresh: function () {
         this.makeGLProgram();
     },
-    // state: {},
-    // updateState: function (new_state) {
-    //     this.state = this.state || {};
-    //     if (new_state != null) {
-    //         for (var k in new_state) {
-    //             this.state[k] = this.new_state[k];
-    //         }
-    //     }
-    //     return this.state;
-    // },
     defines: {},
     buildPolygons: function(){}, // build functions are no-ops until overriden
     buildLines: function(){},
     buildPoints: function(){}
 };
 
-// TODO: allow mode programs to be recompiled
 RenderMode.makeGLProgram = function ()
 {
     // Add any custom defines to built-in mode defines
@@ -145,10 +133,6 @@ Modes.polygons = Object.create(RenderMode);
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
-
-// Modes.polygons.shaders.uniforms = {
-//     // scale: 1.0
-// };
 
 Modes.polygons.makeGLGeometry = function (vertex_data)
 {
