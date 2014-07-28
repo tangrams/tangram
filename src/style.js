@@ -19,6 +19,38 @@ Style.pixels = function (p, z) {
     return f;
 };
 
+// Generates a random color not yet present in the provided hash of colors
+// Workers independently create/modify selection colors in their own threads, but we also
+// need to maintain a central, combined selection map of unique colors. To accomplish this,
+// we partition the map with a stride (# of workers) and offset (each worker's id).
+Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
+Style.selection_map_current = 1; // start at 1 since this 1 will be divided by this
+Style.selection_map_stride = 1; // set by worker to # of workers
+Style.selection_map_offset = 0; // set by worker to worker id #
+Style.selection_precision = 6; // safe precision range for converting floats
+Style.generateSelection = function (color_map)
+{
+    // while (true) {
+        Style.selection_map_current += Style.selection_map_stride;
+        var key = (1 / (Style.selection_map_current + Style.selection_map_offset)).toPrecision(Style.selection_precision);
+
+        // if (color_map[key] === undefined) {
+            color_map[key] = {
+                // color: [r, g, b, a],
+                float: key
+            };
+            // break;
+        // }
+    // }
+    return color_map[key];
+};
+
+Style.resetSelectionMap = function ()
+{
+    Style.selection_map = {};
+    Style.selection_map_current = 1;
+};
+
 // Find and expand style macros
 Style.macros = [
     'Style.color.pseudoRandomColor',
@@ -71,13 +103,17 @@ Style.defaults = {
         // width: 1,
         // dash: null
     },
+    selection: {
+        active: false,
+        // color: [0, 0, 0, 1],
+        float: 0
+    },
     mode: {
         name: 'polygons'
     }
 };
 
 // Style parsing
-
 Style.parseStyleForFeature = function (feature, layer_style, tile)
 {
     var layer_style = layer_style || {};
@@ -156,6 +192,27 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
     if (typeof style.outline.dash == 'function') {
         style.outline.dash = style.outline.dash(feature, tile, helpers);
+    }
+
+    // TODO: add function-based selection switches (like other fields)
+    // TODO: add function callbacks for when a feature is selected
+    // style.selection = layer_style.selection || layer_style.selection;
+    if (layer_style.selection == true) {
+        var selector = Style.generateSelection(Style.selection_map);
+
+        // TODO: build a feature_id-based map on main thread to look-up features
+        selector.feature_id = feature.id;
+        // selector.name = feature.properties.name;
+        // selector.feature = feature;
+
+        style.selection = {
+            active: true,
+            // color: selector.color,
+            float: selector.float
+        };
+    }
+    else {
+        style.selection = Style.defaults.selection;
     }
 
     // style.mode = layer_style.mode || Style.defaults.mode;
