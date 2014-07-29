@@ -137,10 +137,10 @@ Modes.polygons.fragment_shader_key = 'polygon_fragment';
 Modes.polygons.makeGLGeometry = function (vertex_data)
 {
     var geom = new GLGeometry(this.gl, this.gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
     geom.geometry_count = geom.vertex_count / 3;
 
@@ -319,10 +319,10 @@ Modes.points.defines = {
 Modes.points.makeGLGeometry = function (vertex_data)
 {
     return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
 };
 

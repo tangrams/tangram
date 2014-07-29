@@ -278,19 +278,24 @@ GLRenderer.prototype.resizeMap = function (width, height)
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-GLRenderer.prototype._render = function GLRendererRender ()
+GLRenderer.prototype.resetFrame = function ()
 {
-    var gl = this.gl;
-
-    this.input();
-
     // Reset frame state
+    var gl = this.gl;
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
+};
+
+GLRenderer.prototype._render = function GLRendererRender ()
+{
+    var gl = this.gl;
+
+    this.input();
+    this.resetFrame();
 
     // Map transforms
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
