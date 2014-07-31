@@ -44,7 +44,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
         this.styles = VectorRenderer.loadStyles(this.style_source);
     }
     else {
-        this.styles = styles;
+        this.styles = VectorRenderer.postProcessStyles(styles);
     }
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
@@ -576,7 +576,14 @@ VectorRenderer.loadStyles = function (url)
     // Find generic functions & style macros
     Utils.stringsToFunctions(styles);
     Style.expandMacros(styles);
+    VectorRenderer.postProcessStyles(styles);
 
+    return styles;
+};
+
+// Normalize some style settings that may not have been explicitly specified in the stylesheet
+VectorRenderer.postProcessStyles = function (styles)
+{
     // Post-process styles
     for (var m in styles.layers) {
         if (styles.layers[m].visible !== false) {
