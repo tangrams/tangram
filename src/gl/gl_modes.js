@@ -112,6 +112,10 @@ var ModeManager = {};
 ModeManager.configureMode = function (name, settings)
 {
     Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
+    if (Modes[settings.extends]) {
+        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
+    }
+
     for (var s in settings) {
         Modes[name][s] = settings[s];
     }
