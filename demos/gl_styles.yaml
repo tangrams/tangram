@@ -110,6 +110,14 @@ modes:
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
                 fragment: color = lighting * wood(v_position_world.xyz);
+        # buildPolygons: |
+        #     function (polygons, style, vertex_data) {
+        #         // Test overloading the geometry builder
+        #         // var c = Geo.polygonCentroidSimple(polygons[0]);
+        #         polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
+        #         this.parent.buildPolygons(polygons, style, vertex_data);
+        #     }
+
 
     points:
         shaders:
