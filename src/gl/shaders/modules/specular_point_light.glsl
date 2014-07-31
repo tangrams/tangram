@@ -1,4 +1,4 @@
-vec3 pointLight (
+vec3 specularLight (
     vec4 position,
     vec3 normal,
     vec3 color,
@@ -43,8 +43,7 @@ vec3 pointLight (
 
     color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient + specularReflection;
 
-    // return normalDirection;
     return color;
 }
 
-#pragma glslify: export(pointLight)
+#pragma glslify: export(specularLight)
