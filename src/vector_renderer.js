@@ -1,10 +1,23 @@
 var Point = require('./point.js');
 var Geo = require('./geo.js');
 var Style = require('./style.js');
+var ModeManager = require('./gl/gl_modes').ModeManager;
 var Utils = require('./utils.js');
 
+// Setup that happens on main thread only (skip in web worker)
+var yaml;
+Utils.runIfInMainThread(function() {
+    try {
+        yaml = require('js-yaml');
+    }
+    catch (e) {
+        console.log("no YAML support, js-yaml module not found");
+    }
+
+    findBaseLibraryURL();
+});
+
 // Global setup
-findBaseLibraryURL();
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(VectorRenderer.tile_scale);
 
@@ -18,7 +31,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.num_workers = options.num_workers || 1;
 
     if (typeof(layers) == 'string') {
-        this.layer_source = VectorRenderer.urlForPath(layers);
+        this.layer_source = Utils.urlForPath(layers);
         this.layers = VectorRenderer.loadLayers(this.layer_source);
     }
     else {
@@ -27,21 +40,26 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
 
     if (typeof(styles) == 'string') {
-        this.style_source = VectorRenderer.urlForPath(styles);
+        this.style_source = Utils.urlForPath(styles);
         this.styles = VectorRenderer.loadStyles(this.style_source);
     }
     else {
-        this.styles = styles;
+        this.styles = VectorRenderer.postProcessStyles(styles);
     }
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
+    this.dirty = true; // request a redraw
+    this.animated = false; // request redraw every frame
+    this.initialized = false;
+
+    this.modes = VectorRenderer.createModes({}, this.styles);
+    this.updateActiveModes();
     this.createWorkers();
 
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
-    this.dirty = true; // request a redraw
-    this.initialized = false;
+    this.resetTime();
 }
 
 VectorRenderer.create = function (type, tile_source, layers, styles, options)
@@ -182,6 +200,7 @@ VectorRenderer.prototype.requestRedraw = function ()
 
 VectorRenderer.prototype.render = function ()
 {
+    // Render on demand
     if (this.dirty == false || this.initialized == false) {
         return false;
     }
@@ -190,6 +209,11 @@ VectorRenderer.prototype.render = function ()
     // Child class-specific rendering (e.g. GL draw calls)
     if (typeof(this._render) == 'function') {
         this._render.apply(this, arguments);
+    }
+
+    // Redraw every frame if animating
+    if (this.animated == true) {
+        this.dirty = true;
     }
 
     // console.log("render map");
@@ -249,6 +273,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 };
 
 // Rebuild all tiles
+// TODO: also rebuild modes? (detect if changed)
 VectorRenderer.prototype.rebuildTiles = function ()
 {
     // Update layers & styles
@@ -301,6 +326,9 @@ VectorRenderer.prototype.rebuildTiles = function ()
             this.removeTile(invisible[t]);
         }
     }
+
+    this.updateActiveModes();
+    this.resetTime();
 };
 
 VectorRenderer.prototype.buildTile = function(key)
@@ -319,8 +347,11 @@ VectorRenderer.prototype.buildTile = function(key)
         renderer_type: this.type,
         tile_source: this.tile_source,
         layers: this.layers_serialized,
-        styles: this.styles_serialized
+        styles: this.styles_serialized//,
+        // mode_states: VectorRenderer.getModeStates(this.modes)
     });
+    // console.log(this.modes);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
@@ -331,6 +362,10 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     }
 
     var tile = event.data.tile;
+
+    // Sync modes
+    // VectorRenderer.refreshModeStates(this.modes, event.data.mode_states);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
@@ -433,6 +468,37 @@ VectorRenderer.prototype.reloadConfig = function ()
     }
 };
 
+// Called (currently manually) after modes are updated in stylesheet
+VectorRenderer.prototype.refreshModes = function ()
+{
+    this.modes = VectorRenderer.refreshModes(this.modes, this.styles);
+};
+
+VectorRenderer.prototype.updateActiveModes = function ()
+{
+    // Make a set of currently active modes (used in a layer)
+    this.active_modes = {};
+    var animated = false; // is any active mode animated?
+    for (var l in this.styles.layers) {
+        var mode = this.styles.layers[l].mode.name;
+        if (this.styles.layers[l].visible !== false) {
+            this.active_modes[mode] = true;
+
+            // Check if this mode is animated
+            if (animated == false && this.modes[mode].animated == true) {
+                animated = true;
+            }
+        }
+    }
+    this.animated = animated;
+};
+
+// Reset internal clock, mostly useful for consistent experience when changing modes/debugging
+VectorRenderer.prototype.resetTime = function ()
+{
+    this.start_time = +new Date();
+};
+
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
 VectorRenderer.prototype.trackTileSetLoadStart = function ()
@@ -475,15 +541,6 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 
 /*** Class methods (stateless) ***/
 
-// Simplistic detection of relative paths, append base if necessary
-VectorRenderer.urlForPath = function (path) {
-    var protocol = path.toLowerCase().substr(0, 4);
-    if (!(protocol == 'http' || protocol == 'file')) {
-        path = window.location.origin + window.location.pathname + path;
-    }
-    return path;
-};
-
 VectorRenderer.loadLayers = function (url)
 {
     var layers;
@@ -498,9 +555,49 @@ VectorRenderer.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
-    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
+    req.onload = function () { styles = req.response; }
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
+
+    // Try JSON first, then YAML (if available)
+    try {
+        eval('styles = ' + req.response);
+    }
+    catch (e) {
+        try {
+            styles = yaml.safeLoad(req.response);
+        }
+        catch (e) {
+            console.log("failed to parse styles!");
+            styles = null;
+        }
+    }
+
+    // Find generic functions & style macros
+    Utils.stringsToFunctions(styles);
+    Style.expandMacros(styles);
+    VectorRenderer.postProcessStyles(styles);
+
+    return styles;
+};
+
+// Normalize some style settings that may not have been explicitly specified in the stylesheet
+VectorRenderer.postProcessStyles = function (styles)
+{
+    // Post-process styles
+    for (var m in styles.layers) {
+        if (styles.layers[m].visible !== false) {
+            styles.layers[m].visible = true;
+        }
+
+        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
+            styles.layers[m].mode = {};
+            for (var p in Style.defaults.mode) {
+                styles.layers[m].mode[p] = Style.defaults.mode[p];
+            }
+        }
+    }
+
     return styles;
 };
 
@@ -534,28 +631,79 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     return tile_layers;
 };
 
+// Called once on instantiation
+VectorRenderer.createModes = function (modes, styles)
+{
+    // Built-in modes
+    var built_ins = require('./gl/gl_modes').Modes; // TODO: make this non-GL specific
+    for (var m in built_ins) {
+        modes[m] = built_ins[m];
+    }
+
+    // Stylesheet modes
+    for (var m in styles.modes) {
+        // if (m != 'all') {
+            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
+        // }
+    }
+
+    return modes;
+};
+
+VectorRenderer.refreshModes = function (modes, styles)
+{
+    // Copy stylesheet modes
+    // TODO: is this the best way to copy stylesheet changes to mode instances?
+    for (var m in styles.modes) {
+        // if (m != 'all') {
+            ModeManager.configureMode(m, styles.modes[m]);
+        // }
+    }
+
+    // Refresh all modes
+    for (m in modes) {
+        modes[m].refresh();
+    }
+
+    return modes;
+};
+
+// Used for passing mode state information between main thread and worker (since entire object can't be exchanged due to cloning restrictions)
+// VectorRenderer.getModeStates = function (modes)
+// {
+//     var mode_states = {};
+//     for (var m in modes) {
+//         mode_states[m] = modes[m].state;
+//     }
+//     return mode_states;
+// };
+
+// VectorRenderer.refreshModeStates = function (modes, mode_states)
+// {
+//     for (var m in mode_states) {
+//         if (modes[m] != null) {
+//             modes[m].updateState(mode_states[m]);
+//         }
+//     }
+// }
+
 // Private/internal
 
 // Get base URL from which the library was loaded
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
 function findBaseLibraryURL ()
 {
-    try {
-        VectorRenderer.library_base_url = '';
-        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
-        for (var s=0; s < scripts.length; s++) {
-            var match = scripts[s].src.indexOf('vector-map.debug.js');
-            if (match == -1) {
-                match = scripts[s].src.indexOf('vector-map.min.js');
-            }
-            if (match >= 0) {
-                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
-                break;
-            }
+    VectorRenderer.library_base_url = '';
+    var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
+    for (var s=0; s < scripts.length; s++) {
+        var match = scripts[s].src.indexOf('vector-map.debug.js');
+        if (match == -1) {
+            match = scripts[s].src.indexOf('vector-map.min.js');
         }
-    }
-    catch (e) {
-        // skip in web worker
+        if (match >= 0) {
+            VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
+            break;
+        }
     }
 };
 

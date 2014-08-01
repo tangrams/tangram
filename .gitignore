@@ -5,5 +5,8 @@
 
 node_modules
 
+# OS misc
+.DS_Store
+
 # storing some screenshots here
 screenshots

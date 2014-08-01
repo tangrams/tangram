@@ -84,8 +84,8 @@
         //     };
         // }
     },
-    {
-        name: 'places',
-        data: 'places'
-    }
+    // {
+    //     name: 'places',
+    //     data: 'places'
+    // }
 ]

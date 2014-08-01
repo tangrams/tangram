@@ -19,6 +19,18 @@ function CanvasRenderer (tile_source, layers, styles, options)
     this.cutout_context = document.createElement('canvas').getContext('2d');
 }
 
+// Process geometry for tile - called by web worker
+// Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
+CanvasRenderer.addTile = function (tile, layers, styles)
+{
+    // This is basically a no-op since the canvas is actually rendered on the main thread
+    // Just need to pass back tile data
+    return {
+        layers: true
+    };
+
+};
+
 CanvasRenderer.prototype._tileWorkerCompleted = function (tile)
 {
     // Use existing canvas or create new one
@@ -267,15 +279,15 @@ CanvasRenderer.prototype.renderTile = function renderTile (tile, context)
             feature.geometry.pixels = this.scaleGeometryToPixels(feature.geometry);
             style = Style.parseStyleForFeature(feature, this.styles[layer.name], tile);
 
-            // Convert from meters to pixels for canvas drawing
+            // Convert from local tile units to pixels for canvas drawing
             if (style.width) {
-                style.width /= Geo.meters_per_pixel[tile.coords.z];
+                style.width /= Geo.units_per_pixel;
             }
             if (style.size) {
-                style.size /= Geo.meters_per_pixel[tile.coords.z];
+                style.size /= Geo.units_per_pixel;
             }
             if (style.outline && style.outline.width) {
-                style.outline.width /= Geo.meters_per_pixel[tile.coords.z];
+                style.outline.width /= Geo.units_per_pixel;
             }
 
             // Draw visible geometry

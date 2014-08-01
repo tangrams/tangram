@@ -1,5 +1,31 @@
 // Miscellaneous utilities
 
+// Simplistic detection of relative paths, append base if necessary
+function urlForPath (path) {
+    if (path == null || path == '') {
+        return null;
+    }
+
+    // Can expand a single path, or an array of paths
+    if (typeof path == 'object' && path.length > 0) {
+        // Array of paths
+        for (var p in path) {
+            var protocol = path[p].toLowerCase().substr(0, 4);
+            if (!(protocol == 'http' || protocol == 'file')) {
+                path[p] = window.location.origin + window.location.pathname + path[p];
+            }
+        }
+    }
+    else {
+        // Single path
+        var protocol = path.toLowerCase().substr(0, 4);
+        if (!(protocol == 'http' || protocol == 'file')) {
+            path = window.location.origin + window.location.pathname + path;
+        }
+    }
+    return path;
+};
+
 // Stringify an object into JSON, but convert functions to strings
 function serializeWithFunctions (obj)
 {
@@ -48,9 +74,26 @@ function stringsToFunctions (obj) {
     return obj;
 };
 
+// Run a block if on the main thread (not in a web worker), with optional error (web worker) block
+function runIfInMainThread (block, err) {
+    try {
+        if (window.document !== undefined) {
+            block();
+        }
+    }
+    catch (e) {
+        if (typeof err == 'function') {
+            err();
+        }
+    }
+}
+
 if (module !== undefined) {
     module.exports = {
+        urlForPath: urlForPath,
         serializeWithFunctions: serializeWithFunctions,
-        deserializeWithFunctions: deserializeWithFunctions
+        deserializeWithFunctions: deserializeWithFunctions,
+        stringsToFunctions: stringsToFunctions,
+        runIfInMainThread: runIfInMainThread
     };
 }

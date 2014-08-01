@@ -9,21 +9,43 @@ var VectorWorker = {};
 VectorWorker.worker = self;
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
+// TODO: sync render mode state between main thread and worker
+// VectorWorker.modes = require('./gl/gl_modes').Modes;
+
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
 VectorWorker.buildTile = function (tile)
 {
+    // Tile keys that will be sent back to main thread
+    // We send a minimal subset to avoid unnecessary data exchange
+    var keys;
+
     // Renderer-specific transforms
     if (typeof VectorWorker.renderer.addTile == 'function') {
         tile.debug.rendering = +new Date();
-        VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles);
+        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles, VectorWorker.modes);
         tile.debug.rendering = +new Date() - tile.debug.rendering;
+    }
+
+    // Make sure we send some core pieces of info
+    keys.key = true;
+    keys.loading = true;
+    keys.loaded = true;
+    keys.debug = true;
+
+    // Build the tile subset
+    var tile_subset = {};
+    for (var k in keys) {
+        tile_subset[k] = tile[k];
     }
 
     VectorWorker.worker.postMessage({
         type: 'buildTileCompleted',
-        tile: tile
+        tile: tile_subset//,
+        // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
     });
+    // console.log(JSON.stringify(VectorWorker.modes.polygons.state));
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(VectorWorker.modes)));
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
@@ -54,6 +76,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -117,6 +140,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
     console.log("worker refreshed config for tile rebuild");
 });
