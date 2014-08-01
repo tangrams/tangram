@@ -9,7 +9,7 @@ http://mapzen.com
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>Mapzen Vector map</title>
+<title>Vector map</title>
 <style>
 
 body {
@@ -51,10 +51,8 @@ body {
 <script src="demos/lib/rStats.extras.js"></script>
 <script src="dist/js-yaml.js"></script>
 <script src="dist/vector-map.debug.js"></script>
-<script type="text/javascript" src="presets.json"></script>
 
 <script>
-var tiles_debug = false;
 
 (function(){
 
@@ -133,8 +131,7 @@ var tile_sources = {
 var locations = {
     'London': [51.508, -0.105, 15],
     'New York': [40.70531887544228, -74.00976419448853, 16],
-    'Seattle': [47.609722, -122.333056, 15],
-    'San Francisco': [37.79310914816524,-122.39872455596925, 15]
+    'Seattle': [47.609722, -122.333056, 15]
 };
 
 var osm_debug = false;
@@ -147,20 +144,7 @@ var osm_debug = false;
 // #[lat],[lng],[zoom]
 // #[source],[lat],[lng],[zoom]
 // #[source],[location name]
-
-// check for any additional parameters in format &param=value
-param_index = window.location.hash.indexOf("&");
-if (param_index == -1) {
-    var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
-} else {
-    var url_hash = window.location.hash.slice(1, param_index).split(',');
-    var url_params = window.location.hash.slice(param_index+1, window.location.hash.length).split('&');
-
-    var params = []
-    for (x in url_params) {
-        params[url_params[x].split('=')[0]] = url_params[x].split('=')[1];
-    }
-}
+var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
 // Get tile source from URL
 if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
@@ -169,7 +153,6 @@ if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
 
 // Get location from URL
 var map_start_location = locations['New York'];
-
 if (url_hash.length == 3) {
     map_start_location = url_hash.slice(0, 3);
 }
@@ -214,6 +197,53 @@ gui.removeFolder = function(name) {
     this.__folders[name] = undefined;
     this.onResize();
 };
+
+// simple search gui
+doSearch = function() {
+    searchterm = searchVar.domElement.getElementsByTagName("input")[0].value;
+    queryurl = "http://pelias.test.mapzen.com/suggest?query="+searchterm;
+
+    var xmlhttp;
+    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
+      xmlhttp=new XMLHttpRequest();
+    } else { // code for IE6, IE5
+      xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        r = JSON.parse(xmlhttp.responseText);
+        foundlocation = r.features[0].geometry.coordinates;
+        log(foundlocation);
+        // log(xmlhttp.responseText);
+        // log(response);
+
+        map_start_location = [foundlocation[1], foundlocation[0]];
+// log(map);
+log(map_start_location.slice(0, 2));
+log(map_start_location[2]);
+        map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+        updateURL();
+        layer._renderer.dirty = true;
+
+      }
+    }
+
+    xmlhttp.open("GET",queryurl,true);
+    xmlhttp.send();
+
+}
+
+gui.search = "new york, NY";
+var searchVar = gui.add(gui, "search");
+// searchVar.domElement.getElementsByTagName("input")[0].onblur = onBlurSearch;
+searchVar.domElement.getElementsByTagName("input")[0].onkeydown = function (e) {
+    e = e || window.event;
+    if (e.keyCode == 13) {
+        doSearch();
+    }
+};
+
 
 // GUI options for #define-based effects
 var gl_define_options = {
@@ -308,17 +338,18 @@ if (url_ui && url_ui.indexOf('rstats') >= 0) {
 }
 
 
-//
-// *** Map ***
-//
+/*** Map ***/
+
 var map = L.map('map', {
     maxZoom: 20,
     inertia: false,
-    keyboard: true
+    keyboard: false
 });
 map.attributionControl.setPrefix('');
 
+// Update URL hash on move
 map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+map.on('moveend', updateURL);
 
 // Resize map to window
 function resizeMap () {
@@ -394,290 +425,6 @@ var gl_mode_options = {
             this.initial.buildings_mode = this.initial.buildings_mode || layer_styles.buildings.mode.name;
             this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
 
-// simple search gui
-doSearch = function() {
-    searchterm = searchVar.domElement.getElementsByTagName("input")[0].value;
-    queryurl = "http://pelias.test.mapzen.com/suggest?query="+searchterm;
-
-    var xmlhttp;
-    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
-      xmlhttp=new XMLHttpRequest();
-    } else { // code for IE6, IE5
-      xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-    }
-
-    xmlhttp.onreadystatechange = function() {
-      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-        r = JSON.parse(xmlhttp.responseText);
-        foundlocation = r.features[0].geometry.coordinates;
-        log(foundlocation);
-        // log(xmlhttp.responseText);
-        // log(response);
-
-        map_start_location = [foundlocation[1], foundlocation[0]];
-// log(map);
-log(map_start_location.slice(0, 2));
-log(map_start_location[2]);
-        map.setView(map_start_location.slice(0, 2), map_start_location[2]);
-        updateURL();
-        layer._renderer.dirty = true;
-
-      }
-    }
-
-    xmlhttp.open("GET",queryurl,true);
-    xmlhttp.send();
-
-}
-
-mygui.search = "new york, NY";
-var searchVar = mygui.add(mygui, "search");
-// searchVar.domElement.getElementsByTagName("input")[0].onblur = onBlurSearch;
-searchVar.domElement.getElementsByTagName("input")[0].onkeydown = function (e) {
-    e = e || window.event;
-    if (e.keyCode == 13) {
-        doSearch();
-    }
-};
-
-
-
-// set up #DEFINE controls
-
-Object.keys(gl_controls).forEach(function(key) {
-    mygui[key] = gl_controls[key].options;
-    var control = mygui.add(mygui, key, gl_controls[key].options);
-    control.onChange(function(value) {
-        settings[key] = mygui[key];
-        setGLProgramDefines();
-        generateURL();
-    });
-});
-
-// set up uniform controls
-
-mygui.building_height = 1.0;
-var heightVar = mygui.add(mygui, 'building_height', 0.0, 20.0);
-heightVar.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_heightVar', value);
-    settings["building_height"] = value;
-    generateURL();
-});
-
-mygui.light_azimuth = 1.0;
-var azimuthVar = mygui.add(mygui, 'light_azimuth', 0, 360);
-azimuthVar.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_lightAzimuth', value);
-    settings["light_azimuth"] = value;
-    generateURL();
-});
-
-mygui.light_elevation = 1.0;
-var elevationVar = mygui.add(mygui, 'light_elevation', 0.0, 1.0);
-elevationVar.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_lightElevation', value);
-    settings["light_elevation"] = value;
-    generateURL();
-});
-
-// mygui.light_radius = 1.0;
-// var radiusVar = mygui.add(mygui, 'light_radius', 0.0, 3.14159);
-// radiusVar.onChange(function(value) {
-//     setGLProgramUniform('1f', 'u_lightRadius', value);
-//     settings["light_radius"] = value;
-//     generateURL();
-// });
-
-mygui.lightIntensity = 1.0;
-var lightIntensity = mygui.add(mygui, 'lightIntensity', -1.0, 1.0);
-lightIntensity.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_lightIntensity', value);
-    settings["lightIntensity"] = value;
-    generateURL();
-});
-
-mygui.lightAmbient = 0.45;
-var lightAmbient = mygui.add(mygui, 'lightAmbient', -1.0, 1.0);
-lightAmbient.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_lightAmbient', value);
-    settings["lightAmbient"] = value;
-    generateURL();
-});
-
-mygui.lightHeight = 0.25;
-var lightHeight = mygui.add(mygui, 'lightHeight', 0.0, 1.0);
-lightHeight.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_lightHeight', value);
-    settings["lightHeight"] = value;
-    generateURL();
-});
-mygui.heightLimit = 0.45;
-var heightLimit = mygui.add(mygui, 'heightLimit', 0.0, 3.0);
-heightLimit.onChange(function(value) {
-    setGLProgramUniform('1f', 'u_heightLimit', value);
-    settings["heightLimit"] = value;
-    generateURL();
-});
-
-
-// mygui.light_position = [0.0, 0.0, 0.0];
-// var positionVar = mygui.addColor(mygui, 'light_position');
-// positionVar.onChange(function(value) {
-//     setGLProgramUniformColor('3f', 'u_lightPosition', value);
-//     settings["light_position"] = value;
-//     generateURL();
-// });
-
-layers = [];
-names = [];
-
-// add a dat.gui color picker for each layer
-for (x in layer._renderer.layers) {
-    name = layer._renderer.layers[x].name;
-    names[x] = name;
-    mygui[name] = [0.0, 0.0, 0.0];
-    var control = mygui.addColor(mygui, name);
-
-    // dynamically set the associated pre-defined uniform
-    control.onChange(function(x) {
-        var u = 'testUniformColor' + x;
-        return function(value) {
-            // log(names[x]+": "+value);
-            settings[names[x]] = value;
-            generateURL();
-            setGLProgramUniformColor('3f', u, value);
-        };
-    }(x));  // this immediately calls the function. not sure why this works
-}
-
-// generate a sharable url from the controls
-
-// shareableLinkButtonName = "Link to map…";
-// shareableLinkTextfieldName = "link:";
-
-// mygui[shareableLinkButtonName] = function(){
-// function generateShareURL() {
-//     url = window.location;
-//     Object.keys(mygui.__controllers).forEach(function(key) {
-//         control = mygui.__controllers[key].property;
-//         value = mygui[control];
-//         // don't encode the value of the "share link" button or textfield
-//         if (control != shareableLinkButtonName && control != shareableLinkTextfieldName) {
-//             // convert rgb to hex
-//             if (value.length == 3) {
-//                 value = rgbToHex(value[0], value[1], value[2]);
-//             }
-//             // concatenate each control's settings onto the baseurl
-//             url += "&" + control + "=" + value
-//         }
-//     });
-
-
-    // // add a new textfield to the gui, containing the url
-    // // if the textfield exists, this will update its value --
-    // // otherwise it adds the property to the gui
-    // linked = false;
-    // mygui[shareableLinkTextfieldName] = url;
-
-    // // if it's the first time, add the control, referencing the property
-    // if (!linked) {
-    //     mygui.add(mygui, shareableLinkTextfieldName);
-    //     linked = true; 
-    // } else {
-    //     // blank the textfield to show that something's changing,
-    //     // then update the textfield with the new value
-    //     mygui[shareableLinkTextfieldName] = "";
-    //     refreshLinkTextfield()
-    //     setTimeout(function() {
-    //         mygui[shareableLinkTextfieldName] = url;
-    //         refreshLinkTextfield();}
-    //     , 250);
-    // }
-
-//     window.prompt("Copy to clipboard: Ctrl+C, Enter", url);
-// }
-
-// function refreshLinkTextfield() {
-//     for (i in mygui.__controllers){
-//         if (mygui.__controllers[i].property == shareableLinkTextfieldName) {
-//             mygui.__controllers[i].updateDisplay();
-//         }
-//     }
-// }
-
-// }
-
-// var generateShareURL = mygui.add(mygui, shareableLinkButtonName);
-
-
-
-// *** Load presets ***
-
-// if there's no valid preset parameter in the url, check for passed params
-if (!valid_url_ui && params) {
-    Object.keys(params).forEach(function(key) {
-        mygui[key] = params[key];
-    });
-    for (i in mygui.__controllers){
-        mygui.__controllers[i].updateDisplay();
-    }
-}
-
-// save gui settings in an array for easy access, for generateURL()
-var settings = new Object();
-Object.keys(mygui.__controllers).forEach(function(key) {
-    settings[mygui.__controllers[key].property] = mygui[mygui.__controllers[key].property];
-});
-
-
-
-/*** SET SHADER VARIABLES ***/
-
-function updateUniforms() {
-    for (x in layer._renderer.layers) {
-        var u = 'testUniformColor' + x;
-        function testfunc() {
-            setGLProgramUniformColor('3f', u, mygui[layer._renderer.layers[x].name]);
-        }(testfunc());
-    };
-    setGLProgramUniform('1f', 'u_heightVar', mygui.building_height);
-
-    setGLProgramUniform('1f', 'u_lightAzimuth', mygui.light_azimuth);
-    setGLProgramUniform('1f', 'u_lightElevation', mygui.light_elevation);
-    setGLProgramUniform('1f', 'u_lightIntensity', mygui.lightIntensity);
-    setGLProgramUniform('1f', 'u_lightAmbient', mygui.lightAmbient);
-
-    setGLProgramUniform('1f', 'u_lightHeight', mygui.lightHeight);
-    setGLProgramUniform('1f', 'u_heightLimit', mygui.heightLimit);
-}
-
-function setGLProgramUniform (type, name, value) {
-    for (var m in layer._renderer.render_modes) {
-        layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
-        layer._renderer.render_modes[m].gl_program.uniform(type, name, value);
-    }
-    layer._renderer.dirty = true;
-}
-
-function setGLProgramUniformColor (type, name, value) {
-    for (var m in layer._renderer.render_modes) {
-        layer._renderer.gl.useProgram(layer._renderer.render_modes[m].gl_program.program);
-        // handle web colors, in case they are manually entered into the gui
-        if (value[0].toString()[0] == "#" ) value = hexToRgb(value);
-        layer._renderer.render_modes[m].gl_program.uniform(type, name, value[0]/255, value[1]/255, value[2]/255);
-    }
-
-    layer._renderer.dirty = true;
-}
-
-function setGLProgramDefines () {
-    var animated = false;
-    Object.keys(gl_controls).forEach(function(key) {
-        setGLProgramDefinesForOptionSet(mygui[key], gl_controls[key].options);
-
-        // Animated?
-        if (gl_controls[key].animated && gl_controls[key].animated.indexOf(mygui[key]) > -1) {
-            animated = true;
             // Change rendering mode for buildings
             layer_styles.buildings.mode.name = mode;
 
@@ -842,27 +589,6 @@ function updateURL () {
     window.location.hash = url_options.join(',');
 }
 
-/*** HELPER FUNCTIONS ***/
-
-function componentToHex(c) {
-    c = Math.round(c);
-    var hex = c.toString(16);
-    return hex.length == 1 ? "0" + hex : hex;
-}
-
-function rgbToHex(r, g, b) {
-    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
-}
-
-function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
-}
-
-function log(v) {
-    console.log(v);
-}
-
 
 /***** Render loop *****/
 
@@ -931,18 +657,8 @@ function frame () {
         })();
     }
 }());
-var windowLoaded = false;
-    // refresh canvas to apply preloaded settings
-    window.onload = function() {
-        windowLoaded = true;
-        generateURL();
-        updateUniforms();
-        document.getElementById('map').focus();
-    }
-
 
 }());
-
 
 </script>
 </body>
