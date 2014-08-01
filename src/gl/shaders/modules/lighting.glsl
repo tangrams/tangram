@@ -17,7 +17,6 @@ vec3 lighting (
     #if defined(LIGHTING_POINT)
         // Point light - angle varies
         color = pointLight(position, normal, color, light_pos, light_ambient, true);
-        // color = pointLight(position, normal, color, vec3(-100.0, -100.0, -100.0), light_ambient, true);
         // color = heightBoostLight(position, color, 1.0, 0.5);
     #elif defined(LIGHTING_NIGHT)
         // "Night" effect shading - variant on point light
