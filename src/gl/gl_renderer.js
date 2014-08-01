@@ -373,7 +373,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
         }
     }
 
-    if (render_count != this.last_render_count && tiles_debug) {
+    if (render_count != this.last_render_count) {
         console.log("rendered " + render_count + " primitives");
     }
     this.last_render_count = render_count;

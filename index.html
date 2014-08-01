@@ -214,17 +214,13 @@ doSearch = function() {
       if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
         r = JSON.parse(xmlhttp.responseText);
         foundlocation = r.features[0].geometry.coordinates;
-        log(foundlocation);
-        // log(xmlhttp.responseText);
-        // log(response);
-
+        console.log(foundlocation);
+        
         map_start_location = [foundlocation[1], foundlocation[0]];
-// log(map);
-log(map_start_location.slice(0, 2));
-log(map_start_location[2]);
+        // console.log(map_start_location.slice(0, 2));
+        // console.log(map_start_location[2]);
         map.setView(map_start_location.slice(0, 2), map_start_location[2]);
         updateURL();
-        layer._renderer.dirty = true;
 
       }
     }
