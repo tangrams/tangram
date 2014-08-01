@@ -1,43 +1,25 @@
 var Point = require('./point.js');
 var Geo = require('./geo.js');
 var Style = require('./style.js');
+var ModeManager = require('./gl/gl_modes').ModeManager;
+var Utils = require('./utils.js');
 
-// Get base URL from which the library was loaded
-// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
-(function() {
+// Setup that happens on main thread only (skip in web worker)
+var yaml;
+Utils.runIfInMainThread(function() {
     try {
-        VectorRenderer.library_base_url = '';
-        var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
-        for (var s=0; s < scripts.length; s++) {
-            // var base_match = scripts[s].src.match(/(.*)vector-map.(debug|min).js/); // should match debug or minified versions
-            // if (base_match != null && base_match.length > 1) {
-            //     VectorRenderer.library_base_url = base_match[1];
-            //     break;
-            // }
-            var match = scripts[s].src.indexOf('vector-map.debug.js');
-            if (match == -1) {
-                match = scripts[s].src.indexOf('vector-map.min.js');
-            }
-            if (match >= 0) {
-                VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
-                break;
-            }
-        }
+        yaml = require('js-yaml');
     }
     catch (e) {
-        // skip in web worker
+        console.log("no YAML support, js-yaml module not found");
     }
-}());
 
+    findBaseLibraryURL();
+});
+
+// Global setup
 VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
-VectorRenderer.units_per_meter = [];
-VectorRenderer.units_per_pixel = [];
-(function() {
-    for (var z=0; z <= Geo.max_zoom; z++) {
-        VectorRenderer.units_per_meter[z] = VectorRenderer.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
-        VectorRenderer.units_per_pixel[z] = VectorRenderer.tile_scale / Geo.tile_size;
-    }
-}());
+Geo.setTileScale(VectorRenderer.tile_scale);
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 function VectorRenderer (type, tile_source, layers, styles, options)
@@ -48,29 +30,36 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.tiles = {};
     this.num_workers = options.num_workers || 1;
 
-    this.layer_source = VectorRenderer.urlForPath(layers); // TODO: fix this for layers provided as objects, this assumes a URL is passed
     if (typeof(layers) == 'string') {
-        this.layers = VectorRenderer.loadLayers(layers);
+        this.layer_source = Utils.urlForPath(layers);
+        this.layers = VectorRenderer.loadLayers(this.layer_source);
     }
     else {
         this.layers = layers;
     }
+    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
 
-    this.style_source = VectorRenderer.urlForPath(styles); // TODO: fix this for styles provided as objects, this assumes a URL is passed
     if (typeof(styles) == 'string') {
-        this.styles = VectorRenderer.loadStyles(styles);
+        this.style_source = Utils.urlForPath(styles);
+        this.styles = VectorRenderer.loadStyles(this.style_source);
     }
     else {
-        this.styles = styles;
+        this.styles = VectorRenderer.postProcessStyles(styles);
     }
+    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
+    this.dirty = true; // request a redraw
+    this.animated = false; // request redraw every frame
+    this.initialized = false;
+
+    this.modes = VectorRenderer.createModes({}, this.styles);
+    this.updateActiveModes();
     this.createWorkers();
 
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
-    this.dirty = true; // request a redraw
-    this.initialized = false;
+    this.resetTime();
 }
 
 VectorRenderer.create = function (type, tile_source, layers, styles, options)
@@ -87,7 +76,7 @@ VectorRenderer.prototype.init = function ()
 
     var renderer = this;
     this.workers.forEach(function(worker) {
-        worker.addEventListener('message', renderer.tileWorkerCompleted.bind(renderer));
+        worker.addEventListener('message', renderer.workerBuildTileCompleted.bind(renderer));
     });
 
     this.initialized = true;
@@ -97,7 +86,7 @@ VectorRenderer.prototype.init = function ()
 VectorRenderer.prototype.createWorkers = function ()
 {
     var renderer = this;
-    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js';
+    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
 
     // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
     var req = new XMLHttpRequest();
@@ -121,6 +110,16 @@ VectorRenderer.prototype.createWorkers = function ()
     this.next_worker = 0;
 };
 
+// Post a message about a tile to the next worker (round robbin)
+VectorRenderer.prototype.workerPostMessageForTile = function (tile, message)
+{
+    if (tile.worker == null) {
+        tile.worker = this.next_worker;
+        this.next_worker = (tile.worker + 1) % this.workers.length;
+    }
+    this.workers[tile.worker].postMessage(message);
+};
+
 VectorRenderer.prototype.setCenter = function (lng, lat)
 {
     this.center = { lng: lng, lat: lat };
@@ -129,8 +128,10 @@ VectorRenderer.prototype.setCenter = function (lng, lat)
 
 VectorRenderer.prototype.setZoom = function (zoom)
 {
+    // console.log("setZoom " + zoom);
     this.map_last_zoom = this.zoom;
     this.zoom = zoom;
+    this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     this.map_zooming = false;
     this.dirty = true;
 };
@@ -158,6 +159,11 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     this.buffered_meter_bounds.ne.x += buffer;
     this.buffered_meter_bounds.ne.y += buffer;
 
+    this.center_meters = Point(
+        (this.buffered_meter_bounds.sw.x + this.buffered_meter_bounds.ne.x) / 2,
+        (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
+    );
+
     // console.log("set renderer bounds to " + JSON.stringify(this.bounds));
 
     // Mark tiles as visible/invisible
@@ -168,10 +174,18 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     this.dirty = true;
 };
 
+VectorRenderer.prototype.isTileInZoom = function (tile)
+{
+    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
+};
+
+// Update visibility and return true if changed
 VectorRenderer.prototype.updateVisibilityForTile = function (tile)
 {
-    tile.visible = Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
-    return tile.visible;
+    var visible = tile.visible;
+    tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
+    tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
+    return (visible != tile.visible);
 };
 
 VectorRenderer.prototype.resizeMap = function (width, height)
@@ -186,6 +200,7 @@ VectorRenderer.prototype.requestRedraw = function ()
 
 VectorRenderer.prototype.render = function ()
 {
+    // Render on demand
     if (this.dirty == false || this.initialized == false) {
         return false;
     }
@@ -196,10 +211,16 @@ VectorRenderer.prototype.render = function ()
         this._render.apply(this, arguments);
     }
 
+    // Redraw every frame if animating
+    if (this.animated == true) {
+        this.dirty = true;
+    }
+
     // console.log("render map");
     return true;
 };
 
+// Load a single tile
 VectorRenderer.prototype.loadTile = function (coords, div, callback)
 {
     // Overzoom?
@@ -213,11 +234,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
     }
 
-    // Start tracking new tile set if no other tiles already loading
-    if (this.tile_set_loading == null) {
-        this.tile_set_loading = +new Date();
-        console.log("tile set load START");
-    }
+    this.trackTileSetLoadStart();
 
     var key = [coords.x, coords.y, coords.z].join('/');
 
@@ -242,24 +259,155 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.min = Geo.metersForTile(tile.coords);
     tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
     tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
-    tile.units_per_meter = VectorRenderer.units_per_meter[tile.coords.z];
-    tile.units_per_pixel = VectorRenderer.units_per_pixel[tile.coords.z];
     tile.debug = {};
     tile.loading = true;
     tile.loaded = false;
+
+    this.buildTile(tile.key);
+    this.updateTileElement(tile, div);
     this.updateVisibilityForTile(tile);
 
-    this.workers[this.next_worker].postMessage({
-        type: 'loadTile',
-        tile: tile,
+    if (callback) {
+        callback(null, div);
+    }
+};
+
+// Rebuild all tiles
+// TODO: also rebuild modes? (detect if changed)
+VectorRenderer.prototype.rebuildTiles = function ()
+{
+    // Update layers & styles
+    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+
+    // Tell workers we're about to rebuild (so they can refresh styles, etc.)
+    this.workers.forEach(function(worker) {
+        worker.postMessage({
+            type: 'prepareForRebuild',
+            layers: this.layers_serialized,
+            styles: this.styles_serialized
+        });
+    }.bind(this));
+
+    // Rebuild visible tiles first, from center out
+    // console.log("find visible");
+    var visible = [], invisible = [];
+    for (var t in this.tiles) {
+        if (this.tiles[t].visible == true) {
+            visible.push(t);
+        }
+        else {
+            invisible.push(t);
+        }
+    }
+
+    // console.log("sort visible distance");
+    visible.sort(function(a, b) {
+        // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
+        // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
+        var ad = this.tiles[a].center_dist;
+        var bd = this.tiles[b].center_dist;
+        return (bd > ad ? -1 : (bd == ad ? 0 : 1));
+    }.bind(this));
+
+    // console.log("build visible");
+    for (var t in visible) {
+        this.buildTile(visible[t]);
+    }
+
+    // console.log("build invisible");
+    for (var t in invisible) {
+        // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
+        if (this.isTileInZoom(this.tiles[invisible[t]]) == true) {
+            this.buildTile(invisible[t]);
+        }
+        // Drop tiles outside current zoom
+        else {
+            this.removeTile(invisible[t]);
+        }
+    }
+
+    this.updateActiveModes();
+    this.resetTime();
+};
+
+VectorRenderer.prototype.buildTile = function(key)
+{
+    var tile = this.tiles[key];
+
+    this.workerPostMessageForTile(tile, {
+        type: 'buildTile',
+        tile: {
+            key: tile.key,
+            coords: tile.coords, // used by style helpers
+            min: tile.min, // used by TileSource to scale tile to local extents
+            max: tile.max, // used by TileSource to scale tile to local extents
+            debug: tile.debug
+        },
         renderer_type: this.type,
         tile_source: this.tile_source,
-        layer_source: this.layer_source,
-        style_source: this.style_source
+        layers: this.layers_serialized,
+        styles: this.styles_serialized//,
+        // mode_states: VectorRenderer.getModeStates(this.modes)
     });
-    tile.worker = this.workers[this.next_worker];
-    this.next_worker = (this.next_worker + 1) % this.workers.length;
+    // console.log(this.modes);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
+};
 
+// Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
+VectorRenderer.prototype.workerBuildTileCompleted = function (event)
+{
+    if (event.data.type != 'buildTileCompleted') {
+        return;
+    }
+
+    var tile = event.data.tile;
+
+    // Sync modes
+    // VectorRenderer.refreshModeStates(this.modes, event.data.mode_states);
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
+
+    // Removed this tile during load?
+    if (this.tiles[tile.key] == null) {
+        console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
+        return;
+    }
+
+    // Update tile with properties from worker
+    tile = this.mergeTile(tile.key, tile);
+
+    // Child class-specific tile processing
+    if (typeof(this._tileWorkerCompleted) == 'function') {
+        this._tileWorkerCompleted(tile);
+    }
+
+    // NOTE: was previously deleting source data to save memory, but now need to save for re-building geometry
+    // delete tile.layers;
+
+    this.dirty = true;
+    this.trackTileSetLoadEnd();
+    this.printDebugForTile(tile);
+};
+
+VectorRenderer.prototype.removeTile = function (key)
+{
+    console.log("tile unload for " + key);
+    var tile = this.tiles[key];
+    if (tile != null) {
+        // Web worker will cancel XHR requests
+        this.workerPostMessageForTile(tile, {
+            type: 'removeTile',
+            key: tile.key
+        });
+    }
+
+    delete this.tiles[key];
+    this.dirty = true;
+};
+
+// Attaches tracking and debug into to the provided tile DOM element
+VectorRenderer.prototype.updateTileElement = function (tile, div)
+{
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
     div.style.width = '256px';
@@ -280,36 +428,90 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
         div.style.borderColor = 'white';
         div.style.borderWidth = '1px';
     }
+};
 
-    if (callback) {
-        callback(null, div);
+// Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
+// Used for selectively updating properties of tiles passed between main thread and worker
+// (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
+VectorRenderer.prototype.mergeTile = function (key, source_tile)
+{
+    var tile = this.tiles[key];
+
+    if (tile == null) {
+        this.tiles[key] = source_tile;
+        return this.tiles[key];
+    }
+
+    for (var p in source_tile) {
+        // console.log("merging " + p + ": " + source_tile[p]);
+        tile[p] = source_tile[p];
+    }
+
+    return tile;
+};
+
+// Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.
+VectorRenderer.prototype.reloadConfig = function ()
+{
+    if (this.layer_source != null) {
+        this.layers = VectorRenderer.loadLayers(this.layer_source);
+        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+    }
+
+    if (this.style_source != null) {
+        this.styles = VectorRenderer.loadStyles(this.style_source);
+        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+    }
+
+    if (this.layer_source != null || this.style_source != null) {
+        this.rebuildTiles();
     }
 };
 
-// Called on main thread when a web worker completes processing for a single tile
-VectorRenderer.prototype.tileWorkerCompleted = function (event)
+// Called (currently manually) after modes are updated in stylesheet
+VectorRenderer.prototype.refreshModes = function ()
 {
-    if (event.data.type != 'loadTileCompleted') {
-        return;
+    this.modes = VectorRenderer.refreshModes(this.modes, this.styles);
+};
+
+VectorRenderer.prototype.updateActiveModes = function ()
+{
+    // Make a set of currently active modes (used in a layer)
+    this.active_modes = {};
+    var animated = false; // is any active mode animated?
+    for (var l in this.styles.layers) {
+        var mode = this.styles.layers[l].mode.name;
+        if (this.styles.layers[l].visible !== false) {
+            this.active_modes[mode] = true;
+
+            // Check if this mode is animated
+            if (animated == false && this.modes[mode].animated == true) {
+                animated = true;
+            }
+        }
     }
+    this.animated = animated;
+};
 
-    var tile = event.data.tile;
+// Reset internal clock, mostly useful for consistent experience when changing modes/debugging
+VectorRenderer.prototype.resetTime = function ()
+{
+    this.start_time = +new Date();
+};
 
-    // Removed this tile during load?
-    if (this.tiles[tile.key] == null) {
-        console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
-        return;
+// Profiling methods used to track when sets of tiles start/stop loading together
+// e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
+VectorRenderer.prototype.trackTileSetLoadStart = function ()
+{
+    // Start tracking new tile set if no other tiles already loading
+    if (this.tile_set_loading == null) {
+        this.tile_set_loading = +new Date();
+        console.log("tile set load START");
     }
+};
 
-    this.tiles[tile.key] = tile; // TODO: OK to just wipe out the tile here? or could pass back a list of properties to replace? feeling the lack of underscore here...
-
-    // Child class-specific tile processing
-    if (typeof(this._tileWorkerCompleted) == 'function') {
-        this._tileWorkerCompleted(tile);
-    }
-
-    delete tile.layers; // delete the source data in the tile to save memory
-
+VectorRenderer.prototype.trackTileSetLoadEnd = function ()
+{
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
@@ -326,29 +528,6 @@ VectorRenderer.prototype.tileWorkerCompleted = function (event)
             console.log("tile set load FINISHED in: " + this.last_tile_set_load);
         }
     }
-
-    this.dirty = true;
-    if (tiles_debug) this.printDebugForTile(tile);
-};
-
-VectorRenderer.prototype.removeTile = function (key)
-{
-    console.log("tile unload for " + key);
-    var tile = this.tiles[key];
-    if (tile != null && tile.loading == true) {
-        console.log("cancel tile load for " + key);
-
-        // Web worker will cancel XHR requests
-        if (tile.worker != null) {
-            tile.worker.postMessage({
-                type: 'removeTile',
-                key: tile.key
-            });
-        }
-    }
-
-    delete this.tiles[key];
-    this.dirty = true;
 };
 
 VectorRenderer.prototype.printDebugForTile = function (tile)
@@ -362,21 +541,12 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 
 /*** Class methods (stateless) ***/
 
-// Simplistic detection of relative paths, append base if necessary
-VectorRenderer.urlForPath = function (path) {
-    var protocol = path.toLowerCase().substr(0, 4);
-    if (!(protocol == 'http' || protocol == 'file')) {
-        path = window.location.origin + window.location.pathname + path;
-    }
-    return path;
-};
-
 VectorRenderer.loadLayers = function (url)
 {
     var layers;
     var req = new XMLHttpRequest();
     req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
+    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
     return layers;
 };
@@ -385,9 +555,49 @@ VectorRenderer.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
-    req.onload = function () { eval('styles = ' + req.response); }; // TODO: security!
-    req.open('GET', url, false /* async flag */);
+    req.onload = function () { styles = req.response; }
+    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
+
+    // Try JSON first, then YAML (if available)
+    try {
+        eval('styles = ' + req.response);
+    }
+    catch (e) {
+        try {
+            styles = yaml.safeLoad(req.response);
+        }
+        catch (e) {
+            console.log("failed to parse styles!");
+            styles = null;
+        }
+    }
+
+    // Find generic functions & style macros
+    Utils.stringsToFunctions(styles);
+    Style.expandMacros(styles);
+    VectorRenderer.postProcessStyles(styles);
+
+    return styles;
+};
+
+// Normalize some style settings that may not have been explicitly specified in the stylesheet
+VectorRenderer.postProcessStyles = function (styles)
+{
+    // Post-process styles
+    for (var m in styles.layers) {
+        if (styles.layers[m].visible !== false) {
+            styles.layers[m].visible = true;
+        }
+
+        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
+            styles.layers[m].mode = {};
+            for (var p in Style.defaults.mode) {
+                styles.layers[m].mode[p] = Style.defaults.mode[p];
+            }
+        }
+    }
+
     return styles;
 };
 
@@ -421,97 +631,80 @@ VectorRenderer.processLayersForTile = function (layers, tile)
     return tile_layers;
 };
 
+// Called once on instantiation
+VectorRenderer.createModes = function (modes, styles)
+{
+    // Built-in modes
+    var built_ins = require('./gl/gl_modes').Modes; // TODO: make this non-GL specific
+    for (var m in built_ins) {
+        modes[m] = built_ins[m];
+    }
 
-/*** Style parsing & defaults ***/
+    // Stylesheet modes
+    for (var m in styles.modes) {
+        // if (m != 'all') {
+            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
+        // }
+    }
 
-// Determine final style properties (color, width, etc.)
-VectorRenderer.style_defaults = {
-    color: [1.0, 0, 0],
-    width: Style.width.pixels(5),
-    size: Style.width.pixels(5),
-    extrude: false,
-    height: 20,
-    min_height: 0,
-    outline: {
-        // color: [1.0, 0, 0],
-        // width: 1,
-        // dash: null
-    },
-    // render_mode: {
-    //     name: 'polygons'
-    // }
-    render_mode: 'polygons'
+    return modes;
 };
 
-VectorRenderer.parseStyleForFeature = function (feature, layer_style, tile)
+VectorRenderer.refreshModes = function (modes, styles)
 {
-    var layer_style = layer_style || {};
-    var style = {};
+    // Copy stylesheet modes
+    // TODO: is this the best way to copy stylesheet changes to mode instances?
+    for (var m in styles.modes) {
+        // if (m != 'all') {
+            ModeManager.configureMode(m, styles.modes[m]);
+        // }
+    }
 
-    // Test whether features should be rendered at all
-    if (typeof layer_style.filter == 'function') {
-        if (layer_style.filter(feature, tile) == false) {
-            return null;
+    // Refresh all modes
+    for (m in modes) {
+        modes[m].refresh();
+    }
+
+    return modes;
+};
+
+// Used for passing mode state information between main thread and worker (since entire object can't be exchanged due to cloning restrictions)
+// VectorRenderer.getModeStates = function (modes)
+// {
+//     var mode_states = {};
+//     for (var m in modes) {
+//         mode_states[m] = modes[m].state;
+//     }
+//     return mode_states;
+// };
+
+// VectorRenderer.refreshModeStates = function (modes, mode_states)
+// {
+//     for (var m in mode_states) {
+//         if (modes[m] != null) {
+//             modes[m].updateState(mode_states[m]);
+//         }
+//     }
+// }
+
+// Private/internal
+
+// Get base URL from which the library was loaded
+// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
+function findBaseLibraryURL ()
+{
+    VectorRenderer.library_base_url = '';
+    var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
+    for (var s=0; s < scripts.length; s++) {
+        var match = scripts[s].src.indexOf('vector-map.debug.js');
+        if (match == -1) {
+            match = scripts[s].src.indexOf('vector-map.min.js');
+        }
+        if (match >= 0) {
+            VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
+            break;
         }
     }
-
-    // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || VectorRenderer.style_defaults.color;
-    if (typeof style.color == 'function') {
-        style.color = style.color(feature, tile);
-    }
-
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || VectorRenderer.style_defaults.width;
-    if (typeof style.width == 'function') {
-        style.width = style.width(feature, tile);
-    }
-
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || VectorRenderer.style_defaults.size;
-    if (typeof style.size == 'function') {
-        style.size = style.size(feature, tile);
-    }
-
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || VectorRenderer.style_defaults.extrude;
-    if (typeof style.extrude == 'function') {
-        style.extrude = style.extrude(feature, tile); // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
-    }
-
-    style.height = (feature.properties && feature.properties.height) || VectorRenderer.style_defaults.height;
-    style.min_height = (feature.properties && feature.properties.min_height) || VectorRenderer.style_defaults.min_height;
-
-    // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-    if (style.extrude) {
-        if (typeof style.extrude == 'number') {
-            style.height = style.extrude;
-        }
-        else if (typeof style.extrude == 'object' && style.extrude.length >= 2) {
-            style.min_height = style.extrude[0];
-            style.height = style.extrude[1];
-        }
-    }
-
-    style.outline = {};
-    layer_style.outline = layer_style.outline || {};
-    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || VectorRenderer.style_defaults.outline.color;
-    if (typeof style.outline.color == 'function') {
-        style.outline.color = style.outline.color(feature, tile);
-    }
-
-    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || VectorRenderer.style_defaults.outline.width;
-    if (typeof style.outline.width == 'function') {
-        style.outline.width = style.outline.width(feature, tile);
-    }
-
-    style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || VectorRenderer.style_defaults.outline.dash;
-    if (typeof style.outline.dash == 'function') {
-        style.outline.dash = style.outline.dash(feature, tile);
-    }
-
-    style.render_mode = layer_style.render_mode || VectorRenderer.style_defaults.render_mode;
-    // style.render_mode = {};
-    // style.render_mode.name = (layer_style.render_mode && layer_style.render_mode.name) || VectorRenderer.style_defaults.render_mode.name;
-
-    return style;
 };
 
 if (module !== undefined) {

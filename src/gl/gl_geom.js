@@ -14,6 +14,7 @@ function GLGeometry (gl, gl_program, vertex_data, attribs, options)
     this.buffer = this.gl.createBuffer();
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
+    this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
 
     // Calc vertex stride
     this.vertex_stride = 0;
@@ -40,6 +41,7 @@ function GLGeometry (gl, gl_program, vertex_data, attribs, options)
     }
 
     this.vertex_count = this.vertex_data.byteLength / this.vertex_stride;
+    this.geometry_count = this.vertex_count / this.vertices_per_geometry;
 
     this.vao = GL.VertexArrayObject.create(function() {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
@@ -58,9 +60,15 @@ GLGeometry.prototype.setup = function ()
     }
 };
 
-GLGeometry.prototype.render = function ()
+GLGeometry.prototype.render = function (options)
 {
-    this.gl.useProgram(this.gl_program.program);
+    var options = options || {};
+
+    // Caller has already set program
+    if (options.set_program !== false) {
+        this.gl.useProgram(this.gl_program.program);
+    }
+
     GL.VertexArrayObject.bind(this.vao);
 
     if (typeof this._render == 'function') {
@@ -79,60 +87,28 @@ GLGeometry.prototype.destroy = function ()
     delete this.vertex_data;
 };
 
-// Draws a set of triangles
-GLTriangles.prototype = Object.create(GLGeometry.prototype);
-
-function GLTriangles (gl, gl_program, vertex_data)
-{
-    GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
-    this.geometry_count = this.vertex_count / 3;
-}
-
-// Draws a set of points as quads, intended to be rendered as distance fields
-GLPolyPoints.prototype = Object.create(GLGeometry.prototype);
-
-function GLPolyPoints (gl, gl_program, vertex_data)
-{
-    GLGeometry.call(this, gl, gl_program, vertex_data, [
-        { name: 'position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'texcoord', size: 2, type: gl.FLOAT, normalized: false },
-        { name: 'color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
-    this.geometry_count = this.vertex_count / 3;
-}
-
 // Draws a set of lines
-// Shares all characteristics with triangles except for draw mode
-GLLines.prototype = Object.create(GLTriangles.prototype);
+GLLines.prototype = Object.create(GLGeometry.prototype);
 
-function GLLines (gl, gl_program, vertex_data, options)
+function GLLines (gl, gl_program, vertex_data, attribs, options)
 {
     options = options || {};
-    GLTriangles.call(this, gl, program, vertex_data);
-    this.draw_mode = this.gl.LINES;
+    options.draw_mode = this.gl.LINES;
+
     this.line_width = options.line_width || 2;
-    this.geometry_count = this.vertex_count / 2;
+    this.vertices_per_geometry = 2;
+
+    GLGeometry.call(this, gl, gl_program, vertex_data, attribs, options);
 }
 
 GLLines.prototype._render = function ()
 {
     this.gl.lineWidth(this.line_width);
-    if (typeof GLTriangles.prototype._render == 'function') {
-        GLTriangles.prototype._render.call(this);
-    }
 };
 
 if (module !== undefined) {
     module.exports = {
         GLGeometry: GLGeometry,
-        GLTriangles: GLTriangles,
-        GLPolyPoints: GLPolyPoints,
         GLLines: GLLines
     };
 }

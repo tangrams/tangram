@@ -3,49 +3,106 @@ var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var CanvasRenderer = require('./canvas/canvas_renderer.js');
+var Utils = require('./utils.js');
 
 var VectorWorker = {};
 VectorWorker.worker = self;
-
 VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
+
+// TODO: sync render mode state between main thread and worker
+// VectorWorker.modes = require('./gl/gl_modes').Modes;
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
 
-VectorWorker.tile_source = null;
+VectorWorker.buildTile = function (tile)
+{
+    // Tile keys that will be sent back to main thread
+    // We send a minimal subset to avoid unnecessary data exchange
+    var keys;
 
-// Load tile
+    // Renderer-specific transforms
+    if (typeof VectorWorker.renderer.addTile == 'function') {
+        tile.debug.rendering = +new Date();
+        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles, VectorWorker.modes);
+        tile.debug.rendering = +new Date() - tile.debug.rendering;
+    }
+
+    // Make sure we send some core pieces of info
+    keys.key = true;
+    keys.loading = true;
+    keys.loaded = true;
+    keys.debug = true;
+
+    // Build the tile subset
+    var tile_subset = {};
+    for (var k in keys) {
+        tile_subset[k] = tile[k];
+    }
+
+    VectorWorker.worker.postMessage({
+        type: 'buildTileCompleted',
+        tile: tile_subset//,
+        // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
+    });
+    // console.log(JSON.stringify(VectorWorker.modes.polygons.state));
+    // console.log(JSON.stringify(VectorRenderer.getModeStates(VectorWorker.modes)));
+};
+
+// Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
 VectorWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'loadTile') {
+    if (event.data.type != 'buildTile') {
         return;
     }
 
-    var tile = event.data.tile; // TODO: keep track of tiles being loaded by this worker
-    var renderer_type = event.data.renderer_type;
+    var tile = event.data.tile;
 
-    VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
-    VectorWorker.layers = VectorWorker.layers || VectorRenderer.loadLayers(event.data.layer_source);
-    VectorWorker.styles = VectorWorker.styles || VectorRenderer.loadStyles(event.data.style_source);
+    // Tile cached?
+    if (VectorWorker.tiles[tile.key] != null) {
+        // Already loading?
+        if (VectorWorker.tiles[tile.key].loading == true) {
+            return;
+        }
 
+        // Get layers from cache
+        tile.layers = VectorWorker.tiles[tile.key].layers;
+    }
+
+    // Update tile cache tile
     VectorWorker.tiles[tile.key] = tile;
 
-    VectorWorker.tile_source.loadTile(tile, function () {
-        // Extract desired layers from full GeoJSON
-        VectorRenderer.processLayersForTile(VectorWorker.layers, tile);
+    // Refresh config
+    VectorWorker.renderer_type = event.data.renderer_type;
+    VectorWorker.renderer = VectorRenderer[VectorWorker.renderer_type];
+    VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
+    VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
+    VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
 
-        // Renderer-specific transforms
-        tile.debug.rendering = +new Date();
-        if (VectorRenderer[renderer_type].addTile != null) {
-            VectorRenderer[renderer_type].addTile(tile, VectorWorker.layers, VectorWorker.styles);
-        }
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
+    // First time building the tile
+    if (tile.layers == null) {
+        // Reset load state
+        tile.loaded = false;
+        tile.loading = true;
 
-        VectorWorker.worker.postMessage({
-            type: 'loadTileCompleted',
-            tile: tile
+        VectorWorker.tile_source.loadTile(tile, function () {
+            VectorRenderer.processLayersForTile(VectorWorker.layers, tile); // extract desired layers from full GeoJSON
+            VectorWorker.buildTile(tile);
         });
+    }
+    // Tile already loaded, just rebuild
+    else {
+        console.log("used worker cache for tile " + tile.key);
 
-        delete VectorWorker.tiles[tile.key];
-    });
+        // Update loading state
+        tile.loaded = true;
+        tile.loading = false;
+
+        // TODO: should we rebuild layers here as well?
+        // - if so, we need to save the raw un-processed tile data
+        // - benchmark the layer processing time to see if it matters
+        // - benchmark tesselation time for comparison (and could cache tesselation)
+        VectorWorker.buildTile(tile);
+    }
 });
 
 // Remove tile
@@ -59,14 +116,31 @@ VectorWorker.worker.addEventListener('message', function (event) {
     // console.log("worker remove tile event for " + key);
 
     if (tile != null) {
-        // TODO: let tile source do this
-        tile.loading = false;
+        if (tile.loading == true) {
+            console.log("cancel tile load for " + key);
+            // TODO: let tile source do this
+            tile.loading = false;
 
-        if (tile.xhr != null) {
-            tile.xhr.abort();
-            // console.log("aborted XHR for tile " + tile.key);
+            if (tile.xhr != null) {
+                tile.xhr.abort();
+                // console.log("aborted XHR for tile " + tile.key);
+            }
         }
 
+        // Remove from cache
         delete VectorWorker.tiles[key];
     }
+});
+
+// Make layers/styles refresh config
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'prepareForRebuild') {
+        return;
+    }
+
+    VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
+    VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
+    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
+
+    console.log("worker refreshed config for tile rebuild");
 });

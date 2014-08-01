@@ -11,19 +11,45 @@ GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex
 {
     options = options || {};
 
-    var vertex_constants = [z, 0, 0, 1]; // provided z, and upwards-facing normal
+    var vertex_constants = [];
+    if (z != null) {
+        vertex_constants.push(z); // provided z
+    }
+    if (options.normals) {
+        vertex_constants.push(0, 0, 1); // upwards-facing normal
+    }
     if (options.vertex_constants) {
         vertex_constants.push.apply(vertex_constants, options.vertex_constants);
+    }
+    if (vertex_constants.length == 0) {
+        vertex_constants = null;
     }
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var vertices = GL.triangulatePolygon(polygons[p]);
-        GL.addVertices(vertices, vertex_data, vertex_constants);
+        GL.addVertices(vertices, vertex_constants, vertex_data);
     }
 
     return vertex_data;
 };
+
+// Callback-base builder (for future exploration)
+// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
+// GLBuilders.buildPolygons2 = function GLBuildersBuildPolygon2 (polygons, z, addGeometry, options)
+// {
+//     options = options || {};
+
+//     var num_polygons = polygons.length;
+//     for (var p=0; p < num_polygons; p++) {
+//         var vertices = {
+//             positions: GL.triangulatePolygon(polygons[p], z),
+//             normals: (options.normals ? [0, 0, 1] : null)
+//         };
+
+//         addGeometry(vertices);
+//     }
+// };
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
 GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (polygons, z, height, min_height, vertex_data, options)
@@ -33,7 +59,18 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
     var max_z = z + height;
 
     // Top
-    GLBuilders.buildPolygons(polygons, max_z, vertex_data, { vertex_constants: options.vertex_constants });
+    GLBuilders.buildPolygons(polygons, max_z, vertex_data, { normals: true, vertex_constants: options.vertex_constants });
+    // var top_vertex_constants = [0, 0, 1];
+    // if (options.vertex_constants != null) {
+    //     top_vertex_constants.push.apply(top_vertex_constants, options.vertex_constants);
+    // }
+    // GLBuilders.buildPolygons2(
+    //     polygons,
+    //     max_z,
+    //     function (vertices) {
+    //         GL.addVertices(vertices.positions, top_vertex_constants, vertex_data);
+    //     }
+    // );
 
     // Walls
     var wall_vertex_constants = [null, null, null]; // normals will be calculated below
@@ -73,7 +110,7 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
                 wall_vertex_constants[1] = normal[1];
                 wall_vertex_constants[2] = normal[2];
 
-                GL.addVertices(wall_vertices, vertex_data, wall_vertex_constants);
+                GL.addVertices(wall_vertices, wall_vertex_constants, vertex_data);
             }
         }
     }
@@ -196,7 +233,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
         }
     };
 
-    GL.addVertices(vertices, vertex_data, vertex_constants);
+    GL.addVertices(vertices, vertex_constants, vertex_data);
 
     // Build triangles for a single line segment, extruded by the provided width
     function buildSegment (pa, pb) {
@@ -361,9 +398,26 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
 };
 
 // Build a quad centered on a point
-GLBuilders.buildQuads = function GLBuildersBuildQuads (points, width, height, addGeometry, options)
+// Z coord, normals, and texcoords are optional
+// Layout order is:
+//   position (2 or 3 components)
+//   texcoord (optional, 2 components)
+//   normal (optional, 3 components)
+//   constants (optional)
+GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data, options)
 {
     var options = options || {};
+
+    var vertex_constants = [];
+    if (options.normals) {
+        vertex_constants.push(0, 0, 1); // upwards-facing normal
+    }
+    if (options.vertex_constants) {
+        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
+    }
+    if (vertex_constants.length == 0) {
+        vertex_constants = null;
+    }
 
     var num_points = points.length;
     for (var p=0; p < num_points; p++) {
@@ -379,6 +433,16 @@ GLBuilders.buildQuads = function GLBuildersBuildQuads (points, width, height, ad
             [point[0] - width/2, point[1] + height/2],
         ];
 
+        // Add provided z
+        if (z != null) {
+            positions[0][2] = z;
+            positions[1][2] = z;
+            positions[2][2] = z;
+            positions[3][2] = z;
+            positions[4][2] = z;
+            positions[5][2] = z;
+        }
+
         if (options.texcoords == true) {
             var texcoords = [
                 [-1, -1],
@@ -389,15 +453,56 @@ GLBuilders.buildQuads = function GLBuildersBuildQuads (points, width, height, ad
                 [1, 1],
                 [-1, 1]
             ];
-        }
 
-        var vertices = {
-            positions: positions,
-            texcoords: (options.texcoords && texcoords)
-        };
-        addGeometry(vertices);
+            GL.addVerticesMultipleAttributes([positions, texcoords], vertex_constants, vertex_data);
+        }
+        else {
+            GL.addVertices(positions, vertex_constants, vertex_data);
+        }
     }
+
+    return vertex_data;
 };
+
+// Callback-base builder (for future exploration)
+// GLBuilders.buildQuadsForPoints2 = function GLBuildersBuildQuadsForPoints (points, width, height, addGeometry, options)
+// {
+//     var options = options || {};
+
+//     var num_points = points.length;
+//     for (var p=0; p < num_points; p++) {
+//         var point = points[p];
+
+//         var positions = [
+//             [point[0] - width/2, point[1] - height/2],
+//             [point[0] + width/2, point[1] - height/2],
+//             [point[0] + width/2, point[1] + height/2],
+
+//             [point[0] - width/2, point[1] - height/2],
+//             [point[0] + width/2, point[1] + height/2],
+//             [point[0] - width/2, point[1] + height/2],
+//         ];
+
+//         if (options.texcoords == true) {
+//             var texcoords = [
+//                 [-1, -1],
+//                 [1, -1],
+//                 [1, 1],
+
+//                 [-1, -1],
+//                 [1, 1],
+//                 [-1, 1]
+//             ];
+//         }
+
+//         var vertices = {
+//             positions: positions,
+//             normals: (options.normals ? [0, 0, 1] : null),
+//             texcoords: (options.texcoords && texcoords)
+//         };
+//         addGeometry(vertices);
+//     }
+// };
 
 // Build native GL lines for a polyline
 GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, style, tile, z, vertex_data, options)

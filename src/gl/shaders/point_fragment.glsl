@@ -1,27 +1,20 @@
-uniform vec2 resolution;
+uniform vec2 u_resolution;
 
-varying vec3 fcolor;
-varying vec2 ftexcoord;
+varying vec3 v_color;
+varying vec2 v_texcoord;
 
 void main (void) {
-    vec4 color = vec4(fcolor, 1.);
+    vec3 color = v_color;
+    vec3 lighting = vec3(1.);
 
-    // if (length(ftexcoord.xy) > 10.) {
-    //     // color = vec4(0., 0., 0., 0.);
-    //     discard;
-    // }
-
-    float len = length(ftexcoord);
+    // Simple threshold at dot radius
+    float len = length(v_texcoord);
     if (len > 1.) {
         discard;
     }
-    color.rgb *= (1. - smoothstep(.25, 1., len)) + 0.5;
-    // color.a = (1. - smoothstep(2.5, 10., len)) + 0.25;
+    color *= (1. - smoothstep(.25, 1., len)) + 0.5;
 
-    #if defined(EFFECT_SCREEN_COLOR)
-        // Mutate colors by screen position
-        color.rgb += vec3(gl_FragCoord.x / resolution.x, 0.0, gl_FragCoord.y / resolution.y);
-    #endif
+    #pragma tangram: fragment
 
-    gl_FragColor = color;
+    gl_FragColor = vec4(color, 1.);
 }
