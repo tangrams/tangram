@@ -40,10 +40,5 @@ void main (void) {
 
     #pragma tangram: fragment
 
-        // color = vec3(v_position);
-        // color = vec3(v_normal);
-        // color = vec3(v_color);
-        // color = vec3(u_meters_per_pixel);
-
     gl_FragColor = vec4(color, 1.0);
 }
