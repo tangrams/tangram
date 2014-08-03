@@ -2,6 +2,7 @@
 
 #pragma glslify: pointLight = require(./point_light)
 #pragma glslify: directionalLight = require(./directional_light)
+#pragma glslify: environmentMap = require(./environment_map)
 // #pragma glslify: heightBoostLight = require(./height_light)
 
 vec3 lighting (
@@ -23,6 +24,9 @@ vec3 lighting (
     #elif defined(LIGHTING_DIRECTION)
         // Light at infinite distance - angle is static
         color = directionalLight(normal, color, light_dir, light_ambient);
+    #elif defined(LIGHTING_ENVIRONMENT)
+        // spherical environment reflection lookup, no lighting calculation
+        color = environmentMap(colorMap, envMap);
     #else
         color = color;
     #endif

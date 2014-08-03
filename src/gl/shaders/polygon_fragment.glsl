@@ -7,6 +7,11 @@ uniform float u_time;
 varying vec3 v_color;
 varying vec4 v_position_world;
 
+#if defined(LIGHTING_ENVIRONMENT)
+    uniform sampler2D colorMap;
+    uniform sampler2D envMap;
+#endif
+
 #if !defined(LIGHTING_VERTEX)
     varying vec4 v_position;
     varying vec3 v_normal;
