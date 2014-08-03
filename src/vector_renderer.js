@@ -59,6 +59,10 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
+
+    this.zooming = false;
+    this.panning = false;
+
     this.resetTime();
 }
 
@@ -133,17 +137,17 @@ VectorRenderer.prototype.setCenter = function (lng, lat)
 VectorRenderer.prototype.setZoom = function (zoom)
 {
     // console.log("setZoom " + zoom);
-    this.map_last_zoom = this.zoom;
+    this.last_zoom = this.zoom;
     this.zoom = zoom;
     this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
-    this.map_zooming = false;
+    this.zooming = false;
     this.dirty = true;
 };
 
 VectorRenderer.prototype.startZoom = function ()
 {
-    this.map_last_zoom = this.zoom;
-    this.map_zooming = true;
+    this.last_zoom = this.zoom;
+    this.zooming = true;
 };
 
 VectorRenderer.prototype.setBounds = function (sw, ne)

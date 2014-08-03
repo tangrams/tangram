@@ -200,7 +200,7 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
 
 GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
 {
-    if (this.map_zooming == true) {
+    if (this.zooming == true) {
         return; // short circuit tile removal, GL renderer will sweep out tiles by zoom level when zoom ends
     }
 
@@ -225,10 +225,10 @@ GLRenderer.prototype.setZoom = function (zoom)
     // Schedule GL tiles for removal on zoom
     var below = zoom;
     var above = zoom;
-    if (this.map_last_zoom != null) {
-        console.log("renderer.map_last_zoom: " + this.map_last_zoom);
-        if (Math.abs(zoom - this.map_last_zoom) <= this.preserve_tiles_within_zoom) {
-            if (zoom > this.map_last_zoom) {
+    if (this.last_zoom != null) {
+        console.log("renderer.last_zoom: " + this.last_zoom);
+        if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
+            if (zoom > this.last_zoom) {
                 below = zoom - this.preserve_tiles_within_zoom;
             }
             else {
