@@ -38,6 +38,7 @@ const float light_ambient = 0.5;
 #pragma tangram: globals
 
 void main() {
+    // u_tile_view ~= model view
     vec4 position = u_tile_view * vec4(a_position, 1.);
 
     // World coordinates for 3d procedural textures
