@@ -222,12 +222,12 @@ layers:
 
     buildings:
         mode:
-            name: rainbow2
             # name: popup
             # name: breathe
             # name: formica
             # name: dots
             # name: wood
+            # name: rainbow2
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
