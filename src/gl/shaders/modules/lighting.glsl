@@ -1,6 +1,7 @@
 // Wrapper for the various lighting modes used in the demo
 
 #pragma glslify: pointLight = require(./point_light)
+#pragma glslify: specularLight = require(./specular_point_light)
 #pragma glslify: directionalLight = require(./directional_light)
 // #pragma glslify: heightBoostLight = require(./height_light)
 
