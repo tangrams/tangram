@@ -64,6 +64,11 @@ shader_sources['polygon_fragment'] =
 "uniform float u_time;\n" +
 "varying vec3 v_color;\n" +
 "varying vec4 v_position_world;\n" +
+"#if defined(LIGHTING_ENVIRONMENT)\n" +
+"\n" +
+"uniform sampler2D u_envMap;\n" +
+"#endif\n" +
+"\n" +
 "#if !defined(LIGHTING_VERTEX)\n" +
 "\n" +
 "varying vec4 v_position;\n" +
@@ -121,12 +126,21 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
+"  #if defined(LIGHTING_ENVIRONMENT)\n" +
+"  vec3 view_pos = vec3(0., 0., 300. * u_meters_per_pixel);\n" +
+"  vec3 e = normalize(v_position.xyz - view_pos.xyz);\n" +
+"  vec3 r = reflect(e, v_normal);\n" +
+"  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" +
+"  vec2 texCoord = r.xy / m + .5;\n" +
+"  color = texture2D(u_envMap, texCoord).rgb;\n" +
+"  #endif\n" +
+"  \n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
 "  vec3 lighting = a_x_lighting(v_position, v_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
-"  color *= lighting;\n" +
+"  \n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
 "}\n" +
@@ -150,6 +164,10 @@ shader_sources['polygon_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec4 v_position_world;\n" +
 "varying vec3 v_color;\n" +
+"#if defined(LIGHTING_ENVIRONMENT)\n" +
+"\n" +
+"#endif\n" +
+"\n" +
 "#if !defined(LIGHTING_VERTEX)\n" +
 "\n" +
 "varying vec4 v_position;\n" +
@@ -236,9 +254,9 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  position = u_meter_view * position;\n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
-"  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" +
+"  position = a_x_perspective(position, vec2(-.25, -.25), vec2(0.6, 0.6));\n" +
 "  #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)\n" +
-"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
+"  position = b_x_isometric(position, vec2(0., 1., 1.));\n" +
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +

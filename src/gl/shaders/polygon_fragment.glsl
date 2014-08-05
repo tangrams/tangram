@@ -9,7 +9,7 @@ varying vec4 v_position_world;
 
 #if defined(LIGHTING_ENVIRONMENT)
     uniform sampler2D u_envMap;
-    varying vec2 v_texCoord;
+    // varying vec2 texCoord;
 #endif
 
 #if !defined(LIGHTING_VERTEX)
@@ -23,11 +23,36 @@ const float light_ambient = 0.5;
 
 // Imported functions
 #pragma glslify: calculateLighting = require(./modules/lighting)
+// #pragma glslify: environmentMap = require(./modules/environment_map)
 
 #pragma tangram: globals
 
 void main (void) {
     vec3 color = v_color;
+
+    #if defined(LIGHTING_ENVIRONMENT)
+
+        // approximate location of eye (TODO: make this configurable)
+        vec3 view_pos = vec3(0., 0., 300. * u_meters_per_pixel); 
+        // e = normalized vector from eye to vertex
+        vec3 e = normalize(v_position.xyz - view_pos.xyz);
+        // e.z = -abs(e.z);
+        // if (e.z > 0.) {
+        //     e.z = 0.;
+        // }
+
+        vec3 r = reflect( e, v_normal );
+        float m = 2. * sqrt( 
+            pow( r.x, 2. ) + 
+            pow( r.y, 2. ) + 
+            pow( r.z + 1., 2. ) 
+        );
+
+        vec2 texCoord = r.xy / m + .5;
+
+        color = texture2D( u_envMap, texCoord).rgb;
+
+    #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
         vec3 lighting = calculateLighting(
@@ -40,11 +65,8 @@ void main (void) {
         vec3 lighting = v_lighting;
     #endif
 
-    #if defined(LIGHTING_ENVIRONMENT)
-        color = texture2D(u_envMap, v_texCoord);
-    #endif
     // Apply lighting to color (can be overriden by transforms)
-    color *= lighting;
+    // color *= lighting;
 
     #pragma tangram: fragment
 

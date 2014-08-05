@@ -45,6 +45,12 @@ GLRenderer.prototype._init = function GLRendererInit ()
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.last_render_count = null;
     this.initInputHandlers();
+
+    // this.texture = new GL.Texture(this.gl, "LitSphere_test_02.jpg");
+    // this.texture = new GL.Texture(this.gl, "wheel.png");
+    // this.texture = new GL.Texture(this.gl, "matball01.jpg");
+    this.texture = new GL.Texture(this.gl, "sunset.jpg");
+    
 };
 
 GLRenderer.prototype.initModes = function ()

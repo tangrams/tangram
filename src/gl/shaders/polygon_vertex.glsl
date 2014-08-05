@@ -21,10 +21,7 @@ varying vec4 v_position_world;
 varying vec3 v_color;
 
 #if defined(LIGHTING_ENVIRONMENT)
-    attribute vec2 a_texCoord;
-    varying vec2 v_texCoord;
-
-    // varying vec4 gl_TexCoord;
+    // varying vec2 texCoord;
 #endif
 
 #if !defined(LIGHTING_VERTEX)
@@ -74,27 +71,15 @@ void main() {
     position = u_meter_view * position; // convert meters to screen space (0-1)
 
     #if defined(PROJECTION_PERSPECTIVE)
-        position = perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));
+        position = perspective(position, vec2(-.25, -.25), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
     #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-        position = isometric(position, vec2(0., 1.), 1.);
+        position = isometric(position, vec2(0., 1., 1.));
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
     #endif
 
     position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
     
-    #if defined(LIGHTING_ENVIRONMENT)
 
-        v_texCoord = a_texCoord;
-        // texture coordinates
-        // gl_TexCoord[0] = gl_MultiTexCoord0;
-        
-        // vec3 u = normalize( vec3(gl_ModelViewMatrix * gl_Vertex) );
-        // vec3 n = normalize( gl_NormalMatrix * gl_Normal );
-        // vec3 r = reflect( u, n );
-        // float m = 2.0 * sqrt( r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0) );
-        // gl_TexCoord[1].s = r.x/m + 0.5;
-        // gl_TexCoord[1].t = r.y/m + 0.5;
-    #endif
 
     gl_Position = position;
 }
