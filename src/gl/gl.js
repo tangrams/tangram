@@ -680,7 +680,6 @@ GL.Texture.prototype.initTexture = function () {
   // callback triggered once Image() has finished loading from the url
   this.image.onload = function() { this.loadImage(); }.bind(this);
   this.image.src = this.url;
-  console.log(this.image);
 };
 
 // put the loaded image into the texture and create texture coordinates
