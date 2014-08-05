@@ -1,6 +1,7 @@
 // Wrapper for the various lighting modes used in the demo
 
 #pragma glslify: pointLight = require(./point_light)
+#pragma glslify: specularLight = require(./specular_point_light)
 #pragma glslify: directionalLight = require(./directional_light)
 #pragma glslify: environmentMap = require(./environment_map)
 // #pragma glslify: heightBoostLight = require(./height_light)
@@ -18,6 +19,8 @@ vec3 lighting (
         // Point light - angle varies
         color = pointLight(position, normal, color, light_pos, light_ambient, true);
         // color = heightBoostLight(position, color, 1.0, 0.5);
+    #elif defined(LIGHTING_POINT_SPECULAR)
+        color = specularLight(position, normal, color, light_pos, light_ambient, true);
     #elif defined(LIGHTING_NIGHT)
         // "Night" effect shading - variant on point light
         color = pointLight(position, normal, color, night_light_pos, 0., false);

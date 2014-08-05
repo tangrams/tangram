@@ -213,7 +213,8 @@ var gl_define_options = {
         lighting: 'LIGHTING_POINT',
         options: {
             'None': '',
-            'Gradient': 'LIGHTING_POINT',
+            'Diffuse': 'LIGHTING_POINT',
+            'Specular': 'LIGHTING_POINT_SPECULAR',
             'Flat': 'LIGHTING_DIRECTION',
             'Night': 'LIGHTING_NIGHT',
             'EnvMap': 'LIGHTING_ENVIRONMENT'
@@ -225,7 +226,7 @@ var gl_define_options = {
     //         'Per-Vertex': 'LIGHTING_VERTEX',
     //         'Per-Pixel': 'LIGHTING_PIXEL'
     //     }
-    // },
+    // }
 };
 window.gl_define_options = gl_define_options;
 
