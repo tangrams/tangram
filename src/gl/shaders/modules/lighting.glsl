@@ -26,7 +26,7 @@ vec3 lighting (
         color = directionalLight(normal, color, light_dir, light_ambient);
     #elif defined(LIGHTING_ENVIRONMENT)
         // spherical environment reflection lookup, no lighting calculation
-        color = environmentMap(colorMap, envMap);
+        color = environmentMap(u_envMap, v_texCoord);
     #else
         color = color;
     #endif

@@ -8,8 +8,8 @@ varying vec3 v_color;
 varying vec4 v_position_world;
 
 #if defined(LIGHTING_ENVIRONMENT)
-    uniform sampler2D colorMap;
-    uniform sampler2D envMap;
+    uniform sampler2D u_envMap;
+    varying vec2 v_texCoord;
 #endif
 
 #if !defined(LIGHTING_VERTEX)
@@ -40,6 +40,9 @@ void main (void) {
         vec3 lighting = v_lighting;
     #endif
 
+    #if defined(LIGHTING_ENVIRONMENT)
+        color = texture2D(u_envMap, v_texCoord);
+    #endif
     // Apply lighting to color (can be overriden by transforms)
     color *= lighting;
 
