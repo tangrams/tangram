@@ -213,7 +213,8 @@ var gl_define_options = {
         lighting: 'LIGHTING_POINT',
         options: {
             'None': '',
-            'Gradient': 'LIGHTING_POINT',
+            'Diffuse': 'LIGHTING_POINT',
+            'Specular': 'LIGHTING_POINT_SPECULAR',
             'Flat': 'LIGHTING_DIRECTION',
             'Night': 'LIGHTING_NIGHT'
         }
@@ -224,7 +225,7 @@ var gl_define_options = {
     //         'Per-Vertex': 'LIGHTING_VERTEX',
     //         'Per-Pixel': 'LIGHTING_PIXEL'
     //     }
-    // },
+    // }
 };
 window.gl_define_options = gl_define_options;
 
@@ -487,9 +488,9 @@ var gl_mode_options = {
                     this.uniforms.u_wood_eccentricity = value;
                 }.bind(this));
 
-                this.state.twist = this.uniforms.u_wood_twist / .001;
+                this.state.twist = this.uniforms.u_wood_twist / .0001;
                 this.folder.add(this.state, 'twist', 0, 1).onChange(function(value) {
-                    this.uniforms.u_wood_twist = value * .001;
+                    this.uniforms.u_wood_twist = value * .0001;
                 }.bind(this));
 
                 this.state.scale = this.uniforms.u_wood_scale / 100;
@@ -502,6 +503,15 @@ var gl_mode_options = {
     initial: {}, // initial state to restore to on mode switch
     folder: null, // set to current (if any) DAT.gui folder name, cleared on mode switch
     scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
+        if ((typeof c == 'string' || c instanceof String) && c[0].charAt(0) == "#") {
+            // convert from hex to rgb
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+            c = result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : null;
+        }
         return [c[0] * factor, c[1] * factor, c[2] * factor];
     }
 };

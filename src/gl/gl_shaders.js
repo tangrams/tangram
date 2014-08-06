@@ -79,7 +79,25 @@ shader_sources['polygon_fragment'] =
 "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 c_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 c_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  vec3 view_pos = vec3(0., 0., 500.);\n" +
+"  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
+"  vec3 specularReflection;\n" +
+"  if(dot(normal, -light_dir) < 0.0) {\n" +
+"    specularReflection = vec3(0.0, 0.0, 0.0);\n" +
+"  } else {\n" +
+"    float attenuation = 1.0;\n" +
+"    float lightSpecularTerm = 1.0;\n" +
+"    float materialSpecularTerm = 10.0;\n" +
+"    float materialShininessTerm = 10.0;\n" +
+"    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" +
+"  }\n" +
+"  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" +
+"  color *= diffuse + specularReflection + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
@@ -88,10 +106,12 @@ shader_sources['polygon_fragment'] =
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
 "  color = b_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
+"  color = c_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
 "  color = b_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = c_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
 "  color = color;\n" +
 "  #endif\n" +
@@ -198,7 +218,25 @@ shader_sources['polygon_vertex'] =
 "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 f_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 f_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
+"  vec3 view_pos = vec3(0., 0., 500.);\n" +
+"  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
+"  vec3 specularReflection;\n" +
+"  if(dot(normal, -light_dir) < 0.0) {\n" +
+"    specularReflection = vec3(0.0, 0.0, 0.0);\n" +
+"  } else {\n" +
+"    float attenuation = 1.0;\n" +
+"    float lightSpecularTerm = 1.0;\n" +
+"    float materialSpecularTerm = 10.0;\n" +
+"    float materialShininessTerm = 10.0;\n" +
+"    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" +
+"  }\n" +
+"  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" +
+"  color *= diffuse + specularReflection + light_ambient;\n" +
+"  return color;\n" +
+"}\n" +
+"vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
@@ -207,10 +245,12 @@ shader_sources['polygon_vertex'] =
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
 "  color = e_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
+"  color = f_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
 "  color = e_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = f_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
 "  color = color;\n" +
 "  #endif\n" +

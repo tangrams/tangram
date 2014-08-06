@@ -114,21 +114,23 @@ Style.defaults = {
 };
 
 // Style parsing
+
+// Helper functions passed to dynamic style functions
+Style.helpers = {
+    Style: Style,
+    Geo: Geo
+};
+
 Style.parseStyleForFeature = function (feature, layer_style, tile)
 {
     var layer_style = layer_style || {};
     var style = {};
 
-    // helper functions passed to dynamic style functions
-    var helpers = {
-        Style: Style,
-        Geo: Geo,
-        zoom: tile.coords.z
-    };
+    Style.helpers.zoom = tile.coords.z;
 
     // Test whether features should be rendered at all
     if (typeof layer_style.filter == 'function') {
-        if (layer_style.filter(feature, tile, helpers) == false) {
+        if (layer_style.filter(feature, tile, Style.helpers) == false) {
             return null;
         }
     }
@@ -136,25 +138,25 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
     // Parse styles
     style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
     if (typeof style.color == 'function') {
-        style.color = style.color(feature, tile, helpers);
+        style.color = style.color(feature, tile, Style.helpers);
     }
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     if (typeof style.width == 'function') {
-        style.width = style.width(feature, tile, helpers);
+        style.width = style.width(feature, tile, Style.helpers);
     }
     style.width *= Geo.units_per_meter[tile.coords.z];
 
     style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
     if (typeof style.size == 'function') {
-        style.size = style.size(feature, tile, helpers);
+        style.size = style.size(feature, tile, Style.helpers);
     }
     style.size *= Geo.units_per_meter[tile.coords.z];
 
     style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
     if (typeof style.extrude == 'function') {
         // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
-        style.extrude = style.extrude(feature, tile, helpers);
+        style.extrude = style.extrude(feature, tile, Style.helpers);
     }
 
     style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
@@ -173,31 +175,31 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
 
     style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
     if (typeof style.z == 'function') {
-        style.z = style.z(feature, tile, helpers);
+        style.z = style.z(feature, tile, Style.helpers);
     }
 
     style.outline = {};
     layer_style.outline = layer_style.outline || {};
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
     if (typeof style.outline.color == 'function') {
-        style.outline.color = style.outline.color(feature, tile, helpers);
+        style.outline.color = style.outline.color(feature, tile, Style.helpers);
     }
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
     if (typeof style.outline.width == 'function') {
-        style.outline.width = style.outline.width(feature, tile, helpers);
+        style.outline.width = style.outline.width(feature, tile, Style.helpers);
     }
     style.outline.width *= Geo.units_per_meter[tile.coords.z];
 
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
     if (typeof style.outline.dash == 'function') {
-        style.outline.dash = style.outline.dash(feature, tile, helpers);
+        style.outline.dash = style.outline.dash(feature, tile, Style.helpers);
     }
 
     // Interactivity (selection map)
     var interactive = false;
     if (typeof layer_style.interactive == 'function') {
-        interactive = layer_style.interactive(feature, tile, helpers);
+        interactive = layer_style.interactive(feature, tile, Style.helpers);
     }
     else {
         interactive = layer_style.interactive;
@@ -222,7 +224,6 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
         style.selection = Style.defaults.selection;
     }
 
-    // style.mode = layer_style.mode || Style.defaults.mode;
     if (layer_style.mode != null && layer_style.mode.name != null) {
         style.mode = {};
         for (var m in layer_style.mode) {
