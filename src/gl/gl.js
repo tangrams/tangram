@@ -427,7 +427,12 @@ GL.Program.prototype.attribute = function (name)
     }
 
     attrib.name = name;
+    if (name == null) {
+        console.log("! ");
+        console.log(attrib);
+    }
     attrib.location = this.gl.getAttribLocation(this.program, name);
+    
 
     // var info = this.gl.getActiveAttrib(this.program, attrib.location);
     // attrib.type = info.type;
@@ -659,3 +664,32 @@ GL.VertexArrayObject.bind = function (vao)
 if (module !== undefined) {
     module.exports = GL;
 }
+
+// GL Texture object
+GL.Texture = function (gl, url) {
+    // options = options || {};
+    this.gl = gl;
+    this.url = url;
+    this.initTexture();
+};
+
+// create the texture object and load the image
+GL.Texture.prototype.initTexture = function () {
+  this.texture = this.gl.createTexture();
+  this.image = new Image();
+  // callback triggered once Image() has finished loading from the url
+  this.image.onload = function() { this.loadImage(); }.bind(this);
+  this.image.src = this.url;
+};
+
+// put the loaded image into the texture and create texture coordinates
+GL.Texture.prototype.loadImage = function () {
+  this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+  this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
+  this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+  this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+  this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR_MIPMAP_NEAREST);
+  this.gl.generateMipmap(this.gl.TEXTURE_2D);
+  // this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+};
+

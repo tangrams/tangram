@@ -131,7 +131,14 @@ modes:
         #         polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
         #         this.parent.buildPolygons(polygons, style, vertex_data);
         #     }
-
+    envmap:
+        extends: polygons
+        animated: true
+        shaders:
+            defines:
+                LIGHTING_ENVIRONMENT: true
+            # transforms:
+                # fragment: color = vec3(1., .5, .5);
 
     points:
         shaders:
@@ -143,6 +150,11 @@ modes:
     #     shaders:
     #         vertex_url: src/gl/shaders/compiled/simple_polygon_vertex.glsl
     #         fragment_url: src/gl/shaders/compiled/simple_polygon_fragment.glsl
+
+    polygons:
+        shaders:
+            defines:
+                LIGHTING_ENVIRONMENT: true
 
 layers:
     water_ocean:
@@ -228,6 +240,7 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
+            name: envmap
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }

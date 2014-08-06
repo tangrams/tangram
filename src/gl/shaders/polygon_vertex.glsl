@@ -20,6 +20,10 @@ attribute float a_layer;
 varying vec4 v_position_world;
 varying vec3 v_color;
 
+#if defined(LIGHTING_ENVIRONMENT)
+    // varying vec2 texCoord;
+#endif
+
 #if !defined(LIGHTING_VERTEX)
     varying vec4 v_position;
     varying vec3 v_normal;
@@ -67,13 +71,15 @@ void main() {
     position = u_meter_view * position; // convert meters to screen space (0-1)
 
     #if defined(PROJECTION_PERSPECTIVE)
-        position = perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));
+        position = perspective(position, vec2(-.25, -.25), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
     #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-        position = isometric(position, vec2(0., 1.), 1.);
+        position = isometric(position, vec2(0., 1., 1.));
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
     #endif
 
     position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
+    
+
 
     gl_Position = position;
 }

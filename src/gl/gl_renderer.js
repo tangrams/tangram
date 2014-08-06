@@ -45,6 +45,12 @@ GLRenderer.prototype._init = function GLRendererInit ()
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.last_render_count = null;
     this.initInputHandlers();
+
+    // this.texture = new GL.Texture(this.gl, "demos/images/LitSphere_test_02.jpg");
+    // this.texture = new GL.Texture(this.gl, "demos/images/wheel.png");
+    // this.texture = new GL.Texture(this.gl, "demos/images/matball01.jpg");
+    this.texture = new GL.Texture(this.gl, "demos/images/sunset.jpg");
+    
 };
 
 GLRenderer.prototype.initModes = function ()
@@ -374,7 +380,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
     }
 
     if (render_count != this.last_render_count) {
-        console.log("rendered " + render_count + " primitives");
+        // console.log("rendered " + render_count + " primitives");
     }
     this.last_render_count = render_count;
 
