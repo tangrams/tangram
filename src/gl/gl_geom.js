@@ -55,10 +55,10 @@ GLGeometry.prototype.setup = function ()
 {
     for (var a=0; a < this.attribs.length; a++) {
         var attrib = this.attribs[a];
-        if (attrib.location != -1) {
+        // if (attrib.location != -1) {
             this.gl.enableVertexAttribArray(attrib.location);
             this.gl.vertexAttribPointer(attrib.location, attrib.size, attrib.type, attrib.normalized, this.vertex_stride, attrib.offset);
-        }
+        // }
     }
 };
 
@@ -68,7 +68,7 @@ GLGeometry.prototype.render = function (options)
 
     // Caller has already set program
     if (options.set_program !== false) {
-        this.gl.useProgram(this.gl_program.program);
+        this.gl_program.use();
     }
 
     GL.VertexArrayObject.bind(this.vao);

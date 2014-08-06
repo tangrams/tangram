@@ -20,7 +20,7 @@ GL.getContext = function getContext (canvas)
         fullscreen = true;
     }
 
-    var gl = canvas.getContext('experimental-webgl', { preserveDrawingBuffer: true }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)
+    var gl = canvas.getContext('experimental-webgl');
     if (!gl) {
         alert("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
         throw "Couldn't create WebGL context";
@@ -197,6 +197,16 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
     return program;
 };
 
+// Use program wrapper with simple state cache
+GL.Program.prototype.use = function ()
+{
+    if (GL.Program.current != this) {
+        this.gl.useProgram(this.program);
+    }
+    GL.Program.current = this;
+};
+GL.Program.current = null;
+
 // Global defines applied to all programs (duplicate properties for a specific program will take precedence)
 GL.Program.defines = {};
 
@@ -322,7 +332,7 @@ GL.Program.prototype.compile = function ()
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
-    this.gl.useProgram(this.program);
+    this.use();
     this.refreshUniforms();
     this.refreshAttributes();
 };
@@ -535,6 +545,19 @@ GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
 //     }
 //     return vertex_data;
 // };
+
+// Texture management
+// TODO: support options config for texture params
+GL.createTexture = function (gl)
+{
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return texture;
+};
 
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
 GL.VertexArrayObject = {};

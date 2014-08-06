@@ -548,6 +548,18 @@ window.addEventListener('load', function () {
     }
     updateURL();
 
+    // Feature selection
+    renderer.container.addEventListener('mousemove', function (event) {
+        renderer.getFeatureAt(
+            { x: event.clientX, y: event.clientY },
+            function (feature) {
+               if (feature != null && feature.feature_properties) {
+                    console.log("selection map: " + JSON.stringify(feature.feature_properties));
+                }
+            }
+        );
+    });
+
     if (osm_debug == true) {
         window.osm_layer =
             L.tileLayer(

@@ -3,6 +3,7 @@ var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var CanvasRenderer = require('./canvas/canvas_renderer.js');
+var Style = require('./style.js');
 var Utils = require('./utils.js');
 
 var VectorWorker = {};
@@ -20,7 +21,11 @@ VectorWorker.worker.addEventListener('message', function (event) {
         return;
     }
 
-    VectorWorker.id = event.data.id;
+    VectorWorker.worker_id = event.data.worker_id;
+    VectorWorker.num_workers = event.data.num_workers;
+
+    Style.selection_map_stride = VectorWorker.num_workers;
+    Style.selection_map_offset = VectorWorker.worker_id;
 });
 
 VectorWorker.buildTile = function (tile)
@@ -50,8 +55,9 @@ VectorWorker.buildTile = function (tile)
 
     VectorWorker.worker.postMessage({
         type: 'buildTileCompleted',
-        tile: tile_subset//,
-        // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
+        worker_id: VectorWorker.worker_id,
+        tile: tile_subset,
+        selection_map: Style.selection_map // TODO: this is a slow sync operation causing UI halts, buffer it and send when all active tiles are done loading
     });
 };
 
@@ -148,11 +154,12 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
     VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
+    Style.resetSelectionMap();
 
     VectorWorker.log("worker refreshed config for tile rebuild");
 });
 
 // Log wrapper to include worker id #
 VectorWorker.log = function (msg) {
-    console.log("worker " + VectorWorker.id + ": " + msg);
+    console.log("worker " + VectorWorker.worker_id + ": " + msg);
 };

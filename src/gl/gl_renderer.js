@@ -38,13 +38,15 @@ GLRenderer.prototype._init = function GLRendererInit ()
     this.container.appendChild(this.canvas);
 
     this.gl = GL.getContext(this.canvas);
-    this.initModes(); // TODO: merge with or overload parent class mode init? needs to happen in init (not constructor) b/c needs access to GL context
 
-    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+    this.initModes(); // TODO: merge with or overload parent class mode init? needs to happen in init (not constructor) b/c needs access to GL context
+    this.initSelectionBuffer();
 
     // this.zoom_step = 0.02; // for fractional zoom user adjustment
     this.last_render_count = null;
     this.initInputHandlers();
+
+    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 };
 
 GLRenderer.prototype.initModes = function ()
@@ -53,6 +55,41 @@ GLRenderer.prototype.initModes = function ()
     for (var m in this.modes) {
         this.modes[m].init(this.gl);
     }
+};
+
+GLRenderer.prototype.initSelectionBuffer = function ()
+{
+    // TODO: move generic bits to VectorRenderer
+
+    // Selection state tracking
+    this.pixel = new Uint8Array(4);
+    this.pixel32 = new Float32Array(this.pixel.buffer);
+    this.selection_point = Point(0, 0);
+    this.selected_feature = null;
+    this.selection_callback = null;
+    this.selection_callback_timer = null;
+    this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
+    this.update_selection = false;
+
+    // Frame buffer for selection
+    // TODO: initiate lazily in case we don't need to do any selection
+    this.fbo = this.gl.createFramebuffer();
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
+    this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
+    this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
+
+    // Texture for the FBO color attachment
+    this.fbo_texture = GL.createTexture(this.gl);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.fbo_size.width, this.fbo_size.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture, 0);
+
+    // Renderbuffer for the FBO depth attachment
+    this.fbo_depth_rb = this.gl.createRenderbuffer();
+    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
+    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, this.fbo_depth_rb);
+
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
@@ -179,21 +216,7 @@ GLRenderer.prototype._tileWorkerCompleted = function (tile)
         tile.debug.geometries += tile.gl_geometry[p].geometry_count;
         tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
     }
-
     tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-
-    // Selection - experimental/future
-    // var gl_renderer = this;
-    // var pixel = new Uint8Array(4);
-    // tileDiv.onmousemove = function (event) {
-    //     // console.log(event.offsetX + ', ' + event.offsetY + ' | ' + parseInt(tileDiv.style.left) + ', ' + parseInt
-    //     var p = Point(
-    //         event.offsetX + parseInt(tileDiv.style.left),
-    //         event.offsetY + parseInt(tileDiv.style.top)
-    //     );
-    //     gl_renderer.gl.readPixels(p.x, p.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-    //     console.log(p.x + ', ' + p.y + ': (' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ', ' + pixel[3] + ')')
-    // };
 
     delete tile.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
 };
@@ -275,6 +298,8 @@ GLRenderer.prototype.resizeMap = function (width, height)
     this.canvas.style.height = this.css_size.height + 'px';
     this.canvas.width = this.device_size.width;
     this.canvas.height = this.device_size.height;
+
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
@@ -284,10 +309,14 @@ GLRenderer.prototype.resetFrame = function ()
     var gl = this.gl;
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // TODO: unnecessary repeat?
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
+    // gl.enable(gl.BLEND);
+    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 };
 
 GLRenderer.prototype._render = function GLRendererRender ()
@@ -320,45 +349,94 @@ GLRenderer.prototype._render = function GLRendererRender ()
     }
     this.renderable_tiles_count = renderable_tiles.length;
 
-    // Render tiles grouped by renderg mode (GL program)
+    // Render main pass - tiles grouped by rendering mode (GL program)
     var render_count = 0;
     for (var mode in this.modes) {
         var gl_program = this.modes[mode].gl_program;
         var first_for_mode = true;
 
-        // TODO: make a list of renderable tiles once per frame, outside this loop
         // Render tile GL geometries
         for (var t in renderable_tiles) {
             var tile = renderable_tiles[t];
-            if (tile.loaded == true && tile.visible == true) {
+
+            if (tile.gl_geometry[mode] != null) {
+                // Setup mode if encountering for first time this frame
+                // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
+                if (first_for_mode == true) {
+                    first_for_mode = false;
+
+                    this.modes[mode].update();
+
+                    // TODO: don't set uniforms when they haven't changed
+                    gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                    gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+                    gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                    gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                    gl_program.uniform('1f', 'u_num_layers', this.layers.length);
+                    gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
+                    gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+                }
+
+                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
+                // Tile view matrix - transform tile space into view space (meters, relative to camera)
+                mat4.identity(tile_view_mat);
+                mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
+                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
+
+                // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
+                mat4.identity(tile_world_mat);
+                mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
+                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
+
+                // Render tile
+                tile.gl_geometry[mode].render({ set_program: false });
+                render_count += tile.gl_geometry[mode].geometry_count;
+            }
+        }
+    }
+
+    // Render selection pass (if needed)
+    // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
+    // mode program, for the selection program
+    // TODO: reduce duplicated code w/main render pass above
+    if (this.update_selection && !this.panning) {
+        this.update_selection = false; // reset selection check
+
+        // Switch to FBO
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+        gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
+        this.resetFrame();
+
+        for (mode in this.modes) {
+            gl_program = this.modes[mode].selection_gl_program;
+            if (gl_program == null) {
+                continue;
+            }
+            first_for_mode = true;
+
+            // Render tile GL geometries
+            for (t in renderable_tiles) {
+                tile = renderable_tiles[t];
 
                 if (tile.gl_geometry[mode] != null) {
                     // Setup mode if encountering for first time this frame
-                    // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
                     if (first_for_mode == true) {
                         first_for_mode = false;
 
-                        gl.useProgram(gl_program.program);
-                        this.modes[mode].update();
+                        gl_program.use();
+                        this.modes[mode].setUniforms();
 
-                        // TODO: don't set uniforms when they haven't changed
-                        gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                        gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+                        gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
+                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.width / this.fbo_size.height, 1.0);
                         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-
-                        // gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-                        gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                        gl_program.uniform('1f', 'u_map_zoom', this.zoom);
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                         gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
                         gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
                     }
 
-                    // Render tile
-                    // gl_program.uniform('2f', 'u_tile_min', tile.min.x, tile.min.y);
-                    // gl_program.uniform('2f', 'u_tile_max', tile.max.x, tile.max.y);
-
-                    // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
@@ -371,11 +449,53 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
+                    // Render tile
                     tile.gl_geometry[mode].render({ set_program: false });
-                    render_count += tile.gl_geometry[mode].geometry_count;
                 }
             }
         }
+
+        // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
+        // Calling readPixels synchronously caused a massive performance hit, presumably since it
+        // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
+        if (this.selection_callback_timer != null) {
+            clearTimeout(this.selection_callback_timer);
+        }
+        this.selection_callback_timer = setTimeout(
+            function() {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+
+                // Check selection map against FBO
+                gl.readPixels(
+                    Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
+                    Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
+                    1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
+                var feature_key = this.pixel32[0].toPrecision(Style.selection_precision);
+
+                // console.log(
+                //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
+                //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
+                //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
+
+                if (this.selection_map[feature_key] != this.selected_feature) {
+                    this.selected_feature = this.selection_map[feature_key];
+
+                    // if (this.selected_feature != null && this.selected_feature.feature_properties.name) {
+                    //     console.log("selection map: " + JSON.stringify(this.selected_feature.feature_properties));
+                    // }
+                    if (typeof this.selection_callback == 'function') {
+                        this.selection_callback(this.selected_feature);
+                    }
+                }
+
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            }.bind(this),
+            this.selection_frame_delay
+        );
+
+        // Reset to screen buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
     if (render_count != this.last_render_count) {
@@ -384,6 +504,23 @@ GLRenderer.prototype._render = function GLRendererRender ()
     this.last_render_count = render_count;
 
     return true;
+};
+
+// Request feature selection
+// Runs asynchronously, schedules selection buffer to be updated
+GLRenderer.prototype.getFeatureAt = function (pixel, callback)
+{
+    // TODO: update selection point instead of just returning (need to figure out readPixel sync)
+    if (this.update_selection == true) {
+        return;
+    }
+
+    this.selection_point = Point(
+        pixel.x * this.device_pixel_ratio,
+        this.device_size.height - (pixel.y * this.device_pixel_ratio)
+    );
+    this.selection_callback = callback;
+    this.update_selection = true;
 };
 
 // Recompile all shaders

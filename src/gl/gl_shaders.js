@@ -130,6 +130,44 @@ shader_sources['polygon_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec4 v_position_world;\n" +
 "varying vec3 v_color;\n" +
+"attribute float a_selection_color;\n" +
+"#if defined(FEATURE_SELECTION)\n" +
+"\n" +
+"varying vec4 v_selection_color;\n" +
+"float shift_right(float v, float amt) {\n" +
+"  v = floor(v) + 0.5;\n" +
+"  return floor(v / exp2(amt));\n" +
+"}\n" +
+"float shift_left(float v, float amt) {\n" +
+"  return floor(v * exp2(amt) + 0.5);\n" +
+"}\n" +
+"float mask_last(float v, float bits) {\n" +
+"  return mod(v, shift_left(1.0, bits));\n" +
+"}\n" +
+"float extract_bits(float num, float from, float to) {\n" +
+"  from = floor(from + 0.5);\n" +
+"  to = floor(to + 0.5);\n" +
+"  return mask_last(shift_right(num, from), to - from);\n" +
+"}\n" +
+"vec4 encode_float(float val) {\n" +
+"  if(val == 0.0)\n" +
+"    return vec4(0, 0, 0, 0);\n" +
+"  float vsign = val > 0.0 ? 0.0 : 1.0;\n" +
+"  val = abs(val);\n" +
+"  float exponent = floor(log2(val));\n" +
+"  float biased_exponent = exponent + 127.0;\n" +
+"  float fraction = ((val / exp2(exponent)) - 1.0) * 8388608.0;\n" +
+"  float t = biased_exponent / 2.0;\n" +
+"  float last_bit_of_biased_exponent = fract(t) * 2.0;\n" +
+"  float remaining_bits_of_biased_exponent = floor(t);\n" +
+"  float byte4 = extract_bits(fraction, 0.0, 8.0) / 255.0;\n" +
+"  float byte3 = extract_bits(fraction, 8.0, 16.0) / 255.0;\n" +
+"  float byte2 = (last_bit_of_biased_exponent * 128.0 + extract_bits(fraction, 16.0, 23.0)) / 255.0;\n" +
+"  float byte1 = (vsign * 128.0 + remaining_bits_of_biased_exponent) / 255.0;\n" +
+"  return vec4(byte4, byte3, byte2, byte1);\n" +
+"}\n" +
+"#endif\n" +
+"\n" +
 "#if !defined(LIGHTING_VERTEX)\n" +
 "\n" +
 "varying vec4 v_position;\n" +
@@ -181,6 +219,16 @@ shader_sources['polygon_vertex'] =
 "#pragma tangram: globals\n" +
 "\n" +
 "void main() {\n" +
+"  \n" +
+"  #if defined(FEATURE_SELECTION)\n" +
+"  if(a_selection_color == 0.) {\n" +
+"    gl_Position = vec4(0.);\n" +
+"    return;\n" +
+"  }\n" +
+"  v_selection_color = encode_float(a_selection_color);\n" +
+"  #else\n" +
+"  float selection_color = a_selection_color;\n" +
+"  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
 "  v_position_world = position_world;\n" +
@@ -202,6 +250,26 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
+"}\n" +
+"";
+
+shader_sources['selection_fragment'] =
+"\n" +
+"#define GLSLIFY 1\n" +
+"\n" +
+"#if defined(FEATURE_SELECTION)\n" +
+"\n" +
+"varying vec4 v_selection_color;\n" +
+"#endif\n" +
+"\n" +
+"void main(void) {\n" +
+"  \n" +
+"  #if defined(FEATURE_SELECTION)\n" +
+"  gl_FragColor = v_selection_color;\n" +
+"  #else\n" +
+"  gl_FragColor = vec3(0., 0., 0., 1.);\n" +
+"  #endif\n" +
+"  \n" +
 "}\n" +
 "";
 

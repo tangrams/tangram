@@ -27,7 +27,7 @@ Style.selection_map = {}; // this will be unique per module instance (so unique 
 Style.selection_map_current = 1; // start at 1 since this 1 will be divided by this
 Style.selection_map_stride = 1; // set by worker to # of workers
 Style.selection_map_offset = 0; // set by worker to worker id #
-Style.selection_precision = 6; // safe precision range for converting floats
+Style.selection_precision = 7; // safe precision range for converting floats
 Style.generateSelection = function (color_map)
 {
     // while (true) {
@@ -194,16 +194,23 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
         style.outline.dash = style.outline.dash(feature, tile, helpers);
     }
 
-    // TODO: add function-based selection switches (like other fields)
-    // TODO: add function callbacks for when a feature is selected
-    // style.selection = layer_style.selection || layer_style.selection;
-    if (layer_style.selection == true) {
+    // Interactivity (selection map)
+    var interactive = false;
+    if (typeof layer_style.interactive == 'function') {
+        interactive = layer_style.interactive(feature, tile, helpers);
+    }
+    else {
+        interactive = layer_style.interactive;
+    }
+
+    if (interactive == true) {
         var selector = Style.generateSelection(Style.selection_map);
 
         // TODO: build a feature_id-based map on main thread to look-up features
         selector.feature_id = feature.id;
         // selector.name = feature.properties.name;
         // selector.feature = feature;
+        selector.feature_properties = feature.properties;
 
         style.selection = {
             active: true,

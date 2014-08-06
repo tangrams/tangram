@@ -55,6 +55,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.modes = VectorRenderer.createModes({}, this.styles);
     this.updateActiveModes();
     this.createWorkers();
+    this.selection_map = {};
 
     this.zoom = null;
     this.center = null;
@@ -102,7 +103,8 @@ VectorRenderer.prototype.createWorkers = function ()
             renderer.workers.push(new Worker(worker_local_url));
             renderer.workers[w].postMessage({
                 type: 'init',
-                id: w
+                worker_id: w,
+                num_workers: renderer.num_workers
             })
         }
     };
@@ -287,6 +289,7 @@ VectorRenderer.prototype.rebuildTiles = function ()
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+    this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
     this.workers.forEach(function(worker) {
@@ -371,15 +374,15 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
 
     var tile = event.data.tile;
 
-    // Sync modes
-    // VectorRenderer.refreshModeStates(this.modes, event.data.mode_states);
-    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
-
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
         console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
         return;
     }
+
+    // Update centralized selection map with current worker map
+    this.updateSelectionMap(event.data.selection_map);
+    console.log("selection map: " + Object.keys(this.selection_map).length + " colors");
 
     // Update tile with properties from worker
     tile = this.mergeTile(tile.key, tile);
@@ -388,9 +391,6 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     if (typeof(this._tileWorkerCompleted) == 'function') {
         this._tileWorkerCompleted(tile);
     }
-
-    // NOTE: was previously deleting source data to save memory, but now need to save for re-building geometry
-    // delete tile.layers;
 
     this.dirty = true;
     this.trackTileSetLoadEnd();
@@ -456,6 +456,14 @@ VectorRenderer.prototype.mergeTile = function (key, source_tile)
     }
 
     return tile;
+};
+
+// Merge a worker selection map into the centralized map
+VectorRenderer.prototype.updateSelectionMap = function (worker_selection_map)
+{
+    for (var key in worker_selection_map) {
+        this.selection_map[key] = worker_selection_map[key];
+    }
 };
 
 // Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.
