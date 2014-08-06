@@ -386,7 +386,7 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
 
     this.dirty = true;
     this.trackTileSetLoadEnd();
-    this.printDebugForTile(tile);
+    // this.printDebugForTile(tile);
 };
 
 VectorRenderer.prototype.removeTile = function (key)
