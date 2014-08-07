@@ -266,7 +266,7 @@ layers:
         mode:
             name: points
             # name: formica
-        # visible: false
+        visible: false
         color:
             default: [1, 1, 0]
         size:

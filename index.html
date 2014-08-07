@@ -267,6 +267,28 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
     }
 }
 
+gui["test"] = 1.;
+testvar = gui.add(gui, "test", -4, 4);
+testvar.onChange(function(value) {
+    // u_test = value;
+    setGLProgramUniform('1f', 'u_test', value);
+});
+
+gui["test2"] = 1.;
+testvar2 = gui.add(gui, "test2", -2, 4);
+testvar2.onChange(function(value) {
+    // u_test = value;
+    setGLProgramUniform('1f', 'u_test2', value);
+});
+
+function setGLProgramUniform (type, name, value) {
+    for (var m in layer.renderer.modes) {
+        layer.renderer.gl.useProgram(layer.renderer.modes[m].gl_program.program);
+        layer.renderer.modes[m].gl_program.uniform(type, name, value);
+    }
+    layer.renderer.dirty = true;
+}
+
 // Render/GL stats: http://spite.github.io/rstats/
 // Activate with 'rstats' anywhere in options list in URL
 if (url_ui && url_ui.indexOf('rstats') >= 0) {
