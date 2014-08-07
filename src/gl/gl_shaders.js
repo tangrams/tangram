@@ -62,6 +62,8 @@ shader_sources['polygon_fragment'] =
 "uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
+"uniform float u_test;\n" +
+"uniform float u_test2;\n" +
 "varying vec3 v_color;\n" +
 "varying vec4 v_position_world;\n" +
 "#if defined(LIGHTING_ENVIRONMENT)\n" +
@@ -127,8 +129,11 @@ shader_sources['polygon_fragment'] =
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
-"  vec3 view_pos = vec3(0., 0., 300. * u_meters_per_pixel);\n" +
+"  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
 "  vec3 e = normalize(v_position.xyz - view_pos.xyz);\n" +
+"  if(e.z > 0.01) {\n" +
+"    e.z = 0.01;\n" +
+"  }\n" +
 "  vec3 r = reflect(e, v_normal);\n" +
 "  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" +
 "  vec2 texCoord = r.xy / m + .5;\n" +
@@ -254,9 +259,9 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  position = u_meter_view * position;\n" +
 "  #if defined(PROJECTION_PERSPECTIVE)\n" +
-"  position = a_x_perspective(position, vec2(-.25, -.25), vec2(0.6, 0.6));\n" +
+"  position = a_x_perspective(position, vec2(0., 0.), vec2(0.6, 0.6));\n" +
 "  #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)\n" +
-"  position = b_x_isometric(position, vec2(0., 1., 1.));\n" +
+"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
