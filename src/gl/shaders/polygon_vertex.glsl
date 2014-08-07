@@ -73,12 +73,12 @@ void main() {
     #if defined(PROJECTION_PERSPECTIVE)
         position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
     #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-        position = isometric(position, vec2(0., 1., 1.));
+        position = isometric(position, vec2(0., 1.), 1.);
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
     #endif
 
     position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
-    
+
 
 
     gl_Position = position;
