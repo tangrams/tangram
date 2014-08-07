@@ -208,17 +208,17 @@ layers:
                 default: [0.1, 0.7, 0.7]
             width:
                 default:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 highway:
-                    function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (3/8 * Math.log(t.coords.z))); }
                 major_road:
-                    function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2.5/8 * Math.log(t.coords.z))); }
                 minor_road:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 path:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 debug:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
 
     buildings:
         mode:
