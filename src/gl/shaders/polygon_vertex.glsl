@@ -21,6 +21,7 @@ varying vec4 v_position_world;
 varying vec3 v_color;
 
 attribute float a_selection_color;
+// attribute vec4 a_selection_color;
 #if defined(FEATURE_SELECTION)
     varying vec4 v_selection_color;
 
@@ -78,6 +79,7 @@ const float light_ambient = 0.5;
 void main() {
     #if defined(FEATURE_SELECTION)
         if (a_selection_color == 0.) {
+        // if (a_selection_color == vec4(0.)) {
             // Discard by forcing invalid triangle if we're in the feature
             // selection pass but have no selection info
             // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
@@ -85,9 +87,11 @@ void main() {
             return;
         }
         v_selection_color = encode_float(a_selection_color);
+        // v_selection_color = a_selection_color;
     #else
         // This is here to prevent the attribute from being optimized out, thus changing the program's vertex layout :(
         float selection_color = a_selection_color;
+        // vec4 selection_color = a_selection_color;
     #endif
 
     vec4 position = u_tile_view * vec4(a_position, 1.);

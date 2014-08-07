@@ -30,18 +30,31 @@ Style.selection_map_offset = 0; // set by worker to worker id #
 Style.selection_precision = 7; // safe precision range for converting floats
 Style.generateSelection = function (color_map)
 {
-    // while (true) {
+    while (true) {
+        // Floating point key
         Style.selection_map_current += Style.selection_map_stride;
-        var key = (1 / (Style.selection_map_current + Style.selection_map_offset)).toPrecision(Style.selection_precision);
+        var float_key = (1 / (Style.selection_map_current + Style.selection_map_offset)).toPrecision(Style.selection_precision);
 
-        // if (color_map[key] === undefined) {
+        // 32-bit color key
+        // var ir = ~~(Math.random() * 255);
+        // var ig = ~~(Math.random() * 255);
+        // var ib = ~~(Math.random() * 255);
+        // var r = ir / 255;
+        // var g = ig / 255;
+        // var b = ib / 255;
+        // var a = 1.0;
+        // var color_key = (ir + (ig << 8) + (ib << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
+
+        var key = float_key;
+
+        if (color_map[key] === undefined) {
             color_map[key] = {
                 // color: [r, g, b, a],
-                float: key
+                float: float_key
             };
-            // break;
-        // }
-    // }
+            break;
+        }
+    }
     return color_map[key];
 };
 
@@ -105,7 +118,7 @@ Style.defaults = {
     },
     selection: {
         active: false,
-        // color: [0, 0, 0, 1],
+        color: [0, 0, 0, 1],
         float: 0
     },
     mode: {
@@ -216,7 +229,7 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
 
         style.selection = {
             active: true,
-            // color: selector.color,
+            color: selector.color,
             float: selector.float
         };
     }

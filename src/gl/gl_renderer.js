@@ -471,6 +471,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
                     1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
                 var feature_key = this.pixel32[0].toPrecision(Style.selection_precision);
+                // var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (255 << 24)) >>> 0;
 
                 // console.log(
                 //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
