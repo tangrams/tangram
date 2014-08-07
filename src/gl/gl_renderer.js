@@ -49,8 +49,8 @@ GLRenderer.prototype._init = function GLRendererInit ()
     // this.texture = new GL.Texture(this.gl, "demos/images/LitSphere_test_02.jpg");
     // this.texture = new GL.Texture(this.gl, "demos/images/wheel.png");
     // this.texture = new GL.Texture(this.gl, "demos/images/matball01.jpg");
-    this.texture = new GL.Texture(this.gl, "demos/images/sunset.jpg");
-    
+    // this.texture = new GL.Texture(this.gl, "demos/images/sunset.jpg");
+
 };
 
 GLRenderer.prototype.initModes = function ()

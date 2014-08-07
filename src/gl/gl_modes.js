@@ -317,6 +317,18 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 };
 
 
+/*** Polygons with texture ***/
+
+Modes.polygons_texture = Object.create(Modes.polygons);
+
+Modes.polygons_texture.init = function () {
+    RenderMode.init.apply(this, arguments);
+
+    if (this.texture) {
+        var texture = new GL.Texture(this.gl, this.texture);
+    }
+};
+
 /*** Simplified polygon shader ***/
 
 Modes.polygons_simple = Object.create(Modes.polygons);
