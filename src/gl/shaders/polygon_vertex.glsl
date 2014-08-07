@@ -71,7 +71,7 @@ void main() {
     position = u_meter_view * position; // convert meters to screen space (0-1)
 
     #if defined(PROJECTION_PERSPECTIVE)
-        position = perspective(position, vec2(-.25, -.25), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
+        position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
     #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
         position = isometric(position, vec2(0., 1., 1.));
         // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
