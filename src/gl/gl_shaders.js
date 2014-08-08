@@ -229,7 +229,7 @@ shader_sources['polygon_vertex'] =
 "void main() {\n" +
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
-"  if(a_selection_color == vec4(0.)) {\n" +
+"  if(a_selection_color.xyz == vec3(0.)) {\n" +
 "    gl_Position = vec4(0.);\n" +
 "    return;\n" +
 "  }\n" +

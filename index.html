@@ -562,9 +562,9 @@ window.addEventListener('load', function () {
     renderer.container.addEventListener('mousemove', function (event) {
         renderer.getFeatureAt(
             { x: event.clientX, y: event.clientY },
-            function (feature) {
-               if (feature != null) {
-                    console.log("selection map: " + JSON.stringify(feature));
+            function (selection) {
+                if (selection.feature != null && selection.changed) {
+                    console.log("selection map: " + JSON.stringify(selection.feature));
                 }
             }
         );

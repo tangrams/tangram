@@ -470,7 +470,6 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
                     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
                     1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-                // var feature_key = this.pixel32[0].toPrecision(Style.selection_precision);
                 var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
 
                 // console.log(
@@ -478,9 +477,9 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
                 //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
 
-                // If feature found (non-zero pixel), ask appropriate web worker to lookup feature
-                if (feature_key != 0) {
-                    var worker_id = this.pixel[3];
+                // If feature found, ask appropriate web worker to lookup feature
+                var worker_id = this.pixel[3];
+                if (worker_id != 255) { // 255 indicates an empty selection buffer pixel
                     // console.log("worker_id: " + worker_id);
                     if (this.workers[worker_id] != null) {
                         // console.log("post message");

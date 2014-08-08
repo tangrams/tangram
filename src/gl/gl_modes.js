@@ -76,10 +76,7 @@ RenderMode.makeGLProgram = function ()
                 shader_sources['selection_fragment'],
                 { defines: defines, transforms: transforms }
             );
-
-            // Debug: render selection buffer
-            // this.gl_program = this.selection_gl_program;
-        }
+       }
     }
 };
 
@@ -159,7 +156,6 @@ Modes.polygons.makeGLGeometry = function (vertex_data)
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        // { name: 'a_selection_color', size: 1, type: this.gl.FLOAT, normalized: false }, // TODO: set a constant vertex attrib value when selection is off?
         { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
@@ -173,7 +169,6 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
-        // style.selection.float,
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
@@ -182,7 +177,6 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     if (style.outline.color) {
         var outline_vertex_constants = [
             style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            // style.selection.float,
             style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
@@ -270,7 +264,6 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
-        // style.selection.float,
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
@@ -279,7 +272,6 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     if (style.outline.color) {
         var outline_vertex_constants = [
             style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            // style.selection.float,
             style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
@@ -316,7 +308,6 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
-        // style.selection.float,
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];

@@ -26,15 +26,8 @@ Style.pixels = function (p, z) {
 Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
 Style.selection_map_current = 1; // start at 1 since 1 will be divided by this
 Style.selection_map_prefix = 0; // set by worker to worker id #
-// Style.selection_precision = 7; // safe precision range for converting floats
 Style.generateSelection = function (color_map)
 {
-    // Floating point key
-    // Style.selection_map_current++;
-    // var float_key = (1 / Style.selection_map_current);
-    // float_key += Style.selection_map_prefix;
-    // float_key = float_key.toPrecision(Style.selection_precision);
-
     // 32-bit color key
     Style.selection_map_current++;
     var ir = Style.selection_map_current & 255;
@@ -114,8 +107,7 @@ Style.defaults = {
     },
     selection: {
         active: false,
-        color: [0, 0, 0, 0],
-        // float: 0
+        color: [0, 0, 0, 1]
     },
     mode: {
         name: 'polygons'
@@ -224,8 +216,7 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
 
         style.selection = {
             active: true,
-            color: selector.color,
-            // float: selector.float
+            color: selector.color
         };
     }
     else {

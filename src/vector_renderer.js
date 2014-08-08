@@ -469,13 +469,17 @@ VectorRenderer.prototype.workerGetFeatureSelection = function (event)
     }
 
     var feature = event.data.feature;
+    var changed = false;
+    if ((feature != null && this.selected_feature == null) ||
+        (feature == null && this.selected_feature != null) ||
+        (feature != null && this.selected_feature != null && feature.id != this.selected_feature.id)) {
+        changed = true;
+    }
 
-    if (feature != this.selected_feature) {
-        this.selected_feature = feature;
+    this.selected_feature = feature;
 
-        if (typeof this.selection_callback == 'function') {
-            this.selection_callback(this.selected_feature);
-        }
+    if (typeof this.selection_callback == 'function') {
+        this.selection_callback({ feature: this.selected_feature, changed: changed });
     }
 };
 
