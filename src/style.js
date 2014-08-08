@@ -24,37 +24,33 @@ Style.pixels = function (p, z) {
 // need to maintain a central, combined selection map of unique colors. To accomplish this,
 // we partition the map with a stride (# of workers) and offset (each worker's id).
 Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
-Style.selection_map_current = 1; // start at 1 since this 1 will be divided by this
-Style.selection_map_stride = 1; // set by worker to # of workers
-Style.selection_map_offset = 0; // set by worker to worker id #
-Style.selection_precision = 7; // safe precision range for converting floats
+Style.selection_map_current = 1; // start at 1 since 1 will be divided by this
+Style.selection_map_prefix = 0; // set by worker to worker id #
+// Style.selection_precision = 7; // safe precision range for converting floats
 Style.generateSelection = function (color_map)
 {
-    while (true) {
-        // Floating point key
-        Style.selection_map_current += Style.selection_map_stride;
-        var float_key = (1 / (Style.selection_map_current + Style.selection_map_offset)).toPrecision(Style.selection_precision);
+    // Floating point key
+    // Style.selection_map_current++;
+    // var float_key = (1 / Style.selection_map_current);
+    // float_key += Style.selection_map_prefix;
+    // float_key = float_key.toPrecision(Style.selection_precision);
 
-        // 32-bit color key
-        // var ir = ~~(Math.random() * 255);
-        // var ig = ~~(Math.random() * 255);
-        // var ib = ~~(Math.random() * 255);
-        // var r = ir / 255;
-        // var g = ig / 255;
-        // var b = ib / 255;
-        // var a = 1.0;
-        // var color_key = (ir + (ig << 8) + (ib << 16) + (255 << 24)) >>> 0; // need unsigned right shift to convert to positive #
+    // 32-bit color key
+    Style.selection_map_current++;
+    var ir = Style.selection_map_current & 255;
+    var ig = (Style.selection_map_current >> 8) & 255;
+    var ib = (Style.selection_map_current >> 16) & 255;
+    var ia = Style.selection_map_prefix;
+    var r = ir / 255;
+    var g = ig / 255;
+    var b = ib / 255;
+    var a = ia / 255;
+    var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
-        var key = float_key;
+    color_map[key] = {
+        color: [r, g, b, a],
+    };
 
-        if (color_map[key] === undefined) {
-            color_map[key] = {
-                // color: [r, g, b, a],
-                float: float_key
-            };
-            break;
-        }
-    }
     return color_map[key];
 };
 
@@ -118,8 +114,8 @@ Style.defaults = {
     },
     selection: {
         active: false,
-        color: [0, 0, 0, 1],
-        float: 0
+        color: [0, 0, 0, 0],
+        // float: 0
     },
     mode: {
         name: 'polygons'
@@ -221,7 +217,6 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
     if (interactive == true) {
         var selector = Style.generateSelection(Style.selection_map);
 
-        // TODO: build a feature_id-based map on main thread to look-up features
         selector.feature_id = feature.id;
         // selector.name = feature.properties.name;
         // selector.feature = feature;
@@ -230,7 +225,7 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
         style.selection = {
             active: true,
             color: selector.color,
-            float: selector.float
+            // float: selector.float
         };
     }
     else {

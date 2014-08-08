@@ -24,8 +24,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.worker_id = event.data.worker_id;
     VectorWorker.num_workers = event.data.num_workers;
 
-    Style.selection_map_stride = VectorWorker.num_workers;
-    Style.selection_map_offset = VectorWorker.worker_id;
+    Style.selection_map_prefix = VectorWorker.worker_id;
 });
 
 VectorWorker.buildTile = function (tile)
