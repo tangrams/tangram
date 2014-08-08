@@ -56,7 +56,7 @@ VectorWorker.buildTile = function (tile)
         type: 'buildTileCompleted',
         worker_id: VectorWorker.worker_id,
         tile: tile_subset,
-        selection_map: Style.selection_map // TODO: this is a slow sync operation causing UI halts, buffer it and send when all active tiles are done loading
+        selection_map_size: Object.keys(Style.selection_map).length
     });
 };
 
@@ -141,6 +141,24 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
         // Remove from cache
         delete VectorWorker.tiles[key];
+    }
+});
+
+// Get a feature from the selection map
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'getFeatureSelection') {
+        return;
+    }
+
+    var key = event.data.key;
+    var selection = Style.selection_map[key];
+
+    if (selection != null) {
+        VectorWorker.worker.postMessage({
+            type: 'getFeatureSelection',
+            key: key,
+            feature: selection.feature
+        });
     }
 });
 

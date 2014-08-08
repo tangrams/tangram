@@ -478,14 +478,16 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
                 //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
 
-                if (this.selection_map[feature_key] != this.selected_feature) {
-                    this.selected_feature = this.selection_map[feature_key];
-
-                    // if (this.selected_feature != null && this.selected_feature.feature_properties.name) {
-                    //     console.log("selection map: " + JSON.stringify(this.selected_feature.feature_properties));
-                    // }
-                    if (typeof this.selection_callback == 'function') {
-                        this.selection_callback(this.selected_feature);
+                // If feature found (non-zero pixel), ask appropriate web worker to lookup feature
+                if (feature_key != 0) {
+                    var worker_id = this.pixel[3];
+                    // console.log("worker_id: " + worker_id);
+                    if (this.workers[worker_id] != null) {
+                        // console.log("post message");
+                        this.workers[worker_id].postMessage({
+                            type: 'getFeatureSelection',
+                            key: feature_key
+                        });
                     }
                 }
 
@@ -511,7 +513,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
 // Runs asynchronously, schedules selection buffer to be updated
 GLRenderer.prototype.getFeatureAt = function (pixel, callback)
 {
-    // TODO: update selection point instead of just returning (need to figure out readPixel sync)
+    // TODO: queue callbacks while still performing only one selection render pass within X time interval?
     if (this.update_selection == true) {
         return;
     }

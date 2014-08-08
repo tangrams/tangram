@@ -563,8 +563,8 @@ window.addEventListener('load', function () {
         renderer.getFeatureAt(
             { x: event.clientX, y: event.clientY },
             function (feature) {
-               if (feature != null && feature.feature_properties) {
-                    console.log("selection map: " + JSON.stringify(feature.feature_properties));
+               if (feature != null) {
+                    console.log("selection map: " + JSON.stringify(feature));
                 }
             }
         );

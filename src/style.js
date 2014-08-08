@@ -19,10 +19,10 @@ Style.pixels = function (p, z) {
     return f;
 };
 
-// Generates a random color not yet present in the provided hash of colors
+// Create a unique 32-bit color to identify a feature
 // Workers independently create/modify selection colors in their own threads, but we also
-// need to maintain a central, combined selection map of unique colors. To accomplish this,
-// we partition the map with a stride (# of workers) and offset (each worker's id).
+// need the main thread to know where each feature color originated. To accomplish this,
+// we partition the map by setting the 4th component (alpha channel) to the worker's id.
 Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
 Style.selection_map_current = 1; // start at 1 since 1 will be divided by this
 Style.selection_map_prefix = 0; // set by worker to worker id #
@@ -217,10 +217,10 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
     if (interactive == true) {
         var selector = Style.generateSelection(Style.selection_map);
 
-        selector.feature_id = feature.id;
-        // selector.name = feature.properties.name;
-        // selector.feature = feature;
-        selector.feature_properties = feature.properties;
+        selector.feature = {
+            id: feature.id,
+            properties: feature.properties
+        };
 
         style.selection = {
             active: true,

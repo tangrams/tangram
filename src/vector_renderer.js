@@ -55,7 +55,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.modes = VectorRenderer.createModes({}, this.styles);
     this.updateActiveModes();
     this.createWorkers();
-    this.selection_map = {};
+    this.selection_map_worker_size = {};
 
     this.zoom = null;
     this.center = null;
@@ -82,6 +82,7 @@ VectorRenderer.prototype.init = function ()
     var renderer = this;
     this.workers.forEach(function(worker) {
         worker.addEventListener('message', renderer.workerBuildTileCompleted.bind(renderer));
+        worker.addEventListener('message', renderer.workerGetFeatureSelection.bind(renderer));
     });
 
     this.initialized = true;
@@ -372,6 +373,12 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
         return;
     }
 
+    // Track selection map size (for stats/debug) - update per worker and sum across workers
+    this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
+    this.selection_map_size = 0;
+    Object.keys(this.selection_map_worker_size).forEach(function(w) { this.selection_map_size += this.selection_map_worker_size[w]; }.bind(this));
+    console.log("selection map: " + this.selection_map_size + " features");
+
     var tile = event.data.tile;
 
     // Removed this tile during load?
@@ -379,10 +386,6 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
         console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
         return;
     }
-
-    // Update centralized selection map with current worker map
-    this.updateSelectionMap(event.data.selection_map);
-    console.log("selection map: " + Object.keys(this.selection_map).length + " colors");
 
     // Update tile with properties from worker
     tile = this.mergeTile(tile.key, tile);
@@ -458,11 +461,21 @@ VectorRenderer.prototype.mergeTile = function (key, source_tile)
     return tile;
 };
 
-// Merge a worker selection map into the centralized map
-VectorRenderer.prototype.updateSelectionMap = function (worker_selection_map)
+// Called on main thread when a web worker finds a feature in the selection buffer
+VectorRenderer.prototype.workerGetFeatureSelection = function (event)
 {
-    for (var key in worker_selection_map) {
-        this.selection_map[key] = worker_selection_map[key];
+    if (event.data.type != 'getFeatureSelection') {
+        return;
+    }
+
+    var feature = event.data.feature;
+
+    if (feature != this.selected_feature) {
+        this.selected_feature = feature;
+
+        if (typeof this.selection_callback == 'function') {
+            this.selection_callback(this.selected_feature);
+        }
     }
 };
 
