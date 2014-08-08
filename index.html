@@ -267,6 +267,10 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
     }
 }
 
+// Toggle for feature selection on hover
+gui['feature info'] = true;
+gui.add(gui, 'feature info');
+
 // Render/GL stats: http://spite.github.io/rstats/
 // Activate with 'rstats' anywhere in options list in URL
 if (url_ui && url_ui.indexOf('rstats') >= 0) {
@@ -553,6 +557,14 @@ function initFeatureSelection () {
 
     // Show selected feature on hover
     renderer.container.addEventListener('mousemove', function (event) {
+        if (gui['feature info'] == false) {
+            if (selection_info.parentNode != null) {
+                selection_info.parentNode.removeChild(selection_info);
+            }
+
+            return;
+        }
+
         var pixel = { x: event.clientX, y: event.clientY };
 
         renderer.getFeatureAt(
