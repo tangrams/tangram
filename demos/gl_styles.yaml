@@ -168,6 +168,7 @@ layers:
             default: [0.175, 0.175, 0.175]
 
     landuse:
+        interactive: true
         color:
             default: [0.5, 0.875, 0.5]
             pitch: [0.3, 0.675, 0.3]
@@ -180,6 +181,7 @@ layers:
     water_areas:
         mode:
             name: water
+        interactive: true
         color:
             default: [0.5, 0.5, 0.875]
         outline:
@@ -196,6 +198,7 @@ layers:
                     }
 
     roads:
+        interactive: function (f, t) { return (t.coords.z >= 18); }
         color:
             # default: Style.color.randomColor
             default: [0.4, 0.4, 0.4]
@@ -220,17 +223,17 @@ layers:
                 default: [0.1, 0.7, 0.7]
             width:
                 default:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 highway:
-                    function (f, t) { return (t.coords.z >= 18 ? (3/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (3/8 * Math.log(t.coords.z))); }
                 major_road:
-                    function (f, t) { return (t.coords.z >= 18 ? (2.5/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2.5/8 * Math.log(t.coords.z))); }
                 minor_road:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 path:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
                 debug:
-                    function (f, t) { return (t.coords.z >= 18 ? (2/8 * Math.log(t.coords.z)) : null); }
+                    function (f, t) { return (t.coords.z >= 18 && (2/8 * Math.log(t.coords.z))); }
 
     buildings:
         mode:
@@ -244,6 +247,7 @@ layers:
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
+        interactive: true
         color:
             # default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
             # default: Style.color.pseudoRandomColor

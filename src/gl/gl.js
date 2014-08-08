@@ -20,7 +20,7 @@ GL.getContext = function getContext (canvas)
         fullscreen = true;
     }
 
-    gl = canvas.getContext('experimental-webgl', { /*preserveDrawingBuffer: true*/ }); // preserveDrawingBuffer needed for gl.readPixels (could be used for feature selection)
+    var gl = canvas.getContext('experimental-webgl');
     if (!gl) {
         alert("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
         throw "Couldn't create WebGL context";
@@ -197,6 +197,16 @@ GL.Program.createProgramFromURLs = function (gl, vertex_shader_url, fragment_sha
     return program;
 };
 
+// Use program wrapper with simple state cache
+GL.Program.prototype.use = function ()
+{
+    if (GL.Program.current != this) {
+        this.gl.useProgram(this.program);
+    }
+    GL.Program.current = this;
+};
+GL.Program.current = null;
+
 // Global defines applied to all programs (duplicate properties for a specific program will take precedence)
 GL.Program.defines = {};
 
@@ -322,71 +332,21 @@ GL.Program.prototype.compile = function ()
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
-    this.gl.useProgram(this.program);
+    this.use();
     this.refreshUniforms();
     this.refreshAttributes();
 };
 
 // ex: program.uniform('3f', 'position', x, y, z);
+// TODO: only update uniforms when changed
 GL.Program.prototype.uniform = function (method, name) // method-appropriate arguments follow
 {
     var uniform = (this.uniforms[name] = this.uniforms[name] || {});
     uniform.name = name;
     uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
     uniform.method = 'uniform' + method;
-
-    // // Check against cached values before setting
-    var vals = Array.prototype.slice.call(arguments, 2);
-    // if (uniform.values != null && uniform.values.length == vals.length) { // && uniform.method != 'uniformMatrix4fv') {
-    //     for (var v = 0, vlen = vals.length; v < vlen; v++) {
-    //         var replace = false;
-
-    //         // Different types (always update)
-    //         if (typeof uniform.values[v] != typeof vals[v]) {
-    //             replace = true;
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //             break;
-    //         }
-    //         // Arrays, compare each value
-    //         else if (typeof uniform.values[v] == 'object') {
-    //             for (var a=0, alen = vals[v].length; a < alen; a++) {
-    //                 if (uniform.values[v][a] !== vals[v][a]) {
-    //                     replace = true;
-    //                     console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
-    //                     break;
-    //                 }
-    //             }
-    //             if (replace == true) {
-    //                 break;
-    //             }
-    //         }
-    //         // Plain value of same type
-    //         else if (uniform.values[v] !== vals[v]) {
-    //             replace = true;
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //             break;
-    //         }
-    //         if (typeof uniform.values[v] == 'object') {
-    //             console.log(uniform.name +  " compare " + JSON.stringify(uniform.values[v]) + " and " + JSON.stringify(vals[v]) + " " + (replace ? "REPLACE" : "KEEP"));
-    //         }
-    //         else {
-    //             console.log(uniform.name +  " compare " + uniform.values[v] + " and " + vals[v] + " " + (replace ? "REPLACE" : "KEEP"));
-    //         }
-    //     }
-
-    //     if (replace == true) {
-    //         uniform.values = vals;
-    //         this.updateUniform(name);
-    //     }
-    //     // if (v == vals.length) {
-    //     //     console.log("uniform " + uniform.name + ": don't update, matched cached value");
-    //     // }
-    // }
-    // else {
-    //     console.log("uniform " + uniform.name + ": set initial value, or new length");
-        uniform.values = vals;
-        this.updateUniform(name);
-    // }
+    uniform.values = Array.prototype.slice.call(arguments, 2);
+    this.updateUniform(name);
 };
 
 // Set a single uniform
@@ -585,6 +545,19 @@ GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
 //     }
 //     return vertex_data;
 // };
+
+// Texture management
+// TODO: support options config for texture params
+GL.createTexture = function (gl)
+{
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return texture;
+};
 
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
 GL.VertexArrayObject = {};

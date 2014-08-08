@@ -3,6 +3,7 @@ var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var CanvasRenderer = require('./canvas/canvas_renderer.js');
+var Style = require('./style.js');
 var Utils = require('./utils.js');
 
 var VectorWorker = {};
@@ -13,6 +14,18 @@ VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 // VectorWorker.modes = require('./gl/gl_modes').Modes;
 
 GLBuilders.setTileScale(VectorRenderer.tile_scale);
+
+// Initialize worker
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'init') {
+        return;
+    }
+
+    VectorWorker.worker_id = event.data.worker_id;
+    VectorWorker.num_workers = event.data.num_workers;
+
+    Style.selection_map_prefix = VectorWorker.worker_id;
+});
 
 VectorWorker.buildTile = function (tile)
 {
@@ -41,11 +54,10 @@ VectorWorker.buildTile = function (tile)
 
     VectorWorker.worker.postMessage({
         type: 'buildTileCompleted',
-        tile: tile_subset//,
-        // mode_states: VectorRenderer.getModeStates(VectorWorker.modes)
+        worker_id: VectorWorker.worker_id,
+        tile: tile_subset,
+        selection_map_size: Object.keys(Style.selection_map).length
     });
-    // console.log(JSON.stringify(VectorWorker.modes.polygons.state));
-    // console.log(JSON.stringify(VectorRenderer.getModeStates(VectorWorker.modes)));
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
@@ -91,7 +103,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     }
     // Tile already loaded, just rebuild
     else {
-        console.log("used worker cache for tile " + tile.key);
+        VectorWorker.log("used worker cache for tile " + tile.key);
 
         // Update loading state
         tile.loaded = true;
@@ -113,22 +125,40 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     var key = event.data.key;
     var tile = VectorWorker.tiles[key];
-    // console.log("worker remove tile event for " + key);
+    // VectorWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
         if (tile.loading == true) {
-            console.log("cancel tile load for " + key);
+            VectorWorker.log("cancel tile load for " + key);
             // TODO: let tile source do this
             tile.loading = false;
 
             if (tile.xhr != null) {
                 tile.xhr.abort();
-                // console.log("aborted XHR for tile " + tile.key);
+                // VectorWorker.log("aborted XHR for tile " + tile.key);
             }
         }
 
         // Remove from cache
         delete VectorWorker.tiles[key];
+    }
+});
+
+// Get a feature from the selection map
+VectorWorker.worker.addEventListener('message', function (event) {
+    if (event.data.type != 'getFeatureSelection') {
+        return;
+    }
+
+    var key = event.data.key;
+    var selection = Style.selection_map[key];
+
+    if (selection != null) {
+        VectorWorker.worker.postMessage({
+            type: 'getFeatureSelection',
+            key: key,
+            feature: selection.feature
+        });
     }
 });
 
@@ -141,6 +171,12 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
     VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
+    Style.resetSelectionMap();
 
-    console.log("worker refreshed config for tile rebuild");
+    VectorWorker.log("worker refreshed config for tile rebuild");
 });
+
+// Log wrapper to include worker id #
+VectorWorker.log = function (msg) {
+    console.log("worker " + VectorWorker.worker_id + ": " + msg);
+};

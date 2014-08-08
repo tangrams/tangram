@@ -22,13 +22,14 @@ body {
     background: rgba(0, 0, 0, 0);
 }
 
-<!-- For canvas feature picking demo -->
 .label {
     width: 200px;
     margin-left: -100px;
     position: absolute;
     z-index: 10;
     text-align: center;
+    font-family: Helvetica, sans-serif;
+    font-size: 12px;
 }
 
 .labelInner {
@@ -288,6 +289,10 @@ function setGLProgramUniform (type, name, value) {
     }
     layer.renderer.dirty = true;
 }
+
+// Toggle for feature selection on hover
+gui['feature info'] = true;
+gui.add(gui, 'feature info');
 
 // Render/GL stats: http://spite.github.io/rstats/
 // Activate with 'rstats' anywhere in options list in URL
@@ -566,6 +571,69 @@ function updateURL () {
     window.location.hash = url_options.join(',');
 }
 
+// Feature selection
+function initFeatureSelection () {
+    // Selection info shown on hover
+    var selection_info = document.createElement('div');
+    selection_info.setAttribute('class', 'label');
+    selection_info.style.display = 'block';
+
+    // Show selected feature on hover
+    renderer.container.addEventListener('mousemove', function (event) {
+        if (gui['feature info'] == false) {
+            if (selection_info.parentNode != null) {
+                selection_info.parentNode.removeChild(selection_info);
+            }
+
+            return;
+        }
+
+        var pixel = { x: event.clientX, y: event.clientY };
+
+        renderer.getFeatureAt(
+            pixel,
+            function (selection) {
+                var feature = selection.feature;
+                if (feature != null) {
+                    // console.log("selection map: " + JSON.stringify(feature));
+
+                    var label = '';
+                    if (feature.properties.name != null) {
+                        label = feature.properties.name;
+                    }
+
+                    // if (feature.properties.layer == 'buildings' && feature.properties.height) {
+                    //     if (label != '') {
+                    //         label += '<br>';
+                    //     }
+                    //     label += feature.properties.height + 'm';
+                    // }
+
+                    if (label != '') {
+                        selection_info.style.left = (pixel.x + 5) + 'px';
+                        selection_info.style.top = (pixel.y + 15) + 'px';
+                        selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
+                        renderer.container.parentNode.appendChild(selection_info);
+                    }
+                    else if (selection_info.parentNode != null) {
+                        selection_info.parentNode.removeChild(selection_info);
+                    }
+                }
+                else if (selection_info.parentNode != null) {
+                    selection_info.parentNode.removeChild(selection_info);
+                }
+            }
+        );
+
+        // Don't show labels while panning
+        if (renderer.panning == true) {
+            if (selection_info.parentNode != null) {
+                selection_info.parentNode.removeChild(selection_info);
+            }
+        }
+    });
+}
+
 
 /***** Render loop *****/
 
@@ -580,6 +648,8 @@ window.addEventListener('load', function () {
         renderer.refreshModes();
     }
     updateURL();
+
+    initFeatureSelection();
 
     if (osm_debug == true) {
         window.osm_layer =

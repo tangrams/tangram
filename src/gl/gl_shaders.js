@@ -169,8 +169,10 @@ shader_sources['polygon_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec4 v_position_world;\n" +
 "varying vec3 v_color;\n" +
-"#if defined(LIGHTING_ENVIRONMENT)\n" +
+"attribute vec4 a_selection_color;\n" +
+"#if defined(FEATURE_SELECTION)\n" +
 "\n" +
+"varying vec4 v_selection_color;\n" +
 "#endif\n" +
 "\n" +
 "#if !defined(LIGHTING_VERTEX)\n" +
@@ -244,6 +246,16 @@ shader_sources['polygon_vertex'] =
 "#pragma tangram: globals\n" +
 "\n" +
 "void main() {\n" +
+"  \n" +
+"  #if defined(FEATURE_SELECTION)\n" +
+"  if(a_selection_color.xyz == vec3(0.)) {\n" +
+"    gl_Position = vec4(0.);\n" +
+"    return;\n" +
+"  }\n" +
+"  v_selection_color = a_selection_color;\n" +
+"  #else\n" +
+"  vec4 selection_color = a_selection_color;\n" +
+"  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
 "  v_position_world = position_world;\n" +
@@ -265,6 +277,26 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
+"}\n" +
+"";
+
+shader_sources['selection_fragment'] =
+"\n" +
+"#define GLSLIFY 1\n" +
+"\n" +
+"#if defined(FEATURE_SELECTION)\n" +
+"\n" +
+"varying vec4 v_selection_color;\n" +
+"#endif\n" +
+"\n" +
+"void main(void) {\n" +
+"  \n" +
+"  #if defined(FEATURE_SELECTION)\n" +
+"  gl_FragColor = v_selection_color;\n" +
+"  #else\n" +
+"  gl_FragColor = vec3(0., 0., 0., 1.);\n" +
+"  #endif\n" +
+"  \n" +
 "}\n" +
 "";
 

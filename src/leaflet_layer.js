@@ -43,6 +43,14 @@ var LeafletLayer = L.GridLayer.extend({
             layer.updateBounds();
         });
 
+        layer._map.on('dragstart', function () {
+            layer.renderer.panning = true;
+        });
+
+        layer._map.on('dragend', function () {
+            layer.renderer.panning = false;
+        });
+
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
         // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
         layer.renderer.container = layer._map.getContainer();

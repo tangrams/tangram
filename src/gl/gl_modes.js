@@ -10,29 +10,18 @@ var shader_sources = require('./gl_shaders.js'); // built-in shaders
 var RenderMode = {
     init: function (gl) {
         this.gl = gl;
-        // this.gl_program = this.makeGLProgram();
         this.makeGLProgram();
     },
     refresh: function () {
         this.makeGLProgram();
     },
-    // state: {},
-    // updateState: function (new_state) {
-    //     this.state = this.state || {};
-    //     if (new_state != null) {
-    //         for (var k in new_state) {
-    //             this.state[k] = this.new_state[k];
-    //         }
-    //     }
-    //     return this.state;
-    // },
     defines: {},
+    selection: false,
     buildPolygons: function(){}, // build functions are no-ops until overriden
     buildLines: function(){},
     buildPoints: function(){}
 };
 
-// TODO: allow mode programs to be recompiled
 RenderMode.makeGLProgram = function ()
 {
     // Add any custom defines to built-in mode defines
@@ -59,6 +48,16 @@ RenderMode.makeGLProgram = function ()
             this.shaders.fragment_url,
             { defines: defines, transforms: transforms }
         );
+
+        if (this.selection) {
+            defines['FEATURE_SELECTION'] = true;
+            this.selection_gl_program = new GL.Program(
+                this.gl,
+                this.gl_program.vertex_shader_source,
+                shader_sources['selection_fragment'],
+                { defines: defines, transforms: transforms }
+            );
+        }
     }
     // Create shader from built-in source
     else {
@@ -68,27 +67,42 @@ RenderMode.makeGLProgram = function ()
             shader_sources[this.fragment_shader_key],
             { defines: defines, transforms: transforms }
         );
+
+        if (this.selection) {
+            defines['FEATURE_SELECTION'] = true;
+            this.selection_gl_program = new GL.Program(
+                this.gl,
+                shader_sources[this.vertex_shader_key],
+                shader_sources['selection_fragment'],
+                { defines: defines, transforms: transforms }
+            );
+       }
     }
 };
 
-RenderMode.updateUniforms = function ()
+RenderMode.setUniforms = function (options)
 {
+    options = options || {};
+
+    // Clear main program by default, or selection program if specified
+    var gl_program = GL.Program.current;
+
     // TODO: only update uniforms when changed
     if (this.shaders != null && this.shaders.uniforms != null) {
         for (var u in this.shaders.uniforms) {
             // Single float
             if (typeof this.shaders.uniforms[u] == 'number') {
-                this.gl_program.uniform('1f', u, this.shaders.uniforms[u]);
+                gl_program.uniform('1f', u, this.shaders.uniforms[u]);
             }
             else if (typeof this.shaders.uniforms[u] == 'object') {
                 // float vectors (vec2, vec3, vec4)
                 if (this.shaders.uniforms[u].length >= 2 && this.shaders.uniforms[u].length <= 4) {
-                    this.gl_program.uniform(this.shaders.uniforms[u].length + 'fv', u, this.shaders.uniforms[u]);
+                    gl_program.uniform(this.shaders.uniforms[u].length + 'fv', u, this.shaders.uniforms[u]);
                 }
                 // TODO: support arrays for more than 4 components
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
                 // TODO: support non-float types? (int, texture sampler, etc.)
-                // this.gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
+                // gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
             }
         }
     }
@@ -96,12 +110,14 @@ RenderMode.updateUniforms = function ()
 
 RenderMode.update = function ()
 {
+    this.gl_program.use();
+
     // Mode-specific animation
     if (typeof this.animation == 'function') {
         this.animation();
     }
 
-    this.updateUniforms();
+    this.setUniforms();
 };
 
 
@@ -129,38 +145,19 @@ ModeManager.configureMode = function (name, settings)
 
 Modes.polygons = Object.create(RenderMode);
 
-// Modes.polygons.init = function (gl)
-// {
-//     RenderMode.init.apply(this, arguments);
-//     // this.state.colors = {};
-// };
-
-// Count uses of colors
-// Modes.polygons.countColor = function (color)
-// {g
-//     var k = color.join(',');
-//     if (this.state.colors[k] != null) {
-//         this.state.colors[k]++;
-//     }
-//     else {
-//         this.state.colors[k] = 1;
-//     }
-// };
-
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
 
-// Modes.polygons.shaders.uniforms = {
-//     // scale: 1.0
-// };
+Modes.polygons.selection = true;
 
 Modes.polygons.makeGLGeometry = function (vertex_data)
 {
     var geom = new GLGeometry(this.gl, this.gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
     geom.geometry_count = geom.vertex_count / 3;
 
@@ -172,17 +169,17 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
+        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
-    // this.countColor(style.color);
 
     // Outlines have a slightly different set of constants, because the layer number is modified
     if (style.outline.color) {
         var outline_vertex_constants = [
             style.outline.color[0], style.outline.color[1], style.outline.color[2],
+            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
-        // this.countColor(style.outline.color);
     }
 
     // Extruded polygons (e.g. 3D buildings)
@@ -246,7 +243,17 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     // Polygon outlines
     if (style.outline.color && style.outline.width) {
         for (var mpc=0; mpc < polygons.length; mpc++) {
-            GLBuilders.buildPolylines(polygons[mpc], style.layer_num - 0.5, style.outline.width, vertex_data, { closed_polygon: true, remove_tile_edges: true, vertex_constants: outline_vertex_constants });
+            GLBuilders.buildPolylines(
+                polygons[mpc],
+                style.z,
+                style.outline.width,
+                vertex_data,
+                {
+                    closed_polygon: true,
+                    remove_tile_edges: true,
+                    vertex_constants: outline_vertex_constants
+                }
+            );
         }
     }
 };
@@ -257,6 +264,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
+        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
 
@@ -264,6 +272,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     if (style.outline.color) {
         var outline_vertex_constants = [
             style.outline.color[0], style.outline.color[1], style.outline.color[2],
+            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
     }
@@ -299,6 +308,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
+        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
 
@@ -325,16 +335,16 @@ Modes.polygons_texture.init = function () {
     RenderMode.init.apply(this, arguments);
 
     if (this.texture) {
-        var texture = new GL.Texture(this.gl, this.texture);
+        this.gl_texture = new GL.Texture(this.gl, this.texture);
     }
 };
 
 /*** Simplified polygon shader ***/
 
-Modes.polygons_simple = Object.create(Modes.polygons);
+// Modes.polygons_simple = Object.create(Modes.polygons);
 
-Modes.polygons_simple.vertex_shader_key = 'simple_polygon_vertex';
-Modes.polygons_simple.fragment_shader_key = 'simple_polygon_fragment';
+// Modes.polygons_simple.vertex_shader_key = 'simple_polygon_vertex';
+// Modes.polygons_simple.fragment_shader_key = 'simple_polygon_fragment';
 
 
 /*** Points w/simple distance field rendering ***/
@@ -351,10 +361,10 @@ Modes.points.defines = {
 Modes.points.makeGLGeometry = function (vertex_data)
 {
     return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
-        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
 };
 

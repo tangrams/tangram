@@ -55,10 +55,15 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.modes = VectorRenderer.createModes({}, this.styles);
     this.updateActiveModes();
     this.createWorkers();
+    this.selection_map_worker_size = {};
 
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
+
+    this.zooming = false;
+    this.panning = false;
+
     this.resetTime();
 }
 
@@ -77,6 +82,7 @@ VectorRenderer.prototype.init = function ()
     var renderer = this;
     this.workers.forEach(function(worker) {
         worker.addEventListener('message', renderer.workerBuildTileCompleted.bind(renderer));
+        worker.addEventListener('message', renderer.workerGetFeatureSelection.bind(renderer));
     });
 
     this.initialized = true;
@@ -96,6 +102,11 @@ VectorRenderer.prototype.createWorkers = function ()
         renderer.workers = [];
         for (var w=0; w < renderer.num_workers; w++) {
             renderer.workers.push(new Worker(worker_local_url));
+            renderer.workers[w].postMessage({
+                type: 'init',
+                worker_id: w,
+                num_workers: renderer.num_workers
+            })
         }
     };
     req.open('GET', url, false /* async flag */);
@@ -129,17 +140,17 @@ VectorRenderer.prototype.setCenter = function (lng, lat)
 VectorRenderer.prototype.setZoom = function (zoom)
 {
     // console.log("setZoom " + zoom);
-    this.map_last_zoom = this.zoom;
+    this.last_zoom = this.zoom;
     this.zoom = zoom;
     this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
-    this.map_zooming = false;
+    this.zooming = false;
     this.dirty = true;
 };
 
 VectorRenderer.prototype.startZoom = function ()
 {
-    this.map_last_zoom = this.zoom;
-    this.map_zooming = true;
+    this.last_zoom = this.zoom;
+    this.zooming = true;
 };
 
 VectorRenderer.prototype.setBounds = function (sw, ne)
@@ -279,6 +290,7 @@ VectorRenderer.prototype.rebuildTiles = function ()
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+    this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
     this.workers.forEach(function(worker) {
@@ -361,11 +373,13 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
         return;
     }
 
-    var tile = event.data.tile;
+    // Track selection map size (for stats/debug) - update per worker and sum across workers
+    this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
+    this.selection_map_size = 0;
+    Object.keys(this.selection_map_worker_size).forEach(function(w) { this.selection_map_size += this.selection_map_worker_size[w]; }.bind(this));
+    console.log("selection map: " + this.selection_map_size + " features");
 
-    // Sync modes
-    // VectorRenderer.refreshModeStates(this.modes, event.data.mode_states);
-    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
+    var tile = event.data.tile;
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
@@ -380,9 +394,6 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     if (typeof(this._tileWorkerCompleted) == 'function') {
         this._tileWorkerCompleted(tile);
     }
-
-    // NOTE: was previously deleting source data to save memory, but now need to save for re-building geometry
-    // delete tile.layers;
 
     this.dirty = true;
     this.trackTileSetLoadEnd();
@@ -448,6 +459,28 @@ VectorRenderer.prototype.mergeTile = function (key, source_tile)
     }
 
     return tile;
+};
+
+// Called on main thread when a web worker finds a feature in the selection buffer
+VectorRenderer.prototype.workerGetFeatureSelection = function (event)
+{
+    if (event.data.type != 'getFeatureSelection') {
+        return;
+    }
+
+    var feature = event.data.feature;
+    var changed = false;
+    if ((feature != null && this.selected_feature == null) ||
+        (feature == null && this.selected_feature != null) ||
+        (feature != null && this.selected_feature != null && feature.id != this.selected_feature.id)) {
+        changed = true;
+    }
+
+    this.selected_feature = feature;
+
+    if (typeof this.selection_callback == 'function') {
+        this.selection_callback({ feature: this.selected_feature, changed: changed });
+    }
 };
 
 // Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.

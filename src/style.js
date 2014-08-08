@@ -19,6 +19,40 @@ Style.pixels = function (p, z) {
     return f;
 };
 
+// Create a unique 32-bit color to identify a feature
+// Workers independently create/modify selection colors in their own threads, but we also
+// need the main thread to know where each feature color originated. To accomplish this,
+// we partition the map by setting the 4th component (alpha channel) to the worker's id.
+Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
+Style.selection_map_current = 1; // start at 1 since 1 will be divided by this
+Style.selection_map_prefix = 0; // set by worker to worker id #
+Style.generateSelection = function (color_map)
+{
+    // 32-bit color key
+    Style.selection_map_current++;
+    var ir = Style.selection_map_current & 255;
+    var ig = (Style.selection_map_current >> 8) & 255;
+    var ib = (Style.selection_map_current >> 16) & 255;
+    var ia = Style.selection_map_prefix;
+    var r = ir / 255;
+    var g = ig / 255;
+    var b = ib / 255;
+    var a = ia / 255;
+    var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
+
+    color_map[key] = {
+        color: [r, g, b, a],
+    };
+
+    return color_map[key];
+};
+
+Style.resetSelectionMap = function ()
+{
+    Style.selection_map = {};
+    Style.selection_map_current = 1;
+};
+
 // Find and expand style macros
 Style.macros = [
     'Style.color.pseudoRandomColor',
@@ -71,6 +105,10 @@ Style.defaults = {
         // width: 1,
         // dash: null
     },
+    selection: {
+        active: false,
+        color: [0, 0, 0, 1]
+    },
     mode: {
         name: 'polygons'
     }
@@ -84,7 +122,7 @@ Style.helpers = {
     Geo: Geo
 };
 
-Style.parseStyleForFeature = function (feature, layer_style, tile)
+Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 {
     var layer_style = layer_style || {};
     var style = {};
@@ -157,6 +195,33 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
     if (typeof style.outline.dash == 'function') {
         style.outline.dash = style.outline.dash(feature, tile, Style.helpers);
+    }
+
+    // Interactivity (selection map)
+    var interactive = false;
+    if (typeof layer_style.interactive == 'function') {
+        interactive = layer_style.interactive(feature, tile, Style.helpers);
+    }
+    else {
+        interactive = layer_style.interactive;
+    }
+
+    if (interactive == true) {
+        var selector = Style.generateSelection(Style.selection_map);
+
+        selector.feature = {
+            id: feature.id,
+            properties: feature.properties
+        };
+        selector.feature.properties.layer = layer_name; // add layer name to properties
+
+        style.selection = {
+            active: true,
+            color: selector.color
+        };
+    }
+    else {
+        style.selection = Style.defaults.selection;
     }
 
     if (layer_style.mode != null && layer_style.mode.name != null) {
