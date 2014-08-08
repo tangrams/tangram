@@ -122,7 +122,7 @@ Style.helpers = {
     Geo: Geo
 };
 
-Style.parseStyleForFeature = function (feature, layer_style, tile)
+Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 {
     var layer_style = layer_style || {};
     var style = {};
@@ -213,6 +213,7 @@ Style.parseStyleForFeature = function (feature, layer_style, tile)
             id: feature.id,
             properties: feature.properties
         };
+        selector.feature.properties.layer = layer_name; // add layer name to properties
 
         style.selection = {
             active: true,

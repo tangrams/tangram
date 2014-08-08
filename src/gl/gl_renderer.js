@@ -130,7 +130,7 @@ GLRenderer.addTile = function (tile, layers, styles, modes)
             // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
-                style = Style.parseStyleForFeature(feature, styles.layers[layer.name], tile);
+                style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
 
                 // Skip feature?
                 if (style == null) {
@@ -401,8 +401,13 @@ GLRenderer.prototype._render = function GLRendererRender ()
     // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
     // mode program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
-    if (this.update_selection && !this.panning) {
+    if (this.update_selection) {
         this.update_selection = false; // reset selection check
+
+        // TODO: queue callback till panning is over? coords where selection was requested are out of date
+        if (this.panning) {
+            return;
+        }
 
         // Switch to FBO
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
