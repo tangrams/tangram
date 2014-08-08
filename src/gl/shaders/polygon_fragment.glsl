@@ -105,7 +105,8 @@ void main (void) {
     #endif
 
     // Apply lighting to color (can be overriden by transforms)
-    // color *= lighting;
+    vec3 color_prelight = color;
+    color *= lighting;
 
     #pragma tangram: fragment
 

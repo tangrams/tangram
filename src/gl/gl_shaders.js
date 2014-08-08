@@ -145,7 +145,8 @@ shader_sources['polygon_fragment'] =
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
-"  \n" +
+"  vec3 color_prelight = color;\n" +
+"  color *= lighting;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
 "}\n" +

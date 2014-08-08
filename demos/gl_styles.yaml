@@ -131,25 +131,25 @@ modes:
         #         polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
         #         this.parent.buildPolygons(polygons, style, vertex_data);
         #     }
+
     envmap:
         extends: polygons_texture
         texture: demos/images/LitSphere_test_02.jpg
+        # texture: demos/images/sunset.jpg
+        # texture: demos/images/matball01.jpg
+        animated: true
         shaders:
             defines:
                 LIGHTING_ENVIRONMENT: true
-            # transforms:
-            #     fragment: color *= lighting;
+            transforms:
+                # fragment: color *= lighting;
+                # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
     points:
         shaders:
             transforms:
                 # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                 fragment: { url: demos/shaders/color_bleed.glsl }
-
-    # polygons:
-    #     shaders:
-    #         vertex_url: src/gl/shaders/compiled/simple_polygon_vertex.glsl
-    #         fragment_url: src/gl/shaders/compiled/simple_polygon_fragment.glsl
 
     # polygons:
     #     shaders:

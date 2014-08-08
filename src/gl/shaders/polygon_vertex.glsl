@@ -93,7 +93,5 @@ void main() {
 
     position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
 
-
-
     gl_Position = position;
 }
