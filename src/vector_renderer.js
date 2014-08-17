@@ -57,6 +57,7 @@ function VectorRenderer (type, tile_source, layers, styles, options)
     this.createWorkers();
     this.selection_map_worker_size = {};
 
+    this.frame = 0;
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
@@ -226,6 +227,8 @@ VectorRenderer.prototype.render = function ()
     if (this.animated == true) {
         this.dirty = true;
     }
+
+    this.frame++;
 
     // console.log("render map");
     return true;
