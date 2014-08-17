@@ -269,6 +269,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
     tile.coords = coords;
     tile.min = Geo.metersForTile(tile.coords);
     tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
+    tile.span = { x: (tile.max.x - tile.min.x), y: (tile.max.y - tile.min.y) };
     tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
     tile.debug = {};
     tile.loading = true;

@@ -73,8 +73,8 @@
                 },
                 transforms: {
                     globals: { url: 'demos/shaders/dots.glsl' },
-                    fragment: 'color *= dots(v_position_world.xyz);'
-                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' // apply only to up-facing surfaces
+                    fragment: 'color *= dots(v_world_position.xyz);'
+                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); }' // apply only to up-facing surfaces
                 }
             }
         },
@@ -91,8 +91,8 @@
                 },
                 transforms: {
                     globals: { url: 'demos/shaders/wood.glsl' },
-                    fragment: 'color = wood(v_position_world.xyz);'
-                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); }' // apply only to up-facing surfaces
+                    fragment: 'color = wood(v_world_position.xyz);'
+                    // fragment: 'vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); }' // apply only to up-facing surfaces
                 }
             }
         },
@@ -203,7 +203,7 @@
                 // name: 'explode'
                 // name: 'formica'
                 // name: 'dots'
-                name: 'wood'
+                // name: 'wood'
             },
             // filter: function (f) { return f.properties.name != null; },
             // filter: function (f) { return Math.random() < 0.25; },

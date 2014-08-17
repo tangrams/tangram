@@ -14,7 +14,7 @@ modes:
                 EFFECT_NOISE_ANIMATED: true
             transforms:
                 globals:
-                    url: node_modules/glsl-noise/classic/3d.glsl
+                    url: node_modules/glsl-noise/periodic/3d.glsl
                 fragment:
                     url: demos/shaders/noise.glsl
 
@@ -25,7 +25,7 @@ modes:
                 EFFECT_NOISE_TEXTURE: true
             transforms:
                 globals:
-                    url: node_modules/glsl-noise/classic/3d.glsl
+                    url: node_modules/glsl-noise/periodic/3d.glsl
                 fragment:
                     url: demos/shaders/noise.glsl
 
@@ -51,7 +51,7 @@ modes:
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
                 fragment: |
-                    vec3 c = vec3(v_position_world.z * .003 + u_time / 10., 1.0, 1.0);
+                    vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color = hsv2rgb(c);
     popup:
         extends: polygons
@@ -107,9 +107,9 @@ modes:
                 u_dot_color: [1, 1, 1]
             transforms:
                 globals: { url: demos/shaders/dots.glsl }
-                fragment: color *= dots(v_position_world.xyz);
-                # fragment: color *= dots(v_position_world.xyz + vec3(0., 0., u_time * 25.)); // animated dots
-                # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_position_world.xyz); } // apply only to up-facing surfaces
+                fragment: color *= dots(v_world_position.xyz);
+                # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
+                # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
 
     wood:
         extends: polygons
@@ -117,13 +117,13 @@ modes:
             uniforms:
                 u_wood_color1: [.9, .5, .5]
                 u_wood_color2: [.5, .3, .1]
-                u_wood_eccentricity: .1
-                u_wood_twist: .00002
+                u_wood_eccentricity: 0.9
+                u_wood_twist: .0001
                 u_wood_scale: 50
                 u_wood_spacing: 1
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = lighting * wood(v_position_world.xyz);
+                fragment: color = lighting * wood(v_world_position.xyz);
         # buildPolygons: |
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder

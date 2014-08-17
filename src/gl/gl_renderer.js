@@ -378,16 +378,20 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
+
+                // Tile origin
+                gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+
                 // Tile view matrix - transform tile space into view space (meters, relative to camera)
                 mat4.identity(tile_view_mat);
                 mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                 gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                 // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(tile_world_mat);
                 mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                 gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
@@ -442,16 +446,19 @@ GLRenderer.prototype._render = function GLRendererRender ()
                         gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
                     }
 
+                    // Tile origin
+                    gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                     // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                     mat4.identity(tile_world_mat);
                     mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues((tile.max.x - tile.min.x) / VectorRenderer.tile_scale, -1 * (tile.max.y - tile.min.y) / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile
