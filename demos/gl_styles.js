@@ -8,7 +8,7 @@
                     EFFECT_NOISE_ANIMATED: true
                 },
                 transforms: {
-                    globals: { url: 'node_modules/glsl-noise/classic/3d.glsl' },
+                    globals: { url: 'node_modules/glsl-noise/periodic/3d.glsl' },
                     fragment: { url: 'demos/shaders/noise.glsl' }
                 }
             }
@@ -17,7 +17,7 @@
             extends: 'polygons',
             shaders: {
                 transforms: {
-                    globals: { url: 'node_modules/glsl-noise/classic/3d.glsl' },
+                    globals: { url: 'node_modules/glsl-noise/periodic/3d.glsl' },
                     fragment: { url: 'demos/shaders/noise.glsl' }
                 }
             }
