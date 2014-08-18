@@ -2,7 +2,6 @@ var TileSource = require('./tile_source.js');
 var VectorRenderer = require('./vector_renderer.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
-var CanvasRenderer = require('./canvas/canvas_renderer.js');
 var Style = require('./style.js');
 var Utils = require('./utils.js');
 

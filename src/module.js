@@ -5,7 +5,6 @@ var Leaflet = require('./leaflet_layer.js');
 
 // Renderer modules need to be explicitly included since they are not otherwise referenced
 require('./gl/gl_renderer.js');
-require('./canvas/canvas_renderer.js');
 
 // GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
 var GL = require('./gl/gl.js');
