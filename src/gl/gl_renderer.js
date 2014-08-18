@@ -1,7 +1,7 @@
 var Point = require('../point.js');
 var Geo = require('../geo.js');
 var Style = require('../style.js');
-var VectorRenderer = require('../vector_renderer.js');
+var Scene = require('../scene.js');
 
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
@@ -10,17 +10,17 @@ var ModeManager = require('./gl_modes').ModeManager;
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
 
-GLRenderer.prototype = Object.create(VectorRenderer.prototype);
+GLRenderer.prototype = Object.create(Scene.prototype);
 GLRenderer.debug = false;
 
 function GLRenderer (tile_source, layers, styles, options)
 {
     var options = options || {};
 
-    VectorRenderer.call(this, tile_source, layers, styles, options);
+    Scene.call(this, tile_source, layers, styles, options);
 
-    GLBuilders.setTileScale(VectorRenderer.tile_scale);
-    GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale;
+    GLBuilders.setTileScale(Scene.tile_scale);
+    GL.Program.defines.TILE_SCALE = Scene.tile_scale;
 
     this.container = options.container;
     this.mode_manager = ModeManager;
@@ -58,7 +58,7 @@ GLRenderer.prototype.initModes = function ()
 
 GLRenderer.prototype.initSelectionBuffer = function ()
 {
-    // TODO: move generic bits to VectorRenderer
+    // TODO: move generic bits to Scene
 
     // Selection state tracking
     this.pixel = new Uint8Array(4);
@@ -227,7 +227,7 @@ GLRenderer.prototype.removeTile = function GLRendererRemoveTile (key)
     }
 
     this.freeTileResources(this.tiles[key]);
-    VectorRenderer.prototype.removeTile.apply(this, arguments);
+    Scene.prototype.removeTile.apply(this, arguments);
 };
 
 // Free any GL / owned resources
@@ -259,7 +259,7 @@ GLRenderer.prototype.setZoom = function (zoom)
         }
     }
 
-    VectorRenderer.prototype.setZoom.apply(this, arguments); // call super
+    Scene.prototype.setZoom.apply(this, arguments); // call super
 
     // Must be called after super call, so that zoom operation is ended
     this.removeTilesOutsideZoomRange(below, above);
@@ -288,7 +288,7 @@ GLRenderer.prototype.removeTilesOutsideZoomRange = function (below, above)
 // Overrides base class method (a no op)
 GLRenderer.prototype.resizeMap = function (width, height)
 {
-    VectorRenderer.prototype.resizeMap.apply(this, arguments);
+    Scene.prototype.resizeMap.apply(this, arguments);
 
     this.css_size = { width: width, height: height };
     this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
@@ -384,13 +384,13 @@ GLRenderer.prototype._render = function GLRendererRender ()
                 // Tile view matrix - transform tile space into view space (meters, relative to camera)
                 mat4.identity(tile_view_mat);
                 mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
                 gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                 // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(tile_world_mat);
                 mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
                 gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
@@ -451,13 +451,13 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                     // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                     mat4.identity(tile_world_mat);
                     mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / VectorRenderer.tile_scale, -1 * tile.span.y / VectorRenderer.tile_scale, 1)); // scale tile local coords to meters
+                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
                     gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile

@@ -18,11 +18,11 @@ Utils.runIfInMainThread(function() {
 });
 
 // Global setup
-VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
-Geo.setTileScale(VectorRenderer.tile_scale);
+Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
+Geo.setTileScale(Scene.tile_scale);
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (tile_source, layers, styles, options)
+function Scene (tile_source, layers, styles, options)
 {
     var options = options || {};
     this.tile_source = tile_source;
@@ -31,7 +31,7 @@ function VectorRenderer (tile_source, layers, styles, options)
 
     if (typeof(layers) == 'string') {
         this.layer_source = Utils.urlForPath(layers);
-        this.layers = VectorRenderer.loadLayers(this.layer_source);
+        this.layers = Scene.loadLayers(this.layer_source);
     }
     else {
         this.layers = layers;
@@ -40,10 +40,10 @@ function VectorRenderer (tile_source, layers, styles, options)
 
     if (typeof(styles) == 'string') {
         this.style_source = Utils.urlForPath(styles);
-        this.styles = VectorRenderer.loadStyles(this.style_source);
+        this.styles = Scene.loadStyles(this.style_source);
     }
     else {
-        this.styles = VectorRenderer.postProcessStyles(styles);
+        this.styles = Scene.postProcessStyles(styles);
     }
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
 
@@ -51,7 +51,7 @@ function VectorRenderer (tile_source, layers, styles, options)
     this.animated = false; // request redraw every frame
     this.initialized = false;
 
-    this.modes = VectorRenderer.createModes({}, this.styles);
+    this.modes = Scene.createModes({}, this.styles);
     this.updateActiveModes();
     this.createWorkers();
     this.selection_map_worker_size = {};
@@ -67,7 +67,7 @@ function VectorRenderer (tile_source, layers, styles, options)
     this.resetTime();
 }
 
-VectorRenderer.prototype.init = function ()
+Scene.prototype.init = function ()
 {
     // Child class-specific initialization (e.g. GL context creation)
     if (typeof(this._init) == 'function') {
@@ -84,10 +84,10 @@ VectorRenderer.prototype.init = function ()
 };
 
 // Web workers handle heavy duty geometry processing
-VectorRenderer.prototype.createWorkers = function ()
+Scene.prototype.createWorkers = function ()
 {
     var renderer = this;
-    var url = VectorRenderer.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
+    var url = Scene.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
 
     // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
     var req = new XMLHttpRequest();
@@ -117,7 +117,7 @@ VectorRenderer.prototype.createWorkers = function ()
 };
 
 // Post a message about a tile to the next worker (round robbin)
-VectorRenderer.prototype.workerPostMessageForTile = function (tile, message)
+Scene.prototype.workerPostMessageForTile = function (tile, message)
 {
     if (tile.worker == null) {
         tile.worker = this.next_worker;
@@ -126,13 +126,13 @@ VectorRenderer.prototype.workerPostMessageForTile = function (tile, message)
     this.workers[tile.worker].postMessage(message);
 };
 
-VectorRenderer.prototype.setCenter = function (lng, lat)
+Scene.prototype.setCenter = function (lng, lat)
 {
     this.center = { lng: lng, lat: lat };
     this.dirty = true;
 };
 
-VectorRenderer.prototype.setZoom = function (zoom)
+Scene.prototype.setZoom = function (zoom)
 {
     // console.log("setZoom " + zoom);
     this.last_zoom = this.zoom;
@@ -142,13 +142,13 @@ VectorRenderer.prototype.setZoom = function (zoom)
     this.dirty = true;
 };
 
-VectorRenderer.prototype.startZoom = function ()
+Scene.prototype.startZoom = function ()
 {
     this.last_zoom = this.zoom;
     this.zooming = true;
 };
 
-VectorRenderer.prototype.setBounds = function (sw, ne)
+Scene.prototype.setBounds = function (sw, ne)
 {
     this.bounds = {
         sw: { lng: sw.lng, lat: sw.lat },
@@ -180,13 +180,13 @@ VectorRenderer.prototype.setBounds = function (sw, ne)
     this.dirty = true;
 };
 
-VectorRenderer.prototype.isTileInZoom = function (tile)
+Scene.prototype.isTileInZoom = function (tile)
 {
     return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
 };
 
 // Update visibility and return true if changed
-VectorRenderer.prototype.updateVisibilityForTile = function (tile)
+Scene.prototype.updateVisibilityForTile = function (tile)
 {
     var visible = tile.visible;
     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
@@ -194,17 +194,17 @@ VectorRenderer.prototype.updateVisibilityForTile = function (tile)
     return (visible != tile.visible);
 };
 
-VectorRenderer.prototype.resizeMap = function (width, height)
+Scene.prototype.resizeMap = function (width, height)
 {
     this.dirty = true;
 };
 
-VectorRenderer.prototype.requestRedraw = function ()
+Scene.prototype.requestRedraw = function ()
 {
     this.dirty = true;
 };
 
-VectorRenderer.prototype.render = function ()
+Scene.prototype.render = function ()
 {
     // Render on demand
     if (this.dirty == false || this.initialized == false) {
@@ -229,7 +229,7 @@ VectorRenderer.prototype.render = function ()
 };
 
 // Load a single tile
-VectorRenderer.prototype.loadTile = function (coords, div, callback)
+Scene.prototype.loadTile = function (coords, div, callback)
 {
     // Overzoom?
     if (coords.z > this.tile_source.max_zoom) {
@@ -283,7 +283,7 @@ VectorRenderer.prototype.loadTile = function (coords, div, callback)
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-VectorRenderer.prototype.rebuildTiles = function ()
+Scene.prototype.rebuildTiles = function ()
 {
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
@@ -341,7 +341,7 @@ VectorRenderer.prototype.rebuildTiles = function ()
     this.resetTime();
 };
 
-VectorRenderer.prototype.buildTile = function(key)
+Scene.prototype.buildTile = function(key)
 {
     var tile = this.tiles[key];
 
@@ -361,7 +361,7 @@ VectorRenderer.prototype.buildTile = function(key)
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-VectorRenderer.prototype.workerBuildTileCompleted = function (event)
+Scene.prototype.workerBuildTileCompleted = function (event)
 {
     if (event.data.type != 'buildTileCompleted') {
         return;
@@ -377,7 +377,7 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        console.log("discarded tile " + tile.key + " in VectorRenderer.tileWorkerCompleted because previously removed");
+        console.log("discarded tile " + tile.key + " in Scene.tileWorkerCompleted because previously removed");
         return;
     }
 
@@ -394,7 +394,7 @@ VectorRenderer.prototype.workerBuildTileCompleted = function (event)
     this.printDebugForTile(tile);
 };
 
-VectorRenderer.prototype.removeTile = function (key)
+Scene.prototype.removeTile = function (key)
 {
     console.log("tile unload for " + key);
     var tile = this.tiles[key];
@@ -411,7 +411,7 @@ VectorRenderer.prototype.removeTile = function (key)
 };
 
 // Attaches tracking and debug into to the provided tile DOM element
-VectorRenderer.prototype.updateTileElement = function (tile, div)
+Scene.prototype.updateTileElement = function (tile, div)
 {
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
@@ -438,7 +438,7 @@ VectorRenderer.prototype.updateTileElement = function (tile, div)
 // Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
 // Used for selectively updating properties of tiles passed between main thread and worker
 // (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
-VectorRenderer.prototype.mergeTile = function (key, source_tile)
+Scene.prototype.mergeTile = function (key, source_tile)
 {
     var tile = this.tiles[key];
 
@@ -456,7 +456,7 @@ VectorRenderer.prototype.mergeTile = function (key, source_tile)
 };
 
 // Called on main thread when a web worker finds a feature in the selection buffer
-VectorRenderer.prototype.workerGetFeatureSelection = function (event)
+Scene.prototype.workerGetFeatureSelection = function (event)
 {
     if (event.data.type != 'getFeatureSelection') {
         return;
@@ -478,15 +478,15 @@ VectorRenderer.prototype.workerGetFeatureSelection = function (event)
 };
 
 // Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.
-VectorRenderer.prototype.reloadConfig = function ()
+Scene.prototype.reloadConfig = function ()
 {
     if (this.layer_source != null) {
-        this.layers = VectorRenderer.loadLayers(this.layer_source);
+        this.layers = Scene.loadLayers(this.layer_source);
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     }
 
     if (this.style_source != null) {
-        this.styles = VectorRenderer.loadStyles(this.style_source);
+        this.styles = Scene.loadStyles(this.style_source);
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     }
 
@@ -496,12 +496,12 @@ VectorRenderer.prototype.reloadConfig = function ()
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-VectorRenderer.prototype.refreshModes = function ()
+Scene.prototype.refreshModes = function ()
 {
-    this.modes = VectorRenderer.refreshModes(this.modes, this.styles);
+    this.modes = Scene.refreshModes(this.modes, this.styles);
 };
 
-VectorRenderer.prototype.updateActiveModes = function ()
+Scene.prototype.updateActiveModes = function ()
 {
     // Make a set of currently active modes (used in a layer)
     this.active_modes = {};
@@ -521,14 +521,14 @@ VectorRenderer.prototype.updateActiveModes = function ()
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing modes/debugging
-VectorRenderer.prototype.resetTime = function ()
+Scene.prototype.resetTime = function ()
 {
     this.start_time = +new Date();
 };
 
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
-VectorRenderer.prototype.trackTileSetLoadStart = function ()
+Scene.prototype.trackTileSetLoadStart = function ()
 {
     // Start tracking new tile set if no other tiles already loading
     if (this.tile_set_loading == null) {
@@ -537,7 +537,7 @@ VectorRenderer.prototype.trackTileSetLoadStart = function ()
     }
 };
 
-VectorRenderer.prototype.trackTileSetLoadEnd = function ()
+Scene.prototype.trackTileSetLoadEnd = function ()
 {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
@@ -557,7 +557,7 @@ VectorRenderer.prototype.trackTileSetLoadEnd = function ()
     }
 };
 
-VectorRenderer.prototype.printDebugForTile = function (tile)
+Scene.prototype.printDebugForTile = function (tile)
 {
     console.log(
         "debug for " + tile.key + ': [ ' +
@@ -568,7 +568,7 @@ VectorRenderer.prototype.printDebugForTile = function (tile)
 
 /*** Class methods (stateless) ***/
 
-VectorRenderer.loadLayers = function (url)
+Scene.loadLayers = function (url)
 {
     var layers;
     var req = new XMLHttpRequest();
@@ -578,7 +578,7 @@ VectorRenderer.loadLayers = function (url)
     return layers;
 };
 
-VectorRenderer.loadStyles = function (url)
+Scene.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
@@ -603,13 +603,13 @@ VectorRenderer.loadStyles = function (url)
     // Find generic functions & style macros
     Utils.stringsToFunctions(styles);
     Style.expandMacros(styles);
-    VectorRenderer.postProcessStyles(styles);
+    Scene.postProcessStyles(styles);
 
     return styles;
 };
 
 // Normalize some style settings that may not have been explicitly specified in the stylesheet
-VectorRenderer.postProcessStyles = function (styles)
+Scene.postProcessStyles = function (styles)
 {
     // Post-process styles
     for (var m in styles.layers) {
@@ -630,7 +630,7 @@ VectorRenderer.postProcessStyles = function (styles)
 
 // Processes the tile response to create layers as defined by this renderer
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
-VectorRenderer.processLayersForTile = function (layers, tile)
+Scene.processLayersForTile = function (layers, tile)
 {
     var tile_layers = {};
     for (var t=0; t < layers.length; t++) {
@@ -659,7 +659,7 @@ VectorRenderer.processLayersForTile = function (layers, tile)
 };
 
 // Called once on instantiation
-VectorRenderer.createModes = function (modes, styles)
+Scene.createModes = function (modes, styles)
 {
     // Built-in modes
     var built_ins = require('./gl/gl_modes').Modes; // TODO: make this non-GL specific
@@ -677,7 +677,7 @@ VectorRenderer.createModes = function (modes, styles)
     return modes;
 };
 
-VectorRenderer.refreshModes = function (modes, styles)
+Scene.refreshModes = function (modes, styles)
 {
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
@@ -696,7 +696,7 @@ VectorRenderer.refreshModes = function (modes, styles)
 };
 
 // Used for passing mode state information between main thread and worker (since entire object can't be exchanged due to cloning restrictions)
-// VectorRenderer.getModeStates = function (modes)
+// Scene.getModeStates = function (modes)
 // {
 //     var mode_states = {};
 //     for (var m in modes) {
@@ -705,7 +705,7 @@ VectorRenderer.refreshModes = function (modes, styles)
 //     return mode_states;
 // };
 
-// VectorRenderer.refreshModeStates = function (modes, mode_states)
+// Scene.refreshModeStates = function (modes, mode_states)
 // {
 //     for (var m in mode_states) {
 //         if (modes[m] != null) {
@@ -720,7 +720,7 @@ VectorRenderer.refreshModes = function (modes, styles)
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
 function findBaseLibraryURL ()
 {
-    VectorRenderer.library_base_url = '';
+    Scene.library_base_url = '';
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('vector-map.debug.js');
@@ -728,12 +728,12 @@ function findBaseLibraryURL ()
             match = scripts[s].src.indexOf('vector-map.min.js');
         }
         if (match >= 0) {
-            VectorRenderer.library_base_url = scripts[s].src.substr(0, match);
+            Scene.library_base_url = scripts[s].src.substr(0, match);
             break;
         }
     }
 };
 
 if (module !== undefined) {
-    module.exports = VectorRenderer;
+    module.exports = Scene;
 }

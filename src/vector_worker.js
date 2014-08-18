@@ -1,5 +1,5 @@
 var TileSource = require('./tile_source.js');
-var VectorRenderer = require('./vector_renderer.js');
+var Scene = require('./scene.js');
 var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var Style = require('./style.js');
@@ -12,7 +12,7 @@ VectorWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 // TODO: sync render mode state between main thread and worker
 // VectorWorker.modes = require('./gl/gl_modes').Modes;
 
-GLBuilders.setTileScale(VectorRenderer.tile_scale);
+GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker
 VectorWorker.worker.addEventListener('message', function (event) {
@@ -86,7 +86,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
-    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
+    VectorWorker.modes = VectorWorker.modes || Scene.createModes({}, VectorWorker.styles);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -95,7 +95,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
         tile.loading = true;
 
         VectorWorker.tile_source.loadTile(tile, function () {
-            VectorRenderer.processLayersForTile(VectorWorker.layers, tile); // extract desired layers from full GeoJSON
+            Scene.processLayersForTile(VectorWorker.layers, tile); // extract desired layers from full GeoJSON
             VectorWorker.buildTile(tile);
         });
     }
@@ -168,7 +168,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
     VectorWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
-    VectorWorker.modes = VectorWorker.modes || VectorRenderer.createModes({}, VectorWorker.styles);
+    VectorWorker.modes = VectorWorker.modes || Scene.createModes({}, VectorWorker.styles);
     Style.resetSelectionMap();
 
     VectorWorker.log("worker refreshed config for tile rebuild");
