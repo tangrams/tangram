@@ -148,6 +148,10 @@ Modes.polygons = Object.create(RenderMode);
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
 
+Modes.polygons.defines = {
+    'WORLD_POSITION_WRAP': 100000 // default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+};
+
 Modes.polygons.selection = true;
 
 Modes.polygons.makeGLGeometry = function (vertex_data)

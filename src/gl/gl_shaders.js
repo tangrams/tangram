@@ -62,10 +62,24 @@ shader_sources['polygon_fragment'] =
 "uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
+"uniform vec2 u_tile_origin;\n" +
 "uniform float u_test;\n" +
 "uniform float u_test2;\n" +
 "varying vec3 v_color;\n" +
-"varying vec4 v_position_world;\n" +
+"varying vec4 v_world_position;\n" +
+"#if defined(WORLD_POSITION_WRAP)\n" +
+"\n" +
+"vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
+"vec4 absoluteWorldPosition() {\n" +
+"  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" +
+"}\n" +
+"#else\n" +
+"\n" +
+"vec4 absoluteWorldPosition() {\n" +
+"  return v_world_position;\n" +
+"}\n" +
+"#endif\n" +
+"\n" +
 "#if defined(LIGHTING_ENVIRONMENT)\n" +
 "\n" +
 "uniform sampler2D u_envMap;\n" +
@@ -159,6 +173,7 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
+"uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
 "uniform mat4 u_meter_view;\n" +
@@ -168,8 +183,21 @@ shader_sources['polygon_vertex'] =
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec4 v_position_world;\n" +
+"varying vec4 v_world_position;\n" +
 "varying vec3 v_color;\n" +
+"#if defined(WORLD_POSITION_WRAP)\n" +
+"\n" +
+"vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
+"vec4 absoluteWorldPosition() {\n" +
+"  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" +
+"}\n" +
+"#else\n" +
+"\n" +
+"vec4 absoluteWorldPosition() {\n" +
+"  return v_world_position;\n" +
+"}\n" +
+"#endif\n" +
+"\n" +
 "attribute vec4 a_selection_color;\n" +
 "#if defined(FEATURE_SELECTION)\n" +
 "\n" +
@@ -258,8 +286,11 @@ shader_sources['polygon_vertex'] =
 "  vec4 selection_color = a_selection_color;\n" +
 "  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
-"  vec4 position_world = u_tile_world * vec4(a_position, 1.);\n" +
-"  v_position_world = position_world;\n" +
+"  v_world_position = u_tile_world * vec4(a_position, 1.);\n" +
+"  #if defined(WORLD_POSITION_WRAP)\n" +
+"  v_world_position.xy -= world_position_anchor;\n" +
+"  #endif\n" +
+"  \n" +
 "  #pragma tangram: vertex\n" +
 "  \n" +
 "  #if defined(LIGHTING_VERTEX)\n" +

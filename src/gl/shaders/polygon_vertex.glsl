@@ -1,11 +1,7 @@
 uniform vec2 u_resolution;
 uniform vec2 u_aspect;
 uniform float u_time;
-// uniform vec2 u_map_center;
-// uniform float u_map_zoom;
-// uniform vec2 u_meter_zoom;
-// uniform vec2 u_tile_min;
-// uniform vec2 u_tile_max;
+uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
 uniform mat4 u_meter_view;
@@ -17,8 +13,23 @@ attribute vec3 a_normal;
 attribute vec3 a_color;
 attribute float a_layer;
 
-varying vec4 v_position_world;
+varying vec4 v_world_position;
 varying vec3 v_color;
+
+// Define a wrap value for world coordinates (allows more precision at higher zooms)
+// e.g. at wrap 1000, the world space will wrap every 1000 meters
+#if defined(WORLD_POSITION_WRAP)
+    vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);
+
+    // Convert back to absolute world position if needed
+    vec4 absoluteWorldPosition () {
+        return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);
+    }
+#else
+    vec4 absoluteWorldPosition () {
+        return v_world_position;
+    }
+#endif
 
 attribute vec4 a_selection_color;
 #if defined(FEATURE_SELECTION)
@@ -60,8 +71,10 @@ void main() {
     vec4 position = u_tile_view * vec4(a_position, 1.);
 
     // World coordinates for 3d procedural textures
-    vec4 position_world = u_tile_world * vec4(a_position, 1.);
-    v_position_world = position_world;
+    v_world_position = u_tile_world * vec4(a_position, 1.);
+    #if defined(WORLD_POSITION_WRAP)
+        v_world_position.xy -= world_position_anchor;
+    #endif
 
     #pragma tangram: vertex
 

@@ -50,6 +50,7 @@ body {
 <script src="demos/lib/dat.gui.min.js"></script>
 <script src="demos/lib/rStats.js"></script>
 <script src="demos/lib/rStats.extras.js"></script>
+<script src="demos/lib/FileSaver.js"></script>
 <script src="dist/js-yaml.js"></script>
 <script src="dist/vector-map.debug.js"></script>
 
@@ -293,6 +294,24 @@ function setGLProgramUniform (type, name, value) {
 // Toggle for feature selection on hover
 gui['feature info'] = true;
 gui.add(gui, 'feature info');
+
+// Take a screenshot and save file
+function screenshot () {
+    // Adapted from: https://gist.github.com/unconed/4370822
+    var image = renderer.canvas.toDataURL('image/png').slice(22); // slice strips host/mimetype/etc.
+    var data = atob(image); // convert base64 to binary without UTF-8 mangling
+    var buf = new Uint8Array(data.length);
+    for (var i = 0; i < data.length; ++i) {
+        buf[i] = data.charCodeAt(i);
+    }
+    var blob = new Blob([buf], { type: 'image/png' });
+    saveAs(blob, 'tangram-' + (+new Date()) + '.png'); // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
+}
+
+gui.screenshot = function () {
+    gui.queue_screenshot = true;
+}
+gui.add(gui, 'screenshot');
 
 // Render/GL stats: http://spite.github.io/rstats/
 // Activate with 'rstats' anywhere in options list in URL
@@ -682,6 +701,12 @@ function frame () {
         rS('glbuffers').set((renderer.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
         rS('features').set(renderer.getDebugSum('features'));
         rS().update();
+    }
+
+    // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
+    if (gui.queue_screenshot == true) {
+        gui.queue_screenshot = false;
+        screenshot();
     }
 
     requestAnimationFrame(frame);

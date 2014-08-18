@@ -3,11 +3,27 @@ uniform vec2 u_aspect;
 uniform mat4 u_meter_view;
 uniform float u_meters_per_pixel;
 uniform float u_time;
+uniform vec2 u_tile_origin;
 uniform float u_test;
 uniform float u_test2;
 
 varying vec3 v_color;
-varying vec4 v_position_world;
+varying vec4 v_world_position;
+
+// Define a wrap value for world coordinates (allows more precision at higher zooms)
+// e.g. at wrap 1000, the world space will wrap every 1000 meters
+#if defined(WORLD_POSITION_WRAP)
+    vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);
+
+    // Convert back to absolute world position if needed
+    vec4 absoluteWorldPosition () {
+        return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);
+    }
+#else
+    vec4 absoluteWorldPosition () {
+        return v_world_position;
+    }
+#endif
 
 #if defined(LIGHTING_ENVIRONMENT)
     uniform sampler2D u_envMap;
