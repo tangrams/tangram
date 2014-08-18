@@ -10,7 +10,6 @@ var ModeManager = require('./gl_modes').ModeManager;
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
 
-VectorRenderer.GLRenderer = GLRenderer;
 GLRenderer.prototype = Object.create(VectorRenderer.prototype);
 GLRenderer.debug = false;
 
@@ -18,7 +17,7 @@ function GLRenderer (tile_source, layers, styles, options)
 {
     var options = options || {};
 
-    VectorRenderer.call(this, 'GLRenderer', tile_source, layers, styles, options);
+    VectorRenderer.call(this, tile_source, layers, styles, options);
 
     GLBuilders.setTileScale(VectorRenderer.tile_scale);
     GL.Program.defines.TILE_SCALE = VectorRenderer.tile_scale;

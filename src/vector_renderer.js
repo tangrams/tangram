@@ -22,10 +22,9 @@ VectorRenderer.tile_scale = 4096; // coordinates are locally scaled to the range
 Geo.setTileScale(VectorRenderer.tile_scale);
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-function VectorRenderer (type, tile_source, layers, styles, options)
+function VectorRenderer (tile_source, layers, styles, options)
 {
     var options = options || {};
-    this.type = type;
     this.tile_source = tile_source;
     this.tiles = {};
     this.num_workers = options.num_workers || 1;
@@ -67,11 +66,6 @@ function VectorRenderer (type, tile_source, layers, styles, options)
 
     this.resetTime();
 }
-
-VectorRenderer.create = function (type, tile_source, layers, styles, options)
-{
-    return new VectorRenderer[type](tile_source, layers, styles, options);
-};
 
 VectorRenderer.prototype.init = function ()
 {
@@ -360,14 +354,10 @@ VectorRenderer.prototype.buildTile = function(key)
             max: tile.max, // used by TileSource to scale tile to local extents
             debug: tile.debug
         },
-        renderer_type: this.type,
         tile_source: this.tile_source,
         layers: this.layers_serialized,
-        styles: this.styles_serialized//,
-        // mode_states: VectorRenderer.getModeStates(this.modes)
+        styles: this.styles_serialized
     });
-    // console.log(this.modes);
-    // console.log(JSON.stringify(VectorRenderer.getModeStates(this.modes)));
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)

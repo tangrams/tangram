@@ -82,8 +82,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tiles[tile.key] = tile;
 
     // Refresh config
-    VectorWorker.renderer_type = event.data.renderer_type;
-    VectorWorker.renderer = VectorRenderer[VectorWorker.renderer_type];
+    VectorWorker.renderer = GLRenderer;
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);

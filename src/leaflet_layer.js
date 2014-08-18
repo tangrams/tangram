@@ -1,11 +1,10 @@
-var VectorRenderer = require('./vector_renderer.js');
+var GLRenderer = require('./gl/gl_renderer.js');
 
 var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
-        this.options.vectorRenderer = this.options.vectorRenderer || 'GLRenderer';
-        this.renderer = VectorRenderer.create(this.options.vectorRenderer, this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
+        this.renderer = new GLRenderer(this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
         this.renderer.debug = this.options.debug;
         this.renderer.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
     },
