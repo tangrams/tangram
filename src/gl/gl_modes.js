@@ -352,7 +352,7 @@ Modes.points.defines = {
 
 Modes.points.makeGLGeometry = function (vertex_data)
 {
-    return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
+    return new GLGeometry(this.gl, this.gl_program, vertex_data, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
         { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },

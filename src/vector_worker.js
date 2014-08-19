@@ -27,16 +27,12 @@ VectorWorker.worker.addEventListener('message', function (event) {
 
 VectorWorker.buildTile = function (tile)
 {
+    tile.debug.rendering = +new Date();
+
     // Tile keys that will be sent back to main thread
     // We send a minimal subset to avoid unnecessary data exchange
-    var keys;
-
-    // Renderer-specific transforms
-    if (typeof VectorWorker.renderer.addTile == 'function') {
-        tile.debug.rendering = +new Date();
-        keys = VectorWorker.renderer.addTile(tile, VectorWorker.layers, VectorWorker.styles, VectorWorker.modes);
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
-    }
+    var keys = Scene.addTile(tile, VectorWorker.layers, VectorWorker.styles, VectorWorker.modes);
+    tile.debug.rendering = +new Date() - tile.debug.rendering;
 
     // Make sure we send some core pieces of info
     keys.key = true;
@@ -81,7 +77,6 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tiles[tile.key] = tile;
 
     // Refresh config
-    VectorWorker.renderer = Scene;
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);

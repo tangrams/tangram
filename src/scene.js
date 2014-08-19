@@ -100,11 +100,10 @@ Scene.prototype.init = function ()
     this.initInputHandlers();
 
     // Init workers
-    var renderer = this;
     this.workers.forEach(function(worker) {
-        worker.addEventListener('message', renderer.workerBuildTileCompleted.bind(renderer));
-        worker.addEventListener('message', renderer.workerGetFeatureSelection.bind(renderer));
-    });
+        worker.addEventListener('message', scene.workerBuildTileCompleted.bind(this));
+        worker.addEventListener('message', scene.workerGetFeatureSelection.bind(this));
+    }.bind(this));
 
     this.initialized = true;
 };
@@ -154,7 +153,6 @@ Scene.prototype.initSelectionBuffer = function ()
 // Web workers handle heavy duty geometry processing
 Scene.prototype.createWorkers = function ()
 {
-    var renderer = this;
     var url = Scene.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
 
     // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
@@ -162,23 +160,23 @@ Scene.prototype.createWorkers = function ()
     req.onload = function () {
         var worker_local_url = window.URL.createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
 
-        renderer.workers = [];
-        for (var w=0; w < renderer.num_workers; w++) {
-            renderer.workers.push(new Worker(worker_local_url));
-            renderer.workers[w].postMessage({
+        this.workers = [];
+        for (var w=0; w < this.num_workers; w++) {
+            this.workers.push(new Worker(worker_local_url));
+            this.workers[w].postMessage({
                 type: 'init',
                 worker_id: w,
-                num_workers: renderer.num_workers
+                num_workers: this.num_workers
             })
         }
-    };
+    }.bind(this);
     req.open('GET', url, false /* async flag */);
     req.send();
 
     // Alternate for debugging - tradtional method of loading from remote URL instead of XHR-to-local-blob
-    // renderer.workers = [];
-    // for (var w=0; w < renderer.num_workers; w++) {
-    //     renderer.workers.push(new Worker(url));
+    // this.workers = [];
+    // for (var w=0; w < this.num_workers; w++) {
+    //     this.workers.push(new Worker(url));
     // }
 
     this.next_worker = 0;
@@ -213,7 +211,7 @@ Scene.prototype.setZoom = function (zoom)
     var below = zoom;
     var above = zoom;
     if (this.last_zoom != null) {
-        console.log("renderer.last_zoom: " + this.last_zoom);
+        console.log("scene.last_zoom: " + this.last_zoom);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
             if (zoom > this.last_zoom) {
                 below = zoom - this.preserve_tiles_within_zoom;
@@ -275,7 +273,7 @@ Scene.prototype.setBounds = function (sw, ne)
         (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
     );
 
-    // console.log("set renderer bounds to " + JSON.stringify(this.bounds));
+    // console.log("set scene bounds to " + JSON.stringify(this.bounds));
 
     // Mark tiles as visible/invisible
     for (var t in this.tiles) {
@@ -874,7 +872,7 @@ Scene.prototype.removeTile = function (key)
     console.log("tile unload for " + key);
 
     if (this.zooming == true) {
-        return; // short circuit tile removal, GL renderer will sweep out tiles by zoom level when zoom ends
+        return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
     }
 
     var tile = this.tiles[key];
@@ -1196,7 +1194,7 @@ Scene.postProcessStyles = function (styles)
     return styles;
 };
 
-// Processes the tile response to create layers as defined by this renderer
+// Processes the tile response to create layers as defined by the scene
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
 Scene.processLayersForTile = function (layers, tile)
 {
