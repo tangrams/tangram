@@ -257,7 +257,9 @@ layers:
         mode:
             name: points
             # name: formica
+        filter: function (f) { return f.properties.name != null; }
         # visible: false
+        interactive: true
         color:
             default: [1, 1, 0]
         size:
