@@ -1,6 +1,5 @@
 var TileSource = require('./tile_source.js');
 var Scene = require('./scene.js');
-var GLRenderer = require('./gl/gl_renderer.js');
 var GLBuilders = require('./gl/gl_builders.js');
 var Style = require('./style.js');
 var Utils = require('./utils.js');
@@ -82,7 +81,7 @@ VectorWorker.worker.addEventListener('message', function (event) {
     VectorWorker.tiles[tile.key] = tile;
 
     // Refresh config
-    VectorWorker.renderer = GLRenderer;
+    VectorWorker.renderer = Scene;
     VectorWorker.tile_source = VectorWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     VectorWorker.styles = VectorWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     VectorWorker.layers = VectorWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
