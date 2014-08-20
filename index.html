@@ -193,7 +193,7 @@ gui.removeFolder = function(name) {
 // GUI options for #define-based effects
 var gl_define_options = {
     projection: {
-        projection: 'PROJECTION_PERSPECTIVE',
+        projection: 'PROJECTION_ISOMETRIC',
         options: {
             'None': '',
             'Perspective': 'PROJECTION_PERSPECTIVE',
@@ -377,7 +377,8 @@ var gl_mode_options = {
         'Breathe': 'breathe',
         'Dots': 'dots',
         'Wood': 'wood',
-        'Halftone': 'halftone'
+        'Halftone': 'halftone',
+        'Windows': 'windows'
     },
     setup: function (mode) {
         var layer_styles = scene.styles.layers;
