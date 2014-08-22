@@ -139,10 +139,10 @@ modes:
         animated: true
         shaders:
             uniforms:
-                halftone_colored: 0. # boolean to flip colored dots on and off
+                halftone_colored: false # boolean to flip colored dots on and off
             transforms:
                 globals: |
-                    uniform float halftone_colored;
+                    uniform bool halftone_colored;
 
                     const float dot_frequency = 100.4748637184972;
 
@@ -184,7 +184,7 @@ modes:
                     // Color mix
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
-                    color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
+                    color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
 
     points:
         shaders:

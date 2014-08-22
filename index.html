@@ -526,9 +526,9 @@ var gl_mode_options = {
         },
         'halftone': {
             setup: function (mode) {
-                this.state.halftone_colored = (this.uniforms.halftone_colored == 1);
+                this.state.halftone_colored = this.uniforms.halftone_colored;
                 this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
-                    this.uniforms.halftone_colored = (this.state.halftone_colored == true ? 1 : 0);
+                    this.uniforms.halftone_colored = this.state.halftone_colored;
                 }.bind(this));
             }
         }
