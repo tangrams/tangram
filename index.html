@@ -193,7 +193,7 @@ gui.removeFolder = function(name) {
 // GUI options for #define-based effects
 var gl_define_options = {
     projection: {
-        projection: 'PROJECTION_ISOMETRIC',
+        projection: 'PROJECTION_PERSPECTIVE',
         options: {
             'None': '',
             'Perspective': 'PROJECTION_PERSPECTIVE',
@@ -521,6 +521,9 @@ var gl_mode_options = {
                     this.uniforms.halftone_colored = this.state.halftone_colored;
                 }.bind(this));
             }
+        },
+        'windows': {
+            projection: 'PROJECTION_ISOMETRIC', // force isometric
         }
     },
     initial: {}, // initial state to restore to on mode switch

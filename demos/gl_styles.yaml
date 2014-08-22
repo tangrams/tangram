@@ -183,12 +183,8 @@ modes:
                     // Color mix
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
-<<<<<<< HEAD
                     color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
 
-=======
-                    color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
->>>>>>> added windows shader
     windows:
         extends: polygons
         shaders:
@@ -360,11 +356,7 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
-<<<<<<< HEAD
-            name: windows
-=======
             # name: windows
->>>>>>> added windows shader
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
