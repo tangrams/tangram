@@ -52,6 +52,7 @@ modes:
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color = hsv2rgb(c);
+
     popup:
         extends: polygons
         animated: true
@@ -109,44 +110,7 @@ modes:
                 fragment: color *= dots(v_world_position.xyz);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
-	halftone:
-		extends: polygons
-		# animated: true
-		shaders:
-			uniforms:
-				uScale: 1
-				uYrot: .707
-				frequency: 40
-			transforms:
-				globals: |
-					uniform float uScale; // = 1.;
-					uniform float uYrot; // = .707;
-					uniform float frequency; // = 40.0;
-					float aastep(float threshold, float value) {
-						float afwidth = frequency * (1.0/200.0) / uScale / cos(uYrot);
-						return smoothstep(threshold-afwidth, threshold+afwidth, value);
-					}
-				fragment: |
-					// Distance to nearest point in a grid of
-					// (frequency x frequency) points over the unit square
-					vec2 st = gl_FragCoord.xy / u_resolution * u_aspect;
-					//vec2 st = v_world_position.xy / u_meters_per_pixel / 10.;
-					vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
-					vec2 nearest = 2.0*fract(frequency * st2) - 1.0;
-					float dist = length(nearest);
 
-					// Use a texture to modulate the size of the dots
-					// vec3 texcolor = texture2D(uSampler, st).rgb; // Unrotated coords
-					vec3 texcolor = color; // Unrotated coords
-					float radius = sqrt(1.0-texcolor.g); // Use green channel
-					vec3 white = vec3(1.0, 1.0, 1.0);
-					vec3 black = vec3(0.0, 0.0, 0.0);
-
-					vec3 fragcolor = mix(black, white, aastep(radius, dist));
-					// gl_FragColor = vec4(fragcolor, 1.0);
-					color = fragcolor;
-					//color = vec3(1., 0., 0.);
-					
     wood:
         extends: polygons
         shaders:
@@ -168,6 +132,112 @@ modes:
         #         this.parent.buildPolygons(polygons, style, vertex_data);
         #     }
 
+    # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
+    halftone:
+        extends: polygons
+        animated: true
+        shaders:
+            uniforms:
+                halftone_colored: 0. # boolean to flip colored dots on and off
+            transforms:
+                globals: |
+                    uniform float halftone_colored;
+
+                    const float dot_frequency = 100.4748637184972;
+
+                    // Antialiasing
+                    float aastep(float threshold, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
+
+                fragment: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
+
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+
+                    // Rotate dot & find nearest dot distance
+                    vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
+                    vec2 nearest = 2.0 * fract(zoom_frequency * st2) - 1.0;
+                    float dist = length(nearest);
+
+                    // Modulate the size of the dots
+                    float radius = clamp(sqrt(1.0 - color.g), 0.001, 1.); // use green channel, clamp to avoid giant dot
+
+                    // Color mix
+                    const vec3 white = vec3(1.0, 1.0, 1.0);
+                    const vec3 black = vec3(0.0, 0.0, 0.0);
+                    color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
+    
+    # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
+    color-halftone:
+        extends: polygons
+        animated: true
+        shaders:
+            uniforms:
+                halftone_colored: 0. # boolean to flip colored dots on and off
+            transforms:
+                globals: |
+                    uniform float halftone_colored;
+
+                    const float dot_frequency = 100.4748637184972;
+
+                    // Antialiasing
+                    float aastep(float threshold, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
+
+                fragment: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
+
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+
+                    // Rotate dot & find nearest dot distance
+                    vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
+                    vec2 nearest = 2.0 * fract(zoom_frequency * st2) - 1.0;
+                    float dist = length(nearest);
+
+                    // Modulate the size of the dots
+                    float radius = clamp(sqrt(1.0 - color.g), 0.001, 1.); // use green channel, clamp to avoid giant dot
+
+                    // color = aastep(radius, dist)
+                    // Color mix
+                    const vec3 white = vec3(1.0, 1.0, 1.0);
+                    const vec3 black = vec3(0.0, 0.0, 0.0);
+                    color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
 
     points:
         shaders:
@@ -267,7 +337,6 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
-            name: color-halftone
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
