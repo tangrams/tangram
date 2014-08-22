@@ -387,7 +387,8 @@ var gl_mode_options = {
         'Elevator': 'elevator',
         'Breathe': 'breathe',
         'Dots': 'dots',
-        'Wood': 'wood'
+        'Wood': 'wood',
+        'Halftone': 'halftone'
     },
     setup: function (mode) {
         var layer_styles = renderer.styles.layers;
@@ -520,6 +521,14 @@ var gl_mode_options = {
                 this.state.scale = this.uniforms.u_wood_scale / 100;
                 this.folder.add(this.state, 'scale', 0, 1).onChange(function(value) {
                     this.uniforms.u_wood_scale = value * 100;
+                }.bind(this));
+            }
+        },
+        'halftone': {
+            setup: function (mode) {
+                this.state.halftone_colored = (this.uniforms.halftone_colored == 1);
+                this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
+                    this.uniforms.halftone_colored = (this.state.halftone_colored == true ? 1 : 0);
                 }.bind(this));
             }
         }
