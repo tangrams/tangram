@@ -1,4 +1,3 @@
----
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -110,7 +109,44 @@ modes:
                 fragment: color *= dots(v_world_position.xyz);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
+	halftone:
+		extends: polygons
+		# animated: true
+		shaders:
+			uniforms:
+				uScale: 1
+				uYrot: .707
+				frequency: 40
+			transforms:
+				globals: |
+					uniform float uScale; // = 1.;
+					uniform float uYrot; // = .707;
+					uniform float frequency; // = 40.0;
+					float aastep(float threshold, float value) {
+						float afwidth = frequency * (1.0/200.0) / uScale / cos(uYrot);
+						return smoothstep(threshold-afwidth, threshold+afwidth, value);
+					}
+				fragment: |
+					// Distance to nearest point in a grid of
+					// (frequency x frequency) points over the unit square
+					vec2 st = gl_FragCoord.xy / u_resolution * u_aspect;
+					//vec2 st = v_world_position.xy / u_meters_per_pixel / 10.;
+					vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
+					vec2 nearest = 2.0*fract(frequency * st2) - 1.0;
+					float dist = length(nearest);
 
+					// Use a texture to modulate the size of the dots
+					// vec3 texcolor = texture2D(uSampler, st).rgb; // Unrotated coords
+					vec3 texcolor = color; // Unrotated coords
+					float radius = sqrt(1.0-texcolor.g); // Use green channel
+					vec3 white = vec3(1.0, 1.0, 1.0);
+					vec3 black = vec3(0.0, 0.0, 0.0);
+
+					vec3 fragcolor = mix(black, white, aastep(radius, dist));
+					// gl_FragColor = vec4(fragcolor, 1.0);
+					color = fragcolor;
+					//color = vec3(1., 0., 0.);
+					
     wood:
         extends: polygons
         shaders:
@@ -231,6 +267,7 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
+            name: color-halftone
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
