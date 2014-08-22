@@ -189,8 +189,6 @@ modes:
         extends: polygons
         shaders:
             uniforms:
-                u_test3: 10.
-                u_test4: 10.
                 u_frequency: 100.
                 u_windowColor: [1., 1., .9]
                 u_buildingColor: [.8, .8, .7]
@@ -198,8 +196,6 @@ modes:
             transforms:
                 globals: |
                     uniform float u_frequency;
-                    uniform float u_test3;
-                    uniform float u_test4;
                     uniform vec3 u_windowColor;
                     uniform vec3 u_buildingColor;
                     uniform vec3 u_roofColor;
