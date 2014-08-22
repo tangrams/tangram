@@ -388,7 +388,8 @@ var gl_mode_options = {
         'Breathe': 'breathe',
         'Dots': 'dots',
         'Wood': 'wood',
-        'Halftone': 'halftone'
+        'Halftone': 'halftone',
+        'Windows': 'windows'
     },
     setup: function (mode) {
         var layer_styles = renderer.styles.layers;
@@ -531,6 +532,9 @@ var gl_mode_options = {
                     this.uniforms.halftone_colored = this.state.halftone_colored;
                 }.bind(this));
             }
+        },
+        'windows': {
+            projection: 'PROJECTION_ISOMETRIC', // force isometric
         }
     },
     initial: {}, // initial state to restore to on mode switch
