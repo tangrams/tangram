@@ -388,7 +388,7 @@ var gl_mode_options = {
         'Breathe': 'breathe',
         'Dots': 'dots',
         'Wood': 'wood',
-        'Color-Halftone': 'color-halftone',
+        'Color Halftone': 'colorhalftone',
         'Halftone': 'halftone',
         'Windows': 'windows'
     },
@@ -526,13 +526,18 @@ var gl_mode_options = {
                 }.bind(this));
             }
         },
-        'color-halftone': {
+        'colorhalftone': {
             setup: function (mode) {
-                this.state.halftone_colored = (this.uniforms.halftone_colored == 1);
-                this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
-                    this.uniforms.halftone_colored = (this.state.halftone_colored == true ? 1 : 0);
+                renderer.styles.layers.water_areas.mode.name = 'colorhalftone';
+                renderer.styles.layers.landuse.mode.name = 'colorhalftone';
+                renderer.styles.layers.earth.mode.name = 'colorhalftone';
+                renderer.styles.layers.pois.visible = false;
+                this.state.dot_frequency = this.uniforms.dot_frequency;
+                this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
+                    this.uniforms.dot_frequency = value;
                 }.bind(this));
             }
+        },
         'halftone': {
             setup: function (mode) {
                 this.state.halftone_colored = this.uniforms.halftone_colored;
@@ -543,6 +548,9 @@ var gl_mode_options = {
         },
         'windows': {
             projection: 'PROJECTION_ISOMETRIC', // force isometric
+            setup: function (mode) {
+                renderer.styles.layers.pois.visible = false;
+            }
         }
     },
     initial: {}, // initial state to restore to on mode switch
