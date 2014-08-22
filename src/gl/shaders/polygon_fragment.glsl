@@ -3,6 +3,8 @@ uniform vec2 u_aspect;
 uniform mat4 u_meter_view;
 uniform float u_meters_per_pixel;
 uniform float u_time;
+uniform float u_map_zoom;
+uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 
 varying vec3 v_color;
