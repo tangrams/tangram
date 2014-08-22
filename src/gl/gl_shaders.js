@@ -78,6 +78,8 @@ shader_sources['polygon_fragment'] =
 "uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
 "varying vec3 v_color;\n" +
 "varying vec4 v_world_position;\n" +
@@ -169,6 +171,8 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +

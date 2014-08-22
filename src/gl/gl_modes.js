@@ -104,6 +104,10 @@ RenderMode.setUniforms = function (options)
                 // TODO: support non-float types? (int, texture sampler, etc.)
                 // gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
             }
+            // Boolean
+            else if (typeof this.shaders.uniforms[u] == 'boolean') {
+                gl_program.uniform('1i', u, this.shaders.uniforms[u]);
+            }
         }
     }
 };
