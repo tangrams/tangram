@@ -132,6 +132,7 @@ modes:
         #         this.parent.buildPolygons(polygons, style, vertex_data);
         #     }
 
+<<<<<<< HEAD
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     halftone:
         extends: polygons
@@ -184,6 +185,8 @@ modes:
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
                     color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
+=======
+>>>>>>> d9d5da7641295d627aedf512a42f490066fe7e9f
     windows:
         extends: polygons
         shaders:
@@ -355,7 +358,11 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
+<<<<<<< HEAD
             # name: windows
+=======
+            name: windows
+>>>>>>> d9d5da7641295d627aedf512a42f490066fe7e9f
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
