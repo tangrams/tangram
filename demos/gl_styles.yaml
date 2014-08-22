@@ -183,7 +183,7 @@ modes:
                     // Color mix
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
-                    color = mix(black + (color * halftone_colored), white, aastep(radius, dist));
+                    color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
     windows:
         extends: polygons
         shaders:
