@@ -442,13 +442,13 @@ var gl_mode_options = {
                 this.state.popup_radius = this.uniforms.u_popup_radius;
                 this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
                     this.uniforms.u_popup_radius = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.popup_height = this.uniforms.u_popup_height;
                 this.folder.add(this.state, 'popup_height', 0, 5).onChange(function(value) {
                     this.uniforms.u_popup_height = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
             }
         },
@@ -457,13 +457,13 @@ var gl_mode_options = {
                 this.state.breathe_scale = this.uniforms.u_breathe_scale;
                 this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
                     this.uniforms.u_breathe_scale = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.breathe_speed = this.uniforms.u_breathe_speed;
                 this.folder.add(this.state, 'breathe_speed', 0, 3).onChange(function(value) {
                     this.uniforms.u_breathe_speed = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
             }
         },
@@ -472,25 +472,25 @@ var gl_mode_options = {
                 this.state.background = gl_mode_options.scaleColor(this.uniforms.u_dot_background_color, 255);
                 this.folder.addColor(this.state, 'background').onChange(function(value) {
                     this.uniforms.u_dot_background_color = gl_mode_options.scaleColor(value, 1 / 255);
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.dot_color = gl_mode_options.scaleColor(this.uniforms.u_dot_color, 255);
                 this.folder.addColor(this.state, 'dot_color').onChange(function(value) {
                     this.uniforms.u_dot_color = gl_mode_options.scaleColor(value, 1 / 255);
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.grid_scale = this.uniforms.u_dot_grid_scale;
                 this.folder.add(this.state, 'grid_scale', 0, 0.1).onChange(function(value) {
                     this.uniforms.u_dot_grid_scale = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.dot_scale = this.uniforms.u_dot_scale;
                 this.folder.add(this.state, 'dot_scale', 0, 0.4).onChange(function(value) {
                     this.uniforms.u_dot_scale = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
             }
         },
@@ -499,31 +499,31 @@ var gl_mode_options = {
                 this.state.wood_color1 = gl_mode_options.scaleColor(this.uniforms.u_wood_color1, 255);
                 this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
                     this.uniforms.u_wood_color1 = gl_mode_options.scaleColor(value, 1 / 255);
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.wood_color2 = gl_mode_options.scaleColor(this.uniforms.u_wood_color2, 255);
                 this.folder.addColor(this.state, 'wood_color2').onChange(function(value) {
                     this.uniforms.u_wood_color2 = gl_mode_options.scaleColor(value, 1 / 255);
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.eccentricity = this.uniforms.u_wood_eccentricity;
                 this.folder.add(this.state, 'eccentricity', -1, 1).onChange(function(value) {
                     this.uniforms.u_wood_eccentricity = value;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.twist = this.uniforms.u_wood_twist / .0001;
                 this.folder.add(this.state, 'twist', 0, 1).onChange(function(value) {
                     this.uniforms.u_wood_twist = value * .0001;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
 
                 this.state.scale = this.uniforms.u_wood_scale / 100;
                 this.folder.add(this.state, 'scale', 0, 1).onChange(function(value) {
                     this.uniforms.u_wood_scale = value * 100;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
             }
         },
@@ -532,7 +532,7 @@ var gl_mode_options = {
                 this.state.halftone_colored = this.uniforms.halftone_colored;
                 this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
                     this.uniforms.halftone_colored = this.state.halftone_colored;
-                    renderer.requestRedraw();
+                    scene.requestRedraw();
                 }.bind(this));
             }
         },
