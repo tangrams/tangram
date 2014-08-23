@@ -99,6 +99,7 @@ modes:
 
     dots:
         extends: polygons
+        animated: true
         shaders:
             uniforms:
                 u_dot_grid_scale: 0.02
@@ -113,6 +114,7 @@ modes:
 
     wood:
         extends: polygons
+        animated: true
         shaders:
             uniforms:
                 u_wood_color1: [.9, .5, .5]
@@ -192,7 +194,7 @@ modes:
         shaders:
             uniforms:
                 dot_frequency: 100.
-                dot_scale: 2.
+                dot_scale: 1.5
 
             transforms:
                 globals: |
