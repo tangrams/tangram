@@ -345,6 +345,7 @@ VectorRenderer.prototype.rebuildTiles = function ()
 
     this.updateActiveModes();
     this.resetTime();
+    this.requestRedraw();
 };
 
 VectorRenderer.prototype.buildTile = function(key)
@@ -509,6 +510,7 @@ VectorRenderer.prototype.reloadConfig = function ()
 VectorRenderer.prototype.refreshModes = function ()
 {
     this.modes = VectorRenderer.refreshModes(this.modes, this.styles);
+    this.requestRedraw();
 };
 
 VectorRenderer.prototype.updateActiveModes = function ()
