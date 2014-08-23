@@ -192,9 +192,12 @@ modes:
         shaders:
             uniforms:
                 dot_frequency: 100.
+                dot_scale: 2.
+
             transforms:
                 globals: |
                     uniform float dot_frequency;
+                    uniform float dot_scale;
 
                     // Antialiasing
                     float aastep(float threshold, float value) {
@@ -235,16 +238,16 @@ modes:
                     // Distance to nearest point in a grid of
                     // (frequency x frequency) points over the unit square
                     vec2 Kst = zoom_frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
-                    vec2 Kuv = 2.0*fract(Kst)-1.0;
+                    vec2 Kuv = dot_scale*fract(Kst)-(dot_scale/2.);
                     float k = aastep(0.0, sqrt(cmyk.w)-length(Kuv));
                     vec2 Cst = zoom_frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
-                    vec2 Cuv = 2.0*fract(Cst)-1.0;
+                    vec2 Cuv = dot_scale*fract(Cst)-(dot_scale/2.);
                     float c = aastep(0.0, sqrt(cmyk.x)-length(Cuv));
                     vec2 Mst = zoom_frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
-                    vec2 Muv = 2.0*fract(Mst)-1.0;
+                    vec2 Muv = dot_scale*fract(Mst)-(dot_scale/2.);
                     float m = aastep(0.0, sqrt(cmyk.y)-length(Muv));
                     vec2 Yst = zoom_frequency*st; // 0 deg
-                    vec2 Yuv = 2.0*fract(Yst)-1.0;
+                    vec2 Yuv = dot_scale*fract(Yst)-(dot_scale/2.);
                     float y = aastep(0.0, sqrt(cmyk.z)-length(Yuv));
 
                     vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y); // most saturated color = .9
@@ -258,6 +261,7 @@ modes:
 
     windows:
         extends: polygons
+        animated: true
         shaders:
             uniforms:
                 u_frequency: 100.

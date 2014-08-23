@@ -394,11 +394,15 @@ var gl_mode_options = {
     },
     setup: function (mode) {
         var layer_styles = renderer.styles.layers;
-
         // Restore initial state
         if (mode == '') {
-            layer_styles.buildings.mode.name = this.initial.buildings_mode;
+            // handle cases where a mode changes the style of layers besides buildings
+            for (l in renderer.styles.layers) {
+                renderer.styles.layers[l].mode.name = this.initial.buildings_mode;
+            };
             gl_define_options.projection.projection = this.initial.projection;
+            // Remove existing mode-specific controls
+            gui.removeFolder(this.folder);
         }
         // Mode-specific settings
         else {
@@ -406,6 +410,10 @@ var gl_mode_options = {
             this.initial.buildings_mode = this.initial.buildings_mode || layer_styles.buildings.mode.name;
             this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
 
+            // reset other layer modes
+            for (l in renderer.styles.layers) {
+                renderer.styles.layers[l].mode.name = this.initial.buildings_mode;
+            };
             // Change rendering mode for buildings
             layer_styles.buildings.mode.name = mode;
 
@@ -535,6 +543,10 @@ var gl_mode_options = {
                 this.state.dot_frequency = this.uniforms.dot_frequency;
                 this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
                     this.uniforms.dot_frequency = value;
+                }.bind(this));
+                this.state.dot_scale = this.uniforms.dot_scale;
+                this.folder.add(this.state, 'dot_scale', 0, 3).onChange(function(value) {
+                    this.uniforms.dot_scale = value;
                 }.bind(this));
             }
         },
