@@ -371,31 +371,44 @@ var gl_mode_options = {
     effect: url_mode || '',
     options: {
         'None': '',
-        'Rainbow': 'rainbow',
-        'Pop-up': 'popup',
         'Elevator': 'elevator',
         'Breathe': 'breathe',
+        'Pop-up': 'popup',
         'Dots': 'dots',
         'Wood': 'wood',
-        'Halftone': 'halftone',
-        'Windows': 'windows'
+        'B&W Halftone': 'halftone',
+        'Color Halftone': 'colorhalftone',
+        'Windows': 'windows',
+        'Color Bleed': 'colorbleed',
+        'Rainbow': 'rainbow'
     },
     setup: function (mode) {
-        var layer_styles = scene.styles.layers;
-
         // Restore initial state
-        if (mode == '') {
-            layer_styles.buildings.mode.name = this.initial.buildings_mode;
-            gl_define_options.projection.projection = this.initial.projection;
-        }
-        // Mode-specific settings
-        else {
-            // Save settings to restore later
-            this.initial.buildings_mode = this.initial.buildings_mode || layer_styles.buildings.mode.name;
-            this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
+        var layer_styles = scene.styles.layers;
+        for (l in layer_styles) {
+            if (this.initial.layers[l] != null) {
+                layer_styles[l].mode = this.initial.layers[l].mode;
+                layer_styles[l].visible = this.initial.layers[l].visible;
+            }
+        };
+        gl_define_options.projection.projection = this.initial.projection || gl_define_options.projection.projection;
 
-            // Change rendering mode for buildings
-            layer_styles.buildings.mode.name = mode;
+        // Remove existing mode-specific controls
+        gui.removeFolder(this.folder);
+
+        // Mode-specific settings
+        if (mode != '') {
+            // Save settings to restore later
+            for (l in layer_styles) {
+                if (this.initial.layers[l] == null) {
+                    this.initial.layers[l] = {
+                        // mode: (layer_styles[l].mode ? { name: layer_styles[l].mode.name } : null),
+                        mode: layer_styles[l].mode,
+                        visible: layer_styles[l].visible
+                    };
+                }
+            }
+            this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
 
             // Remove existing mode-specific controls
             gui.removeFolder(this.folder);
@@ -415,7 +428,11 @@ var gl_mode_options = {
                     settings.folder = gui.addFolder(this.folder);
                     settings.folder.open();
 
-                    settings.setup();
+                    settings.setup(mode);
+
+                    if (settings.folder.__controllers.length == 0) {
+                        gui.removeFolder(this.folder);
+                    }
                 }
             }
         }
@@ -427,18 +444,27 @@ var gl_mode_options = {
         updateURL();
     },
     settings: {
-        'rainbow': {
-            setup: function () {
-                this.state.animated = scene.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
+        'colorbleed': {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
+                this.state.animated = scene.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
                 this.folder.add(this.state, 'animated').onChange(function(value) {
-                    scene.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
+                    scene.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
                     scene.refreshModes();
                 });
             }
         },
+        'rainbow': {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+            }
+        },
         'popup': {
             // projection: 'PROJECTION_ISOMETRIC', // force isometric when switching to pop-up
-            setup: function () {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
                 this.state.popup_radius = this.uniforms.u_popup_radius;
                 this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
                     this.uniforms.u_popup_radius = value;
@@ -452,8 +478,15 @@ var gl_mode_options = {
                 }.bind(this));
             }
         },
+        'elevator': {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+            }
+        },
         'breathe': {
-            setup: function () {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
                 this.state.breathe_scale = this.uniforms.u_breathe_scale;
                 this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
                     this.uniforms.u_breathe_scale = value;
@@ -469,6 +502,8 @@ var gl_mode_options = {
         },
         'dots': {
             setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
                 this.state.background = gl_mode_options.scaleColor(this.uniforms.u_dot_background_color, 255);
                 this.folder.addColor(this.state, 'background').onChange(function(value) {
                     this.uniforms.u_dot_background_color = gl_mode_options.scaleColor(value, 1 / 255);
@@ -496,6 +531,8 @@ var gl_mode_options = {
         },
         'wood': {
             setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
                 this.state.wood_color1 = gl_mode_options.scaleColor(this.uniforms.u_wood_color1, 255);
                 this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
                     this.uniforms.u_wood_color1 = gl_mode_options.scaleColor(value, 1 / 255);
@@ -527,8 +564,33 @@ var gl_mode_options = {
                 }.bind(this));
             }
         },
+        'colorhalftone': {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+                scene.styles.layers.water_areas.mode = { name: mode };
+                scene.styles.layers.water_ocean.mode = { name: mode };
+                scene.styles.layers.landuse.mode = { name: mode };
+                scene.styles.layers.earth.mode = { name: mode };
+
+                scene.styles.layers.pois.visible = false;
+
+                this.state.dot_frequency = this.uniforms.dot_frequency;
+                this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
+                    this.uniforms.dot_frequency = value;
+                    scene.requestRedraw();
+                }.bind(this));
+
+                this.state.dot_scale = this.uniforms.dot_scale;
+                this.folder.add(this.state, 'dot_scale', 0, 3).onChange(function(value) {
+                    this.uniforms.dot_scale = value;
+                    scene.requestRedraw();
+                }.bind(this));
+            }
+        },
         'halftone': {
             setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
                 this.state.halftone_colored = this.uniforms.halftone_colored;
                 this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
                     this.uniforms.halftone_colored = this.state.halftone_colored;
@@ -538,9 +600,15 @@ var gl_mode_options = {
         },
         'windows': {
             projection: 'PROJECTION_ISOMETRIC', // force isometric
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+                scene.styles.layers.pois.visible = false;
+            }
         }
     },
-    initial: {}, // initial state to restore to on mode switch
+    initial: { // initial state to restore to on mode switch
+        layers: {}
+    },
     folder: null, // set to current (if any) DAT.gui folder name, cleared on mode switch
     scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
         if ((typeof c == 'string' || c instanceof String) && c[0].charAt(0) == "#") {
