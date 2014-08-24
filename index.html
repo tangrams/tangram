@@ -382,15 +382,16 @@ var gl_mode_options = {
     effect: url_mode || '',
     options: {
         'None': '',
-        'Rainbow': 'rainbow',
-        'Pop-up': 'popup',
         'Elevator': 'elevator',
         'Breathe': 'breathe',
+        'Pop-up': 'popup',
         'Dots': 'dots',
         'Wood': 'wood',
         'B&W Halftone': 'halftone',
         'Color Halftone': 'colorhalftone',
-        'Windows': 'windows'
+        'Windows': 'windows',
+        'Color Bleed': 'colorbleed',
+        'Rainbow': 'rainbow'
     },
     setup: function (mode) {
         // Restore initial state
@@ -439,6 +440,10 @@ var gl_mode_options = {
                     settings.folder.open();
 
                     settings.setup(mode);
+
+                    if (settings.folder.__controllers.length == 0) {
+                        gui.removeFolder(this.folder);
+                    }
                 }
             }
         }
@@ -450,15 +455,20 @@ var gl_mode_options = {
         updateURL();
     },
     settings: {
-        'rainbow': {
+        'colorbleed': {
             setup: function (mode) {
                 renderer.styles.layers.buildings.mode = { name: mode };
 
-                this.state.animated = renderer.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
+                this.state.animated = renderer.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
                 this.folder.add(this.state, 'animated').onChange(function(value) {
-                    renderer.modes.rainbow.shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
+                    renderer.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
                     renderer.refreshModes();
                 });
+            }
+        },
+        'rainbow': {
+            setup: function (mode) {
+                renderer.styles.layers.buildings.mode = { name: mode };
             }
         },
         'popup': {

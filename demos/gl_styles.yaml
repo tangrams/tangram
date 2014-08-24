@@ -7,7 +7,7 @@ modes:
 
     water:
         extends: polygons
-        animated: true
+        animated: false
         shaders:
             defines:
                 EFFECT_NOISE_ANIMATED: true
@@ -28,7 +28,7 @@ modes:
                 fragment:
                     url: demos/shaders/noise.glsl
 
-    rainbow:
+    colorbleed:
         extends: polygons
         animated: true
         shaders:
@@ -38,7 +38,8 @@ modes:
                 fragment:
                     - url: demos/shaders/color_bleed.glsl
                     # - url: demos/shaders/spotlight.glsl
-    rainbow2:
+
+    rainbow:
         extends: polygons
         animated: true
         shaders:
