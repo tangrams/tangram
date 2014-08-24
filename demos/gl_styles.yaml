@@ -7,7 +7,7 @@ modes:
 
     water:
         extends: polygons
-        animated: false
+        animated: true
         shaders:
             defines:
                 EFFECT_NOISE_ANIMATED: true
