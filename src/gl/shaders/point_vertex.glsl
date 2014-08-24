@@ -10,12 +10,31 @@ attribute float a_layer;
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
+attribute vec4 a_selection_color;
+#if defined(FEATURE_SELECTION)
+    varying vec4 v_selection_color;
+#endif
+
 // Imported functions
 #pragma glslify: calculateZ = require(./modules/depth_scale)
 
 #pragma tangram: globals
 
 void main() {
+    #if defined(FEATURE_SELECTION)
+        if (a_selection_color.xyz == vec3(0.)) {
+            // Discard by forcing invalid triangle if we're in the feature
+            // selection pass but have no selection info
+            // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
+            gl_Position = vec4(0.);
+            return;
+        }
+        v_selection_color = a_selection_color;
+    #else
+        // This is here to prevent the attribute from being optimized out, thus changing the program's vertex layout :(
+        vec4 selection_color = a_selection_color;
+    #endif
+
     vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);
 
     #pragma tangram: vertex

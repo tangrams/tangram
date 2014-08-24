@@ -104,6 +104,10 @@ RenderMode.setUniforms = function (options)
                 // TODO: support non-float types? (int, texture sampler, etc.)
                 // gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
             }
+            // Boolean
+            else if (typeof this.shaders.uniforms[u] == 'boolean') {
+                gl_program.uniform('1i', u, this.shaders.uniforms[u]);
+            }
         }
     }
 };
@@ -362,12 +366,15 @@ Modes.points.defines = {
     'EFFECT_SCREEN_COLOR': true
 };
 
+Modes.points.selection = true;
+
 Modes.points.makeGLGeometry = function (vertex_data)
 {
     return new GLGeometry(renderer.gl, this.gl_program, vertex_data, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
         { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
 };
@@ -378,6 +385,7 @@ Modes.points.buildPoints = function (points, style, vertex_data)
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
         style.color[0], style.color[1], style.color[2],
+        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
 

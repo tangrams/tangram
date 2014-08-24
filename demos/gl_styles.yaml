@@ -1,4 +1,3 @@
----
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -29,7 +28,7 @@ modes:
                 fragment:
                     url: demos/shaders/noise.glsl
 
-    rainbow:
+    colorbleed:
         extends: polygons
         animated: true
         shaders:
@@ -39,7 +38,8 @@ modes:
                 fragment:
                     - url: demos/shaders/color_bleed.glsl
                     # - url: demos/shaders/spotlight.glsl
-    rainbow2:
+
+    rainbow:
         extends: polygons
         animated: true
         shaders:
@@ -53,9 +53,9 @@ modes:
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color = hsv2rgb(c);
+
     popup:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 u_popup_radius: 330 # 225
@@ -144,6 +144,201 @@ modes:
             transforms:
                 # fragment: color *= lighting;
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
+
+    # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
+    halftone:
+        extends: polygons
+        shaders:
+            uniforms:
+                halftone_colored: false # boolean to flip colored dots on and off
+            transforms:
+                globals: |
+                    uniform bool halftone_colored;
+
+                    const float dot_frequency = 100.4748637184972;
+
+                    // Antialiasing
+                    float aastep(float threshold, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
+
+                fragment: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
+
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+
+                    // Rotate dot & find nearest dot distance
+                    vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
+                    vec2 nearest = 2.0 * fract(zoom_frequency * st2) - 1.0;
+                    float dist = length(nearest);
+
+                    // Modulate the size of the dots
+                    float radius = clamp(sqrt(1.0 - color.g), 0.001, 1.); // use green channel, clamp to avoid giant dot
+
+                    // Color mix
+                    const vec3 white = vec3(1.0, 1.0, 1.0);
+                    const vec3 black = vec3(0.0, 0.0, 0.0);
+                    color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
+
+    # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
+    colorhalftone:
+        extends: polygons
+        shaders:
+            uniforms:
+                dot_frequency: 100.
+                dot_scale: 1.5
+
+            transforms:
+                globals: |
+                    uniform float dot_frequency;
+                    uniform float dot_scale;
+
+                    // Antialiasing
+                    float aastep(float threshold, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
+
+                fragment: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
+
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+
+                    vec3 white = vec3(0.97);
+                    vec3 black = vec3(0.1);
+
+                    // Perform a rough RGB-to-CMYK conversion
+                    vec4 cmyk;
+                    cmyk.xyz = 1.0 - color;
+                    cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
+                    cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
+
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    vec2 Kst = zoom_frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
+                    vec2 Kuv = dot_scale*fract(Kst)-(dot_scale/2.);
+                    float k = aastep(0.0, sqrt(cmyk.w)-length(Kuv));
+                    vec2 Cst = zoom_frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
+                    vec2 Cuv = dot_scale*fract(Cst)-(dot_scale/2.);
+                    float c = aastep(0.0, sqrt(cmyk.x)-length(Cuv));
+                    vec2 Mst = zoom_frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
+                    vec2 Muv = dot_scale*fract(Mst)-(dot_scale/2.);
+                    float m = aastep(0.0, sqrt(cmyk.y)-length(Muv));
+                    vec2 Yst = zoom_frequency*st; // 0 deg
+                    vec2 Yuv = dot_scale*fract(Yst)-(dot_scale/2.);
+                    float y = aastep(0.0, sqrt(cmyk.z)-length(Yuv));
+
+                    vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y); // most saturated color = .9
+                    rgbscreen = mix(rgbscreen, black, 0.85*k); // darkest black = .85
+
+                    // Modulate the size of the dots
+                    //float luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b); // HSP color model
+                    //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
+
+                    color = rgbscreen;
+
+    windows:
+        extends: polygons
+        animated: true
+        shaders:
+            uniforms:
+                u_frequency: 100.
+                u_windowColor: [1., 1., .9]
+                u_buildingColor: [.8, .8, .7]
+                u_roofColor: [.5, .4, .5]
+            transforms:
+                globals: |
+                    uniform float u_frequency;
+                    uniform vec3 u_windowColor;
+                    uniform vec3 u_buildingColor;
+                    uniform vec3 u_roofColor;
+
+                    // 3d noise
+                    vec4 v_mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+                    vec4 perm(vec4 x){return v_mod289(((x * 34.0) + 1.0) * x);}
+                    float mynoise(vec3 p){
+                        vec3 a = floor(p);
+                        vec3 d = p - a;
+                        d = d * d * (3.0 - 2.0 * d);
+
+                        vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);
+                        vec4 k1 = perm(b.xyxy);
+                        vec4 k2 = perm(k1.xyxy + b.zzww);
+
+                        vec4 c = k2 + a.zzzz;
+                        vec4 k3 = perm(c);
+                        vec4 k4 = perm(c + 1.0);
+
+                        vec4 o1 = fract(k3 * (1.0 / 41.0));
+                        vec4 o2 = fract(k4 * (1.0 / 41.0));
+
+                        vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);
+                        vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);
+
+                        return o4.y * d.y + o4.x * (1.0 - d.y);
+                    }
+                fragment: |
+                    vec3 scale = vec3(.1, .1, .1);
+                    scale *= u_frequency;
+                    vec3 vPos = v_world_position.xyz / scale;
+                    vec3 color1 = vec3(
+                      mix(
+                        vec3(0.0, 0.0, 0.0),
+                        vec3(1.0, 1.0, 1.0),
+                        step(fract(vPos), vec3(.0))));
+
+                    vec3 color2 = vec3(
+                      mix(
+                        vec3(0.0, 0.0, 0.0),
+                        vec3(1.0, 1.0, 1.0),
+                        step(fract(mod(vPos, .9)), vec3(.4, .4, .6))));
+
+                    vec3 mask = color2 - color1;
+                    float noiseColor = 2. * mynoise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
+                    color = u_windowColor * noiseColor;
+                    if (mask.x > .5 || mask.y > .5 || mask.z > .5) {
+                        color = u_buildingColor;
+                        // height factor
+                        color -= vec3(vPos.z * .1);
+                    }
+                    // roof color
+                    if (v_normal.z > .6 || v_normal.z < -.6) {
+                        // height factor
+                        color = u_roofColor - vec3(vPos.z * .01);
+                    }
 
     points:
         shaders:
@@ -244,6 +439,8 @@ layers:
             # name: wood
             # name: rainbow2
             name: envmap
+            # name: windows
+            # name: colorhalftone
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
@@ -270,7 +467,9 @@ layers:
         mode:
             name: points
             # name: formica
-        visible: false
+        filter: function (f) { return f.properties.name != null; }
+        # visible: false
+        interactive: true
         color:
             default: [1, 1, 0]
         size:

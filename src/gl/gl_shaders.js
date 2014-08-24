@@ -34,6 +34,12 @@ shader_sources['point_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
+"attribute vec4 a_selection_color;\n" +
+"#if defined(FEATURE_SELECTION)\n" +
+"\n" +
+"varying vec4 v_selection_color;\n" +
+"#endif\n" +
+"\n" +
 "float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
 "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
 "  float z_layer = (layer + 1.) * z_layer_scale;\n" +
@@ -44,6 +50,16 @@ shader_sources['point_vertex'] =
 "#pragma tangram: globals\n" +
 "\n" +
 "void main() {\n" +
+"  \n" +
+"  #if defined(FEATURE_SELECTION)\n" +
+"  if(a_selection_color.xyz == vec3(0.)) {\n" +
+"    gl_Position = vec4(0.);\n" +
+"    return;\n" +
+"  }\n" +
+"  v_selection_color = a_selection_color;\n" +
+"  #else\n" +
+"  vec4 selection_color = a_selection_color;\n" +
+"  #endif\n" +
 "  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
 "  #pragma tangram: vertex\n" +
 "  v_color = a_color;\n" +
@@ -62,6 +78,8 @@ shader_sources['polygon_fragment'] =
 "uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
 "uniform float u_test;\n" +
 "uniform float u_test2;\n" +
@@ -173,6 +191,8 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
 "uniform float u_time;\n" +
+"uniform float u_map_zoom;\n" +
+"uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +

@@ -372,6 +372,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
                     gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
                     gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                    gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                     gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                     gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
                     gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
@@ -441,6 +442,7 @@ GLRenderer.prototype._render = function GLRendererRender ()
                         gl_program.uniform('2f', 'u_aspect', this.fbo_size.width / this.fbo_size.height, 1.0);
                         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                         gl_program.uniform('1f', 'u_map_zoom', this.zoom);
+                        gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                         gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
                         gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
