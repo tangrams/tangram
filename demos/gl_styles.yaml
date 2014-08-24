@@ -55,7 +55,6 @@ modes:
 
     popup:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 u_popup_radius: 330 # 225
@@ -99,7 +98,6 @@ modes:
 
     dots:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 u_dot_grid_scale: 0.02
@@ -114,7 +112,6 @@ modes:
 
     wood:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 u_wood_color1: [.9, .5, .5]
@@ -137,7 +134,6 @@ modes:
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     halftone:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 halftone_colored: false # boolean to flip colored dots on and off
@@ -190,7 +186,6 @@ modes:
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     colorhalftone:
         extends: polygons
-        animated: true
         shaders:
             uniforms:
                 dot_frequency: 100.
@@ -316,7 +311,7 @@ modes:
                         vec3(0.0, 0.0, 0.0),
                         vec3(1.0, 1.0, 1.0),
                         step(fract(mod(vPos, .9)), vec3(.4, .4, .6))));
-                      
+
                     vec3 mask = color2 - color1;
                     float noiseColor = 2. * mynoise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
                     color = u_windowColor * noiseColor;
