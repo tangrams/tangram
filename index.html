@@ -586,6 +586,12 @@ var gl_mode_options = {
                     this.uniforms.dot_scale = value;
                     renderer.requestRedraw();
                 }.bind(this));
+
+                this.state.true_color = this.uniforms.true_color;
+                this.folder.add(this.state, 'true_color').onChange(function(value) {
+                    this.uniforms.true_color = value;
+                    renderer.requestRedraw();
+                }.bind(this));
             }
         },
         'halftone': {

@@ -190,11 +190,13 @@ modes:
             uniforms:
                 dot_frequency: 100.
                 dot_scale: 1.5
+                true_color: false
 
             transforms:
                 globals: |
                     uniform float dot_frequency;
                     uniform float dot_scale;
+                    uniform bool true_color;
 
                     // Antialiasing
                     float aastep(float threshold, float value) {
@@ -230,7 +232,7 @@ modes:
                     vec4 cmyk;
                     cmyk.xyz = 1.0 - color;
                     cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
-                    cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
+                    if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
 
                     // Distance to nearest point in a grid of
                     // (frequency x frequency) points over the unit square
