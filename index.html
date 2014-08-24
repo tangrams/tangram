@@ -578,11 +578,13 @@ var gl_mode_options = {
                 this.state.dot_frequency = this.uniforms.dot_frequency;
                 this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
                     this.uniforms.dot_frequency = value;
+                    renderer.requestRedraw();
                 }.bind(this));
 
                 this.state.dot_scale = this.uniforms.dot_scale;
                 this.folder.add(this.state, 'dot_scale', 0, 3).onChange(function(value) {
                     this.uniforms.dot_scale = value;
+                    renderer.requestRedraw();
                 }.bind(this));
             }
         },
