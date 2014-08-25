@@ -88,12 +88,19 @@ function runIfInMainThread (block, err) {
     }
 }
 
+// Used for differentiating between power-of-2 and non-power-of-2 textures
+// Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
+function isPowerOf2 (value) {
+    return (value & (value - 1)) == 0;
+};
+
 if (module !== undefined) {
     module.exports = {
         urlForPath: urlForPath,
         serializeWithFunctions: serializeWithFunctions,
         deserializeWithFunctions: deserializeWithFunctions,
         stringsToFunctions: stringsToFunctions,
-        runIfInMainThread: runIfInMainThread
+        runIfInMainThread: runIfInMainThread,
+        isPowerOf2: isPowerOf2
     };
 }
