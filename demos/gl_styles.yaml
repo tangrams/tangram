@@ -435,9 +435,10 @@ layers:
             # name: dots
             # name: wood
             # name: rainbow2
-            name: envmap
             # name: windows
             # name: colorhalftone
+            # name: palette
+            # name: envmap
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }
