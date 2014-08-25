@@ -81,6 +81,7 @@ GLRenderer.prototype.initSelectionBuffer = function ()
     // Texture for the FBO color attachment
     this.fbo_texture = GL.createTexture(this.gl);
     this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.fbo_size.width, this.fbo_size.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+    GL.setTextureFiltering(this.gl, this.fbo_size.width, this.fbo_size.height, { filtering: 'nearest' });
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture, 0);
 
     // Renderbuffer for the FBO depth attachment
