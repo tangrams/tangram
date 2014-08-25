@@ -133,14 +133,12 @@ modes:
         #     }
 
     envmap:
-        extends: polygons_texture
-        texture: demos/images/LitSphere_test_02.jpg
-        # texture: demos/images/sunset.jpg
-        # texture: demos/images/matball01.jpg
-        animated: true
+        extends: polygons
         shaders:
             defines:
                 LIGHTING_ENVIRONMENT: true
+            uniforms:
+                u_envMap: demos/images/LitSphere_test_02.jpg
             transforms:
                 # fragment: color *= lighting;
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
