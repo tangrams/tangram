@@ -605,13 +605,18 @@ var gl_mode_options = {
         },
         'halftone': {
             setup: function (mode) {
-                scene.styles.layers.buildings.mode = { name: mode };
+                Object.keys(scene.styles.layers).forEach(function(l) {
+                    scene.styles.layers[l].mode = { name: mode };
+                });
 
-                this.state.halftone_colored = this.uniforms.halftone_colored;
-                this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
-                    this.uniforms.halftone_colored = this.state.halftone_colored;
-                    scene.requestRedraw();
-                }.bind(this));
+                scene.styles.layers.earth.visible = false;
+                scene.styles.layers.pois.visible = false;
+
+                // this.state.halftone_colored = this.uniforms.halftone_colored;
+                // this.folder.add(this.state, 'halftone_colored').onChange(function(value) {
+                //     this.uniforms.halftone_colored = this.state.halftone_colored;
+                //     scene.requestRedraw();
+                // }.bind(this));
             }
         },
         'windows': {
