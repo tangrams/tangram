@@ -6,6 +6,8 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
+uniform float u_test;
+uniform float u_test2;
 
 varying vec3 v_color;
 varying vec4 v_world_position;
@@ -25,6 +27,10 @@ varying vec4 v_world_position;
     }
 #endif
 
+#if defined(LIGHTING_ENVIRONMENT)
+    uniform sampler2D u_env_map;
+#endif
+
 #if !defined(LIGHTING_VERTEX)
     varying vec4 v_position;
     varying vec3 v_normal;
@@ -36,11 +42,20 @@ const float light_ambient = 0.5;
 
 // Imported functions
 #pragma glslify: calculateLighting = require(./modules/lighting)
+#pragma glslify: sphericalEnvironmentMap = require(./modules/spherical_environment_map)
 
 #pragma tangram: globals
 
 void main (void) {
     vec3 color = v_color;
+
+    #if defined(LIGHTING_ENVIRONMENT)
+        // Approximate location of eye (TODO: make this configurable)
+        vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
+
+        // Replace object color with environment map
+        color = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
+    #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
         vec3 lighting = calculateLighting(
@@ -54,6 +69,7 @@ void main (void) {
     #endif
 
     // Apply lighting to color (can be overriden by transforms)
+    vec3 color_prelight = color;
     color *= lighting;
 
     #pragma tangram: fragment

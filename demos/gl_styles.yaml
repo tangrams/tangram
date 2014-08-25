@@ -132,6 +132,16 @@ modes:
         #         this.parent.buildPolygons(polygons, style, vertex_data);
         #     }
 
+    envmap:
+        extends: polygons
+        shaders:
+            defines:
+                LIGHTING_ENVIRONMENT: true
+            uniforms:
+                u_env_map: demos/images/LitSphere_test_02.jpg
+            transforms:
+                # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
+
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     halftone:
         extends: polygons
@@ -191,11 +201,13 @@ modes:
             uniforms:
                 dot_frequency: 100.
                 dot_scale: 1.5
+                true_color: false
 
             transforms:
                 globals: |
                     uniform float dot_frequency;
                     uniform float dot_scale;
+                    uniform bool true_color;
 
                     // Antialiasing
                     float aastep(float threshold, float value) {
@@ -231,7 +243,7 @@ modes:
                     vec4 cmyk;
                     cmyk.xyz = 1.0 - color;
                     cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
-                    cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
+                    if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
 
                     // Distance to nearest point in a grid of
                     // (frequency x frequency) points over the unit square
@@ -336,8 +348,8 @@ modes:
 
     # polygons:
     #     shaders:
-    #         vertex_url: src/gl/shaders/compiled/simple_polygon_vertex.glsl
-    #         fragment_url: src/gl/shaders/compiled/simple_polygon_fragment.glsl
+    #         defines:
+    #             LIGHTING_ENVIRONMENT: true
 
 layers:
     water_ocean:
@@ -428,6 +440,8 @@ layers:
             # name: rainbow2
             # name: windows
             # name: colorhalftone
+            # name: palette
+            # name: envmap
         # filter: function (f) { return f.properties.name != null; }
         # filter: function (f) { return Math.random() < 0.25; }
         # filter: function (f) { return true; }

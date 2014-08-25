@@ -547,16 +547,100 @@ GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
 // };
 
 // Texture management
-// TODO: support options config for texture params
-GL.createTexture = function (gl)
-{
+
+// Create & bind a texture
+GL.createTexture = function (gl, options) {
+    options = options || {};
     var texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     return texture;
+};
+
+// Determines appropriate filtering mode
+// Assumes texture to be operated on is already bound
+GL.setTextureFiltering = function (gl, width, height, options) {
+    options = options || {};
+    options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+
+    // For power-of-2 textures, the following presets are available:
+    // mipmap: linear blend from nearest mip
+    // linear: linear blend from original image (no mips)
+    // nearest: nearest pixel from original image (no mips, 'blocky' look)
+    if (Utils.isPowerOf2(width) && Utils.isPowerOf2(height)) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
+
+        if (options.filtering == 'mipmap') {
+            // console.log("power-of-2 MIPMAP");
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.generateMipmap(gl.TEXTURE_2D);
+        }
+        else if (options.filtering == 'linear') {
+            // console.log("power-of-2 LINEAR");
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+        else if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        }
+    }
+    else {
+        // WebGL has strict requirements on non-power-of-2 textures:
+        // No mipmaps and must clamp to edge
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        }
+        else { // default to linear for non-power-of-2 textures
+            // console.log("power-of-2 LINEAR");
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+    }
+};
+
+// GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
+GL.Texture = function (gl, name, options) {
+    options = options || {};
+    this.gl = gl;
+    this.texture = gl.createTexture();
+    this.bind(0);
+
+    // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
+    // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    GL.setTextureFiltering(gl, 1, 1, { filtering: 'nearest' });
+
+    // TODO: support non-URL sources: canvas objects, raw pixel buffers
+
+    this.name = name;
+    GL.Texture.textures[this.name] = this;
+};
+
+GL.Texture.textures = {}; // global set of textures, by name
+
+GL.Texture.prototype.bind = function (unit) {
+    this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+};
+
+GL.Texture.prototype.load = function (url, options) {
+    options = options || {};
+    this.image = new Image();
+    this.image.onload = function() {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+        GL.setTextureFiltering(this.gl, this.image.width, this.image.height, options);
+    }.bind(this);
+    this.image.src = url;
 };
 
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls

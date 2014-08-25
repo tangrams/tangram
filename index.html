@@ -208,7 +208,8 @@ var gl_define_options = {
             'Diffuse': 'LIGHTING_POINT',
             'Specular': 'LIGHTING_POINT_SPECULAR',
             'Flat': 'LIGHTING_DIRECTION',
-            'Night': 'LIGHTING_NIGHT'
+            'Night': 'LIGHTING_NIGHT',
+            'EnvMap': 'LIGHTING_ENVIRONMENT'
         }
     },
     // lighting_mode: {
@@ -256,6 +257,14 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
     for (var i in options) {
         Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
+}
+
+function setGLProgramUniform (type, name, value) {
+    for (var m in layer.scene.modes) {
+        layer.scene.gl.useProgram(layer.scene.modes[m].gl_program.program);
+        layer.scene.modes[m].gl_program.uniform(type, name, value);
+    }
+    layer.scene.dirty = true;
 }
 
 // Toggle for feature selection on hover
@@ -379,6 +388,7 @@ var gl_mode_options = {
         'B&W Halftone': 'halftone',
         'Color Halftone': 'colorhalftone',
         'Windows': 'windows',
+        'Environment Map': 'envmap',
         'Color Bleed': 'colorbleed',
         'Rainbow': 'rainbow'
     },
@@ -585,6 +595,12 @@ var gl_mode_options = {
                     this.uniforms.dot_scale = value;
                     scene.requestRedraw();
                 }.bind(this));
+
+                this.state.true_color = this.uniforms.true_color;
+                this.folder.add(this.state, 'true_color').onChange(function(value) {
+                    this.uniforms.true_color = value;
+                    scene.requestRedraw();
+                }.bind(this));
             }
         },
         'halftone': {
@@ -604,6 +620,24 @@ var gl_mode_options = {
                 scene.styles.layers.buildings.mode = { name: mode };
                 scene.styles.layers.pois.visible = false;
             }
+        },
+        'envmap': {
+            setup: function (mode) {
+                scene.styles.layers.buildings.mode = { name: mode };
+
+                var envmaps = {
+                    'Chrome': 'demos/images/LitSphere_test_02.jpg',
+                    'Sunset': 'demos/images/sunset.jpg',
+                    'Matte Red': 'demos/images/matball01.jpg',
+                    'Color Wheel': 'demos/images/wheel.png'
+                };
+
+                this.state.u_env_map = this.uniforms.u_env_map;
+                this.folder.add(this.state, 'u_env_map', envmaps).onChange(function(value) {
+                    this.uniforms.u_env_map = value;
+                    scene.requestRedraw();
+                }.bind(this));
+           }
         }
     },
     initial: { // initial state to restore to on mode switch

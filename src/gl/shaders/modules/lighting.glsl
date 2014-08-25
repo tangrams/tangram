@@ -26,6 +26,9 @@ vec3 lighting (
     #elif defined(LIGHTING_DIRECTION)
         // Light at infinite distance - angle is static
         color = directionalLight(normal, color, light_dir, light_ambient);
+    // #elif defined(LIGHTING_ENVIRONMENT)
+        // spherical environment reflection lookup, no lighting calculation
+        // color = environmentMap(u_envMap, v_texCoord);
     #else
         color = color;
     #endif
