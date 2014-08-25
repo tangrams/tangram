@@ -100,7 +100,7 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "#if defined(LIGHTING_ENVIRONMENT)\n" +
 "\n" +
-"uniform sampler2D u_envMap;\n" +
+"uniform sampler2D u_env_map;\n" +
 "#endif\n" +
 "\n" +
 "#if !defined(LIGHTING_VERTEX)\n" +
@@ -156,20 +156,23 @@ shader_sources['polygon_fragment'] =
 "  #endif\n" +
 "  return color;\n" +
 "}\n" +
+"vec4 e_x_sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2D envmap) {\n" +
+"  vec3 eye = normalize(position.xyz - view_pos.xyz);\n" +
+"  if(eye.z > 0.01) {\n" +
+"    eye.z = 0.01;\n" +
+"  }\n" +
+"  vec3 r = reflect(eye, normal);\n" +
+"  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" +
+"  vec2 uv = r.xy / m + .5;\n" +
+"  return texture2D(envmap, uv);\n" +
+"}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
 "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
-"  vec3 e = normalize(v_position.xyz - view_pos.xyz);\n" +
-"  if(e.z > 0.01) {\n" +
-"    e.z = 0.01;\n" +
-"  }\n" +
-"  vec3 r = reflect(e, v_normal);\n" +
-"  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" +
-"  vec2 texCoord = r.xy / m + .5;\n" +
-"  color = texture2D(u_envMap, texCoord).rgb;\n" +
+"  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
 "  #endif\n" +
 "  \n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +

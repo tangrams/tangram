@@ -571,15 +571,18 @@ GL.setTextureFiltering = function (gl, width, height, options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
 
         if (options.filtering == 'mipmap') {
+            // console.log("power-of-2 MIPMAP");
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
         else if (options.filtering == 'linear') {
+            // console.log("power-of-2 LINEAR");
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
         else if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         }
@@ -591,10 +594,12 @@ GL.setTextureFiltering = function (gl, width, height, options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         }
         else { // default to linear for non-power-of-2 textures
+            // console.log("power-of-2 LINEAR");
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
