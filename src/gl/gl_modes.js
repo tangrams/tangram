@@ -80,6 +80,7 @@ RenderMode.makeGLProgram = function ()
     }
 };
 
+// TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GL.Program
 RenderMode.setUniforms = function (options)
 {
     options = options || {};
@@ -89,25 +90,44 @@ RenderMode.setUniforms = function (options)
 
     // TODO: only update uniforms when changed
     if (this.shaders != null && this.shaders.uniforms != null) {
+        var texture_unit = 0;
+
         for (var u in this.shaders.uniforms) {
+            var uniform = this.shaders.uniforms[u];
+
             // Single float
-            if (typeof this.shaders.uniforms[u] == 'number') {
-                gl_program.uniform('1f', u, this.shaders.uniforms[u]);
+            if (typeof uniform == 'number') {
+                gl_program.uniform('1f', u, uniform);
             }
-            else if (typeof this.shaders.uniforms[u] == 'object') {
+            // Multiple floats - vector or array
+            else if (typeof uniform == 'object') {
                 // float vectors (vec2, vec3, vec4)
-                if (this.shaders.uniforms[u].length >= 2 && this.shaders.uniforms[u].length <= 4) {
-                    gl_program.uniform(this.shaders.uniforms[u].length + 'fv', u, this.shaders.uniforms[u]);
+                if (uniform.length >= 2 && uniform.length <= 4) {
+                    gl_program.uniform(uniform.length + 'fv', u, uniform);
                 }
-                // TODO: support arrays for more than 4 components
+                // float array
+                else if (uniform.length > 4) {
+                    gl_program.uniform('1fv', u + '[0]', uniform);
+                }
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-                // TODO: support non-float types? (int, texture sampler, etc.)
-                // gl_program.uniform('1fv', u, this.shaders.uniforms[u]);
             }
             // Boolean
             else if (typeof this.shaders.uniforms[u] == 'boolean') {
-                gl_program.uniform('1i', u, this.shaders.uniforms[u]);
+                gl_program.uniform('1i', u, uniform);
             }
+            // Texture
+            else if (typeof uniform == 'string') {
+                var texture = GL.Texture.textures[uniform];
+                if (texture == null) {
+                    texture = new GL.Texture(this.gl, uniform);
+                    texture.load(uniform);
+                }
+
+                texture.bind(texture_unit);
+                gl_program.uniform('1i', u, texture_unit);
+                texture_unit++;
+            }
+            // TODO: support other non-float types? (int, etc.)
         }
     }
 };
@@ -334,18 +354,6 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
     );
 };
 
-
-/*** Polygons with texture ***/
-
-Modes.polygons_texture = Object.create(Modes.polygons);
-
-Modes.polygons_texture.init = function () {
-    RenderMode.init.apply(this, arguments);
-
-    if (this.texture) {
-        this.gl_texture = new GL.Texture(this.gl, this.texture);
-    }
-};
 
 /*** Simplified polygon shader ***/
 
