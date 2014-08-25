@@ -13,7 +13,7 @@ modes:
                 EFFECT_NOISE_ANIMATED: true
             transforms:
                 globals:
-                    url: node_modules/glsl-noise/periodic/3d.glsl
+                    url: demos/shaders/glsl-noise-periodic-3d.glsl
                 fragment:
                     url: demos/shaders/noise.glsl
 
@@ -24,7 +24,7 @@ modes:
                 EFFECT_NOISE_TEXTURE: true
             transforms:
                 globals:
-                    url: node_modules/glsl-noise/periodic/3d.glsl
+                    url: demos/shaders/glsl-noise-periodic-3d.glsl
                 fragment:
                     url: demos/shaders/noise.glsl
 
