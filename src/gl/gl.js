@@ -272,8 +272,7 @@ GL.Program.prototype.compile = function ()
             }
 
             // First find code replace points in shaders
-            // var re = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'g');
-            re = new RegExp('#pragma\\s+tangram:\\s+' + key, 'g');
+            var re = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
             var inject_vertex = this.processed_vertex_shader_source.match(re);
             var inject_fragment = this.processed_fragment_shader_source.match(re);
 
@@ -326,7 +325,7 @@ GL.Program.prototype.compile = function ()
     }
 
     // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
-    re = new RegExp('#pragma\\s+tangram:\\s+\\w+', 'g');
+    re = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
     this.processed_vertex_shader_source = this.processed_vertex_shader_source.replace(re, '');
     this.processed_fragment_shader_source = this.processed_fragment_shader_source.replace(re, '');
 
