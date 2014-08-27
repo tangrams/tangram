@@ -77,7 +77,7 @@ modes:
         animated: true
         shaders:
             transforms:
-                vertex: position.z *= max((sin(position.z + u_time) + 1.0) / 2.0, 0.05); // evelator buildings
+                vertex: position.z *= max((sin(position.z + u_time) + 1.0) / 2.0, 0.05); // elevator buildings
                 # vertex: { url: demos/shaders/elevator.glsl }
 
     breathe:
