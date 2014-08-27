@@ -276,7 +276,7 @@ modes:
 
         shaders:
             uniforms:
-                u_frequency: 100.
+                u_frequency: 10.
                 u_windowColor: [1., 1., .9]
                 u_buildingColor: [.8, .8, .7]
                 u_roofColor: [.5, .4, .5]
@@ -312,33 +312,20 @@ modes:
                         return o4.y * d.y + o4.x * (1.0 - d.y);
                     }
                 fragment: |
-                    vec3 scale = vec3(.1, .1, .1);
-                    scale *= u_frequency;
-                    vec3 vPos = v_world_position.xyz / scale;
-                    vec3 color1 = vec3(
-                      mix(
-                        vec3(0.0, 0.0, 0.0),
-                        vec3(1.0, 1.0, 1.0),
-                        step(fract(vPos), vec3(.0))));
+                    vec3 vPos = v_world_position.xyz / u_frequency;
+                    vec3 mask = mix(vec3(0.0), vec3(1.0), step(fract(mod(vPos, .9)), vec3(.4, .4, .6)));
 
-                    vec3 color2 = vec3(
-                      mix(
-                        vec3(0.0, 0.0, 0.0),
-                        vec3(1.0, 1.0, 1.0),
-                        step(fract(mod(vPos, .9)), vec3(.4, .4, .6))));
-
-                    vec3 mask = color2 - color1;
-                    float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
-                    color = u_windowColor * noiseColor;
-                    if (mask.x > .5 || mask.y > .5 || mask.z > .5) {
+                    if (mask.x + mask.y + mask.z > .5) {
                         color = u_buildingColor;
-                        // height factor
-                        color -= vec3(vPos.z * .1);
+                        color -= vec3(vPos.z * .1); // height factor
+                    } else {
+                        float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
+                        color = u_windowColor * noiseColor;
                     }
-                    // roof color
+
                     if (v_normal.z > .6 || v_normal.z < -.6) {
-                        // height factor
-                        color = u_roofColor - vec3(vPos.z * .01);
+                        color = u_roofColor;
+                        color -= vec3(vPos.z * .01); // height factor
                     }
 
     points:
