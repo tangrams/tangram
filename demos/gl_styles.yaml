@@ -77,7 +77,7 @@ modes:
         animated: true
         shaders:
             transforms:
-                vertex: position.z *= max((sin(position.z + u_time) + 1.0) / 2.0, 0.05); // elevator buildings
+                vertex: position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings
                 # vertex: { url: demos/shaders/elevator.glsl }
 
     breathe:
@@ -290,7 +290,7 @@ modes:
                     // 3d noise
                     vec4 v_mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
                     vec4 perm(vec4 x){return v_mod289(((x * 34.0) + 1.0) * x);}
-                    float mynoise(vec3 p){
+                    float noise(vec3 p){
                         vec3 a = floor(p);
                         vec3 d = p - a;
                         d = d * d * (3.0 - 2.0 * d);
@@ -328,7 +328,7 @@ modes:
                         step(fract(mod(vPos, .9)), vec3(.4, .4, .6))));
 
                     vec3 mask = color2 - color1;
-                    float noiseColor = 2. * mynoise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
+                    float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
                     color = u_windowColor * noiseColor;
                     if (mask.x > .5 || mask.y > .5 || mask.z > .5) {
                         color = u_buildingColor;
