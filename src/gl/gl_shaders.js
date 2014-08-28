@@ -8,14 +8,12 @@ shader_sources['point_fragment'] =
 "uniform vec2 u_resolution;\n" +
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
+"#pragma tangram: globals\n" +
+"\n" +
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  vec3 lighting = vec3(1.);\n" +
-"  float len = length(v_texcoord);\n" +
-"  if(len > 1.) {\n" +
-"    discard;\n" +
-"  }\n" +
-"  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
+"  vec2 texcoord = v_texcoord;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.);\n" +
 "}\n" +

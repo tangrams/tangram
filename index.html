@@ -61,6 +61,14 @@ body {
 var tile_source = 'mapzen'; // default source, can be overriden by URL
 
 var tile_sources = {
+    'pacman': {
+        source: {
+            type: 'GeoJSONTileSource',
+            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+        },
+        layers: 'demos/gl_layers_json.js',
+        styles: 'demos/pacman_styles.yaml'
+    },
     'mapzen': {
         source: {
             type: 'GeoJSONTileSource',
