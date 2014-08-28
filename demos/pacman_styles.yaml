@@ -338,7 +338,6 @@ modes:
         extends: points
         shaders:
             uniforms:
-                # u_texture: demos/images/LitSphere_test_02.jpg
                 u_texture: demos/images/ghost.gif
             transforms:
                 globals: |
