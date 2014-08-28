@@ -334,6 +334,14 @@ modes:
                 # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                 fragment: { url: demos/shaders/color_bleed.glsl }
 
+    ghosts:
+        extends: points
+        shaders:
+            transforms:
+                # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                fragment: color = vec3(0., 1., 0.);
+                #fragment: { url: demos/shaders/color_bleed.glsl }
+
     # polygons:
     #     shaders:
     #         defines:
@@ -454,8 +462,9 @@ layers:
 
     pois:
         mode:
-            name: points
+            # name: points
             # name: formica
+            name: ghosts
         filter: function (f) { return f.properties.name != null; }
         # visible: false
         interactive: true
