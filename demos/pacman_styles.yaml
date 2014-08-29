@@ -338,7 +338,7 @@ modes:
         extends: points
         shaders:
             uniforms:
-                u_texture: demos/images/ghost.gif
+                u_texture: demos/images/ghost_a.gif
             transforms:
                 globals: |
                     uniform sampler2D u_texture;

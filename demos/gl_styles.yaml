@@ -328,26 +328,11 @@ modes:
                         color -= vec3(vPos.z * .01); // height factor
                     }
 
-    # points:
-    #     shaders:
-    #         transforms:
-    #             fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-    #             # fragment: { url: demos/shaders/color_bleed.glsl }
-
-    ghosts:
-        extends: points
+    points:
         shaders:
-            uniforms:
-                # u_texture: demos/images/LitSphere_test_02.jpg
-                u_texture: demos/images/ghost.gif
             transforms:
-                globals: |
-                    uniform sampler2D u_texture;
-                fragment: |
-                    // offset texcoord to account for centered 0,0
-                    color = texture2D(u_texture, (texcoord + vec2(1.))/2.).rgb;
-                    
-
+                # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                fragment: { url: demos/shaders/color_bleed.glsl }
 
     # polygons:
     #     shaders:
@@ -469,17 +454,16 @@ layers:
 
     pois:
         mode:
-            # name: points
+            name: points
             # name: formica
-            name: ghosts
         filter: function (f) { return f.properties.name != null; }
         # visible: false
         interactive: true
-        # color:
-            # default: [1, 1, 0]
+        color:
+            default: [1, 1, 0]
         size:
             # default: 5
-            default: Style.pixels(10)
+            default: Style.pixels(5)
             # default: Style.pixels(function(f, t, h) { return 2 * Math.pow(h.zoom, 0.5); })
             # default: function(f, t, h) { return 2 * h.zoom; }
 
