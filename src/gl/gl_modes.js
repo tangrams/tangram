@@ -37,6 +37,12 @@ RenderMode.makeGLProgram = function ()
         }
     }
 
+    // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
+    if (this.selection) {
+        var selection_defines = Object.create(defines);
+        selection_defines['FEATURE_SELECTION'] = true;
+    }
+
     // Get any custom code transforms
     var transforms = (this.shaders && this.shaders.transforms);
 
@@ -50,12 +56,11 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            defines['FEATURE_SELECTION'] = true;
             this.selection_gl_program = new GL.Program(
                 this.gl,
                 this.gl_program.vertex_shader_source,
                 shader_sources['selection_fragment'],
-                { defines: defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms }
             );
         }
     }
@@ -69,12 +74,11 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            defines['FEATURE_SELECTION'] = true;
             this.selection_gl_program = new GL.Program(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources['selection_fragment'],
-                { defines: defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms }
             );
        }
     }
