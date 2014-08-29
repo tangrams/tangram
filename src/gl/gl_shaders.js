@@ -34,9 +34,9 @@ shader_sources['point_vertex'] =
 "attribute float a_layer;\n" +
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
-"attribute vec4 a_selection_color;\n" +
 "#if defined(FEATURE_SELECTION)\n" +
 "\n" +
+"attribute vec4 a_selection_color;\n" +
 "varying vec4 v_selection_color;\n" +
 "#endif\n" +
 "\n" +
@@ -57,8 +57,6 @@ shader_sources['point_vertex'] =
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
-"  #else\n" +
-"  vec4 selection_color = a_selection_color;\n" +
 "  #endif\n" +
 "  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
 "  #pragma tangram: vertex\n" +
@@ -221,9 +219,9 @@ shader_sources['polygon_vertex'] =
 "}\n" +
 "#endif\n" +
 "\n" +
-"attribute vec4 a_selection_color;\n" +
 "#if defined(FEATURE_SELECTION)\n" +
 "\n" +
+"attribute vec4 a_selection_color;\n" +
 "varying vec4 v_selection_color;\n" +
 "#endif\n" +
 "\n" +
@@ -305,8 +303,6 @@ shader_sources['polygon_vertex'] =
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
-"  #else\n" +
-"  vec4 selection_color = a_selection_color;\n" +
 "  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  v_world_position = u_tile_world * vec4(a_position, 1.);\n" +
