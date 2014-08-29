@@ -10,8 +10,8 @@ attribute float a_layer;
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
-attribute vec4 a_selection_color;
 #if defined(FEATURE_SELECTION)
+    attribute vec4 a_selection_color;
     varying vec4 v_selection_color;
 #endif
 
@@ -30,9 +30,6 @@ void main() {
             return;
         }
         v_selection_color = a_selection_color;
-    #else
-        // This is here to prevent the attribute from being optimized out, thus changing the program's vertex layout :(
-        vec4 selection_color = a_selection_color;
     #endif
 
     vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);

@@ -611,6 +611,7 @@ GL.Texture = function (gl, name, options) {
     this.gl = gl;
     this.texture = gl.createTexture();
     this.bind(0);
+    this.image = null;
 
     // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
     // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
@@ -630,13 +631,22 @@ GL.Texture.prototype.bind = function (unit) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
 };
 
+// Uploads a texture to the GPU
+GL.Texture.prototype.update = function (options) {
+    options = options || {};
+    if (this.image && this.image.complete) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+    }
+};
+
+// Loads a texture from a URL
 GL.Texture.prototype.load = function (url, options) {
     options = options || {};
     this.image = new Image();
     this.image.onload = function() {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+        this.update(options);
         GL.setTextureFiltering(this.gl, this.image.width, this.image.height, options);
     }.bind(this);
     this.image.src = url;

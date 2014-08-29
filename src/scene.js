@@ -329,8 +329,6 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset)
     return z;
 };
 
-
-
 Scene.prototype.render = function ()
 {
     // Render on demand
@@ -445,7 +443,7 @@ Scene.prototype.renderGL = function ()
                 gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
-                tile.gl_geometry[mode].render({ set_program: false });
+                tile.gl_geometry[mode].render();
                 render_count += tile.gl_geometry[mode].geometry_count;
             }
         }
@@ -513,7 +511,7 @@ Scene.prototype.renderGL = function ()
                     gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile
-                    tile.gl_geometry[mode].render({ set_program: false });
+                    tile.gl_geometry[mode].render();
                 }
             }
         }

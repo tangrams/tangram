@@ -3,6 +3,7 @@
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js').GLGeometry;
+var GLVertexLayout = require('./gl_geom.js').GLVertexLayout;
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
 // Base
@@ -11,6 +12,10 @@ var RenderMode = {
     init: function (gl) {
         this.gl = gl;
         this.makeGLProgram();
+
+        if (typeof this._init == 'function') {
+            this._init();
+        }
     },
     refresh: function () {
         this.makeGLProgram();
@@ -19,7 +24,10 @@ var RenderMode = {
     selection: false,
     buildPolygons: function(){}, // build functions are no-ops until overriden
     buildLines: function(){},
-    buildPoints: function(){}
+    buildPoints: function(){},
+    makeGLGeometry: function (vertex_data) {
+        return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+    }
 };
 
 RenderMode.makeGLProgram = function ()
@@ -37,6 +45,12 @@ RenderMode.makeGLProgram = function ()
         }
     }
 
+    // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
+    if (this.selection) {
+        var selection_defines = Object.create(defines);
+        selection_defines['FEATURE_SELECTION'] = true;
+    }
+
     // Get any custom code transforms
     var transforms = (this.shaders && this.shaders.transforms);
 
@@ -50,12 +64,11 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            defines['FEATURE_SELECTION'] = true;
             this.selection_gl_program = new GL.Program(
                 this.gl,
                 this.gl_program.vertex_shader_source,
                 shader_sources['selection_fragment'],
-                { defines: defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms }
             );
         }
     }
@@ -69,12 +82,11 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            defines['FEATURE_SELECTION'] = true;
             this.selection_gl_program = new GL.Program(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources['selection_fragment'],
-                { defines: defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms }
             );
        }
     }
@@ -84,9 +96,7 @@ RenderMode.makeGLProgram = function ()
 RenderMode.setUniforms = function (options)
 {
     options = options || {};
-
-    // Clear main program by default, or selection program if specified
-    var gl_program = GL.Program.current;
+    var gl_program = GL.Program.current; // operate on currently bound program
 
     // TODO: only update uniforms when changed
     if (this.shaders != null && this.shaders.uniforms != null) {
@@ -134,7 +144,7 @@ RenderMode.setUniforms = function (options)
 
 RenderMode.update = function ()
 {
-    this.gl_program.use();
+    this.gl_program.use(); // TODO: flexibility for multiple programs, e.g. for selection?
 
     // Mode-specific animation
     if (typeof this.animation == 'function') {
@@ -178,18 +188,14 @@ Modes.polygons.defines = {
 
 Modes.polygons.selection = true;
 
-Modes.polygons.makeGLGeometry = function (vertex_data)
-{
-    var geom = new GLGeometry(this.gl, this.gl_program, vertex_data, [
+Modes.polygons._init = function () {
+    this.vertex_layout = new GLVertexLayout(this.gl, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
-    geom.geometry_count = geom.vertex_count / 3;
-
-    return geom;
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
@@ -355,14 +361,6 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 };
 
 
-/*** Simplified polygon shader ***/
-
-// Modes.polygons_simple = Object.create(Modes.polygons);
-
-// Modes.polygons_simple.vertex_shader_key = 'simple_polygon_vertex';
-// Modes.polygons_simple.fragment_shader_key = 'simple_polygon_fragment';
-
-
 /*** Points w/simple distance field rendering ***/
 
 Modes.points = Object.create(RenderMode);
@@ -376,9 +374,8 @@ Modes.points.defines = {
 
 Modes.points.selection = true;
 
-Modes.points.makeGLGeometry = function (vertex_data)
-{
-    return new GLGeometry(this.gl, this.gl_program, vertex_data, [
+Modes.points._init = function () {
+    this.vertex_layout = new GLVertexLayout(this.gl, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
         { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
