@@ -17,8 +17,8 @@ dist/vector-map.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
 dist/vector-map.min.js: dist/vector-map.debug.js
 	$(UGLIFY) dist/vector-map.debug.js -c -m -o dist/vector-map.min.js
 
-dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/vector_worker.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/vector_worker.js > dist/temp.vector-map-worker.js
+dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
+	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.vector-map-worker.js
 	$(UGLIFY) $(WORKER_ONLY) dist/temp.vector-map-worker.js -c -m > dist/vector-map-worker.min.js
 	rm dist/temp.vector-map-worker.js
 
