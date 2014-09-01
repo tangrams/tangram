@@ -146,14 +146,10 @@ RenderMode.setUniforms = function (options)
 
 RenderMode.update = function ()
 {
-    this.gl_program.use(); // TODO: flexibility for multiple programs, e.g. for selection?
-
     // Mode-specific animation
     if (typeof this.animation == 'function') {
         this.animation();
     }
-
-    this.setUniforms();
 };
 
 

@@ -216,6 +216,8 @@ GLProgram.prototype.updateUniform = function (name)
     if (uniform == null || uniform.location == null) {
         return;
     }
+
+    this.use();
     this.gl[uniform.method].apply(this.gl, [uniform.location].concat(uniform.values)); // call appropriate GL uniform method and pass through arguments
 };
 

@@ -400,6 +400,10 @@ Scene.prototype.renderGL = function ()
     // Render main pass - tiles grouped by rendering mode (GL program)
     var render_count = 0;
     for (var mode in this.modes) {
+        // Per-frame mode updates/animations
+        // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
+        this.modes[mode].update();
+
         var gl_program = this.modes[mode].gl_program;
         var first_for_mode = true;
 
@@ -413,7 +417,8 @@ Scene.prototype.renderGL = function ()
                 if (first_for_mode == true) {
                     first_for_mode = false;
 
-                    this.modes[mode].update();
+                    gl_program.use();
+                    this.modes[mode].setUniforms();
 
                     // TODO: don't set uniforms when they haven't changed
                     gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
