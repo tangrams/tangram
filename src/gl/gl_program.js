@@ -72,7 +72,11 @@ GLProgram.prototype.compile = function ()
         this.fragment_shader_source = this.updateFragmentShaderSource();
     }
 
-    // Inject defines (global, then program-specific)
+    // Copy sources to be modified
+    this.processed_vertex_shader_source = this.vertex_shader_source;
+    this.processed_fragment_shader_source = this.fragment_shader_source;
+
+    // Make list of defines (global, then program-specific)
     var defines = {};
     for (var d in GLProgram.defines) {
         defines[d] = GLProgram.defines[d];
@@ -80,24 +84,6 @@ GLProgram.prototype.compile = function ()
     for (var d in this.defines) {
         defines[d] = this.defines[d];
     }
-
-    var define_str = "";
-    for (var d in defines) {
-        if (defines[d] == false) {
-            continue;
-        }
-        else if (typeof defines[d] == 'boolean' && defines[d] == true) { // booleans are simple defines with no value
-            define_str += "#define " + d + "\n";
-        }
-        else if (typeof defines[d] == 'number' && Math.floor(defines[d]) == defines[d]) { // int to float conversion to satisfy GLSL floats
-            define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
-        }
-        else { // any other float or string value
-            define_str += "#define " + d + " " + defines[d] + "\n";
-        }
-    }
-    this.processed_vertex_shader_source = define_str + this.vertex_shader_source;
-    this.processed_fragment_shader_source = define_str + this.fragment_shader_source;
 
     // Inject user-defined transforms (arbitrary code blocks matching named #pragmas)
     // TODO: flag to avoid re-retrieving transform URLs over network when rebuilding?
@@ -173,6 +159,9 @@ GLProgram.prototype.compile = function ()
             if (inject_fragment != null) {
                 this.processed_fragment_shader_source = this.processed_fragment_shader_source.replace(re, combined_source);
             }
+
+            // Add a #define for this injection point
+            defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
         }
     }
 
@@ -180,6 +169,26 @@ GLProgram.prototype.compile = function ()
     re = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
     this.processed_vertex_shader_source = this.processed_vertex_shader_source.replace(re, '');
     this.processed_fragment_shader_source = this.processed_fragment_shader_source.replace(re, '');
+
+    // Build & inject defines
+    // This is done *after* code injection so that we can add defines for which code points were injected
+    var define_str = "";
+    for (var d in defines) {
+        if (defines[d] == false) {
+            continue;
+        }
+        else if (typeof defines[d] == 'boolean' && defines[d] == true) { // booleans are simple defines with no value
+            define_str += "#define " + d + "\n";
+        }
+        else if (typeof defines[d] == 'number' && Math.floor(defines[d]) == defines[d]) { // int to float conversion to satisfy GLSL floats
+            define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
+        }
+        else { // any other float or string value
+            define_str += "#define " + d + " " + defines[d] + "\n";
+        }
+    }
+    this.processed_vertex_shader_source = define_str + this.processed_vertex_shader_source;
+    this.processed_fragment_shader_source = define_str + this.processed_fragment_shader_source;
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
