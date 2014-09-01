@@ -4,6 +4,7 @@ var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js').GLGeometry;
 var GLVertexLayout = require('./gl_geom.js').GLVertexLayout;
+var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
 // Base
@@ -127,9 +128,9 @@ RenderMode.setUniforms = function (options)
             }
             // Texture
             else if (typeof uniform == 'string') {
-                var texture = GL.Texture.textures[uniform];
+                var texture = GLTexture.textures[uniform];
                 if (texture == null) {
-                    texture = new GL.Texture(this.gl, uniform);
+                    texture = new GLTexture(this.gl, uniform);
                     texture.load(uniform);
                 }
 
