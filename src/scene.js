@@ -38,6 +38,7 @@ function Scene (tile_source, layers, styles, options)
     this.tile_source = tile_source;
     this.tiles = {};
     this.num_workers = options.num_workers || 1;
+    this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
 
     if (typeof(layers) == 'string') {
         this.layer_source = Utils.urlForPath(layers);
@@ -155,16 +156,13 @@ Scene.prototype.initSelectionBuffer = function ()
 // Web workers handle heavy duty geometry processing
 Scene.prototype.createWorkers = function ()
 {
-    var url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
+    var worker_url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
 
-    // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-    var req = new XMLHttpRequest();
-    req.onload = function () {
-        var worker_local_url = window.URL.createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
-
+    // Instantiate workers from URL
+    var makeWorkers = function (url) {
         this.workers = [];
         for (var w=0; w < this.num_workers; w++) {
-            this.workers.push(new Worker(worker_local_url));
+            this.workers.push(new Worker(url));
             this.workers[w].postMessage({
                 type: 'init',
                 worker_id: w,
@@ -172,14 +170,23 @@ Scene.prototype.createWorkers = function ()
             })
         }
     }.bind(this);
-    req.open('GET', url, false /* async flag */);
-    req.send();
 
-    // Alternate for debugging - tradtional method of loading from remote URL instead of XHR-to-local-blob
-    // this.workers = [];
-    // for (var w=0; w < this.num_workers; w++) {
-    //     this.workers.push(new Worker(url));
-    // }
+    // Local object URLs supported?
+    var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+    if (createObjectURL && this.allow_cross_domain_workers) {
+        // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
+        var req = new XMLHttpRequest();
+        req.onload = function () {
+            var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
+            makeWorkers(worker_local_url);
+        }.bind(this);
+        req.open('GET', worker_url, false /* async flag */);
+        req.send();
+    }
+    // Traditional load from remote URL
+    else {
+        makeWorkers(worker_url);
+    }
 
     this.next_worker = 0;
 };
