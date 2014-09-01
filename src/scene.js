@@ -5,6 +5,7 @@ var ModeManager = require('./gl/gl_modes').ModeManager;
 var Utils = require('./utils.js');
 
 var GL = require('./gl/gl.js');
+var GLProgram = require('./gl/gl_program.js');
 var GLBuilders = require('./gl/gl_builders.js');
 
 var mat4 = require('gl-matrix').mat4;
@@ -27,7 +28,7 @@ Utils.runIfInMainThread(function() {
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
-GL.Program.defines.TILE_SCALE = Scene.tile_scale;
+GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely

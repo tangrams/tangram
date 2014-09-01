@@ -2,6 +2,7 @@
 var GL = require('./gl.js');
 var GLVertexLayout = require('./gl_vertex_layout.js');
 // var GLVertexArrayObject = require('./gl_vao.js');
+var GLProgram = require('./gl_program.js');
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 function GLGeometry (gl, vertex_data, vertex_layout, options)
@@ -42,7 +43,7 @@ GLGeometry.prototype.render = function (options)
         this._render_setup();
     }
 
-    var gl_program = options.gl_program || GL.Program.current;
+    var gl_program = options.gl_program || GLProgram.current;
     gl_program.use();
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);

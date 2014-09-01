@@ -4,6 +4,7 @@ var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js');
 var GLVertexLayout = require('./gl_vertex_layout.js');
+var GLProgram = require('./gl_program.js');
 var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
@@ -57,7 +58,7 @@ RenderMode.makeGLProgram = function ()
 
     // Create shader from custom URLs
     if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        this.gl_program = GL.Program.createProgramFromURLs(
+        this.gl_program = GLProgram.createProgramFromURLs(
             this.gl,
             this.shaders.vertex_url,
             this.shaders.fragment_url,
@@ -65,7 +66,7 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            this.selection_gl_program = new GL.Program(
+            this.selection_gl_program = new GLProgram(
                 this.gl,
                 this.gl_program.vertex_shader_source,
                 shader_sources['selection_fragment'],
@@ -75,7 +76,7 @@ RenderMode.makeGLProgram = function ()
     }
     // Create shader from built-in source
     else {
-        this.gl_program = new GL.Program(
+        this.gl_program = new GLProgram(
             this.gl,
             shader_sources[this.vertex_shader_key],
             shader_sources[this.fragment_shader_key],
@@ -83,7 +84,7 @@ RenderMode.makeGLProgram = function ()
         );
 
         if (this.selection) {
-            this.selection_gl_program = new GL.Program(
+            this.selection_gl_program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources['selection_fragment'],
@@ -93,11 +94,11 @@ RenderMode.makeGLProgram = function ()
     }
 };
 
-// TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GL.Program
+// TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GLProgram
 RenderMode.setUniforms = function (options)
 {
     options = options || {};
-    var gl_program = GL.Program.current; // operate on currently bound program
+    var gl_program = GLProgram.current; // operate on currently bound program
 
     // TODO: only update uniforms when changed
     if (this.shaders != null && this.shaders.uniforms != null) {
