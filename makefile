@@ -5,22 +5,22 @@ WORKER_ONLY = lib/libtess.cat.js
 
 all: \
 	src/gl/gl_shaders.js \
-	dist/vector-map.min.js \
-	dist/vector-map.debug.js \
-	dist/vector-map-worker.min.js \
+	dist/tangram.min.js \
+	dist/tangram.debug.js \
+	dist/tangram-worker.min.js \
 	dist/js-yaml.js
 
 # browserify --debug adds source maps
-dist/vector-map.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram > dist/vector-map.debug.js
+dist/tangram.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
+	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram > dist/tangram.debug.js
 
-dist/vector-map.min.js: dist/vector-map.debug.js
-	$(UGLIFY) dist/vector-map.debug.js -c -m -o dist/vector-map.min.js
+dist/tangram.min.js: dist/tangram.debug.js
+	$(UGLIFY) dist/tangram.debug.js -c -m -o dist/tangram.min.js
 
-dist/vector-map-worker.min.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.vector-map-worker.js
-	$(UGLIFY) $(WORKER_ONLY) dist/temp.vector-map-worker.js -c -m > dist/vector-map-worker.min.js
-	rm dist/temp.vector-map-worker.js
+dist/tangram-worker.min.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
+	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.tangram-worker.js
+	$(UGLIFY) $(WORKER_ONLY) dist/temp.tangram-worker.js -c -m > dist/tangram-worker.min.js
+	rm dist/temp.tangram-worker.js
 
 # externalized & modularized js-yaml, so YAML support can be included optionally (parser is large)
 dist/js-yaml.js: ./node_modules/js-yaml/index.js

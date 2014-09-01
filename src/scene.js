@@ -154,7 +154,7 @@ Scene.prototype.initSelectionBuffer = function ()
 // Web workers handle heavy duty geometry processing
 Scene.prototype.createWorkers = function ()
 {
-    var url = Scene.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
+    var url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
 
     // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
     var req = new XMLHttpRequest();
@@ -1272,9 +1272,9 @@ function findBaseLibraryURL ()
     Scene.library_base_url = '';
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
-        var match = scripts[s].src.indexOf('vector-map.debug.js');
+        var match = scripts[s].src.indexOf('tangram.debug.js');
         if (match == -1) {
-            match = scripts[s].src.indexOf('vector-map.min.js');
+            match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
             Scene.library_base_url = scripts[s].src.substr(0, match);
