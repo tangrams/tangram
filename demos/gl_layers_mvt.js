@@ -1,9 +1,5 @@
 [
     {
-       name: 'water_ocean',
-       data: function (json) { return json['water']; }
-    },
-    {
         name: 'landuse',
         data: function (json) {
           return {
@@ -16,8 +12,17 @@
         }
     },
     {
-       name: 'water_areas',
-       data: function (json) { return json['waterway']; }
+       name: 'water',
+       data: function (json) {
+          var water = (json['water'] && json['water'].features) || [];
+          var waterway = (json['waterway'] && json['waterway'].features) || [];
+          var features = water.concat(waterway);
+
+          return {
+              type: 'FeatureCollection',
+              features: features
+          };
+        }
     },
     {
         name: 'roads',
@@ -44,7 +49,7 @@
     },
     {
         name: 'buildings',
-        data: function (json) { return json['building']; }
+        data: 'building'
     },
     {
         name: 'pois',
