@@ -1,6 +1,7 @@
 // WebGL management and rendering functions
 
 var Utils = require('../utils.js');
+// var GLVertexArrayObject = require('./gl_vao.js');
 
 var GL = {};
 
@@ -33,7 +34,7 @@ GL.getContext = function getContext (canvas)
         });
     }
 
-    GL.VertexArrayObject.init(gl); // TODO: this pattern doesn't support multiple active GL contexts, should that even be supported?
+    // GLVertexArrayObject.init(gl); // TODO: this pattern doesn't support multiple active GL contexts, should that even be supported?
 
     return gl;
 };
@@ -602,77 +603,6 @@ GL.setTextureFiltering = function (gl, width, height, options) {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
-    }
-};
-
-
-// Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
-GL.VertexArrayObject = {};
-GL.VertexArrayObject.disabled = false; // set to true to disable VAOs even if extension is available
-GL.VertexArrayObject.bound_vao = null; // currently bound VAO
-
-GL.VertexArrayObject.init = function (gl)
-{
-    if (GL.VertexArrayObject.ext == null) {
-        if (GL.VertexArrayObject.disabled != true) {
-            GL.VertexArrayObject.ext = gl.getExtension("OES_vertex_array_object");
-        }
-
-        if (GL.VertexArrayObject.ext != null) {
-            console.log("Vertex Array Object extension available");
-        }
-        else if (GL.VertexArrayObject.disabled != true) {
-            console.log("Vertex Array Object extension NOT available");
-        }
-        else {
-            console.log("Vertex Array Object extension force disabled");
-        }
-    }
-};
-
-GL.VertexArrayObject.create = function (setup, teardown)
-{
-    var vao = {};
-    vao.setup = setup;
-    vao.teardown = teardown;
-
-    var ext = GL.VertexArrayObject.ext;
-    if (ext != null) {
-        vao._vao = ext.createVertexArrayOES();
-        ext.bindVertexArrayOES(vao._vao);
-        vao.setup();
-        ext.bindVertexArrayOES(null);
-        if (typeof vao.teardown == 'function') {
-            vao.teardown();
-        }
-    }
-    else {
-        vao.setup();
-    }
-
-    return vao;
-};
-
-GL.VertexArrayObject.bind = function (vao)
-{
-    var ext = GL.VertexArrayObject.ext;
-    if (vao != null) {
-        if (ext != null && vao._vao != null) {
-            ext.bindVertexArrayOES(vao._vao);
-            GL.VertexArrayObject.bound_vao = vao;
-        }
-        else {
-            vao.setup();
-        }
-    }
-    else {
-        if (ext != null) {
-            ext.bindVertexArrayOES(null);
-        }
-        else if (GL.VertexArrayObject.bound_vao != null && typeof GL.VertexArrayObject.bound_vao.teardown == 'function') {
-            GL.VertexArrayObject.bound_vao.teardown();
-        }
-        GL.VertexArrayObject.bound_vao = null;
     }
 };
 

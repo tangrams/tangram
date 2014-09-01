@@ -1,5 +1,6 @@
 /*** Manage rendering for primitives ***/
 var GL = require('./gl.js');
+// var GLVertexArrayObject = require('./gl_vao.js');
 
 // Describes a vertex layout that can be used with many different GL programs.
 // If a given program doesn't include all attributes, it can still use the vertex layout
@@ -87,7 +88,7 @@ function GLGeometry (gl, vertex_data, vertex_layout, options)
     // TODO: disabling VAOs for now because we need to support different vertex layout + program combinations,
     // where not all programs will recognize all attributes (e.g. feature selection shaders include extra attrib).
     // To support VAOs here, would need to support multiple per geometry, keyed by GL program?
-    // this.vao = GL.VertexArrayObject.create(function() {
+    // this.vao = GLVertexArrayObject.create(function() {
     //     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     //     this.setup();
     // }.bind(this));
@@ -101,7 +102,7 @@ GLGeometry.prototype.render = function (options)
 {
     options = options || {};
 
-    // GL.VertexArrayObject.bind(this.vao);
+    // GLVertexArrayObject.bind(this.vao);
 
     if (typeof this._render_setup == 'function') {
         this._render_setup();
@@ -115,7 +116,7 @@ GLGeometry.prototype.render = function (options)
 
     // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
-    // GL.VertexArrayObject.bind(null);
+    // GLVertexArrayObject.bind(null);
 };
 
 GLGeometry.prototype.destroy = function ()
