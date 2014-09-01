@@ -3,7 +3,7 @@
 var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js').GLGeometry;
-var GLVertexLayout = require('./gl_geom.js').GLVertexLayout;
+var GLVertexLayout = require('./gl_vertex_layout.js');
 var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
