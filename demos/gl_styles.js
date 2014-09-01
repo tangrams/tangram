@@ -111,14 +111,6 @@
         // }
     },
     layers: {
-        water_ocean: {
-            mode: {
-                name: 'water'
-            },
-            color: {
-                default: [0.5, 0.5, 0.875]
-            }
-        },
         earth: {
             color: {
                 default: [0.175, 0.175, 0.175]
@@ -138,7 +130,7 @@
             //     }
             // }
         },
-        water_areas: {
+        water: {
             mode: {
                 name: 'water'
             },

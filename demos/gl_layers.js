@@ -1,20 +1,5 @@
 [
     {
-        name: 'water_ocean',
-        data: function (json) {
-            if (!json['water'] || !json['water'].features) {
-                return null;
-            }
-
-            return {
-                type: 'FeatureCollection',
-                features: json['water'].features.filter(function (feature) {
-                    return feature.properties.kind == 'ocean';
-                })
-            };
-        }
-    },
-    {
         name: 'earth',
         data: 'earth'
     },
@@ -34,19 +19,8 @@
         }
     },
     {
-        name: 'water_areas',
-        data: function (json) {
-            if (!json['water'] || !json['water'].features) {
-                return null;
-            }
-
-            return {
-                type: 'FeatureCollection',
-                features: json['water'].features.filter(function (feature) {
-                    return feature.properties.kind != 'ocean';
-                })
-            };
-        }
+        name: 'water',
+        data: 'water'
     },
     {
         name: 'roads',
