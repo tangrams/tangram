@@ -62,7 +62,7 @@ RenderMode.makeGLProgram = function ()
             this.gl,
             this.shaders.vertex_url,
             this.shaders.fragment_url,
-            { defines: defines, transforms: transforms }
+            { defines: defines, transforms: transforms, name: this.name }
         );
 
         if (this.selection) {
@@ -70,7 +70,7 @@ RenderMode.makeGLProgram = function ()
                 this.gl,
                 this.gl_program.vertex_shader_source,
                 shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
             );
         }
     }
@@ -80,7 +80,7 @@ RenderMode.makeGLProgram = function ()
             this.gl,
             shader_sources[this.vertex_shader_key],
             shader_sources[this.fragment_shader_key],
-            { defines: defines, transforms: transforms }
+            { defines: defines, transforms: transforms, name: this.name }
         );
 
         if (this.selection) {
@@ -88,7 +88,7 @@ RenderMode.makeGLProgram = function ()
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms }
+                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
             );
        }
     }
@@ -167,6 +167,8 @@ ModeManager.configureMode = function (name, settings)
     for (var s in settings) {
         Modes[name][s] = settings[s];
     }
+
+    Modes[name].name = name;
     return Modes[name];
 };
 
@@ -176,6 +178,7 @@ ModeManager.configureMode = function (name, settings)
 /*** Plain polygons ***/
 
 Modes.polygons = Object.create(RenderMode);
+Modes.polygons.name = 'polygons';
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
@@ -362,6 +365,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 /*** Points w/simple distance field rendering ***/
 
 Modes.points = Object.create(RenderMode);
+Modes.points.name = 'points';
 
 Modes.points.vertex_shader_key = 'point_vertex';
 Modes.points.fragment_shader_key = 'point_fragment';

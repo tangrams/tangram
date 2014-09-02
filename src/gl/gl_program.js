@@ -4,7 +4,10 @@
 var GL = require('./gl.js');
 var Utils = require('../utils.js');
 
-GLProgram = function (gl, vertex_shader_source, fragment_shader_source, options)
+GLProgram.id = 0; // assign each program a unique id
+GLProgram.programs = {}; // programs, by id
+
+function GLProgram (gl, vertex_shader_source, fragment_shader_source, options)
 {
     options = options || {};
 
@@ -16,6 +19,11 @@ GLProgram = function (gl, vertex_shader_source, fragment_shader_source, options)
     this.attribs = {}; // program locations of vertex attributes
     this.vertex_shader_source = vertex_shader_source;
     this.fragment_shader_source = fragment_shader_source;
+
+    this.id = GLProgram.id++;
+    GLProgram.programs[this.id] = this;
+    this.name = options.name; // can provide a program name (useful for debugging)
+
     this.compile();
 };
 
@@ -189,6 +197,11 @@ GLProgram.prototype.compile = function ()
     }
     this.processed_vertex_shader_source = define_str + this.processed_vertex_shader_source;
     this.processed_fragment_shader_source = define_str + this.processed_fragment_shader_source;
+
+    // Include program info useful for debugging
+    var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
+    this.processed_vertex_shader_source = '// Program: ' + info + '\n' + this.processed_vertex_shader_source;
+    this.processed_fragment_shader_source = '// Program: ' + info + '\n' + this.processed_fragment_shader_source;
 
     // Compile & set uniforms to cached values
     this.program = GL.updateProgram(this.gl, this.program, this.processed_vertex_shader_source, this.processed_fragment_shader_source);
