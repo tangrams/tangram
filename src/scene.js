@@ -105,6 +105,7 @@ Scene.prototype.init = function ()
     this.workers.forEach(function(worker) {
         worker.addEventListener('message', scene.workerBuildTileCompleted.bind(this));
         worker.addEventListener('message', scene.workerGetFeatureSelection.bind(this));
+        worker.addEventListener('message', scene.workerLogMessage.bind(this));
     }.bind(this));
 
     this.initialized = true;
@@ -1143,6 +1144,16 @@ Scene.prototype.getDebugSum = function (prop, filter)
 Scene.prototype.getDebugAverage = function (prop, filter)
 {
     return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
+};
+
+// Log messages pass through from web workers
+Scene.prototype.workerLogMessage = function (event)
+{
+    if (event.data.type != 'log') {
+        return;
+    }
+
+    console.log("worker " + event.data.worker_id + ": " + event.data.msg);
 };
 
 

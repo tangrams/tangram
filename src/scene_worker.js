@@ -170,5 +170,10 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 // Log wrapper to include worker id #
 SceneWorker.log = function (msg) {
-    console.log("worker " + SceneWorker.worker_id + ": " + msg);
+    // console.log isn't always available in a web worker, so send message to main thread
+    SceneWorker.worker.postMessage({
+        type: 'log',
+        worker_id: SceneWorker.worker_id,
+        msg: msg
+    });
 };
