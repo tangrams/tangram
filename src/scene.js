@@ -7,6 +7,7 @@ var Utils = require('./utils.js');
 var GL = require('./gl/gl.js');
 var GLProgram = require('./gl/gl_program.js');
 var GLBuilders = require('./gl/gl_builders.js');
+var GLTexture = require('./gl/gl_texture.js');
 
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;
@@ -139,10 +140,9 @@ Scene.prototype.initSelectionBuffer = function ()
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
-    this.fbo_texture = GL.createTexture(this.gl);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.fbo_size.width, this.fbo_size.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-    GL.setTextureFiltering(this.gl, this.fbo_size.width, this.fbo_size.height, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture, 0);
+    this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+    this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture.texture, 0);
 
     // Renderbuffer for the FBO depth attachment
     this.fbo_depth_rb = this.gl.createRenderbuffer();

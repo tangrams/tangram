@@ -301,66 +301,6 @@ GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
 //     return vertex_data;
 // };
 
-// Texture management
-
-// Create & bind a texture
-GL.createTexture = function (gl, options) {
-    options = options || {};
-    var texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    return texture;
-};
-
-// Determines appropriate filtering mode
-// Assumes texture to be operated on is already bound
-GL.setTextureFiltering = function (gl, width, height, options) {
-    options = options || {};
-    options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
-
-    // For power-of-2 textures, the following presets are available:
-    // mipmap: linear blend from nearest mip
-    // linear: linear blend from original image (no mips)
-    // nearest: nearest pixel from original image (no mips, 'blocky' look)
-    if (Utils.isPowerOf2(width) && Utils.isPowerOf2(height)) {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
-
-        if (options.filtering == 'mipmap') {
-            // console.log("power-of-2 MIPMAP");
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.generateMipmap(gl.TEXTURE_2D);
-        }
-        else if (options.filtering == 'linear') {
-            // console.log("power-of-2 LINEAR");
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        }
-        else if (options.filtering == 'nearest') {
-            // console.log("power-of-2 NEAREST");
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        }
-    }
-    else {
-        // WebGL has strict requirements on non-power-of-2 textures:
-        // No mipmaps and must clamp to edge
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        if (options.filtering == 'nearest') {
-            // console.log("power-of-2 NEAREST");
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        }
-        else { // default to linear for non-power-of-2 textures
-            // console.log("power-of-2 LINEAR");
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        }
-    }
-};
-
 if (module !== undefined) {
     module.exports = GL;
 }

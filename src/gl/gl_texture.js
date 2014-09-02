@@ -1,6 +1,7 @@
 // Texture management
 
 var GL = require('./gl.js');
+var Utils = require('../utils.js');
 
 // Global set of textures, by name
 GLTexture.textures = {};
@@ -15,10 +16,9 @@ function GLTexture (gl, name, options) {
 
     // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
     // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
-    GL.setTextureFiltering(gl, 1, 1, { filtering: 'nearest' });
+    this.setData(1, 1, new Uint8Array([0, 0, 0, 255]), { filtering: 'nearest' });
 
-    // TODO: support non-URL sources: canvas objects, raw pixel buffers
+    // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
 
     this.name = name;
     GLTexture.textures[this.name] = this;
@@ -29,25 +29,103 @@ GLTexture.prototype.bind = function (unit) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
 };
 
-// Uploads a texture to the GPU
-GLTexture.prototype.update = function (options) {
-    options = options || {};
-    if (this.image && this.image.complete) {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
-    }
-};
-
 // Loads a texture from a URL
 GLTexture.prototype.load = function (url, options) {
     options = options || {};
     this.image = new Image();
     this.image.onload = function() {
+        this.width = this.image.width;
+        this.height = this.image.height;
+        this.data = null; // mutually exclusive with direct data buffer textures
         this.update(options);
-        GL.setTextureFiltering(this.gl, this.image.width, this.image.height, options);
+        this.setTextureFiltering(options);
     }.bind(this);
     this.image.src = url;
+};
+
+// Sets texture to a raw image buffer
+GLTexture.prototype.setData = function (width, height, data, options) {
+    this.width = width;
+    this.height = height;
+    this.data = data;
+    this.image = null; // mutually exclusive with image element-based textures
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
+    this.setTextureFiltering(options);
+};
+
+// Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
+GLTexture.prototype.update = function (options) {
+    options = options || {};
+    // Image element
+    if (this.image && this.image.complete) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+    }
+    // Raw image buffer
+    else if (this.data && this.width && this.height) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        // TODO: should UNPACK_FLIP_Y_WEBGL apply here too?
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
+    }
+};
+
+// Determines appropriate filtering mode
+// Assumes texture to be operated on is already bound
+GLTexture.prototype.setTextureFiltering = function (options) {
+    options = options || {};
+    options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+    var gl = this.gl;
+
+    // For power-of-2 textures, the following presets are available:
+    // mipmap: linear blend from nearest mip
+    // linear: linear blend from original image (no mips)
+    // nearest: nearest pixel from original image (no mips, 'blocky' look)
+    if (Utils.isPowerOf2(this.width) && Utils.isPowerOf2(this.height)) {
+        this.power_of_2 = true;
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
+
+        if (options.filtering == 'mipmap') {
+            // console.log("power-of-2 MIPMAP");
+            this.filtering = 'mipmap';
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.generateMipmap(gl.TEXTURE_2D);
+        }
+        else if (options.filtering == 'linear') {
+            // console.log("power-of-2 LINEAR");
+            this.filtering = 'linear';
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+        else if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
+            this.filtering = 'nearest';
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        }
+    }
+    else {
+        // WebGL has strict requirements on non-power-of-2 textures:
+        // No mipmaps and must clamp to edge
+        this.power_of_2 = false;
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        if (options.filtering == 'nearest') {
+            // console.log("power-of-2 NEAREST");
+            this.filtering = 'nearest';
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        }
+        else { // default to linear for non-power-of-2 textures
+            // console.log("power-of-2 LINEAR");
+            this.filtering = 'linear';
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+    }
 };
 
 if (module !== undefined) {

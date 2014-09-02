@@ -6,6 +6,7 @@ var Leaflet = require('./leaflet_layer.js');
 // GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
 var GL = require('./gl/gl.js');
 GL.Program = require('./gl/gl_program.js');
+GL.Texture = require('./gl/gl_texture.js');
 
 if (module !== undefined) {
     module.exports = {
