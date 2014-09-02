@@ -49,23 +49,24 @@ GLTexture.prototype.setData = function (width, height, data, options) {
     this.height = height;
     this.data = data;
     this.image = null; // mutually exclusive with image element-based textures
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
+
+    this.update(options);
     this.setTextureFiltering(options);
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
 GLTexture.prototype.update = function (options) {
     options = options || {};
+
+    this.bind(0);
+    this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+
     // Image element
     if (this.image && this.image.complete) {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
     }
     // Raw image buffer
-    else if (this.data && this.width && this.height) {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        // TODO: should UNPACK_FLIP_Y_WEBGL apply here too?
+    else if (this.width && this.height) { // NOTE: this.data can be null, to zero out texture
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
     }
 };
