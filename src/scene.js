@@ -182,6 +182,7 @@ Scene.prototype.createWorkers = function ()
             makeWorkers(worker_local_url);
         }.bind(this);
         req.open('GET', worker_url, false /* async flag */);
+        // req.responseType = 'text';
         req.send();
     }
     // Traditional load from remote URL
@@ -413,6 +414,10 @@ Scene.prototype.renderGL = function ()
         this.modes[mode].update();
 
         var gl_program = this.modes[mode].gl_program;
+        if (gl_program == null || gl_program.compiled == false) {
+            continue;
+        }
+
         var first_for_mode = true;
 
         // Render tile GL geometries
@@ -482,9 +487,10 @@ Scene.prototype.renderGL = function ()
 
         for (mode in this.modes) {
             gl_program = this.modes[mode].selection_gl_program;
-            if (gl_program == null) {
+            if (gl_program == null || gl_program.compiled == false) {
                 continue;
             }
+
             first_for_mode = true;
 
             // Render tile GL geometries
@@ -1165,6 +1171,7 @@ Scene.loadLayers = function (url)
     var req = new XMLHttpRequest();
     req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
+    // req.responseType = 'text';
     req.send();
     return layers;
 };
@@ -1175,6 +1182,7 @@ Scene.loadStyles = function (url)
     var req = new XMLHttpRequest();
     req.onload = function () { styles = req.response; }
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
+    // req.responseType = 'text';
     req.send();
 
     // Try JSON first, then YAML (if available)

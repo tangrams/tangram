@@ -24,7 +24,8 @@
     "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson",
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
-    "js-yaml": "^3.1.0"
+    "js-yaml": "^3.1.0",
+    "queue-async": "^1.0.7"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",

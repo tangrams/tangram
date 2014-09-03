@@ -73,10 +73,12 @@ GL.updateProgramFromURLs = function GLUpdateProgramFromURLs (gl, program, vertex
 
     req.onload = function () { vertex_shader_source = req.response; };
     req.open('GET', Utils.urlForPath(vertex_shader_url) + '?' + (+new Date()), false /* async flag */);
+    req.responseType = 'text';
     req.send();
 
     req.onload = function () { fragment_shader_source = req.response; };
     req.open('GET', Utils.urlForPath(fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
+    req.responseType = 'text';
     req.send();
 
     return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
