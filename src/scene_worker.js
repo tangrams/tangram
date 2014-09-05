@@ -80,7 +80,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
     SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes({}, SceneWorker.styles);
+    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
 
     // First time building the tile
     if (tile.layers == null) {

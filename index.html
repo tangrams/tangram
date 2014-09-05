@@ -172,24 +172,6 @@ if (url_hash.length > 4) {
 
 /***** GUI/debug controls *****/
 
-var gui = new dat.GUI({ autoPlace: true });
-gui.domElement.parentNode.style.zIndex = 5;
-// document.body.insertBefore(gui.domElement, document.body.firstChild);
-window.gui = gui;
-
-// Add ability to remove a whole folder from DAT.gui
-gui.removeFolder = function(name) {
-    var folder = this.__folders[name];
-    if (folder == null) {
-        return;
-    }
-
-    folder.close();
-    folder.__ul.parentNode.removeChild(folder.__ul);
-    this.__folders[name] = undefined;
-    this.onResize();
-};
-
 // GUI options for #define-based effects
 var gl_define_options = {
     projection: {
@@ -221,34 +203,23 @@ var gl_define_options = {
 };
 window.gl_define_options = gl_define_options;
 
-// UI settings on URL hash
-// if (url_ui) {
-//     // Match defined values to those passed on URL
-//     for (var g in gl_define_options) {
-//         for (var p in gl_define_options[g].options) {
-//             if (url_ui.indexOf(gl_define_options[g].options[p]) > -1) {
-//                 gl_define_options[g][g] = gl_define_options[g].options[p];
-//             }
-//         }
-//     }
-// }
-
-Object.keys(gl_define_options).forEach(function(key) {
-    gui.
-        add(gl_define_options[key], key, gl_define_options[key].options).
-        onChange(function(value) {
-            setGLProgramDefines();
-            scene.refreshModes();
-            updateURL();
-        }).
-        listen();
-});
+function addGUIDefines() {
+    Object.keys(gl_define_options).forEach(function(key) {
+        gui.
+            add(gl_define_options[key], key, gl_define_options[key].options).
+            onChange(function(value) {
+                setGLProgramDefines();
+                scene.refreshModes();
+                updateURL();
+            }).
+            listen();
+    });
+}
 
 function setGLProgramDefines () {
     Object.keys(gl_define_options).forEach(function(key) {
         setGLProgramDefinesForOptionSet(gl_define_options[key][key], gl_define_options[key].options);
     });
-
     layer.scene.requestRedraw();
 }
 
@@ -257,18 +228,6 @@ function setGLProgramDefinesForOptionSet (current_value, options) {
         Tangram.GL.Program.defines[options[i]] = ((options[i] == current_value) && options[i] != '');
     }
 }
-
-function setGLProgramUniform (type, name, value) {
-    for (var m in layer.scene.modes) {
-        layer.scene.gl.useProgram(layer.scene.modes[m].gl_program.program);
-        layer.scene.modes[m].gl_program.uniform(type, name, value);
-    }
-    layer.scene.dirty = true;
-}
-
-// Toggle for feature selection on hover
-gui['feature info'] = true;
-gui.add(gui, 'feature info');
 
 // Take a screenshot and save file
 function screenshot () {
@@ -282,11 +241,6 @@ function screenshot () {
     var blob = new Blob([buf], { type: 'image/png' });
     saveAs(blob, 'tangram-' + (+new Date()) + '.png'); // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
 }
-
-gui.screenshot = function () {
-    gui.queue_screenshot = true;
-}
-gui.add(gui, 'screenshot');
 
 // Render/GL stats: http://spite.github.io/rstats/
 // Activate with 'rstats' anywhere in options list in URL
@@ -355,24 +309,6 @@ var scene = layer.scene;
 window.layer = layer;
 window.scene = layer.scene;
 window.tiles = layer.scene.tiles;
-
-// GUI for layers
-var layer_gui = gui.addFolder('Layers');
-// layer_gui.open();
-var layer_controls = {};
-layer.scene.layers.forEach(function(l) {
-    if (layer.scene.styles.layers[l.name] == null) {
-        return;
-    }
-
-    layer_controls[l.name] = !(layer.scene.styles.layers[l.name].visible == false);
-    layer_gui.
-        add(layer_controls, l.name).
-        onChange(function(value) {
-            layer.scene.styles.layers[l.name].visible = value;
-            layer.scene.rebuildTiles();
-        });
-});
 
 // GUI options for rendering modes/effects
 var gl_mode_options = {
@@ -662,8 +598,59 @@ var gl_mode_options = {
 };
 window.gl_mode_options = gl_mode_options;
 
-gui.add(gl_mode_options, 'effect', gl_mode_options.options).
-    onChange(gl_mode_options.setup.bind(gl_mode_options));
+// Create dat GUI
+var gui = new dat.GUI({ autoPlace: true });
+function addGUI () {
+    gui.domElement.parentNode.style.zIndex = 5;
+    window.gui = gui;
+
+    // Add ability to remove a whole folder from DAT.gui
+    gui.removeFolder = function(name) {
+        var folder = this.__folders[name];
+        if (folder == null) {
+            return;
+        }
+
+        folder.close();
+        folder.__ul.parentNode.removeChild(folder.__ul);
+        this.__folders[name] = undefined;
+        this.onResize();
+    };
+
+    // #define controls
+    addGUIDefines();
+
+    // Feature selection on hover
+    gui['feature info'] = true;
+    gui.add(gui, 'feature info');
+
+    // Screenshot
+    gui.screenshot = function () {
+        gui.queue_screenshot = true;
+    }
+    gui.add(gui, 'screenshot');
+
+    // Layers
+    var layer_gui = gui.addFolder('Layers');
+    var layer_controls = {};
+    layer.scene.layers.forEach(function(l) {
+        if (layer.scene.styles.layers[l.name] == null) {
+            return;
+        }
+
+        layer_controls[l.name] = !(layer.scene.styles.layers[l.name].visible == false);
+        layer_gui.
+            add(layer_controls, l.name).
+            onChange(function(value) {
+                layer.scene.styles.layers[l.name].visible = value;
+                layer.scene.rebuildTiles();
+            });
+    });
+
+    // Modes
+    gui.add(gl_mode_options, 'effect', gl_mode_options.options).
+        onChange(gl_mode_options.setup.bind(gl_mode_options));
+}
 
 // Put current state on URL
 function updateURL () {
@@ -755,18 +742,22 @@ function initFeatureSelection () {
 /***** Render loop *****/
 
 window.addEventListener('load', function () {
+    // Scene initialized
+    layer.on('init', function() {
+        addGUI();
+
+        if (url_mode) {
+            gl_mode_options.setup(url_mode);
+        }
+        else {
+            setGLProgramDefines();
+            scene.refreshModes();
+        }
+        updateURL();
+
+        initFeatureSelection();
+    });
     layer.addTo(map);
-
-    if (url_mode) {
-        gl_mode_options.setup(url_mode);
-    }
-    else {
-        setGLProgramDefines();
-        scene.refreshModes();
-    }
-    updateURL();
-
-    initFeatureSelection();
 
     if (osm_debug == true) {
         window.osm_layer =
