@@ -75,17 +75,17 @@ Scene.prototype.init = function (callback)
     this.loadScene(function() {
         var queue = Queue();
 
+        // Create rendering modes
         queue.defer(function(complete) {
             this.modes = Scene.createModes(this.styles);
             this.updateActiveModes();
             complete();
         }.bind(scene));
 
+        // Create web workers
         queue.defer(function(complete) {
-            this.createWorkers();
-            this.selection_map_worker_size = {};
-            complete();
-        }.bind(scene));
+            this.createWorkers(complete);
+        }.bind(this));
 
         // Then create GL context
         queue.await(function() {
@@ -107,14 +107,6 @@ Scene.prototype.init = function (callback)
             // this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
-
-            // Init workers
-            // TODO: move into worker create/init step above?
-            this.workers.forEach(function(worker) {
-                worker.addEventListener('message', scene.workerBuildTileCompleted.bind(scene));
-                worker.addEventListener('message', scene.workerGetFeatureSelection.bind(scene));
-                worker.addEventListener('message', scene.workerLogMessage.bind(scene));
-            }.bind(scene));
 
             this.initialized = true;
 
@@ -167,43 +159,65 @@ Scene.prototype.initSelectionBuffer = function ()
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-// Web workers handle heavy duty geometry processing
-Scene.prototype.createWorkers = function ()
+// Web workers handle heavey duty tile construction: networking, geometry processing, etc.
+Scene.prototype.createWorkers = function (callback)
 {
+    var queue = Queue();
     var worker_url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
 
-    // Instantiate workers from URL
-    var makeWorkers = function (url) {
-        this.workers = [];
-        for (var w=0; w < this.num_workers; w++) {
-            this.workers.push(new Worker(url));
-            this.workers[w].postMessage({
-                type: 'init',
-                worker_id: w,
-                num_workers: this.num_workers
-            })
+    // Load & instantiate workers
+    queue.defer(function(complete) {
+        // Local object URLs supported?
+        var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+        if (createObjectURL && this.allow_cross_domain_workers) {
+            // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
+            var req = new XMLHttpRequest();
+            req.onload = function () {
+                var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
+                this.makeWorkers(worker_local_url);
+                complete();
+            }.bind(this);
+            req.open('GET', worker_url, true /* async flag */);
+            req.responseType = 'text';
+            req.send();
         }
-    }.bind(this);
+        // Traditional load from remote URL
+        else {
+            console.log(this);
+            this.makeWorkers(worker_url);
+            complete();
+        }
+    }.bind(this));
 
-    // Local object URLs supported?
-    var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
-    if (createObjectURL && this.allow_cross_domain_workers) {
-        // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-        var req = new XMLHttpRequest();
-        req.onload = function () {
-            var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
-            makeWorkers(worker_local_url);
-        }.bind(this);
-        req.open('GET', worker_url, false /* async flag */);
-        // req.responseType = 'text';
-        req.send();
-    }
-    // Traditional load from remote URL
-    else {
-        makeWorkers(worker_url);
-    }
+    // Init workers
+    queue.await(function() {
+        this.workers.forEach(function(worker) {
+            worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
+            worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
+            worker.addEventListener('message', this.workerLogMessage.bind(this));
+        }.bind(this));
 
-    this.next_worker = 0;
+        this.next_worker = 0;
+        this.selection_map_worker_size = {};
+
+        if (typeof callback == 'function') {
+            callback();
+        }
+    }.bind(this));
+};
+
+// Instantiate workers from URL
+Scene.prototype.makeWorkers = function (url)
+{
+    this.workers = [];
+    for (var w=0; w < this.num_workers; w++) {
+        this.workers.push(new Worker(url));
+        this.workers[w].postMessage({
+            type: 'init',
+            worker_id: w,
+            num_workers: this.num_workers
+        })
+    }
 };
 
 // Post a message about a tile to the next worker (round robbin)
