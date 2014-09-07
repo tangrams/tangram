@@ -190,6 +190,49 @@ gui.removeFolder = function(name) {
     this.onResize();
 };
 
+// simple search gui
+doSearch = function() {
+    searchterm = searchVar.domElement.getElementsByTagName("input")[0].value;
+    queryurl = "http://pelias.test.mapzen.com/suggest?query="+searchterm;
+
+    var xmlhttp;
+    if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
+      xmlhttp=new XMLHttpRequest();
+    } else { // code for IE6, IE5
+      xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        r = JSON.parse(xmlhttp.responseText);
+        foundlocation = r.features[0].geometry.coordinates;
+        console.log(foundlocation);
+        
+        map_start_location = [foundlocation[1], foundlocation[0]];
+        // console.log(map_start_location.slice(0, 2));
+        // console.log(map_start_location[2]);
+        map.setView(map_start_location.slice(0, 2), map_start_location[2]);
+        updateURL();
+
+      }
+    }
+
+    xmlhttp.open("GET",queryurl,true);
+    xmlhttp.send();
+
+}
+
+gui.search = "new york, NY";
+var searchVar = gui.add(gui, "search");
+// searchVar.domElement.getElementsByTagName("input")[0].onblur = onBlurSearch;
+searchVar.domElement.getElementsByTagName("input")[0].onkeydown = function (e) {
+    e = e || window.event;
+    if (e.keyCode == 13) {
+        doSearch();
+    }
+};
+
+
 // GUI options for #define-based effects
 var gl_define_options = {
     projection: {
