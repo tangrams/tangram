@@ -31,7 +31,7 @@ function GLProgram (gl, vertex_shader, fragment_shader, options)
     GLProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
 
-    this.compile();
+    this.compile(options.callback);
 };
 
 // Creates a program that will refresh from source URLs each time it is compiled
@@ -83,7 +83,7 @@ GLProgram.current = null;
 // Global defines applied to all programs (duplicate properties for a specific program will take precedence)
 GLProgram.defines = {};
 
-GLProgram.prototype.compile = function ()
+GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
 
@@ -208,6 +208,11 @@ GLProgram.prototype.compile = function ()
         this.use();
         this.refreshUniforms();
         this.refreshAttributes();
+
+        // Notify caller
+        if (typeof callback == 'function') {
+            callback(this);
+        }
     }.bind(this));
 };
 
