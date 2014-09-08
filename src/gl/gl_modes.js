@@ -8,6 +8,8 @@ var GLProgram = require('./gl_program.js');
 var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
+var Queue = require('queue-async');
+
 // Base
 
 var RenderMode = {
@@ -19,7 +21,7 @@ var RenderMode = {
             this._init();
         }
     },
-    refresh: function () {
+    refresh: function () { // TODO: should this be async/non-blocking?
         this.makeGLProgram();
     },
     defines: {},
@@ -32,6 +34,8 @@ var RenderMode = {
     }
 };
 
+// TODO: should this entire operation be async/non-blocking?
+// TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
 {
     // Add any custom defines to built-in mode defines
@@ -57,41 +61,63 @@ RenderMode.makeGLProgram = function ()
     var transforms = (this.shaders && this.shaders.transforms);
 
     // Create shader from custom URLs
+    var program, selection_program;
+    var queue = Queue();
+
     if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        this.gl_program = GLProgram.createProgramFromURLs(
-            this.gl,
-            this.shaders.vertex_url,
-            this.shaders.fragment_url,
-            { defines: defines, transforms: transforms, name: this.name }
-        );
+        queue.defer(function(complete) {
+            program = GLProgram.createProgramFromURLs(
+                this.gl,
+                this.shaders.vertex_url,
+                this.shaders.fragment_url,
+                { defines: defines, transforms: transforms, name: this.name, callback: complete }
+            );
+        }.bind(this));
 
         if (this.selection) {
-            this.selection_gl_program = new GLProgram(
-                this.gl,
-                this.gl_program.vertex_shader_source,
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
-            );
+            queue.defer(function(complete) {
+                selection_program = new GLProgram(
+                    this.gl,
+                    this.gl_program.vertex_shader_source,
+                    shader_sources['selection_fragment'],
+                    { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)'), callback: complete }
+                );
+            }.bind(this));
         }
     }
     // Create shader from built-in source
     else {
-        this.gl_program = new GLProgram(
-            this.gl,
-            shader_sources[this.vertex_shader_key],
-            shader_sources[this.fragment_shader_key],
-            { defines: defines, transforms: transforms, name: this.name }
-        );
-
-        if (this.selection) {
-            this.selection_gl_program = new GLProgram(
+        queue.defer(function(complete) {
+            program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
+                shader_sources[this.fragment_shader_key],
+                { defines: defines, transforms: transforms, name: this.name, callback: complete }
             );
-       }
+        }.bind(this));
+
+        if (this.selection) {
+            queue.defer(function(complete) {
+                selection_program = new GLProgram(
+                    this.gl,
+                    shader_sources[this.vertex_shader_key],
+                    shader_sources['selection_fragment'],
+                    { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)'), callback: complete }
+                );
+            }.bind(this));
+        }
     }
+
+    // Wait for program(s) to compile before replacing them
+    queue.await(function() {
+        if (program) {
+            this.gl_program = program;
+        }
+
+        if (selection_program) {
+            this.selection_gl_program = selection_program;
+        }
+    }.bind(this));
 };
 
 // TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GLProgram
