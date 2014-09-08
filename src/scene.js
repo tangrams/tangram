@@ -598,6 +598,7 @@ Scene.prototype.getFeatureAt = function (pixel, callback)
     );
     this.selection_callback = callback;
     this.update_selection = true;
+    this.dirty = true;
 };
 
 // Load a single tile
