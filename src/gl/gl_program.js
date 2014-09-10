@@ -154,6 +154,7 @@ GLProgram.prototype.compile = function (callback)
         // Compile & set uniforms to cached values
         try {
             this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
+            // this.program = GL.updateProgram(this.gl, null, this.computed_vertex_shader, this.computed_fragment_shader);
             this.compiled = true;
         }
         catch (e) {

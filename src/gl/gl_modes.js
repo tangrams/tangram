@@ -37,11 +37,11 @@ var RenderMode = {
 // TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
 {
+    // console.log(this.name + ": " + "start building");
     var queue = Queue();
-    var program, selection_program;
-    var defines = this.buildDefineList();
 
-    // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
+    // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
+    var defines = this.buildDefineList();
     if (this.selection) {
         var selection_defines = Object.create(defines);
         selection_defines['FEATURE_SELECTION'] = true;
@@ -50,46 +50,70 @@ RenderMode.makeGLProgram = function ()
     // Get any custom code transforms
     var transforms = (this.shaders && this.shaders.transforms);
 
-    // Create shaders
+    // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
+    var program = (this.hasOwnProperty('gl_program') && this.gl_program);
+    var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
+
     queue.defer(function(complete) {
-        if (!this.hasOwnProperty('gl_program')) { // program may point to inherited parent property, but should be replaced
+        if (!program) {
             // console.log(this.name + ": " + "instantiate");
-            this.gl_program = new GLProgram(
+            program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources[this.fragment_shader_key],
-                { defines: defines, transforms: transforms, name: this.name, callback: complete }
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name,
+                    callback: complete
+                }
             );
         }
         else {
             // console.log(this.name + ": " + "re-compile");
-            this.gl_program.defines = defines;
-            this.gl_program.transforms = transforms;
-            this.gl_program.compile(complete);
+            program.defines = defines;
+            program.transforms = transforms;
+            program.compile(complete);
         }
     }.bind(this));
 
     if (this.selection) {
         queue.defer(function(complete) {
-            if (!this.hasOwnProperty('selection_gl_program')) { // program may point to inherited parent property, but should be replaced
+            if (!selection_program) {
                 // console.log(this.name + ": " + "selection instantiate");
-                this.selection_gl_program = new GLProgram(
+                selection_program = new GLProgram(
                     this.gl,
-                    this.gl_program.vertex_shader,
+                    shader_sources[this.vertex_shader_key],
                     shader_sources['selection_fragment'],
-                    { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)'), callback: complete }
+                    {
+                        defines: selection_defines,
+                        transforms: transforms,
+                        name: (this.name + ' (selection)'),
+                        callback: complete
+                    }
                 );
             }
             else {
                 // console.log(this.name + ": " + "selection re-compile");
-                this.selection_gl_program.defines = selection_defines;
-                this.selection_gl_program.transforms = transforms;
-                this.selection_gl_program.compile(complete);
+                selection_program.defines = selection_defines;
+                selection_program.transforms = transforms;
+                selection_program.compile(complete);
             }
         }.bind(this));
     }
 
-    // TODO: should this entire operation be async/non-blocking?
+    // Wait for program(s) to compile before replacing them
+    queue.await(function() {
+       if (program) {
+           this.gl_program = program;
+       }
+
+       if (selection_program) {
+           this.selection_gl_program = selection_program;
+       }
+
+       // console.log(this.name + ": " + "finished building");
+    }.bind(this));
 }
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
