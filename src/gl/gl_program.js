@@ -156,7 +156,7 @@ GLProgram.prototype.compile = function (callback)
     }
 
     // When all transform code snippets are collected, combine and inject them
-    queue.awaitAll(function(error) {
+    queue.await(function(error) {
         if (error) {
             console.log("error loading transforms: " + error);
             return;
@@ -211,7 +211,7 @@ GLProgram.prototype.compile = function (callback)
 
         // Notify caller
         if (typeof callback == 'function') {
-            callback(this);
+            callback();
         }
     }.bind(this));
 };
