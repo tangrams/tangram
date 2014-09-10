@@ -40,19 +40,7 @@ RenderMode.makeGLProgram = function ()
 {
     var queue = Queue();
     var program, selection_program;
-
-    // Add any custom defines to built-in mode defines
-    var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
-    if (this.defines != null) {
-        for (var d in this.defines) {
-            defines[d] = this.defines[d];
-        }
-    }
-    if (this.shaders != null && this.shaders.defines != null) {
-        for (var d in this.shaders.defines) {
-            defines[d] = this.shaders.defines[d];
-        }
-    }
+    var defines = this.buildDefineList();
 
     // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
     if (this.selection) {
@@ -120,6 +108,25 @@ RenderMode.makeGLProgram = function ()
 
         // console.log("compiled mode " + this.name);
     }.bind(this));
+};
+
+// TODO: could probably combine and generalize this with similar method in GLProgram
+// (list of define objects that inherit from each other)
+RenderMode.buildDefineList = function ()
+{
+    // Add any custom defines to built-in mode defines
+    var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
+    if (this.defines != null) {
+        for (var d in this.defines) {
+            defines[d] = this.defines[d];
+        }
+    }
+    if (this.shaders != null && this.shaders.defines != null) {
+        for (var d in this.shaders.defines) {
+            defines[d] = this.shaders.defines[d];
+        }
+    }
+    return defines;
 };
 
 // TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GLProgram
