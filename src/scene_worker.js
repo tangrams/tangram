@@ -162,7 +162,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     SceneWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     SceneWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes({}, SceneWorker.styles);
+    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
     Style.resetSelectionMap();
 
     SceneWorker.log("worker refreshed config for tile rebuild");
