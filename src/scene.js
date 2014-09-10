@@ -41,7 +41,7 @@ function Scene (tile_source, layers, styles, options)
     this.num_workers = options.num_workers || 1;
     this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
 
-    if (typeof(layers) == 'string') {
+    if (typeof layers === 'string') {
         this.layer_source = Utils.urlForPath(layers);
         this.layers = Scene.loadLayers(this.layer_source);
     }
@@ -50,7 +50,7 @@ function Scene (tile_source, layers, styles, options)
     }
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
 
-    if (typeof(styles) == 'string') {
+    if (typeof styles === 'string') {
         this.style_source = Utils.urlForPath(styles);
         this.styles = Scene.loadStyles(this.style_source);
     }
@@ -1174,7 +1174,7 @@ Scene.loadStyles = function (url)
 {
     var styles;
     var req = new XMLHttpRequest();
-    req.onload = function () { styles = req.response; }
+    req.onload = function () { styles = req.response; };
     req.open('GET', url + '?' + (+new Date()), false /* async flag */);
     req.send();
 
