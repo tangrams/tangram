@@ -441,7 +441,7 @@ Scene.prototype.renderGL = function ()
 
     // Render main pass - tiles grouped by rendering mode (GL program)
     var render_count = 0;
-    for (var mode in this.modes) {
+    for (var mode in this.active_modes) {
         // Per-frame mode updates/animations
         // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
         this.modes[mode].update();
