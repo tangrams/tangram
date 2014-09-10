@@ -49,41 +49,6 @@ GL.resizeCanvas = function (gl, width, height)
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 };
 
-// Compile & link a WebGL program from provided vertex and shader source elements
-GL.createProgramFromElements = function GLcreateProgramFromElements (gl, vertex_shader_id, fragment_shader_id)
-{
-    var vertex_shader_source = document.getElementById(vertex_shader_id).textContent;
-    var fragment_shader_source = document.getElementById(fragment_shader_id).textContent;
-    var program = gl.createProgram();
-    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
-};
-
-// Compile & link a WebGL program from provided vertex and shader source URLs
-// NOTE: loads via synchronous XHR for simplicity, could be made async
-GL.createProgramFromURLs = function GLcreateProgramFromURLs (gl, vertex_shader_url, fragment_shader_url)
-{
-    var program = gl.createProgram();
-    return GL.updateProgramFromURLs(gl, program, vertex_shader_url, fragment_shader_url);
-};
-
-GL.updateProgramFromURLs = function GLUpdateProgramFromURLs (gl, program, vertex_shader_url, fragment_shader_url)
-{
-    var vertex_shader_source, fragment_shader_source;
-    var req = new XMLHttpRequest();
-
-    req.onload = function () { vertex_shader_source = req.response; };
-    req.open('GET', Utils.urlForPath(vertex_shader_url) + '?' + (+new Date()), false /* async flag */);
-    req.responseType = 'text';
-    req.send();
-
-    req.onload = function () { fragment_shader_source = req.response; };
-    req.open('GET', Utils.urlForPath(fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
-    req.responseType = 'text';
-    req.send();
-
-    return GL.updateProgram(gl, program, vertex_shader_source, fragment_shader_source);
-};
-
 // Compile & link a WebGL program from provided vertex and fragment shader sources
 // update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
 GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, fragment_shader_source)

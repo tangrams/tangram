@@ -30,38 +30,6 @@ function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.compile(options.callback);
 };
 
-// Creates a program that will refresh from source URLs each time it is compiled
-// GLProgram.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url, options)
-// {
-//     var program = Object.create(GLProgram.prototype);
-
-//     program.vertex_shader_url = vertex_shader_url;
-//     program.fragment_shader_url = fragment_shader_url;
-
-//     program.updateVertexShaderSource = function () {
-//         var source;
-//         var req = new XMLHttpRequest();
-//         req.onload = function () { source = req.response; };
-//         req.open('GET', Utils.urlForPath(this.vertex_shader_url) + '?' + (+new Date()), false  async flag );
-//         req.responseType = 'text';
-//         req.send();
-//         return source;
-//     };
-
-//     program.updateFragmentShaderSource = function () {
-//         var source;
-//         var req = new XMLHttpRequest();
-//         req.onload = function () { source = req.response; };
-//         req.open('GET', Utils.urlForPath(this.fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
-//         req.responseType = 'text';
-//         req.send();
-//         return source;
-//     };
-
-//     GLProgram.call(program, gl, null, null, options);
-//     return program;
-// };
-
 // Use program wrapper with simple state cache
 GLProgram.prototype.use = function ()
 {
@@ -82,14 +50,6 @@ GLProgram.defines = {};
 GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
-
-    // Optionally update sources
-    // if (typeof this.updateVertexShaderSource == 'function') {
-    //     this.vertex_shader = this.updateVertexShaderSource();
-    // }
-    // if (typeof this.updateFragmentShaderSource == 'function') {
-    //     this.fragment_shader = this.updateFragmentShaderSource();
-    // }
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
