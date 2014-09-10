@@ -23,10 +23,6 @@ function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.vertex_shader = vertex_shader;
     this.fragment_shader = fragment_shader;
 
-    // Save pre-modified versions of shaders that will act as "templates" for #defines, code injection, etc.
-    this.template_vertex_shader = this.vertex_shader;
-    this.template_fragment_shader = this.fragment_shader;
-
     this.id = GLProgram.id++;
     GLProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
@@ -35,36 +31,36 @@ function GLProgram (gl, vertex_shader, fragment_shader, options)
 };
 
 // Creates a program that will refresh from source URLs each time it is compiled
-GLProgram.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url, options)
-{
-    var program = Object.create(GLProgram.prototype);
+// GLProgram.createProgramFromURLs = function (gl, vertex_shader_url, fragment_shader_url, options)
+// {
+//     var program = Object.create(GLProgram.prototype);
 
-    program.vertex_shader_url = vertex_shader_url;
-    program.fragment_shader_url = fragment_shader_url;
+//     program.vertex_shader_url = vertex_shader_url;
+//     program.fragment_shader_url = fragment_shader_url;
 
-    program.updateVertexShaderSource = function () {
-        var source;
-        var req = new XMLHttpRequest();
-        req.onload = function () { source = req.response; };
-        req.open('GET', Utils.urlForPath(this.vertex_shader_url) + '?' + (+new Date()), false /* async flag */);
-        req.responseType = 'text';
-        req.send();
-        return source;
-    };
+//     program.updateVertexShaderSource = function () {
+//         var source;
+//         var req = new XMLHttpRequest();
+//         req.onload = function () { source = req.response; };
+//         req.open('GET', Utils.urlForPath(this.vertex_shader_url) + '?' + (+new Date()), false  async flag );
+//         req.responseType = 'text';
+//         req.send();
+//         return source;
+//     };
 
-    program.updateFragmentShaderSource = function () {
-        var source;
-        var req = new XMLHttpRequest();
-        req.onload = function () { source = req.response; };
-        req.open('GET', Utils.urlForPath(this.fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
-        req.responseType = 'text';
-        req.send();
-        return source;
-    };
+//     program.updateFragmentShaderSource = function () {
+//         var source;
+//         var req = new XMLHttpRequest();
+//         req.onload = function () { source = req.response; };
+//         req.open('GET', Utils.urlForPath(this.fragment_shader_url) + '?' + (+new Date()), false /* async flag */);
+//         req.responseType = 'text';
+//         req.send();
+//         return source;
+//     };
 
-    GLProgram.call(program, gl, null, null, options);
-    return program;
-};
+//     GLProgram.call(program, gl, null, null, options);
+//     return program;
+// };
 
 // Use program wrapper with simple state cache
 GLProgram.prototype.use = function ()
@@ -88,16 +84,16 @@ GLProgram.prototype.compile = function (callback)
     var queue = Queue();
 
     // Optionally update sources
-    if (typeof this.updateVertexShaderSource == 'function') {
-        this.template_vertex_shader = this.updateVertexShaderSource();
-    }
-    if (typeof this.updateFragmentShaderSource == 'function') {
-        this.template_fragment_shader = this.updateFragmentShaderSource();
-    }
+    // if (typeof this.updateVertexShaderSource == 'function') {
+    //     this.vertex_shader = this.updateVertexShaderSource();
+    // }
+    // if (typeof this.updateFragmentShaderSource == 'function') {
+    //     this.fragment_shader = this.updateFragmentShaderSource();
+    // }
 
     // Copy sources from pre-modified template
-    this.vertex_shader = this.template_vertex_shader;
-    this.fragment_shader = this.template_fragment_shader;
+    this.computed_vertex_shader = this.vertex_shader;
+    this.computed_fragment_shader = this.fragment_shader;
 
     // Make list of defines to be injected later
     var defines = this.buildDefineList();
@@ -130,8 +126,8 @@ GLProgram.prototype.compile = function (callback)
 
             // First find code replace points in shaders
             var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
-            var inject_vertex = this.vertex_shader.match(regexp);
-            var inject_fragment = this.fragment_shader.match(regexp);
+            var inject_vertex = this.computed_vertex_shader.match(regexp);
+            var inject_fragment = this.computed_fragment_shader.match(regexp);
 
             // Avoid network request if nothing to replace
             if (inject_vertex == null && inject_fragment == null) {
@@ -172,32 +168,32 @@ GLProgram.prototype.compile = function (callback)
 
             // Inject
             if (loaded_transforms[t].inject_vertex != null) {
-                this.vertex_shader = this.vertex_shader.replace(loaded_transforms[t].regexp, combined_source);
+                this.computed_vertex_shader = this.computed_vertex_shader.replace(loaded_transforms[t].regexp, combined_source);
             }
             if (loaded_transforms[t].inject_fragment != null) {
-                this.fragment_shader = this.fragment_shader.replace(loaded_transforms[t].regexp, combined_source);
+                this.computed_fragment_shader = this.computed_fragment_shader.replace(loaded_transforms[t].regexp, combined_source);
             }
         }
 
         // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
         var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
-        this.vertex_shader = this.vertex_shader.replace(regexp, '');
-        this.fragment_shader = this.fragment_shader.replace(regexp, '');
+        this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, '');
+        this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, '');
 
         // Build & inject defines
         // This is done *after* code injection so that we can add defines for which code points were injected
         var define_str = GLProgram.buildDefineString(defines);
-        this.vertex_shader = define_str + this.vertex_shader;
-        this.fragment_shader = define_str + this.fragment_shader;
+        this.computed_vertex_shader = define_str + this.computed_vertex_shader;
+        this.computed_fragment_shader = define_str + this.computed_fragment_shader;
 
         // Include program info useful for debugging
         var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-        this.vertex_shader = '// Program: ' + info + '\n' + this.vertex_shader;
-        this.fragment_shader = '// Program: ' + info + '\n' + this.fragment_shader;
+        this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
+        this.computed_fragment_shader = '// Program: ' + info + '\n' + this.computed_fragment_shader;
 
         // Compile & set uniforms to cached values
         try {
-            this.program = GL.updateProgram(this.gl, this.program, this.vertex_shader, this.fragment_shader);
+            this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
             this.compiled = true;
         }
         catch (e) {

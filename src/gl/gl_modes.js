@@ -34,7 +34,6 @@ var RenderMode = {
     }
 };
 
-// TODO: should this entire operation be async/non-blocking?
 // TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
 {
@@ -51,64 +50,47 @@ RenderMode.makeGLProgram = function ()
     // Get any custom code transforms
     var transforms = (this.shaders && this.shaders.transforms);
 
-    // Create shader from custom URLs
-    if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        queue.defer(function(complete) {
-            program = GLProgram.createProgramFromURLs(
-                this.gl,
-                this.shaders.vertex_url,
-                this.shaders.fragment_url,
-                { defines: defines, transforms: transforms, name: this.name, callback: complete }
-            );
-        }.bind(this));
-
-        if (this.selection) {
-            queue.defer(function(complete) {
-                selection_program = new GLProgram(
-                    this.gl,
-                    this.gl_program.vertex_shader_source,
-                    shader_sources['selection_fragment'],
-                    { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)'), callback: complete }
-                );
-            }.bind(this));
-        }
-    }
-    // Create shader from built-in source
-    else {
-        queue.defer(function(complete) {
-            program = new GLProgram(
+    // Create shaders
+    queue.defer(function(complete) {
+        if (!this.hasOwnProperty('gl_program')) { // program may point to inherited parent property, but should be replaced
+            // console.log(this.name + ": " + "instantiate");
+            this.gl_program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources[this.fragment_shader_key],
                 { defines: defines, transforms: transforms, name: this.name, callback: complete }
             );
-        }.bind(this));
+        }
+        else {
+            // console.log(this.name + ": " + "re-compile");
+            this.gl_program.defines = defines;
+            this.gl_program.transforms = transforms;
+            this.gl_program.compile(complete);
+        }
+    }.bind(this));
 
-        if (this.selection) {
-            queue.defer(function(complete) {
-                selection_program = new GLProgram(
+    if (this.selection) {
+        queue.defer(function(complete) {
+            if (!this.hasOwnProperty('selection_gl_program')) { // program may point to inherited parent property, but should be replaced
+                // console.log(this.name + ": " + "selection instantiate");
+                this.selection_gl_program = new GLProgram(
                     this.gl,
-                    shader_sources[this.vertex_shader_key],
+                    this.gl_program.vertex_shader,
                     shader_sources['selection_fragment'],
                     { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)'), callback: complete }
                 );
-            }.bind(this));
-        }
+            }
+            else {
+                // console.log(this.name + ": " + "selection re-compile");
+                this.selection_gl_program.defines = selection_defines;
+                this.selection_gl_program.transforms = transforms;
+                this.selection_gl_program.compile(complete);
+            }
+        }.bind(this));
     }
 
-    // Wait for program(s) to compile before replacing them
-    queue.await(function() {
-        if (program) {
-            this.gl_program = program;
-        }
-
-        if (selection_program) {
-            this.selection_gl_program = selection_program;
-        }
-
-        // console.log("compiled mode " + this.name);
-    }.bind(this));
-};
+    // TODO: should this entire operation be async/non-blocking?
+}
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
 // (list of define objects that inherit from each other)
