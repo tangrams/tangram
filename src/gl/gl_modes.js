@@ -38,6 +38,9 @@ var RenderMode = {
 // TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
 {
+    var queue = Queue();
+    var program, selection_program;
+
     // Add any custom defines to built-in mode defines
     var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
     if (this.defines != null) {
@@ -61,9 +64,6 @@ RenderMode.makeGLProgram = function ()
     var transforms = (this.shaders && this.shaders.transforms);
 
     // Create shader from custom URLs
-    var program, selection_program;
-    var queue = Queue();
-
     if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
         queue.defer(function(complete) {
             program = GLProgram.createProgramFromURLs(
@@ -117,6 +117,8 @@ RenderMode.makeGLProgram = function ()
         if (selection_program) {
             this.selection_gl_program = selection_program;
         }
+
+        // console.log("compiled mode " + this.name);
     }.bind(this));
 };
 
