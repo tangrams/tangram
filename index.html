@@ -60,11 +60,15 @@ body {
 
 var tile_source = 'mapzen'; // default source, can be overriden by URL
 
+function appendProtocol(url) {
+   return window.location.protocol + url;
+}
+
 var tile_sources = {
     'mapzen': {
         source: {
             type: 'GeoJSONTileSource',
-            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
         },
         layers: 'demos/gl_layers.js',
         styles: 'demos/gl_styles.yaml'
@@ -72,7 +76,7 @@ var tile_sources = {
     'mapzen-dev': {
         source: {
             type: 'GeoJSONTileSource',
-            url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url: appendProtocol('//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json')
         },
         layers: 'demos/gl_layers.js',
         styles: 'demos/gl_styles.yaml'
@@ -88,7 +92,7 @@ var tile_sources = {
     'mapzen-mvt': {
         source: {
             type: 'MapboxTileSource',
-            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+            url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox')
         },
         layers: 'demos/gl_layers.js',
         styles: 'demos/gl_styles.yaml'
@@ -96,7 +100,7 @@ var tile_sources = {
     'mapzen-topojson': {
         source: {
             type: 'TopoJSONTileSource',
-            url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+            url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
         },
         layers: 'demos/gl_layers.js',
         styles: 'demos/gl_styles.yaml'
@@ -822,5 +826,11 @@ function frame () {
 }());
 
 </script>
+
+<!-- Adding a script block to post message to the parent container (think iframed demos) -->
+<script type="text/javascript">
+    window.addEventListener("hashchange",function(){parent.postMessage(window.location.hash, "*")});
+</script>
+
 </body>
 </html>
