@@ -258,7 +258,7 @@ GLProgram.prototype.setUniforms = function (uniforms)
             // TODO: assume matrix for (typeof == Float32Array && length == 16)?
         }
         // Boolean
-        else if (typeof this.shaders.uniforms[u] == 'boolean') {
+        else if (typeof uniform == 'boolean') {
             this.uniform('1i', u, uniform);
         }
         // Texture
