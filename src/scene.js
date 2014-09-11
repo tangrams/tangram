@@ -69,7 +69,6 @@ Scene.prototype.init = function (callback)
     if (this.initialized) {
         return;
     }
-    var scene = this;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
     this.loadScene(function() {
@@ -80,7 +79,7 @@ Scene.prototype.init = function (callback)
             this.modes = Scene.createModes(this.styles);
             this.updateActiveModes();
             complete();
-        }.bind(scene));
+        }.bind(this));
 
         // Create web workers
         queue.defer(function(complete) {
@@ -113,8 +112,8 @@ Scene.prototype.init = function (callback)
             if (typeof callback == 'function') {
                 callback();
             }
-        }.bind(scene));
-    }.bind(scene));
+        }.bind(this));
+    }.bind(this));
 };
 
 Scene.prototype.initModes = function ()
@@ -159,7 +158,7 @@ Scene.prototype.initSelectionBuffer = function ()
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-// Web workers handle heavey duty tile construction: networking, geometry processing, etc.
+// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback)
 {
     var queue = Queue();
@@ -1083,9 +1082,9 @@ Scene.prototype.loadScene = function (callback)
                     this.layers = layers;
                     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
                     complete();
-                }.bind(scene)
+                }.bind(this)
             );
-        }.bind(scene));
+        }.bind(this));
     }
 
     // Style by URL
@@ -1097,9 +1096,9 @@ Scene.prototype.loadScene = function (callback)
                     this.styles = styles;
                     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
                     complete();
-                }.bind(scene)
+                }.bind(this)
             );
-        }.bind(scene));
+        }.bind(this));
     }
     // Style object
     else {
