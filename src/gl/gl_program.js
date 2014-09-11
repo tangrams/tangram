@@ -2,6 +2,7 @@
 // (injecting #defines and #pragma transforms into shaders), etc.
 
 var GL = require('./gl.js');
+var GLTexture = require('./gl_texture.js');
 var Utils = require('../utils.js');
 var Queue = require('queue-async');
 
@@ -229,6 +230,51 @@ GLProgram.buildDefineString = function (defines) {
         }
     }
     return define_str;
+};
+
+// Set uniforms from a JS object, with inferred types
+GLProgram.prototype.setUniforms = function (uniforms)
+{
+    // TODO: only update uniforms when changed
+    var texture_unit = 0;
+
+    for (var u in uniforms) {
+        var uniform = uniforms[u];
+
+        // Single float
+        if (typeof uniform == 'number') {
+            this.uniform('1f', u, uniform);
+        }
+        // Multiple floats - vector or array
+        else if (typeof uniform == 'object') {
+            // float vectors (vec2, vec3, vec4)
+            if (uniform.length >= 2 && uniform.length <= 4) {
+                this.uniform(uniform.length + 'fv', u, uniform);
+            }
+            // float array
+            else if (uniform.length > 4) {
+                this.uniform('1fv', u + '[0]', uniform);
+            }
+            // TODO: assume matrix for (typeof == Float32Array && length == 16)?
+        }
+        // Boolean
+        else if (typeof this.shaders.uniforms[u] == 'boolean') {
+            this.uniform('1i', u, uniform);
+        }
+        // Texture
+        else if (typeof uniform == 'string') {
+            var texture = GLTexture.textures[uniform];
+            if (texture == null) {
+                texture = new GLTexture(this.gl, uniform);
+                texture.load(uniform);
+            }
+
+            texture.bind(texture_unit);
+            this.uniform('1i', u, texture_unit);
+            texture_unit++;
+        }
+        // TODO: support other non-float types? (int, etc.)
+    }
 };
 
 // ex: program.uniform('3f', 'position', x, y, z);

@@ -5,7 +5,6 @@ var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js');
 var GLVertexLayout = require('./gl_vertex_layout.js');
 var GLProgram = require('./gl_program.js');
-var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
 var Queue = require('queue-async');
@@ -135,53 +134,12 @@ RenderMode.buildDefineList = function ()
     return defines;
 };
 
-// TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GLProgram
-RenderMode.setUniforms = function (options)
+// Set mode uniforms on currently bound program
+RenderMode.setUniforms = function ()
 {
-    options = options || {};
-    var gl_program = GLProgram.current; // operate on currently bound program
-
-    // TODO: only update uniforms when changed
-    if (this.shaders != null && this.shaders.uniforms != null) {
-        var texture_unit = 0;
-
-        for (var u in this.shaders.uniforms) {
-            var uniform = this.shaders.uniforms[u];
-
-            // Single float
-            if (typeof uniform == 'number') {
-                gl_program.uniform('1f', u, uniform);
-            }
-            // Multiple floats - vector or array
-            else if (typeof uniform == 'object') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform.length >= 2 && uniform.length <= 4) {
-                    gl_program.uniform(uniform.length + 'fv', u, uniform);
-                }
-                // float array
-                else if (uniform.length > 4) {
-                    gl_program.uniform('1fv', u + '[0]', uniform);
-                }
-                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-            }
-            // Boolean
-            else if (typeof this.shaders.uniforms[u] == 'boolean') {
-                gl_program.uniform('1i', u, uniform);
-            }
-            // Texture
-            else if (typeof uniform == 'string') {
-                var texture = GLTexture.textures[uniform];
-                if (texture == null) {
-                    texture = new GLTexture(this.gl, uniform);
-                    texture.load(uniform);
-                }
-
-                texture.bind(texture_unit);
-                gl_program.uniform('1i', u, texture_unit);
-                texture_unit++;
-            }
-            // TODO: support other non-float types? (int, etc.)
-        }
+    var gl_program = GLProgram.current;
+    if (gl_program != null && this.shaders != null && this.shaders.uniforms != null) {
+        gl_program.setUniforms(this.shaders.uniforms);
     }
 };
 
