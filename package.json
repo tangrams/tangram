@@ -30,6 +30,8 @@
   "devDependencies": {
     "uglify-js": "^2.4.14",
     "browserify": "^4.2.0",
-    "glslify": "^1.5.1"
-  }
+    "glslify": "^1.5.1",
+    "es6ify": "^1.3.0"
+  },
+  "browserify": { "transform": [ "es6ify" ] }
 }

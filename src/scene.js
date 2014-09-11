@@ -71,23 +71,23 @@ Scene.prototype.init = function (callback)
     }
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene(function() {
+    this.loadScene(() => {
         var queue = Queue();
 
         // Create rendering modes
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             this.modes = Scene.createModes(this.styles);
             this.updateActiveModes();
             complete();
-        }.bind(this));
+        });
 
         // Create web workers
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             this.createWorkers(complete);
-        }.bind(this));
+        });
 
         // Then create GL context
-        queue.await(function() {
+        queue.await(() => {
             // Create canvas & GL
             this.container = this.container || document.body;
             this.canvas = document.createElement('canvas');
@@ -112,8 +112,8 @@ Scene.prototype.init = function (callback)
             if (typeof callback == 'function') {
                 callback();
             }
-        }.bind(this));
-    }.bind(this));
+        });
+    });
 };
 
 Scene.prototype.initModes = function ()
@@ -165,17 +165,17 @@ Scene.prototype.createWorkers = function (callback)
     var worker_url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer(function(complete) {
+    queue.defer(complete => {
         // Local object URLs supported?
         var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             var req = new XMLHttpRequest();
-            req.onload = function () {
+            req.onload = () => {
                 var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 complete();
-            }.bind(this);
+            };
             req.open('GET', worker_url, true /* async flag */);
             req.responseType = 'text';
             req.send();
@@ -186,15 +186,15 @@ Scene.prototype.createWorkers = function (callback)
             this.makeWorkers(worker_url);
             complete();
         }
-    }.bind(this));
+    });
 
     // Init workers
-    queue.await(function() {
-        this.workers.forEach(function(worker) {
+    queue.await(() => {
+        this.workers.forEach(worker => {
             worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
             worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
             worker.addEventListener('message', this.workerLogMessage.bind(this));
-        }.bind(this));
+        });
 
         this.next_worker = 0;
         this.selection_map_worker_size = {};
@@ -202,7 +202,7 @@ Scene.prototype.createWorkers = function (callback)
         if (typeof callback == 'function') {
             callback();
         }
-    }.bind(this));
+    });
 };
 
 // Instantiate workers from URL
@@ -761,13 +761,13 @@ Scene.prototype.rebuildTiles = function ()
     this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
-    this.workers.forEach(function(worker) {
+    this.workers.forEach(worker => {
         worker.postMessage({
             type: 'prepareForRebuild',
             layers: this.layers_serialized,
             styles: this.styles_serialized
         });
-    }.bind(this));
+    });
 
     // Rebuild visible tiles first, from center out
     // console.log("find visible");
@@ -782,13 +782,13 @@ Scene.prototype.rebuildTiles = function ()
     }
 
     // console.log("sort visible distance");
-    visible.sort(function(a, b) {
+    visible.sort((a, b) => {
         // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
         // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
         var ad = this.tiles[a].center_dist;
         var bd = this.tiles[b].center_dist;
         return (bd > ad ? -1 : (bd == ad ? 0 : 1));
-    }.bind(this));
+    });
 
     // console.log("build visible");
     for (var t in visible) {
@@ -934,7 +934,11 @@ Scene.prototype.workerBuildTileCompleted = function (event)
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
     this.selection_map_size = 0;
-    Object.keys(this.selection_map_worker_size).forEach(function(w) { this.selection_map_size += this.selection_map_worker_size[w]; }.bind(this));
+    Object
+        .keys(this.selection_map_worker_size)
+        .forEach(worker => {
+            this.selection_map_size += this.selection_map_worker_size[worker];
+        });
     console.log("selection map: " + this.selection_map_size + " features");
 
     var tile = event.data.tile;
@@ -1080,30 +1084,30 @@ Scene.prototype.loadScene = function (callback)
 
     // Layer by URL
     if (this.layer_source) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             Scene.loadLayers(
                 this.layer_source,
-                function(layers) {
+                layers => {
                     this.layers = layers;
                     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
                     complete();
-                }.bind(this)
+                }
             );
-        }.bind(this));
+        });
     }
 
     // Style by URL
     if (this.style_source) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             Scene.loadStyles(
                 this.style_source,
-                function(styles) {
+                styles => {
                     this.styles = styles;
                     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
                     complete();
-                }.bind(this)
+                }
             );
-        }.bind(this));
+        });
     }
     // Style object
     else {
@@ -1125,9 +1129,9 @@ Scene.prototype.reloadScene = function ()
         return;
     }
 
-    this.loadScene(function() {
+    this.loadScene(() => {
         this.rebuildTiles();
-    }.bind(this));
+    });
 };
 
 // Called (currently manually) after modes are updated in stylesheet

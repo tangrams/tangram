@@ -33,13 +33,13 @@ GLTexture.prototype.bind = function (unit) {
 GLTexture.prototype.load = function (url, options) {
     options = options || {};
     this.image = new Image();
-    this.image.onload = function() {
+    this.image.onload = () => {
         this.width = this.image.width;
         this.height = this.image.height;
         this.data = null; // mutually exclusive with direct data buffer textures
         this.update(options);
         this.setTextureFiltering(options);
-    }.bind(this);
+    };
     this.image.src = url;
 };
 

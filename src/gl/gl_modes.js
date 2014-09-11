@@ -52,7 +52,7 @@ RenderMode.makeGLProgram = function ()
     var program = (this.hasOwnProperty('gl_program') && this.gl_program);
     var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
 
-    queue.defer(function(complete) {
+    queue.defer(complete => {
         if (!program) {
             // console.log(this.name + ": " + "instantiate");
             program = new GLProgram(
@@ -73,10 +73,10 @@ RenderMode.makeGLProgram = function ()
             program.transforms = transforms;
             program.compile(complete);
         }
-    }.bind(this));
+    });
 
     if (this.selection) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             if (!selection_program) {
                 // console.log(this.name + ": " + "selection instantiate");
                 selection_program = new GLProgram(
@@ -97,12 +97,12 @@ RenderMode.makeGLProgram = function ()
                 selection_program.transforms = transforms;
                 selection_program.compile(complete);
             }
-        }.bind(this));
+        });
     }
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await(function() {
+    queue.await(() => {
        if (program) {
            this.gl_program = program;
        }
@@ -112,7 +112,7 @@ RenderMode.makeGLProgram = function ()
        }
 
        // console.log(this.name + ": " + "finished building");
-    }.bind(this));
+    });
 }
 
 // TODO: could probably combine and generalize this with similar method in GLProgram

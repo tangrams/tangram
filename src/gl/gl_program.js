@@ -113,7 +113,7 @@ GLProgram.prototype.compile = function (callback)
     }
 
     // When all transform code snippets are collected, combine and inject them
-    queue.await(function(error) {
+    queue.await(error => {
         if (error) {
             console.log("error loading transforms: " + error);
             return;
@@ -171,7 +171,7 @@ GLProgram.prototype.compile = function (callback)
         if (typeof callback == 'function') {
             callback();
         }
-    }.bind(this));
+    });
 };
 
 // Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
