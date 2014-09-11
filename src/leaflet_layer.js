@@ -1,3 +1,4 @@
+'use strict';
 var Scene = require('./scene.js');
 
 var LeafletLayer = L.GridLayer.extend({
