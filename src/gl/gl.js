@@ -9,7 +9,7 @@ var GL = {};
 // If no canvas element is provided, one is created and added to the document body
 GL.getContext = function getContext (canvas)
 {
-    var canvas = canvas;
+
     var fullscreen = false;
     if (canvas == null) {
         canvas = document.createElement('canvas');
