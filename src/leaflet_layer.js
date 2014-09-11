@@ -61,7 +61,11 @@ var LeafletLayer = L.GridLayer.extend({
         layer.updateBounds();
 
         L.GridLayer.prototype.onAdd.apply(this, arguments);
-        layer.scene.init();
+
+        // Use leaflet's existing event system as the callback mechanism
+        layer.scene.init(function() {
+            layer.fire('init');
+        });
     },
 
     onRemove: function (map) {

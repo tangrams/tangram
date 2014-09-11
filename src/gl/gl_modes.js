@@ -8,6 +8,8 @@ var GLProgram = require('./gl_program.js');
 var GLTexture = require('./gl_texture.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
+var Queue = require('queue-async');
+
 // Base
 
 var RenderMode = {
@@ -19,7 +21,7 @@ var RenderMode = {
             this._init();
         }
     },
-    refresh: function () {
+    refresh: function () { // TODO: should this be async/non-blocking?
         this.makeGLProgram();
     },
     defines: {},
@@ -32,7 +34,91 @@ var RenderMode = {
     }
 };
 
+// TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
+{
+    // console.log(this.name + ": " + "start building");
+    var queue = Queue();
+
+    // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
+    var defines = this.buildDefineList();
+    if (this.selection) {
+        var selection_defines = Object.create(defines);
+        selection_defines['FEATURE_SELECTION'] = true;
+    }
+
+    // Get any custom code transforms
+    var transforms = (this.shaders && this.shaders.transforms);
+
+    // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
+    var program = (this.hasOwnProperty('gl_program') && this.gl_program);
+    var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
+
+    queue.defer(function(complete) {
+        if (!program) {
+            // console.log(this.name + ": " + "instantiate");
+            program = new GLProgram(
+                this.gl,
+                shader_sources[this.vertex_shader_key],
+                shader_sources[this.fragment_shader_key],
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name,
+                    callback: complete
+                }
+            );
+        }
+        else {
+            // console.log(this.name + ": " + "re-compile");
+            program.defines = defines;
+            program.transforms = transforms;
+            program.compile(complete);
+        }
+    }.bind(this));
+
+    if (this.selection) {
+        queue.defer(function(complete) {
+            if (!selection_program) {
+                // console.log(this.name + ": " + "selection instantiate");
+                selection_program = new GLProgram(
+                    this.gl,
+                    shader_sources[this.vertex_shader_key],
+                    shader_sources['selection_fragment'],
+                    {
+                        defines: selection_defines,
+                        transforms: transforms,
+                        name: (this.name + ' (selection)'),
+                        callback: complete
+                    }
+                );
+            }
+            else {
+                // console.log(this.name + ": " + "selection re-compile");
+                selection_program.defines = selection_defines;
+                selection_program.transforms = transforms;
+                selection_program.compile(complete);
+            }
+        }.bind(this));
+    }
+
+    // Wait for program(s) to compile before replacing them
+    queue.await(function() {
+       if (program) {
+           this.gl_program = program;
+       }
+
+       if (selection_program) {
+           this.selection_gl_program = selection_program;
+       }
+
+       // console.log(this.name + ": " + "finished building");
+    }.bind(this));
+}
+
+// TODO: could probably combine and generalize this with similar method in GLProgram
+// (list of define objects that inherit from each other)
+RenderMode.buildDefineList = function ()
 {
     // Add any custom defines to built-in mode defines
     var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
@@ -46,52 +132,7 @@ RenderMode.makeGLProgram = function ()
             defines[d] = this.shaders.defines[d];
         }
     }
-
-    // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
-    if (this.selection) {
-        var selection_defines = Object.create(defines);
-        selection_defines['FEATURE_SELECTION'] = true;
-    }
-
-    // Get any custom code transforms
-    var transforms = (this.shaders && this.shaders.transforms);
-
-    // Create shader from custom URLs
-    if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        this.gl_program = GLProgram.createProgramFromURLs(
-            this.gl,
-            this.shaders.vertex_url,
-            this.shaders.fragment_url,
-            { defines: defines, transforms: transforms, name: this.name }
-        );
-
-        if (this.selection) {
-            this.selection_gl_program = new GLProgram(
-                this.gl,
-                this.gl_program.vertex_shader_source,
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
-            );
-        }
-    }
-    // Create shader from built-in source
-    else {
-        this.gl_program = new GLProgram(
-            this.gl,
-            shader_sources[this.vertex_shader_key],
-            shader_sources[this.fragment_shader_key],
-            { defines: defines, transforms: transforms, name: this.name }
-        );
-
-        if (this.selection) {
-            this.selection_gl_program = new GLProgram(
-                this.gl,
-                shader_sources[this.vertex_shader_key],
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms, name: (this.name + ' (selection)') }
-            );
-       }
-    }
+    return defines;
 };
 
 // TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GLProgram
