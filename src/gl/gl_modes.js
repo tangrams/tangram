@@ -34,7 +34,6 @@ var RenderMode = {
     }
 };
 
-// TODO: don't re-create GLProgram instance every time, just update existing one
 RenderMode.makeGLProgram = function ()
 {
     // console.log(this.name + ": " + "start building");
@@ -103,6 +102,7 @@ RenderMode.makeGLProgram = function ()
     }
 
     // Wait for program(s) to compile before replacing them
+    // TODO: should this entire method offer a callback for when compilation completes?
     queue.await(function() {
        if (program) {
            this.gl_program = program;
