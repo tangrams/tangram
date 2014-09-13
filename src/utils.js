@@ -94,8 +94,46 @@ function isPowerOf2 (value) {
     return (value & (value - 1)) == 0;
 };
 
+function io(url, options) {
+    var method  = options.method || 'GET',
+        headers = options.headers || {},
+        on      = options.on || {},
+        success = on.success,
+        failure = on.failure,
+        xhr     = new XMLHttpRequest();
+
+
+    xhr.onreadystatechange = function () {
+        var result,
+            contentType,
+            error = false;
+
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                result = xhr.responseText;
+                contentType = xhr.getResponseHeader('content-type');
+                try {
+                    if (contentType === 'text/xml') { result = xhr.responseXML; }
+                    else if (contentType === 'application/json') {result = JSON.parse(xhr.responseText); }
+                } catch (e) { error = e; }
+                if (error) { failure(error); }
+                else { success(result, xhr); }
+            }
+        }
+    };
+
+    Object.keys(headers).forEach(function (key) {
+        xhr.setRequestHeader(key.toLowerCase(), headers[key]);
+    });
+
+    xhr.open(method, url, true /* async */);
+    xhr.send(options.data ? options.data : null);
+    return xhr;
+}
+
 if (module !== undefined) {
     module.exports = {
+        io: io,
         urlForPath: urlForPath,
         serializeWithFunctions: serializeWithFunctions,
         deserializeWithFunctions: deserializeWithFunctions,
