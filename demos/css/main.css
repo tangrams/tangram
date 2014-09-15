@@ -1,0 +1,25 @@
+body {
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+
+#map {
+    background: rgba(0, 0, 0, 0);
+}
+
+.label {
+    width: 200px;
+    margin-left: -100px;
+    position: absolute;
+    z-index: 10;
+    text-align: center;
+    font-family: Helvetica, sans-serif;
+    font-size: 12px;
+}
+
+.labelInner {
+    padding: 2px;
+    background: white;
+    opacity: 0.75;
+}
