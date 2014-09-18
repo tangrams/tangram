@@ -451,7 +451,7 @@ layers:
             name: points
             # name: formica
         filter: function (f) { return f.properties.name != null; }
-        # visible: false
+        visible: false
         interactive: true
         color:
             default: [1, 1, 0]

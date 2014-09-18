@@ -7,6 +7,7 @@ uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
 uniform mat4 u_meter_view;
+uniform mat4 u_perspective;
 uniform float u_meters_per_pixel;
 uniform float u_num_layers;
 
@@ -94,16 +95,25 @@ void main() {
     #endif
 
     // Projection
-    position = u_meter_view * position; // convert meters to screen space (0-1)
+    // position = u_meter_view * position; // convert meters to screen space (0-1)
+    position = u_perspective * u_meter_view * position;
 
-    #if defined(PROJECTION_PERSPECTIVE)
-        position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
-    #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-        position = isometric(position, vec2(0., 1.), 1.);
-        // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
-    #endif
+    // #if defined(PROJECTION_PERSPECTIVE)
+    //     position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
+    // #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
+    //     position = isometric(position, vec2(0., 1.), 1.);
+    //     // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
+    // #endif
 
-    position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
+    // position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
+
+    float z_layer_scale = 4096.;
+    float z_layer_range = (u_num_layers + 1.) + z_layer_scale;
+    float z_layer = (a_layer + 1.) + z_layer_scale;
+
+    position.z = z_layer + clamp(-position.z, 1., z_layer_scale);
+    position.z /= z_layer_range;
+    position.z *= -1.;
 
     gl_Position = position;
 }

@@ -198,6 +198,7 @@ shader_sources['polygon_vertex'] =
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
 "uniform mat4 u_meter_view;\n" +
+"uniform mat4 u_perspective;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
@@ -320,13 +321,13 @@ shader_sources['polygon_vertex'] =
 "  v_normal = a_normal;\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  position = u_meter_view * position;\n" +
-"  #if defined(PROJECTION_PERSPECTIVE)\n" +
-"  position = a_x_perspective(position, vec2(0., 0.), vec2(0.6, 0.6));\n" +
-"  #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)\n" +
-"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
-"  #endif\n" +
-"  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
+"  position = u_perspective * u_meter_view * position;\n" +
+"  float z_layer_scale = 4096.;\n" +
+"  float z_layer_range = (u_num_layers + 1.) + z_layer_scale;\n" +
+"  float z_layer = (a_layer + 1.) + z_layer_scale;\n" +
+"  position.z = z_layer + clamp(-position.z, 1., z_layer_scale);\n" +
+"  position.z /= z_layer_range;\n" +
+"  position.z *= -1.;\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";

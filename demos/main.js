@@ -576,6 +576,10 @@
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
 
+        // Camera controls
+        gui.add(scene, 'fov', .5, 8);
+        gui.add(scene, 'zfar', 0, 10);
+
         // Screenshot
         gui.screenshot = function () {
             gui.queue_screenshot = true;

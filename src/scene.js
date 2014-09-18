@@ -61,6 +61,9 @@ function Scene (tile_source, layers, styles, options)
 
     this.container = options.container;
 
+    this.fov = 2 * 2;
+    this.zfar = 1;
+
     this.resetTime();
 }
 
@@ -426,7 +429,36 @@ Scene.prototype.renderGL = function ()
     var meter_view_mat = mat4.create();
 
     // Convert mercator meters to screen space
-    mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
+    // mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
+    // mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1));
+    mat4.translate(meter_view_mat, meter_view_mat, vec3.fromValues(0, 0, -meter_zoom.y * this.fov));
+
+    // Perspective-style projections
+    var perspective_mat = mat4.create();
+    // mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(meter_zoom.x * 0.25, meter_zoom.y * 0.25, 0));
+    // mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(0, 0, -1));
+
+    var perspective_mat2 = mat4.create();
+    var fov = this.fov; // 2, Math.PI / 2;
+    var aspect = this.css_size.width / this.css_size.height;
+    var znear = -meter_zoom.y * this.zfar * .05;
+    var zfar =  -meter_zoom.y * this.zfar;
+    perspective_mat2[0] = fov / aspect;                             // x row, x col
+    perspective_mat2[5] = fov;                                      // y row, y col
+    perspective_mat2[10] = (zfar + znear) / (znear - zfar);         // z row, z col
+    perspective_mat2[14] = (2 * zfar * znear) / (znear - zfar);     // z row, w col
+    perspective_mat2[11] = -1;                                      // w row, z col
+    perspective_mat2[15] = 0;                                       // w row, w col
+
+    // perspective_mat2[12] = -0.25 * meter_zoom.x;                    // x row, w col
+    // perspective_mat2[13] = -0.25 * meter_zoom.y;                    // y row, w col
+    // mat4.translate(perspective_mat2, perspective_mat2, vec3.fromValues(0.25, 0.25, 0));
+
+    if (this.frame == 0) { console.log(perspective_mat2); }
+
+    mat4.multiply(perspective_mat, perspective_mat2, perspective_mat);
+
+    if (this.frame == 0) { console.log(perspective_mat); }
 
     // Renderable tile list
     var renderable_tiles = [];
@@ -474,6 +506,9 @@ Scene.prototype.renderGL = function ()
                     gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                     gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
                     gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+
+                    // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
+                    gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
@@ -545,6 +580,9 @@ Scene.prototype.renderGL = function ()
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                         gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
                         gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+
+                        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
+                        gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
                     }
 
                     // Tile origin
