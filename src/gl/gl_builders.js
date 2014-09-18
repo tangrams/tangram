@@ -1,6 +1,7 @@
-var Vector = require('../vector.js');
-var Point = require('../point.js');
-var GL = require('./gl.js');
+import Point from '../point';
+import {Vector} from '../vector';
+import {GL} from './gl';
+
 
 var GLBuilders = {};
 

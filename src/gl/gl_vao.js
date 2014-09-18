@@ -1,6 +1,6 @@
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
+import {GL} from './gl';
 
-var GL = require('./gl.js');
 
 GLVertexArrayObject = {};
 GLVertexArrayObject.disabled = false; // set to true to disable VAOs even if extension is available

@@ -1,6 +1,6 @@
 // Rendering modes
+import {GL} from './gl';
 
-var GL = require('./gl.js');
 var GLBuilders = require('./gl_builders.js');
 var GLGeometry = require('./gl_geom.js');
 var GLVertexLayout = require('./gl_vertex_layout.js');

@@ -1,8 +1,9 @@
+import {deserializeWithFunctions} from './utils';
+import {Style} from './style';
+import Scene  from './scene';
+
 var TileSource = require('./tile_source.js');
-var Scene = require('./scene.js');
 var GLBuilders = require('./gl/gl_builders.js');
-var Style = require('./style.js');
-var Utils = require('./utils.js');
 
 var SceneWorker = {};
 SceneWorker.worker = self;
@@ -78,8 +79,8 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     // Refresh config
     SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
-    SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
-    SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
+    SceneWorker.styles = SceneWorker.styles || deserializeWithFunctions(event.data.styles);
+    SceneWorker.layers = SceneWorker.layers || deserializeWithFunctions(event.data.layers);
     SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
 
     // First time building the tile
@@ -160,8 +161,8 @@ SceneWorker.worker.addEventListener('message', function (event) {
         return;
     }
 
-    SceneWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
-    SceneWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
+    SceneWorker.styles = deserializeWithFunctions(event.data.styles);
+    SceneWorker.layers = deserializeWithFunctions(event.data.layers);
     SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
     Style.resetSelectionMap();
 

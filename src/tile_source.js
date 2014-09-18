@@ -1,5 +1,5 @@
-var Geo = require('./geo.js');
-var Point = require('./point.js');
+import {Geo}   from './geo';
+import Point from './point';
 
 function TileSource (url_template, options)
 {

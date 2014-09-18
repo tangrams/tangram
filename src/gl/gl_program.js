@@ -1,9 +1,9 @@
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
+import {urlForPath} from '../utils';
+import {GL} from './gl';
 
-var GL = require('./gl.js');
 var GLTexture = require('./gl_texture.js');
-var Utils = require('../utils.js');
 var Queue = require('queue-async');
 
 GLProgram.id = 0; // assign each program a unique id
@@ -194,7 +194,7 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
             transforms[key].list[index] = source;
             complete();
         };
-        req.open('GET', Utils.urlForPath(block.url) + '?' + (+new Date()), true /* async flag */);
+        req.open('GET', urlForPath(block.url) + '?' + (+new Date()), true /* async flag */);
         req.responseType = 'text';
         req.send();
     }

@@ -1,7 +1,7 @@
 // Miscellaneous utilities
 
 // Simplistic detection of relative paths, append base if necessary
-function urlForPath (path) {
+export function urlForPath(path) {
     if (path == null || path == '') {
         return null;
     }
@@ -27,8 +27,7 @@ function urlForPath (path) {
 };
 
 // Stringify an object into JSON, but convert functions to strings
-function serializeWithFunctions (obj)
-{
+export function serializeWithFunctions(obj) {
     var serialized = JSON.stringify(obj, function(k, v) {
         // Convert functions to strings
         if (typeof v == 'function') {
@@ -41,7 +40,7 @@ function serializeWithFunctions (obj)
 };
 
 // Parse a JSON string, but convert function-like strings back into functions
-function deserializeWithFunctions (serialized) {
+export function deserializeWithFunctions(serialized) {
     var obj = JSON.parse(serialized);
     obj = stringsToFunctions(obj);
 
@@ -49,7 +48,7 @@ function deserializeWithFunctions (serialized) {
 };
 
 // Recursively parse an object, attempting to convert string properties that look like functions back into functions
-function stringsToFunctions (obj) {
+export function stringsToFunctions(obj) {
     for (var p in obj) {
         var val = obj[p];
 
@@ -75,7 +74,7 @@ function stringsToFunctions (obj) {
 };
 
 // Run a block if on the main thread (not in a web worker), with optional error (web worker) block
-function runIfInMainThread (block, err) {
+export function runIfInMainThread(block, err) {
     try {
         if (window.document !== undefined) {
             block();
@@ -90,17 +89,6 @@ function runIfInMainThread (block, err) {
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
-function isPowerOf2 (value) {
+export function isPowerOf2(value) {
     return (value & (value - 1)) == 0;
-};
-
-if (module !== undefined) {
-    module.exports = {
-        urlForPath: urlForPath,
-        serializeWithFunctions: serializeWithFunctions,
-        deserializeWithFunctions: deserializeWithFunctions,
-        stringsToFunctions: stringsToFunctions,
-        runIfInMainThread: runIfInMainThread,
-        isPowerOf2: isPowerOf2
-    };
 }

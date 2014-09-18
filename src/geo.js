@@ -1,7 +1,7 @@
 // Miscellaneous geo functions
-var Point = require('./point.js');
+import Point from './point';
 
-var Geo = {};
+export var Geo = {};
 
 // Projection constants
 Geo.tile_size = 256;
@@ -162,7 +162,3 @@ Geo.splitFeatureLines  = function (feature, tolerance) {
 
     return feature;
 };
-
-if (module !== undefined) {
-    module.exports = Geo;
-}

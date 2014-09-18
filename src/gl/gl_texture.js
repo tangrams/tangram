@@ -1,7 +1,8 @@
 // Texture management
+import {isPowerOf2} from '../utils';
+import {GL} from './gl';
 
-var GL = require('./gl.js');
-var Utils = require('../utils.js');
+
 
 // Global set of textures, by name
 GLTexture.textures = {};
@@ -82,7 +83,7 @@ GLTexture.prototype.setTextureFiltering = function (options) {
     // mipmap: linear blend from nearest mip
     // linear: linear blend from original image (no mips)
     // nearest: nearest pixel from original image (no mips, 'blocky' look)
-    if (Utils.isPowerOf2(this.width) && Utils.isPowerOf2(this.height)) {
+    if (isPowerOf2(this.width) && isPowerOf2(this.height)) {
         this.power_of_2 = true;
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);

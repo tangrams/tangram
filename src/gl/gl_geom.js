@@ -1,5 +1,6 @@
 /*** Manage rendering for primitives ***/
-var GL = require('./gl.js');
+import {GL} from './gl';
+
 var GLVertexLayout = require('./gl_vertex_layout.js');
 // var GLVertexArrayObject = require('./gl_vao.js');
 var GLProgram = require('./gl_program.js');

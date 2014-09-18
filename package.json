@@ -25,7 +25,8 @@
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
-    "queue-async": "^1.0.7"
+    "queue-async": "^1.0.7",
+    "traceur": "0.0.62"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
