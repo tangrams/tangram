@@ -5,7 +5,7 @@ import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
 
-var shader_sources = require('./gl_shaders.js'); // built-in shaders
+var shader_sources = require('./gl_shaders'); // built-in shaders
 
 import * as Queue from 'queue-async';
 

@@ -92,7 +92,8 @@
 
     var scene = layer.scene;
     var tiles = layer.scene.tiles;
-
+    window.scene = scene;
+    window.tiles = tiles;
 
     /***** GUI/debug controls *****/
 
@@ -163,10 +164,7 @@
     function setGLProgramDefinesForOptionSet(current_value, options) {
         Object.keys(options).forEach(function (key) {
             var value = options[key];
-            // TODO, because of traceur, modules look a little
-            // different from the outside. This might break in
-            // production
-            Tangram.GL.Program.default.defines[value] = ((value === current_value) && value !== '');
+            Tangram.GL.Program.defines[value] = ((value === current_value) && value !== '');
         });
     }
 

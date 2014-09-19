@@ -14,8 +14,7 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 
-var mat4 = require('gl-matrix').mat4;
-var vec3 = require('gl-matrix').vec3;
+import {mat4, vec3} from 'gl-matrix';
 
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
@@ -163,7 +162,7 @@ Scene.prototype.initSelectionBuffer = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
-    var worker_url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
+    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
     queue.defer(complete => {

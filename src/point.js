@@ -1,13 +1,17 @@
 
-export default function Point (x, y) {
-    return { x: x, y: y };
-}
-
-Point.copy = function (p) {
-    if (p == null) {
-        return null;
+export default class Point {
+    constructor(x, y) {
+        if (! (this instanceof Point)) {
+            return new Point(x, y);
+        }
+        this.x = x;
+        this.y = y;
     }
-    return { x: p.x, y: p.y };
-};
 
-
+    static copy(other) {
+        if (other == null) {
+            return null;
+        }
+        return new Point(other.x, other.y);
+    }
+}
