@@ -1,12 +1,10 @@
 /*** Manage rendering for primitives ***/
 import {GL} from './gl';
-
-var GLVertexLayout = require('./gl_vertex_layout.js');
-// var GLVertexArrayObject = require('./gl_vao.js');
-var GLProgram = require('./gl_program.js');
+import GLVertexLayout from './gl_vertex_layout';
+import GLProgram from './gl_program';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
-function GLGeometry (gl, vertex_data, vertex_layout, options)
+export default function GLGeometry (gl, vertex_data, vertex_layout, options)
 {
     options = options || {};
 
@@ -61,7 +59,3 @@ GLGeometry.prototype.destroy = function ()
     this.gl.deleteBuffer(this.buffer);
     delete this.vertex_data;
 };
-
-if (module !== undefined) {
-    module.exports = GLGeometry;
-}

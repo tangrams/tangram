@@ -1,13 +1,17 @@
 // Rendering modes
 import {GL} from './gl';
+import GLVertexLayout from './gl_vertex_layout';
+import {GLBuilders} from './gl_builders';
+import GLProgram from './gl_program';
+import GLGeometry from './gl_geom';
 
-var GLBuilders = require('./gl_builders.js');
-var GLGeometry = require('./gl_geom.js');
-var GLVertexLayout = require('./gl_vertex_layout.js');
-var GLProgram = require('./gl_program.js');
 var shader_sources = require('./gl_shaders.js'); // built-in shaders
 
-var Queue = require('queue-async');
+import * as Queue from 'queue-async';
+
+export var Modes = {};
+export var ModeManager = {};
+
 
 // Base
 
@@ -150,10 +154,6 @@ RenderMode.update = function ()
         this.animation();
     }
 };
-
-
-var Modes = {};
-var ModeManager = {};
 
 // Update built-in mode or create a new one
 ModeManager.configureMode = function (name, settings)
@@ -408,10 +408,3 @@ Modes.points.buildPoints = function (points, style, vertex_data)
         }
     );
 };
-
-if (module !== undefined) {
-    module.exports = {
-        ModeManager: ModeManager,
-        Modes: Modes
-    };
-}

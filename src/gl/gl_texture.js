@@ -3,12 +3,11 @@ import {isPowerOf2} from '../utils';
 import {GL} from './gl';
 
 
-
 // Global set of textures, by name
 GLTexture.textures = {};
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
-function GLTexture (gl, name, options) {
+export default function GLTexture (gl, name, options) {
     options = options || {};
     this.gl = gl;
     this.texture = gl.createTexture();
@@ -129,7 +128,3 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         }
     }
 };
-
-if (module !== undefined) {
-    module.exports = GLTexture;
-}

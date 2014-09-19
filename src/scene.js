@@ -9,12 +9,10 @@ import {
 import {Style} from './style';
 import * as Queue from 'queue-async';
 import {GL} from './gl/gl';
-
-var ModeManager = require('./gl/gl_modes').ModeManager;
-
-var GLProgram = require('./gl/gl_program.js');
-var GLBuilders = require('./gl/gl_builders.js');
-var GLTexture = require('./gl/gl_texture.js');
+import {GLBuilders} from './gl/gl_builders';
+import GLProgram from './gl/gl_program';
+import GLTexture from './gl/gl_texture';
+import {ModeManager} from './gl/gl_modes';
 
 var mat4 = require('gl-matrix').mat4;
 var vec3 = require('gl-matrix').vec3;

@@ -1,9 +1,10 @@
 import {deserializeWithFunctions} from './utils';
 import {Style} from './style';
 import Scene  from './scene';
+import {GLBuilders} from './gl/gl_builders';
 
 var TileSource = require('./tile_source.js');
-var GLBuilders = require('./gl/gl_builders.js');
+
 
 var SceneWorker = {};
 SceneWorker.worker = self;

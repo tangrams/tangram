@@ -163,7 +163,10 @@
     function setGLProgramDefinesForOptionSet(current_value, options) {
         Object.keys(options).forEach(function (key) {
             var value = options[key];
-            Tangram.GL.Program.defines[value] = ((value === current_value) && value !== '');
+            // TODO, because of traceur, modules look a little
+            // different from the outside. This might break in
+            // production
+            Tangram.GL.Program.default.defines[value] = ((value === current_value) && value !== '');
         });
     }
 

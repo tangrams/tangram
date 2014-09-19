@@ -2,14 +2,13 @@
 // (injecting #defines and #pragma transforms into shaders), etc.
 import {urlForPath} from '../utils';
 import {GL} from './gl';
-
-var GLTexture = require('./gl_texture.js');
-var Queue = require('queue-async');
+import GLTexture from './gl_texture';
+import * as Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
 
-function GLProgram (gl, vertex_shader, fragment_shader, options)
+export default function GLProgram (gl, vertex_shader, fragment_shader, options)
 {
     options = options || {};
 
@@ -353,7 +352,3 @@ GLProgram.prototype.attribute = function (name)
 
     return attrib;
 };
-
-if (module !== undefined) {
-    module.exports = GLProgram;
-}
