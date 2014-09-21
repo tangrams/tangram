@@ -682,6 +682,10 @@ Scene.prototype.readSelectionBuffer = function ()
             });
         }
     }
+    // No feature found, but still need to notify via callback
+    else {
+        this.workerGetFeatureSelection({ data: { type: 'getFeatureSelection', feature: null } });
+    }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
