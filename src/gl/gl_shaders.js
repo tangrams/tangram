@@ -26,7 +26,7 @@ shader_sources['point_vertex'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_meter_view;\n" +
+"uniform mat4 u_perspective;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
@@ -53,16 +53,16 @@ shader_sources['point_vertex'] =
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
 "  if(a_selection_color.xyz == vec3(0.)) {\n" +
-"    gl_Position = vec4(0.);\n" +
+"    gl_Position = vec4(0., 0., 0., 1.);\n" +
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
 "  #endif\n" +
-"  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
+"  vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);\n" +
 "  #pragma tangram: vertex\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
-"  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
+"  position.z -= a_layer * .001;\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -197,7 +197,6 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_meter_view;\n" +
 "uniform mat4 u_perspective;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_num_layers;\n" +
@@ -300,7 +299,7 @@ shader_sources['polygon_vertex'] =
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
 "  if(a_selection_color.xyz == vec3(0.)) {\n" +
-"    gl_Position = vec4(0.);\n" +
+"    gl_Position = vec4(0., 0., 0., 1.);\n" +
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
@@ -321,13 +320,8 @@ shader_sources['polygon_vertex'] =
 "  v_normal = a_normal;\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  position = u_perspective * u_meter_view * position;\n" +
-"  float z_layer_scale = 4096.;\n" +
-"  float z_layer_range = (u_num_layers + 1.) + z_layer_scale;\n" +
-"  float z_layer = (a_layer + 1.) + z_layer_scale;\n" +
-"  position.z = z_layer + clamp(-position.z, 1., z_layer_scale);\n" +
-"  position.z /= z_layer_range;\n" +
-"  position.z *= -1.;\n" +
+"  position = u_perspective * position;\n" +
+"  position.z -= a_layer * .001;\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -346,7 +340,7 @@ shader_sources['selection_fragment'] =
 "  #if defined(FEATURE_SELECTION)\n" +
 "  gl_FragColor = v_selection_color;\n" +
 "  #else\n" +
-"  gl_FragColor = vec3(0., 0., 0., 1.);\n" +
+"  gl_FragColor = vec4(0., 0., 0., 1.);\n" +
 "  #endif\n" +
 "  \n" +
 "}\n" +

@@ -6,7 +6,6 @@ uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
-uniform mat4 u_meter_view;
 uniform mat4 u_perspective;
 uniform float u_meters_per_pixel;
 uniform float u_num_layers;
@@ -95,8 +94,7 @@ void main() {
     #endif
 
     // Projection
-    // position = u_meter_view * position; // convert meters to screen space (0-1)
-    position = u_perspective * u_meter_view * position;
+    position = u_perspective * position;
 
     // #if defined(PROJECTION_PERSPECTIVE)
     //     position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
@@ -107,13 +105,14 @@ void main() {
 
     // position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
 
-    float z_layer_scale = 4096.;
-    float z_layer_range = (u_num_layers + 1.) + z_layer_scale;
-    float z_layer = (a_layer + 1.) + z_layer_scale;
+    // float z_layer_scale = 4096.;
+    // float z_layer_range = (u_num_layers + 1.) + z_layer_scale;
+    // float z_layer = (a_layer + 1.) + z_layer_scale;
 
-    position.z = z_layer + clamp(-position.z, 1., z_layer_scale);
-    position.z /= z_layer_range;
-    position.z *= -1.;
+
+    // Offset each layer to avoid z-fighting or occlusion of otherwise "equal" layers
+    // For cases where z=0, higher levels should be drawn on top of lower ones
+    position.z -= a_layer * .001;
 
     gl_Position = position;
 }

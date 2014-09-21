@@ -577,8 +577,7 @@
         gui.add(gui, 'feature info');
 
         // Camera controls
-        gui.add(scene, 'fov', .5, 8);
-        gui.add(scene, 'zfar', 0, 10);
+        gui.add(scene, 'focal_length', .5, 8);
 
         // Screenshot
         gui.screenshot = function () {

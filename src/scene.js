@@ -61,8 +61,7 @@ function Scene (tile_source, layers, styles, options)
 
     this.container = options.container;
 
-    this.fov = 2 * 2;
-    this.zfar = 1;
+    this.focal_length = 2.5;
 
     this.resetTime();
 }
@@ -423,42 +422,22 @@ Scene.prototype.renderGL = function ()
     var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
     var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
 
-    // Matrices
+    // Model-view matrices
     var tile_view_mat = mat4.create();
     var tile_world_mat = mat4.create();
-    var meter_view_mat = mat4.create();
-
-    // Convert mercator meters to screen space
-    // mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
-    // mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1));
-    mat4.translate(meter_view_mat, meter_view_mat, vec3.fromValues(0, 0, -meter_zoom.y * this.fov));
 
     // Perspective-style projections
-    var perspective_mat = mat4.create();
-    // mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(meter_zoom.x * 0.25, meter_zoom.y * 0.25, 0));
-    // mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(0, 0, -1));
-
-    var perspective_mat2 = mat4.create();
-    var fov = this.fov; // 2, Math.PI / 2;
+    // Distance that camera should be from ground such that it fits the field of view expected
+    // for a conventional web mercator map at the current zoom level and camera focal length
+    var camera_height = meter_zoom.y * this.focal_length;
+    var focal_length = this.focal_length;
     var aspect = this.css_size.width / this.css_size.height;
-    var znear = -meter_zoom.y * this.zfar * .05;
-    var zfar =  -meter_zoom.y * this.zfar;
-    perspective_mat2[0] = fov / aspect;                             // x row, x col
-    perspective_mat2[5] = fov;                                      // y row, y col
-    perspective_mat2[10] = (zfar + znear) / (znear - zfar);         // z row, z col
-    perspective_mat2[14] = (2 * zfar * znear) / (znear - zfar);     // z row, w col
-    perspective_mat2[11] = -1;                                      // w row, z col
-    perspective_mat2[15] = 0;                                       // w row, w col
+    var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
+    var zfar = (camera_height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
 
-    // perspective_mat2[12] = -0.25 * meter_zoom.x;                    // x row, w col
-    // perspective_mat2[13] = -0.25 * meter_zoom.y;                    // y row, w col
-    // mat4.translate(perspective_mat2, perspective_mat2, vec3.fromValues(0.25, 0.25, 0));
-
-    if (this.frame == 0) { console.log(perspective_mat2); }
-
-    mat4.multiply(perspective_mat, perspective_mat2, perspective_mat);
-
-    if (this.frame == 0) { console.log(perspective_mat); }
+    var perspective_mat = mat4.create();
+    mat4.perspective(perspective_mat, Math.atan(1/focal_length)*2, aspect, znear, zfar);
+    mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(0, 0, -camera_height));
 
     // Renderable tile list
     var renderable_tiles = [];
@@ -505,8 +484,6 @@ Scene.prototype.renderGL = function ()
                     gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                     gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                     gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                    gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
-
                     // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
                     gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
                 }
@@ -579,8 +556,6 @@ Scene.prototype.renderGL = function ()
                         gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
                         gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                        gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
-
                         // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
                         gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
                     }
@@ -885,8 +860,9 @@ Scene.addTile = function (tile, layers, styles, modes)
     // }
 
     // Build raw geometry arrays
+    // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    for (var layer_num=0; layer_num < layers.length; layer_num++) {
+    for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
@@ -897,7 +873,6 @@ Scene.addTile = function (tile, layers, styles, modes)
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
 
-            // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
                 style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
