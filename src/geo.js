@@ -14,6 +14,10 @@ for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
 }
 
+Geo.metersPerPixel = function (zoom) {
+    return Geo.min_zoom_meters_per_pixel / Math.pow(2, zoom);
+}
+
 // Conversion functions based on an defined tile scale
 Geo.units_per_meter = [];
 Geo.setTileScale = function(scale)
