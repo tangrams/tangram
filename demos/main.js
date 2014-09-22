@@ -91,9 +91,7 @@
     });
 
     var scene = layer.scene;
-    var tiles = layer.scene.tiles;
     window.scene = scene;
-    window.tiles = tiles;
 
     /***** GUI/debug controls *****/
 

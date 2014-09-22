@@ -1,11 +1,6 @@
 import Point from './point';
 import {Geo} from './geo';
-import {
-    runIfInMainThread,
-    serializeWithFunctions,
-    urlForPath,
-    stringsToFunctions
-} from './utils';
+import * as Utils from './utils';
 import {Style} from './style';
 import * as Queue from 'queue-async';
 import {GL} from './gl/gl';
@@ -18,7 +13,7 @@ import {mat4, vec3} from 'gl-matrix';
 
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
-runIfInMainThread(function() {
+Utils.runIfInMainThread(function() {
     try {
         yaml = require('js-yaml');
     }
@@ -734,8 +729,8 @@ Scene.prototype.rebuildTiles = function () {
     }
 
     // Update layers & styles
-    this.layers_serialized = serializeWithFunctions(this.layers);
-    this.styles_serialized = serializeWithFunctions(this.styles);
+    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
@@ -1046,11 +1041,11 @@ Scene.prototype.loadScene = function (callback) {
 
     // If this is the first time we're loading the scene, copy any URLs
     if (!this.layer_source && typeof(this.layers) == 'string') {
-        this.layer_source = urlForPath(this.layers);
+        this.layer_source = Utils.urlForPath(this.layers);
     }
 
     if (!this.style_source && typeof(this.styles) == 'string') {
-        this.style_source = urlForPath(this.styles);
+        this.style_source = Utils.urlForPath(this.styles);
     }
 
     // Layer by URL
@@ -1060,7 +1055,7 @@ Scene.prototype.loadScene = function (callback) {
                 this.layer_source,
                 layers => {
                     this.layers = layers;
-                    this.layers_serialized = serializeWithFunctions(this.layers);
+                    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
                     complete();
                 }
             );
@@ -1074,7 +1069,7 @@ Scene.prototype.loadScene = function (callback) {
                 this.style_source,
                 styles => {
                     this.styles = styles;
-                    this.styles_serialized = serializeWithFunctions(this.styles);
+                    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
                     complete();
                 }
             );
@@ -1291,7 +1286,7 @@ Scene.loadStyles = function (url, callback) {
         }
 
         // Find generic functions & style macros
-        stringsToFunctions(styles);
+        Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
         Scene.postProcessStyles(styles);
 

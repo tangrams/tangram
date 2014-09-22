@@ -17,7 +17,6 @@ export var LeafletLayer = L.GridLayer.extend({
 
     // Finish initializing scene and setup events when layer is added to map
     onAdd: function (map) {
-        var layer = this;
 
         this.on('tileunload', (event) => {
             var tile = event.tile;
@@ -38,7 +37,7 @@ export var LeafletLayer = L.GridLayer.extend({
         });
 
         this._map.on('zoomstart', () => {
-            console.log("map.zoomstart " + layer._map.getZoom());
+            console.log("map.zoomstart " + this._map.getZoom());
             this.scene.startZoom();
         });
 
@@ -62,7 +61,7 @@ export var LeafletLayer = L.GridLayer.extend({
 
         var center = this._map.getCenter();
         this.scene.setCenter(center.lng, center.lat);
-        console.log("zoom: " + layer._map.getZoom());
+        console.log("zoom: " + this._map.getZoom());
         this.scene.setZoom(this._map.getZoom());
         this.updateBounds();
 
