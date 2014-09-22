@@ -1,7 +1,9 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
+TRACEUR_RUNTIME = ./node_modules/traceur/bin/traceur-runtime.js
+LIB_TESS = ./lib/libtess.cat.js
+EXTERNAL_LIBS = $(TRACEUR_RUNTIME) $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
-WORKER_ONLY = ./lib/libtess.cat.js ./node_modules/traceur/bin/traceur-runtime.js
 
 all: \
 	src/gl/gl_shaders.js \
@@ -14,12 +16,12 @@ all: \
 # browserify --debug adds source maps
 dist/tangram.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
 	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram > dist/temp.tangram.debug.js
-	cat ./node_modules/traceur/bin/traceur-runtime.js dist/temp.tangram.debug.js > dist/tangram.debug.js
+	cat $(TRACEUR_RUNTIME) dist/temp.tangram.debug.js > dist/tangram.debug.js
 	rm dist/temp.tangram.debug.js
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
 	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.tangram-worker.debug.js
-	cat $(WORKER_ONLY) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
+	cat $(EXTERNAL_LIBS) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
 	rm dist/temp.tangram-worker.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
