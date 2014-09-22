@@ -16,7 +16,7 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.program = null;
     this.compiled = false;
     this.defines = options.defines || {}; // key/values inserted as #defines into shaders at compile-time
-    this.transforms = options.transforms; // key/values for URLs of blocks that can be injected into shaders at compile-time
+    this.transforms = options.transforms || {}; // key/values for URLs of blocks that can be injected into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
     this.attribs = {}; // program locations of vertex attributes
 
@@ -44,8 +44,9 @@ GLProgram.prototype.use = function ()
 };
 GLProgram.current = null;
 
-// Global defines applied to all programs (duplicate properties for a specific program will take precedence)
+// Global config applied to all programs (duplicate properties for a specific program will take precedence)
 GLProgram.defines = {};
+GLProgram.transforms = {};
 
 GLProgram.prototype.compile = function (callback)
 {
@@ -69,46 +70,45 @@ GLProgram.prototype.compile = function (callback)
 
     // Gather all transform code snippets (can be either inline in the style file, or over the network via URL)
     // This is an async process, since code may be retrieved remotely
-    var regexp;
+    var transforms = this.buildShaderTransformList();
     var loaded_transforms = {}; // master list of transforms, with an ordered list for each (since we want to guarantee order of transforms)
-    if (this.transforms != null) {
+    var regexp;
 
-        for (var key in this.transforms) {
-            var transform = this.transforms[key];
-            if (transform == null) {
-                continue;
-            }
-
-            // Each code point can be a single item (string or hash object) or a list (array object with non-zero length)
-            if (typeof transform == 'string' || (typeof transform == 'object' && transform.length == null)) {
-                transform = [transform];
-            }
-
-            // First find code replace points in shaders
-            var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
-            var inject_vertex = this.computed_vertex_shader.match(regexp);
-            var inject_fragment = this.computed_fragment_shader.match(regexp);
-
-            // Avoid network request if nothing to replace
-            if (inject_vertex == null && inject_fragment == null) {
-                continue;
-            }
-
-            // Collect all transforms for this type
-            loaded_transforms[key] = {};
-            loaded_transforms[key].regexp = new RegExp(regexp); // save regexp so we can inject later without having to recreate it
-            loaded_transforms[key].inject_vertex = (inject_vertex != null); // save regexp code point matches so we don't have to do them again
-            loaded_transforms[key].inject_fragment = (inject_fragment != null);
-            loaded_transforms[key].list = [];
-
-            // Get the code (possibly over the network, so needs to be async)
-            for (var u=0; u < transform.length; u++) {
-                queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
-            }
-
-            // Add a #define for this injection point
-            defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
+    for (var key in transforms) {
+        var transform = transforms[key];
+        if (transform == null) {
+            continue;
         }
+
+        // Each code point can be a single item (string or hash object) or a list (array object with non-zero length)
+        if (!(typeof transform === 'object' && transform.length >= 0)) {
+            transform = [transform];
+        }
+
+        // First find code replace points in shaders
+        var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
+        var inject_vertex = this.computed_vertex_shader.match(regexp);
+        var inject_fragment = this.computed_fragment_shader.match(regexp);
+
+        // Avoid network request if nothing to replace
+        if (inject_vertex == null && inject_fragment == null) {
+            continue;
+        }
+
+        // Collect all transforms for this type
+        loaded_transforms[key] = {};
+        loaded_transforms[key].regexp = new RegExp(regexp); // save regexp so we can inject later without having to recreate it
+        loaded_transforms[key].inject_vertex = (inject_vertex != null); // save regexp code point matches so we don't have to do them again
+        loaded_transforms[key].inject_fragment = (inject_fragment != null);
+        loaded_transforms[key].list = [];
+
+        // Get the code (possibly over the network, so needs to be async)
+        for (var u=0; u < transform.length; u++) {
+            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+        }
+
+        // Add a #define for this injection point
+        defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
     // When all transform code snippets are collected, combine and inject them
@@ -201,14 +201,40 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
 
 // Make list of defines (global, then program-specific)
 GLProgram.prototype.buildDefineList = function () {
-    var defines = {};
-    for (var d in GLProgram.defines) {
+    var d, defines = {};
+    for (d in GLProgram.defines) {
         defines[d] = GLProgram.defines[d];
     }
-    for (var d in this.defines) {
+    for (d in this.defines) {
         defines[d] = this.defines[d];
     }
     return defines;
+};
+
+// Make list of shader transforms (global, then program-specific)
+GLProgram.prototype.buildShaderTransformList = function () {
+    var d, transforms = {};
+    for (d in GLProgram.transforms) {
+        transforms[d] = [];
+
+        if (typeof GLProgram.transforms[d] === 'object' && GLProgram.transforms[d].length >= 0) {
+            transforms[d].push(...GLProgram.transforms[d]);
+        }
+        else {
+            transforms[d] = [GLProgram.transforms[d]];
+        }
+    }
+    for (d in this.transforms) {
+        transforms[d] = transforms[d] || [];
+
+        if (typeof this.transforms[d] === 'object' && this.transforms[d].length >= 0) {
+            transforms[d].push(...this.transforms[d]);
+        }
+        else {
+            transforms[d].push(this.transforms[d]);
+        }
+    }
+    return transforms;
 };
 
 // Turn #defines into a combined string
