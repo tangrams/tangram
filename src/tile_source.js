@@ -1,8 +1,7 @@
-var Geo = require('./geo.js');
-var Point = require('./point.js');
+import {Geo}   from './geo';
+import Point from './point';
 
-function TileSource (url_template, options)
-{
+export default function TileSource(url_template, options) {
     var options = options || {};
     this.url_template = url_template;
     this.max_zoom = options.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this

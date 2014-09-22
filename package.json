@@ -25,11 +25,14 @@
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
-    "queue-async": "^1.0.7"
+    "queue-async": "^1.0.7",
+    "traceur": "0.0.62"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
     "browserify": "^4.2.0",
-    "glslify": "^1.5.1"
-  }
+    "glslify": "^1.5.1",
+    "es6ify": "^1.3.0"
+  },
+  "browserify": { "transform": [ "es6ify" ] }
 }

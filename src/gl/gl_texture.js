@@ -1,13 +1,13 @@
 // Texture management
+import * as Utils from '../utils';
+import {GL} from './gl';
 
-var GL = require('./gl.js');
-var Utils = require('../utils.js');
 
 // Global set of textures, by name
 GLTexture.textures = {};
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
-function GLTexture (gl, name, options) {
+export default function GLTexture (gl, name, options) {
     options = options || {};
     this.gl = gl;
     this.texture = gl.createTexture();
@@ -33,13 +33,13 @@ GLTexture.prototype.bind = function (unit) {
 GLTexture.prototype.load = function (url, options) {
     options = options || {};
     this.image = new Image();
-    this.image.onload = function() {
+    this.image.onload = () => {
         this.width = this.image.width;
         this.height = this.image.height;
         this.data = null; // mutually exclusive with direct data buffer textures
         this.update(options);
         this.setTextureFiltering(options);
-    }.bind(this);
+    };
     this.image.src = url;
 };
 
@@ -128,7 +128,3 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         }
     }
 };
-
-if (module !== undefined) {
-    module.exports = GLTexture;
-}

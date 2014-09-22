@@ -1,8 +1,9 @@
+import * as Utils from './utils';
+import {Style} from './style';
+import Scene  from './scene';
+import {GLBuilders} from './gl/gl_builders';
+
 var TileSource = require('./tile_source.js');
-var Scene = require('./scene.js');
-var GLBuilders = require('./gl/gl_builders.js');
-var Style = require('./style.js');
-var Utils = require('./utils.js');
 
 var SceneWorker = {};
 SceneWorker.worker = self;

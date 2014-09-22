@@ -1,13 +1,17 @@
 // Rendering modes
+import {GL} from './gl';
+import GLVertexLayout from './gl_vertex_layout';
+import {GLBuilders} from './gl_builders';
+import GLProgram from './gl_program';
+import GLGeometry from './gl_geom';
 
-var GL = require('./gl.js');
-var GLBuilders = require('./gl_builders.js');
-var GLGeometry = require('./gl_geom.js');
-var GLVertexLayout = require('./gl_vertex_layout.js');
-var GLProgram = require('./gl_program.js');
-var shader_sources = require('./gl_shaders.js'); // built-in shaders
+var shader_sources = require('./gl_shaders'); // built-in shaders
 
-var Queue = require('queue-async');
+import * as Queue from 'queue-async';
+
+export var Modes = {};
+export var ModeManager = {};
+
 
 // Base
 
@@ -52,7 +56,7 @@ RenderMode.makeGLProgram = function ()
     var program = (this.hasOwnProperty('gl_program') && this.gl_program);
     var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
 
-    queue.defer(function(complete) {
+    queue.defer(complete => {
         if (!program) {
             // console.log(this.name + ": " + "instantiate");
             program = new GLProgram(
@@ -73,10 +77,10 @@ RenderMode.makeGLProgram = function ()
             program.transforms = transforms;
             program.compile(complete);
         }
-    }.bind(this));
+    });
 
     if (this.selection) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             if (!selection_program) {
                 // console.log(this.name + ": " + "selection instantiate");
                 selection_program = new GLProgram(
@@ -97,12 +101,12 @@ RenderMode.makeGLProgram = function ()
                 selection_program.transforms = transforms;
                 selection_program.compile(complete);
             }
-        }.bind(this));
+        });
     }
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await(function() {
+    queue.await(() => {
        if (program) {
            this.gl_program = program;
        }
@@ -112,7 +116,7 @@ RenderMode.makeGLProgram = function ()
        }
 
        // console.log(this.name + ": " + "finished building");
-    }.bind(this));
+    });
 }
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
@@ -150,10 +154,6 @@ RenderMode.update = function ()
         this.animation();
     }
 };
-
-
-var Modes = {};
-var ModeManager = {};
 
 // Update built-in mode or create a new one
 ModeManager.configureMode = function (name, settings)
@@ -408,10 +408,3 @@ Modes.points.buildPoints = function (points, style, vertex_data)
         }
     );
 };
-
-if (module !== undefined) {
-    module.exports = {
-        ModeManager: ModeManager,
-        Modes: Modes
-    };
-}

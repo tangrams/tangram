@@ -1,70 +1,75 @@
-var Scene = require('./scene.js');
+import Scene from './scene';
 
-var LeafletLayer = L.GridLayer.extend({
+export var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
-        this.scene = new Scene(this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, { num_workers: this.options.numWorkers });
+        this.scene = new Scene(
+            this.options.vectorTileSource,
+            this.options.vectorLayers,
+            this.options.vectorStyles,
+            { num_workers: this.options.numWorkers }
+        );
+
         this.scene.debug = this.options.debug;
         this.scene.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
     },
 
     // Finish initializing scene and setup events when layer is added to map
     onAdd: function (map) {
-        var layer = this;
 
-        layer.on('tileunload', function (event) {
+        this.on('tileunload', (event) => {
             var tile = event.tile;
             var key = tile.getAttribute('data-tile-key');
-            layer.scene.removeTile(key);
+            this.scene.removeTile(key);
         });
 
-        layer._map.on('resize', function () {
-            var size = layer._map.getSize();
-            layer.scene.resizeMap(size.x, size.y);
-            layer.updateBounds();
+        this._map.on('resize', () => {
+            var size = this._map.getSize();
+            this.scene.resizeMap(size.x, size.y);
+            this.updateBounds();
         });
 
-        layer._map.on('move', function () {
-            var center = layer._map.getCenter();
-            layer.scene.setCenter(center.lng, center.lat);
-            layer.updateBounds();
+        this._map.on('move',  () => {
+            var center = this._map.getCenter();
+            this.scene.setCenter(center.lng, center.lat);
+            this.updateBounds();
         });
 
-        layer._map.on('zoomstart', function () {
-            console.log("map.zoomstart " + layer._map.getZoom());
-            layer.scene.startZoom();
+        this._map.on('zoomstart', () => {
+            console.log("map.zoomstart " + this._map.getZoom());
+            this.scene.startZoom();
         });
 
-        layer._map.on('zoomend', function () {
-            console.log("map.zoomend " + layer._map.getZoom());
-            layer.scene.setZoom(layer._map.getZoom());
-            layer.updateBounds();
+        this._map.on('zoomend',  () => {
+            console.log("map.zoomend " + this._map.getZoom());
+            this.scene.setZoom(this._map.getZoom());
+            this.updateBounds();
         });
 
-        layer._map.on('dragstart', function () {
-            layer.scene.panning = true;
+        this._map.on('dragstart',  () => {
+            this.scene.panning = true;
         });
 
-        layer._map.on('dragend', function () {
-            layer.scene.panning = false;
+        this._map.on('dragend', () => {
+            this.scene.panning = false;
         });
 
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
         // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-        layer.scene.container = layer._map.getContainer();
+        this.scene.container = this._map.getContainer();
 
-        var center = layer._map.getCenter();
-        layer.scene.setCenter(center.lng, center.lat);
-        console.log("zoom: " + layer._map.getZoom());
-        layer.scene.setZoom(layer._map.getZoom());
-        layer.updateBounds();
+        var center = this._map.getCenter();
+        this.scene.setCenter(center.lng, center.lat);
+        console.log("zoom: " + this._map.getZoom());
+        this.scene.setZoom(this._map.getZoom());
+        this.updateBounds();
 
         L.GridLayer.prototype.onAdd.apply(this, arguments);
 
         // Use leaflet's existing event system as the callback mechanism
-        layer.scene.init(function() {
-            layer.fire('init');
+        this.scene.init(() => {
+            this.fire('init');
         });
     },
 
@@ -80,9 +85,8 @@ var LeafletLayer = L.GridLayer.extend({
     },
 
     updateBounds: function () {
-        var layer = this;
-        var bounds = layer._map.getBounds();
-        layer.scene.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
+        var bounds = this._map.getBounds();
+        this.scene.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
     },
 
     render: function () {
@@ -91,13 +95,6 @@ var LeafletLayer = L.GridLayer.extend({
 
 });
 
-var leafletLayer = function (options) {
+export function leafletLayer(options) {
     return new LeafletLayer(options);
-};
-
-if (module !== undefined) {
-    module.exports = {
-        LeafletLayer: LeafletLayer,
-        leafletLayer: leafletLayer
-    };
 }
