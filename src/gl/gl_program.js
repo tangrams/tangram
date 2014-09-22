@@ -48,6 +48,11 @@ GLProgram.current = null;
 GLProgram.defines = {};
 GLProgram.transforms = {};
 
+GLProgram.addTransform = function (key, ...transforms) {
+    GLProgram.transforms[key] = GLProgram.transforms[key] || [];
+    GLProgram.transforms[key].push(...transforms);
+};
+
 GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
