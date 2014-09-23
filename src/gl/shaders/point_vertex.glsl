@@ -1,5 +1,4 @@
 uniform mat4 u_tile_view;
-uniform mat4 u_perspective;
 uniform float u_num_layers;
 
 attribute vec3 a_position;
@@ -19,6 +18,7 @@ varying vec2 v_texcoord;
 #pragma glslify: calculateZ = require(./modules/depth_scale)
 
 #pragma tangram: globals
+#pragma tangram: camera
 
 void main() {
     #if defined(FEATURE_SELECTION)
@@ -32,18 +32,21 @@ void main() {
         v_selection_color = a_selection_color;
     #endif
 
-    vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);
+    // vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);
+    vec4 position = u_tile_view * vec4(a_position, 1.);
 
     #pragma tangram: vertex
 
     v_color = a_color;
     v_texcoord = a_texcoord;
 
+    cameraProjection(position);
+
     // position.z = calculateZ(position.z, a_layer, u_num_layers, 256.);
 
     // Offset each layer to avoid z-fighting or occlusion of otherwise "equal" layers
     // For cases where z=0, higher levels should be drawn on top of lower ones
-    position.z -= a_layer * .001;
+    position.z -= (a_layer + 1.) * .001;
 
     gl_Position = position;
 }

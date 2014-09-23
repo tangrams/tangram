@@ -1,3 +1,6 @@
+camera:
+    type: perspective
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -453,8 +456,8 @@ layers:
         filter: function (f) { return f.properties.name != null; }
         # visible: false
         interactive: true
-        z:
-            default: 25
+        # z:
+        #     default: 25
         color:
             default: [1, 1, 0]
         size:

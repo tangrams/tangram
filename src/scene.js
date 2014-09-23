@@ -8,6 +8,7 @@ import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
+import Camera from './camera';
 
 import {mat4, vec3} from 'gl-matrix';
 
@@ -60,8 +61,6 @@ export default function Scene(tile_source, layers, styles, options) {
 
     this.container = options.container;
 
-    this.focal_length = 2.5;
-
     this.resetTime();
 }
 
@@ -99,6 +98,9 @@ Scene.prototype.init = function (callback) {
 
             this.gl = GL.getContext(this.canvas);
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+
+            // Camera
+            this.camera = Camera.create(this, this.styles.camera);
 
             this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
             this.initSelectionBuffer();
@@ -139,6 +141,7 @@ Scene.prototype.initSelectionBuffer = function () {
     this.fbo = this.gl.createFramebuffer();
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
     this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
+    this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
@@ -255,9 +258,22 @@ Scene.prototype.setZoom = function (zoom) {
     this.zoom = zoom;
     this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     this.zooming = false;
+    this.updateMeterView();
 
     this.removeTilesOutsideZoomRange(below, above);
     this.dirty = true;
+};
+
+Scene.prototype.updateMeterView = function () {
+    this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
+
+    // Size of the half-viewport in meters at current zoom
+    if (this.css_size !== undefined) { // TODO: replace this check?
+        this.meter_zoom = {
+            x: this.css_size.width / 2 * this.meters_per_pixel,
+            y: this.css_size.height / 2 * this.meters_per_pixel
+        };
+    }
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
@@ -285,7 +301,7 @@ Scene.prototype.setBounds = function (sw, ne) {
         ne: { lng: ne.lng, lat: ne.lat }
     };
 
-    var buffer = 200 * Geo.meters_per_pixel[~~this.zoom]; // pixels -> meters
+    var buffer = 200 * this.meters_per_pixel; // pixels -> meters
     this.buffered_meter_bounds = {
         sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
         ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
@@ -327,6 +343,8 @@ Scene.prototype.resizeMap = function (width, height) {
 
     this.css_size = { width: width, height: height };
     this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
+    this.view_aspect = this.css_size.width / this.css_size.height;
+    this.updateMeterView();
 
     this.canvas.style.width = this.css_size.width + 'px';
     this.canvas.style.height = this.css_size.height + 'px';
@@ -399,25 +417,13 @@ Scene.prototype.renderGL = function () {
 
     // Map transforms
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-    var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-    var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
 
     // Model-view matrices
     var tile_view_mat = mat4.create();
     var tile_world_mat = mat4.create();
 
-    // Perspective-style projections
-    // Distance that camera should be from ground such that it fits the field of view expected
-    // for a conventional web mercator map at the current zoom level and camera focal length
-    var camera_height = meter_zoom.y * this.focal_length;
-    var focal_length = this.focal_length;
-    var aspect = this.css_size.width / this.css_size.height;
-    var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-    var zfar = (camera_height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
-
-    var perspective_mat = mat4.create();
-    mat4.perspective(perspective_mat, Math.atan(1/focal_length)*2, aspect, znear, zfar);
-    mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(0, 0, -camera_height));
+    // Update camera
+    this.camera.update();
 
     // Renderable tile list
     var renderable_tiles = [];
@@ -458,14 +464,14 @@ Scene.prototype.renderGL = function () {
 
                     // TODO: don't set uniforms when they haven't changed
                     gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+                    gl_program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
                     gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                     gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                    gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                    // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
-                    gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
+                    gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                    this.camera.setupProgram(gl_program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
@@ -530,14 +536,14 @@ Scene.prototype.renderGL = function () {
                         this.modes[mode].setUniforms();
 
                         gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.width / this.fbo_size.height, 1.0);
+                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
                         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                         gl_program.uniform('1f', 'u_map_zoom', this.zoom);
                         gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                        gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                        // gl_program.uniform('2f', 'u_meter_zoom', meter_zoom.x, meter_zoom.y);
-                        gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
+                        gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                        this.camera.setupProgram(gl_program);
                     }
 
                     // Tile origin
@@ -1332,6 +1338,8 @@ Scene.postProcessStyles = function (styles) {
             }
         }
     }
+
+    styles.camera = styles.camera || {}; // ensure camera object
 
     return styles;
 };

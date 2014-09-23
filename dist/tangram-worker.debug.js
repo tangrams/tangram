@@ -9595,7 +9595,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
  * @fileoverview gl-matrix - High performance matrix and vector operations
  * @author Brandon Jones
  * @author Colin MacKenzie IV
- * @version 2.1.0
+ * @version 2.2.1
  */
 
 /* Copyright (c) 2013, Brandon Jones, Colin MacKenzie IV. All rights reserved.
@@ -9606,12 +9606,12 @@ are permitted provided that the following conditions are met:
   * Redistributions of source code must retain the above copyright notice, this
     list of conditions and the following disclaimer.
   * Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation 
+    this list of conditions and the following disclaimer in the documentation
     and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
 ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
@@ -9621,7 +9621,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 
-(function() {
+(function(_global) {
   "use strict";
 
   var shim = {};
@@ -9633,8 +9633,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
       });
     } else {
       // gl-matrix lives in a browser, define its namespaces in global
-      shim.exports = window;
-    }    
+      shim.exports = typeof(window) !== 'undefined' ? window : _global;
+    }
   }
   else {
     // gl-matrix lives in commonjs, define its namespaces in exports
@@ -9673,6 +9673,10 @@ if(!GLMAT_ARRAY_TYPE) {
     var GLMAT_ARRAY_TYPE = (typeof Float32Array !== 'undefined') ? Float32Array : Array;
 }
 
+if(!GLMAT_RANDOM) {
+    var GLMAT_RANDOM = Math.random;
+}
+
 /**
  * @class Common utilities
  * @name glMatrix
@@ -9690,6 +9694,17 @@ glMatrix.setMatrixArrayType = function(type) {
 
 if(typeof(exports) !== 'undefined') {
     exports.glMatrix = glMatrix;
+}
+
+var degree = Math.PI / 180;
+
+/**
+* Convert Degree To Radian
+*
+* @param {Number} Angle in Degrees
+*/
+glMatrix.toRadian = function(a){
+     return a * degree;
 }
 ;
 /* Copyright (c) 2013, Brandon Jones, Colin MacKenzie IV. All rights reserved.
@@ -9802,7 +9817,7 @@ vec2.add = function(out, a, b) {
 };
 
 /**
- * Subtracts two vec2's
+ * Subtracts vector b from vector a
  *
  * @param {vec2} out the receiving vector
  * @param {vec2} a the first operand
@@ -9900,6 +9915,21 @@ vec2.max = function(out, a, b) {
 vec2.scale = function(out, a, b) {
     out[0] = a[0] * b;
     out[1] = a[1] * b;
+    return out;
+};
+
+/**
+ * Adds two vec2's after scaling the second operand by a scalar value
+ *
+ * @param {vec2} out the receiving vector
+ * @param {vec2} a the first operand
+ * @param {vec2} b the second operand
+ * @param {Number} scale the amount to scale b by before adding
+ * @returns {vec2} out
+ */
+vec2.scaleAndAdd = function(out, a, b, scale) {
+    out[0] = a[0] + (b[0] * scale);
+    out[1] = a[1] + (b[1] * scale);
     return out;
 };
 
@@ -10051,6 +10081,21 @@ vec2.lerp = function (out, a, b, t) {
         ay = a[1];
     out[0] = ax + t * (b[0] - ax);
     out[1] = ay + t * (b[1] - ay);
+    return out;
+};
+
+/**
+ * Generates a random vector with the given scale
+ *
+ * @param {vec2} out the receiving vector
+ * @param {Number} [scale] Length of the resulting vector. If ommitted, a unit vector will be returned
+ * @returns {vec2} out
+ */
+vec2.random = function (out, scale) {
+    scale = scale || 1.0;
+    var r = GLMAT_RANDOM() * 2.0 * Math.PI;
+    out[0] = Math.cos(r) * scale;
+    out[1] = Math.sin(r) * scale;
     return out;
 };
 
@@ -10294,7 +10339,7 @@ vec3.add = function(out, a, b) {
 };
 
 /**
- * Subtracts two vec3's
+ * Subtracts vector b from vector a
  *
  * @param {vec3} out the receiving vector
  * @param {vec3} a the first operand
@@ -10398,6 +10443,22 @@ vec3.scale = function(out, a, b) {
     out[0] = a[0] * b;
     out[1] = a[1] * b;
     out[2] = a[2] * b;
+    return out;
+};
+
+/**
+ * Adds two vec3's after scaling the second operand by a scalar value
+ *
+ * @param {vec3} out the receiving vector
+ * @param {vec3} a the first operand
+ * @param {vec3} b the second operand
+ * @param {Number} scale the amount to scale b by before adding
+ * @returns {vec3} out
+ */
+vec3.scaleAndAdd = function(out, a, b, scale) {
+    out[0] = a[0] + (b[0] * scale);
+    out[1] = a[1] + (b[1] * scale);
+    out[2] = a[2] + (b[2] * scale);
     return out;
 };
 
@@ -10564,6 +10625,26 @@ vec3.lerp = function (out, a, b, t) {
 };
 
 /**
+ * Generates a random vector with the given scale
+ *
+ * @param {vec3} out the receiving vector
+ * @param {Number} [scale] Length of the resulting vector. If ommitted, a unit vector will be returned
+ * @returns {vec3} out
+ */
+vec3.random = function (out, scale) {
+    scale = scale || 1.0;
+
+    var r = GLMAT_RANDOM() * 2.0 * Math.PI;
+    var z = (GLMAT_RANDOM() * 2.0) - 1.0;
+    var zScale = Math.sqrt(1.0-z*z) * scale;
+
+    out[0] = Math.cos(r) * zScale;
+    out[1] = Math.sin(r) * zScale;
+    out[2] = z * scale;
+    return out;
+};
+
+/**
  * Transforms the vec3 with a mat4.
  * 4th vector component is implicitly '1'
  *
@@ -10581,6 +10662,22 @@ vec3.transformMat4 = function(out, a, m) {
 };
 
 /**
+ * Transforms the vec3 with a mat3.
+ *
+ * @param {vec3} out the receiving vector
+ * @param {vec3} a the vector to transform
+ * @param {mat4} m the 3x3 matrix to transform with
+ * @returns {vec3} out
+ */
+vec3.transformMat3 = function(out, a, m) {
+    var x = a[0], y = a[1], z = a[2];
+    out[0] = x * m[0] + y * m[3] + z * m[6];
+    out[1] = x * m[1] + y * m[4] + z * m[7];
+    out[2] = x * m[2] + y * m[5] + z * m[8];
+    return out;
+};
+
+/**
  * Transforms the vec3 with a quat
  *
  * @param {vec3} out the receiving vector
@@ -10589,6 +10686,8 @@ vec3.transformMat4 = function(out, a, m) {
  * @returns {vec3} out
  */
 vec3.transformQuat = function(out, a, q) {
+    // benchmarks: http://jsperf.com/quaternion-transform-vec3-implementations
+
     var x = a[0], y = a[1], z = a[2],
         qx = q[0], qy = q[1], qz = q[2], qw = q[3],
 
@@ -10603,6 +10702,90 @@ vec3.transformQuat = function(out, a, q) {
     out[1] = iy * qw + iw * -qy + iz * -qx - ix * -qz;
     out[2] = iz * qw + iw * -qz + ix * -qy - iy * -qx;
     return out;
+};
+
+/*
+* Rotate a 3D vector around the x-axis
+* @param {vec3} out The receiving vec3
+* @param {vec3} a The vec3 point to rotate
+* @param {vec3} b The origin of the rotation
+* @param {Number} c The angle of rotation
+* @returns {vec3} out
+*/
+vec3.rotateX = function(out, a, b, c){
+   var p = [], r=[];
+	  //Translate point to the origin
+	  p[0] = a[0] - b[0];
+	  p[1] = a[1] - b[1];
+  	p[2] = a[2] - b[2];
+
+	  //perform rotation
+	  r[0] = p[0];
+	  r[1] = p[1]*Math.cos(c) - p[2]*Math.sin(c);
+	  r[2] = p[1]*Math.sin(c) + p[2]*Math.cos(c);
+
+	  //translate to correct position
+	  out[0] = r[0] + b[0];
+	  out[1] = r[1] + b[1];
+	  out[2] = r[2] + b[2];
+
+  	return out;
+};
+
+/*
+* Rotate a 3D vector around the y-axis
+* @param {vec3} out The receiving vec3
+* @param {vec3} a The vec3 point to rotate
+* @param {vec3} b The origin of the rotation
+* @param {Number} c The angle of rotation
+* @returns {vec3} out
+*/
+vec3.rotateY = function(out, a, b, c){
+  	var p = [], r=[];
+  	//Translate point to the origin
+  	p[0] = a[0] - b[0];
+  	p[1] = a[1] - b[1];
+  	p[2] = a[2] - b[2];
+  
+  	//perform rotation
+  	r[0] = p[2]*Math.sin(c) + p[0]*Math.cos(c);
+  	r[1] = p[1];
+  	r[2] = p[2]*Math.cos(c) - p[0]*Math.sin(c);
+  
+  	//translate to correct position
+  	out[0] = r[0] + b[0];
+  	out[1] = r[1] + b[1];
+  	out[2] = r[2] + b[2];
+  
+  	return out;
+};
+
+/*
+* Rotate a 3D vector around the z-axis
+* @param {vec3} out The receiving vec3
+* @param {vec3} a The vec3 point to rotate
+* @param {vec3} b The origin of the rotation
+* @param {Number} c The angle of rotation
+* @returns {vec3} out
+*/
+vec3.rotateZ = function(out, a, b, c){
+  	var p = [], r=[];
+  	//Translate point to the origin
+  	p[0] = a[0] - b[0];
+  	p[1] = a[1] - b[1];
+  	p[2] = a[2] - b[2];
+  
+  	//perform rotation
+  	r[0] = p[0]*Math.cos(c) - p[1]*Math.sin(c);
+  	r[1] = p[0]*Math.sin(c) + p[1]*Math.cos(c);
+  	r[2] = p[2];
+  
+  	//translate to correct position
+  	out[0] = r[0] + b[0];
+  	out[1] = r[1] + b[1];
+  	out[2] = r[2] + b[2];
+  
+  	return out;
 };
 
 /**
@@ -10786,7 +10969,7 @@ vec4.add = function(out, a, b) {
 };
 
 /**
- * Subtracts two vec4's
+ * Subtracts vector b from vector a
  *
  * @param {vec4} out the receiving vector
  * @param {vec4} a the first operand
@@ -10896,6 +11079,23 @@ vec4.scale = function(out, a, b) {
     out[1] = a[1] * b;
     out[2] = a[2] * b;
     out[3] = a[3] * b;
+    return out;
+};
+
+/**
+ * Adds two vec4's after scaling the second operand by a scalar value
+ *
+ * @param {vec4} out the receiving vector
+ * @param {vec4} a the first operand
+ * @param {vec4} b the second operand
+ * @param {Number} scale the amount to scale b by before adding
+ * @returns {vec4} out
+ */
+vec4.scaleAndAdd = function(out, a, b, scale) {
+    out[0] = a[0] + (b[0] * scale);
+    out[1] = a[1] + (b[1] * scale);
+    out[2] = a[2] + (b[2] * scale);
+    out[3] = a[3] + (b[3] * scale);
     return out;
 };
 
@@ -11052,6 +11252,26 @@ vec4.lerp = function (out, a, b, t) {
 };
 
 /**
+ * Generates a random vector with the given scale
+ *
+ * @param {vec4} out the receiving vector
+ * @param {Number} [scale] Length of the resulting vector. If ommitted, a unit vector will be returned
+ * @returns {vec4} out
+ */
+vec4.random = function (out, scale) {
+    scale = scale || 1.0;
+
+    //TODO: This is a pretty awful way of doing this. Find something better.
+    out[0] = GLMAT_RANDOM();
+    out[1] = GLMAT_RANDOM();
+    out[2] = GLMAT_RANDOM();
+    out[3] = GLMAT_RANDOM();
+    vec4.normalize(out, out);
+    vec4.scale(out, out, scale);
+    return out;
+};
+
+/**
  * Transforms the vec4 with a mat4.
  *
  * @param {vec4} out the receiving vector
@@ -11176,11 +11396,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
  */
 
 var mat2 = {};
-
-var mat2Identity = new Float32Array([
-    1, 0,
-    0, 1
-]);
 
 /**
  * Creates a new identity mat2
@@ -11328,10 +11543,10 @@ mat2.determinant = function (a) {
 mat2.multiply = function (out, a, b) {
     var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3];
     var b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
-    out[0] = a0 * b0 + a1 * b2;
-    out[1] = a0 * b1 + a1 * b3;
-    out[2] = a2 * b0 + a3 * b2;
-    out[3] = a2 * b1 + a3 * b3;
+    out[0] = a0 * b0 + a2 * b1;
+    out[1] = a1 * b0 + a3 * b1;
+    out[2] = a0 * b2 + a2 * b3;
+    out[3] = a1 * b2 + a3 * b3;
     return out;
 };
 
@@ -11353,10 +11568,10 @@ mat2.rotate = function (out, a, rad) {
     var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3],
         s = Math.sin(rad),
         c = Math.cos(rad);
-    out[0] = a0 *  c + a1 * s;
-    out[1] = a0 * -s + a1 * c;
-    out[2] = a2 *  c + a3 * s;
-    out[3] = a2 * -s + a3 * c;
+    out[0] = a0 *  c + a2 * s;
+    out[1] = a1 *  c + a3 * s;
+    out[2] = a0 * -s + a2 * c;
+    out[3] = a1 * -s + a3 * c;
     return out;
 };
 
@@ -11372,8 +11587,8 @@ mat2.scale = function(out, a, v) {
     var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3],
         v0 = v[0], v1 = v[1];
     out[0] = a0 * v0;
-    out[1] = a1 * v1;
-    out[2] = a2 * v0;
+    out[1] = a1 * v0;
+    out[2] = a2 * v1;
     out[3] = a3 * v1;
     return out;
 };
@@ -11387,6 +11602,32 @@ mat2.scale = function(out, a, v) {
 mat2.str = function (a) {
     return 'mat2(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + a[3] + ')';
 };
+
+/**
+ * Returns Frobenius norm of a mat2
+ *
+ * @param {mat2} a the matrix to calculate Frobenius norm of
+ * @returns {Number} Frobenius norm
+ */
+mat2.frob = function (a) {
+    return(Math.sqrt(Math.pow(a[0], 2) + Math.pow(a[1], 2) + Math.pow(a[2], 2) + Math.pow(a[3], 2)))
+};
+
+/**
+ * Returns L, D and U matrices (Lower triangular, Diagonal and Upper triangular) by factorizing the input matrix
+ * @param {mat2} L the lower triangular matrix 
+ * @param {mat2} D the diagonal matrix 
+ * @param {mat2} U the upper triangular matrix 
+ * @param {mat2} a the input matrix to factorize
+ */
+
+mat2.LDU = function (L, D, U, a) { 
+    L[2] = a[2]/a[0]; 
+    U[0] = a[0]; 
+    U[1] = a[1]; 
+    U[3] = a[3] - L[2] * U[1]; 
+    return [L, D, U];       
+}; 
 
 if(typeof(exports) !== 'undefined') {
     exports.mat2 = mat2;
@@ -11421,26 +11662,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
  * @description 
  * A mat2d contains six elements defined as:
  * <pre>
- * [a, b,
- *  c, d,
- *  tx,ty]
+ * [a, c, tx,
+ *  b, d, ty]
  * </pre>
  * This is a short form for the 3x3 matrix:
  * <pre>
- * [a, b, 0
- *  c, d, 0
- *  tx,ty,1]
+ * [a, c, tx,
+ *  b, d, ty,
+ *  0, 0, 1]
  * </pre>
- * The last column is ignored so the array is shorter and operations are faster.
+ * The last row is ignored so the array is shorter and operations are faster.
  */
 
 var mat2d = {};
-
-var mat2dIdentity = new Float32Array([
-    1, 0,
-    0, 1,
-    0, 0
-]);
 
 /**
  * Creates a new identity mat2d
@@ -11553,17 +11787,14 @@ mat2d.determinant = function (a) {
  * @returns {mat2d} out
  */
 mat2d.multiply = function (out, a, b) {
-    var aa = a[0], ab = a[1], ac = a[2], ad = a[3],
-        atx = a[4], aty = a[5],
-        ba = b[0], bb = b[1], bc = b[2], bd = b[3],
-        btx = b[4], bty = b[5];
-
-    out[0] = aa*ba + ab*bc;
-    out[1] = aa*bb + ab*bd;
-    out[2] = ac*ba + ad*bc;
-    out[3] = ac*bb + ad*bd;
-    out[4] = ba*atx + bc*aty + btx;
-    out[5] = bb*atx + bd*aty + bty;
+    var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3], a4 = a[4], a5 = a[5],
+        b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3], b4 = b[4], b5 = b[5];
+    out[0] = a0 * b0 + a2 * b1;
+    out[1] = a1 * b0 + a3 * b1;
+    out[2] = a0 * b2 + a2 * b3;
+    out[3] = a1 * b2 + a3 * b3;
+    out[4] = a0 * b4 + a2 * b5 + a4;
+    out[5] = a1 * b4 + a3 * b5 + a5;
     return out;
 };
 
@@ -11583,21 +11814,15 @@ mat2d.mul = mat2d.multiply;
  * @returns {mat2d} out
  */
 mat2d.rotate = function (out, a, rad) {
-    var aa = a[0],
-        ab = a[1],
-        ac = a[2],
-        ad = a[3],
-        atx = a[4],
-        aty = a[5],
-        st = Math.sin(rad),
-        ct = Math.cos(rad);
-
-    out[0] = aa*ct + ab*st;
-    out[1] = -aa*st + ab*ct;
-    out[2] = ac*ct + ad*st;
-    out[3] = -ac*st + ct*ad;
-    out[4] = ct*atx + st*aty;
-    out[5] = ct*aty - st*atx;
+    var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3], a4 = a[4], a5 = a[5],
+        s = Math.sin(rad),
+        c = Math.cos(rad);
+    out[0] = a0 *  c + a2 * s;
+    out[1] = a1 *  c + a3 * s;
+    out[2] = a0 * -s + a2 * c;
+    out[3] = a1 * -s + a3 * c;
+    out[4] = a4;
+    out[5] = a5;
     return out;
 };
 
@@ -11606,17 +11831,18 @@ mat2d.rotate = function (out, a, rad) {
  *
  * @param {mat2d} out the receiving matrix
  * @param {mat2d} a the matrix to translate
- * @param {mat2d} v the vec2 to scale the matrix by
+ * @param {vec2} v the vec2 to scale the matrix by
  * @returns {mat2d} out
  **/
 mat2d.scale = function(out, a, v) {
-    var vx = v[0], vy = v[1];
-    out[0] = a[0] * vx;
-    out[1] = a[1] * vy;
-    out[2] = a[2] * vx;
-    out[3] = a[3] * vy;
-    out[4] = a[4] * vx;
-    out[5] = a[5] * vy;
+    var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3], a4 = a[4], a5 = a[5],
+        v0 = v[0], v1 = v[1];
+    out[0] = a0 * v0;
+    out[1] = a1 * v0;
+    out[2] = a2 * v1;
+    out[3] = a3 * v1;
+    out[4] = a4;
+    out[5] = a5;
     return out;
 };
 
@@ -11625,16 +11851,18 @@ mat2d.scale = function(out, a, v) {
  *
  * @param {mat2d} out the receiving matrix
  * @param {mat2d} a the matrix to translate
- * @param {mat2d} v the vec2 to translate the matrix by
+ * @param {vec2} v the vec2 to translate the matrix by
  * @returns {mat2d} out
  **/
 mat2d.translate = function(out, a, v) {
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4] + v[0];
-    out[5] = a[5] + v[1];
+    var a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3], a4 = a[4], a5 = a[5],
+        v0 = v[0], v1 = v[1];
+    out[0] = a0;
+    out[1] = a1;
+    out[2] = a2;
+    out[3] = a3;
+    out[4] = a0 * v0 + a2 * v1 + a4;
+    out[5] = a1 * v0 + a3 * v1 + a5;
     return out;
 };
 
@@ -11648,6 +11876,16 @@ mat2d.str = function (a) {
     return 'mat2d(' + a[0] + ', ' + a[1] + ', ' + a[2] + ', ' + 
                     a[3] + ', ' + a[4] + ', ' + a[5] + ')';
 };
+
+/**
+ * Returns Frobenius norm of a mat2d
+ *
+ * @param {mat2d} a the matrix to calculate Frobenius norm of
+ * @returns {Number} Frobenius norm
+ */
+mat2d.frob = function (a) { 
+    return(Math.sqrt(Math.pow(a[0], 2) + Math.pow(a[1], 2) + Math.pow(a[2], 2) + Math.pow(a[3], 2) + Math.pow(a[4], 2) + Math.pow(a[5], 2) + 1))
+}; 
 
 if(typeof(exports) !== 'undefined') {
     exports.mat2d = mat2d;
@@ -11682,12 +11920,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 var mat3 = {};
 
-var mat3Identity = new Float32Array([
-    1, 0, 0,
-    0, 1, 0,
-    0, 0, 1
-]);
-
 /**
  * Creates a new identity mat3
  *
@@ -11704,6 +11936,26 @@ mat3.create = function() {
     out[6] = 0;
     out[7] = 0;
     out[8] = 1;
+    return out;
+};
+
+/**
+ * Copies the upper-left 3x3 values into the given mat3.
+ *
+ * @param {mat3} out the receiving 3x3 matrix
+ * @param {mat4} a   the source 4x4 matrix
+ * @returns {mat3} out
+ */
+mat3.fromMat4 = function(out, a) {
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[4];
+    out[4] = a[5];
+    out[5] = a[6];
+    out[6] = a[8];
+    out[7] = a[9];
+    out[8] = a[10];
     return out;
 };
 
@@ -11976,7 +12228,7 @@ mat3.rotate = function (out, a, rad) {
  * @returns {mat3} out
  **/
 mat3.scale = function(out, a, v) {
-    var x = v[0], y = v[2];
+    var x = v[0], y = v[1];
 
     out[0] = x * a[0];
     out[1] = x * a[1];
@@ -11996,8 +12248,7 @@ mat3.scale = function(out, a, v) {
  * Copies the values from a mat2d into a mat3
  *
  * @param {mat3} out the receiving matrix
- * @param {mat3} a the matrix to rotate
- * @param {vec2} v the vec2 to scale the matrix by
+ * @param {mat2d} a the matrix to copy
  * @returns {mat3} out
  **/
 mat3.fromMat2d = function(out, a) {
@@ -12030,26 +12281,76 @@ mat3.fromQuat = function (out, q) {
         z2 = z + z,
 
         xx = x * x2,
-        xy = x * y2,
-        xz = x * z2,
+        yx = y * x2,
         yy = y * y2,
-        yz = y * z2,
+        zx = z * x2,
+        zy = z * y2,
         zz = z * z2,
         wx = w * x2,
         wy = w * y2,
         wz = w * z2;
 
-    out[0] = 1 - (yy + zz);
-    out[1] = xy + wz;
-    out[2] = xz - wy;
+    out[0] = 1 - yy - zz;
+    out[3] = yx - wz;
+    out[6] = zx + wy;
 
-    out[3] = xy - wz;
-    out[4] = 1 - (xx + zz);
-    out[5] = yz + wx;
+    out[1] = yx + wz;
+    out[4] = 1 - xx - zz;
+    out[7] = zy - wx;
 
-    out[6] = xz + wy;
-    out[7] = yz - wx;
-    out[8] = 1 - (xx + yy);
+    out[2] = zx - wy;
+    out[5] = zy + wx;
+    out[8] = 1 - xx - yy;
+
+    return out;
+};
+
+/**
+* Calculates a 3x3 normal matrix (transpose inverse) from the 4x4 matrix
+*
+* @param {mat3} out mat3 receiving operation result
+* @param {mat4} a Mat4 to derive the normal matrix from
+*
+* @returns {mat3} out
+*/
+mat3.normalFromMat4 = function (out, a) {
+    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+        a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+        a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+        a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15],
+
+        b00 = a00 * a11 - a01 * a10,
+        b01 = a00 * a12 - a02 * a10,
+        b02 = a00 * a13 - a03 * a10,
+        b03 = a01 * a12 - a02 * a11,
+        b04 = a01 * a13 - a03 * a11,
+        b05 = a02 * a13 - a03 * a12,
+        b06 = a20 * a31 - a21 * a30,
+        b07 = a20 * a32 - a22 * a30,
+        b08 = a20 * a33 - a23 * a30,
+        b09 = a21 * a32 - a22 * a31,
+        b10 = a21 * a33 - a23 * a31,
+        b11 = a22 * a33 - a23 * a32,
+
+        // Calculate the determinant
+        det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+    if (!det) { 
+        return null; 
+    }
+    det = 1.0 / det;
+
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    out[1] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    out[2] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+
+    out[3] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    out[4] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    out[5] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+
+    out[6] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    out[7] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    out[8] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
 
     return out;
 };
@@ -12065,6 +12366,17 @@ mat3.str = function (a) {
                     a[3] + ', ' + a[4] + ', ' + a[5] + ', ' + 
                     a[6] + ', ' + a[7] + ', ' + a[8] + ')';
 };
+
+/**
+ * Returns Frobenius norm of a mat3
+ *
+ * @param {mat3} a the matrix to calculate Frobenius norm of
+ * @returns {Number} Frobenius norm
+ */
+mat3.frob = function (a) {
+    return(Math.sqrt(Math.pow(a[0], 2) + Math.pow(a[1], 2) + Math.pow(a[2], 2) + Math.pow(a[3], 2) + Math.pow(a[4], 2) + Math.pow(a[5], 2) + Math.pow(a[6], 2) + Math.pow(a[7], 2) + Math.pow(a[8], 2)))
+};
+
 
 if(typeof(exports) !== 'undefined') {
     exports.mat3 = mat3;
@@ -12098,13 +12410,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
  */
 
 var mat4 = {};
-
-var mat4Identity = new Float32Array([
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-]);
 
 /**
  * Creates a new identity mat4
@@ -12733,14 +13038,6 @@ mat4.fromRotationTranslation = function (out, q, v) {
     return out;
 };
 
-/**
-* Calculates a 4x4 matrix from the given quaternion
-*
-* @param {mat4} out mat4 receiving operation result
-* @param {quat} q Quaternion to create matrix from
-*
-* @returns {mat4} out
-*/
 mat4.fromQuat = function (out, q) {
     var x = q[0], y = q[1], z = q[2], w = q[3],
         x2 = x + x,
@@ -12748,28 +13045,28 @@ mat4.fromQuat = function (out, q) {
         z2 = z + z,
 
         xx = x * x2,
-        xy = x * y2,
-        xz = x * z2,
+        yx = y * x2,
         yy = y * y2,
-        yz = y * z2,
+        zx = z * x2,
+        zy = z * y2,
         zz = z * z2,
         wx = w * x2,
         wy = w * y2,
         wz = w * z2;
 
-    out[0] = 1 - (yy + zz);
-    out[1] = xy + wz;
-    out[2] = xz - wy;
+    out[0] = 1 - yy - zz;
+    out[1] = yx + wz;
+    out[2] = zx - wy;
     out[3] = 0;
 
-    out[4] = xy - wz;
-    out[5] = 1 - (xx + zz);
-    out[6] = yz + wx;
+    out[4] = yx - wz;
+    out[5] = 1 - xx - zz;
+    out[6] = zy + wx;
     out[7] = 0;
 
-    out[8] = xz + wy;
-    out[9] = yz - wx;
-    out[10] = 1 - (xx + yy);
+    out[8] = zx + wy;
+    out[9] = zy - wx;
+    out[10] = 1 - xx - yy;
     out[11] = 0;
 
     out[12] = 0;
@@ -12982,6 +13279,17 @@ mat4.str = function (a) {
                     a[12] + ', ' + a[13] + ', ' + a[14] + ', ' + a[15] + ')';
 };
 
+/**
+ * Returns Frobenius norm of a mat4
+ *
+ * @param {mat4} a the matrix to calculate Frobenius norm of
+ * @returns {Number} Frobenius norm
+ */
+mat4.frob = function (a) {
+    return(Math.sqrt(Math.pow(a[0], 2) + Math.pow(a[1], 2) + Math.pow(a[2], 2) + Math.pow(a[3], 2) + Math.pow(a[4], 2) + Math.pow(a[5], 2) + Math.pow(a[6], 2) + Math.pow(a[6], 2) + Math.pow(a[7], 2) + Math.pow(a[8], 2) + Math.pow(a[9], 2) + Math.pow(a[10], 2) + Math.pow(a[11], 2) + Math.pow(a[12], 2) + Math.pow(a[13], 2) + Math.pow(a[14], 2) + Math.pow(a[15], 2) ))
+};
+
+
 if(typeof(exports) !== 'undefined') {
     exports.mat4 = mat4;
 }
@@ -13015,8 +13323,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 var quat = {};
 
-var quatIdentity = new Float32Array([0, 0, 0, 1]);
-
 /**
  * Creates a new identity quat
  *
@@ -13030,6 +13336,78 @@ quat.create = function() {
     out[3] = 1;
     return out;
 };
+
+/**
+ * Sets a quaternion to represent the shortest rotation from one
+ * vector to another.
+ *
+ * Both vectors are assumed to be unit length.
+ *
+ * @param {quat} out the receiving quaternion.
+ * @param {vec3} a the initial vector
+ * @param {vec3} b the destination vector
+ * @returns {quat} out
+ */
+quat.rotationTo = (function() {
+    var tmpvec3 = vec3.create();
+    var xUnitVec3 = vec3.fromValues(1,0,0);
+    var yUnitVec3 = vec3.fromValues(0,1,0);
+
+    return function(out, a, b) {
+        var dot = vec3.dot(a, b);
+        if (dot < -0.999999) {
+            vec3.cross(tmpvec3, xUnitVec3, a);
+            if (vec3.length(tmpvec3) < 0.000001)
+                vec3.cross(tmpvec3, yUnitVec3, a);
+            vec3.normalize(tmpvec3, tmpvec3);
+            quat.setAxisAngle(out, tmpvec3, Math.PI);
+            return out;
+        } else if (dot > 0.999999) {
+            out[0] = 0;
+            out[1] = 0;
+            out[2] = 0;
+            out[3] = 1;
+            return out;
+        } else {
+            vec3.cross(tmpvec3, a, b);
+            out[0] = tmpvec3[0];
+            out[1] = tmpvec3[1];
+            out[2] = tmpvec3[2];
+            out[3] = 1 + dot;
+            return quat.normalize(out, out);
+        }
+    };
+})();
+
+/**
+ * Sets the specified quaternion with values corresponding to the given
+ * axes. Each axis is a vec3 and is expected to be unit length and
+ * perpendicular to all other specified axes.
+ *
+ * @param {vec3} view  the vector representing the viewing direction
+ * @param {vec3} right the vector representing the local "right" direction
+ * @param {vec3} up    the vector representing the local "up" direction
+ * @returns {quat} out
+ */
+quat.setAxes = (function() {
+    var matr = mat3.create();
+
+    return function(out, view, right, up) {
+        matr[0] = right[0];
+        matr[3] = right[1];
+        matr[6] = right[2];
+
+        matr[1] = up[0];
+        matr[4] = up[1];
+        matr[7] = up[2];
+
+        matr[2] = -view[0];
+        matr[5] = -view[1];
+        matr[8] = -view[2];
+
+        return quat.normalize(out, quat.fromMat3(out, matr));
+    };
+})();
 
 /**
  * Creates a new quat initialized with values from an existing quaternion
@@ -13156,7 +13534,7 @@ quat.mul = quat.multiply;
 quat.scale = vec4.scale;
 
 /**
- * Rotates a quaternion by the given angle around the X axis
+ * Rotates a quaternion by the given angle about the X axis
  *
  * @param {quat} out quat receiving operation result
  * @param {quat} a quat to rotate
@@ -13177,7 +13555,7 @@ quat.rotateX = function (out, a, rad) {
 };
 
 /**
- * Rotates a quaternion by the given angle around the Y axis
+ * Rotates a quaternion by the given angle about the Y axis
  *
  * @param {quat} out quat receiving operation result
  * @param {quat} a quat to rotate
@@ -13198,7 +13576,7 @@ quat.rotateY = function (out, a, rad) {
 };
 
 /**
- * Rotates a quaternion by the given angle around the Z axis
+ * Rotates a quaternion by the given angle about the Z axis
  *
  * @param {quat} out quat receiving operation result
  * @param {quat} a quat to rotate
@@ -13269,44 +13647,43 @@ quat.lerp = vec4.lerp;
  * @returns {quat} out
  */
 quat.slerp = function (out, a, b, t) {
+    // benchmarks:
+    //    http://jsperf.com/quaternion-slerp-implementations
+
     var ax = a[0], ay = a[1], az = a[2], aw = a[3],
         bx = b[0], by = b[1], bz = b[2], bw = b[3];
 
-    var cosHalfTheta = ax * bx + ay * by + az * bz + aw * bw,
-        halfTheta,
-        sinHalfTheta,
-        ratioA,
-        ratioB;
+    var        omega, cosom, sinom, scale0, scale1;
 
-    if (Math.abs(cosHalfTheta) >= 1.0) {
-        if (out !== a) {
-            out[0] = ax;
-            out[1] = ay;
-            out[2] = az;
-            out[3] = aw;
-        }
-        return out;
+    // calc cosine
+    cosom = ax * bx + ay * by + az * bz + aw * bw;
+    // adjust signs (if necessary)
+    if ( cosom < 0.0 ) {
+        cosom = -cosom;
+        bx = - bx;
+        by = - by;
+        bz = - bz;
+        bw = - bw;
     }
-
-    halfTheta = Math.acos(cosHalfTheta);
-    sinHalfTheta = Math.sqrt(1.0 - cosHalfTheta * cosHalfTheta);
-
-    if (Math.abs(sinHalfTheta) < 0.001) {
-        out[0] = (ax * 0.5 + bx * 0.5);
-        out[1] = (ay * 0.5 + by * 0.5);
-        out[2] = (az * 0.5 + bz * 0.5);
-        out[3] = (aw * 0.5 + bw * 0.5);
-        return out;
+    // calculate coefficients
+    if ( (1.0 - cosom) > 0.000001 ) {
+        // standard case (slerp)
+        omega  = Math.acos(cosom);
+        sinom  = Math.sin(omega);
+        scale0 = Math.sin((1.0 - t) * omega) / sinom;
+        scale1 = Math.sin(t * omega) / sinom;
+    } else {        
+        // "from" and "to" quaternions are very close 
+        //  ... so we can do a linear interpolation
+        scale0 = 1.0 - t;
+        scale1 = t;
     }
-
-    ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta;
-    ratioB = Math.sin(t * halfTheta) / sinHalfTheta;
-
-    out[0] = (ax * ratioA + bx * ratioB);
-    out[1] = (ay * ratioA + by * ratioB);
-    out[2] = (az * ratioA + bz * ratioB);
-    out[3] = (aw * ratioA + bw * ratioB);
-
+    // calculate final values
+    out[0] = scale0 * ax + scale1 * bx;
+    out[1] = scale0 * ay + scale1 * by;
+    out[2] = scale0 * az + scale1 * bz;
+    out[3] = scale0 * aw + scale1 * bw;
+    
     return out;
 };
 
@@ -13390,48 +13767,48 @@ quat.normalize = vec4.normalize;
 /**
  * Creates a quaternion from the given 3x3 rotation matrix.
  *
+ * NOTE: The resultant quaternion is not normalized, so you should be sure
+ * to renormalize the quaternion yourself where necessary.
+ *
  * @param {quat} out the receiving quaternion
  * @param {mat3} m rotation matrix
  * @returns {quat} out
  * @function
  */
-quat.fromMat3 = (function() {
-    var s_iNext = [1,2,0];
-    return function(out, m) {
-        // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
-        // article "Quaternion Calculus and Fast Animation".
-        var fTrace = m[0] + m[4] + m[8];
-        var fRoot;
+quat.fromMat3 = function(out, m) {
+    // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
+    // article "Quaternion Calculus and Fast Animation".
+    var fTrace = m[0] + m[4] + m[8];
+    var fRoot;
 
-        if ( fTrace > 0.0 ) {
-            // |w| > 1/2, may as well choose w > 1/2
-            fRoot = Math.sqrt(fTrace + 1.0);  // 2w
-            out[3] = 0.5 * fRoot;
-            fRoot = 0.5/fRoot;  // 1/(4w)
-            out[0] = (m[7]-m[5])*fRoot;
-            out[1] = (m[2]-m[6])*fRoot;
-            out[2] = (m[3]-m[1])*fRoot;
-        } else {
-            // |w| <= 1/2
-            var i = 0;
-            if ( m[4] > m[0] )
-              i = 1;
-            if ( m[8] > m[i*3+i] )
-              i = 2;
-            var j = s_iNext[i];
-            var k = s_iNext[j];
-            
-            fRoot = Math.sqrt(m[i*3+i]-m[j*3+j]-m[k*3+k] + 1.0);
-            out[i] = 0.5 * fRoot;
-            fRoot = 0.5 / fRoot;
-            out[3] = (m[k*3+j] - m[j*3+k]) * fRoot;
-            out[j] = (m[j*3+i] + m[i*3+j]) * fRoot;
-            out[k] = (m[k*3+i] + m[i*3+k]) * fRoot;
-        }
+    if ( fTrace > 0.0 ) {
+        // |w| > 1/2, may as well choose w > 1/2
+        fRoot = Math.sqrt(fTrace + 1.0);  // 2w
+        out[3] = 0.5 * fRoot;
+        fRoot = 0.5/fRoot;  // 1/(4w)
+        out[0] = (m[7]-m[5])*fRoot;
+        out[1] = (m[2]-m[6])*fRoot;
+        out[2] = (m[3]-m[1])*fRoot;
+    } else {
+        // |w| <= 1/2
+        var i = 0;
+        if ( m[4] > m[0] )
+          i = 1;
+        if ( m[8] > m[i*3+i] )
+          i = 2;
+        var j = (i+1)%3;
+        var k = (i+2)%3;
         
-        return out;
-    };
-})();
+        fRoot = Math.sqrt(m[i*3+i]-m[j*3+j]-m[k*3+k] + 1.0);
+        out[i] = 0.5 * fRoot;
+        fRoot = 0.5 / fRoot;
+        out[3] = (m[k*3+j] - m[j*3+k]) * fRoot;
+        out[j] = (m[j*3+i] + m[i*3+j]) * fRoot;
+        out[k] = (m[k*3+i] + m[i*3+k]) * fRoot;
+    }
+    
+    return out;
+};
 
 /**
  * Returns a string representation of a quatenion
@@ -13461,7 +13838,7 @@ if(typeof(exports) !== 'undefined') {
 
 
   })(shim.exports);
-})();
+})(this);
 
 },{}],5:[function(require,module,exports){
 (function() {
@@ -14194,6 +14571,121 @@ module.exports=require(3)
 },{}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
+  default: {get: function() {
+      return $__default;
+    }},
+  PerspectiveCamera: {get: function() {
+      return PerspectiveCamera;
+    }},
+  IsometricCamera: {get: function() {
+      return IsometricCamera;
+    }},
+  FlatCamera: {get: function() {
+      return FlatCamera;
+    }},
+  __esModule: {value: true}
+});
+var Geo = require('./geo').Geo;
+var GLProgram = require('./gl/gl_program').default;
+var $__2 = require('gl-matrix'),
+    mat4 = $__2.mat4,
+    vec3 = $__2.vec3;
+var Camera = function Camera(scene) {
+  this.scene = scene;
+};
+($traceurRuntime.createClass)(Camera, {
+  update: function() {},
+  setupProgram: function(gl_program) {}
+}, {create: function(scene, config) {
+    switch (config.type) {
+      case 'isometric':
+        return new IsometricCamera(scene, config);
+      case 'perspective':
+        return new PerspectiveCamera(scene, config);
+      case 'flat':
+      default:
+        return new FlatCamera(scene, config);
+    }
+  }});
+var $__default = Camera;
+var PerspectiveCamera = function PerspectiveCamera(scene) {
+  var options = arguments[1] !== (void 0) ? arguments[1] : {};
+  $traceurRuntime.superCall(this, $PerspectiveCamera.prototype, "constructor", [scene]);
+  this.focal_length = 2.5;
+  this.perspective_mat = mat4.create();
+  GLProgram.removeTransform('camera');
+  GLProgram.addTransform('camera', 'uniform mat4 u_perspective;', 'void cameraProjection (inout vec4 position) { \n\
+                position = u_perspective * position; \n\
+            }');
+};
+var $PerspectiveCamera = PerspectiveCamera;
+($traceurRuntime.createClass)(PerspectiveCamera, {
+  update: function() {
+    var meter_zoom_y = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
+    var camera_height = meter_zoom_y / 2 * this.focal_length;
+    var fov = Math.atan(1 / this.focal_length) * 2;
+    var aspect = this.scene.view_aspect;
+    var znear = 1;
+    var zfar = (camera_height + znear) * 5;
+    mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
+    mat4.translate(this.perspective_mat, this.perspective_mat, vec3.fromValues(0, 0, -camera_height));
+  },
+  setupProgram: function(gl_program) {
+    gl_program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_mat);
+  }
+}, {}, Camera);
+var IsometricCamera = function IsometricCamera(scene) {
+  var options = arguments[1] !== (void 0) ? arguments[1] : {};
+  $traceurRuntime.superCall(this, $IsometricCamera.prototype, "constructor", [scene]);
+  this.meter_view_mat = mat4.create();
+  GLProgram.removeTransform('camera');
+  GLProgram.addTransform('camera', 'uniform mat4 u_meter_view;', 'vec2 isometric_axis = vec2(0., 1.);', 'float isometric_scale = 1.;', 'void cameraProjection (inout vec4 position) { \n\
+                position = u_meter_view * position; \n\
+                position.xy += position.z * isometric_axis * isometric_scale / 1.; \n\
+                                                                                    \n\
+                // Reverse z for depth buffer so up is negative, \n\
+                // and scale down values so objects higher than one screen height will not get clipped \n\
+                position.z = -position.z / 100. + 1.; \n\
+            }');
+};
+var $IsometricCamera = IsometricCamera;
+($traceurRuntime.createClass)(IsometricCamera, {
+  update: function() {
+    mat4.identity(this.meter_view_mat);
+    mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));
+  },
+  setupProgram: function(gl_program) {
+    gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
+  }
+}, {}, Camera);
+var FlatCamera = function FlatCamera(scene) {
+  var options = arguments[1] !== (void 0) ? arguments[1] : {};
+  $traceurRuntime.superCall(this, $FlatCamera.prototype, "constructor", [scene]);
+  this.meter_view_mat = mat4.create();
+  GLProgram.removeTransform('camera');
+  GLProgram.addTransform('camera', 'uniform mat4 u_meter_view;', 'void cameraProjection (inout vec4 position) { \n\
+                position = u_meter_view * position; \n\
+                                                                \n\
+                // Reverse z for depth buffer so up is negative, \n\
+                // and scale down values so objects higher than one screen height will not get clipped \n\
+                position.z = -position.z / 100. + 1.; \n\
+            }');
+};
+var $FlatCamera = FlatCamera;
+($traceurRuntime.createClass)(FlatCamera, {
+  update: function() {
+    mat4.identity(this.meter_view_mat);
+    mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));
+  },
+  setupProgram: function(gl_program) {
+    gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
+  }
+}, {}, Camera);
+
+
+},{"./geo":12,"./gl/gl_program":17,"gl-matrix":4}],12:[function(require,module,exports){
+"use strict";
+Object.defineProperties(exports, {
   Geo: {get: function() {
       return Geo;
     }},
@@ -14210,6 +14702,9 @@ Geo.max_zoom = 20;
 for (var z = 0; z <= Geo.max_zoom; z++) {
   Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
 }
+Geo.metersPerPixel = function(zoom) {
+  return Geo.min_zoom_meters_per_pixel / Math.pow(2, zoom);
+};
 Geo.units_per_meter = [];
 Geo.setTileScale = function(scale) {
   Geo.tile_scale = scale;
@@ -14306,7 +14801,7 @@ Geo.splitFeatureLines = function(feature, tolerance) {
 };
 
 
-},{"./point":20}],12:[function(require,module,exports){
+},{"./point":21}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GL: {get: function() {
@@ -14452,7 +14947,7 @@ GL.addVerticesMultipleAttributes = function(dynamics, constants, vertex_data) {
 };
 
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GLBuilders: {get: function() {
@@ -14742,7 +15237,7 @@ GLBuilders.buildZigzagLineTestPattern = function() {
 };
 
 
-},{"../point":20,"../vector":26,"./gl":12}],14:[function(require,module,exports){
+},{"../point":21,"../vector":27,"./gl":13}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -14786,7 +15281,7 @@ GLGeometry.prototype.destroy = function() {
 };
 
 
-},{"./gl":12,"./gl_program":16,"./gl_vertex_layout":19}],15:[function(require,module,exports){
+},{"./gl":13,"./gl_program":17,"./gl_vertex_layout":20}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Modes: {get: function() {
@@ -15031,7 +15526,7 @@ Modes.points.buildPoints = function(points, style, vertex_data) {
 };
 
 
-},{"./gl":12,"./gl_builders":13,"./gl_geom":14,"./gl_program":16,"./gl_shaders":17,"./gl_vertex_layout":19,"queue-async":5}],16:[function(require,module,exports){
+},{"./gl":13,"./gl_builders":14,"./gl_geom":15,"./gl_program":17,"./gl_shaders":18,"./gl_vertex_layout":20,"queue-async":5}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15051,7 +15546,7 @@ function GLProgram(gl, vertex_shader, fragment_shader, options) {
   this.program = null;
   this.compiled = false;
   this.defines = options.defines || {};
-  this.transforms = options.transforms;
+  this.transforms = options.transforms || {};
   this.uniforms = {};
   this.attribs = {};
   this.vertex_shader = vertex_shader;
@@ -15074,39 +15569,50 @@ GLProgram.prototype.use = function() {
 };
 GLProgram.current = null;
 GLProgram.defines = {};
+GLProgram.transforms = {};
+GLProgram.addTransform = function(key) {
+  var $__4;
+  for (var transforms = [],
+      $__3 = 1; $__3 < arguments.length; $__3++)
+    transforms[$__3 - 1] = arguments[$__3];
+  GLProgram.transforms[key] = GLProgram.transforms[key] || [];
+  ($__4 = GLProgram.transforms[key]).push.apply($__4, $traceurRuntime.spread(transforms));
+};
+GLProgram.removeTransform = function(key) {
+  GLProgram.transforms[key] = [];
+};
 GLProgram.prototype.compile = function(callback) {
   var $__2 = this;
   var queue = Queue();
   this.computed_vertex_shader = this.vertex_shader;
   this.computed_fragment_shader = this.fragment_shader;
   var defines = this.buildDefineList();
-  var regexp;
+  var transforms = this.buildShaderTransformList();
   var loaded_transforms = {};
-  if (this.transforms != null) {
-    for (var key in this.transforms) {
-      var transform = this.transforms[key];
-      if (transform == null) {
-        continue;
-      }
-      if (typeof transform == 'string' || (typeof transform == 'object' && transform.length == null)) {
-        transform = [transform];
-      }
-      var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
-      var inject_vertex = this.computed_vertex_shader.match(regexp);
-      var inject_fragment = this.computed_fragment_shader.match(regexp);
-      if (inject_vertex == null && inject_fragment == null) {
-        continue;
-      }
-      loaded_transforms[key] = {};
-      loaded_transforms[key].regexp = new RegExp(regexp);
-      loaded_transforms[key].inject_vertex = (inject_vertex != null);
-      loaded_transforms[key].inject_fragment = (inject_fragment != null);
-      loaded_transforms[key].list = [];
-      for (var u = 0; u < transform.length; u++) {
-        queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
-      }
-      defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
+  var regexp;
+  for (var key in transforms) {
+    var transform = transforms[key];
+    if (transform == null) {
+      continue;
     }
+    if (!(typeof transform === 'object' && transform.length >= 0)) {
+      transform = [transform];
+    }
+    var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
+    var inject_vertex = this.computed_vertex_shader.match(regexp);
+    var inject_fragment = this.computed_fragment_shader.match(regexp);
+    if (inject_vertex == null && inject_fragment == null) {
+      continue;
+    }
+    loaded_transforms[key] = {};
+    loaded_transforms[key].regexp = new RegExp(regexp);
+    loaded_transforms[key].inject_vertex = (inject_vertex != null);
+    loaded_transforms[key].inject_fragment = (inject_fragment != null);
+    loaded_transforms[key].list = [];
+    for (var u = 0; u < transform.length; u++) {
+      queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+    }
+    defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
   }
   queue.await((function(error) {
     if (error) {
@@ -15169,14 +15675,38 @@ GLProgram.loadTransform = function(transforms, block, key, index, complete) {
   }
 };
 GLProgram.prototype.buildDefineList = function() {
-  var defines = {};
-  for (var d in GLProgram.defines) {
+  var d,
+      defines = {};
+  for (d in GLProgram.defines) {
     defines[d] = GLProgram.defines[d];
   }
-  for (var d in this.defines) {
+  for (d in this.defines) {
     defines[d] = this.defines[d];
   }
   return defines;
+};
+GLProgram.prototype.buildShaderTransformList = function() {
+  var $__4,
+      $__5;
+  var d,
+      transforms = {};
+  for (d in GLProgram.transforms) {
+    transforms[d] = [];
+    if (typeof GLProgram.transforms[d] === 'object' && GLProgram.transforms[d].length >= 0) {
+      ($__4 = transforms[d]).push.apply($__4, $traceurRuntime.spread(GLProgram.transforms[d]));
+    } else {
+      transforms[d] = [GLProgram.transforms[d]];
+    }
+  }
+  for (d in this.transforms) {
+    transforms[d] = transforms[d] || [];
+    if (typeof this.transforms[d] === 'object' && this.transforms[d].length >= 0) {
+      ($__5 = transforms[d]).push.apply($__5, $traceurRuntime.spread(this.transforms[d]));
+    } else {
+      transforms[d].push(this.transforms[d]);
+    }
+  }
+  return transforms;
 };
 GLProgram.buildDefineString = function(defines) {
   var define_str = "";
@@ -15267,20 +15797,20 @@ GLProgram.prototype.attribute = function(name) {
 };
 
 
-},{"../utils":25,"./gl":12,"./gl_texture":18,"queue-async":5}],17:[function(require,module,exports){
+},{"../utils":26,"./gl":13,"./gl_texture":19,"queue-async":5}],18:[function(require,module,exports){
 "use strict";
 var shader_sources = {};
 shader_sources['point_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  vec3 lighting = vec3(1.);\n" + "  float len = length(v_texcoord);\n" + "  if(len > 1.) {\n" + "    discard;\n" + "  }\n" + "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.);\n" + "}\n" + "";
-shader_sources['point_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform mat4 u_tile_view;\n" + "uniform mat4 u_perspective;\n" + "uniform float u_num_layers;\n" + "attribute vec3 a_position;\n" + "attribute vec2 a_texcoord;\n" + "attribute vec3 a_color;\n" + "attribute float a_layer;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "#if defined(FEATURE_SELECTION)\n" + "\n" + "attribute vec4 a_selection_color;\n" + "varying vec4 v_selection_color;\n" + "#endif\n" + "\n" + "float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" + "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" + "  float z_layer = (layer + 1.) * z_layer_scale;\n" + "  z = z_layer + clamp(z, 0., z_layer_scale);\n" + "  z = (z_layer_range - z) / z_layer_range;\n" + "  return z;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main() {\n" + "  \n" + "  #if defined(FEATURE_SELECTION)\n" + "  if(a_selection_color.xyz == vec3(0.)) {\n" + "    gl_Position = vec4(0., 0., 0., 1.);\n" + "    return;\n" + "  }\n" + "  v_selection_color = a_selection_color;\n" + "  #endif\n" + "  vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);\n" + "  #pragma tangram: vertex\n" + "  v_color = a_color;\n" + "  v_texcoord = a_texcoord;\n" + "  position.z -= a_layer * .001;\n" + "  gl_Position = position;\n" + "}\n" + "";
-shader_sources['polygon_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "uniform vec2 u_aspect;\n" + "uniform mat4 u_meter_view;\n" + "uniform float u_meters_per_pixel;\n" + "uniform float u_time;\n" + "uniform float u_map_zoom;\n" + "uniform vec2 u_map_center;\n" + "uniform vec2 u_tile_origin;\n" + "uniform float u_test;\n" + "uniform float u_test2;\n" + "varying vec3 v_color;\n" + "varying vec4 v_world_position;\n" + "#if defined(WORLD_POSITION_WRAP)\n" + "\n" + "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" + "vec4 absoluteWorldPosition() {\n" + "  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" + "}\n" + "#else\n" + "\n" + "vec4 absoluteWorldPosition() {\n" + "  return v_world_position;\n" + "}\n" + "#endif\n" + "\n" + "#if defined(LIGHTING_ENVIRONMENT)\n" + "\n" + "uniform sampler2D u_env_map;\n" + "#endif\n" + "\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#else\n" + "\n" + "varying vec3 v_lighting;\n" + "#endif\n" + "\n" + "const float light_ambient = 0.5;\n" + "vec3 b_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 c_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  vec3 view_pos = vec3(0., 0., 500.);\n" + "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" + "  vec3 specularReflection;\n" + "  if(dot(normal, -light_dir) < 0.0) {\n" + "    specularReflection = vec3(0.0, 0.0, 0.0);\n" + "  } else {\n" + "    float attenuation = 1.0;\n" + "    float lightSpecularTerm = 1.0;\n" + "    float materialSpecularTerm = 10.0;\n" + "    float materialShininessTerm = 10.0;\n" + "    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" + "  }\n" + "  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" + "  color *= diffuse + specularReflection + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" + "  light_dir = normalize(light_dir);\n" + "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 a_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" + "  \n" + "  #if defined(LIGHTING_POINT)\n" + "  color = b_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_POINT_SPECULAR)\n" + "  color = c_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_NIGHT)\n" + "  color = b_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" + "  #elif defined(LIGHTING_DIRECTION)\n" + "  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" + "  #else\n" + "  color = color;\n" + "  #endif\n" + "  return color;\n" + "}\n" + "vec4 e_x_sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2D envmap) {\n" + "  vec3 eye = normalize(position.xyz - view_pos.xyz);\n" + "  if(eye.z > 0.01) {\n" + "    eye.z = 0.01;\n" + "  }\n" + "  vec3 r = reflect(eye, normal);\n" + "  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" + "  vec2 uv = r.xy / m + .5;\n" + "  return texture2D(envmap, uv);\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  #if defined(LIGHTING_ENVIRONMENT)\n" + "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" + "  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" + "  #endif\n" + "  \n" + "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" + "  vec3 lighting = a_x_lighting(v_position, v_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" + "  #else\n" + "  vec3 lighting = v_lighting;\n" + "  #endif\n" + "  vec3 color_prelight = color;\n" + "  color *= lighting;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.0);\n" + "}\n" + "";
-shader_sources['polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "uniform vec2 u_aspect;\n" + "uniform float u_time;\n" + "uniform float u_map_zoom;\n" + "uniform vec2 u_map_center;\n" + "uniform vec2 u_tile_origin;\n" + "uniform mat4 u_tile_world;\n" + "uniform mat4 u_tile_view;\n" + "uniform mat4 u_perspective;\n" + "uniform float u_meters_per_pixel;\n" + "uniform float u_num_layers;\n" + "attribute vec3 a_position;\n" + "attribute vec3 a_normal;\n" + "attribute vec3 a_color;\n" + "attribute float a_layer;\n" + "varying vec4 v_world_position;\n" + "varying vec3 v_color;\n" + "#if defined(WORLD_POSITION_WRAP)\n" + "\n" + "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" + "vec4 absoluteWorldPosition() {\n" + "  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" + "}\n" + "#else\n" + "\n" + "vec4 absoluteWorldPosition() {\n" + "  return v_world_position;\n" + "}\n" + "#endif\n" + "\n" + "#if defined(FEATURE_SELECTION)\n" + "\n" + "attribute vec4 a_selection_color;\n" + "varying vec4 v_selection_color;\n" + "#endif\n" + "\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#else\n" + "\n" + "varying vec3 v_lighting;\n" + "#endif\n" + "\n" + "const float light_ambient = 0.5;\n" + "vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" + "  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" + "  return position;\n" + "}\n" + "vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" + "  position.xy += position.z * axis * multiplier / u_aspect;\n" + "  return position;\n" + "}\n" + "float c_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" + "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" + "  float z_layer = (layer + 1.) * z_layer_scale;\n" + "  z = z_layer + clamp(z, 0., z_layer_scale);\n" + "  z = (z_layer_range - z) / z_layer_range;\n" + "  return z;\n" + "}\n" + "vec3 e_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 f_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  vec3 view_pos = vec3(0., 0., 500.);\n" + "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" + "  vec3 specularReflection;\n" + "  if(dot(normal, -light_dir) < 0.0) {\n" + "    specularReflection = vec3(0.0, 0.0, 0.0);\n" + "  } else {\n" + "    float attenuation = 1.0;\n" + "    float lightSpecularTerm = 1.0;\n" + "    float materialSpecularTerm = 10.0;\n" + "    float materialShininessTerm = 10.0;\n" + "    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" + "  }\n" + "  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" + "  color *= diffuse + specularReflection + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" + "  light_dir = normalize(light_dir);\n" + "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 d_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" + "  \n" + "  #if defined(LIGHTING_POINT)\n" + "  color = e_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_POINT_SPECULAR)\n" + "  color = f_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_NIGHT)\n" + "  color = e_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" + "  #elif defined(LIGHTING_DIRECTION)\n" + "  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" + "  #else\n" + "  color = color;\n" + "  #endif\n" + "  return color;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main() {\n" + "  \n" + "  #if defined(FEATURE_SELECTION)\n" + "  if(a_selection_color.xyz == vec3(0.)) {\n" + "    gl_Position = vec4(0., 0., 0., 1.);\n" + "    return;\n" + "  }\n" + "  v_selection_color = a_selection_color;\n" + "  #endif\n" + "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" + "  v_world_position = u_tile_world * vec4(a_position, 1.);\n" + "  #if defined(WORLD_POSITION_WRAP)\n" + "  v_world_position.xy -= world_position_anchor;\n" + "  #endif\n" + "  \n" + "  #pragma tangram: vertex\n" + "  \n" + "  #if defined(LIGHTING_VERTEX)\n" + "  v_color = a_color;\n" + "  v_lighting = d_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" + "  #else\n" + "  v_position = position;\n" + "  v_normal = a_normal;\n" + "  v_color = a_color;\n" + "  #endif\n" + "  position = u_perspective * position;\n" + "  position.z -= a_layer * .001;\n" + "  gl_Position = position;\n" + "}\n" + "";
+shader_sources['point_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform mat4 u_tile_view;\n" + "uniform float u_num_layers;\n" + "attribute vec3 a_position;\n" + "attribute vec2 a_texcoord;\n" + "attribute vec3 a_color;\n" + "attribute float a_layer;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "#if defined(FEATURE_SELECTION)\n" + "\n" + "attribute vec4 a_selection_color;\n" + "varying vec4 v_selection_color;\n" + "#endif\n" + "\n" + "float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" + "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" + "  float z_layer = (layer + 1.) * z_layer_scale;\n" + "  z = z_layer + clamp(z, 0., z_layer_scale);\n" + "  z = (z_layer_range - z) / z_layer_range;\n" + "  return z;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "#pragma tangram: camera\n" + "\n" + "void main() {\n" + "  \n" + "  #if defined(FEATURE_SELECTION)\n" + "  if(a_selection_color.xyz == vec3(0.)) {\n" + "    gl_Position = vec4(0., 0., 0., 1.);\n" + "    return;\n" + "  }\n" + "  v_selection_color = a_selection_color;\n" + "  #endif\n" + "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" + "  #pragma tangram: vertex\n" + "  v_color = a_color;\n" + "  v_texcoord = a_texcoord;\n" + "  cameraProjection(position);\n" + "  position.z -= (a_layer + 1.) * .001;\n" + "  gl_Position = position;\n" + "}\n" + "";
+shader_sources['polygon_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "uniform vec2 u_aspect;\n" + "uniform float u_meters_per_pixel;\n" + "uniform float u_time;\n" + "uniform float u_map_zoom;\n" + "uniform vec2 u_map_center;\n" + "uniform vec2 u_tile_origin;\n" + "uniform float u_test;\n" + "uniform float u_test2;\n" + "varying vec3 v_color;\n" + "varying vec4 v_world_position;\n" + "#if defined(WORLD_POSITION_WRAP)\n" + "\n" + "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" + "vec4 absoluteWorldPosition() {\n" + "  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" + "}\n" + "#else\n" + "\n" + "vec4 absoluteWorldPosition() {\n" + "  return v_world_position;\n" + "}\n" + "#endif\n" + "\n" + "#if defined(LIGHTING_ENVIRONMENT)\n" + "\n" + "uniform sampler2D u_env_map;\n" + "#endif\n" + "\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#else\n" + "\n" + "varying vec3 v_lighting;\n" + "#endif\n" + "\n" + "const float light_ambient = 0.5;\n" + "vec3 b_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 c_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  vec3 view_pos = vec3(0., 0., 500.);\n" + "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" + "  vec3 specularReflection;\n" + "  if(dot(normal, -light_dir) < 0.0) {\n" + "    specularReflection = vec3(0.0, 0.0, 0.0);\n" + "  } else {\n" + "    float attenuation = 1.0;\n" + "    float lightSpecularTerm = 1.0;\n" + "    float materialSpecularTerm = 10.0;\n" + "    float materialShininessTerm = 10.0;\n" + "    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" + "  }\n" + "  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" + "  color *= diffuse + specularReflection + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" + "  light_dir = normalize(light_dir);\n" + "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 a_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" + "  \n" + "  #if defined(LIGHTING_POINT)\n" + "  color = b_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_POINT_SPECULAR)\n" + "  color = c_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_NIGHT)\n" + "  color = b_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" + "  #elif defined(LIGHTING_DIRECTION)\n" + "  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" + "  #else\n" + "  color = color;\n" + "  #endif\n" + "  return color;\n" + "}\n" + "vec4 e_x_sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2D envmap) {\n" + "  vec3 eye = normalize(position.xyz - view_pos.xyz);\n" + "  if(eye.z > 0.01) {\n" + "    eye.z = 0.01;\n" + "  }\n" + "  vec3 r = reflect(eye, normal);\n" + "  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" + "  vec2 uv = r.xy / m + .5;\n" + "  return texture2D(envmap, uv);\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  #if defined(LIGHTING_ENVIRONMENT)\n" + "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" + "  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" + "  #endif\n" + "  \n" + "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" + "  vec3 lighting = a_x_lighting(v_position, v_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" + "  #else\n" + "  vec3 lighting = v_lighting;\n" + "  #endif\n" + "  vec3 color_prelight = color;\n" + "  color *= lighting;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.0);\n" + "}\n" + "";
+shader_sources['polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "uniform vec2 u_aspect;\n" + "uniform float u_time;\n" + "uniform float u_map_zoom;\n" + "uniform vec2 u_map_center;\n" + "uniform vec2 u_tile_origin;\n" + "uniform mat4 u_tile_world;\n" + "uniform mat4 u_tile_view;\n" + "uniform float u_meters_per_pixel;\n" + "uniform float u_num_layers;\n" + "attribute vec3 a_position;\n" + "attribute vec3 a_normal;\n" + "attribute vec3 a_color;\n" + "attribute float a_layer;\n" + "varying vec4 v_world_position;\n" + "varying vec3 v_color;\n" + "#if defined(WORLD_POSITION_WRAP)\n" + "\n" + "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" + "vec4 absoluteWorldPosition() {\n" + "  return vec4(v_world_position.xy + world_position_anchor, v_world_position.z, v_world_position.w);\n" + "}\n" + "#else\n" + "\n" + "vec4 absoluteWorldPosition() {\n" + "  return v_world_position;\n" + "}\n" + "#endif\n" + "\n" + "#if defined(FEATURE_SELECTION)\n" + "\n" + "attribute vec4 a_selection_color;\n" + "varying vec4 v_selection_color;\n" + "#endif\n" + "\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#else\n" + "\n" + "varying vec3 v_lighting;\n" + "#endif\n" + "\n" + "const float light_ambient = 0.5;\n" + "float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" + "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" + "  float z_layer = (layer + 1.) * z_layer_scale;\n" + "  z = z_layer + clamp(z, 0., z_layer_scale);\n" + "  z = (z_layer_range - z) / z_layer_range;\n" + "  return z;\n" + "}\n" + "vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 d_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  vec3 view_pos = vec3(0., 0., 500.);\n" + "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" + "  vec3 specularReflection;\n" + "  if(dot(normal, -light_dir) < 0.0) {\n" + "    specularReflection = vec3(0.0, 0.0, 0.0);\n" + "  } else {\n" + "    float attenuation = 1.0;\n" + "    float lightSpecularTerm = 1.0;\n" + "    float materialSpecularTerm = 10.0;\n" + "    float materialShininessTerm = 10.0;\n" + "    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" + "  }\n" + "  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" + "  color *= diffuse + specularReflection + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 e_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" + "  light_dir = normalize(light_dir);\n" + "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" + "  return color;\n" + "}\n" + "vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" + "  \n" + "  #if defined(LIGHTING_POINT)\n" + "  color = c_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_POINT_SPECULAR)\n" + "  color = d_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" + "  #elif defined(LIGHTING_NIGHT)\n" + "  color = c_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" + "  #elif defined(LIGHTING_DIRECTION)\n" + "  color = e_x_directionalLight(normal, color, light_dir, light_ambient);\n" + "  #else\n" + "  color = color;\n" + "  #endif\n" + "  return color;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "#pragma tangram: camera\n" + "\n" + "void main() {\n" + "  \n" + "  #if defined(FEATURE_SELECTION)\n" + "  if(a_selection_color.xyz == vec3(0.)) {\n" + "    gl_Position = vec4(0., 0., 0., 1.);\n" + "    return;\n" + "  }\n" + "  v_selection_color = a_selection_color;\n" + "  #endif\n" + "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" + "  v_world_position = u_tile_world * vec4(a_position, 1.);\n" + "  #if defined(WORLD_POSITION_WRAP)\n" + "  v_world_position.xy -= world_position_anchor;\n" + "  #endif\n" + "  \n" + "  #pragma tangram: vertex\n" + "  \n" + "  #if defined(LIGHTING_VERTEX)\n" + "  v_color = a_color;\n" + "  v_lighting = b_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" + "  #else\n" + "  v_position = position;\n" + "  v_normal = a_normal;\n" + "  v_color = a_color;\n" + "  #endif\n" + "  cameraProjection(position);\n" + "  position.z -= (a_layer + 1.) * .001;\n" + "  gl_Position = position;\n" + "}\n" + "";
 shader_sources['selection_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "#if defined(FEATURE_SELECTION)\n" + "\n" + "varying vec4 v_selection_color;\n" + "#endif\n" + "\n" + "void main(void) {\n" + "  \n" + "  #if defined(FEATURE_SELECTION)\n" + "  gl_FragColor = v_selection_color;\n" + "  #else\n" + "  gl_FragColor = vec4(0., 0., 0., 1.);\n" + "  #endif\n" + "  \n" + "}\n" + "";
 shader_sources['simple_polygon_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform float u_meters_per_pixel;\n" + "varying vec3 v_color;\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#endif\n" + "\n" + "vec3 a_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main(void) {\n" + "  vec3 color;\n" + "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" + "  vec4 light_pos = vec4(0., 0., 150. * u_meters_per_pixel, 1.);\n" + "  const float light_ambient = 0.5;\n" + "  const bool backlit = true;\n" + "  color = a_x_pointLight(v_position, v_normal, v_color, light_pos, light_ambient, backlit);\n" + "  #else\n" + "  color = v_color;\n" + "  #endif\n" + "  \n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.0);\n" + "}\n" + "";
 shader_sources['simple_polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_aspect;\n" + "uniform mat4 u_tile_view;\n" + "uniform mat4 u_meter_view;\n" + "uniform float u_meters_per_pixel;\n" + "uniform float u_num_layers;\n" + "attribute vec3 a_position;\n" + "attribute vec3 a_normal;\n" + "attribute vec3 a_color;\n" + "attribute float a_layer;\n" + "varying vec3 v_color;\n" + "#if !defined(LIGHTING_VERTEX)\n" + "\n" + "varying vec4 v_position;\n" + "varying vec3 v_normal;\n" + "#endif\n" + "\n" + "vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" + "  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" + "  return position;\n" + "}\n" + "vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" + "  position.xy += position.z * axis * multiplier / u_aspect;\n" + "  return position;\n" + "}\n" + "float c_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" + "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" + "  float z_layer = (layer + 1.) * z_layer_scale;\n" + "  z = z_layer + clamp(z, 0., z_layer_scale);\n" + "  z = (z_layer_range - z) / z_layer_range;\n" + "  return z;\n" + "}\n" + "vec3 d_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" + "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" + "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" + "  return color;\n" + "}\n" + "#pragma tangram: globals\n" + "\n" + "void main() {\n" + "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" + "  #pragma tangram: vertex\n" + "  \n" + "  #if defined(LIGHTING_VERTEX)\n" + "  vec4 light_pos = vec4(0., 0., 150. * u_meters_per_pixel, 1.);\n" + "  const float light_ambient = 0.5;\n" + "  const bool backlit = true;\n" + "  v_color = d_x_pointLight(position, a_normal, a_color, light_pos, light_ambient, backlit);\n" + "  #else\n" + "  v_position = position;\n" + "  v_normal = a_normal;\n" + "  v_color = a_color;\n" + "  #endif\n" + "  position = u_meter_view * position;\n" + "  #if defined(PROJECTION_PERSPECTIVE)\n" + "  position = a_x_perspective(position, vec2(-0.25, -0.25), vec2(0.6, 0.6));\n" + "  #elif defined(PROJECTION_ISOMETRIC)\n" + "  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" + "  #endif\n" + "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" + "  gl_Position = position;\n" + "}\n" + "";
 module.exports = shader_sources;
 
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15377,7 +15907,7 @@ GLTexture.prototype.setTextureFiltering = function(options) {
 };
 
 
-},{"../utils":25,"./gl":12}],19:[function(require,module,exports){
+},{"../utils":26,"./gl":13}],20:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15431,7 +15961,7 @@ GLVertexLayout.prototype.enable = function(gl, gl_program) {
 };
 
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15456,7 +15986,7 @@ var $Point = Point;
 var $__default = Point;
 
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15474,9 +16004,10 @@ var GLBuilders = require('./gl/gl_builders').GLBuilders;
 var GLProgram = require('./gl/gl_program').default;
 var GLTexture = require('./gl/gl_texture').default;
 var ModeManager = require('./gl/gl_modes').ModeManager;
-var $__8 = require('gl-matrix'),
-    mat4 = $__8.mat4,
-    vec3 = $__8.vec3;
+var Camera = require('./camera').default;
+var $__9 = require('gl-matrix'),
+    mat4 = $__9.mat4,
+    vec3 = $__9.vec3;
 var yaml;
 Utils.runIfInMainThread(function() {
   try {
@@ -15510,40 +16041,40 @@ function Scene(tile_source, layers, styles, options) {
   this.zooming = false;
   this.panning = false;
   this.container = options.container;
-  this.focal_length = 2.5;
   this.resetTime();
 }
 var $__default = Scene;
 Scene.prototype.init = function(callback) {
-  var $__9 = this;
+  var $__10 = this;
   if (this.initialized) {
     return;
   }
   this.loadScene((function() {
     var queue = Queue();
     queue.defer((function(complete) {
-      $__9.modes = Scene.createModes($__9.styles);
-      $__9.updateActiveModes();
+      $__10.modes = Scene.createModes($__10.styles);
+      $__10.updateActiveModes();
       complete();
     }));
     queue.defer((function(complete) {
-      $__9.createWorkers(complete);
+      $__10.createWorkers(complete);
     }));
     queue.await((function() {
-      $__9.container = $__9.container || document.body;
-      $__9.canvas = document.createElement('canvas');
-      $__9.canvas.style.position = 'absolute';
-      $__9.canvas.style.top = 0;
-      $__9.canvas.style.left = 0;
-      $__9.canvas.style.zIndex = -1;
-      $__9.container.appendChild($__9.canvas);
-      $__9.gl = GL.getContext($__9.canvas);
-      $__9.resizeMap($__9.container.clientWidth, $__9.container.clientHeight);
-      $__9.initModes();
-      $__9.initSelectionBuffer();
-      $__9.last_render_count = null;
-      $__9.initInputHandlers();
-      $__9.initialized = true;
+      $__10.container = $__10.container || document.body;
+      $__10.canvas = document.createElement('canvas');
+      $__10.canvas.style.position = 'absolute';
+      $__10.canvas.style.top = 0;
+      $__10.canvas.style.left = 0;
+      $__10.canvas.style.zIndex = -1;
+      $__10.container.appendChild($__10.canvas);
+      $__10.gl = GL.getContext($__10.canvas);
+      $__10.resizeMap($__10.container.clientWidth, $__10.container.clientHeight);
+      $__10.camera = Camera.create($__10, $__10.styles.camera);
+      $__10.initModes();
+      $__10.initSelectionBuffer();
+      $__10.last_render_count = null;
+      $__10.initInputHandlers();
+      $__10.initialized = true;
       if (typeof callback == 'function') {
         callback();
       }
@@ -15570,6 +16101,7 @@ Scene.prototype.initSelectionBuffer = function() {
     width: 256,
     height: 256
   };
+  this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
   this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
   this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
   this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, {filtering: 'nearest'});
@@ -15582,35 +16114,35 @@ Scene.prototype.initSelectionBuffer = function() {
   this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 Scene.prototype.createWorkers = function(callback) {
-  var $__9 = this;
+  var $__10 = this;
   var queue = Queue();
   var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
   queue.defer((function(complete) {
     var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
-    if (createObjectURL && $__9.allow_cross_domain_workers) {
+    if (createObjectURL && $__10.allow_cross_domain_workers) {
       var req = new XMLHttpRequest();
       req.onload = (function() {
         var worker_local_url = createObjectURL(new Blob([req.response], {type: 'application/javascript'}));
-        $__9.makeWorkers(worker_local_url);
+        $__10.makeWorkers(worker_local_url);
         complete();
       });
       req.open('GET', worker_url, true);
       req.responseType = 'text';
       req.send();
     } else {
-      console.log($__9);
-      $__9.makeWorkers(worker_url);
+      console.log($__10);
+      $__10.makeWorkers(worker_url);
       complete();
     }
   }));
   queue.await((function() {
-    $__9.workers.forEach((function(worker) {
-      worker.addEventListener('message', $__9.workerBuildTileCompleted.bind($__9));
-      worker.addEventListener('message', $__9.workerGetFeatureSelection.bind($__9));
-      worker.addEventListener('message', $__9.workerLogMessage.bind($__9));
+    $__10.workers.forEach((function(worker) {
+      worker.addEventListener('message', $__10.workerBuildTileCompleted.bind($__10));
+      worker.addEventListener('message', $__10.workerGetFeatureSelection.bind($__10));
+      worker.addEventListener('message', $__10.workerLogMessage.bind($__10));
     }));
-    $__9.next_worker = 0;
-    $__9.selection_map_worker_size = {};
+    $__10.next_worker = 0;
+    $__10.selection_map_worker_size = {};
     if (typeof callback == 'function') {
       callback();
     }
@@ -15663,8 +16195,18 @@ Scene.prototype.setZoom = function(zoom) {
   this.zoom = zoom;
   this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
   this.zooming = false;
+  this.updateMeterView();
   this.removeTilesOutsideZoomRange(below, above);
   this.dirty = true;
+};
+Scene.prototype.updateMeterView = function() {
+  this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
+  if (this.css_size !== undefined) {
+    this.meter_zoom = {
+      x: this.css_size.width / 2 * this.meters_per_pixel,
+      y: this.css_size.height / 2 * this.meters_per_pixel
+    };
+  }
 };
 Scene.prototype.removeTilesOutsideZoomRange = function(below, above) {
   below = Math.min(below, this.tile_source.max_zoom || below);
@@ -15694,7 +16236,7 @@ Scene.prototype.setBounds = function(sw, ne) {
       lat: ne.lat
     }
   };
-  var buffer = 200 * Geo.meters_per_pixel[~~this.zoom];
+  var buffer = 200 * this.meters_per_pixel;
   this.buffered_meter_bounds = {
     sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
     ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
@@ -15728,6 +16270,8 @@ Scene.prototype.resizeMap = function(width, height) {
     width: Math.round(this.css_size.width * this.device_pixel_ratio),
     height: Math.round(this.css_size.height * this.device_pixel_ratio)
   };
+  this.view_aspect = this.css_size.width / this.css_size.height;
+  this.updateMeterView();
   this.canvas.style.width = this.css_size.width + 'px';
   this.canvas.style.height = this.css_size.height + 'px';
   this.canvas.width = this.device_size.width;
@@ -15772,18 +16316,9 @@ Scene.prototype.renderGL = function() {
   this.input();
   this.resetFrame();
   var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-  var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-  var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
   var tile_view_mat = mat4.create();
   var tile_world_mat = mat4.create();
-  var camera_height = meter_zoom.y * this.focal_length;
-  var focal_length = this.focal_length;
-  var aspect = this.css_size.width / this.css_size.height;
-  var znear = 1;
-  var zfar = (camera_height + znear) * 5;
-  var perspective_mat = mat4.create();
-  mat4.perspective(perspective_mat, Math.atan(1 / focal_length) * 2, aspect, znear, zfar);
-  mat4.translate(perspective_mat, perspective_mat, vec3.fromValues(0, 0, -camera_height));
+  this.camera.update();
   var renderable_tiles = [];
   for (var t in this.tiles) {
     var tile = this.tiles[t];
@@ -15808,13 +16343,13 @@ Scene.prototype.renderGL = function() {
           gl_program.use();
           this.modes[mode].setUniforms();
           gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-          gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+          gl_program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
           gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
           gl_program.uniform('1f', 'u_map_zoom', this.zoom);
           gl_program.uniform('2f', 'u_map_center', center.x, center.y);
           gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-          gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-          gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
+          gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+          this.camera.setupProgram(gl_program);
         }
         gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
         mat4.identity(tile_view_mat);
@@ -15852,13 +16387,13 @@ Scene.prototype.renderGL = function() {
             gl_program.use();
             this.modes[mode].setUniforms();
             gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-            gl_program.uniform('2f', 'u_aspect', this.fbo_size.width / this.fbo_size.height, 1.0);
+            gl_program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
             gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
             gl_program.uniform('1f', 'u_map_zoom', this.zoom);
             gl_program.uniform('2f', 'u_map_center', center.x, center.y);
             gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-            gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-            gl_program.uniform('Matrix4fv', 'u_perspective', false, perspective_mat);
+            gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+            this.camera.setupProgram(gl_program);
           }
           gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
           mat4.identity(tile_view_mat);
@@ -16001,7 +16536,7 @@ Scene.prototype._loadTile = function(coords, div, callback) {
   }
 };
 Scene.prototype.rebuildTiles = function() {
-  var $__9 = this;
+  var $__10 = this;
   if (!this.initialized) {
     return;
   }
@@ -16011,8 +16546,8 @@ Scene.prototype.rebuildTiles = function() {
   this.workers.forEach((function(worker) {
     worker.postMessage({
       type: 'prepareForRebuild',
-      layers: $__9.layers_serialized,
-      styles: $__9.styles_serialized
+      layers: $__10.layers_serialized,
+      styles: $__10.styles_serialized
     });
   }));
   var visible = [],
@@ -16025,8 +16560,8 @@ Scene.prototype.rebuildTiles = function() {
     }
   }
   visible.sort((function(a, b) {
-    var ad = $__9.tiles[a].center_dist;
-    var bd = $__9.tiles[b].center_dist;
+    var ad = $__10.tiles[a].center_dist;
+    var bd = $__10.tiles[b].center_dist;
     return (bd > ad ? -1 : (bd == ad ? 0 : 1));
   }));
   for (var t in visible) {
@@ -16121,14 +16656,14 @@ Scene.addTile = function(tile, layers, styles, modes) {
   return {vertex_data: true};
 };
 Scene.prototype.workerBuildTileCompleted = function(event) {
-  var $__9 = this;
+  var $__10 = this;
   if (event.data.type != 'buildTileCompleted') {
     return;
   }
   this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
   this.selection_map_size = 0;
   Object.keys(this.selection_map_worker_size).forEach((function(worker) {
-    $__9.selection_map_size += $__9.selection_map_worker_size[worker];
+    $__10.selection_map_size += $__10.selection_map_worker_size[worker];
   }));
   console.log("selection map: " + this.selection_map_size + " features");
   var tile = event.data.tile;
@@ -16215,7 +16750,7 @@ Scene.prototype.mergeTile = function(key, source_tile) {
   return tile;
 };
 Scene.prototype.loadScene = function(callback) {
-  var $__9 = this;
+  var $__10 = this;
   var queue = Queue();
   if (!this.layer_source && typeof(this.layers) == 'string') {
     this.layer_source = Utils.urlForPath(this.layers);
@@ -16225,18 +16760,18 @@ Scene.prototype.loadScene = function(callback) {
   }
   if (this.layer_source) {
     queue.defer((function(complete) {
-      Scene.loadLayers($__9.layer_source, (function(layers) {
-        $__9.layers = layers;
-        $__9.layers_serialized = Utils.serializeWithFunctions($__9.layers);
+      Scene.loadLayers($__10.layer_source, (function(layers) {
+        $__10.layers = layers;
+        $__10.layers_serialized = Utils.serializeWithFunctions($__10.layers);
         complete();
       }));
     }));
   }
   if (this.style_source) {
     queue.defer((function(complete) {
-      Scene.loadStyles($__9.style_source, (function(styles) {
-        $__9.styles = styles;
-        $__9.styles_serialized = Utils.serializeWithFunctions($__9.styles);
+      Scene.loadStyles($__10.style_source, (function(styles) {
+        $__10.styles = styles;
+        $__10.styles_serialized = Utils.serializeWithFunctions($__10.styles);
         complete();
       }));
     }));
@@ -16250,12 +16785,12 @@ Scene.prototype.loadScene = function(callback) {
   });
 };
 Scene.prototype.reloadScene = function() {
-  var $__9 = this;
+  var $__10 = this;
   if (!this.initialized) {
     return;
   }
   this.loadScene((function() {
-    $__9.rebuildTiles();
+    $__10.rebuildTiles();
   }));
 };
 Scene.prototype.refreshModes = function() {
@@ -16385,6 +16920,7 @@ Scene.postProcessStyles = function(styles) {
       }
     }
   }
+  styles.camera = styles.camera || {};
   return styles;
 };
 Scene.processLayersForTile = function(layers, tile) {
@@ -16445,7 +16981,7 @@ function findBaseLibraryURL() {
 ;
 
 
-},{"./geo":11,"./gl/gl":12,"./gl/gl_builders":13,"./gl/gl_modes":15,"./gl/gl_program":16,"./gl/gl_texture":18,"./point":20,"./style":23,"./utils":25,"gl-matrix":4,"js-yaml":"jkXaKS","queue-async":5}],22:[function(require,module,exports){
+},{"./camera":11,"./geo":12,"./gl/gl":13,"./gl/gl_builders":14,"./gl/gl_modes":16,"./gl/gl_program":17,"./gl/gl_texture":19,"./point":21,"./style":24,"./utils":26,"gl-matrix":4,"js-yaml":"jkXaKS","queue-async":5}],23:[function(require,module,exports){
 "use strict";
 var Utils = require('./utils');
 var Style = require('./style').Style;
@@ -16563,7 +17099,7 @@ SceneWorker.log = function(msg) {
 };
 
 
-},{"./gl/gl_builders":13,"./scene":21,"./style":23,"./tile_source.js":24,"./utils":25}],23:[function(require,module,exports){
+},{"./gl/gl_builders":14,"./scene":22,"./style":24,"./tile_source.js":25,"./utils":26}],24:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Style: {get: function() {
@@ -16740,7 +17276,7 @@ Style.parseStyleForFeature = function(feature, layer_name, layer_style, tile) {
 };
 
 
-},{"./geo":11}],24:[function(require,module,exports){
+},{"./geo":12}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16905,7 +17441,7 @@ if (module !== undefined) {
 }
 
 
-},{"./geo":11,"./point":20,"vector-tile":6}],25:[function(require,module,exports){
+},{"./geo":12,"./point":21,"vector-tile":6}],26:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   urlForPath: {get: function() {
@@ -16998,7 +17534,7 @@ function isPowerOf2(value) {
 }
 
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Vector: {get: function() {
@@ -17054,4 +17590,4 @@ Vector.lineIntersection = function(p1, p2, p3, p4, parallel_tolerance) {
 };
 
 
-},{}]},{},[22])
+},{}]},{},[23])

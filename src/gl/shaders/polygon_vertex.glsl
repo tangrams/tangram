@@ -6,7 +6,6 @@ uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
-uniform mat4 u_perspective;
 uniform float u_meters_per_pixel;
 uniform float u_num_layers;
 
@@ -48,12 +47,11 @@ varying vec3 v_color;
 const float light_ambient = 0.5;
 
 // Imported functions
-#pragma glslify: perspective = require(./modules/perspective)
-#pragma glslify: isometric = require(./modules/isometric, u_aspect = u_aspect)
 #pragma glslify: calculateZ = require(./modules/depth_scale)
 #pragma glslify: calculateLighting = require(./modules/lighting)
 
 #pragma tangram: globals
+#pragma tangram: camera
 
 void main() {
     #if defined(FEATURE_SELECTION)
@@ -93,26 +91,16 @@ void main() {
         v_color = a_color;
     #endif
 
-    // Projection
-    position = u_perspective * position;
-
-    // #if defined(PROJECTION_PERSPECTIVE)
-    //     position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
-    // #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-    //     position = isometric(position, vec2(0., 1.), 1.);
-    //     // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
-    // #endif
+    cameraProjection(position);
 
     // position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
-
     // float z_layer_scale = 4096.;
     // float z_layer_range = (u_num_layers + 1.) + z_layer_scale;
     // float z_layer = (a_layer + 1.) + z_layer_scale;
 
-
     // Offset each layer to avoid z-fighting or occlusion of otherwise "equal" layers
     // For cases where z=0, higher levels should be drawn on top of lower ones
-    position.z -= a_layer * .001;
+    position.z -= (a_layer + 1.) * .001;
 
     gl_Position = position;
 }

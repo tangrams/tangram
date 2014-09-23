@@ -26,7 +26,6 @@ shader_sources['point_vertex'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_perspective;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
@@ -49,6 +48,8 @@ shader_sources['point_vertex'] =
 "}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
+"#pragma tangram: camera\n" +
+"\n" +
 "void main() {\n" +
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
@@ -58,11 +59,12 @@ shader_sources['point_vertex'] =
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
 "  #endif\n" +
-"  vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);\n" +
+"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  #pragma tangram: vertex\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
-"  position.z -= a_layer * .001;\n" +
+"  cameraProjection(position);\n" +
+"  position.z -= (a_layer + 1.) * .001;\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -73,7 +75,6 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
-"uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
 "uniform float u_map_zoom;\n" +
@@ -197,7 +198,6 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_perspective;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
@@ -235,27 +235,19 @@ shader_sources['polygon_vertex'] =
 "#endif\n" +
 "\n" +
 "const float light_ambient = 0.5;\n" +
-"vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
-"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
-"  return position;\n" +
-"}\n" +
-"vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" +
-"  position.xy += position.z * axis * multiplier / u_aspect;\n" +
-"  return position;\n" +
-"}\n" +
-"float c_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
+"float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
 "  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
 "  float z_layer = (layer + 1.) * z_layer_scale;\n" +
 "  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
 "  z = (z_layer_range - z) / z_layer_range;\n" +
 "  return z;\n" +
 "}\n" +
-"vec3 e_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
 "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 f_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"vec3 d_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
 "  vec3 view_pos = vec3(0., 0., 500.);\n" +
 "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
@@ -273,27 +265,29 @@ shader_sources['polygon_vertex'] =
 "  color *= diffuse + specularReflection + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 e_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 d_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
+"vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  color = e_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  color = c_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
-"  color = f_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  color = d_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = e_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
+"  color = c_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  color = e_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
 "  color = color;\n" +
 "  #endif\n" +
 "  return color;\n" +
 "}\n" +
 "#pragma tangram: globals\n" +
+"\n" +
+"#pragma tangram: camera\n" +
 "\n" +
 "void main() {\n" +
 "  \n" +
@@ -314,14 +308,14 @@ shader_sources['polygon_vertex'] =
 "  \n" +
 "  #if defined(LIGHTING_VERTEX)\n" +
 "  v_color = a_color;\n" +
-"  v_lighting = d_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_lighting = b_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  v_position = position;\n" +
 "  v_normal = a_normal;\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  position = u_perspective * position;\n" +
-"  position.z -= a_layer * .001;\n" +
+"  cameraProjection(position);\n" +
+"  position.z -= (a_layer + 1.) * .001;\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
