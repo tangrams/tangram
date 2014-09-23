@@ -53,6 +53,11 @@ GLProgram.addTransform = function (key, ...transforms) {
     GLProgram.transforms[key].push(...transforms);
 };
 
+// Remove all global shader transforms for a given key
+GLProgram.removeTransform = function (key) {
+    GLProgram.transforms[key] = [];
+};
+
 GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
