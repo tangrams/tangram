@@ -575,9 +575,6 @@
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
 
-        // Camera controls
-        gui.add(scene, 'focal_length', .5, 8);
-
         // Screenshot
         gui.screenshot = function () {
             gui.queue_screenshot = true;
