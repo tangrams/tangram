@@ -97,15 +97,6 @@
 
     // GUI options for #define-based effects
     var gl_define_options = {
-        projection: {
-            projection: 'PROJECTION_PERSPECTIVE',
-            options: {
-                'None': '',
-                'Perspective': 'PROJECTION_PERSPECTIVE',
-                'Isometric': 'PROJECTION_ISOMETRIC'//,
-                // 'Pop-Up': 'PROJECTION_POPUP'
-            }
-        },
         lighting: {
             lighting: 'LIGHTING_POINT',
             options: {
@@ -294,7 +285,7 @@
                     layer_styles[l].visible = this.initial.layers[l].visible;
                 }
             };
-            gl_define_options.projection.projection = this.initial.projection || gl_define_options.projection.projection;
+            gui.camera = scene.styles.camera.type = this.initial.camera || scene.styles.camera.type;
 
             // Remove existing mode-specific controls
             gui.removeFolder(this.folder);
@@ -311,7 +302,7 @@
                         };
                     }
                 }
-                this.initial.projection = this.initial.projection || gl_define_options.projection.projection;
+                this.initial.camera = this.initial.camera || scene.styles.camera.type;
 
                 // Remove existing mode-specific controls
                 gui.removeFolder(this.folder);
@@ -320,7 +311,7 @@
                     var settings = this.settings[mode] || {};
 
                     // Change projection if specified
-                    gl_define_options.projection.projection = settings.projection || this.initial.projection;
+                    gui.camera = scene.styles.camera.type = settings.camera || this.initial.camera;
 
                     // Mode-specific setup function
                     if (settings.setup) {
@@ -342,9 +333,15 @@
 
             // Recompile/rebuild
             setGLProgramDefines();
+            scene.createCamera();
             scene.refreshModes();
             scene.rebuildTiles();
             updateURL();
+
+            // Force-update dat.gui
+            for (var i in gui.__controllers) {
+                gui.__controllers[i].updateDisplay();
+            }
         },
         settings: {
             'colorbleed': {
@@ -364,7 +361,6 @@
                 }
             },
             'popup': {
-                // projection: 'PROJECTION_ISOMETRIC', // force isometric when switching to pop-up
                 setup: function (mode) {
                     scene.styles.layers.buildings.mode = { name: mode };
 
@@ -506,7 +502,7 @@
                 }
             },
             'windows': {
-                projection: 'PROJECTION_ISOMETRIC', // force isometric
+                camera: 'isometric', // force isometric
                 setup: function (mode) {
                     scene.styles.layers.buildings.mode = { name: mode };
                     scene.styles.layers.pois.visible = false;
@@ -567,6 +563,18 @@
             this.__folders[name] = undefined;
             this.onResize();
         };
+
+        // Camera
+        var camera_types = {
+            'Flat': 'flat',
+            'Perspective': 'perspective',
+            'Isometric': 'isometric'
+        };
+        gui.camera = layer.scene.styles.camera.type;
+        gui.add(gui, 'camera', camera_types).onChange(function(value) {
+            layer.scene.styles.camera.type = value;
+            layer.scene.refreshCamera();
+        });
 
         // #define controls
         addGUIDefines();

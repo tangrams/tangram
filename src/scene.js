@@ -99,9 +99,7 @@ Scene.prototype.init = function (callback) {
             this.gl = GL.getContext(this.canvas);
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
-            // Camera
-            this.camera = Camera.create(this, this.styles.camera);
-
+            this.createCamera();
             this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
             this.initSelectionBuffer();
 
@@ -1118,6 +1116,7 @@ Scene.prototype.reloadScene = function () {
     }
 
     this.loadScene(() => {
+        this.refreshCamera();
         this.rebuildTiles();
     });
 };
@@ -1147,6 +1146,17 @@ Scene.prototype.updateActiveModes = function () {
         }
     }
     this.animated = animated;
+};
+
+// Create camera
+Scene.prototype.createCamera = function () {
+    this.camera = Camera.create(this, this.styles.camera);
+};
+
+// Replace camera
+Scene.prototype.refreshCamera = function () {
+    this.createCamera();
+    this.refreshModes();
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing modes/debugging

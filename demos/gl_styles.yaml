@@ -62,7 +62,7 @@ modes:
         shaders:
             uniforms:
                 u_popup_radius: 330 # 225
-                u_popup_height: 5 # 1.1
+                u_popup_height: 3 # 1.1
             transforms:
                 globals:
                     - url: src/gl/shaders/modules/popup.glsl
