@@ -1,5 +1,6 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
+EXORCIST = ./node_modules/exorcist/bin/exorcist.js
 TRACEUR_RUNTIME = ./node_modules/traceur/bin/traceur-runtime.js
 LIB_TESS = ./lib/libtess.cat.js
 EXTERNAL_LIBS = $(TRACEUR_RUNTIME) $(LIB_TESS)
@@ -16,8 +17,11 @@ all: \
 # browserify --debug adds source maps
 # include the traceur runtime via the html
 dist/tangram.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram > dist/tangram.debug.js
-
+	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram | $(EXORCIST) tangram.debug.js.map > dist/temp.tangram.debug.js
+	cat $(TRACEUR_RUNTIME) dist/temp.tangram.debug.js > dist/tangram.debug.js
+	rm dist/temp.tangram.debug.js
+	node sorcery.js
+	rm tangram.debug.js.map
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
 	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.tangram-worker.debug.js

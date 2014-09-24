@@ -7,7 +7,7 @@ import GLGeometry from './gl_geom';
 
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
-import * as Queue from 'queue-async';
+import Queue from 'queue-async';
 
 export var Modes = {};
 export var ModeManager = {};
