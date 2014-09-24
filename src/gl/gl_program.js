@@ -314,7 +314,7 @@ GLProgram.prototype.setUniforms = function (uniforms)
 
 // ex: program.uniform('3f', 'position', x, y, z);
 // TODO: only update uniforms when changed
-GLProgram.prototype.uniform = function (method, name) // method-appropriate arguments follow
+GLProgram.prototype.uniform = function (method, name, ...values) // 'values' is a method-appropriate arguments list
 {
     if (!this.compiled) {
         return;
@@ -324,7 +324,7 @@ GLProgram.prototype.uniform = function (method, name) // method-appropriate argu
     uniform.name = name;
     uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
     uniform.method = 'uniform' + method;
-    uniform.values = Array.prototype.slice.call(arguments, 2);
+    uniform.values = values;
     this.updateUniform(name);
 };
 
