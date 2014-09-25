@@ -17,11 +17,7 @@ all: \
 # browserify --debug adds source maps
 # include the traceur runtime via the html
 dist/tangram.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/module.js --debug --standalone Tangram | $(EXORCIST) tangram.debug.js.map > dist/temp.tangram.debug.js
-	cat $(TRACEUR_RUNTIME) dist/temp.tangram.debug.js > dist/tangram.debug.js
-	rm dist/temp.tangram.debug.js
-	node sorcery.js
-	rm tangram.debug.js.map
+	node build.js | $(EXORCIST) dist/tangram.js.map > dist/tangram.debug.js
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
 	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.tangram-worker.debug.js
