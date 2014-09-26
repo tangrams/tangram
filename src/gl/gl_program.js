@@ -1,9 +1,9 @@
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
-import * as Utils from '../utils';
+import {Utils} from '../utils';
 import {GL} from './gl';
 import GLTexture from './gl_texture';
-import * as Queue from 'queue-async';
+import Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id

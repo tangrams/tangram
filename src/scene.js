@@ -1,8 +1,8 @@
 import Point from './point';
 import {Geo} from './geo';
-import * as Utils from './utils';
+import {Utils} from './utils';
 import {Style} from './style';
-import * as Queue from 'queue-async';
+import Queue from 'queue-async';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
@@ -10,10 +10,14 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
-import {mat4, vec3} from 'gl-matrix';
+// import {mat4, vec3} from 'gl-matrix';
+import glMatrix from 'gl-matrix';
 
+var mat4 = glMatrix.mat4;
+var vec3 = glMatrix.vec3;
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
+
 Utils.runIfInMainThread(function() {
     try {
         yaml = require('js-yaml');

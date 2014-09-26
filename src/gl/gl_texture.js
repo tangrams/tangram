@@ -1,5 +1,5 @@
 // Texture management
-import * as Utils from '../utils';
+import {Utils} from '../utils';
 import {GL} from './gl';
 
 
