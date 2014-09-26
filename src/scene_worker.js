@@ -1,4 +1,4 @@
-import * as Utils from './utils';
+import Utils from './utils';
 import {Style} from './style';
 import Scene  from './scene';
 import {GLBuilders} from './gl/gl_builders';

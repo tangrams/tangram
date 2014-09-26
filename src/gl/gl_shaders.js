@@ -18,7 +18,8 @@ shader_sources['point_fragment'] =
 "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.);\n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['point_vertex'] =
 "\n" +
@@ -63,7 +64,8 @@ shader_sources['point_vertex'] =
 "  v_texcoord = a_texcoord;\n" +
 "  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
 "  gl_Position = position;\n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['polygon_fragment'] =
 "\n" +
@@ -180,7 +182,8 @@ shader_sources['polygon_fragment'] =
 "  color *= lighting;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['polygon_vertex'] =
 "\n" +
@@ -325,7 +328,8 @@ shader_sources['polygon_vertex'] =
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['selection_fragment'] =
 "\n" +
@@ -344,7 +348,8 @@ shader_sources['selection_fragment'] =
 "  gl_FragColor = vec3(0., 0., 0., 1.);\n" +
 "  #endif\n" +
 "  \n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['simple_polygon_fragment'] =
 "\n" +
@@ -378,7 +383,8 @@ shader_sources['simple_polygon_fragment'] =
 "  \n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
-"}\n" +"";
+"}\n" +
+"";
 
 shader_sources['simple_polygon_vertex'] =
 "\n" +
@@ -444,7 +450,8 @@ shader_sources['simple_polygon_vertex'] =
 "  #endif\n" +
 "  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
 "  gl_Position = position;\n" +
-"}\n" +"";
+"}\n" +
+"";
 
-if (module.exports !== undefined) { module.exports = shader_sources; }
+module.exports = shader_sources; 
 
