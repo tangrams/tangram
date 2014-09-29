@@ -6,7 +6,7 @@ var browserify = require('browserify'),
 
 browserify()
     .add(es6ify.runtime)
-    .require(require.resolve('./src/module'), { entry: true })
+    .require(require.resolve('./src/scene_worker'), { entry: true })
     .transform(es6ify)
     .bundle({ debug: true })
     .on('error', function (err) { console.error(err); console.log(err.stack); })

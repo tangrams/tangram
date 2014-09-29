@@ -15,3 +15,4 @@ module.exports = {
     GL: GL
 };
 
+window.Tangram = module.exports;
