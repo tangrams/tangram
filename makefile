@@ -1,5 +1,6 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
+KARMA = ./node_modules/karma/bin/karma
 LIB_TESS = ./lib/libtess.cat.js
 EXTERNAL_LIBS = $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
@@ -54,8 +55,14 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
+dist/testable.js:
+	node build_test.js > dist/testable.js
+
+unit: dist/testable.js
+	$(KARMA) run
+
 clean:
 	rm -f dist/*
 	rm -f src/gl/gl_shaders.js
 
-.PHONY : clean all dev
+.PHONY : clean all dev unit
