@@ -120,6 +120,7 @@ export class IsometricCamera extends Camera {
 
     constructor(scene, options = {}) {
         super(scene);
+        this.axis = options.axis || { x: 0, y: 1 };
         this.meter_view_mat = mat4.create();
 
         GLProgram.removeTransform('camera');
@@ -127,13 +128,11 @@ export class IsometricCamera extends Camera {
             'camera',
 
             'uniform mat4 u_meter_view;',
-
-            'vec2 isometric_axis = vec2(0., 1.);',
-            'float isometric_scale = 1.;',
+            'uniform vec2 u_isometric_axis;',
 
             'void cameraProjection (inout vec4 position) { \n\
                 position = u_meter_view * position; \n\
-                position.xy += position.z * isometric_axis * isometric_scale / 1.; \n\
+                position.xy += position.z * u_isometric_axis; \n\
                                                                                     \n\
                 // Reverse z for depth buffer so up is negative, \n\
                 // and scale down values so objects higher than one screen height will not get clipped \n\
@@ -149,6 +148,7 @@ export class IsometricCamera extends Camera {
     }
 
     setupProgram(gl_program) {
+        gl_program.uniform('2f', 'u_isometric_axis', this.axis.x / scene.view_aspect, this.axis.y);
         gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
     }
 
