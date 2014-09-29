@@ -13,10 +13,10 @@ all: \
 	dist/js-yaml.js
 
 # browserify --debug adds source maps
-dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/module.js)
+dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/module.js)
 	node build.js > dist/tangram.debug.js
 
-dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
+dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/scene_worker.js)
 	node build_worker.js > dist/temp.tangram-worker.debug.js
 	cat $(EXTERNAL_LIBS) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
 	rm dist/temp.tangram-worker.debug.js
