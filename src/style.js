@@ -1,7 +1,7 @@
 /*** Style helpers ***/
-var Geo = require('./geo.js');
+import {Geo} from './geo';
 
-var Style = {};
+export var Style = {};
 
 // Style helpers
 
@@ -237,6 +237,3 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     return style;
 };
 
-if (module !== undefined) {
-    module.exports = Style;
-}

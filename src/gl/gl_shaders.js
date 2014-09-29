@@ -453,5 +453,5 @@ shader_sources['simple_polygon_vertex'] =
 "}\n" +
 "";
 
-if (module.exports !== undefined) { module.exports = shader_sources; }
+module.exports = shader_sources; 
 

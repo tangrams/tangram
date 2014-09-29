@@ -1,15 +1,14 @@
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
-
-var GL = require('./gl.js');
-var GLTexture = require('./gl_texture.js');
-var Utils = require('../utils.js');
-var Queue = require('queue-async');
+import {Utils} from '../utils';
+import {GL} from './gl';
+import GLTexture from './gl_texture';
+import Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
 
-function GLProgram (gl, vertex_shader, fragment_shader, options)
+export default function GLProgram (gl, vertex_shader, fragment_shader, options)
 {
     options = options || {};
 
@@ -113,7 +112,7 @@ GLProgram.prototype.compile = function (callback)
     }
 
     // When all transform code snippets are collected, combine and inject them
-    queue.await(function(error) {
+    queue.await(error => {
         if (error) {
             console.log("error loading transforms: " + error);
             return;
@@ -171,7 +170,7 @@ GLProgram.prototype.compile = function (callback)
         if (typeof callback == 'function') {
             callback();
         }
-    }.bind(this));
+    });
 };
 
 // Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
@@ -353,7 +352,3 @@ GLProgram.prototype.attribute = function (name)
 
     return attrib;
 };
-
-if (module !== undefined) {
-    module.exports = GLProgram;
-}

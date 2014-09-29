@@ -1,6 +1,6 @@
 /*** Vector functions - vectors provided as [x, y, z] arrays ***/
 
-var Vector = {};
+export var Vector = {};
 
 // Vector length squared
 Vector.lengthSq = function (v)
@@ -78,7 +78,3 @@ Vector.lineIntersection = function (p1, p2, p3, p4, parallel_tolerance)
     }
     return null; // return null if lines are (close to) parallel
 };
-
-if (module !== undefined) {
-    module.exports = Vector;
-}

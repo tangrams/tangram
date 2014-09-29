@@ -3,8 +3,7 @@
 // to read those attribs that it does recognize, using the attrib offsets to skip others.
 // Attribs are an array, in layout order, of: name, size, type, normalized
 // ex: { name: 'position', size: 3, type: gl.FLOAT, normalized: false }
-function GLVertexLayout (gl, attribs)
-{
+export default function GLVertexLayout (gl, attribs) {
     this.attribs = attribs;
 
     // Calc vertex stride
@@ -64,7 +63,3 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
         delete GLVertexLayout.enabled_attribs[location];
     }
 };
-
-if (module !== undefined) {
-    module.exports = GLVertexLayout;
-}

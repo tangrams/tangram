@@ -1,9 +1,6 @@
 // WebGL management and rendering functions
 
-var Utils = require('../utils.js');
-// var GLVertexArrayObject = require('./gl_vao.js');
-
-var GL = {};
+export var GL = {};
 
 // Setup a WebGL context
 // If no canvas element is provided, one is created and added to the document body
@@ -267,7 +264,3 @@ GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
 //     }
 //     return vertex_data;
 // };
-
-if (module !== undefined) {
-    module.exports = GL;
-}

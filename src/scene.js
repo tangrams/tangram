@@ -1,20 +1,22 @@
-var Point = require('./point.js');
-var Geo = require('./geo.js');
-var Style = require('./style.js');
-var ModeManager = require('./gl/gl_modes').ModeManager;
-var Utils = require('./utils.js');
-var Queue = require('queue-async');
+import Point from './point';
+import {Geo} from './geo';
+import {Utils} from './utils';
+import {Style} from './style';
+import Queue from 'queue-async';
+import {GL} from './gl/gl';
+import {GLBuilders} from './gl/gl_builders';
+import GLProgram from './gl/gl_program';
+import GLTexture from './gl/gl_texture';
+import {ModeManager} from './gl/gl_modes';
 
-var GL = require('./gl/gl.js');
-var GLProgram = require('./gl/gl_program.js');
-var GLBuilders = require('./gl/gl_builders.js');
-var GLTexture = require('./gl/gl_texture.js');
+// import {mat4, vec3} from 'gl-matrix';
+import glMatrix from 'gl-matrix';
 
-var mat4 = require('gl-matrix').mat4;
-var vec3 = require('gl-matrix').vec3;
-
+var mat4 = glMatrix.mat4;
+var vec3 = glMatrix.vec3;
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
+
 Utils.runIfInMainThread(function() {
     try {
         yaml = require('js-yaml');
@@ -34,8 +36,9 @@ GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-function Scene (tile_source, layers, styles, options)
-{
+// TODO, convert this to the class sytnax once we get the runtime
+// working, IW
+export default function Scene(tile_source, layers, styles, options) {
     var options = options || {};
     this.initialized = false;
 
@@ -64,30 +67,29 @@ function Scene (tile_source, layers, styles, options)
     this.resetTime();
 }
 
-Scene.prototype.init = function (callback)
-{
+Scene.prototype.init = function (callback) {
     if (this.initialized) {
         return;
     }
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene(function() {
+    this.loadScene(() => {
         var queue = Queue();
 
         // Create rendering modes
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             this.modes = Scene.createModes(this.styles);
             this.updateActiveModes();
             complete();
-        }.bind(this));
+        });
 
         // Create web workers
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             this.createWorkers(complete);
-        }.bind(this));
+        });
 
         // Then create GL context
-        queue.await(function() {
+        queue.await(() => {
             // Create canvas & GL
             this.container = this.container || document.body;
             this.canvas = document.createElement('canvas');
@@ -112,20 +114,18 @@ Scene.prototype.init = function (callback)
             if (typeof callback == 'function') {
                 callback();
             }
-        }.bind(this));
-    }.bind(this));
+        });
+    });
 };
 
-Scene.prototype.initModes = function ()
-{
+Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
         this.modes[m].init(this.gl);
     }
 };
 
-Scene.prototype.initSelectionBuffer = function ()
-{
+Scene.prototype.initSelectionBuffer = function () {
     // Selection state tracking
     this.pixel = new Uint8Array(4);
     this.pixel32 = new Float32Array(this.pixel.buffer);
@@ -159,23 +159,22 @@ Scene.prototype.initSelectionBuffer = function ()
 };
 
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
-Scene.prototype.createWorkers = function (callback)
-{
+Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
-    var worker_url = Scene.library_base_url + 'tangram-worker.min.js' + '?' + (+new Date());
+    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer(function(complete) {
+    queue.defer(complete => {
         // Local object URLs supported?
         var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             var req = new XMLHttpRequest();
-            req.onload = function () {
+            req.onload = () => {
                 var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 complete();
-            }.bind(this);
+            };
             req.open('GET', worker_url, true /* async flag */);
             req.responseType = 'text';
             req.send();
@@ -186,15 +185,15 @@ Scene.prototype.createWorkers = function (callback)
             this.makeWorkers(worker_url);
             complete();
         }
-    }.bind(this));
+    });
 
     // Init workers
-    queue.await(function() {
-        this.workers.forEach(function(worker) {
+    queue.await(() => {
+        this.workers.forEach(worker => {
             worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
             worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
             worker.addEventListener('message', this.workerLogMessage.bind(this));
-        }.bind(this));
+        });
 
         this.next_worker = 0;
         this.selection_map_worker_size = {};
@@ -202,12 +201,11 @@ Scene.prototype.createWorkers = function (callback)
         if (typeof callback == 'function') {
             callback();
         }
-    }.bind(this));
+    });
 };
 
 // Instantiate workers from URL
-Scene.prototype.makeWorkers = function (url)
-{
+Scene.prototype.makeWorkers = function (url) {
     this.workers = [];
     for (var w=0; w < this.num_workers; w++) {
         this.workers.push(new Worker(url));
@@ -220,8 +218,7 @@ Scene.prototype.makeWorkers = function (url)
 };
 
 // Post a message about a tile to the next worker (round robbin)
-Scene.prototype.workerPostMessageForTile = function (tile, message)
-{
+Scene.prototype.workerPostMessageForTile = function (tile, message) {
     if (tile.worker == null) {
         tile.worker = this.next_worker;
         this.next_worker = (tile.worker + 1) % this.workers.length;
@@ -229,21 +226,18 @@ Scene.prototype.workerPostMessageForTile = function (tile, message)
     this.workers[tile.worker].postMessage(message);
 };
 
-Scene.prototype.setCenter = function (lng, lat)
-{
+Scene.prototype.setCenter = function (lng, lat) {
     this.center = { lng: lng, lat: lat };
     this.dirty = true;
 };
 
-Scene.prototype.startZoom = function ()
-{
+Scene.prototype.startZoom = function () {
     this.last_zoom = this.zoom;
     this.zooming = true;
 };
 
 Scene.prototype.preserve_tiles_within_zoom = 2;
-Scene.prototype.setZoom = function (zoom)
-{
+Scene.prototype.setZoom = function (zoom) {
     // Schedule GL tiles for removal on zoom
     var below = zoom;
     var above = zoom;
@@ -268,8 +262,7 @@ Scene.prototype.setZoom = function (zoom)
     this.dirty = true;
 };
 
-Scene.prototype.removeTilesOutsideZoomRange = function (below, above)
-{
+Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
@@ -288,8 +281,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above)
     }
 };
 
-Scene.prototype.setBounds = function (sw, ne)
-{
+Scene.prototype.setBounds = function (sw, ne) {
     this.bounds = {
         sw: { lng: sw.lng, lat: sw.lat },
         ne: { lng: ne.lng, lat: ne.lat }
@@ -320,22 +312,19 @@ Scene.prototype.setBounds = function (sw, ne)
     this.dirty = true;
 };
 
-Scene.prototype.isTileInZoom = function (tile)
-{
+Scene.prototype.isTileInZoom = function (tile) {
     return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
 };
 
 // Update visibility and return true if changed
-Scene.prototype.updateVisibilityForTile = function (tile)
-{
+Scene.prototype.updateVisibilityForTile = function (tile) {
     var visible = tile.visible;
     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
     return (visible != tile.visible);
 };
 
-Scene.prototype.resizeMap = function (width, height)
-{
+Scene.prototype.resizeMap = function (width, height) {
     this.dirty = true;
 
     this.css_size = { width: width, height: height };
@@ -350,23 +339,20 @@ Scene.prototype.resizeMap = function (width, height)
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-Scene.prototype.requestRedraw = function ()
-{
+Scene.prototype.requestRedraw = function () {
     this.dirty = true;
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
-Scene.calculateZ = function (layer, tile, layer_offset, feature_offset)
-{
+Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     // var layer_offset = layer_offset || 0;
     // var feature_offset = feature_offset || 0;
     var z = 0; // TODO: made this a no-op until revisiting where it should live - one-time calc here, in vertex layout/shader, etc.
     return z;
 };
 
-Scene.prototype.render = function ()
-{
+Scene.prototype.render = function () {
     this.loadQueuedTiles();
 
     // Render on demand
@@ -388,8 +374,7 @@ Scene.prototype.render = function ()
     return true;
 };
 
-Scene.prototype.resetFrame = function ()
-{
+Scene.prototype.resetFrame = function () {
     if (!this.initialized) {
         return;
     }
@@ -408,8 +393,7 @@ Scene.prototype.resetFrame = function ()
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 };
 
-Scene.prototype.renderGL = function ()
-{
+Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
     this.input();
@@ -594,8 +578,7 @@ Scene.prototype.renderGL = function ()
 
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
-Scene.prototype.getFeatureAt = function (pixel, callback)
-{
+Scene.prototype.getFeatureAt = function (pixel, callback) {
     if (!this.initialized) {
         return;
     }
@@ -614,8 +597,7 @@ Scene.prototype.getFeatureAt = function (pixel, callback)
     this.dirty = true;
 };
 
-Scene.prototype.readSelectionBuffer = function ()
-{
+Scene.prototype.readSelectionBuffer = function () {
     var gl = this.gl;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -649,8 +631,7 @@ Scene.prototype.readSelectionBuffer = function ()
 };
 
 // Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (event)
-{
+Scene.prototype.workerGetFeatureSelection = function (event) {
     if (event.data.type != 'getFeatureSelection') {
         return;
     }
@@ -671,14 +652,12 @@ Scene.prototype.workerGetFeatureSelection = function (event)
 };
 
 // Queue a tile for load
-Scene.prototype.loadTile = function (coords, div, callback)
-{
+Scene.prototype.loadTile = function (coords, div, callback) {
     this.queued_tiles[this.queued_tiles.length] = arguments;
 };
 
 // Load all queued tiles
-Scene.prototype.loadQueuedTiles = function ()
-{
+Scene.prototype.loadQueuedTiles = function () {
     if (!this.initialized) {
         return;
     }
@@ -695,8 +674,7 @@ Scene.prototype.loadQueuedTiles = function ()
 };
 
 // Load a single tile
-Scene.prototype._loadTile = function (coords, div, callback)
-{
+Scene.prototype._loadTile = function (coords, div, callback) {
     // Overzoom?
     if (coords.z > this.tile_source.max_zoom) {
         var zgap = coords.z - this.tile_source.max_zoom;
@@ -749,8 +727,7 @@ Scene.prototype._loadTile = function (coords, div, callback)
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function ()
-{
+Scene.prototype.rebuildTiles = function () {
     if (!this.initialized) {
         return;
     }
@@ -761,13 +738,13 @@ Scene.prototype.rebuildTiles = function ()
     this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
-    this.workers.forEach(function(worker) {
+    this.workers.forEach(worker => {
         worker.postMessage({
             type: 'prepareForRebuild',
             layers: this.layers_serialized,
             styles: this.styles_serialized
         });
-    }.bind(this));
+    });
 
     // Rebuild visible tiles first, from center out
     // console.log("find visible");
@@ -782,13 +759,13 @@ Scene.prototype.rebuildTiles = function ()
     }
 
     // console.log("sort visible distance");
-    visible.sort(function(a, b) {
+    visible.sort((a, b) => {
         // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
         // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
         var ad = this.tiles[a].center_dist;
         var bd = this.tiles[b].center_dist;
         return (bd > ad ? -1 : (bd == ad ? 0 : 1));
-    }.bind(this));
+    });
 
     // console.log("build visible");
     for (var t in visible) {
@@ -811,8 +788,7 @@ Scene.prototype.rebuildTiles = function ()
     this.resetTime();
 };
 
-Scene.prototype.buildTile = function(key)
-{
+Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
     this.workerPostMessageForTile(tile, {
@@ -832,8 +808,7 @@ Scene.prototype.buildTile = function(key)
 
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-Scene.addTile = function (tile, layers, styles, modes)
-{
+Scene.addTile = function (tile, layers, styles, modes) {
     var layer, style, feature, z, mode;
     var vertex_data = {};
 
@@ -925,8 +900,7 @@ Scene.addTile = function (tile, layers, styles, modes)
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-Scene.prototype.workerBuildTileCompleted = function (event)
-{
+Scene.prototype.workerBuildTileCompleted = function (event) {
     if (event.data.type != 'buildTileCompleted') {
         return;
     }
@@ -934,7 +908,11 @@ Scene.prototype.workerBuildTileCompleted = function (event)
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
     this.selection_map_size = 0;
-    Object.keys(this.selection_map_worker_size).forEach(function(w) { this.selection_map_size += this.selection_map_worker_size[w]; }.bind(this));
+    Object
+        .keys(this.selection_map_worker_size)
+        .forEach(worker => {
+            this.selection_map_size += this.selection_map_worker_size[worker];
+        });
     console.log("selection map: " + this.selection_map_size + " features");
 
     var tile = event.data.tile;
@@ -956,8 +934,7 @@ Scene.prototype.workerBuildTileCompleted = function (event)
 };
 
 // Called on main thread when a web worker completes processing for a single tile
-Scene.prototype.buildGLGeometry = function (tile)
-{
+Scene.prototype.buildGLGeometry = function (tile) {
     var vertex_data = tile.vertex_data;
 
     // Cleanup existing GL geometry objects
@@ -1020,8 +997,7 @@ Scene.prototype.freeTileResources = function (tile)
 };
 
 // Attaches tracking and debug into to the provided tile DOM element
-Scene.prototype.updateTileElement = function (tile, div)
-{
+Scene.prototype.updateTileElement = function (tile, div) {
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
     div.style.width = '256px';
@@ -1047,8 +1023,7 @@ Scene.prototype.updateTileElement = function (tile, div)
 // Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
 // Used for selectively updating properties of tiles passed between main thread and worker
 // (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
-Scene.prototype.mergeTile = function (key, source_tile)
-{
+Scene.prototype.mergeTile = function (key, source_tile) {
     var tile = this.tiles[key];
 
     if (tile == null) {
@@ -1065,8 +1040,7 @@ Scene.prototype.mergeTile = function (key, source_tile)
 };
 
 // Load (or reload) the scene config
-Scene.prototype.loadScene = function (callback)
-{
+Scene.prototype.loadScene = function (callback) {
     var queue = Queue();
 
     // If this is the first time we're loading the scene, copy any URLs
@@ -1080,30 +1054,30 @@ Scene.prototype.loadScene = function (callback)
 
     // Layer by URL
     if (this.layer_source) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             Scene.loadLayers(
                 this.layer_source,
-                function(layers) {
+                layers => {
                     this.layers = layers;
                     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
                     complete();
-                }.bind(this)
+                }
             );
-        }.bind(this));
+        });
     }
 
     // Style by URL
     if (this.style_source) {
-        queue.defer(function(complete) {
+        queue.defer(complete => {
             Scene.loadStyles(
                 this.style_source,
-                function(styles) {
+                styles => {
                     this.styles = styles;
                     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
                     complete();
-                }.bind(this)
+                }
             );
-        }.bind(this));
+        });
     }
     // Style object
     else {
@@ -1119,20 +1093,18 @@ Scene.prototype.loadScene = function (callback)
 };
 
 // Reload scene config and rebuild tiles
-Scene.prototype.reloadScene = function ()
-{
+Scene.prototype.reloadScene = function () {
     if (!this.initialized) {
         return;
     }
 
-    this.loadScene(function() {
+    this.loadScene(() => {
         this.rebuildTiles();
-    }.bind(this));
+    });
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.refreshModes = function ()
-{
+Scene.prototype.refreshModes = function () {
     if (!this.initialized) {
         return;
     }
@@ -1140,8 +1112,7 @@ Scene.prototype.refreshModes = function ()
     this.modes = Scene.refreshModes(this.modes, this.styles);
 };
 
-Scene.prototype.updateActiveModes = function ()
-{
+Scene.prototype.updateActiveModes = function () {
     // Make a set of currently active modes (used in a layer)
     this.active_modes = {};
     var animated = false; // is any active mode animated?
@@ -1160,16 +1131,14 @@ Scene.prototype.updateActiveModes = function ()
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing modes/debugging
-Scene.prototype.resetTime = function ()
-{
+Scene.prototype.resetTime = function () {
     this.start_time = +new Date();
 };
 
 // User input
 // TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
 
-Scene.prototype.initInputHandlers = function ()
-{
+Scene.prototype.initInputHandlers = function () {
     // this.key = null;
 
     // document.addEventListener('keydown', function (event) {
@@ -1199,8 +1168,7 @@ Scene.prototype.initInputHandlers = function ()
     // }.bind(this));
 };
 
-Scene.prototype.input = function ()
-{
+Scene.prototype.input = function () {
     // // Fractional zoom scaling
     // if (this.key == 'up') {
     //     this.setZoom(this.zoom + this.zoom_step);
@@ -1215,8 +1183,7 @@ Scene.prototype.input = function ()
 
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
-Scene.prototype.trackTileSetLoadStart = function ()
-{
+Scene.prototype.trackTileSetLoadStart = function () {
     // Start tracking new tile set if no other tiles already loading
     if (this.tile_set_loading == null) {
         this.tile_set_loading = +new Date();
@@ -1224,8 +1191,7 @@ Scene.prototype.trackTileSetLoadStart = function ()
     }
 };
 
-Scene.prototype.trackTileSetLoadEnd = function ()
-{
+Scene.prototype.trackTileSetLoadEnd = function () {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
@@ -1244,8 +1210,7 @@ Scene.prototype.trackTileSetLoadEnd = function ()
     }
 };
 
-Scene.prototype.printDebugForTile = function (tile)
-{
+Scene.prototype.printDebugForTile = function (tile) {
     console.log(
         "debug for " + tile.key + ': [ ' +
         Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
@@ -1253,16 +1218,14 @@ Scene.prototype.printDebugForTile = function (tile)
 };
 
 // Recompile all shaders
-Scene.prototype.compileShaders = function ()
-{
+Scene.prototype.compileShaders = function () {
     for (var m in this.modes) {
         this.modes[m].gl_program.compile();
     }
 };
 
 // Sum of a debug property across tiles
-Scene.prototype.getDebugSum = function (prop, filter)
-{
+Scene.prototype.getDebugSum = function (prop, filter) {
     var sum = 0;
     for (var t in this.tiles) {
         if (this.tiles[t].debug[prop] != null && (typeof filter != 'function' || filter(this.tiles[t]) == true)) {
@@ -1273,14 +1236,12 @@ Scene.prototype.getDebugSum = function (prop, filter)
 };
 
 // Average of a debug property across tiles
-Scene.prototype.getDebugAverage = function (prop, filter)
-{
+Scene.prototype.getDebugAverage = function (prop, filter) {
     return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
 };
 
 // Log messages pass through from web workers
-Scene.prototype.workerLogMessage = function (event)
-{
+Scene.prototype.workerLogMessage = function (event) {
     if (event.data.type != 'log') {
         return;
     }
@@ -1291,8 +1252,7 @@ Scene.prototype.workerLogMessage = function (event)
 
 /*** Class methods (stateless) ***/
 
-Scene.loadLayers = function (url, callback)
-{
+Scene.loadLayers = function (url, callback) {
     var layers;
     var req = new XMLHttpRequest();
     req.onload = function () {
@@ -1307,8 +1267,7 @@ Scene.loadLayers = function (url, callback)
     req.send();
 };
 
-Scene.loadStyles = function (url, callback)
-{
+Scene.loadStyles = function (url, callback) {
     var styles;
     var req = new XMLHttpRequest();
 
@@ -1346,8 +1305,7 @@ Scene.loadStyles = function (url, callback)
 };
 
 // Normalize some style settings that may not have been explicitly specified in the stylesheet
-Scene.postProcessStyles = function (styles)
-{
+Scene.postProcessStyles = function (styles) {
     // Post-process styles
     for (var m in styles.layers) {
         if (styles.layers[m].visible !== false) {
@@ -1367,8 +1325,7 @@ Scene.postProcessStyles = function (styles)
 
 // Processes the tile response to create layers as defined by the scene
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
-Scene.processLayersForTile = function (layers, tile)
-{
+Scene.processLayersForTile = function (layers, tile) {
     var tile_layers = {};
     for (var t=0; t < layers.length; t++) {
         layers[t].number = t;
@@ -1396,8 +1353,7 @@ Scene.processLayersForTile = function (layers, tile)
 };
 
 // Called once on instantiation
-Scene.createModes = function (styles)
-{
+Scene.createModes = function (styles) {
     var modes = {};
 
     // Built-in modes
@@ -1416,8 +1372,7 @@ Scene.createModes = function (styles)
     return modes;
 };
 
-Scene.refreshModes = function (modes, styles)
-{
+Scene.refreshModes = function (modes, styles) {
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
     for (var m in styles.modes) {
@@ -1439,8 +1394,7 @@ Scene.refreshModes = function (modes, styles)
 
 // Get base URL from which the library was loaded
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
-function findBaseLibraryURL ()
-{
+function findBaseLibraryURL () {
     Scene.library_base_url = '';
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
@@ -1454,7 +1408,3 @@ function findBaseLibraryURL ()
         }
     }
 };
-
-if (module !== undefined) {
-    module.exports = Scene;
-}

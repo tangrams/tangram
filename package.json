@@ -29,7 +29,8 @@
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
-    "browserify": "^4.2.0",
-    "glslify": "^1.5.1"
+    "glslify": "^1.5.1",
+    "browserify": "3.33.1",
+    "es6ify": "1.4.0"
   }
 }

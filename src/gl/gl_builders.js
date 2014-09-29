@@ -1,8 +1,8 @@
-var Vector = require('../vector.js');
-var Point = require('../point.js');
-var GL = require('./gl.js');
+import Point from '../point';
+import {Vector} from '../vector';
+import {GL} from './gl';
 
-var GLBuilders = {};
+export var GLBuilders = {};
 
 GLBuilders.debug = false;
 
@@ -606,7 +606,3 @@ GLBuilders.buildZigzagLineTestPattern = function ()
     // console.log(g.geometry.coordinates);
     return g;
 };
-
-if (module !== undefined) {
-    module.exports = GLBuilders;
-}
