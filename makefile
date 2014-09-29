@@ -1,8 +1,7 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
-TRACEUR_RUNTIME = ./node_modules/traceur/bin/traceur-runtime.js
 LIB_TESS = ./lib/libtess.cat.js
-EXTERNAL_LIBS = $(TRACEUR_RUNTIME) $(LIB_TESS)
+EXTERNAL_LIBS = $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
 
 all: \
@@ -14,12 +13,11 @@ all: \
 	dist/js-yaml.js
 
 # browserify --debug adds source maps
-# include the traceur runtime via the html
-dist/tangram.debug.js: $(shell $(BROWSERIFY) --list src/module.js)
+dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/module.js)
 	node build.js > dist/tangram.debug.js
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -x $(EXTERNAL_MODULES) src/scene_worker.js)
-	$(BROWSERIFY) -x $(EXTERNAL_MODULES) src/scene_worker.js > dist/temp.tangram-worker.debug.js
+	node build_worker.js > dist/temp.tangram-worker.debug.js
 	cat $(EXTERNAL_LIBS) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
 	rm dist/temp.tangram-worker.debug.js
 
@@ -27,7 +25,7 @@ dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c -m -o dist/tangram.min.js
 
 dist/tangram-worker.min.js: dist/tangram-worker.debug.js
-	$(UGLIFY) $(TRACEUR_RUNTIME) dist/tangram-worker.debug.js -c -m > dist/tangram-worker.min.js
+	$(UGLIFY) dist/tangram-worker.debug.js -c -m > dist/tangram-worker.min.js
 
 # externalized & modularized js-yaml, so YAML support can be included optionally (parser is large)
 dist/js-yaml.js: ./node_modules/js-yaml/index.js
