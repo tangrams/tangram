@@ -1,7 +1,9 @@
 import {Geo} from './geo';
 import GLProgram from './gl/gl_program';
 
-import {mat4, vec3} from 'gl-matrix';
+import glMatrix from 'gl-matrix';
+var mat4 = glMatrix.mat4;
+var vec3 = glMatrix.vec3;
 
 // Note: We want something more like an interface here. Such a thin base class may not be worth it, but does provide some notational clarity anyway.
 export default class Camera {

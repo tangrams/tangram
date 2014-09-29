@@ -10,11 +10,10 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
-// import {mat4, vec3} from 'gl-matrix';
 import glMatrix from 'gl-matrix';
-
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
+
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
 
