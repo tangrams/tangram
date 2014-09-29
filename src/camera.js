@@ -5,7 +5,7 @@ import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
-// Note: We want something more like an interface here. Such a thin base class may not be worth it, but does provide some notational clarity anyway.
+// Abstract base class
 export default class Camera {
 
     constructor(scene) {
@@ -29,17 +29,20 @@ export default class Camera {
     update() {
     }
 
-    // Called once per frame per program (e.g. for main render pass, then for eac additional pass for feature selection, etc.)
+    // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
     setupProgram(gl_program) {
     }
 
 }
 
+// Classic perspective matrix projection
 export class PerspectiveCamera extends Camera {
 
     constructor(scene, options = {}) {
         super(scene);
-        this.focal_length = 2.5;
+        this.focal_length = options.focal_length || 2.5;
+        this.computed_focal_length = null;
+        this.height = null;
         this.perspective_mat = mat4.create();
 
         GLProgram.removeTransform('camera');
@@ -55,25 +58,55 @@ export class PerspectiveCamera extends Camera {
     }
 
     update() {
+        // TODO: only re-calculate these vars when necessary
+
         // Height of the viewport in meters at current zoom
         var meter_zoom_y = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
 
+        // Determine focal length, which can be a constant value, or interpolated across zoom levels
+        if (!(typeof this.focal_length === 'object' && this.focal_length.length >= 0)) {
+            this.computed_focal_length = this.focal_length;
+        }
+        else {
+            // Min zoom
+            if (this.scene.zoom <= this.focal_length[0][0]) {
+                this.computed_focal_length = this.focal_length[0][1];
+            }
+            // Max zoom
+            else if (this.scene.zoom >= this.focal_length[this.focal_length.length-1][0]) {
+                this.computed_focal_length = this.focal_length[this.focal_length.length-1][1];
+            }
+            // Interpolated zoom
+            else {
+                for (var i=0; i < this.focal_length.length - 1; i++) {
+                    if (this.scene.zoom >= this.focal_length[i][0] && this.scene.zoom < this.focal_length[i+1][0]) {
+                        var focal_diff = this.focal_length[i+1][1] - this.focal_length[i][1];
+                        var min_zoom = this.focal_length[i][0];
+                        var max_zoom = this.focal_length[i+1][0];
+                        // TODO: log interpolation
+                        this.computed_focal_length = focal_diff * (this.scene.zoom - min_zoom) / (max_zoom - min_zoom) + this.focal_length[i][1];
+                        break;
+                    }
+                }
+            }
+        }
+
         // Distance that camera should be from ground such that it fits the field of view expected
         // for a conventional web mercator map at the current zoom level and camera focal length
-        var camera_height = meter_zoom_y / 2 * this.focal_length;
+        this.height = meter_zoom_y / 2 * this.computed_focal_length;
 
         // Perspective matrix params
         // Adjusment of focal length (arctangent) is because perspective matrix builder expects field-of-view in radians, but we are
         // passing the final value expected to be in the perspective matrix, so we need to reverse-calculate the original FOV here.
-        var fov = Math.atan(1 / this.focal_length) * 2;
+        var fov = Math.atan(1 / this.computed_focal_length) * 2;
         var aspect = this.scene.view_aspect;
         var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-        var zfar = (camera_height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
+        var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
 
         mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
 
         // Translate geometry into the distance so that camera is appropriate level above ground
-        mat4.translate(this.perspective_mat, this.perspective_mat, vec3.fromValues(0, 0, -camera_height));
+        mat4.translate(this.perspective_mat, this.perspective_mat, vec3.fromValues(0, 0, -this.height));
     }
 
     setupProgram(gl_program) {
