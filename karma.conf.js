@@ -18,6 +18,9 @@ module.exports = function (config) {
         logLevel: config.LOG_INFO,
         autoWatch: false,
         browsers: ['Chrome'],
+        proxies: {
+            '/dist/': 'http://localhost:9876/base/dist/'
+        },
         singleRun: false
     });
 
