@@ -242,7 +242,7 @@ Scene.prototype.setZoom = function (zoom) {
     var below = zoom;
     var above = zoom;
     if (this.last_zoom != null) {
-        console.log("scene.last_zoom: " + this.last_zoom);
+        console.log(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
             if (zoom > this.last_zoom) {
                 below = zoom - this.preserve_tiles_within_zoom;
@@ -266,7 +266,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
-    console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
+    console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
@@ -276,7 +276,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     }
     for (var r=0; r < remove_tiles.length; r++) {
         var key = remove_tiles[r];
-        console.log("removed " + key + " (outside range [" + below + ", " + above + "])");
+        console.log(`removed ${key} (outside range [${below}, ${above}])`);
         this.removeTile(key);
     }
 };
@@ -302,7 +302,7 @@ Scene.prototype.setBounds = function (sw, ne) {
         (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
     );
 
-    // console.log("set scene bounds to " + JSON.stringify(this.bounds));
+    // console.log(`set scene bounds to ${JSON.stringify(this.bounds)}`);
 
     // Mark tiles as visible/invisible
     for (var t in this.tiles) {
@@ -569,7 +569,7 @@ Scene.prototype.renderGL = function () {
     }
 
     if (render_count != this.last_render_count) {
-        console.log("rendered " + render_count + " primitives");
+        console.log(`rendered ${render_count} primitives`);
     }
     this.last_render_count = render_count;
 
@@ -617,9 +617,8 @@ Scene.prototype.readSelectionBuffer = function () {
     // If feature found, ask appropriate web worker to lookup feature
     var worker_id = this.pixel[3];
     if (worker_id != 255) { // 255 indicates an empty selection buffer pixel
-        // console.log("worker_id: " + worker_id);
+        // console.log(`worker_id: ${worker_id}`);
         if (this.workers[worker_id] != null) {
-            // console.log("post message");
             this.workers[worker_id].postMessage({
                 type: 'getFeatureSelection',
                 key: feature_key
@@ -683,7 +682,7 @@ Scene.prototype._loadTile = function (coords, div, callback) {
         coords.y = ~~(coords.y / Math.pow(2, zgap));
         coords.display_z = coords.z; // z without overzoom
         coords.z -= zgap;
-        // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
+        // console.log(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
     }
 
     this.trackTileSetLoadStart();
@@ -693,10 +692,10 @@ Scene.prototype._loadTile = function (coords, div, callback) {
     // Already loading/loaded?
     if (this.tiles[key]) {
         // if (this.tiles[key].loaded == true) {
-        //     console.log("use loaded tile " + key + " from cache");
+        //     console.log(`use loaded tile ${key} from cache`);
         // }
         // if (this.tiles[key].loading == true) {
-        //     console.log("already loading tile " + key + ", skip");
+        //     console.log(`already loading tile ${key}, skip`);
         // }
 
         if (callback) {
@@ -913,13 +912,13 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
         .forEach(worker => {
             this.selection_map_size += this.selection_map_worker_size[worker];
         });
-    console.log("selection map: " + this.selection_map_size + " features");
+    console.log(`selection map: ${this.selection_map_size} features`);
 
     var tile = event.data.tile;
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        console.log("discarded tile " + tile.key + " in Scene.tileWorkerCompleted because previously removed");
+        console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
         return;
     }
 
@@ -963,7 +962,7 @@ Scene.prototype.removeTile = function (key)
         return;
     }
 
-    console.log("tile unload for " + key);
+    console.log(`tile unload for ${key}`);
 
     if (this.zooming == true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
@@ -1032,7 +1031,7 @@ Scene.prototype.mergeTile = function (key, source_tile) {
     }
 
     for (var p in source_tile) {
-        // console.log("merging " + p + ": " + source_tile[p]);
+        // console.log(`merging ${p}: ${source_tile[p]}`);
         tile[p] = source_tile[p];
     }
 
@@ -1205,15 +1204,15 @@ Scene.prototype.trackTileSetLoadEnd = function () {
         if (end_tile_set == true) {
             this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
             this.tile_set_loading = null;
-            console.log("tile set load FINISHED in: " + this.last_tile_set_load);
+            console.log(`tile set load FINISHED in: ${this.last_tile_set_load}`);
         }
     }
 };
 
 Scene.prototype.printDebugForTile = function (tile) {
     console.log(
-        "debug for " + tile.key + ': [ ' +
-        Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
+        `debug for ${tile.key}: [ ` +
+        Object.keys(tile.debug).map(function (t) { return `${t}: ${tile.debug[t]}`; }).join(', ') + ' ]'
     );
 };
 
@@ -1246,7 +1245,7 @@ Scene.prototype.workerLogMessage = function (event) {
         return;
     }
 
-    console.log("worker " + event.data.worker_id + ": " + event.data.msg);
+    console.log(`worker ${event.data.worker_id}: ${event.data.msg}`);
 };
 
 
