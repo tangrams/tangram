@@ -39,7 +39,7 @@
         },
         'mapzen-mvt': {
             source: {
-                type: 'MapboxTileSource',
+                type: 'MapboxFormatTileSource',
                 url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox')
             },
             layers: 'demos/gl_layers.js',
@@ -63,7 +63,7 @@
         },
         'mapbox': {
             source: {
-                type: 'MapboxTileSource',
+                type: 'MapboxFormatTileSource',
                 url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
                 max_zoom: 15
             },
@@ -77,21 +77,6 @@
         'Seattle': [47.609722, -122.333056, 15]
     };
     var osm_debug = false;
-
-    /*** Map layer ***/
-    var layer = Tangram.leafletLayer({
-        vectorTileSource: tile_sources[default_tile_source].source,
-        vectorLayers: tile_sources[default_tile_source].layers,
-        vectorStyles: tile_sources[default_tile_source].styles,
-        numWorkers: 2,
-        // debug: true,
-        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangram-map/tangram">Source Code</a>',
-        unloadInvisibleTiles: false,
-        updateWhenIdle: false
-    });
-
-    var scene = layer.scene;
-    window.scene = scene;
 
     /***** GUI/debug controls *****/
 
@@ -191,15 +176,29 @@
     }
 
     /*** Map ***/
+
     var map = L.map('map', {
         maxZoom: 20,
         inertia: false,
         keyboard: false
     });
 
-    map.attributionControl.setPrefix('');
+    var layer = Tangram.leafletLayer({
+        vectorTileSource: tile_sources[default_tile_source].source,
+        vectorLayers: tile_sources[default_tile_source].layers,
+        vectorStyles: tile_sources[default_tile_source].styles,
+        numWorkers: 2,
+        // debug: true,
+        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangram-map/tangram">Source Code</a>',
+        unloadInvisibleTiles: false,
+        updateWhenIdle: false
+    });
+
+    var scene = layer.scene;
+    window.scene = scene;
 
     // Update URL hash on move
+    map.attributionControl.setPrefix('');
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
     map.on('moveend', updateURL);
 
