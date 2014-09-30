@@ -55,7 +55,7 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
-dist/testable.js:
+dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
 	node build_test.js > dist/testable.js
 
 unit: dist/testable.js
