@@ -3,6 +3,11 @@ camera:
     # focal_length: 1
     focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
 
+    # type: isometric
+    # axis: [1, .5]
+
+    # type: flat
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:

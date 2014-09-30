@@ -158,37 +158,15 @@ export class IsometricCamera extends Camera {
 
 }
 
-// Flat projection (e.g. just top-down, no perspective)
-export class FlatCamera extends Camera {
-
-    constructor(scene, options = {}) {
-        super(scene);
-        this.meter_view_mat = mat4.create();
-
-        GLProgram.removeTransform('camera');
-        GLProgram.addTransform(
-            'camera',
-
-            'uniform mat4 u_meter_view;',
-
-            'void cameraProjection (inout vec4 position) { \n\
-                position = u_meter_view * position; \n\
-                                                                \n\
-                // Reverse z for depth buffer so up is negative, \n\
-                // and scale down values so objects higher than one screen height will not get clipped \n\
-                position.z = -position.z / 100. + 1.; \n\
-            }'
-        );
-    }
+// Flat projection (e.g. just top-down, no perspective) - a degenerate isometric camera
+export class FlatCamera extends IsometricCamera {
 
     update() {
-        // Convert mercator meters to screen space
-        mat4.identity(this.meter_view_mat);
-        mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));
-    }
+        // Axis is fixed to (0, 0) for flat camera
+        this.axis.x = 0;
+        this.axis.y = 0;
 
-    setupProgram(gl_program) {
-        gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
+        super.update();
     }
 
 }
