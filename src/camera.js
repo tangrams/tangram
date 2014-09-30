@@ -121,6 +121,10 @@ export class IsometricCamera extends Camera {
     constructor(scene, options = {}) {
         super(scene);
         this.axis = options.axis || { x: 0, y: 1 };
+        if (this.axis.length === 2) {
+            this.axis = { x: this.axis[0], y: this.axis[1] }; // allow axis to also be passed as 2-elem array
+        }
+
         this.meter_view_mat = mat4.create();
 
         GLProgram.removeTransform('camera');
