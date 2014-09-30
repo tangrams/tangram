@@ -9,7 +9,7 @@ es6ify.traceurOverrides = { blockBinding: true };
 
 var pipeline = browserify()
     .add(es6ify.runtime)
-    .transform(es6ify);
+    .transform(es6ify.configure(/^(?!.*node_modules)+.+\.js$/));
 
 // once we switch to a modern version of browserify, add takes an
 // array as an argument
