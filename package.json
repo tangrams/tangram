@@ -37,6 +37,7 @@
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
     "karma-chrome-launcher": "~0.1.4",
-    "sinon": "~1.10.3"
+    "sinon": "~1.10.3",
+    "chai": "~1.9.2"
   }
 }
