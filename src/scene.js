@@ -67,6 +67,10 @@ export default function Scene(tile_source, layers, styles, options) {
     this.resetTime();
 }
 
+Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    return new Scene(tile_source, layers, styles, options);
+};
+
 Scene.prototype.init = function (callback) {
     if (this.initialized) {
         return;
