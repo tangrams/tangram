@@ -28,7 +28,7 @@ export default class TileSource {
             var num_features = tile.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
                     return [m.x, m.y];
                 });
@@ -45,7 +45,7 @@ export default class TileSource {
             var num_features = tile.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
                     coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z]; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
@@ -55,6 +55,10 @@ export default class TileSource {
         }
         return tile;
     }
+
+    // Sub-classes must implement this method
+    // loadTile (tile, callback) {
+    // }
 
 }
 
@@ -76,7 +80,6 @@ class NetworkTileSource extends TileSource {
     }
 
     loadTile (tile, callback) {
-        var tile_source = this;
         var req = new XMLHttpRequest();
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
 
@@ -89,7 +92,7 @@ class NetworkTileSource extends TileSource {
         tile.xhr = req;
         tile.debug.network = +new Date();
 
-        req.onload = function () {
+        req.onload = () => {
             // Canceled while loading?
             if (tile.loading == false) {
                 return;
@@ -98,11 +101,9 @@ class NetworkTileSource extends TileSource {
             tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
             tile.debug.network = +new Date() - tile.debug.network;
 
-            if (tile_source._loadTile) {
-                tile.debug.parsing = +new Date();
-                tile_source._loadTile(tile);
-                tile.debug.parsing = +new Date() - tile.debug.parsing;
-            }
+            tile.debug.parsing = +new Date();
+            this.parseTile(tile);
+            tile.debug.parsing = +new Date() - tile.debug.parsing;
 
             delete tile.xhr;
             tile.loading = false;
@@ -118,6 +119,10 @@ class NetworkTileSource extends TileSource {
         req.send();
     }
 
+    // Sub-classes must implement this method:
+    // parseTile (tile) {
+    // }
+
 }
 
 
@@ -129,7 +134,7 @@ class GeoJSONTileSource extends NetworkTileSource {
         super(source);
     }
 
-    _loadTile (tile) {
+    parseTile (tile) {
         tile.layers = JSON.parse(tile.xhr.response);
 
         TileSource.projectTile(tile); // mercator projection
@@ -159,7 +164,7 @@ class TopoJSONTileSource extends NetworkTileSource {
         }
     }
 
-    _loadTile (tile) {
+    parseTile (tile) {
         if (typeof topojson == 'undefined') {
             tile.layers = {};
             return;
@@ -197,7 +202,7 @@ class MapboxFormatTileSource extends NetworkTileSource {
         this.VectorTile = require('vector-tile'); // Mapbox vector tile lib
     }
 
-    _loadTile (tile) {
+    parseTile (tile) {
         // Convert Mapbox vector tile to GeoJSON
         tile.data = new this.VectorTile(new Uint8Array(tile.xhr.response));
         tile.layers = tile.data.toGeoJSON();
@@ -210,7 +215,7 @@ class MapboxFormatTileSource extends NetworkTileSource {
                 var feature = tile.layers[t].features[f];
 
                 feature.properties.id = feature.properties.osm_id;
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, function (coordinates) {
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     coordinates[1] = -coordinates[1];
                     return coordinates;
                 });
