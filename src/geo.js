@@ -61,8 +61,8 @@ Geo.latLngToMeters = function(latlng)
     var c = Point.copy(latlng);
 
     // Latitude
-    c.y = Math.log(Math.tan((c.y + 90) * Math.PI / 360)) / (Math.PI / 180);
-    c.y = c.y * Geo.half_circumference_meters / 180;
+    c.y = Math.log(Math.tan(c.y*Math.PI/360 + Math.PI/4)) / Math.PI;
+    c.y = c.y * Geo.half_circumference_meters;
 
     // Longitude
     c.x = c.x * Geo.half_circumference_meters / 180;
