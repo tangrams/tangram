@@ -1,9 +1,8 @@
 import {Utils} from './utils';
 import {Style} from './style';
 import Scene  from './scene';
+import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
-
-var TileSource = require('./tile_source.js');
 
 var SceneWorker = {};
 SceneWorker.worker = self;
@@ -78,7 +77,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.tiles[tile.key] = tile;
 
     // Refresh config
-    SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source.type, event.data.tile_source.url, event.data.tile_source);
+    SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source);
     SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
     SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
