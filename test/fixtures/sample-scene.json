@@ -1,0 +1,26 @@
+{
+    "tileSource": {
+        "type": "GeoJSONTileSource",
+        "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
+    },
+    "styles": {
+        "layers": {
+            "water": {
+                "color": {
+                    "default": [0.5, 0.5, 0.875]
+                }
+            },
+            "outline": {
+                "color": {
+                    "default": [0.6, 0.6, 0.975]
+                }
+            }
+        }
+    },
+    "layers": [
+        {
+            "name": "water",
+            "data": "water"
+        }
+    ]
+}

@@ -1,42 +1,16 @@
-import Scene from '../src/scene';
 import sinon from 'sinon';
 import chai from 'chai';
-
 let assert = chai.assert;
 
-// take from the demo
-let exampleTileSource = {
-    type: 'GeoJSONTileSource',
-    url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
-};
+import Scene from '../src/scene';
+import sampleScene from './fixtures/sample-scene';
 
-let exampleStyles = {
-    layers: {
-        water: {
-            color: {
-                'default': [0.5, 0.5, 0.875]
-            },
-            outline: {
-                color: {
-                    'default': [0.6, 0.6, 0.975]
-                }
-            }
-        }
-    }
-};
-
-let exampleLayers = [
-    {
-        name: 'water',
-        data: 'water'
-    }
-];
 
 let makeOne;
 /* jshint ignore:start */
-makeOne = ({tile_source = exampleTileSource,
-                layers  = exampleLayers,
-                styles  = exampleStyles,
+makeOne = ({tile_source = sampleScene.tileSource,
+                layers  = sampleScene.layers,
+                styles  = sampleScene.styles,
                 options = {}
            } = {}) => {
     return new Scene(tile_source, layers, styles, options);
@@ -64,9 +38,9 @@ describe('Scene', () => {
 
         beforeEach(() => {
             subject = Scene.create({
-                tile_source: exampleTileSource,
-                layers: exampleLayers,
-                styles: exampleStyles
+                tile_source: sampleScene.tileSource,
+                layers: sampleScene.layers,
+                styles: sampleScene.styles
             });
         });
 
@@ -79,15 +53,15 @@ describe('Scene', () => {
         });
 
         it('correctly sets the value of the tile source', () => {
-            assert.equal(subject.tile_source, exampleTileSource);
+            assert.equal(subject.tile_source, sampleScene.tileSource);
         });
 
         it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layers, exampleLayers);
+            assert.equal(subject.layers, sampleScene.layers);
         });
 
         it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.styles, exampleStyles);
+            assert.equal(subject.styles, sampleScene.styles);
         });
 
     });

@@ -1,10 +1,12 @@
 import sinon from 'sinon';
 import chai from 'chai';
+
 import {LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene';
 let assert = chai.assert;
 
-describe.only('Leaflet', () => {
+
+describe('Leaflet', () => {
 
     // leaflet calls it .initialize()
     describe('.constructor()', () => {
