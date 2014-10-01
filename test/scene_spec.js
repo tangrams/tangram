@@ -38,14 +38,14 @@ makeOne = ({tile_source = exampleTileSource,
                 layers  = exampleLayers,
                 styles  = exampleStyles,
                 options = {}
-           }) => {
+           } = {}) => {
     return new Scene(tile_source, layers, styles, options);
 };
 /* jshint ignore:end */
 
 describe('Scene', () => {
 
-    describe('#constructor', () => {
+    describe('.constructor()', () => {
         it('returns a new instance', () => {
             let scene = new Scene();
             assert.instanceOf(scene, Scene);
@@ -59,7 +59,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('.create', () => {
+    describe('.create(options)', () => {
         let subject;
 
         beforeEach(() => {
@@ -92,7 +92,7 @@ describe('Scene', () => {
 
     });
 
-    describe('#init', () => {
+    describe('.init(callback)', () => {
         let subject;
         beforeEach(() => {
             subject = makeOne({});
@@ -149,7 +149,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('#resizeMap', () => {
+    describe('.resizeMap()', () => {
         let subject;
         let height = 100;
         let width = 200;
@@ -210,7 +210,7 @@ describe('Scene', () => {
 
     });
 
-    describe('#setCenter', () => {
+    describe('.setCenter(lng, lat)', () => {
         let subject;
         let [lng, lat] = [10, 10];
 
@@ -231,7 +231,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('#startZoom', () => {
+    describe('.startZoom()', () => {
         let subject;
 
         beforeEach(() => {
@@ -253,7 +253,7 @@ describe('Scene', () => {
     });
 
     // TODO this method does a lot of stuff
-    describe('#setZoom', () => {
+    describe('.setZoom(zoom)', () => {
         let subject;
         beforeEach(() => {
             subject = makeOne({});
@@ -273,7 +273,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('#loadTile', () => {
+    describe('.loadTile(tile)', () => {
         let subject;
         let tile = { coords: null, div: null, callback: () => {}};
 
@@ -288,7 +288,7 @@ describe('Scene', () => {
 
     });
 
-    describe('#render', () => {
+    describe('.render()', () => {
         let subject;
         beforeEach((done) => {
             subject = makeOne({});
@@ -341,7 +341,7 @@ describe('Scene', () => {
 
     });
 
-    describe('#createWorkers', () => {
+    describe('.createWorkers(cb)', () => {
         // TODO, we should mock the http resonse and dig deeper in
         // this method?
         let subject;
@@ -360,7 +360,7 @@ describe('Scene', () => {
 
     });
 
-    describe('#makeWorkers', () => {
+    describe('.makeWorkers(url)', () => {
         let subject;
         let num_workers = 2;
         let url = 'test.js';
