@@ -286,7 +286,56 @@ describe('Scene', () => {
     });
 
     describe('#render', () => {
-        it('');
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            sinon.spy(subject, 'loadQueuedTiles');
+            sinon.spy(subject, 'renderGL');
+            subject.init(() => {
+                subject.setCenter({lng: 10, lat: 10});
+                done();
+            });
+        });
+
+        afterEach(() => { subject = undefined; });
+
+        it('calls the loadQueuedTiles method', () => {
+            subject.render();
+            assert.isTrue(subject.loadQueuedTiles.called);
+        });
+
+        describe('when the scene is not dirty', () => {
+            it('returns false', () => {
+                subject.dirty = false;
+                assert.isFalse(subject.render());
+            });
+        });
+
+        describe('when the scene is not initialized', () => {
+            it('returns false', () => {
+                subject.initialized = false;
+                assert.isFalse(subject.render());
+            });
+        });
+
+        describe('when the scene is dirty', () => {
+            beforeEach(() => { subject.dirty = true; });
+            it('calls the renderGL method', () => {
+                subject.render();
+                assert.isTrue(subject.renderGL.called);
+            });
+        });
+
+        it('increments the frame property', () => {
+            let old = subject.frame;
+            subject.render();
+            assert.operator(subject.frame, '>', old);
+        });
+
+        it('returns true', () => {
+            assert.isTrue(subject.render());
+        });
+
     });
 
     describe('#createWorkers', () => {
