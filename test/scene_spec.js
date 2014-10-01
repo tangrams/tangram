@@ -99,7 +99,7 @@ describe('Scene', () => {
             subject = undefined;
         });
 
-        describe('when the subject is not initialized', () => {
+        describe('when the scene is not initialized', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
@@ -136,7 +136,7 @@ describe('Scene', () => {
             });
         });
 
-        describe('when the subject is already initialized', () => {
+        describe('when the scene is already initialized', () => {
             it('returns false', (done) => {
                 subject.init(() => {
                     assert.isFalse(subject.init());
@@ -257,6 +257,7 @@ describe('Scene', () => {
             sinon.spy(subject, 'removeTilesOutsideZoomRange');
             subject.setZoom(10);
         });
+
         afterEach(() => {
             subject = undefined;
         });
@@ -269,20 +270,30 @@ describe('Scene', () => {
         });
     });
 
+    describe('#loadTile', () => {
+        let subject;
+        let tile = { coords: null, div: null, callback: () => {}};
+
+        beforeEach(() => {
+            subject = makeOne({}); subject.loadTile(tile);
+        });
+        afterEach(() => { subject = undefined; });
+
+        it('appends the queued_tiles array', () => {
+            assert.include(subject.queued_tiles[0], tile);
+        });
+
+    });
+
+    describe('#render', () => {
+        it('');
+    });
 
     describe('#createWorkers', () => {
         it('');
     });
 
     describe('#makeWorkers', () => {
-        it('');
-    });
-
-    describe('#loadTile', () => {
-        it('');
-    });
-
-    describe('#render', () => {
         it('');
     });
 

@@ -5,6 +5,6 @@ describe('Leaflet', () => {
     describe('.constructor', () => {
         it('should blow up', () => {
             assert.ok(false !== true);
-        })
+        });
     });
 });

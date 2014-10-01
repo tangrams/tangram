@@ -677,7 +677,7 @@ Scene.prototype.workerGetFeatureSelection = function (event) {
 
 // Queue a tile for load
 Scene.prototype.loadTile = function (coords, div, callback) {
-    this.queued_tiles[this.queued_tiles.length] = arguments;
+    this.queued_tiles[this.queued_tiles.length] = Array.prototype.slice.call(arguments);;
 };
 
 // Load all queued tiles
