@@ -1,5 +1,5 @@
-import sinon  from 'sinon';
-import Scene  from '../src/scene';
+import Scene from '../src/scene';
+import sinon from 'sinon';
 import chai from 'chai';
 
 let assert = chai.assert;
