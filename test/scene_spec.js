@@ -31,12 +31,15 @@ let exampleLayers = [
         data: 'water'
     }
 ];
+
 let makeOne;
 /* jshint ignore:start */
 makeOne = ({tile_source = exampleTileSource,
                 layers  = exampleLayers,
-                styles  = exampleStyles }) => {
-    return new Scene(tile_source, layers, styles, {});
+                styles  = exampleStyles,
+                options = {}
+           }) => {
+    return new Scene(tile_source, layers, styles, options);
 };
 /* jshint ignore:end */
 
@@ -339,23 +342,43 @@ describe('Scene', () => {
     });
 
     describe('#createWorkers', () => {
-        it('');
+        // TODO, we should mock the http resonse and dig deeper in
+        // this method?
+        let subject;
+        beforeEach(() => {
+            subject = makeOne({});
+            sinon.spy(subject, 'makeWorkers');
+        });
+        afterEach(() => { subject = undefined; });
+
+        it('calls the makeWorkers method', (done) => {
+            subject.createWorkers(() => {
+                assert.isTrue(subject.makeWorkers.called);
+                done();
+            });
+        });
+
     });
 
     describe('#makeWorkers', () => {
-        it('');
-    });
+        let subject;
+        let num_workers = 2;
+        let url = 'test.js';
+        beforeEach(() => {
+            subject = makeOne({options: {num_workers}});
+            subject.makeWorkers(url);
+        });
 
-    describe('#set scene.container', () => {
-        it('');
-    });
+        describe('when given a url', () => {
 
-    describe('#set scene.panning', () => {
-        it('');
-    });
+            it('creates the correct number of workes', () => {
+                assert.equal(subject.workers.length, 2);
+            });
 
-    describe('#set  scene.layers.builds.mode', () => {
-        it('');
-    });
+            it('createts the correct type of workers', () => {
+                assert.instanceOf(subject.workers[0], Worker);
+            });
 
+        });
+    });
 });

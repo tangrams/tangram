@@ -167,7 +167,7 @@ Scene.prototype.initSelectionBuffer = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
-    // TODO, we should the url to a config file
+    // TODO, we should move the url to a config file
     var worker_url = Scene.library_base_url + 'dist/tangram-worker.debug.js';// + '?' + (+new Date());
 
     // Load & instantiate workers
@@ -220,7 +220,7 @@ Scene.prototype.makeWorkers = function (url) {
             type: 'init',
             worker_id: w,
             num_workers: this.num_workers
-        })
+        });
     }
 };
 
