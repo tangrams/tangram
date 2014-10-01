@@ -31,10 +31,14 @@ let exampleLayers = [
         data: 'water'
     }
 ];
-
-let makeOne = ({tile_source = exampleTileSource, layers = exampleLayers, styles = exampleStyles }) => {
+let makeOne;
+/* jshint ignore:start */
+makeOne = ({tile_source = exampleTileSource,
+                layers  = exampleLayers,
+                styles  = exampleStyles }) => {
     return new Scene(tile_source, layers, styles, {});
 };
+/* jshint ignore:end */
 
 describe('Scene', () => {
 
@@ -46,7 +50,6 @@ describe('Scene', () => {
 
         describe('when given senable defaults', () => {
             let scene = makeOne({});
-
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
             });
@@ -54,10 +57,10 @@ describe('Scene', () => {
     });
 
     describe('.create', () => {
-        let scene;
+        let subject;
 
         beforeEach(() => {
-            scene = Scene.create({
+            subject = Scene.create({
                 tile_source: exampleTileSource,
                 layers: exampleLayers,
                 styles: exampleStyles
@@ -65,146 +68,213 @@ describe('Scene', () => {
         });
 
         afterEach( () => {
-            scene = undefined;
+            subject = undefined;
         });
 
         it('returns a new instance', () => {
-            assert.instanceOf(scene, Scene);
+            assert.instanceOf(subject, Scene);
         });
 
         it('correctly sets the value of the tile source', () => {
-            assert.equal(scene.tile_source, exampleTileSource);
+            assert.equal(subject.tile_source, exampleTileSource);
         });
 
         it('correctly sets the value of the layers object', () => {
-            assert.equal(scene.layers, exampleLayers);
+            assert.equal(subject.layers, exampleLayers);
         });
 
         it('correctly sets the value of the styles object', () => {
-            assert.equal(scene.styles, exampleStyles);
+            assert.equal(subject.styles, exampleStyles);
         });
 
     });
 
     describe('#init', () => {
-        let scene;
+        let subject;
         beforeEach(() => {
-            scene = makeOne({});
+            subject = makeOne({});
         });
 
         afterEach(() => {
-            scene = undefined;
+            subject = undefined;
         });
 
-        describe('when the scene is not initialized', () => {
+        describe('when the subject is not initialized', () => {
             it('calls back', (done) => {
-                scene.init(() => {
+                subject.init(() => {
                     assert.ok(true);
                     done();
                 });
             });
 
             it('sets the initialized property', (done) => {
-                scene.init(() => {
-                    assert.isTrue(scene.initialized);
+                subject.init(() => {
+                    assert.isTrue(subject.initialized);
                     done();
                 });
             });
 
             it('sets the container property', (done) => {
-                scene.init(() => {
-                    assert.isObject(scene.container);
+                subject.init(() => {
+                    assert.instanceOf(subject.container, HTMLBodyElement);
                     done();
                 });
             });
 
             it('sets the canvas property', (done) => {
-                scene.init(() => {
-                    assert.isObject(scene.canvas);
+                subject.init(() => {
+                    assert.instanceOf(subject.canvas, HTMLCanvasElement);
                     done();
                 });
             });
 
             it('sets the gl property', (done) => {
-                scene.init(() => {
-                    assert.isObject(scene.gl);
+                subject.init(() => {
+                    assert.instanceOf(subject.gl, WebGLRenderingContext);
                     done();
                 });
             });
-
         });
 
-
-        describe('when the scene is already initialized', () => {
+        describe('when the subject is already initialized', () => {
             it('returns false', (done) => {
-                scene.init(() => {
-                    assert.isFalse(scene.init());
+                subject.init(() => {
+                    assert.isFalse(subject.init());
                     done();
                 });
             });
         });
-
     });
 
     describe('#resizeMap', () => {
-        let scene;
+        let subject;
         let height = 100;
         let width = 200;
 
         beforeEach((done) => {
-            scene = makeOne({});
-            scene.init(() => {
-                scene.resizeMap(width, height);
+            subject = makeOne({});
+            subject.init(() => {
+                sinon.spy(subject.gl, 'bindFramebuffer');
+                sinon.spy(subject.gl, 'viewport');
+                subject.resizeMap(width, height);
                 done();
-            })
-        })
+            });
+        });
+
         afterEach(() => {
-            scene = undefined;
+            subject = undefined;
         });
 
         it('marks the scene as dirty', () => {
-            assert.isTrue(scene.dirty);
+            assert.isTrue(subject.dirty);
         });
 
         it('sets the device size property', () => {
-            assert.deepEqual(scene.device_size, {
+            assert.deepEqual(subject.device_size, {
                 height: height,
                 width: width
             });
         });
 
-        describe('canvas style', () => {
+        it('calls the gl.bindFrameBuffer method', () => {
+            assert.ok(subject.gl.bindFramebuffer.called);
+        });
+
+        it('calls the gl.viewport method', () => {
+            assert.ok(subject.gl.viewport);
+        });
+
+        describe('-canvas.style', () => {
             it('sets the height', () => {
-                assert.equal(scene.canvas.style.height, height + 'px');
+                assert.equal(subject.canvas.style.height, height + 'px');
             });
 
             it('sets the width', () => {
-                assert.equal(scene.canvas.style.width, width + 'px');
+                assert.equal(subject.canvas.style.width, width + 'px');
             });
         });
 
-        describe('canvas', () => {
+        describe('-canvas', () => {
             it('sets the height property', () => {
-                assert.equal(scene.canvas.height, height);
+                assert.equal(subject.canvas.height, height);
             });
 
             it('sets the width property', () => {
-                assert.equal(scene.canvas.width, width);
+                assert.equal(subject.canvas.width, width);
             });
-        })
+        });
 
 
     });
 
     describe('#setCenter', () => {
-        it('sets the center map/scene?');
+        let subject;
+        let [lng, lat] = [10, 10];
+
+        beforeEach(() => {
+            subject = makeOne({});
+            subject.setCenter(lng, lat);
+        });
+        afterEach(() => {
+            subject = undefined;
+        });
+
+        it('sets the center scene?', () => {
+            assert.deepEqual(subject.center, {lng, lat});
+        });
+
+        it('marks the scene as dirty', () => {
+            assert.isTrue(subject.dirty);
+        });
     });
 
     describe('#startZoom', () => {
+        let subject;
+
+        beforeEach(() => {
+            subject = makeOne({});
+            subject.startZoom();
+        });
+
+        afterEach(() => {
+            subject = undefined;
+        });
+
+        it('sets the last zoom property with the value of the current zoom', () => {
+            assert.equal(subject.last_zoom, subject.zoom);
+        });
+
+        it('marks the scene as zooming', () => {
+            assert.isTrue(subject.zooming);
+        });
+    });
+
+    // TODO this method does a lot of stuff
+    describe('#setZoom', () => {
+        let subject;
+        beforeEach(() => {
+            subject = makeOne({});
+            sinon.spy(subject, 'removeTilesOutsideZoomRange');
+            subject.setZoom(10);
+        });
+        afterEach(() => {
+            subject = undefined;
+        });
+        it('calls the removeTilesOutsideZoomRange method', () =>  {
+            assert.isTrue(subject.removeTilesOutsideZoomRange.called);
+        });
+
+        it('marks the scene as drity', () => {
+            assert.isTrue(subject.dirty);
+        });
+    });
+
+
+    describe('#createWorkers', () => {
         it('');
     });
 
-    describe('#setZoom', () => {
+    describe('#makeWorkers', () => {
         it('');
     });
 

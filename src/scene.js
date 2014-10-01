@@ -73,7 +73,7 @@ Scene.create = function ({tile_source, layers, styles}, options = {}) {
 
 Scene.prototype.init = function (callback) {
     if (this.initialized) {
-        return;
+        return false;
     }
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
@@ -171,7 +171,7 @@ Scene.prototype.createWorkers = function (callback) {
     var worker_url = Scene.library_base_url + 'dist/tangram-worker.debug.js';// + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer(complete => {
+    queue.defer((complete) => {
         // Local object URLs supported?
         var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
         if (createObjectURL && this.allow_cross_domain_workers) {
