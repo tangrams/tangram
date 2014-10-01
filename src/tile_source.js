@@ -1,3 +1,4 @@
+/*globals TileSource */
 import {Geo}   from './geo';
 import Point from './point';
 

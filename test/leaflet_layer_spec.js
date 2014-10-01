@@ -18,7 +18,7 @@ let makeOne = () => {
     });
 };
 
-describe.only('Leaflet', () => {
+describe('Leaflet', () => {
 
     // leaflet calls it .initialize()
     describe('.constructor()', () => {
