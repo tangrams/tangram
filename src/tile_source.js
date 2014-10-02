@@ -226,5 +226,9 @@ class MapboxFormatTileSource extends NetworkTileSource {
             };
         }
     }
+<<<<<<< HEAD
 
 }
+=======
+};
+>>>>>>> IW: Test TileSource factory fn
