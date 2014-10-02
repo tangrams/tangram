@@ -4,7 +4,9 @@ module.exports = function (config) {
 
     config.set({
         basePath: '',
-        frameworks: ['mocha'],
+        // use karma's version of sinon, as the node version lacks the
+        // http fakers
+        frameworks: ['mocha', 'sinon'],
         files: [
             'lib/topojson.js',
             'demos/lib/leaflet-0.8-dev.js',

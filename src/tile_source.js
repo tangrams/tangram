@@ -5,7 +5,7 @@ import Point from './point';
 export default class TileSource {
 
     constructor (source) {
-        this.url_template = source.url;
+        this.url_template = source.url || '';
         this.max_zoom = source.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this
     }
 
@@ -33,14 +33,20 @@ export default class TileSource {
                     var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
                     return [m.x, m.y];
                 });
-            };
+            }
         }
-        tile.debug.projection = +new Date() - timer;
+
+        if (tile.debug !== undefined) {
+            tile.debug.projection = +new Date() - timer;
+        }
         return tile;
     }
 
     // Re-scale geometries within each tile to the range [0, scale]
-    // TODO: clip vertices at edges? right now vertices can have values outside [0, scale] (over or under bounds); this would pose a problem if we wanted to binary encode the vertices in fewer bits (e.g. 12 bits each for scale of 4096)
+    // TODO: clip vertices at edges? right now vertices can have
+    // values outside [0, scale] (over or under bounds); this would
+    // pose a problem if we wanted to binary encode the vertices in
+    // fewer bits (e.g. 12 bits each for scale of 4096)
     static scaleTile (tile) {
         for (var t in tile.layers) {
             var num_features = tile.layers[t].features.length;
@@ -52,10 +58,11 @@ export default class TileSource {
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                     return coordinates;
                 });
-            };
+            }
         }
         return tile;
     }
+}
 
 
 
@@ -94,6 +101,7 @@ class NetworkTileSource extends TileSource {
                 return;
             }
 
+            if (tile.xhr.response === undefined) tile.xhr.response = tile.xhr.responseText;
             tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
             tile.debug.network = +new Date() - tile.debug.network;
 
@@ -118,9 +126,7 @@ class NetworkTileSource extends TileSource {
     // Sub-classes must implement this method:
     // parseTile (tile) {
     // }
-
 }
-
 
 /*** Mapzen/OSM.US-style GeoJSON vector tiles ***/
 
@@ -131,12 +137,11 @@ class GeoJSONTileSource extends NetworkTileSource {
     }
 
     parseTile (tile) {
-        tile.layers = JSON.parse(tile.xhr.response);
+        tile.layers = JSON.parse(tile.xhr.responseText);
 
         TileSource.projectTile(tile); // mercator projection
         TileSource.scaleTile(tile); // re-scale from meters to local tile coords
     }
-
 }
 
 
@@ -218,9 +223,9 @@ class MapboxFormatTileSource extends NetworkTileSource {
                     coordinates[1] = -coordinates[1];
                     return coordinates;
                 });
-            };
+            }
         }
     }
 
-};
+}
 

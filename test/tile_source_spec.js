@@ -1,21 +1,19 @@
-import sinon from 'sinon';
 import chai from 'chai';
 let assert = chai.assert;
 import TileSource from '../src/tile_source';
+import {Geo} from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
 
-describe.only('TileSource', () => {
-    let url_template = 'http://localhost/';
-    let max_zoom = Math.PI;
-    let options = {max_zoom};
+describe('TileSource', () => {
+    let url = 'http://localhost/{x}/{y}/{z}';
+    let max_zoom = 12;
+    let options = {url, max_zoom};
 
     describe('.constructor()', () => {
         let subject;
         beforeEach(() => {
-            subject = new TileSource(
-                url_template,
-                options
-            );
+            subject = new TileSource(options);
+
         });
 
         it('returns a new instance', () => {
@@ -27,57 +25,144 @@ describe.only('TileSource', () => {
     });
 
     describe('TileSource.create(type, url_template, options)', () => {
-        let makeOne = (url_template, options, type) => {
-            return TileSource.create(type, url_template, options);
-        };
-
-        let makeOneOf = makeOne.bind(null, url_template, options);
-
-        describe('when I ask for a NetworkTileSource', () => {
-            let subject = makeOneOf('NetworkTileSource');
-            it('returns a new NetworkTileSource', () => {
-                assert.instanceOf(subject, TileSource.NetworkTileSource);
-            });
-        });
 
         describe('when I ask for a GeoJSONTileSource', () => {
-            let subject = makeOneOf('GeoJSONTileSource');
+            let subject = TileSource.create({type: 'GeoJSONTileSource'});
+
             it('returns a new GeoJSONTileSource', () => {
-                assert.instanceOf(subject, TileSource.GeoJSONTileSource);
+                assert.instanceOf(subject, Object);
             });
         });
 
         describe('when I ask for a TopoJSONTileSource', () => {
-            let subject = makeOneOf('TopoJSONTileSource');
+            let subject = TileSource.create({type: 'TopoJSONTileSource'});
             it('returns a new TopoJSONTileSource', () => {
-                assert.instanceOf(subject, TileSource.TopoJSONTileSource);
+                assert.instanceOf(subject, Object);
             });
         });
 
         describe('when I ask for a MapboxTileSource', () => {
-            let subject = makeOneOf('MapboxTileSource');
+            let subject = TileSource.create({type: 'MapboxTileSource'});
             it('returns a new MapboxTileSource', () => {
-                assert.instanceOf(subject, TileSource.MapboxTileSource);
+                assert.instanceOf(subject, Object);
             });
         });
     });
 
     describe('TileSource.projectTile(tile)', () => {
-        beforeEach(() => {});
+        let subject;
+        beforeEach(() => {
+            sinon.spy(Geo, 'transformGeometry');
+            sinon.spy(Geo, 'latLngToMeters');
+            subject = TileSource.projectTile(sampleTile);
+        });
 
-        it('returns the tile in a mercator projection', () => {
-            let subject = TileSource.projectTile(sampleTile);
-            assert.equal(subject.layers.water.features[0].geometry.coordinates[0], 1113194.9079327357);
-            assert.equal(subject.layers.water.features[0].geometry.coordinates[1], 1118889.9748579597);
+        afterEach(() => {
+            subject = undefined;
+            Geo.transformGeometry.restore();
+            Geo.latLngToMeters.restore();
+        });
+
+        it('calls the .transformGeometry() method', () => {
+            assert.strictEqual(Geo.transformGeometry.callCount, 3);
+        });
+
+        it('calls the .latLngToMeters() method', () => {
+            assert.strictEqual(Geo.latLngToMeters.callCount, 3);
         });
 
     });
 
-    describe('TileSource.scaleTile(tile)', () => {});
+    describe('TileSource.scaleTile(tile)', () => {
 
-    describe('NetworkTileSource', () => {
-        describe('.constructor', () => {});
-        describe('.loadTile(tile, cb)', () => {});
+        beforeEach(() => {
+            sinon.spy(Geo, 'transformGeometry');
+        });
+
+        afterEach(() => {
+            Geo.transformGeometry.restore();
+        });
+
+        it('calls the .transformGeometry() method', () => {
+            TileSource.scaleTile(sampleTile);
+            assert.strictEqual(Geo.transformGeometry.callCount, 3);
+        });
+
+        it('scales the coordinates', () => {
+            let subject = TileSource.scaleTile(sampleTile);
+            let firstFeature = subject.layers.water.features[0];
+
+            assert.deepEqual(
+                firstFeature,
+                {"geometry":
+                 {"type": "Point",
+                  "coordinates":[1357421762.5708044, 12225.065494573035]},
+                 "properties":{"name":"bob"}}
+            );
+
+        });
+
+    });
+
+    describe('GeoJSONTileSource', () => {
+
+        describe('.constructor()', () => {
+            let subject;
+            beforeEach(() => {
+                subject = TileSource.create({url: '', max_zoom: 12});
+            });
+
+            afterEach(() => {
+                subject = undefined;
+            });
+
+            it('sets the max zoom', () => {
+                assert.strictEqual(subject.max_zoom, max_zoom);
+            });
+        });
+
+        describe.skip('.loadTile(tile, cb)', () => {
+            let subject;
+            let xhr;
+            let request;
+
+            beforeEach(() => {
+                xhr = sinon.useFakeXMLHttpRequest();
+                xhr.onCreate = (req) => {
+                    request = req;
+                };
+
+                subject = TileSource.create({url: '', max_zoom: 12});
+            });
+
+            afterEach(() => {
+                xhr.restore();
+                subject = undefined;
+                request = undefined;
+            });
+
+            it('calls back with the tile', () => {
+
+                subject.loadTile(sampleTile, (tile) => {
+                    assert.isDefined(tile);
+                });
+
+                request.respond(
+                    200, { 'Content-Type': 'application/json' },
+                    JSON.stringify(require('./fixtures/sample-tile.json'))
+                );
+
+            });
+
+            it('modifies the tile with with the response body', () => {
+                assert.isFalse(true);
+            });
+
+            it('attaches debugging information to the tile object');
+            it('it calls the childs ._loadTile(tile) method');
+
+        });
+
     });
 
 });

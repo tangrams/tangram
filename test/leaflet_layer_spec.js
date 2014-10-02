@@ -1,4 +1,3 @@
-import sinon from 'sinon';
 import chai from 'chai';
 import Scene from '../src/scene';
 import {LeafletLayer} from '../src/leaflet_layer';
