@@ -1,0 +1,17 @@
+{
+    "layers": {
+        "water": {
+            "features": [
+                {
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [10, 10]
+                    },
+                    "properties": {
+                        "name": "bob"
+                    }
+                }
+            ]
+        }
+    }
+}

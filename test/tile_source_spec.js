@@ -2,6 +2,7 @@ import sinon from 'sinon';
 import chai from 'chai';
 let assert = chai.assert;
 import TileSource from '../src/tile_source';
+import sampleTile from './fixtures/sample-tile';
 
 describe.only('TileSource', () => {
     let url_template = 'http://localhost/';
@@ -32,29 +33,28 @@ describe.only('TileSource', () => {
 
         let makeOneOf = makeOne.bind(null, url_template, options);
 
-        describe('NetworkTileSource', () => {
-            let subject; // = makeOneOf('NetworkTileSource');
+        describe('when I ask for a NetworkTileSource', () => {
+            let subject = makeOneOf('NetworkTileSource');
             it('returns a new NetworkTileSource', () => {
-                assert.isTrue(false, 'FIXME');
-                // assert.instanceOf(subject, TileSource.NetworkTileSource);
+                assert.instanceOf(subject, TileSource.NetworkTileSource);
             });
         });
 
-        describe('GeoJSONTileSource', () => {
+        describe('when I ask for a GeoJSONTileSource', () => {
             let subject = makeOneOf('GeoJSONTileSource');
             it('returns a new GeoJSONTileSource', () => {
                 assert.instanceOf(subject, TileSource.GeoJSONTileSource);
             });
         });
 
-        describe('TopoJSONTileSource', () => {
+        describe('when I ask for a TopoJSONTileSource', () => {
             let subject = makeOneOf('TopoJSONTileSource');
             it('returns a new TopoJSONTileSource', () => {
                 assert.instanceOf(subject, TileSource.TopoJSONTileSource);
             });
         });
 
-        describe('MapboxTileSource', () => {
+        describe('when I ask for a MapboxTileSource', () => {
             let subject = makeOneOf('MapboxTileSource');
             it('returns a new MapboxTileSource', () => {
                 assert.instanceOf(subject, TileSource.MapboxTileSource);
@@ -62,24 +62,22 @@ describe.only('TileSource', () => {
         });
     });
 
-    describe('TileSource.projectTile(tile)', () => {});
+    describe('TileSource.projectTile(tile)', () => {
+        beforeEach(() => {});
+
+        it('returns the tile in a mercator projection', () => {
+            let subject = TileSource.projectTile(sampleTile);
+            assert.equal(subject.layers.water.features[0].geometry.coordinates[0], 1113194.9079327357);
+            assert.equal(subject.layers.water.features[0].geometry.coordinates[1], 1118889.9748579597);
+        });
+
+    });
+
     describe('TileSource.scaleTile(tile)', () => {});
 
     describe('NetworkTileSource', () => {
         describe('.constructor', () => {});
         describe('.loadTile(tile, cb)', () => {});
-    });
-
-    describe('GeoJSONTileSource', () => {
-        describe('.constructor()', () => {});
-    });
-
-    describe('TopoJSONTileSource', () => {
-        describe('.constructor()', () => {});
-    });
-
-    describe('MapboxTileSource', () => {
-        describe('.constructor()', () => {});
     });
 
 });

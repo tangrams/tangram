@@ -57,11 +57,6 @@ export default class TileSource {
         return tile;
     }
 
-    // Sub-classes must implement this method
-    // loadTile (tile, callback) {
-    // }
-
-}
 
 
 /*** Generic network tile loading - abstract class ***/
@@ -160,7 +155,7 @@ class TopoJSONTileSource extends NetworkTileSource {
                 console.log("loaded TopoJSON library");
             }
             catch (e) {
-                console.log("failed to load TopoJSON library!");
+                console.error("failed to load TopoJSON library!", e);
             }
         }
     }
@@ -226,9 +221,6 @@ class MapboxFormatTileSource extends NetworkTileSource {
             };
         }
     }
-<<<<<<< HEAD
 
-}
-=======
 };
->>>>>>> IW: Test TileSource factory fn
+

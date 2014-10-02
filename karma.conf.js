@@ -6,6 +6,7 @@ module.exports = function (config) {
         basePath: '',
         frameworks: ['mocha'],
         files: [
+            'lib/topojson.js',
             'demos/lib/leaflet-0.8-dev.js',
             'dist/tangram-worker.debug.js',
             'dist/testable.js'
