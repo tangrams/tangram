@@ -1,6 +1,8 @@
 /*globals TileSource */
 import {Geo}   from './geo';
 import Point from './point';
+import xhr from 'xhr';
+
 
 export default class TileSource {
 
@@ -82,8 +84,10 @@ class NetworkTileSource extends TileSource {
         }
     }
 
+    getDefaultHeaders() { return { "Content-Type": "application/json" }; }
+
     loadTile (tile, callback) {
-        var req = new XMLHttpRequest();
+//        var xhr = req;
         var url = this.url_template.
             replace('{x}', tile.coords.x).
             replace('{y}', tile.coords.y).
@@ -94,36 +98,66 @@ class NetworkTileSource extends TileSource {
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
 
-        tile.url = url;
-        tile.xhr = req;
-        tile.debug.network = +new Date();
+        xhr({
+            url: url,
+            headers: this.getDefaultHeaders()
+        }, (err, resp, body) => {
+            if (err) return callback(err);
+            debugger;
+            this.parseTile(tile, body);
 
-        req.onload = () => {
-            // Canceled while loading?
-            if (tile.loading == false) {
-                return;
-            }
+            if (typeof callback === 'function') return callback(tile);
 
-            if (tile.xhr.response === undefined) tile.xhr.response = tile.xhr.responseText;
-            tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
-            tile.debug.network = +new Date() - tile.debug.network;
+        });
 
-            tile.debug.parsing = +new Date();
-            this.parseTile(tile);
-            tile.debug.parsing = +new Date() - tile.debug.parsing;
+        // tile.url = url;
 
-            delete tile.xhr;
-            tile.loading = false;
-            tile.loaded = true;
 
-            if (callback) {
-                callback(tile);
-            }
-        };
+//        tile.xhr = req;
+
+//        tile.debug.network = +new Date();
+/*
+
+xhr({
+    body: someJSONString,
+    uri: "/foo",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}, function (err, resp, body) {
+    // resp === xhr
+    // check resp.body or resp.statusCode
+})
+
+*/
+        // req.onload = () => {
+        //     // Canceled while loading?
+        //     if (tile.loading == false) {
+        //         return;
+        //     }
+
+        //     if (xhr.response === undefined) xhr.response = xhr.responseText;
+
+//            tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
+//            tile.debug.network = +new Date() - tile.debug.network;
+
+//            tile.debug.parsing = +new Date();
+//            this.parseTile(tile, xhr.response);
+//            tile.debug.parsing = +new Date() - tile.debug.parsing;
+
+//            delete tile.xhr;
+//            tile.loading = false;
+//            tile.loaded = true;
+
+        //     if (callback) {
+        //         callback(tile);
+        //     }
+        // };
         // TODO: add XHR error handling
-        req.open('GET', url, true); // async flag
-        req.responseType = this.response_type;
-        req.send();
+        // req.open('GET', url, true); // async flag
+        // req.responseType = this.response_type;
+        // req.send();
+
     }
 
     // Sub-classes must implement this method:
@@ -131,16 +165,19 @@ class NetworkTileSource extends TileSource {
     // }
 }
 
-/*** Mapzen/OSM.US-style GeoJSON vector tiles ***/
 
+/**
+ Mapzen/OSM.US-style GeoJSON vector tiles
+ @class GeoJSONTileSource
+*/
 class GeoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
     }
 
-    parseTile (tile) {
-        tile.layers = JSON.parse(tile.xhr.responseText);
+    parseTile (tile, response) {
+        tile.layers = JSON.parse(response);
 
         TileSource.projectTile(tile); // mercator projection
         TileSource.scaleTile(tile); // re-scale from meters to local tile coords

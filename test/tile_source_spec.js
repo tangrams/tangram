@@ -4,7 +4,7 @@ import TileSource from '../src/tile_source';
 import {Geo} from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
 
-describe('TileSource', () => {
+describe.only('TileSource', () => {
     let url = 'http://localhost/{x}/{y}/{z}';
     let max_zoom = 12;
     let options = {url, max_zoom};
