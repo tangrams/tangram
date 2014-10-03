@@ -8,7 +8,8 @@ module.exports = function (config) {
         // http fakers
         frameworks: ['mocha', 'sinon'],
         files: [
-            'lib/topojson.js',
+            'node_modules/topojson/topojson.js',
+            'node_modules/lodash/lodash.js',
             'demos/lib/leaflet-0.8-dev.js',
             'dist/tangram-worker.debug.js',
             'dist/testable.js'

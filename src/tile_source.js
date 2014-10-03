@@ -84,7 +84,10 @@ class NetworkTileSource extends TileSource {
 
     loadTile (tile, callback) {
         var req = new XMLHttpRequest();
-        var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+        var url = this.url_template.
+            replace('{x}', tile.coords.x).
+            replace('{y}', tile.coords.y).
+            replace('{z}', tile.coords.z);
 
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);

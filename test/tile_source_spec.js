@@ -121,45 +121,72 @@ describe('TileSource', () => {
             });
         });
 
-        describe.skip('.loadTile(tile, cb)', () => {
-            let subject;
-            let xhr;
-            let request;
+        describe('.loadTile(tile, cb)', () => {
 
-            beforeEach(() => {
-                xhr = sinon.useFakeXMLHttpRequest();
-                xhr.onCreate = (req) => {
-                    request = req;
+            describe('when there are no http errors', () => {
+                let subject, xhr, request, mockTile;
+                let runAjax = (content) => {
+                    request.respond(
+                        200, { 'Content-Type': 'application/json' },
+                        JSON.stringify(require('./fixtures/sample-http-response.json'))
+                    );
                 };
 
-                subject = TileSource.create({url: '', max_zoom: 12});
-            });
-
-            afterEach(() => {
-                xhr.restore();
-                subject = undefined;
-                request = undefined;
-            });
-
-            it('calls back with the tile', () => {
-
-                subject.loadTile(sampleTile, (tile) => {
-                    assert.isDefined(tile);
+                beforeEach(() => {
+                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
+                    xhr = sinon.useFakeXMLHttpRequest();
+                    xhr.onCreate = (req) => {
+                        request = req;
+                    };
+                    subject = TileSource.create({url: '', max_zoom: 12});
+                    sinon.spy(subject, 'parseTile');
                 });
 
-                request.respond(
-                    200, { 'Content-Type': 'application/json' },
-                    JSON.stringify(require('./fixtures/sample-tile.json'))
-                );
+                afterEach(() => {
+                    xhr.restore();
+                    subject = undefined;
+                    request = undefined;
+                });
 
+                it('calls back with the tile', (done) => {
+                    subject.loadTile(mockTile, (tile) => {
+                        assert.isObject(tile);
+                        done();
+                    });
+                    runAjax();
+                });
+
+                it('calls the .parseTile() method', (done) => {
+                    subject.loadTile(mockTile, (tile) => {
+                        assert.isTrue(subject.parseTile.called);
+                        done();
+                    });
+                    runAjax();
+                });
             });
 
-            it('modifies the tile with with the response body', () => {
-                assert.isFalse(true);
-            });
+            describe('when there are http errors', () => {
+                let subject, request, xhr, mockTile;
 
-            it('attaches debugging information to the tile object');
-            it('it calls the childs ._loadTile(tile) method');
+                beforeEach(() => {
+                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
+                    xhr = sinon.useFakeXMLHttpRequest();
+                    xhr.onCreate = (req) => {
+                        request = req;
+                    };
+                    subject = TileSource.create({url: '', max_zoom: 12});
+                });
+                afterEach(() => { });
+
+                it('calls back with an error', (done) => {
+                    subject.loadTile(mockTile, (error, tile) => {
+                        // assert.instanceOf(error, Error);
+                        assert.isObject(error);
+                        done();
+                    });
+                    request.respond(404, {}, '{}');
+                });
+            });
 
         });
 

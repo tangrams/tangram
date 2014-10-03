@@ -4,7 +4,7 @@ import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
-var SceneWorker = {};
+export var SceneWorker = {};
 SceneWorker.worker = self;
 SceneWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
 
