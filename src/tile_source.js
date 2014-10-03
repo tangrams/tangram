@@ -199,12 +199,15 @@ class MapboxFormatTileSource extends NetworkTileSource {
     constructor (source) {
         super(source);
         this.response_type = "arraybuffer"; // binary data
-        this.VectorTile = require('vector-tile'); // Mapbox vector tile lib
+        this.Protobuf = require('pbf');
+        this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output
     }
 
     parseTile (tile) {
         // Convert Mapbox vector tile to GeoJSON
-        tile.data = new this.VectorTile(new Uint8Array(tile.xhr.response));
+        var data = new Uint8Array(tile.xhr.response);
+        var buffer = new this.Protobuf(data);
+        tile.data = new this.VectorTile(buffer);
         tile.layers = tile.data.toGeoJSON();
         delete tile.data;
 
