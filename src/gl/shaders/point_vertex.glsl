@@ -15,7 +15,7 @@ varying vec2 v_texcoord;
 #endif
 
 // Imported functions
-#pragma glslify: calculateZ = require(./modules/depth_scale)
+#pragma glslify: reorderLayers = require(./modules/reorder_layers)
 
 #pragma tangram: globals
 #pragma tangram: camera
@@ -42,11 +42,8 @@ void main() {
 
     cameraProjection(position);
 
-    // position.z = calculateZ(position.z, a_layer, u_num_layers, 256.);
-
-    // Offset each layer to avoid z-fighting or occlusion of otherwise "equal" layers
-    // For cases where z=0, higher levels should be drawn on top of lower ones
-    position.z -= (a_layer + 1.) * .001;
+    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
+    reorderLayers(a_layer, u_num_layers, position);
 
     gl_Position = position;
 }

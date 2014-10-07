@@ -47,7 +47,7 @@ varying vec3 v_color;
 const float light_ambient = 0.5;
 
 // Imported functions
-#pragma glslify: calculateZ = require(./modules/depth_scale)
+#pragma glslify: reorderLayers = require(./modules/reorder_layers)
 #pragma glslify: calculateLighting = require(./modules/lighting)
 
 #pragma tangram: globals
@@ -93,14 +93,8 @@ void main() {
 
     cameraProjection(position);
 
-    // position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
-    // float z_layer_scale = 4096.;
-    // float z_layer_range = (u_num_layers + 1.) + z_layer_scale;
-    // float z_layer = (a_layer + 1.) + z_layer_scale;
-
-    // Offset each layer to avoid z-fighting or occlusion of otherwise "equal" layers
-    // For cases where z=0, higher levels should be drawn on top of lower ones
-    position.z -= (a_layer + 1.) * .001;
+    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
+    reorderLayers(a_layer, u_num_layers, position);
 
     gl_Position = position;
 }

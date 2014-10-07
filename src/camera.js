@@ -116,7 +116,8 @@ class PerspectiveCamera extends Camera {
         var fov = Math.atan(1 / this.computed_focal_length) * 2;
         var aspect = this.scene.view_aspect;
         var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-        var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
+        // var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
+        var zfar = (this.height + znear) * 1; // switching back to deeper clipping volume because we're now reordering layers
 
         mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
 
@@ -168,7 +169,7 @@ class IsometricCamera extends Camera {
 
                 // Reverse z for depth buffer so up is negative,
                 // and scale down values so objects higher than one screen height will not get clipped
-                position.z = -position.z / 100. + 1.;
+                position.z = -position.z / 100. + 1. - 0.001; // pull forward slightly to avoid going past far clipping plane
             }`
         );
     }

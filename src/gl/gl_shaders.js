@@ -39,12 +39,10 @@ shader_sources['point_vertex'] =
 "varying vec4 v_selection_color;\n" +
 "#endif\n" +
 "\n" +
-"float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
-"  z = (z_layer_range - z) / z_layer_range;\n" +
-"  return z;\n" +
+"void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
+"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  position.z /= layer_order;\n" +
+"  position.xyw *= layer_order;\n" +
 "}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
@@ -64,7 +62,7 @@ shader_sources['point_vertex'] =
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
 "  cameraProjection(position);\n" +
-"  position.z -= (a_layer + 1.) * .001;\n" +
+"  a_x_reorderLayers(a_layer, u_num_layers, position);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -235,12 +233,10 @@ shader_sources['polygon_vertex'] =
 "#endif\n" +
 "\n" +
 "const float light_ambient = 0.5;\n" +
-"float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
-"  z = (z_layer_range - z) / z_layer_range;\n" +
-"  return z;\n" +
+"void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
+"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  position.z /= layer_order;\n" +
+"  position.xyw *= layer_order;\n" +
 "}\n" +
 "vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
@@ -315,7 +311,7 @@ shader_sources['polygon_vertex'] =
 "  v_color = a_color;\n" +
 "  #endif\n" +
 "  cameraProjection(position);\n" +
-"  position.z -= (a_layer + 1.) * .001;\n" +
+"  a_x_reorderLayers(a_layer, u_num_layers, position);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
