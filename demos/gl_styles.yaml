@@ -1,3 +1,14 @@
+camera:
+    type: perspective
+    # focal_length: 1
+    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+    vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
+
+    # type: isometric
+    # axis: [1, .5]
+
+    # type: flat
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -59,7 +70,7 @@ modes:
         shaders:
             uniforms:
                 u_popup_radius: 330 # 225
-                u_popup_height: 5 # 1.1
+                u_popup_height: 3 # 1.1
             transforms:
                 globals:
                     - url: src/gl/shaders/modules/popup.glsl
@@ -453,6 +464,8 @@ layers:
         filter: function (f) { return f.properties.name != null; }
         # visible: false
         interactive: true
+        # z:
+        #     default: 25
         color:
             default: [1, 1, 0]
         size:

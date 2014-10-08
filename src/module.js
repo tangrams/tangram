@@ -4,6 +4,7 @@
 
 import {LeafletLayer, leafletLayer} from './leaflet_layer';
 import {GL} from './gl/gl';
+import {Geo} from './geo';
 // GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
 
 GL.Program = require('./gl/gl_program.js').default;
@@ -12,7 +13,8 @@ GL.Texture = require('./gl/gl_texture.js');
 module.exports = {
     LeafletLayer: LeafletLayer,
     leafletLayer: leafletLayer,
-    GL: GL
+    GL: GL,
+    Geo: Geo
 };
 
 window.Tangram = module.exports;

@@ -6,7 +6,6 @@ uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
-uniform mat4 u_meter_view;
 uniform float u_meters_per_pixel;
 uniform float u_num_layers;
 
@@ -48,12 +47,11 @@ varying vec3 v_color;
 const float light_ambient = 0.5;
 
 // Imported functions
-#pragma glslify: perspective = require(./modules/perspective)
-#pragma glslify: isometric = require(./modules/isometric, u_aspect = u_aspect)
-#pragma glslify: calculateZ = require(./modules/depth_scale)
+#pragma glslify: reorderLayers = require(./modules/reorder_layers)
 #pragma glslify: calculateLighting = require(./modules/lighting)
 
 #pragma tangram: globals
+#pragma tangram: camera
 
 void main() {
     #if defined(FEATURE_SELECTION)
@@ -61,7 +59,7 @@ void main() {
             // Discard by forcing invalid triangle if we're in the feature
             // selection pass but have no selection info
             // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
-            gl_Position = vec4(0.);
+            gl_Position = vec4(0., 0., 0., 1.);
             return;
         }
         v_selection_color = a_selection_color;
@@ -93,17 +91,10 @@ void main() {
         v_color = a_color;
     #endif
 
-    // Projection
-    position = u_meter_view * position; // convert meters to screen space (0-1)
+    cameraProjection(position);
 
-    #if defined(PROJECTION_PERSPECTIVE)
-        position = perspective(position, vec2(0., 0.), vec2(0.6, 0.6)); // vec2(-0.25, -0.25)
-    #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)
-        position = isometric(position, vec2(0., 1.), 1.);
-        // position = isometric(position, vec2(sin(u_time), cos(u_time)), 1.);
-    #endif
-
-    position.z = calculateZ(position.z, a_layer, u_num_layers, 4096.);
+    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
+    reorderLayers(a_layer, u_num_layers, position);
 
     gl_Position = position;
 }

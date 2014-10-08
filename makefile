@@ -12,6 +12,11 @@ all: \
 	dist/tangram-worker.debug.js \
 	dist/js-yaml.js
 
+# just debug packages, faster builds for most dev situations
+dev: \
+	dist/tangram.debug.js \
+	dist/tangram-worker.debug.js
+
 # browserify --debug adds source maps
 dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/module.js)
 	node build.js > dist/tangram.debug.js
@@ -53,4 +58,4 @@ clean:
 	rm -f dist/*
 	rm -f src/gl/gl_shaders.js
 
-.PHONY : clean all
+.PHONY : clean all dev
