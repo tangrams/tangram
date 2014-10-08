@@ -24,7 +24,7 @@ describe('Scene', () => {
             assert.instanceOf(scene, Scene);
         });
 
-        describe('when given senable defaults', () => {
+        describe('when given sensible defaults', () => {
             let scene = makeOne({});
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
