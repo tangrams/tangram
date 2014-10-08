@@ -23,7 +23,7 @@ module.exports = function (config) {
         autoWatch: false,
         browsers: ['Chrome'],
         proxies: {
-            '/dist/': 'http://localhost:9876/base/dist/'
+            '/': 'http://localhost:9876/base/dist/'
         },
         singleRun: false
     });
