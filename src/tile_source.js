@@ -1,8 +1,7 @@
 /*globals TileSource */
 import {Geo}   from './geo';
 import Point from './point';
-import xhr from 'xhr';
-
+import {NotImplemented} from './errors';
 
 export default class TileSource {
 
@@ -70,7 +69,8 @@ export default class TileSource {
 
 /*** Generic network tile loading - abstract class ***/
 
-class NetworkTileSource extends TileSource {
+export class NetworkTileSource extends TileSource {
+
 
     constructor (source) {
         super(source);
@@ -87,7 +87,8 @@ class NetworkTileSource extends TileSource {
     getDefaultHeaders() { return { "Content-Type": "application/json" }; }
 
     loadTile (tile, callback) {
-//        var xhr = req;
+        var req = new XMLHttpRequest();
+        var xhr = req;
         var url = this.url_template.
             replace('{x}', tile.coords.x).
             replace('{y}', tile.coords.y).
@@ -98,71 +99,44 @@ class NetworkTileSource extends TileSource {
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
 
-        xhr({
-            url: url,
-            headers: this.getDefaultHeaders()
-        }, (err, resp, body) => {
-            if (err) return callback(err);
-            debugger;
-            this.parseTile(tile, body);
+        tile.url = url;
+        tile.xhr = req;
+        tile.debug.network = +new Date();
 
-            if (typeof callback === 'function') return callback(tile);
+        req.onload = () => {
+            // Canceled while loading?
+            if (tile.loading == false) {
+                return;
+            }
 
-        });
+            if (xhr.response === undefined) xhr.response = xhr.responseText;
 
-        // tile.url = url;
+           tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
+           tile.debug.network = +new Date() - tile.debug.network;
 
+           tile.debug.parsing = +new Date();
+           this.parseTile(tile, xhr.response);
+           tile.debug.parsing = +new Date() - tile.debug.parsing;
 
-//        tile.xhr = req;
+           delete tile.xhr;
+           tile.loading = false;
+           tile.loaded = true;
 
-//        tile.debug.network = +new Date();
-/*
-
-xhr({
-    body: someJSONString,
-    uri: "/foo",
-    headers: {
-        "Content-Type": "application/json"
-    }
-}, function (err, resp, body) {
-    // resp === xhr
-    // check resp.body or resp.statusCode
-})
-
-*/
-        // req.onload = () => {
-        //     // Canceled while loading?
-        //     if (tile.loading == false) {
-        //         return;
-        //     }
-
-        //     if (xhr.response === undefined) xhr.response = xhr.responseText;
-
-//            tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
-//            tile.debug.network = +new Date() - tile.debug.network;
-
-//            tile.debug.parsing = +new Date();
-//            this.parseTile(tile, xhr.response);
-//            tile.debug.parsing = +new Date() - tile.debug.parsing;
-
-//            delete tile.xhr;
-//            tile.loading = false;
-//            tile.loaded = true;
-
-        //     if (callback) {
-        //         callback(tile);
-        //     }
-        // };
+            if (callback) {
+                callback(tile);
+            }
+        };
         // TODO: add XHR error handling
-        // req.open('GET', url, true); // async flag
-        // req.responseType = this.response_type;
-        // req.send();
+        req.open('GET', url, true); // async flag
+        req.responseType = this.response_type;
+        req.send();
 
     }
 
     // Sub-classes must implement this method:
-    // parseTile (tile) {
-    // }
+    parseTile (tile) {
+        throw new NotImplemented('parseTile');
+    }
 }
 
 
@@ -170,7 +144,7 @@ xhr({
  Mapzen/OSM.US-style GeoJSON vector tiles
  @class GeoJSONTileSource
 */
-class GeoJSONTileSource extends NetworkTileSource {
+export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
@@ -187,7 +161,7 @@ class GeoJSONTileSource extends NetworkTileSource {
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
 
-class TopoJSONTileSource extends NetworkTileSource {
+export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
@@ -235,7 +209,7 @@ class TopoJSONTileSource extends NetworkTileSource {
 
 /*** Mapbox vector tiles ***/
 
-class MapboxFormatTileSource extends NetworkTileSource {
+export class MapboxFormatTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);

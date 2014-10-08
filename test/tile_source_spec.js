@@ -1,11 +1,20 @@
 import chai from 'chai';
 let assert = chai.assert;
-import TileSource from '../src/tile_source';
 import {Geo} from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
+import TileSource from '../src/tile_source';
+import {
+    NetworkTileSource,
+    GeoJSONTileSource,
+    TopoJSONTileSource,
+    MapboxFormatTileSource
+} from '../src/tile_source';
 
-describe.only('TileSource', () => {
-    let url = 'http://localhost/{x}/{y}/{z}';
+import {NotImplemented} from '../src/errors';
+
+describe('TileSource', () => {
+
+    let url = 'http://localhost:8080/stuff';
     let max_zoom = 12;
     let options = {url, max_zoom};
 
@@ -13,7 +22,6 @@ describe.only('TileSource', () => {
         let subject;
         beforeEach(() => {
             subject = new TileSource(options);
-
         });
 
         it('returns a new instance', () => {
@@ -22,29 +30,43 @@ describe.only('TileSource', () => {
         it('sets the max_zoom level', () => {
             assert.equal(subject.max_zoom, max_zoom);
         });
+        it('sets the url', () => {
+            assert.equal(subject.url_template, url);
+        });
+    });
+
+    describe('.parseTile()', () => {
+        let subject;
+        beforeEach(() => {
+            subject = new NetworkTileSource(options);
+        });
+        describe('when not overriden by a subclass', () => {
+            it('throws an error', () => {
+                assert.throws(() => { subject.parseTile({}); }, NotImplemented);
+            });
+        });
     });
 
     describe('TileSource.create(type, url_template, options)', () => {
 
         describe('when I ask for a GeoJSONTileSource', () => {
-            let subject = TileSource.create({type: 'GeoJSONTileSource'});
-
+            let subject = TileSource.create(_.merge({type: 'GeoJSONTileSource'}, options));
             it('returns a new GeoJSONTileSource', () => {
-                assert.instanceOf(subject, Object);
+                assert.instanceOf(subject, GeoJSONTileSource);
             });
         });
 
         describe('when I ask for a TopoJSONTileSource', () => {
-            let subject = TileSource.create({type: 'TopoJSONTileSource'});
+            let subject = TileSource.create(_.merge({type: 'TopoJSONTileSource'}, options));
             it('returns a new TopoJSONTileSource', () => {
-                assert.instanceOf(subject, Object);
+                assert.instanceOf(subject, TopoJSONTileSource);
             });
         });
 
-        describe('when I ask for a MapboxTileSource', () => {
-            let subject = TileSource.create({type: 'MapboxTileSource'});
-            it('returns a new MapboxTileSource', () => {
-                assert.instanceOf(subject, Object);
+        describe('when I ask for a MapboxFormatTileSource', () => {
+            let subject = TileSource.create(_.merge({type: 'MapboxFormatTileSource'}, options));
+            it('returns a new MapboxFormatTileSource', () => {
+                assert.instanceOf(subject, MapboxFormatTileSource);
             });
         });
     });
@@ -64,11 +86,11 @@ describe.only('TileSource', () => {
         });
 
         it('calls the .transformGeometry() method', () => {
-            assert.strictEqual(Geo.transformGeometry.callCount, 3);
+            sinon.assert.callCount(Geo.transformGeometry, 3);
         });
 
         it('calls the .latLngToMeters() method', () => {
-            assert.strictEqual(Geo.latLngToMeters.callCount, 3);
+            sinon.assert.callCount(Geo.latLngToMeters, 3);
         });
 
     });
@@ -99,17 +121,16 @@ describe.only('TileSource', () => {
                   "coordinates":[1357421762.5708044, 12225.065494573035]},
                  "properties":{"name":"bob"}}
             );
-
         });
-
     });
 
-    describe('GeoJSONTileSource', () => {
 
-        describe('.constructor()', () => {
+    describe('NetworkTileSource', () => {
+
+        describe('.constructor(options)', () => {
             let subject;
             beforeEach(() => {
-                subject = TileSource.create({url: '', max_zoom: 12});
+                subject = new NetworkTileSource(options);
             });
 
             afterEach(() => {
@@ -121,75 +142,18 @@ describe.only('TileSource', () => {
             });
         });
 
-        describe('.loadTile(tile, cb)', () => {
-
-            describe('when there are no http errors', () => {
-                let subject, xhr, request, mockTile;
-                let runAjax = (content) => {
-                    request.respond(
-                        200, { 'Content-Type': 'application/json' },
-                        JSON.stringify(require('./fixtures/sample-http-response.json'))
-                    );
-                };
-
-                beforeEach(() => {
-                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
-                    xhr = sinon.useFakeXMLHttpRequest();
-                    xhr.onCreate = (req) => {
-                        request = req;
-                    };
-                    subject = TileSource.create({url: '', max_zoom: 12});
-                    sinon.spy(subject, 'parseTile');
-                });
-
-                afterEach(() => {
-                    xhr.restore();
-                    subject = undefined;
-                    request = undefined;
-                });
-
-                it('calls back with the tile', (done) => {
-                    subject.loadTile(mockTile, (tile) => {
-                        assert.isObject(tile);
-                        done();
-                    });
-                    runAjax();
-                });
-
-                it('calls the .parseTile() method', (done) => {
-                    subject.loadTile(mockTile, (tile) => {
-                        assert.isTrue(subject.parseTile.called);
-                        done();
-                    });
-                    runAjax();
-                });
+        describe('.getDefaultHeaders()', () => {
+            let subject;
+            beforeEach(() => {
+                subject = new NetworkTileSource(options);
             });
 
-            describe('when there are http errors', () => {
-                let subject, request, xhr, mockTile;
-
-                beforeEach(() => {
-                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
-                    xhr = sinon.useFakeXMLHttpRequest();
-                    xhr.onCreate = (req) => {
-                        request = req;
-                    };
-                    subject = TileSource.create({url: '', max_zoom: 12});
-                });
-                afterEach(() => { });
-
-                it('calls back with an error', (done) => {
-                    subject.loadTile(mockTile, (error, tile) => {
-                        // assert.instanceOf(error, Error);
-                        assert.isObject(error);
-                        done();
-                    });
-                    request.respond(404, {}, '{}');
-                });
+            it('returns a default hash of headers', () => {
+                assert.deepEqual(
+                    subject.getDefaultHeaders(),
+                    {'Content-Type': 'application/json'}
+                );
             });
-
         });
-
     });
-
 });
