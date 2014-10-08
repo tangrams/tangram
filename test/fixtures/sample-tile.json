@@ -1,6 +1,7 @@
 {
     "min": { "x": 1, "y": 1 },
     "debug": {},
+    "loading": true,
     "coords": { "z": 10 },
     "layers": {
         "water": {

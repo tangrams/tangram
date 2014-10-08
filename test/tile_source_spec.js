@@ -137,6 +137,10 @@ describe('TileSource', () => {
                 subject = undefined;
             });
 
+            it('returns an new instance of NetworkTileSource', () => {
+                assert.instanceOf(subject, NetworkTileSource);
+            });
+
             it('sets the max zoom', () => {
                 assert.strictEqual(subject.max_zoom, max_zoom);
             });
@@ -156,4 +160,40 @@ describe('TileSource', () => {
             });
         });
     });
+
+    describe('GeoJSONTileSource', () => {
+        let mockHTTP = JSON.stringify(require('./fixtures/sample-http-response.json'));
+        describe('.loadTile(tile, callback)', () => {
+            describe('when there are no http errors', () => {
+                let subject, xhr, request, mockTile;
+
+                beforeEach(() => {
+                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
+                    xhr = sinon.useFakeXMLHttpRequest();
+                    xhr.onCreate = (req) => {
+                        request = req;
+                    };
+                    subject = new GeoJSONTileSource(options);
+                });
+                afterEach(() => {
+                    xhr.restore();
+                    request = undefined;
+                    subject = undefined;
+                });
+
+                it('calls back with the tile object', (done) => {
+                    subject.loadTile(mockTile, (tile) => {
+                        assert.isObject(tile);
+                        done();
+                    });
+                    request.respond(200, {}, mockHTTP);
+                });
+            });
+
+            describe('when there are http errors', () => {
+                it('calls back with an error object');
+            });
+        });
+    });
+
 });
