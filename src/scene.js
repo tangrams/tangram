@@ -168,7 +168,7 @@ Scene.prototype.initSelectionBuffer = function () {
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
     // TODO, we should move the url to a config file
-    var worker_url = Scene.library_base_url + 'dist/tangram-worker.debug.js';// + '?' + (+new Date());
+    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
     queue.defer((complete) => {

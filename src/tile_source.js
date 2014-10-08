@@ -6,7 +6,7 @@ import {NotImplemented} from './errors';
 export default class TileSource {
 
     constructor (source) {
-        this.url_template = source.url || '';
+        this.url_template = source.url;
         this.max_zoom = source.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this
     }
 
@@ -63,6 +63,8 @@ export default class TileSource {
         }
         return tile;
     }
+
+    loadTile(tile, callback) { throw new NotImplemented('loadTile'); }
 }
 
 
@@ -88,11 +90,7 @@ export class NetworkTileSource extends TileSource {
 
     loadTile (tile, callback) {
         var req = new XMLHttpRequest();
-        var xhr = req;
-        var url = this.url_template.
-            replace('{x}', tile.coords.x).
-            replace('{y}', tile.coords.y).
-            replace('{z}', tile.coords.z);
+        var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
 
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
@@ -109,18 +107,18 @@ export class NetworkTileSource extends TileSource {
                 return;
             }
 
-            if (xhr.response === undefined) xhr.response = xhr.responseText;
+            if (tile.xhr.response === undefined) { tile.xhr.response = tile.xhr.responseText; }
 
-           tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
-           tile.debug.network = +new Date() - tile.debug.network;
+            tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
+            tile.debug.network = +new Date() - tile.debug.network;
 
-           tile.debug.parsing = +new Date();
-           this.parseTile(tile, xhr.response);
-           tile.debug.parsing = +new Date() - tile.debug.parsing;
+            tile.debug.parsing = +new Date();
+            this.parseTile(tile, tile.xhr.response);
+            tile.debug.parsing = +new Date() - tile.debug.parsing;
 
-           delete tile.xhr;
-           tile.loading = false;
-           tile.loaded = true;
+            delete tile.xhr;
+            tile.loading = false;
+            tile.loaded = true;
 
             if (callback) {
                 callback(tile);
