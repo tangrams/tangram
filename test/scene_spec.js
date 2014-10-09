@@ -241,7 +241,7 @@ describe('Scene', () => {
             assert.isTrue(subject.removeTilesOutsideZoomRange.called);
         });
 
-        it('marks the scene as drity', () => {
+        it('marks the scene as dirty', () => {
             assert.isTrue(subject.dirty);
         });
     });
@@ -344,11 +344,11 @@ describe('Scene', () => {
 
         describe('when given a url', () => {
 
-            it('creates the correct number of workes', () => {
+            it('creates the correct number of workers', () => {
                 assert.equal(subject.workers.length, 2);
             });
 
-            it('createts the correct type of workers', () => {
+            it('creates the correct type of workers', () => {
                 assert.instanceOf(subject.workers[0], Worker);
             });
 
