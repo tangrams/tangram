@@ -1,5 +1,7 @@
+/*globals TileSource */
 import {Geo}   from './geo';
 import Point from './point';
+import {MethodNotImplemented} from './errors';
 
 export default class TileSource {
 
@@ -32,14 +34,20 @@ export default class TileSource {
                     var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
                     return [m.x, m.y];
                 });
-            };
+            }
         }
-        tile.debug.projection = +new Date() - timer;
+
+        if (tile.debug !== undefined) {
+            tile.debug.projection = +new Date() - timer;
+        }
         return tile;
     }
 
     // Re-scale geometries within each tile to the range [0, scale]
-    // TODO: clip vertices at edges? right now vertices can have values outside [0, scale] (over or under bounds); this would pose a problem if we wanted to binary encode the vertices in fewer bits (e.g. 12 bits each for scale of 4096)
+    // TODO: clip vertices at edges? right now vertices can have
+    // values outside [0, scale] (over or under bounds); this would
+    // pose a problem if we wanted to binary encode the vertices in
+    // fewer bits (e.g. 12 bits each for scale of 4096)
     static scaleTile (tile) {
         for (var t in tile.layers) {
             var num_features = tile.layers[t].features.length;
@@ -51,21 +59,20 @@ export default class TileSource {
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                     return coordinates;
                 });
-            };
+            }
         }
         return tile;
     }
 
-    // Sub-classes must implement this method
-    // loadTile (tile, callback) {
-    // }
-
+    loadTile(tile, callback) { throw new MethodNotImplemented('loadTile'); }
 }
+
 
 
 /*** Generic network tile loading - abstract class ***/
 
-class NetworkTileSource extends TileSource {
+export class NetworkTileSource extends TileSource {
+
 
     constructor (source) {
         super(source);
@@ -78,6 +85,8 @@ class NetworkTileSource extends TileSource {
             this.next_host = 0;
         }
     }
+
+    getDefaultHeaders() { return { "Content-Type": "application/json" }; }
 
     loadTile (tile, callback) {
         var req = new XMLHttpRequest();
@@ -98,11 +107,13 @@ class NetworkTileSource extends TileSource {
                 return;
             }
 
+            if (tile.xhr.response === undefined) { tile.xhr.response = tile.xhr.responseText; }
+
             tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
             tile.debug.network = +new Date() - tile.debug.network;
 
             tile.debug.parsing = +new Date();
-            this.parseTile(tile);
+            this.parseTile(tile, tile.xhr.response);
             tile.debug.parsing = +new Date() - tile.debug.parsing;
 
             delete tile.xhr;
@@ -117,36 +128,38 @@ class NetworkTileSource extends TileSource {
         req.open('GET', url, true); // async flag
         req.responseType = this.response_type;
         req.send();
+
     }
 
     // Sub-classes must implement this method:
-    // parseTile (tile) {
-    // }
-
+    parseTile (tile) {
+        throw new MethodNotImplemented('parseTile');
+    }
 }
 
 
-/*** Mapzen/OSM.US-style GeoJSON vector tiles ***/
-
-class GeoJSONTileSource extends NetworkTileSource {
+/**
+ Mapzen/OSM.US-style GeoJSON vector tiles
+ @class GeoJSONTileSource
+*/
+export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
     }
 
-    parseTile (tile) {
-        tile.layers = JSON.parse(tile.xhr.response);
+    parseTile (tile, response) {
+        tile.layers = JSON.parse(response);
 
         TileSource.projectTile(tile); // mercator projection
         TileSource.scaleTile(tile); // re-scale from meters to local tile coords
     }
-
 }
 
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
 
-class TopoJSONTileSource extends NetworkTileSource {
+export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
@@ -159,7 +172,7 @@ class TopoJSONTileSource extends NetworkTileSource {
                 console.log("loaded TopoJSON library");
             }
             catch (e) {
-                console.log("failed to load TopoJSON library!");
+                console.error("failed to load TopoJSON library!", e);
             }
         }
     }
@@ -194,7 +207,7 @@ class TopoJSONTileSource extends NetworkTileSource {
 
 /*** Mapbox vector tiles ***/
 
-class MapboxFormatTileSource extends NetworkTileSource {
+export class MapboxFormatTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
@@ -222,8 +235,9 @@ class MapboxFormatTileSource extends NetworkTileSource {
                     coordinates[1] = -coordinates[1];
                     return coordinates;
                 });
-            };
+            }
         }
     }
 
 }
+

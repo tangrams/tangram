@@ -67,9 +67,13 @@ export default function Scene(tile_source, layers, styles, options) {
     this.resetTime();
 }
 
+Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    return new Scene(tile_source, layers, styles, options);
+};
+
 Scene.prototype.init = function (callback) {
     if (this.initialized) {
-        return;
+        return false;
     }
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
@@ -163,10 +167,11 @@ Scene.prototype.initSelectionBuffer = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
+    // TODO, we should move the url to a config file
     var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer(complete => {
+    queue.defer((complete) => {
         // Local object URLs supported?
         var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
         if (createObjectURL && this.allow_cross_domain_workers) {
@@ -215,7 +220,7 @@ Scene.prototype.makeWorkers = function (url) {
             type: 'init',
             worker_id: w,
             num_workers: this.num_workers
-        })
+        });
     }
 };
 
@@ -671,8 +676,8 @@ Scene.prototype.workerGetFeatureSelection = function (event) {
 };
 
 // Queue a tile for load
-Scene.prototype.loadTile = function (coords, div, callback) {
-    this.queued_tiles[this.queued_tiles.length] = arguments;
+Scene.prototype.loadTile = function (...args) {
+    this.queued_tiles[this.queued_tiles.length] = args
 };
 
 // Load all queued tiles

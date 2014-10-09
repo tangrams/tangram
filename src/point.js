@@ -1,4 +1,4 @@
-
+/* globals Point */
 export default class Point {
     constructor(x, y) {
         if (! (this instanceof Point)) {
