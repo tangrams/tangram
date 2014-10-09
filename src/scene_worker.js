@@ -1,3 +1,4 @@
+/*jshint worker: true*/
 import {Utils} from './utils';
 import {Style} from './style';
 import Scene  from './scene';
@@ -15,7 +16,7 @@ GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker
 SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'init') {
+    if (event.data.type !== 'init') {
         return;
     }
 
@@ -56,7 +57,7 @@ SceneWorker.buildTile = function (tile)
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
 SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'buildTile') {
+    if (event.data.type !== 'buildTile') {
         return;
     }
 
@@ -65,7 +66,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // Tile cached?
     if (SceneWorker.tiles[tile.key] != null) {
         // Already loading?
-        if (SceneWorker.tiles[tile.key].loading == true) {
+        if (SceneWorker.tiles[tile.key].loading === true) {
             return;
         }
 
@@ -111,7 +112,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 // Remove tile
 SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'removeTile') {
+    if (event.data.type !== 'removeTile') {
         return;
     }
 
@@ -120,7 +121,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // SceneWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
-        if (tile.loading == true) {
+        if (tile.loading === true) {
             SceneWorker.log("cancel tile load for " + key);
             // TODO: let tile source do this
             tile.loading = false;
@@ -138,7 +139,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 // Get a feature from the selection map
 SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'getFeatureSelection') {
+    if (event.data.type !== 'getFeatureSelection') {
         return;
     }
 
@@ -156,7 +157,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 // Make layers/styles refresh config
 SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type != 'prepareForRebuild') {
+    if (event.data.type !== 'prepareForRebuild') {
         return;
     }
 

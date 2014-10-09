@@ -1,6 +1,7 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
 KARMA = ./node_modules/karma/bin/karma
+JSHINT = ./node_modules/.bin/jshint
 LIB_TESS = ./lib/libtess.cat.js
 EXTERNAL_LIBS = $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
@@ -65,4 +66,9 @@ clean:
 	rm -f dist/*
 	rm -f src/gl/gl_shaders.js
 
-.PHONY : clean all dev unit
+lint:
+	$(JSHINT) src/gl/*.js
+	$(JSHINT) src/*.js
+	$(JSHINT) test/*.js
+
+.PHONY : clean all dev unit lint

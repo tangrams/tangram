@@ -1,3 +1,4 @@
+/* global GLProgram */
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
 import {Utils} from '../utils';
@@ -28,7 +29,7 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.name = options.name; // can provide a program name (useful for debugging)
 
     this.compile(options.callback);
-};
+}
 
 // Use program wrapper with simple state cache
 GLProgram.prototype.use = function ()
@@ -37,7 +38,7 @@ GLProgram.prototype.use = function ()
         return;
     }
 
-    if (GLProgram.current != this) {
+    if (GLProgram.current !== this) {
         this.gl.useProgram(this.program);
     }
     GLProgram.current = this;
@@ -96,7 +97,7 @@ GLProgram.prototype.compile = function (callback)
         }
 
         // First find code replace points in shaders
-        var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
+        regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
         var inject_vertex = this.computed_vertex_shader.match(regexp);
         var inject_fragment = this.computed_fragment_shader.match(regexp);
 
@@ -177,7 +178,7 @@ GLProgram.prototype.compile = function (callback)
         this.refreshAttributes();
 
         // Notify caller
-        if (typeof callback == 'function') {
+        if (typeof callback === 'function') {
             callback();
         }
     });
@@ -187,15 +188,15 @@ GLProgram.prototype.compile = function (callback)
 // Can be async, calls 'complete' callback when done
 GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
-    var type, value, source;
+    var source;
 
     // Inline code
-    if (typeof block == 'string') {
+    if (typeof block === 'string') {
         transforms[key].list[index] = block;
         complete();
     }
     // Remote code
-    else if (typeof block == 'object' && block.url) {
+    else if (typeof block === 'object' && block.url) {
         var req = new XMLHttpRequest();
 
         req.onload = function () {
@@ -251,13 +252,13 @@ GLProgram.prototype.buildShaderTransformList = function () {
 GLProgram.buildDefineString = function (defines) {
     var define_str = "";
     for (var d in defines) {
-        if (defines[d] == false) {
+        if (defines[d] === false) {
             continue;
         }
-        else if (typeof defines[d] == 'boolean' && defines[d] == true) { // booleans are simple defines with no value
+        else if (typeof defines[d] === 'boolean' && defines[d] === true) { // booleans are simple defines with no value
             define_str += "#define " + d + "\n";
         }
-        else if (typeof defines[d] == 'number' && Math.floor(defines[d]) == defines[d]) { // int to float conversion to satisfy GLSL floats
+        else if (typeof defines[d] === 'number' && Math.floor(defines[d]) === defines[d]) { // int to float conversion to satisfy GLSL floats
             define_str += "#define " + d + " " + defines[d].toFixed(1) + "\n";
         }
         else { // any other float or string value
@@ -277,11 +278,11 @@ GLProgram.prototype.setUniforms = function (uniforms)
         var uniform = uniforms[u];
 
         // Single float
-        if (typeof uniform == 'number') {
+        if (typeof uniform === 'number') {
             this.uniform('1f', u, uniform);
         }
         // Multiple floats - vector or array
-        else if (typeof uniform == 'object') {
+        else if (typeof uniform === 'object') {
             // float vectors (vec2, vec3, vec4)
             if (uniform.length >= 2 && uniform.length <= 4) {
                 this.uniform(uniform.length + 'fv', u, uniform);
@@ -293,11 +294,11 @@ GLProgram.prototype.setUniforms = function (uniforms)
             // TODO: assume matrix for (typeof == Float32Array && length == 16)?
         }
         // Boolean
-        else if (typeof uniform == 'boolean') {
+        else if (typeof uniform === 'boolean') {
             this.uniform('1i', u, uniform);
         }
         // Texture
-        else if (typeof uniform == 'string') {
+        else if (typeof uniform === 'string') {
             var texture = GLTexture.textures[uniform];
             if (texture == null) {
                 texture = new GLTexture(this.gl, uniform);

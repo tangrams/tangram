@@ -1,3 +1,4 @@
+/* global GLVertexLayout */
 // Describes a vertex layout that can be used with many different GL programs.
 // If a given program doesn't include all attributes, it can still use the vertex layout
 // to read those attribs that it does recognize, using the attrib offsets to skip others.
@@ -42,7 +43,7 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
         var attrib = this.attribs[a];
         var location = gl_program.attribute(attrib.name).location;
 
-        if (location != -1) {
+        if (location !== -1) {
             gl.enableVertexAttribArray(location);
             gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
             GLVertexLayout.enabled_attribs[location] = gl_program;
@@ -52,7 +53,7 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
     // Disable any previously bound attributes that aren't for this layout
     var unusued_attribs = [];
     for (location in GLVertexLayout.enabled_attribs) {
-        if (GLVertexLayout.enabled_attribs[location] != gl_program) {
+        if (GLVertexLayout.enabled_attribs[location] !== gl_program) {
             gl.disableVertexAttribArray(location);
             unusued_attribs.push(location);
         }

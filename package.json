@@ -43,6 +43,7 @@
     "karma-sinon": "~1.0.3",
     "topojson": "~1.6.18",
     "lodash": "~2.4.1",
-    "karma-mocha-reporter": "~0.3.1"
+    "karma-mocha-reporter": "~0.3.1",
+    "jshint": "~2.5.6"
   }
 }
