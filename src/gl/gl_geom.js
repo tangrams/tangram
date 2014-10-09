@@ -9,14 +9,14 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
     options = options || {};
 
     this.gl = gl;
-    this.vertex_data = vertex_data; // Float32Array
+    this.vertex_data = vertex_data; // typed array
     this.vertex_layout = vertex_layout;
     this.buffer = this.gl.createBuffer();
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
     this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
 
-    this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
+    this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride_padded;
     this.geometry_count = this.vertex_count / this.vertices_per_geometry;
 
     // TODO: disabling VAOs for now because we need to support different vertex layout + program combinations,

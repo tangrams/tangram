@@ -4,6 +4,8 @@ import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
+// var gl = require('./gl/gl_constants.js'); // for accessing GL constants
+
 var SceneWorker = {};
 SceneWorker.worker = self;
 SceneWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
@@ -80,7 +82,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source);
     SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
     SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
+    SceneWorker.modes = SceneWorker.modes || SceneWorker.createModes(SceneWorker.styles);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -162,11 +164,39 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     SceneWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
     SceneWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles);
+    SceneWorker.modes = SceneWorker.modes || SceneWorker.createModes(SceneWorker.styles);
     Style.resetSelectionMap();
 
     SceneWorker.log("worker refreshed config for tile rebuild");
 });
+
+function* entries(obj) {
+    for (var key of Object.keys(obj)) {
+        yield [key, obj[key]];
+    }
+}
+
+function* values(obj) {
+    for (var key of Object.keys(obj)) {
+        yield obj[key];
+    }
+}
+
+// TODO: fix, hacky half-initialization that calls _init() (but not init()) to force creation of vertex_layout
+SceneWorker.createModes = function (styles) {
+    var modes = Scene.createModes(styles);
+    // for (var mode of modes) {
+    // for (var m in modes) {
+        // var mode = modes[m];
+    // for (var [, mode] of entries(modes)) {
+    for (var mode of values(modes)) {
+        // mode.gl = gl;
+        if (typeof mode._init === 'function') {
+            mode._init();
+        }
+    }
+    return modes;
+}
 
 // Log wrapper to include worker id #
 SceneWorker.log = function (msg) {

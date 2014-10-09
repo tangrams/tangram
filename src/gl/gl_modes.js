@@ -188,14 +188,154 @@ Modes.polygons.defines = {
 
 Modes.polygons.selection = true;
 
+// try {
+//     var gl = WebGLRenderingContext;
+// }
+// catch(e) {
+    var gl = require('./gl_constants.js'); // for accessing GL constants
+// }
+// var gl = WebGLRenderingContext || require('./gl_constants.js'); // for accessing GL constants
+
+// Modes.polygons.vertex_layout = new GLVertexLayout([
+//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+//     { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+//     { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+//     { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+// ]);
+
+// Modes.polygons.vertex_layout = new GLVertexLayout([
+//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+//     { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+//     { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+//     { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+// ]);
+
+// Modes.polygons.alt_layout = new GLVertexLayout([
+//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false }, // 12
+//     { name: 'a_normal', size: 3, type: gl.SHORT, normalized: true }, // 6
+//     { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }, // 4
+//     { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }, // 4
+//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false } // 4
+// ]);
+
 Modes.polygons._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
+    this.vertex_layout = new GLVertexLayout([
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
+
+    // this.vertex_layout.addVertex = function (vertices) {
+    //     this.checkBufferSize(vertices.length);
+
+    //     var vlen = vertices.length;
+    //     for (var v=0; v < vlen; v++) {
+    //     var obj = vertices[v];
+
+    // };
+};
+
+Modes.polygons.buildPolygonsX = function (polygons, style)
+{
+    var vertex_constants = {
+        a_color: style.color,
+        a_selection_color: style.selection.color,
+        // a_layer: [style.layer_num] // TODO: don't always require an attrib to be in an array!
+        a_layer: style.layer_num
+    };
+
+    // vertex_constants.a_color[0] = 0;
+    // vertex_constants.a_color[1] = 0;
+    // vertex_constants.a_color[2] = 0;
+
+    // vertex_constants.a_color[0] = 0;
+    // vertex_constants.a_color[1] = 0;
+    // vertex_constants.a_color[2] = 0;
+    // vertex_constants.a_color[3] = 0;
+
+    // vertex_constants.a_color[0] *= 255;
+    // vertex_constants.a_color[1] *= 255;
+    // vertex_constants.a_color[2] *= 255;
+    // vertex_constants.a_color[3] *= 255;
+
+    // vertex_constants.a_color[0] = ~~(vertex_constants.a_color[0] * 255);
+    // vertex_constants.a_color[1] = ~~(vertex_constants.a_color[1] * 255);
+    // vertex_constants.a_color[2] = ~~(vertex_constants.a_color[2] * 255);
+
+    // if (vertex_constants.a_color[0] > 255) {
+    //     vertex_constants.a_color[0] = 255;
+    // }
+    // if (vertex_constants.a_color[1] > 255) {
+    //     vertex_constants.a_color[1] = 255;
+    // }
+    // if (vertex_constants.a_color[2] > 255) {
+    //     vertex_constants.a_color[2] = 255;
+    // }
+
+    // if (vertex_constants.a_color[0] < 0) {
+    //     vertex_constants.a_color[0] = 0;
+    // }
+    // if (vertex_constants.a_color[1] < 0) {
+    //     vertex_constants.a_color[1] = 0;
+    // }
+    // if (vertex_constants.a_color[2] < 0) {
+    //     vertex_constants.a_color[2] = 0;
+    // }
+
+    // this.vertex_layout.setRepeatingAttributes({
+    //     a_color: style.color,
+    //     a_selection_color: style.selection.color,
+    //     a_layer: style.layer_num
+    // });
+
+    // console.log("Mode.buildPolygonsX");
+
+    // Extruded polygons (e.g. 3D buildings)
+    // if (style.extrude && style.height) {
+    //     GLBuilders.buildExtrudedPolygons(
+    //         polygons,
+    //         style.z,
+    //         style.height,
+    //         style.min_height,
+    //         vertex_data,
+    //         {
+    //             vertex_constants: vertex_constants
+    //         }
+    //     );
+    // }
+    // // Regular polygons
+    // else {
+        GLBuilders.buildPolygonsX(
+            polygons,
+            style.z,
+            this.vertex_layout,
+            {
+                normals: true,
+                vertex_constants: vertex_constants
+            }
+        );
+    // }
+
+    // Polygon outlines
+    // if (style.outline.color && style.outline.width) {
+    //     for (var mpc=0; mpc < polygons.length; mpc++) {
+    //         GLBuilders.buildPolylines(
+    //             polygons[mpc],
+    //             style.z,
+    //             style.outline.width,
+    //             vertex_data,
+    //             {
+    //                 closed_polygon: true,
+    //                 remove_tile_edges: true,
+    //                 vertex_constants: outline_vertex_constants
+    //             }
+    //         );
+    //     }
+    // }
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
@@ -376,12 +516,12 @@ Modes.points.defines = {
 Modes.points.selection = true;
 
 Modes.points._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
+    this.vertex_layout = new GLVertexLayout([
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
 };
 

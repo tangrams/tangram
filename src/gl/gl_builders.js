@@ -34,6 +34,48 @@ GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex
     return vertex_data;
 };
 
+// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
+GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
+{
+    options = options || {};
+    var vertex = {};
+
+    if (options.vertex_constants) {
+        for (var c in options.vertex_constants) {
+            vertex[c] = options.vertex_constants[c];
+        }
+    }
+
+    if (options.normals) {
+        vertex.a_normal = [0, 0, 1]; // upwards-facing normal
+        // vertex_layout.setRepeatingAttributes({ a_normal: [0, 0, 1] });
+    }
+
+// console.log("GLBuilders.buildPolygonsX");
+
+    var num_polygons = polygons.length;
+    for (var p=0; p < num_polygons; p++) {
+        var vertices = GL.triangulatePolygon(polygons[p]);
+        for (var v=0; v < vertices.length; v++) {
+            // vertex.a_position = vertices[v];
+            // vertex.a_position[2] = z; // TODO: fix this?
+            // vertex_layout.addVertex(vertex);
+            // if (v == 0) {
+            //     console.log(JSON.stringify(vertex));
+            // }
+
+            vertices[v].a_position = vertices[v];
+            vertices[v].a_position[2] = z; // TODO: fix this?
+            vertices[v].a_normal = vertex.a_normal;
+            vertices[v].a_color = vertex.a_color;
+            vertices[v].a_selection_color = vertex.a_selection_color;
+            vertices[v].a_layer = vertex.a_layer;
+        }
+
+        vertex_layout.addVertex(vertices);
+    }
+};
+
 // Callback-base builder (for future exploration)
 // Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
 // GLBuilders.buildPolygons2 = function GLBuildersBuildPolygon2 (polygons, z, addGeometry, options)

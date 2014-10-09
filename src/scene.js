@@ -839,7 +839,8 @@ Scene.addTile = function (tile, layers, styles, modes) {
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
+    // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
+    for (var layer_num = 0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
@@ -888,29 +889,42 @@ Scene.addTile = function (tile, layers, styles, modes) {
                 // First feature in this render mode?
                 mode = style.mode.name;
                 if (vertex_data[mode] == null) {
-                    vertex_data[mode] = [];
+                    // vertex_data[mode] = [];
+
+                    vertex_data[mode] = true; // TODO: cleanup, just marking actively rendering modes here
+                    modes[mode].vertex_layout.beginBuffer();
                 }
 
                 if (polygons != null) {
-                    modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
+                    // modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
+                    modes[mode].buildPolygonsX(polygons, style);
                 }
 
-                if (lines != null) {
-                    modes[mode].buildLines(lines, style, vertex_data[mode]);
-                }
+                // if (lines != null) {
+                //     modes[mode].buildLines(lines, style, vertex_data[mode]);
+                // }
 
-                if (points != null) {
-                    modes[mode].buildPoints(points, style, vertex_data[mode]);
-                }
+                // if (points != null) {
+                //     modes[mode].buildPoints(points, style, vertex_data[mode]);
+                // }
 
                 tile.debug.features++;
             }
+
+            // console.log(layer.name);
+            // for (var m in vertex_data) {
+            //     console.log(`${m}: ${modes[m].vertex_layout.buffer.byteLength}`);
+            // }
         }
     }
 
     tile.vertex_data = {};
     for (var s in vertex_data) {
-        tile.vertex_data[s] = new Float32Array(vertex_data[s]);
+        // tile.vertex_data[s] = new Float32Array(vertex_data[s]);
+
+        modes[s].vertex_layout.endBuffer();
+        tile.vertex_data[s] = new Uint8Array(modes[s].vertex_layout.buffer); // TODO: typed array instance necessary?
+        // tile.vertex_data[s] = new Float32Array(modes[s].vertex_layout.buffer); // TODO: typed array instance necessary?
     }
 
     return {
