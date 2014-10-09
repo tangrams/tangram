@@ -126,9 +126,13 @@ describe('Scene', () => {
         let subject;
         let height = 100;
         let width = 200;
+        let devicePixelRatio = 100;
+        let computedHeight = Math.round(height * devicePixelRatio);
+        let computedWidth  = Math.round(width * devicePixelRatio);
 
         beforeEach((done) => {
             subject = makeOne({});
+            subject.device_pixel_ratio = devicePixelRatio;
             subject.init(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
@@ -147,8 +151,8 @@ describe('Scene', () => {
 
         it('sets the device size property', () => {
             assert.deepEqual(subject.device_size, {
-                height: height,
-                width: width
+                height: computedHeight,
+                width: computedWidth
             });
         });
 
@@ -172,11 +176,11 @@ describe('Scene', () => {
 
         describe('-canvas', () => {
             it('sets the height property', () => {
-                assert.equal(subject.canvas.height, height);
+                assert.equal(subject.canvas.height, computedHeight);
             });
 
             it('sets the width property', () => {
-                assert.equal(subject.canvas.width, width);
+                assert.equal(subject.canvas.width, computedWidth);
             });
         });
 

@@ -1,8 +1,8 @@
 
 
-export class NotImplemented extends Error {
+export class MethodNotImplemented extends Error {
     constructor(methodName) {
-        this.name    = 'NotImplemented';
-        this.message = 'Method' + methodName + ' must be implemented in subclass';
+        this.name    = 'MethodNotImplemented';
+        this.message = 'Method ' + methodName + ' must be implemented in subclass';
     }
 }

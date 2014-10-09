@@ -1,7 +1,7 @@
 /*globals TileSource */
 import {Geo}   from './geo';
 import Point from './point';
-import {NotImplemented} from './errors';
+import {MethodNotImplemented} from './errors';
 
 export default class TileSource {
 
@@ -64,7 +64,7 @@ export default class TileSource {
         return tile;
     }
 
-    loadTile(tile, callback) { throw new NotImplemented('loadTile'); }
+    loadTile(tile, callback) { throw new MethodNotImplemented('loadTile'); }
 }
 
 
@@ -133,7 +133,7 @@ export class NetworkTileSource extends TileSource {
 
     // Sub-classes must implement this method:
     parseTile (tile) {
-        throw new NotImplemented('parseTile');
+        throw new MethodNotImplemented('parseTile');
     }
 }
 

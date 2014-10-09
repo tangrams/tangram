@@ -10,7 +10,7 @@ import {
     MapboxFormatTileSource
 } from '../src/tile_source';
 
-import {NotImplemented} from '../src/errors';
+import {MethodNotImplemented} from '../src/errors';
 
 describe('TileSource', () => {
 
@@ -18,7 +18,7 @@ describe('TileSource', () => {
     let max_zoom = 12;
     let options = {url, max_zoom};
 
-    describe('.constructor()', () => {
+    describe('.constructor(options)', () => {
         let subject;
         beforeEach(() => {
             subject = new TileSource(options);
@@ -35,14 +35,14 @@ describe('TileSource', () => {
         });
     });
 
-    describe('.parseTile()', () => {
-        let subject;
-        beforeEach(() => {
-            subject = new NetworkTileSource(options);
-        });
-        describe('when not overriden by a subclass', () => {
-            it('throws an error', () => {
-                assert.throws(() => { subject.parseTile({}); }, NotImplemented);
+    describe('.loadTile(tile, cb)', () => {
+        let subject = new TileSource(options);
+        describe('when the .loadTile method is not overridden', () => {
+            it('throws a MethodNotImplemented error', () => {
+                assert.throws(
+                    () => { subject.loadTile({}, () => {}); },
+                    MethodNotImplemented
+                );
             });
         });
     });
@@ -127,25 +127,6 @@ describe('TileSource', () => {
 
     describe('NetworkTileSource', () => {
 
-        describe('.constructor(options)', () => {
-            let subject;
-            beforeEach(() => {
-                subject = new NetworkTileSource(options);
-            });
-
-            afterEach(() => {
-                subject = undefined;
-            });
-
-            it('returns an new instance of NetworkTileSource', () => {
-                assert.instanceOf(subject, NetworkTileSource);
-            });
-
-            it('sets the max zoom', () => {
-                assert.strictEqual(subject.max_zoom, max_zoom);
-            });
-        });
-
         describe('.getDefaultHeaders()', () => {
             let subject;
             beforeEach(() => {
@@ -159,6 +140,25 @@ describe('TileSource', () => {
                 );
             });
         });
+
+        describe('.parseTile(tile)', () => {
+            let subject;
+            beforeEach(() => {
+                subject = new NetworkTileSource(options);
+            });
+
+            describe('when not overriden by a subclass', () => {
+                it('throws an error', () => {
+                    assert.throws(
+                        () => { subject.parseTile({}); },
+                        MethodNotImplemented,
+                        'Method parseTile must be implemented in subclass'
+                    );
+                });
+            });
+        });
+
+
     });
 
     describe('GeoJSONTileSource', () => {
