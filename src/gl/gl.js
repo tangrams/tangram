@@ -25,7 +25,7 @@ GL.getContext = function getContext (canvas)
     }
 
     GL.resizeCanvas(gl, window.innerWidth, window.innerHeight);
-    if (fullscreen == true) {
+    if (fullscreen === true) {
         window.addEventListener('resize', function () {
             GL.resizeCanvas(gl, window.innerWidth, window.innerHeight);
         });
@@ -107,7 +107,7 @@ GL.createShader = function GLcreateShader (gl, source, type)
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         var shader_error =
             "WebGL shader error:\n" +
-            (type == gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " SHADER:\n" +
+            (type === gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " SHADER:\n" +
             gl.getShaderInfoLog(shader);
         throw shader_error;
     }

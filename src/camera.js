@@ -1,3 +1,4 @@
+/*global Camera */
 import {Geo} from './geo';
 import GLProgram from './gl/gl_program';
 
@@ -20,6 +21,7 @@ export default class Camera {
             case 'perspective':
                 return new PerspectiveCamera(scene, config);
             case 'flat':
+            /* falls through */
             default:
                 return new FlatCamera(scene, config);
         }

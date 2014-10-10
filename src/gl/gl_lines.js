@@ -1,6 +1,6 @@
 // Draws a set of lines
+import {GLGeometry} from './gl_geom';
 
-var GLGeometry = require('./gl_geom.js');
 
 GLLines.prototype = Object.create(GLGeometry.prototype);
 

@@ -1,5 +1,3 @@
-import chai from 'chai';
-
 describe('Geo', () => {
 
     describe('Geo.setTileScale(scale)', () => {});

@@ -1,5 +1,4 @@
 // Rendering modes
-import {GL} from './gl';
 import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
@@ -20,7 +19,7 @@ var RenderMode = {
         this.gl = gl;
         this.makeGLProgram();
 
-        if (typeof this._init == 'function') {
+        if (typeof this._init === 'function') {
             this._init();
         }
     },
@@ -117,7 +116,7 @@ RenderMode.makeGLProgram = function ()
 
        // console.log(this.name + ": " + "finished building");
     });
-}
+};
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
 // (list of define objects that inherit from each other)
@@ -131,7 +130,7 @@ RenderMode.buildDefineList = function ()
         }
     }
     if (this.shaders != null && this.shaders.defines != null) {
-        for (var d in this.shaders.defines) {
+        for (d in this.shaders.defines) {
             defines[d] = this.shaders.defines[d];
         }
     }
@@ -150,7 +149,7 @@ RenderMode.setUniforms = function ()
 RenderMode.update = function ()
 {
     // Mode-specific animation
-    if (typeof this.animation == 'function') {
+    if (typeof this.animation === 'function') {
         this.animation();
     }
 };

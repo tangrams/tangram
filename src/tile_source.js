@@ -1,4 +1,5 @@
-/*globals TileSource */
+/*jshint worker: true */
+/*globals TileSource, topojson */
 import {Geo}   from './geo';
 import Point from './point';
 import {MethodNotImplemented} from './errors';
@@ -18,6 +19,7 @@ export default class TileSource {
             case 'MapboxFormatTileSource':
                 return new MapboxFormatTileSource(source);
             case 'GeoJSONTileSource':
+            /* falls through */
             default:
                 return new GeoJSONTileSource(source);
         }
@@ -103,7 +105,7 @@ export class NetworkTileSource extends TileSource {
 
         req.onload = () => {
             // Canceled while loading?
-            if (tile.loading == false) {
+            if (tile.loading === false) {
                 return;
             }
 
@@ -166,7 +168,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
-        if (typeof topojson == 'undefined') {
+        if (typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
                 console.log("loaded TopoJSON library");
@@ -178,7 +180,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
     }
 
     parseTile (tile) {
-        if (typeof topojson == 'undefined') {
+        if (typeof topojson === 'undefined') {
             tile.layers = {};
             return;
         }

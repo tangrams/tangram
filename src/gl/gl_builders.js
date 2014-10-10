@@ -21,7 +21,7 @@ GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex
     if (options.vertex_constants) {
         vertex_constants.push.apply(vertex_constants, options.vertex_constants);
     }
-    if (vertex_constants.length == 0) {
+    if (vertex_constants.length === 0) {
         vertex_constants = null;
     }
 
@@ -148,14 +148,14 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                     pb[0], pb[1], z + 0.001, 0, 0, 1, 1.0, 0, 0
                 );
             }
-        };
+        }
     }
 
     // Build triangles
     var vertices = [];
-    var num_lines = lines.length;
-    for (var ln=0; ln < num_lines; ln++) {
-        var line = lines[ln];
+    num_lines = lines.length;
+    for (ln = 0; ln < num_lines; ln++) {
+        line = lines[ln];
         // Multiple line segments
         if (line.length > 2) {
             // Build anchors for line segments:
@@ -167,8 +167,8 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                 // Find midpoints of each line segment
                 // For closed polygons, calculate all midpoints since segments will wrap around to first midpoint
                 var mid = [];
-                var p, pmax;
-                if (options.closed_polygon == true) {
+                var pmax;
+                if (options.closed_polygon === true) {
                     p = 0; // start on first point
                     pmax = line.length - 1;
                 }
@@ -181,14 +181,14 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
 
                 // Calc midpoints
                 for (; p < pmax; p++) {
-                    var pa = line[p];
-                    var pb = line[p+1];
+                    pa = line[p];
+                    pb = line[p+1];
                     mid.push([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2]);
                 }
 
                 // Same closed/open polygon logic as above: keep last midpoint for closed, skip for open
                 var mmax;
-                if (options.closed_polygon == true) {
+                if (options.closed_polygon === true) {
                     mmax = mid.length;
                 }
                 else {
@@ -206,7 +206,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                 anchors = [[line[0], line[1], line[2]]];
             }
 
-            for (var p=0; p < anchors.length; p++) {
+            for (p=0; p < anchors.length; p++) {
                 if (!options.remove_tile_edges) {
                     buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
                     // buildSegment(anchors[p][0], anchors[p][1]); // use these to draw extruded segments w/o join, for debugging
@@ -228,10 +228,10 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
             }
         }
         // Single 2-point segment
-        else if (line.length == 2) {
+        else if (line.length === 2) {
             buildSegment(line[0], line[1]); // TODO: replace buildSegment with a degenerate form of buildAnchor? buildSegment is still useful for debugging
         }
-    };
+    }
 
     GL.addVertices(vertices, vertex_constants, vertex_data);
 
@@ -290,7 +290,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                 intersect_outer = [
                     joint[0] + intersect_outer[0] * miter_len_max,
                     joint[1] + intersect_outer[1] * miter_len_max
-                ]
+                ];
             }
 
             var intersect_inner = [
@@ -352,11 +352,11 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
 
         if (GLBuilders.debug && line_debug && options.vertex_lines) {
             var dcolor;
-            if (line_debug == 'parallel') {
+            if (line_debug === 'parallel') {
                 // console.log("!!! lines are parallel !!!");
                 dcolor = [0, 1, 0];
             }
-            else if (line_debug == 'distance') {
+            else if (line_debug === 'distance') {
                 // console.log("!!! miter intersection point exceeded allowed distance from joint !!!");
                 dcolor = [1, 0, 0];
             }
@@ -380,8 +380,8 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
 
                 for (var p=0; p < line2.length - 1; p++) {
                     // Point A to B
-                    var pa = line2[p];
-                    var pb = line2[p+1];
+                    pa = line2[p];
+                    pb = line2[p+1];
 
                     options.vertex_lines.push(
                         pa[0], pa[1], z + 0.0005,
@@ -390,7 +390,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                         0, 0, 1, 0, 0, 1.0
                     );
                 }
-            };
+            }
         }
     }
 
@@ -406,7 +406,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
 //   constants (optional)
 GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data, options)
 {
-    var options = options || {};
+    options = options || {};
 
     var vertex_constants = [];
     if (options.normals) {
@@ -415,7 +415,7 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data
     if (options.vertex_constants) {
         vertex_constants.push.apply(vertex_constants, options.vertex_constants);
     }
-    if (vertex_constants.length == 0) {
+    if (vertex_constants.length === 0) {
         vertex_constants = null;
     }
 
@@ -443,7 +443,7 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data
             positions[5][2] = z;
         }
 
-        if (options.texcoords == true) {
+        if (options.texcoords === true) {
             var texcoords = [
                 [-1, -1],
                 [1, -1],
@@ -510,7 +510,6 @@ GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, st
     options = options || {};
 
     var color = style.color;
-    var width = style.width;
 
     var num_lines = lines.length;
     for (var ln=0; ln < num_lines; ln++) {
@@ -532,7 +531,7 @@ GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, st
                 color[0], color[1], color[2]
             );
         }
-    };
+    }
 
     return vertex_data;
 };

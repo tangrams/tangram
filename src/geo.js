@@ -16,7 +16,7 @@ for (var z=0; z <= Geo.max_zoom; z++) {
 
 Geo.metersPerPixel = function (zoom) {
     return Geo.min_zoom_meters_per_pixel / Math.pow(2, zoom);
-}
+};
 
 // Conversion functions based on an defined tile scale
 Geo.units_per_meter = [];
@@ -73,18 +73,18 @@ Geo.latLngToMeters = function(latlng)
 // Run a transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform)
 {
-    if (geometry.type == 'Point') {
+    if (geometry.type === 'Point') {
         return transform(geometry.coordinates);
     }
-    else if (geometry.type == 'LineString' || geometry.type == 'MultiPoint') {
+    else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
         return geometry.coordinates.map(transform);
     }
-    else if (geometry.type == 'Polygon' || geometry.type == 'MultiLineString') {
+    else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
         return geometry.coordinates.map(function (coordinates) {
             return coordinates.map(transform);
         });
     }
-    else if (geometry.type == 'MultiPolygon') {
+    else if (geometry.type === 'MultiPolygon') {
         return geometry.coordinates.map(function (polygon) {
             return polygon.map(function (coordinates) {
                 return coordinates.map(transform);
@@ -107,15 +107,15 @@ Geo.boxIntersect = function (b1, b2)
 
 // Split the lines of a feature wherever two points are farther apart than a given tolerance
 Geo.splitFeatureLines  = function (feature, tolerance) {
-    var tolerance = tolerance || 0.001;
+    tolerance = tolerance || 0.001;
     var tolerance_sq = tolerance * tolerance;
     var geom = feature.geometry;
     var lines;
 
-    if (geom.type == 'MultiLineString') {
+    if (geom.type === 'MultiLineString') {
         lines = geom.coordinates;
     }
-    else if (geom.type =='LineString') {
+    else if (geom.type ==='LineString') {
         lines = [geom.coordinates];
     }
     else {
@@ -142,7 +142,7 @@ Geo.splitFeatureLines  = function (feature, tolerance) {
                 }
             }
 
-            if (keep == false) {
+            if (keep === false) {
                 split_lines.push(split_seg);
                 split_seg = [];
             }
@@ -155,7 +155,7 @@ Geo.splitFeatureLines  = function (feature, tolerance) {
         split_seg = [];
     }
 
-    if (split_lines.length == 1) {
+    if (split_lines.length === 1) {
         geom.type = 'LineString';
         geom.coordinates = split_lines[0];
     }

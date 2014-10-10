@@ -1,22 +1,20 @@
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
-import {GL} from './gl';
 
-
-GLVertexArrayObject = {};
+export var GLVertexArrayObject = {};
 GLVertexArrayObject.disabled = false; // set to true to disable VAOs even if extension is available
 GLVertexArrayObject.bound_vao = null; // currently bound VAO
 
 GLVertexArrayObject.init = function (gl)
 {
     if (GLVertexArrayObject.ext == null) {
-        if (GLVertexArrayObject.disabled != true) {
+        if (GLVertexArrayObject.disabled !== true) {
             GLVertexArrayObject.ext = gl.getExtension("OES_vertex_array_object");
         }
 
         if (GLVertexArrayObject.ext != null) {
             console.log("Vertex Array Object extension available");
         }
-        else if (GLVertexArrayObject.disabled != true) {
+        else if (GLVertexArrayObject.disabled !== true) {
             console.log("Vertex Array Object extension NOT available");
         }
         else {
@@ -37,7 +35,7 @@ GLVertexArrayObject.create = function (setup, teardown)
         ext.bindVertexArrayOES(vao._vao);
         vao.setup();
         ext.bindVertexArrayOES(null);
-        if (typeof vao.teardown == 'function') {
+        if (typeof vao.teardown === 'function') {
             vao.teardown();
         }
     }
@@ -64,7 +62,7 @@ GLVertexArrayObject.bind = function (vao)
         if (ext != null) {
             ext.bindVertexArrayOES(null);
         }
-        else if (GLVertexArrayObject.bound_vao != null && typeof GLVertexArrayObject.bound_vao.teardown == 'function') {
+        else if (GLVertexArrayObject.bound_vao != null && typeof GLVertexArrayObject.bound_vao.teardown === 'function') {
             GLVertexArrayObject.bound_vao.teardown();
         }
         GLVertexArrayObject.bound_vao = null;

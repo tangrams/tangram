@@ -1,6 +1,6 @@
+/*global GLTexture */
 // Texture management
 import {Utils} from '../utils';
-import {GL} from './gl';
 
 
 // Global set of textures, by name
@@ -22,7 +22,7 @@ export default function GLTexture (gl, name, options) {
 
     this.name = name;
     GLTexture.textures[this.name] = this;
-};
+}
 
 GLTexture.prototype.bind = function (unit) {
     this.gl.activeTexture(this.gl.TEXTURE0 + unit);
@@ -87,20 +87,20 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
 
-        if (options.filtering == 'mipmap') {
+        if (options.filtering === 'mipmap') {
             // console.log("power-of-2 MIPMAP");
             this.filtering = 'mipmap';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
-        else if (options.filtering == 'linear') {
+        else if (options.filtering === 'linear') {
             // console.log("power-of-2 LINEAR");
             this.filtering = 'linear';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
-        else if (options.filtering == 'nearest') {
+        else if (options.filtering === 'nearest') {
             // console.log("power-of-2 NEAREST");
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -114,7 +114,7 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-        if (options.filtering == 'nearest') {
+        if (options.filtering === 'nearest') {
             // console.log("power-of-2 NEAREST");
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);

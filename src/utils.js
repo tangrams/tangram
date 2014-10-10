@@ -4,24 +4,25 @@ export var Utils = {};
 
 // Simplistic detection of relative paths, append base if necessary
 Utils.urlForPath = function(path) {
-    if (path == null || path == '') {
+    var protocol;
+    if (path == null || path === '') {
         return null;
     }
 
     // Can expand a single path, or an array of paths
-    if (typeof path == 'object' && path.length > 0) {
+    if (typeof path === 'object' && path.length > 0) {
         // Array of paths
         for (var p in path) {
-            var protocol = path[p].toLowerCase().substr(0, 4);
-            if (!(protocol == 'http' || protocol == 'file')) {
+            protocol = path[p].toLowerCase().substr(0, 4);
+            if (!(protocol === 'http' || protocol === 'file')) {
                 path[p] = window.location.origin + window.location.pathname + path[p];
             }
         }
     }
     else {
         // Single path
-        var protocol = path.toLowerCase().substr(0, 4);
-        if (!(protocol == 'http' || protocol == 'file')) {
+        protocol = path.toLowerCase().substr(0, 4);
+        if (!(protocol === 'http' || protocol === 'file')) {
             path = window.location.origin + window.location.pathname + path;
         }
     }
@@ -32,7 +33,7 @@ Utils.urlForPath = function(path) {
 Utils.serializeWithFunctions = function (obj) {
     var serialized = JSON.stringify(obj, function(k, v) {
         // Convert functions to strings
-        if (typeof v == 'function') {
+        if (typeof v === 'function') {
             return v.toString();
         }
         return v;
@@ -55,14 +56,16 @@ Utils.stringsToFunctions = function(obj) {
         var val = obj[p];
 
         // Loop through object properties
-        if (typeof val == 'object') {
+        if (typeof val === 'object') {
             obj[p] = Utils.stringsToFunctions(val);
         }
         // Convert strings back into functions
-        else if (typeof val == 'string' && val.match(/^function.*\(.*\)/) != null) {
+        else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {
+                /*jshint ignore:start*/
                 eval('f = ' + val);
+                /*jshint ignore:end*/
                 obj[p] = f;
             }
             catch (e) {
@@ -83,14 +86,14 @@ Utils.runIfInMainThread = function(block, err) {
         }
     }
     catch (e) {
-        if (typeof err == 'function') {
+        if (typeof err === 'function') {
             err();
         }
     }
-}
+};
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
 Utils.isPowerOf2 = function(value) {
-    return (value & (value - 1)) == 0;
-}
+    return (value & (value - 1)) === 0;
+};
