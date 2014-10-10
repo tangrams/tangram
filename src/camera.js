@@ -183,7 +183,7 @@ class IsometricCamera extends Camera {
     }
 
     setupProgram(gl_program) {
-        gl_program.uniform('2f', 'u_isometric_axis', this.axis.x / scene.view_aspect, this.axis.y);
+        gl_program.uniform('2f', 'u_isometric_axis', this.axis.x / this.scene.view_aspect, this.axis.y);
         gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
     }
 
