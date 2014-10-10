@@ -224,7 +224,8 @@ Modes.polygons._init = function () {
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
@@ -255,16 +256,17 @@ Modes.polygons.buildPolygonsX = function (polygons, style)
     // vertex_constants.a_color[0] = 0;
     // vertex_constants.a_color[1] = 0;
     // vertex_constants.a_color[2] = 0;
-    // vertex_constants.a_color[3] = 0;
+    vertex_constants.a_color[3] = 1;
 
     // vertex_constants.a_color[0] *= 255;
     // vertex_constants.a_color[1] *= 255;
     // vertex_constants.a_color[2] *= 255;
     // vertex_constants.a_color[3] *= 255;
 
-    // vertex_constants.a_color[0] = ~~(vertex_constants.a_color[0] * 255);
-    // vertex_constants.a_color[1] = ~~(vertex_constants.a_color[1] * 255);
-    // vertex_constants.a_color[2] = ~~(vertex_constants.a_color[2] * 255);
+    vertex_constants.a_color[0] = ~~(vertex_constants.a_color[0] * 255);
+    vertex_constants.a_color[1] = ~~(vertex_constants.a_color[1] * 255);
+    vertex_constants.a_color[2] = ~~(vertex_constants.a_color[2] * 255);
+    vertex_constants.a_color[3] = ~~(vertex_constants.a_color[3] * 255);
 
     // if (vertex_constants.a_color[0] > 255) {
     //     vertex_constants.a_color[0] = 255;
@@ -309,7 +311,8 @@ Modes.polygons.buildPolygonsX = function (polygons, style)
     // }
     // // Regular polygons
     // else {
-        GLBuilders.buildPolygonsX(
+        // GLBuilders.buildPolygonsX(
+        GLBuilders.buildPolygonsXFixed(
             polygons,
             style.z,
             this.vertex_layout,

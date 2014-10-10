@@ -121,8 +121,6 @@ GLVertexLayout.prototype.setBufferViews = function () {
             this.buffer_views[attrib.type] = new array_type(this.buffer);
         }
     }
-
-    this.repeating_attribs = {};
 };
 
 // Handle clipping of allocated block to free unused memory
@@ -185,7 +183,7 @@ GLVertexLayout.prototype.addVertex = function (vertices) {
     // var arg = 0;
     for (var a=0; a < len; a++) {
         var attrib = this.attribs[a];
-        var obj_attrib = obj[attrib.name] || this.repeating_attribs[attrib.name];
+        var obj_attrib = obj[attrib.name]; // || this.repeating_attribs[attrib.name];
         // console.log(obj_attrib);
 
         if (obj_attrib) {
@@ -206,10 +204,10 @@ GLVertexLayout.prototype.addVertex = function (vertices) {
                 view[off++] = obj_attrib;
             }
 
-            if (first) {
-                console.log(JSON.stringify(attrib));
-                console.log(JSON.stringify(obj_attrib));
-            }
+            // if (first) {
+            //     console.log(JSON.stringify(attrib));
+            //     console.log(JSON.stringify(obj_attrib));
+            // }
 
             // switch (attrib.type) {
             //     case gl.FLOAT:
@@ -238,4 +236,94 @@ GLVertexLayout.prototype.addVertex = function (vertices) {
     }
 
     this.vertex_count += vlen;
+};
+
+GLVertexLayout.prototype.addVertexFixed = function (vertices) {
+    this.checkBufferSize(vertices.length);
+
+    var floats = this.buffer_views[gl.FLOAT];
+    var ubytes = this.buffer_views[gl.UNSIGNED_BYTE];
+
+    var vlen = vertices.length;
+    for (var v=0; v < vlen; v++) {
+        var obj = vertices[v];
+        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
+
+        floats[this.buffer_offset >> 2] = obj[0];
+        floats[(this.buffer_offset >> 2) + 1] = obj[1];
+        floats[(this.buffer_offset >> 2) + 2] = obj[2];
+        this.buffer_offset += 3 << 2;
+
+        floats[(this.buffer_offset >> 2)] = obj[3];
+        floats[(this.buffer_offset >> 2) + 1] = obj[4];
+        floats[(this.buffer_offset >> 2) + 2] = obj[5];
+        this.buffer_offset += 3 << 2;
+
+        ubytes[this.buffer_offset] = obj[6];
+        ubytes[this.buffer_offset + 1] = obj[7];
+        ubytes[this.buffer_offset + 2] = obj[8];
+        ubytes[this.buffer_offset + 3] = obj[9];
+        this.buffer_offset += 4;
+
+        floats[(this.buffer_offset >> 2)] = obj[10];
+        floats[(this.buffer_offset >> 2) + 1] = obj[11];
+        floats[(this.buffer_offset >> 2) + 2] = obj[12];
+        floats[(this.buffer_offset >> 2) + 3] = obj[13];
+        this.buffer_offset += 4 << 2;
+
+        floats[this.buffer_offset >> 2] = obj[14];
+        this.buffer_offset += 1 << 2;
+    }
+};
+
+var offset_map = [
+    [2, 0], [2, 1], [2, 2],
+    [2, 3], [2, 4], [2, 5],
+    [0, 24], [0, 25], [0, 26], [0, 27],
+    [2, 7], [2, 8], [2, 9], [2, 10],
+    [2, 11]
+];
+
+GLVertexLayout.prototype.addVertexFixed2 = function (vertices) {
+    this.checkBufferSize(vertices.length);
+
+    var floats = this.buffer_views[gl.FLOAT];
+    var ubytes = this.buffer_views[gl.UNSIGNED_BYTE];
+
+    var buffer_map = [
+        floats, floats, floats,
+        floats, floats, floats,
+        ubytes, ubytes, ubytes, ubytes,
+        floats, floats, floats, floats,
+        floats
+    ];
+
+    // var floats = new Float32Array(this.buffer_views[gl.FLOAT], this.buffer_offset);
+    // var ubytes = new Uint8Array(this.buffer_views[gl.UNSIGNED_BYTE], this.buffer_offset);
+
+    var off = 0;
+    var vlen = vertices.length;
+    for (var v=0; v < vlen; v++) {
+        var obj = vertices[v];
+        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
+
+        for (var b=0; b < buffer_map.length; b++) {
+            buffer_map[b][(this.buffer_offset >> offset_map[b][0]) + offset_map[b][1]] = obj[b];
+            // buffer_map[b][off + offset_map[b][1]] = obj[b];
+        }
+
+        this.buffer_offset += this.stride_padded;
+        off += this.stride_padded;
+    }
+};
+
+GLVertexLayout.prototype.addVertexFixed3 = function (vertices) {
+    this.vert2 = this.vert2 || [];
+
+    var vlen = vertices.length;
+    for (var v=0; v < vlen; v++) {
+        var obj = vertices[v];
+        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
+        this.vert2.push.apply(this.vert2, obj);
+    }
 };

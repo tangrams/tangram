@@ -43,6 +43,7 @@ GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
     if (options.vertex_constants) {
         for (var c in options.vertex_constants) {
             vertex[c] = options.vertex_constants[c];
+            // vertex_layout.setRepeatingAttributes({ [c]: options.vertex_constants[c] }); // ES6 computed property name!
         }
     }
 
@@ -52,6 +53,9 @@ GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
     }
 
 // console.log("GLBuilders.buildPolygonsX");
+
+    vertex.a_position = [0, 0, z];
+    var vlist = [vertex];
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
@@ -64,15 +68,89 @@ GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
             //     console.log(JSON.stringify(vertex));
             // }
 
-            vertices[v].a_position = vertices[v];
-            vertices[v].a_position[2] = z; // TODO: fix this?
-            vertices[v].a_normal = vertex.a_normal;
-            vertices[v].a_color = vertex.a_color;
-            vertices[v].a_selection_color = vertex.a_selection_color;
-            vertices[v].a_layer = vertex.a_layer;
+            // vertices[v].a_position = vertices[v];
+            // vertices[v].a_position = [...vertices[v], z];
+            // vertices[v].a_position[2] = z; // TODO: fix this?
+            // vertices[v].a_normal = vertex.a_normal;
+            // vertices[v].a_color = vertex.a_color;
+            // vertices[v].a_selection_color = vertex.a_selection_color;
+            // vertices[v].a_layer = vertex.a_layer;
+
+            vertex.a_position[0] = vertices[v][0];
+            vertex.a_position[1] = vertices[v][1];
+            vertex_layout.addVertex(vlist);
         }
 
-        vertex_layout.addVertex(vertices);
+        // vertex_layout.addVertex(vertices);
+    }
+};
+
+GLBuilders.buildPolygonsXFixed = function (polygons, z, vertex_layout, options)
+{
+    options = options || {};
+    // var vertex = {};
+
+    // if (options.vertex_constants) {
+    //     for (var c in options.vertex_constants) {
+    //         vertex[c] = options.vertex_constants[c];
+    //     }
+    // }
+
+    // if (options.normals) {
+    //     vertex.a_normal = [0, 0, 1]; // upwards-facing normal
+    //     // vertex_layout.setRepeatingAttributes({ a_normal: [0, 0, 1] });
+    // }
+
+    var vconst = options.vertex_constants;
+    var vert = [];
+    var vlist = [vert];
+
+    vert[2] = z;
+
+    vert[3] = 0;
+    vert[4] = 0;
+    vert[5] = 1;
+
+    vert[6] = vconst.a_color[0];
+    vert[7] = vconst.a_color[1];
+    vert[8] = vconst.a_color[2];
+    vert[9] = vconst.a_color[3];
+
+    vert[10] = vconst.a_selection_color[0];
+    vert[11] = vconst.a_selection_color[1];
+    vert[12] = vconst.a_selection_color[2];
+    vert[13] = vconst.a_selection_color[3];
+
+    vert[14] = vconst.a_layer;
+
+// console.log("GLBuilders.buildPolygonsXFixed");
+
+    var num_polygons = polygons.length;
+    for (var p=0; p < num_polygons; p++) {
+        var vertices = GL.triangulatePolygon(polygons[p]);
+        for (var v=0; v < vertices.length; v++) {
+            // vertex.a_position = vertices[v];
+            // vertex.a_position[2] = z; // TODO: fix this?
+            // vertex_layout.addVertex(vertex);
+            // if (v == 0) {
+            //     console.log(JSON.stringify(vertex));
+            // }
+
+            // vertices[v].a_position = vertices[v];
+            // vertices[v].a_position[2] = z; // TODO: fix this?
+            // vertices[v].a_normal = vertex.a_normal;
+            // vertices[v].a_color = vertex.a_color;
+            // vertices[v].a_selection_color = vertex.a_selection_color;
+            // vertices[v].a_layer = vertex.a_layer;
+
+            vert[0] = vertices[v][0];
+            vert[1] = vertices[v][1];
+
+            vertex_layout.addVertexFixed(vlist);
+        }
+
+        // vertex_layout.addVertex(vertices);
+        // vertex_layout.addVertexFixed2(vertices);
     }
 };
 
