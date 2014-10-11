@@ -136,15 +136,6 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
 
 // TODO: each vertex data buffer should be a separate object, not internal to the layout instance
 
-var array_types = GLVertexLayout.prototype.attrib_array_types = {};
-array_types[gl.FLOAT] = Float32Array;
-array_types[gl.BYTE] = Int8Array;
-array_types[gl.UNSIGNED_BYTE] = Uint8Array;
-array_types[gl.INT] = Int32Array;
-array_types[gl.UNSIGNED_INT] = Uint32Array;
-array_types[gl.SHORT] = Int16Array;
-array_types[gl.UNSIGNED_SHORT] = Uint16Array;
-
 // Start a new vertex buffer for this layout
 GLVertexLayout.prototype.beginBuffer = function () {
     this.block_size = 50000;     // block size in which to allocate
@@ -154,6 +145,16 @@ GLVertexLayout.prototype.beginBuffer = function () {
     this.vertex_count = 0;
 
     this.setBufferViews();
+};
+
+GLVertexLayout.prototype.attrib_array_types = {
+    [gl.FLOAT]: Float32Array,
+    [gl.BYTE]: Int8Array,
+    [gl.UNSIGNED_BYTE]: Uint8Array,
+    [gl.INT]: Int32Array,
+    [gl.UNSIGNED_INT]: Uint32Array,
+    [gl.SHORT]: Int16Array,
+    [gl.UNSIGNED_SHORT]: Uint16Array
 };
 
 // Typed views into the main buffer - only create the types we need for this layout
