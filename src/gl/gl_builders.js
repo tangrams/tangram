@@ -52,105 +52,54 @@ GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
         // vertex_layout.setRepeatingAttributes({ a_normal: [0, 0, 1] });
     }
 
-// console.log("GLBuilders.buildPolygonsX");
-
-    vertex.a_position = [0, 0, z];
-    var vlist = [vertex];
+    vertex.a_position = [0, 0, z]; // x & y coords filled in per-vertex below
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var vertices = GL.triangulatePolygon(polygons[p]);
-        for (var v=0; v < vertices.length; v++) {
-            // vertex.a_position = vertices[v];
-            // vertex.a_position[2] = z; // TODO: fix this?
-            // vertex_layout.addVertex(vertex);
-            // if (v == 0) {
-            //     console.log(JSON.stringify(vertex));
-            // }
-
-            // vertices[v].a_position = vertices[v];
-            // vertices[v].a_position = [...vertices[v], z];
-            // vertices[v].a_position[2] = z; // TODO: fix this?
-            // vertices[v].a_normal = vertex.a_normal;
-            // vertices[v].a_color = vertex.a_color;
-            // vertices[v].a_selection_color = vertex.a_selection_color;
-            // vertices[v].a_layer = vertex.a_layer;
-
-            vertex.a_position[0] = vertices[v][0];
-            vertex.a_position[1] = vertices[v][1];
-            vertex_layout.addVertex(vlist);
+        for (var v of vertices) {
+            vertex.a_position[0] = v[0];
+            vertex.a_position[1] = v[1];
+            vertex_layout.addVertex(vertex);
         }
-
-        // vertex_layout.addVertex(vertices);
     }
 };
 
 GLBuilders.buildPolygonsXFixed = function (polygons, z, vertex_layout, options)
 {
     options = options || {};
-    // var vertex = {};
-
-    // if (options.vertex_constants) {
-    //     for (var c in options.vertex_constants) {
-    //         vertex[c] = options.vertex_constants[c];
-    //     }
-    // }
-
-    // if (options.normals) {
-    //     vertex.a_normal = [0, 0, 1]; // upwards-facing normal
-    //     // vertex_layout.setRepeatingAttributes({ a_normal: [0, 0, 1] });
-    // }
 
     var vconst = options.vertex_constants;
-    var vert = [];
-    var vlist = [vert];
+    var vertex = [];
 
-    vert[2] = z;
+    vertex[0] = 0;
+    vertex[1] = 0;
+    vertex[2] = z; // x & y coords ([0] and [1]) filled in per-vertex below
 
-    vert[3] = 0;
-    vert[4] = 0;
-    vert[5] = 1;
+    vertex[3] = 0;
+    vertex[4] = 0;
+    vertex[5] = 1;
 
-    vert[6] = vconst.a_color[0];
-    vert[7] = vconst.a_color[1];
-    vert[8] = vconst.a_color[2];
-    vert[9] = vconst.a_color[3];
+    vertex[6] = vconst.a_color[0];
+    vertex[7] = vconst.a_color[1];
+    vertex[8] = vconst.a_color[2];
+    vertex[9] = vconst.a_color[3];
 
-    vert[10] = vconst.a_selection_color[0];
-    vert[11] = vconst.a_selection_color[1];
-    vert[12] = vconst.a_selection_color[2];
-    vert[13] = vconst.a_selection_color[3];
+    vertex[10] = vconst.a_selection_color[0];
+    vertex[11] = vconst.a_selection_color[1];
+    vertex[12] = vconst.a_selection_color[2];
+    vertex[13] = vconst.a_selection_color[3];
 
-    vert[14] = vconst.a_layer;
-
-// console.log("GLBuilders.buildPolygonsXFixed");
+    vertex[14] = vconst.a_layer;
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var vertices = GL.triangulatePolygon(polygons[p]);
         for (var v=0; v < vertices.length; v++) {
-            // vertex.a_position = vertices[v];
-            // vertex.a_position[2] = z; // TODO: fix this?
-            // vertex_layout.addVertex(vertex);
-            // if (v == 0) {
-            //     console.log(JSON.stringify(vertex));
-            // }
-
-            // vertices[v].a_position = vertices[v];
-            // vertices[v].a_position[2] = z; // TODO: fix this?
-            // vertices[v].a_normal = vertex.a_normal;
-            // vertices[v].a_color = vertex.a_color;
-            // vertices[v].a_selection_color = vertex.a_selection_color;
-            // vertices[v].a_layer = vertex.a_layer;
-
-            vert[0] = vertices[v][0];
-            vert[1] = vertices[v][1];
-
-            vertex_layout.addVertexFixed(vlist);
+            vertex[0] = vertices[v][0];
+            vertex[1] = vertices[v][1];
+            vertex_layout.addVertexFixed3(vertex);
         }
-
-        // vertex_layout.addVertex(vertices);
-        // vertex_layout.addVertexFixed2(vertices);
     }
 };
 

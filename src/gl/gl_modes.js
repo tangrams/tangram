@@ -196,97 +196,37 @@ Modes.polygons.selection = true;
 // }
 // var gl = WebGLRenderingContext || require('./gl_constants.js'); // for accessing GL constants
 
-// Modes.polygons.vertex_layout = new GLVertexLayout([
-//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-//     { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-//     { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-//     { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
-//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-// ]);
-
-// Modes.polygons.vertex_layout = new GLVertexLayout([
-//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-//     { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-//     { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-//     { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
-//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-// ]);
-
-// Modes.polygons.alt_layout = new GLVertexLayout([
-//     { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false }, // 12
-//     { name: 'a_normal', size: 3, type: gl.SHORT, normalized: true }, // 6
-//     { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }, // 4
-//     { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }, // 4
-//     { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false } // 4
-// ]);
-
 Modes.polygons._init = function () {
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+        // { name: 'a_normal', size: 3, type: gl.SHORT, normalized: true }, // attrib isn't a multiple of 4!
         // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-        { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
-
-    // this.vertex_layout.addVertex = function (vertices) {
-    //     this.checkBufferSize(vertices.length);
-
-    //     var vlen = vertices.length;
-    //     for (var v=0; v < vlen; v++) {
-    //     var obj = vertices[v];
-
-    // };
 };
 
 Modes.polygons.buildPolygonsX = function (polygons, style)
 {
     var vertex_constants = {
-        a_color: style.color,
-        a_selection_color: style.selection.color,
-        // a_layer: [style.layer_num] // TODO: don't always require an attrib to be in an array!
+        a_color: [style.color[0], style.color[1], style.color[2], 1], // hard-coed alpha (for now)
+        a_selection_color: [style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3]],
         a_layer: style.layer_num
     };
 
-    // vertex_constants.a_color[0] = 0;
-    // vertex_constants.a_color[1] = 0;
-    // vertex_constants.a_color[2] = 0;
+    // TODO: automate this for normalized attribs?
+    vertex_constants.a_color[0] *= 255;
+    vertex_constants.a_color[1] *= 255;
+    vertex_constants.a_color[2] *= 255;
+    vertex_constants.a_color[3] *= 255;
 
-    // vertex_constants.a_color[0] = 0;
-    // vertex_constants.a_color[1] = 0;
-    // vertex_constants.a_color[2] = 0;
-    vertex_constants.a_color[3] = 1;
-
-    // vertex_constants.a_color[0] *= 255;
-    // vertex_constants.a_color[1] *= 255;
-    // vertex_constants.a_color[2] *= 255;
-    // vertex_constants.a_color[3] *= 255;
-
-    vertex_constants.a_color[0] = ~~(vertex_constants.a_color[0] * 255);
-    vertex_constants.a_color[1] = ~~(vertex_constants.a_color[1] * 255);
-    vertex_constants.a_color[2] = ~~(vertex_constants.a_color[2] * 255);
-    vertex_constants.a_color[3] = ~~(vertex_constants.a_color[3] * 255);
-
-    // if (vertex_constants.a_color[0] > 255) {
-    //     vertex_constants.a_color[0] = 255;
-    // }
-    // if (vertex_constants.a_color[1] > 255) {
-    //     vertex_constants.a_color[1] = 255;
-    // }
-    // if (vertex_constants.a_color[2] > 255) {
-    //     vertex_constants.a_color[2] = 255;
-    // }
-
-    // if (vertex_constants.a_color[0] < 0) {
-    //     vertex_constants.a_color[0] = 0;
-    // }
-    // if (vertex_constants.a_color[1] < 0) {
-    //     vertex_constants.a_color[1] = 0;
-    // }
-    // if (vertex_constants.a_color[2] < 0) {
-    //     vertex_constants.a_color[2] = 0;
-    // }
+    vertex_constants.a_selection_color[0] *= 255;
+    vertex_constants.a_selection_color[1] *= 255;
+    vertex_constants.a_selection_color[2] *= 255;
+    vertex_constants.a_selection_color[3] *= 255;
 
     // this.vertex_layout.setRepeatingAttributes({
     //     a_color: style.color,

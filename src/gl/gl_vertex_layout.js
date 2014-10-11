@@ -13,38 +13,83 @@
 // ex: { name: 'position', size: 3, type: gl.FLOAT, normalized: false }
 export default function GLVertexLayout (attribs)
 {
-    this.attribs = attribs;
-    this.repeating_attribs = {};
+    this.attribs = attribs; // dictionary of attributes, specified as standard GL attrib options
+    this.components = [];   // list of type and offset info about each attribute component
+    this.index = {};        // linear buffer index of each attribute component, e.g. this.index.position.x
 
     // Calc vertex stride
     this.stride = 0;
-    this.stride_padded = 0;
-    for (var a=0; a < this.attribs.length; a++) {
-        var attrib = this.attribs[a];
 
+    var count = 0;
+    for (var attrib of this.attribs) {
+        attrib.offset = this.stride;
         attrib.byte_size = attrib.size;
+        var shift = 0;
 
         switch (attrib.type) {
             case gl.FLOAT:
             case gl.INT:
             case gl.UNSIGNED_INT:
                 attrib.byte_size *= 4;
+                shift = 2;
                 break;
             case gl.SHORT:
             case gl.UNSIGNED_SHORT:
                 attrib.byte_size *= 2;
+                shift = 1;
                 break;
         }
 
-        attrib.offset = this.stride;
+        // Force 4-byte alignment on attributes
         this.stride += attrib.byte_size;
+        if (this.stride & 3) { // pad to multiple of 4 bytes
+            this.stride += 4 - (this.stride & 3);
+        }
 
-        // Force 4-byte padding
-        // TODO: make this an option?
-        attrib.offset_padded = this.stride_padded;
-        this.stride_padded += attrib.byte_size;
-        if (this.stride_padded & 3) { // pad to multiple of 4 bytes
-            this.stride_padded += 4 - (this.stride_padded & 3);
+        // Add info to list of attribute components
+        // Used to build the vertex data, provides pointers and offsets into each typed array view
+        // Each component is an array of:
+        // [GL attrib type, pointer to typed array view, bits to shift right to determine buffer offset, additional buffer offset for the component]
+        var offset_typed = attrib.offset >> shift;
+        if (attrib.size > 1) {
+            for (var a=0; a < attrib.size; a++) {
+                this.components.push([attrib.type, null, shift, offset_typed++]);
+            }
+        }
+        else {
+            this.components.push([attrib.type, null, shift, offset_typed]);
+        }
+
+        // Provide an index into the vertex data buffer for each attribute component
+        // TODO: this is experimental, currently unused but interesting for debugging, may be removed
+        if (attrib.size >= 3) {
+            this.index[attrib.name] = {};
+
+            this.index[attrib.name].x = count++;
+            this.index[attrib.name].y = count++;
+            this.index[attrib.name].z = count++;
+
+            this.index[attrib.name].r = this.index[attrib.name].x;
+            this.index[attrib.name].g = this.index[attrib.name].y;
+            this.index[attrib.name].b = this.index[attrib.name].z;
+            this.index[attrib.name].a = this.index[attrib.name].w;
+
+            if (attrib.size >= 4) {
+                this.index[attrib.name].w = count++;
+                this.index[attrib.name].a = this.index[attrib.name].w;
+            }
+        }
+        else if (attrib.size == 2) {
+            this.index[attrib.name] = {};
+
+            this.index[attrib.name].x = count++;
+            this.index[attrib.name].y = count++;
+
+            this.index[attrib.name].s = this.index[attrib.name].x;
+            this.index[attrib.name].t = this.index[attrib.name].y;
+        }
+        else {
+            this.index[attrib.name] = count++;
         }
     }
 }
@@ -63,8 +108,7 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
 
         if (location != -1) {
             gl.enableVertexAttribArray(location);
-            // gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
-            gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride_padded, attrib.offset_padded);
+            gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
             GLVertexLayout.enabled_attribs[location] = gl_program;
         }
     }
@@ -88,6 +132,8 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
 
 // Typed array packing
 
+// TODO: each vertex data buffer should be a separate object, not internal to the layout instance
+
 var array_types = GLVertexLayout.prototype.attrib_array_types = {};
 array_types[gl.FLOAT] = Float32Array;
 array_types[gl.BYTE] = Int8Array;
@@ -104,7 +150,6 @@ GLVertexLayout.prototype.beginBuffer = function () {
     this.buffer_offset = 0;      // byte offset into currently allocated buffer
     this.buffer = new ArrayBuffer(this.stride * this.block_size * this.block_num);
     this.vertex_count = 0;
-    this.repeating_attribs = {};
 
     this.setBufferViews();
 };
@@ -121,6 +166,11 @@ GLVertexLayout.prototype.setBufferViews = function () {
             this.buffer_views[attrib.type] = new array_type(this.buffer);
         }
     }
+
+    // Update component buffer pointers
+    for (var component of this.components) {
+        component[1] = this.buffer_views[component[0]];
+    }
 };
 
 // Handle clipping of allocated block to free unused memory
@@ -135,14 +185,13 @@ GLVertexLayout.prototype.endBuffer = function () {
 
 // Check allocated buffer size, expand/realloc buffer if needed
 GLVertexLayout.prototype.checkBufferSize = function (num) {
-    num = num || 1;
-    // console.log([this.buffer_offset, this.stride, this.buffer.byteLength].join(', '));
-    if ((this.buffer_offset + (num * this.stride_padded)) > this.buffer.byteLength) {
+    num = 1; // num || 1;
+    if ((this.buffer_offset + (num * this.stride)) > this.buffer.byteLength) {
 
         // this.block_num++;
         this.block_num += Math.ceil(num / this.block_size);
 
-        var new_block = new ArrayBuffer(this.stride_padded * this.block_size * this.block_num);
+        var new_block = new ArrayBuffer(this.stride * this.block_size * this.block_num);
         var new_view = new Uint8Array(new_block);
 
         // don't copy old buffer if this is the first vertex add
@@ -158,172 +207,118 @@ GLVertexLayout.prototype.checkBufferSize = function (num) {
     }
 };
 
-// TODO: constant/repeating attribs
-GLVertexLayout.prototype.setRepeatingAttributes = function (attribs) {
-    for (var name in attribs) {
-        // if (!this.attribs[name]) {
-        //     continue;
-        // }
-        this.repeating_attribs[name] = attribs[name];
-    }
-};
+GLVertexLayout.prototype.addVertex = function (vertex) {
+    this.checkBufferSize();
 
-var first = true;
-GLVertexLayout.prototype.addVertex = function (vertices) {
-    // TODO: still support single vertex
+    for (var attrib of this.attribs) {
+        var vertex_attrib = vertex[attrib.name];
 
-    this.checkBufferSize(vertices.length);
-
-    var vlen = vertices.length;
-    for (var v=0; v < vlen; v++) {
-    var obj = vertices[v];
-
-    // var view;
-    var len = this.attribs.length;
-    // var arg = 0;
-    for (var a=0; a < len; a++) {
-        var attrib = this.attribs[a];
-        var obj_attrib = obj[attrib.name]; // || this.repeating_attribs[attrib.name];
-        // console.log(obj_attrib);
-
-        if (obj_attrib) {
+        if (vertex_attrib) {
             var array_type = this.attrib_array_types[attrib.type];
-            // view = new array_type(this.buffer, this.buffer_offset, attrib.size);
-            // view.set(obj_attrib);
-
             var view = this.buffer_views[attrib.type];
-            // var off = this.buffer_offset / array_type.BYTES_PER_ELEMENT;
-            var off = (this.buffer_offset + attrib.offset_padded) / array_type.BYTES_PER_ELEMENT;
+            var offset = (this.buffer_offset + attrib.offset) / array_type.BYTES_PER_ELEMENT;
 
             if (attrib.size > 1) {
-                for (var e=0; e < Math.min(attrib.size, obj_attrib.length); e++) {
-                    view[off++] = obj_attrib[e];
+                for (var e=0; e < Math.min(attrib.size, vertex_attrib.length); e++) {
+                    view[offset++] = vertex_attrib[e];
                 }
             }
             else {
-                view[off++] = obj_attrib;
+                view[offset++] = vertex_attrib;
             }
-
-            // if (first) {
-            //     console.log(JSON.stringify(attrib));
-            //     console.log(JSON.stringify(obj_attrib));
-            // }
-
-            // switch (attrib.type) {
-            //     case gl.FLOAT:
-            //     // case gl.INT:
-            //     // case gl.UNSIGNED_INT:
-            //         view = new Float32Array(this.buffer, this.buffer_offset, attrib.size);
-
-            //         // for (var e=0; e < attrib.size; e++, arg++) {
-            //         //     view[e] = obj_attrib[e]; //arguments[arg];
-            //         // }
-            //         view.set(obj_attrib);
-            //         break;
-            //     // case gl.UNSIGNED_BYTE:
-            //     //     view =
-            //     // case gl.SHORT:
-            //     // case gl.UNSIGNED_SHORT:
-            //     //     attrib.byte_size *= 2;
-            //     //     break;
-            // }
         }
-        // this.buffer_offset += attrib.byte_size;
     }
-    this.buffer_offset += this.stride_padded;
-    first = false;
-
-    }
-
-    this.vertex_count += vlen;
+    this.buffer_offset += this.stride;
+    this.vertex_count++;
 };
 
-GLVertexLayout.prototype.addVertexFixed = function (vertices) {
-    this.checkBufferSize(vertices.length);
+GLVertexLayout.prototype.addVertexFixed = function (vertex) {
+    this.checkBufferSize();
 
     var floats = this.buffer_views[gl.FLOAT];
     var ubytes = this.buffer_views[gl.UNSIGNED_BYTE];
 
-    var vlen = vertices.length;
-    for (var v=0; v < vlen; v++) {
-        var obj = vertices[v];
-        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
+    // pos.x, pos.y, pos.z
+    floats[this.buffer_offset >> 2] = vertex[0];
+    floats[(this.buffer_offset >> 2) + 1] = vertex[1];
+    floats[(this.buffer_offset >> 2) + 2] = vertex[2];
+    this.buffer_offset += 3 << 2;
 
-        floats[this.buffer_offset >> 2] = obj[0];
-        floats[(this.buffer_offset >> 2) + 1] = obj[1];
-        floats[(this.buffer_offset >> 2) + 2] = obj[2];
-        this.buffer_offset += 3 << 2;
+    // normal.x, normal.y, normal.z
+    floats[(this.buffer_offset >> 2)] = vertex[3];
+    floats[(this.buffer_offset >> 2) + 1] = vertex[4];
+    floats[(this.buffer_offset >> 2) + 2] = vertex[5];
+    this.buffer_offset += 3 << 2;
 
-        floats[(this.buffer_offset >> 2)] = obj[3];
-        floats[(this.buffer_offset >> 2) + 1] = obj[4];
-        floats[(this.buffer_offset >> 2) + 2] = obj[5];
-        this.buffer_offset += 3 << 2;
+    // color.r, color.g, color.b, color.a
+    ubytes[this.buffer_offset] = vertex[6];
+    ubytes[this.buffer_offset + 1] = vertex[7];
+    ubytes[this.buffer_offset + 2] = vertex[8];
+    ubytes[this.buffer_offset + 3] = vertex[9];
+    this.buffer_offset += 4;
 
-        ubytes[this.buffer_offset] = obj[6];
-        ubytes[this.buffer_offset + 1] = obj[7];
-        ubytes[this.buffer_offset + 2] = obj[8];
-        ubytes[this.buffer_offset + 3] = obj[9];
-        this.buffer_offset += 4;
+    // selection.r, selection.g, seiection.b, selection.a
+    ubytes[this.buffer_offset] = vertex[10];
+    ubytes[this.buffer_offset + 1] = vertex[11];
+    ubytes[this.buffer_offset + 2] = vertex[12];
+    ubytes[this.buffer_offset + 3] = vertex[13];
+    this.buffer_offset += 4;
 
-        floats[(this.buffer_offset >> 2)] = obj[10];
-        floats[(this.buffer_offset >> 2) + 1] = obj[11];
-        floats[(this.buffer_offset >> 2) + 2] = obj[12];
-        floats[(this.buffer_offset >> 2) + 3] = obj[13];
-        this.buffer_offset += 4 << 2;
+    // layer
+    floats[this.buffer_offset >> 2] = vertex[14];
+    this.buffer_offset += 1 << 2;
 
-        floats[this.buffer_offset >> 2] = obj[14];
-        this.buffer_offset += 1 << 2;
-    }
+    this.vertex_count++;
 };
 
-var offset_map = [
-    [2, 0], [2, 1], [2, 2],
-    [2, 3], [2, 4], [2, 5],
-    [0, 24], [0, 25], [0, 26], [0, 27],
-    [2, 7], [2, 8], [2, 9], [2, 10],
-    [2, 11]
-];
-
-GLVertexLayout.prototype.addVertexFixed2 = function (vertices) {
-    this.checkBufferSize(vertices.length);
+// TODO: auto-gen this based on layout, this is just a test
+// pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
+GLVertexLayout.prototype.addVertexFixed2 = function (vertex) {
+    this.checkBufferSize();
 
     var floats = this.buffer_views[gl.FLOAT];
     var ubytes = this.buffer_views[gl.UNSIGNED_BYTE];
+
+    var offset_map = [
+        [2, 0], [2, 1], [2, 2],
+        [2, 3], [2, 4], [2, 5],
+        [0, 24], [0, 25], [0, 26], [0, 27],
+        [0, 28], [0, 29], [0, 30], [0, 31],
+        [2, 8]
+    ];
 
     var buffer_map = [
         floats, floats, floats,
         floats, floats, floats,
         ubytes, ubytes, ubytes, ubytes,
-        floats, floats, floats, floats,
+        ubytes, ubytes, ubytes, ubytes,
         floats
     ];
 
-    // var floats = new Float32Array(this.buffer_views[gl.FLOAT], this.buffer_offset);
-    // var ubytes = new Uint8Array(this.buffer_views[gl.UNSIGNED_BYTE], this.buffer_offset);
-
-    var off = 0;
-    var vlen = vertices.length;
-    for (var v=0; v < vlen; v++) {
-        var obj = vertices[v];
-        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
-
-        for (var b=0; b < buffer_map.length; b++) {
-            buffer_map[b][(this.buffer_offset >> offset_map[b][0]) + offset_map[b][1]] = obj[b];
-            // buffer_map[b][off + offset_map[b][1]] = obj[b];
-        }
-
-        this.buffer_offset += this.stride_padded;
-        off += this.stride_padded;
+    for (var b=0; b < buffer_map.length; b++) {
+        buffer_map[b][(this.buffer_offset >> offset_map[b][0]) + offset_map[b][1]] = vertex[b];
+        buffer_map[b][(this.buffer_offset >> offset_map[b][0]) + offset_map[b][1]] = vertex[b];
     }
+
+    this.buffer_offset += this.stride;
+    this.vertex_count++;
 };
 
-GLVertexLayout.prototype.addVertexFixed3 = function (vertices) {
-    this.vert2 = this.vert2 || [];
+GLVertexLayout.prototype.addVertexFixed3 = function (vertex) {
+    this.checkBufferSize();
 
-    var vlen = vertices.length;
-    for (var v=0; v < vlen; v++) {
-        var obj = vertices[v];
-        // pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, color.r, color.g, color.b, color.a, selection.r, selection.g, seiection.b, selection.a, layer
-        this.vert2.push.apply(this.vert2, obj);
+    var i=0;
+
+    // ES6-style destructuring and iteration - cool but noticeably slower (at least w/traceur compiled code)
+    // for (var [, buffer, shift, offset] of this.components) {
+    //     buffer[(this.buffer_offset >> shift) + offset] = vertex[i++];
+
+    var clen = this.components.length;
+    for (var c=0; c < clen; c++) {
+        var component = this.components[c];
+        component[1][(this.buffer_offset >> component[2]) + component[3]] = vertex[i++];
     }
+
+    this.buffer_offset += this.stride;
+    this.vertex_count++;
 };
