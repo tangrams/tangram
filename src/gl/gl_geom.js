@@ -1,6 +1,5 @@
+/* global GLGeometry */
 /*** Manage rendering for primitives ***/
-import {GL} from './gl';
-import GLVertexLayout from './gl_vertex_layout';
 import GLProgram from './gl_program';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
@@ -38,7 +37,7 @@ GLGeometry.prototype.render = function (options)
 
     // GLVertexArrayObject.bind(this.vao);
 
-    if (typeof this._render_setup == 'function') {
+    if (typeof this._render_setup === 'function') {
         this._render_setup();
     }
 

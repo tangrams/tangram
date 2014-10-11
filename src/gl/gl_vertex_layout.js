@@ -1,3 +1,5 @@
+/* global GLVertexLayout */
+
 // try {
 //     var gl = WebGLRenderingContext;
 // }
@@ -106,7 +108,7 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
         var attrib = this.attribs[a];
         var location = gl_program.attribute(attrib.name).location;
 
-        if (location != -1) {
+        if (location !== -1) {
             gl.enableVertexAttribArray(location);
             gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
             GLVertexLayout.enabled_attribs[location] = gl_program;
@@ -116,7 +118,7 @@ GLVertexLayout.prototype.enable = function (gl, gl_program)
     // Disable any previously bound attributes that aren't for this layout
     var unused_attribs = [];
     for (location in GLVertexLayout.enabled_attribs) {
-        if (GLVertexLayout.enabled_attribs[location] != gl_program) {
+        if (GLVertexLayout.enabled_attribs[location] !== gl_program) {
             gl.disableVertexAttribArray(location);
             unused_attribs.push(location);
         }

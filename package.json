@@ -26,12 +26,24 @@
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
-    "queue-async": "^1.0.7"
+    "queue-async": "^1.0.7",
+    "xhr": "~1.16.1"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
     "glslify": "^1.5.1",
     "browserify": "3.33.1",
-    "es6ify": "1.4.0"
+    "es6ify": "1.4.0",
+    "mocha": "~1.21.4",
+    "karma-mocha": "~0.1.9",
+    "karma": "~0.12.23",
+    "karma-chrome-launcher": "~0.1.4",
+    "sinon": "~1.10.3",
+    "chai": "~1.9.2",
+    "karma-sinon": "~1.0.3",
+    "topojson": "~1.6.18",
+    "lodash": "~2.4.1",
+    "karma-mocha-reporter": "~0.3.1",
+    "jshint": "~2.5.6"
   }
 }

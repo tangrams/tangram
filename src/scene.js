@@ -1,3 +1,4 @@
+/*global Scene */
 import Point from './point';
 import {Geo} from './geo';
 import {Utils} from './utils';
@@ -39,7 +40,7 @@ Scene.debug = false;
 // TODO, convert this to the class sytnax once we get the runtime
 // working, IW
 export default function Scene(tile_source, layers, styles, options) {
-    var options = options || {};
+    options = options || {};
     this.initialized = false;
 
     this.tile_source = tile_source;
@@ -67,9 +68,13 @@ export default function Scene(tile_source, layers, styles, options) {
     this.resetTime();
 }
 
+Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    return new Scene(tile_source, layers, styles, options);
+};
+
 Scene.prototype.init = function (callback) {
     if (this.initialized) {
-        return;
+        return false;
     }
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
@@ -112,7 +117,7 @@ Scene.prototype.init = function (callback) {
 
             this.initialized = true;
 
-            if (typeof callback == 'function') {
+            if (typeof callback === 'function') {
                 callback();
             }
         });
@@ -163,10 +168,11 @@ Scene.prototype.initSelectionBuffer = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
+    // TODO, we should move the url to a config file
     var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer(complete => {
+    queue.defer((complete) => {
         // Local object URLs supported?
         var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
         if (createObjectURL && this.allow_cross_domain_workers) {
@@ -200,7 +206,7 @@ Scene.prototype.createWorkers = function (callback) {
         this.next_worker = 0;
         this.selection_map_worker_size = {};
 
-        if (typeof callback == 'function') {
+        if (typeof callback === 'function') {
             callback();
         }
     });
@@ -215,7 +221,7 @@ Scene.prototype.makeWorkers = function (url) {
             type: 'init',
             worker_id: w,
             num_workers: this.num_workers
-        })
+        });
     }
 };
 
@@ -328,7 +334,7 @@ Scene.prototype.setBounds = function (sw, ne) {
 };
 
 Scene.prototype.isTileInZoom = function (tile) {
-    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
+    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
 };
 
 // Update visibility and return true if changed
@@ -336,7 +342,7 @@ Scene.prototype.updateVisibilityForTile = function (tile) {
     var visible = tile.visible;
     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-    return (visible != tile.visible);
+    return (visible !== tile.visible);
 };
 
 Scene.prototype.resizeMap = function (width, height) {
@@ -373,7 +379,7 @@ Scene.prototype.render = function () {
     this.loadQueuedTiles();
 
     // Render on demand
-    if (this.dirty == false || this.initialized == false) {
+    if (this.dirty === false || this.initialized === false) {
         return false;
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
@@ -381,7 +387,7 @@ Scene.prototype.render = function () {
     this.renderGL();
 
     // Redraw every frame if animating
-    if (this.animated == true) {
+    if (this.animated === true) {
         this.dirty = true;
     }
 
@@ -430,7 +436,7 @@ Scene.prototype.renderGL = function () {
     var renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded == true && tile.visible == true) {
+        if (tile.loaded === true && tile.visible === true) {
             renderable_tiles.push(tile);
         }
     }
@@ -444,20 +450,20 @@ Scene.prototype.renderGL = function () {
         this.modes[mode].update();
 
         var gl_program = this.modes[mode].gl_program;
-        if (gl_program == null || gl_program.compiled == false) {
+        if (gl_program == null || gl_program.compiled === false) {
             continue;
         }
 
         var first_for_mode = true;
 
         // Render tile GL geometries
-        for (var t in renderable_tiles) {
-            var tile = renderable_tiles[t];
+        for (t in renderable_tiles) {
+            tile = renderable_tiles[t];
 
             if (tile.gl_geometry[mode] != null) {
                 // Setup mode if encountering for first time this frame
                 // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
-                if (first_for_mode == true) {
+                if (first_for_mode === true) {
                     first_for_mode = false;
 
                     gl_program.use();
@@ -518,7 +524,7 @@ Scene.prototype.renderGL = function () {
 
         for (mode in this.modes) {
             gl_program = this.modes[mode].selection_gl_program;
-            if (gl_program == null || gl_program.compiled == false) {
+            if (gl_program == null || gl_program.compiled === false) {
                 continue;
             }
 
@@ -530,7 +536,7 @@ Scene.prototype.renderGL = function () {
 
                 if (tile.gl_geometry[mode] != null) {
                     // Setup mode if encountering for first time this frame
-                    if (first_for_mode == true) {
+                    if (first_for_mode === true) {
                         first_for_mode = false;
 
                         gl_program.use();
@@ -584,7 +590,7 @@ Scene.prototype.renderGL = function () {
         gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    if (render_count != this.last_render_count) {
+    if (render_count !== this.last_render_count) {
         console.log(`rendered ${render_count} primitives`);
     }
     this.last_render_count = render_count;
@@ -600,7 +606,7 @@ Scene.prototype.getFeatureAt = function (pixel, callback) {
     }
 
     // TODO: queue callbacks while still performing only one selection render pass within X time interval?
-    if (this.update_selection == true) {
+    if (this.update_selection === true) {
         return;
     }
 
@@ -632,7 +638,7 @@ Scene.prototype.readSelectionBuffer = function () {
 
     // If feature found, ask appropriate web worker to lookup feature
     var worker_id = this.pixel[3];
-    if (worker_id != 255) { // 255 indicates an empty selection buffer pixel
+    if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
         // console.log(`worker_id: ${worker_id}`);
         if (this.workers[worker_id] != null) {
             this.workers[worker_id].postMessage({
@@ -651,7 +657,7 @@ Scene.prototype.readSelectionBuffer = function () {
 
 // Called on main thread when a web worker finds a feature in the selection buffer
 Scene.prototype.workerGetFeatureSelection = function (event) {
-    if (event.data.type != 'getFeatureSelection') {
+    if (event.data.type !== 'getFeatureSelection') {
         return;
     }
 
@@ -659,20 +665,20 @@ Scene.prototype.workerGetFeatureSelection = function (event) {
     var changed = false;
     if ((feature != null && this.selected_feature == null) ||
         (feature == null && this.selected_feature != null) ||
-        (feature != null && this.selected_feature != null && feature.id != this.selected_feature.id)) {
+        (feature != null && this.selected_feature != null && feature.id !== this.selected_feature.id)) {
         changed = true;
     }
 
     this.selected_feature = feature;
 
-    if (typeof this.selection_callback == 'function') {
+    if (typeof this.selection_callback === 'function') {
         this.selection_callback({ feature: this.selected_feature, changed: changed });
     }
 };
 
 // Queue a tile for load
-Scene.prototype.loadTile = function (coords, div, callback) {
-    this.queued_tiles[this.queued_tiles.length] = arguments;
+Scene.prototype.loadTile = function (...args) {
+    this.queued_tiles[this.queued_tiles.length] = args;
 };
 
 // Load all queued tiles
@@ -681,7 +687,7 @@ Scene.prototype.loadQueuedTiles = function () {
         return;
     }
 
-    if (this.queued_tiles.length == 0) {
+    if (this.queued_tiles.length === 0) {
         return;
     }
 
@@ -769,7 +775,7 @@ Scene.prototype.rebuildTiles = function () {
     // console.log("find visible");
     var visible = [], invisible = [];
     for (var t in this.tiles) {
-        if (this.tiles[t].visible == true) {
+        if (this.tiles[t].visible === true) {
             visible.push(t);
         }
         else {
@@ -783,18 +789,18 @@ Scene.prototype.rebuildTiles = function () {
         // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
         var ad = this.tiles[a].center_dist;
         var bd = this.tiles[b].center_dist;
-        return (bd > ad ? -1 : (bd == ad ? 0 : 1));
+        return (bd > ad ? -1 : (bd === ad ? 0 : 1));
     });
 
     // console.log("build visible");
-    for (var t in visible) {
+    for (t in visible) {
         this.buildTile(visible[t]);
     }
 
     // console.log("build invisible");
-    for (var t in invisible) {
+    for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (this.isTileInZoom(this.tiles[invisible[t]]) == true) {
+        if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
             this.buildTile(invisible[t]);
         }
         // Drop tiles outside current zoom
@@ -828,7 +834,7 @@ Scene.prototype.buildTile = function(key) {
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
 Scene.addTile = function (tile, layers, styles, modes) {
-    var layer, style, feature, z, mode;
+    var layer, style, feature, mode;
     var vertex_data = {};
 
     // Join line test pattern
@@ -844,7 +850,7 @@ Scene.addTile = function (tile, layers, styles, modes) {
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
-        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible == false) {
+        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
             continue;
         }
 
@@ -867,22 +873,22 @@ Scene.addTile = function (tile, layers, styles, modes) {
                     lines = null,
                     polygons = null;
 
-                if (feature.geometry.type == 'Polygon') {
+                if (feature.geometry.type === 'Polygon') {
                     polygons = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiPolygon') {
+                else if (feature.geometry.type === 'MultiPolygon') {
                     polygons = feature.geometry.coordinates;
                 }
-                else if (feature.geometry.type == 'LineString') {
+                else if (feature.geometry.type === 'LineString') {
                     lines = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiLineString') {
+                else if (feature.geometry.type === 'MultiLineString') {
                     lines = feature.geometry.coordinates;
                 }
-                else if (feature.geometry.type == 'Point') {
+                else if (feature.geometry.type === 'Point') {
                     points = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiPoint') {
+                else if (feature.geometry.type === 'MultiPoint') {
                     points = feature.geometry.coordinates;
                 }
 
@@ -934,7 +940,7 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
 Scene.prototype.workerBuildTileCompleted = function (event) {
-    if (event.data.type != 'buildTileCompleted') {
+    if (event.data.type !== 'buildTileCompleted') {
         return;
     }
 
@@ -998,7 +1004,7 @@ Scene.prototype.removeTile = function (key)
 
     console.log(`tile unload for ${key}`);
 
-    if (this.zooming == true) {
+    if (this.zooming === true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
     }
 
@@ -1077,11 +1083,11 @@ Scene.prototype.loadScene = function (callback) {
     var queue = Queue();
 
     // If this is the first time we're loading the scene, copy any URLs
-    if (!this.layer_source && typeof(this.layers) == 'string') {
+    if (!this.layer_source && typeof(this.layers) === 'string') {
         this.layer_source = Utils.urlForPath(this.layers);
     }
 
-    if (!this.style_source && typeof(this.styles) == 'string') {
+    if (!this.style_source && typeof(this.styles) === 'string') {
         this.style_source = Utils.urlForPath(this.styles);
     }
 
@@ -1119,7 +1125,7 @@ Scene.prototype.loadScene = function (callback) {
 
     // Everything is loaded
     queue.await(function() {
-        if (typeof callback == 'function') {
+        if (typeof callback === 'function') {
             callback();
         }
     });
@@ -1156,7 +1162,7 @@ Scene.prototype.updateActiveModes = function () {
             this.active_modes[mode] = true;
 
             // Check if this mode is animated
-            if (animated == false && this.modes[mode].animated == true) {
+            if (animated === false && this.modes[mode].animated === true) {
                 animated = true;
             }
         }
@@ -1241,13 +1247,13 @@ Scene.prototype.trackTileSetLoadEnd = function () {
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
         for (var t in this.tiles) {
-            if (this.tiles[t].loading == true) {
+            if (this.tiles[t].loading === true) {
                 end_tile_set = false;
                 break;
             }
         }
 
-        if (end_tile_set == true) {
+        if (end_tile_set === true) {
             this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
             this.tile_set_loading = null;
             console.log(`tile set load FINISHED in: ${this.last_tile_set_load}`);
@@ -1273,7 +1279,7 @@ Scene.prototype.compileShaders = function () {
 Scene.prototype.getDebugSum = function (prop, filter) {
     var sum = 0;
     for (var t in this.tiles) {
-        if (this.tiles[t].debug[prop] != null && (typeof filter != 'function' || filter(this.tiles[t]) == true)) {
+        if (this.tiles[t].debug[prop] != null && (typeof filter !== 'function' || filter(this.tiles[t]) === true)) {
             sum += this.tiles[t].debug[prop];
         }
     }
@@ -1287,7 +1293,7 @@ Scene.prototype.getDebugAverage = function (prop, filter) {
 
 // Log messages pass through from web workers
 Scene.prototype.workerLogMessage = function (event) {
-    if (event.data.type != 'log') {
+    if (event.data.type !== 'log') {
         return;
     }
 
@@ -1301,9 +1307,11 @@ Scene.loadLayers = function (url, callback) {
     var layers;
     var req = new XMLHttpRequest();
     req.onload = function () {
+        // allow eval
+        /* jshint ignore:start */
         eval('layers = ' + req.response); // TODO: security!
-
-        if (typeof callback == 'function') {
+        /* jshint ignore:end */
+        if (typeof callback === 'function') {
             callback(layers);
         }
     };
@@ -1320,7 +1328,9 @@ Scene.loadStyles = function (url, callback) {
         styles = req.response;
 
         // Try JSON first, then YAML (if available)
+        /* jshint ignore:start */
         try {
+
             eval('styles = ' + req.response);
         }
         catch (e) {
@@ -1333,16 +1343,16 @@ Scene.loadStyles = function (url, callback) {
                 styles = null;
             }
         }
-
+        /* jshint ignore:end */
         // Find generic functions & style macros
         Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
         Scene.postProcessStyles(styles);
 
-        if (typeof callback == 'function') {
+        if (typeof callback === 'function') {
             callback(styles);
         }
-    }
+    };
 
     req.open('GET', url + '?' + (+new Date()), true /* async flag */);
     req.responseType = 'text';
@@ -1383,11 +1393,11 @@ Scene.processLayersForTile = function (layers, tile) {
                 tile_layers[layers[t].name] = tile.layers[layers[t].name];
             }
             // Pass through data but with different layer name in tile source data
-            else if (typeof layers[t].data == 'string') {
+            else if (typeof layers[t].data === 'string') {
                 tile_layers[layers[t].name] = tile.layers[layers[t].data];
             }
             // Apply the transform function for post-processing
-            else if (typeof layers[t].data == 'function') {
+            else if (typeof layers[t].data === 'function') {
                 tile_layers[layers[t].name] = layers[t].data(tile.layers);
             }
         }
@@ -1410,7 +1420,7 @@ Scene.createModes = function (styles) {
     }
 
     // Stylesheet modes
-    for (var m in styles.modes) {
+    for (m in styles.modes) {
         // if (m != 'all') {
             modes[m] = ModeManager.configureMode(m, styles.modes[m]);
         // }
@@ -1446,7 +1456,7 @@ function findBaseLibraryURL () {
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('tangram.debug.js');
-        if (match == -1) {
+        if (match === -1) {
             match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
@@ -1454,4 +1464,4 @@ function findBaseLibraryURL () {
             break;
         }
     }
-};
+}

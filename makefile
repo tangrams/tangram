@@ -1,5 +1,7 @@
 BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
+KARMA = ./node_modules/karma/bin/karma
+JSHINT = ./node_modules/.bin/jshint
 LIB_TESS = ./lib/libtess.cat.js
 EXTERNAL_LIBS = $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
@@ -54,8 +56,19 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
+dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
+	node build_test.js > dist/testable.js
+
+unit: dist/testable.js
+	$(KARMA) run
+
 clean:
 	rm -f dist/*
 	rm -f src/gl/gl_shaders.js
 
-.PHONY : clean all dev
+lint:
+	$(JSHINT) src/gl/*.js
+	$(JSHINT) src/*.js
+	$(JSHINT) test/*.js
+
+.PHONY : clean all dev unit lint
