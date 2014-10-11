@@ -210,30 +210,19 @@ Modes.polygons._init = function () {
 
 Modes.polygons.buildPolygonsX = function (polygons, style)
 {
-    var vertex_constants = {
-        a_color: [style.color[0], style.color[1], style.color[2], 1], // hard-coed alpha (for now)
-        a_selection_color: [style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3]],
-        a_layer: style.layer_num
-    };
-
-    // TODO: automate this for normalized attribs?
-    vertex_constants.a_color[0] *= 255;
-    vertex_constants.a_color[1] *= 255;
-    vertex_constants.a_color[2] *= 255;
-    vertex_constants.a_color[3] *= 255;
-
-    vertex_constants.a_selection_color[0] *= 255;
-    vertex_constants.a_selection_color[1] *= 255;
-    vertex_constants.a_selection_color[2] *= 255;
-    vertex_constants.a_selection_color[3] *= 255;
-
-    // this.vertex_layout.setRepeatingAttributes({
-    //     a_color: style.color,
-    //     a_selection_color: style.selection.color,
-    //     a_layer: style.layer_num
-    // });
-
-    // console.log("Mode.buildPolygonsX");
+    var vertex_template = [
+        // position - x & y coords will be filled in per-vertex below
+        0, 0, style.z,
+        // normal
+        0, 0, 1,
+        // color
+        // TODO: automate multiplication for normalized attribs?
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        // selection color
+        style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+        // layer number
+        style.layer_num
+    ];
 
     // Extruded polygons (e.g. 3D buildings)
     // if (style.extrude && style.height) {
@@ -251,15 +240,15 @@ Modes.polygons.buildPolygonsX = function (polygons, style)
     // // Regular polygons
     // else {
         // GLBuilders.buildPolygonsX(
-        GLBuilders.buildPolygonsXFixed(
-            polygons,
-            style.z,
-            this.vertex_layout,
-            {
-                normals: true,
-                vertex_constants: vertex_constants
+        // GLBuilders.buildPolygonsXFixed(
+        if (polygons.length > 1) {
+            for (var polygon of polygons) {
+                GLBuilders.buildPolygon(polygon, this.vertex_layout, vertex_template);
             }
-        );
+        }
+        else {
+            GLBuilders.buildPolygon(polygons[0], this.vertex_layout, vertex_template);
+        }
     // }
 
     // Polygon outlines

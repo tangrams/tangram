@@ -6,100 +6,15 @@ export var GLBuilders = {};
 
 GLBuilders.debug = false;
 
-// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
-GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex_data, options)
+// Tesselate a flat 2D polygon
+// x & y coordinates will be set as first two elements of provided vertex_template
+GLBuilders.buildPolygon = function (polygon, vertex_layout, vertex_template)
 {
-    options = options || {};
-
-    var vertex_constants = [];
-    if (z != null) {
-        vertex_constants.push(z); // provided z
-    }
-    if (options.normals) {
-        vertex_constants.push(0, 0, 1); // upwards-facing normal
-    }
-    if (options.vertex_constants) {
-        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
-    }
-    if (vertex_constants.length === 0) {
-        vertex_constants = null;
-    }
-
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var vertices = GL.triangulatePolygon(polygons[p]);
-        GL.addVertices(vertices, vertex_constants, vertex_data);
-    }
-
-    return vertex_data;
-};
-
-// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
-GLBuilders.buildPolygonsX = function (polygons, z, vertex_layout, options)
-{
-    options = options || {};
-    var vertex = {};
-
-    if (options.vertex_constants) {
-        for (var c in options.vertex_constants) {
-            vertex[c] = options.vertex_constants[c];
-            // vertex_layout.setRepeatingAttributes({ [c]: options.vertex_constants[c] }); // ES6 computed property name!
-        }
-    }
-
-    if (options.normals) {
-        vertex.a_normal = [0, 0, 1]; // upwards-facing normal
-        // vertex_layout.setRepeatingAttributes({ a_normal: [0, 0, 1] });
-    }
-
-    vertex.a_position = [0, 0, z]; // x & y coords filled in per-vertex below
-
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var vertices = GL.triangulatePolygon(polygons[p]);
-        for (var v of vertices) {
-            vertex.a_position[0] = v[0];
-            vertex.a_position[1] = v[1];
-            vertex_layout.addVertex(vertex);
-        }
-    }
-};
-
-GLBuilders.buildPolygonsXFixed = function (polygons, z, vertex_layout, options)
-{
-    options = options || {};
-
-    var vconst = options.vertex_constants;
-    var vertex = [];
-
-    vertex[0] = 0;
-    vertex[1] = 0;
-    vertex[2] = z; // x & y coords ([0] and [1]) filled in per-vertex below
-
-    vertex[3] = 0;
-    vertex[4] = 0;
-    vertex[5] = 1;
-
-    vertex[6] = vconst.a_color[0];
-    vertex[7] = vconst.a_color[1];
-    vertex[8] = vconst.a_color[2];
-    vertex[9] = vconst.a_color[3];
-
-    vertex[10] = vconst.a_selection_color[0];
-    vertex[11] = vconst.a_selection_color[1];
-    vertex[12] = vconst.a_selection_color[2];
-    vertex[13] = vconst.a_selection_color[3];
-
-    vertex[14] = vconst.a_layer;
-
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var vertices = GL.triangulatePolygon(polygons[p]);
-        for (var v=0; v < vertices.length; v++) {
-            vertex[0] = vertices[v][0];
-            vertex[1] = vertices[v][1];
-            vertex_layout.addVertexFixed3(vertex);
-        }
+    var vertices = GL.triangulatePolygon(polygon);
+    for (var vertex of vertices) {
+        vertex_template[0] = vertex[0];
+        vertex_template[1] = vertex[1];
+        vertex_layout.addVertexFixed3(vertex_template);
     }
 };
 
