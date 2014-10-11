@@ -6,7 +6,6 @@ export var Geo = {};
 // Projection constants
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
-Geo.map_origin_meters = Point(-Geo.half_circumference_meters, Geo.half_circumference_meters);
 Geo.min_zoom_meters_per_pixel = Geo.half_circumference_meters * 2 / Geo.tile_size; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
 Geo.max_zoom = 20;
@@ -34,8 +33,8 @@ Geo.setTileScale = function(scale)
 Geo.metersForTile = function (tile)
 {
     return Point(
-        (tile.x * Geo.tile_size * Geo.meters_per_pixel[tile.z]) + Geo.map_origin_meters.x,
-        ((tile.y * Geo.tile_size * Geo.meters_per_pixel[tile.z]) * -1) + Geo.map_origin_meters.y
+        tile.x * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters,
+        -(tile.y * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters)
     );
 };
 
