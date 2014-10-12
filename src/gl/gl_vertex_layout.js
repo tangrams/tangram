@@ -1,12 +1,6 @@
 /* global GLVertexLayout */
 
-// try {
-//     var gl = WebGLRenderingContext;
-// }
-// catch(e) {
-    // TODO: copy just the values we need here (types)
-    var gl = require('./gl_constants.js'); // for accessing GL constants
-// }
+import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 
 // Describes a vertex layout that can be used with many different GL programs.
 // If a given program doesn't include all attributes, it can still use the vertex layout

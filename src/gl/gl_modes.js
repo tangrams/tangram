@@ -3,6 +3,7 @@ import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
+import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
@@ -186,14 +187,6 @@ Modes.polygons.defines = {
 };
 
 Modes.polygons.selection = true;
-
-// try {
-//     var gl = WebGLRenderingContext;
-// }
-// catch(e) {
-    var gl = require('./gl_constants.js'); // for accessing GL constants
-// }
-// var gl = WebGLRenderingContext || require('./gl_constants.js'); // for accessing GL constants
 
 Modes.polygons._init = function () {
     this.vertex_layout = new GLVertexLayout([

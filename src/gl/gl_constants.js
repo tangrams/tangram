@@ -1,6 +1,7 @@
 // WebGL constants - need to import these separately to make them available in the web worker
 
-var gl = {};
+var gl;
+export default gl = {};
 
 /* ClearBufferMask */
 gl.DEPTH_BUFFER_BIT               = 0x00000100;
@@ -420,7 +421,3 @@ gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL = 0x9241;
 gl.CONTEXT_LOST_WEBGL             = 0x9242;
 gl.UNPACK_COLORSPACE_CONVERSION_WEBGL = 0x9243;
 gl.BROWSER_DEFAULT_WEBGL          = 0x9244;
-
-if (module !== undefined) {
-    module.exports = gl;
-}
