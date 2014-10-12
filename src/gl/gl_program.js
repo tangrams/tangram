@@ -1,7 +1,7 @@
 /* global GLProgram */
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
-import {Utils} from '../utils';
+import Utils from '../utils';
 import {GL} from './gl';
 import GLTexture from './gl_texture';
 import Queue from 'queue-async';

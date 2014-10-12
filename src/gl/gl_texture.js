@@ -1,6 +1,6 @@
 /*global GLTexture */
 // Texture management
-import {Utils} from '../utils';
+import Utils from '../utils';
 
 
 // Global set of textures, by name

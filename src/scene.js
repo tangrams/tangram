@@ -1,7 +1,7 @@
 /*global Scene */
 import Point from './point';
 import {Geo} from './geo';
-import {Utils} from './utils';
+import Utils from './utils';
 import {Style} from './style';
 import Queue from 'queue-async';
 import {GL} from './gl/gl';
