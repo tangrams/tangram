@@ -44,6 +44,6 @@
     "topojson": "~1.6.18",
     "lodash": "~2.4.1",
     "karma-mocha-reporter": "~0.3.1",
-    "jshint": "~2.5.6"
+    "jshint": "git://github.com/jshint/jshint.git#befb880c0563d09a35e44ffbe99758b10bdcf328"
   }
 }
