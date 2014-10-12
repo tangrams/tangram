@@ -947,11 +947,9 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
     this.selection_map_size = 0;
-    Object
-        .keys(this.selection_map_worker_size)
-        .forEach(worker => {
-            this.selection_map_size += this.selection_map_worker_size[worker];
-        });
+    for (var worker_id in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    }
     console.log(`selection map: ${this.selection_map_size} features`);
 
     var tile = event.data.tile;
