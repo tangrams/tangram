@@ -58,6 +58,7 @@ Style.resetSelectionMap = function ()
 // Find and expand style macros
 Style.macros = [
     'Style.color.pseudoRandomColor',
+    'Style.color.randomColor',
     'Style.pixels'
 ];
 
