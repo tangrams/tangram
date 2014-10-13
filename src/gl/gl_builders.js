@@ -303,38 +303,6 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, vertex_data, v
     }
 };
 
-// Build native GL lines for a polyline
-GLBuilders.buildLines = function (lines, feature, layer, style, tile, z, vertex_data, options)
-{
-    options = options || {};
-
-    var color = style.color;
-
-    var num_lines = lines.length;
-    for (var ln=0; ln < num_lines; ln++) {
-        var line = lines[ln];
-
-        for (var p=0; p < line.length - 1; p++) {
-            // Point A to B
-            var pa = line[p];
-            var pb = line[p+1];
-
-            vertex_data.push(
-                // Point A
-                pa[0], pa[1], z,
-                0, 0, 1, // flat surfaces point straight up
-                color[0], color[1], color[2],
-                // Point B
-                pb[0], pb[1], z,
-                0, 0, 1, // flat surfaces point straight up
-                color[0], color[1], color[2]
-            );
-        }
-    }
-
-    return vertex_data;
-};
-
 /* Utility functions */
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile

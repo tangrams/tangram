@@ -839,7 +839,7 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
     // Join line test pattern
     // if (Scene.debug) {
-    //     tile.layers['roads'].features.push(Scene.buildZigzagLineTestPattern());
+    //     tile.layers['roads'].features.push(GLBuilders.buildZigzagLineTestPattern());
     // }
 
     // Build raw geometry arrays
