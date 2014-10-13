@@ -895,24 +895,20 @@ Scene.addTile = function (tile, layers, styles, modes) {
                 // First feature in this render mode?
                 mode = style.mode.name;
                 if (vertex_data[mode] == null) {
-                    // vertex_data[mode] = [];
-
-                    vertex_data[mode] = true; // TODO: cleanup, just marking actively rendering modes here
-                    modes[mode].vertex_layout.beginBuffer();
+                    vertex_data[mode] = modes[mode].vertex_layout.createVertexData();
                 }
 
                 if (polygons != null) {
-                    // modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
-                    modes[mode].buildPolygonsX(polygons, style);
+                    modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
                 }
 
-                // if (lines != null) {
-                //     modes[mode].buildLines(lines, style, vertex_data[mode]);
-                // }
+                if (lines != null) {
+                    modes[mode].buildLines(lines, style, vertex_data[mode]);
+                }
 
-                // if (points != null) {
-                //     modes[mode].buildPoints(points, style, vertex_data[mode]);
-                // }
+                if (points != null) {
+                    modes[mode].buildPoints(points, style, vertex_data[mode]);
+                }
 
                 tile.debug.features++;
             }
@@ -926,13 +922,11 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
     tile.vertex_data = {};
     for (var s in vertex_data) {
-        // tile.vertex_data[s] = new Float32Array(vertex_data[s]);
-
-        modes[s].vertex_layout.endBuffer();
-        tile.vertex_data[s] = new Uint8Array(modes[s].vertex_layout.buffer); // TODO: typed array instance necessary?
-        // tile.vertex_data[s] = new Float32Array(modes[s].vertex_layout.buffer); // TODO: typed array instance necessary?
+        // tile.vertex_data[s] = new Uint8Array(vertex_data[s].end().buffer); // TODO: typed array instance necessary?
+        tile.vertex_data[s] = vertex_data[s].end().buffer; // TODO: typed array instance necessary?
     }
 
+    // Return keys to be transfered from 'tile' object to main thread
     return {
         vertex_data: true
     };
