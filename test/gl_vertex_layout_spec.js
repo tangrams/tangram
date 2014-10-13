@@ -1,6 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 import GLVertexLayout from '../src/gl/gl_vertex_layout';
+import {GLVertexData} from '../src/gl/gl_vertex_layout';
 import gl from '../src/gl/gl_constants';
 import {MethodNotImplemented} from '../src/errors';
 
@@ -24,6 +25,20 @@ describe('GLVertexLayout', () => {
         });
         it('calculates the right vertex stride', () => {
             assert.equal(subject.stride, 20);
+        });
+    });
+
+    describe('.createVertexData()', () => {
+        let subject;
+        let vertex_data;
+
+        beforeEach(() => {
+            subject = new GLVertexLayout(attribs);
+            vertex_data = subject.createVertexData();
+        });
+
+        it('creates a vertex data buffer', () => {
+            assert.instanceOf(vertex_data, GLVertexData);
         });
     });
 

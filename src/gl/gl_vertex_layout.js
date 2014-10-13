@@ -137,7 +137,7 @@ GLVertexLayout.enabled_attribs = {};
 
 // An intermediary object that holds vertex data in typed arrays, according to a given vertex layout
 // Used to construct a mesh/VBO for rendering
-class GLVertexData {
+export class GLVertexData {
 
     constructor (vertex_layout) {
         this.vertex_layout = vertex_layout;
