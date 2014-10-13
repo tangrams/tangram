@@ -34,6 +34,7 @@
     "glslify": "^1.5.1",
     "browserify": "3.33.1",
     "es6ify": "1.4.0",
+    "jshint": "git://github.com/jshint/jshint.git#befb880c0563d09a35e44ffbe99758b10bdcf328",
     "mocha": "~1.21.4",
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",

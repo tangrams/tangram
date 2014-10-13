@@ -3,6 +3,7 @@ import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
+import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
@@ -188,103 +189,71 @@ Modes.polygons.defines = {
 Modes.polygons.selection = true;
 
 Modes.polygons._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
+    this.vertex_layout = new GLVertexLayout([
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+        // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
+        // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
+};
+
+// A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+// A plain JS array matching the order of the vertex layout.
+Modes.polygons.makeVertexTemplate = function (style) {
+    return [
+        // position - x & y coords will be filled in per-vertex below
+        0, 0, style.z,
+        // normal
+        0, 0, 1,
+        // color
+        // TODO: automate multiplication for normalized attribs?
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        // selection color
+        style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+        // layer number
+        style.layer_num
+    ];
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 {
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
-
-    // Outlines have a slightly different set of constants, because the layer number is modified
-    if (style.outline.color) {
-        var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-            style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
-        ];
-    }
+    var vertex_template = this.makeVertexTemplate(style);
 
     // Extruded polygons (e.g. 3D buildings)
     if (style.extrude && style.height) {
         GLBuilders.buildExtrudedPolygons(
             polygons,
-            style.z,
-            style.height,
-            style.min_height,
-            vertex_data,
-            {
-                vertex_constants: vertex_constants
-            }
+            style.z, style.height, style.min_height,
+            vertex_data, vertex_template, 3 /* index of normals in vertex layout */
         );
     }
     // Regular polygons
     else {
-        GLBuilders.buildPolygons(
-            polygons,
-            style.z,
-            vertex_data,
-            {
-                normals: true,
-                vertex_constants: vertex_constants
-            }
-        );
-
-        // Callback-base builder (for future exploration)
-        // var normal_vertex_constants = [0, 0, 1].concat(vertex_constants);
-        // GLBuilders.buildPolygons2(
-        //     polygons,
-        //     z,
-        //     function (vertices) {
-        //         // var vs = vertices.positions;
-        //         // for (var v in vs) {
-        //         //     // var bc = [(v % 3) ? 0 : 1, ((v + 1) % 3) ? 0 : 1, ((v + 2) % 3) ? 0 : 1];
-        //         //     // var bc = [centroid.x, centroid.y, 0];
-        //         //     // vs[v] = vertices.positions[v].concat(z, 0, 0, 1, bc);
-
-        //         //     // vs[v] = vertices.positions[v].concat(z, 0, 0, 1);
-        //         //     vs[v] = vertices.positions[v].concat(0, 0, 1);
-        //         // }
-
-        //         GL.addVertices(vertices.positions, normal_vertex_constants, vertex_data);
-
-        //         // GL.addVerticesByAttributeLayout(
-        //         //     [
-        //         //         { name: 'a_position', data: vertices.positions },
-        //         //         { name: 'a_normal', data: [0, 0, 1] },
-        //         //         { name: 'a_color', data: [style.color[0], style.color[1], style.color[2]] },
-        //         //         { name: 'a_layer', data: style.layer_num }
-        //         //     ],
-        //         //     vertex_data
-        //         // );
-
-        //         // GL.addVerticesMultipleAttributes([vertices.positions], normal_vertex_constants, vertex_data);
-        //     }
-        // );
+        GLBuilders.buildPolygons(polygons, vertex_data, vertex_template);
     }
 
     // Polygon outlines
     if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
                 polygons[mpc],
                 style.z,
                 style.outline.width,
                 vertex_data,
+                vertex_template,
                 {
                     closed_polygon: true,
-                    remove_tile_edges: true,
-                    vertex_constants: outline_vertex_constants
+                    remove_tile_edges: true
                 }
             );
         }
@@ -293,22 +262,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 
 Modes.polygons.buildLines = function (lines, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
-
-    // Outlines have a slightly different set of constants, because the layer number is modified
-    if (style.outline.color) {
-        var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-            style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
-        ];
-    }
+    var vertex_template = this.makeVertexTemplate(style);
 
     // Main lines
     GLBuilders.buildPolylines(
@@ -316,46 +270,42 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         style.z,
         style.width,
         vertex_data,
-        {
-            vertex_constants: vertex_constants
-        }
+        vertex_template
     );
 
     // Line outlines
     if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
+        // Outlines sit between layers, underneath current layer but above the one below
+        // TODO: need more fine-grained styling controls for outlines
+        // (see complex road interchanges where casing outlines should be interleaved by road type)
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+
         GLBuilders.buildPolylines(
             lines,
             style.z,
             style.width + 2 * style.outline.width,
             vertex_data,
-            {
-                vertex_constants: outline_vertex_constants
-            }
+            vertex_template
         );
     }
 };
 
 Modes.polygons.buildPoints = function (points, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
+    var vertex_template = this.makeVertexTemplate(style);
 
     GLBuilders.buildQuadsForPoints(
         points,
         style.size * 2,
         style.size * 2,
-        style.z,
         vertex_data,
-        {
-            normals: true,
-            texcoords: false,
-            vertex_constants: vertex_constants
-        }
+        vertex_template
     );
 };
 
@@ -375,35 +325,43 @@ Modes.points.defines = {
 Modes.points.selection = true;
 
 Modes.points._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
+    this.vertex_layout = new GLVertexLayout([
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
+};
+
+// A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+// A plain JS array matching the order of the vertex layout.
+Modes.points.makeVertexTemplate = function (style) {
+    return [
+        // position - x & y coords will be filled in per-vertex below
+        0, 0, style.z,
+        // texture coords
+        0, 0,
+        // color
+        // TODO: automate multiplication for normalized attribs?
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        // selection color
+        style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+        // layer number
+        style.layer_num
+    ];
 };
 
 Modes.points.buildPoints = function (points, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
+    var vertex_template = this.makeVertexTemplate(style);
 
     GLBuilders.buildQuadsForPoints(
         points,
         style.size * 2,
         style.size * 2,
-        style.z,
         vertex_data,
-        {
-            normals: false,
-            texcoords: true,
-            vertex_constants: vertex_constants
-        }
+        vertex_template,
+        this.vertex_layout.index.a_texcoord
     );
 };

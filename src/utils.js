@@ -1,6 +1,7 @@
 // Miscellaneous utilities
 
-export var Utils = {};
+var Utils;
+export default Utils = {};
 
 // Simplistic detection of relative paths, append base if necessary
 Utils.urlForPath = function(path) {
@@ -96,4 +97,20 @@ Utils.runIfInMainThread = function(block, err) {
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
 Utils.isPowerOf2 = function(value) {
     return (value & (value - 1)) === 0;
+};
+
+// Iterators (ES6 generators)
+
+// Iterator for key/value pairs of an object
+Utils.entries = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield [key, obj[key]];
+    }
+};
+
+// Iterator for values of an object
+Utils.values = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield obj[key];
+    }
 };

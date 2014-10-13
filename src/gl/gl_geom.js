@@ -8,7 +8,7 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
     options = options || {};
 
     this.gl = gl;
-    this.vertex_data = vertex_data; // Float32Array
+    this.vertex_data = vertex_data; // typed array
     this.vertex_layout = vertex_layout;
     this.buffer = this.gl.createBuffer();
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;

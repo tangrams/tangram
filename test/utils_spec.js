@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 
-import {Utils} from '../src/utils';
+import Utils from '../src/utils';
 
 describe('Utils', () => {
     describe('.urlForPath(path)', () => {

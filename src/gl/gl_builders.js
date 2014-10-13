@@ -6,78 +6,34 @@ export var GLBuilders = {};
 
 GLBuilders.debug = false;
 
-// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
-GLBuilders.buildPolygons = function GLBuildersBuildPolygons (polygons, z, vertex_data, options)
+// Tesselate a flat 2D polygon
+// x & y coordinates will be set as first two elements of provided vertex_template
+GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template)
 {
-    options = options || {};
-
-    var vertex_constants = [];
-    if (z != null) {
-        vertex_constants.push(z); // provided z
-    }
-    if (options.normals) {
-        vertex_constants.push(0, 0, 1); // upwards-facing normal
-    }
-    if (options.vertex_constants) {
-        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
-    }
-    if (vertex_constants.length === 0) {
-        vertex_constants = null;
-    }
-
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
-        var vertices = GL.triangulatePolygon(polygons[p]);
-        GL.addVertices(vertices, vertex_constants, vertex_data);
-    }
+        var polygon = polygons[p];
 
-    return vertex_data;
+        var vertices = GL.triangulatePolygon(polygon);
+        for (var vertex of vertices) {
+            vertex_template[0] = vertex[0];
+            vertex_template[1] = vertex[1];
+            vertex_data.addVertex(vertex_template);
+        }
+    }
 };
 
-// Callback-base builder (for future exploration)
-// Tesselate a flat 2D polygon with fixed height and add to GL vertex buffer
-// GLBuilders.buildPolygons2 = function GLBuildersBuildPolygon2 (polygons, z, addGeometry, options)
-// {
-//     options = options || {};
-
-//     var num_polygons = polygons.length;
-//     for (var p=0; p < num_polygons; p++) {
-//         var vertices = {
-//             positions: GL.triangulatePolygon(polygons[p], z),
-//             normals: (options.normals ? [0, 0, 1] : null)
-//         };
-
-//         addGeometry(vertices);
-//     }
-// };
-
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (polygons, z, height, min_height, vertex_data, options)
+GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, vertex_data, vertex_template, normal_index)
 {
-    options = options || {};
     var min_z = z + (min_height || 0);
     var max_z = z + height;
 
     // Top
-    GLBuilders.buildPolygons(polygons, max_z, vertex_data, { normals: true, vertex_constants: options.vertex_constants });
-    // var top_vertex_constants = [0, 0, 1];
-    // if (options.vertex_constants != null) {
-    //     top_vertex_constants.push.apply(top_vertex_constants, options.vertex_constants);
-    // }
-    // GLBuilders.buildPolygons2(
-    //     polygons,
-    //     max_z,
-    //     function (vertices) {
-    //         GL.addVertices(vertices.positions, top_vertex_constants, vertex_data);
-    //     }
-    // );
+    vertex_template[2] = max_z;
+    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template);
 
     // Walls
-    var wall_vertex_constants = [null, null, null]; // normals will be calculated below
-    if (options.vertex_constants) {
-        wall_vertex_constants.push.apply(wall_vertex_constants, options.vertex_constants);
-    }
-
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -86,10 +42,8 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
-                var wall_vertices = [];
-
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
-                wall_vertices.push(
+                var wall_vertices = [
                     // Triangle
                     [contour[w+1][0], contour[w+1][1], max_z],
                     [contour[w+1][0], contour[w+1][1], min_z],
@@ -98,7 +52,7 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
                     [contour[w][0], contour[w][1], min_z],
                     [contour[w][0], contour[w][1], max_z],
                     [contour[w+1][0], contour[w+1][1], max_z]
-                );
+                ];
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
                 var normal = Vector.cross(
@@ -106,56 +60,37 @@ GLBuilders.buildExtrudedPolygons = function GLBuildersBuildExtrudedPolygon (poly
                     Vector.normalize([contour[w+1][0] - contour[w][0], contour[w+1][1] - contour[w][1], 0])
                 );
 
-                wall_vertex_constants[0] = normal[0];
-                wall_vertex_constants[1] = normal[1];
-                wall_vertex_constants[2] = normal[2];
+                // Update vertex template with current surface normal
+                vertex_template[normal_index + 0] = normal[0];
+                vertex_template[normal_index + 1] = normal[1];
+                vertex_template[normal_index + 2] = normal[2];
 
-                GL.addVertices(wall_vertices, wall_vertex_constants, vertex_data);
+                for (var wv=0; wv < wall_vertices.length; wv++) {
+                    vertex_template[0] = wall_vertices[wv][0];
+                    vertex_template[1] = wall_vertices[wv][1];
+                    vertex_template[2] = wall_vertices[wv][2];
+                    vertex_data.addVertex(vertex_template);
+                }
             }
         }
     }
-
-    return vertex_data;
 };
 
 // Build tessellated triangles for a polyline
 // Basically following the method described here for miter joints:
 // http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
-GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, vertex_data, options)
+GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_template, options = {})
 {
-    options = options || {};
     options.closed_polygon = options.closed_polygon || false;
     options.remove_tile_edges = options.remove_tile_edges || false;
 
-    var vertex_constants = [z, 0, 0, 1]; // provided z, and upwards-facing normal
-    if (options.vertex_constants) {
-        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
-    }
-
-    // Line center - debugging
-    if (GLBuilders.debug && options.vertex_lines) {
-        var num_lines = lines.length;
-        for (var ln=0; ln < num_lines; ln++) {
-            var line = lines[ln];
-
-            for (var p=0; p < line.length - 1; p++) {
-                // Point A to B
-                var pa = line[p];
-                var pb = line[p+1];
-
-                options.vertex_lines.push(
-                    pa[0], pa[1], z + 0.001, 0, 0, 1, 1.0, 0, 0,
-                    pb[0], pb[1], z + 0.001, 0, 0, 1, 1.0, 0, 0
-                );
-            }
-        }
-    }
-
     // Build triangles
     var vertices = [];
-    num_lines = lines.length;
-    for (ln = 0; ln < num_lines; ln++) {
-        line = lines[ln];
+    var p, pa, pb;
+    var num_lines = lines.length;
+    for (var ln = 0; ln < num_lines; ln++) {
+        var line = lines[ln];
+
         // Multiple line segments
         if (line.length > 2) {
             // Build anchors for line segments:
@@ -209,8 +144,6 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
             for (p=0; p < anchors.length; p++) {
                 if (!options.remove_tile_edges) {
                     buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
-                    // buildSegment(anchors[p][0], anchors[p][1]); // use these to draw extruded segments w/o join, for debugging
-                    // buildSegment(anchors[p][1], anchors[p][2]);
                 }
                 else {
                     var edge1 = GLBuilders.isOnTileEdge(anchors[p][0], anchors[p][1]);
@@ -233,7 +166,11 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
         }
     }
 
-    GL.addVertices(vertices, vertex_constants, vertex_data);
+    for (var v=0; v < vertices.length; v++) {
+        vertex_template[0] = vertices[v][0];
+        vertex_template[1] = vertices[v][1];
+        vertex_data.addVertex(vertex_template);
+    }
 
     // Build triangles for a single line segment, extruded by the provided width
     function buildSegment (pa, pb) {
@@ -252,7 +189,7 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
     }
 
     // Build triangles for a 3-point 'anchor' shape, consisting of two line segments with a joint
-    // TODO: move these functions out of closures?
+    // TODO: move these functions out of closures and into utilities
     function buildAnchor (pa, joint, pb) {
         // Inner and outer line segments for [pa, joint] and [joint, pb]
         var pa_slope = Vector.normalize([(joint[1] - pa[1]) * -1, joint[0] - pa[0]]);
@@ -320,105 +257,12 @@ GLBuilders.buildPolylines = function GLBuildersBuildPolylines (lines, z, width, 
                 pb_inner[0], pb_outer[1], pb_outer[0]
             );
         }
-
-        // Extruded inner/outer edges - debugging
-        if (GLBuilders.debug && options.vertex_lines) {
-            options.vertex_lines.push(
-                pa_inner[0][0], pa_inner[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pa_inner[1][0], pa_inner[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pb_inner[0][0], pb_inner[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pb_inner[1][0], pb_inner[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pa_outer[0][0], pa_outer[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pa_outer[1][0], pa_outer[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pb_outer[0][0], pb_outer[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pb_outer[1][0], pb_outer[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pa_inner[0][0], pa_inner[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pa_outer[0][0], pa_outer[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pa_inner[1][0], pa_inner[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pa_outer[1][0], pa_outer[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pb_inner[0][0], pb_inner[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pb_outer[0][0], pb_outer[0][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-
-                pb_inner[1][0], pb_inner[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0,
-                pb_outer[1][0], pb_outer[1][1], z + 0.001, 0, 0, 1, 0, 1.0, 0
-            );
-        }
-
-        if (GLBuilders.debug && line_debug && options.vertex_lines) {
-            var dcolor;
-            if (line_debug === 'parallel') {
-                // console.log("!!! lines are parallel !!!");
-                dcolor = [0, 1, 0];
-            }
-            else if (line_debug === 'distance') {
-                // console.log("!!! miter intersection point exceeded allowed distance from joint !!!");
-                dcolor = [1, 0, 0];
-            }
-            // console.log('OSM id: ' + feature.id); // TODO: if this function is moved out of a closure, this feature debug info won't be available
-            // console.log([pa, joint, pb]);
-            // console.log(feature);
-            options.vertex_lines.push(
-                pa[0], pa[1], z + 0.002,
-                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
-                joint[0], joint[1], z + 0.002,
-                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
-                joint[0], joint[1], z + 0.002,
-                0, 0, 1, dcolor[0], dcolor[1], dcolor[2],
-                pb[0], pb[1], z + 0.002,
-                0, 0, 1, dcolor[0], dcolor[1], dcolor[2]
-            );
-
-            var num_lines = lines.length;
-            for (var ln=0; ln < num_lines; ln++) {
-                var line2 = lines[ln];
-
-                for (var p=0; p < line2.length - 1; p++) {
-                    // Point A to B
-                    pa = line2[p];
-                    pb = line2[p+1];
-
-                    options.vertex_lines.push(
-                        pa[0], pa[1], z + 0.0005,
-                        0, 0, 1, 0, 0, 1.0,
-                        pb[0], pb[1], z + 0.0005,
-                        0, 0, 1, 0, 0, 1.0
-                    );
-                }
-            }
-        }
     }
-
-    return vertex_data;
 };
 
 // Build a quad centered on a point
-// Z coord, normals, and texcoords are optional
-// Layout order is:
-//   position (2 or 3 components)
-//   texcoord (optional, 2 components)
-//   normal (optional, 3 components)
-//   constants (optional)
-GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data, options)
+GLBuilders.buildQuadsForPoints = function (points, width, height, vertex_data, vertex_template, texcoord_index = null)
 {
-    options = options || {};
-
-    var vertex_constants = [];
-    if (options.normals) {
-        vertex_constants.push(0, 0, 1); // upwards-facing normal
-    }
-    if (options.vertex_constants) {
-        vertex_constants.push.apply(vertex_constants, options.vertex_constants);
-    }
-    if (vertex_constants.length === 0) {
-        vertex_constants = null;
-    }
-
     var num_points = points.length;
     for (var p=0; p < num_points; p++) {
         var point = points[p];
@@ -433,17 +277,7 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data
             [point[0] - width/2, point[1] + height/2],
         ];
 
-        // Add provided z
-        if (z != null) {
-            positions[0][2] = z;
-            positions[1][2] = z;
-            positions[2][2] = z;
-            positions[3][2] = z;
-            positions[4][2] = z;
-            positions[5][2] = z;
-        }
-
-        if (options.texcoords === true) {
+        if (texcoord_index) {
             var texcoords = [
                 [-1, -1],
                 [1, -1],
@@ -453,87 +287,20 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, z, vertex_data
                 [1, 1],
                 [-1, 1]
             ];
-
-            GL.addVerticesMultipleAttributes([positions, texcoords], vertex_constants, vertex_data);
         }
-        else {
-            GL.addVertices(positions, vertex_constants, vertex_data);
-        }
-    }
 
-    return vertex_data;
-};
+        for (var pos=0; pos < 6; pos++) {
+            // Add UVs
+            if (texcoord_index) {
+                vertex_template[texcoord_index + 0] = texcoords[pos][0];
+                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+            }
 
-// Callback-base builder (for future exploration)
-// GLBuilders.buildQuadsForPoints2 = function GLBuildersBuildQuadsForPoints (points, width, height, addGeometry, options)
-// {
-//     var options = options || {};
-
-//     var num_points = points.length;
-//     for (var p=0; p < num_points; p++) {
-//         var point = points[p];
-
-//         var positions = [
-//             [point[0] - width/2, point[1] - height/2],
-//             [point[0] + width/2, point[1] - height/2],
-//             [point[0] + width/2, point[1] + height/2],
-
-//             [point[0] - width/2, point[1] - height/2],
-//             [point[0] + width/2, point[1] + height/2],
-//             [point[0] - width/2, point[1] + height/2],
-//         ];
-
-//         if (options.texcoords == true) {
-//             var texcoords = [
-//                 [-1, -1],
-//                 [1, -1],
-//                 [1, 1],
-
-//                 [-1, -1],
-//                 [1, 1],
-//                 [-1, 1]
-//             ];
-//         }
-
-//         var vertices = {
-//             positions: positions,
-//             normals: (options.normals ? [0, 0, 1] : null),
-//             texcoords: (options.texcoords && texcoords)
-//         };
-//         addGeometry(vertices);
-//     }
-// };
-
-// Build native GL lines for a polyline
-GLBuilders.buildLines = function GLBuildersBuildLines (lines, feature, layer, style, tile, z, vertex_data, options)
-{
-    options = options || {};
-
-    var color = style.color;
-
-    var num_lines = lines.length;
-    for (var ln=0; ln < num_lines; ln++) {
-        var line = lines[ln];
-
-        for (var p=0; p < line.length - 1; p++) {
-            // Point A to B
-            var pa = line[p];
-            var pb = line[p+1];
-
-            vertex_data.push(
-                // Point A
-                pa[0], pa[1], z,
-                0, 0, 1, // flat surfaces point straight up
-                color[0], color[1], color[2],
-                // Point B
-                pb[0], pb[1], z,
-                0, 0, 1, // flat surfaces point straight up
-                color[0], color[1], color[2]
-            );
+            vertex_template[0] = positions[pos][0];
+            vertex_template[1] = positions[pos][1];
+            vertex_data.addVertex(vertex_template);
         }
     }
-
-    return vertex_data;
 };
 
 /* Utility functions */

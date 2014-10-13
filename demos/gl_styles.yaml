@@ -347,8 +347,8 @@ modes:
 
     # polygons:
     #     shaders:
-    #         defines:
-    #             LIGHTING_ENVIRONMENT: true
+    #         uniforms:
+    #             u_selected_id: 0
 
 layers:
     earth:
@@ -441,10 +441,11 @@ layers:
         interactive: true
         color:
             # default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
+            # default: Style.color.randomColor
             # default: Style.color.pseudoRandomColor
             # default: Style.color.pseudoRandomGrayscale
             # default: function (f) { if (f.properties.name || f.properties.kind) { return [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default:
+            default: |
                 function (f) {
                     var c = [.6, .6, .6];
                     if (f.properties.name || f.properties.kind) {

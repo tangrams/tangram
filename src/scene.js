@@ -1,7 +1,7 @@
 /*global Scene */
 import Point from './point';
 import {Geo} from './geo';
-import {Utils} from './utils';
+import Utils from './utils';
 import {Style} from './style';
 import Queue from 'queue-async';
 import {GL} from './gl/gl';
@@ -839,13 +839,14 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
     // Join line test pattern
     // if (Scene.debug) {
-    //     tile.layers['roads'].features.push(Scene.buildZigzagLineTestPattern());
+    //     tile.layers['roads'].features.push(GLBuilders.buildZigzagLineTestPattern());
     // }
 
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
+    // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
+    for (var layer_num = 0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
@@ -894,7 +895,7 @@ Scene.addTile = function (tile, layers, styles, modes) {
                 // First feature in this render mode?
                 mode = style.mode.name;
                 if (vertex_data[mode] == null) {
-                    vertex_data[mode] = [];
+                    vertex_data[mode] = modes[mode].vertex_layout.createVertexData();
                 }
 
                 if (polygons != null) {
@@ -911,14 +912,21 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
                 tile.debug.features++;
             }
+
+            // console.log(layer.name);
+            // for (var m in vertex_data) {
+            //     console.log(`${m}: ${modes[m].vertex_layout.buffer.byteLength}`);
+            // }
         }
     }
 
     tile.vertex_data = {};
     for (var s in vertex_data) {
-        tile.vertex_data[s] = new Float32Array(vertex_data[s]);
+        // tile.vertex_data[s] = new Uint8Array(vertex_data[s].end().buffer); // TODO: typed array instance necessary?
+        tile.vertex_data[s] = vertex_data[s].end().buffer; // TODO: typed array instance necessary?
     }
 
+    // Return keys to be transfered from 'tile' object to main thread
     return {
         vertex_data: true
     };
@@ -933,11 +941,9 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
     this.selection_map_size = 0;
-    Object
-        .keys(this.selection_map_worker_size)
-        .forEach(worker => {
-            this.selection_map_size += this.selection_map_worker_size[worker];
-        });
+    for (var worker_id in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    }
     console.log(`selection map: ${this.selection_map_size} features`);
 
     var tile = event.data.tile;
