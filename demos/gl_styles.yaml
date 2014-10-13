@@ -63,7 +63,7 @@ modes:
                     }
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
-                    color = hsv2rgb(c);
+                    color = vec4(hsv2rgb(c), 1.0);
 
     popup:
         extends: polygons
@@ -118,7 +118,7 @@ modes:
                 u_dot_color: [1, 1, 1]
             transforms:
                 globals: { url: demos/shaders/dots.glsl }
-                fragment: color *= dots(v_world_position.xyz);
+                fragment: color *= vec4(dots(v_world_position.xyz), 1.0);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
 
@@ -134,7 +134,7 @@ modes:
                 u_wood_spacing: 1
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = lighting * wood(v_world_position.xyz);
+                fragment: color = lighting * vec4(wood(v_world_position.xyz), 1.0);
         # buildPolygons: |
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder
@@ -204,7 +204,7 @@ modes:
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
                     // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
-                    color = mix(black, white, aastep(radius, dist));
+                    color = vec4(mix(black, white, aastep(radius, dist)), 1.0);
 
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     colorhalftone:
@@ -253,7 +253,7 @@ modes:
 
                     // Perform a rough RGB-to-CMYK conversion
                     vec4 cmyk;
-                    cmyk.xyz = 1.0 - color;
+                    cmyk.xyz = 1.0 - color.xyz;
                     cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
                     if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
 
@@ -279,7 +279,7 @@ modes:
                     //float luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b); // HSP color model
                     //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
 
-                    color = rgbscreen;
+                    color = vec4(rgbscreen, 1.0);
 
     windows:
         extends: polygons
@@ -338,6 +338,7 @@ modes:
                         color = u_roofColor;
                         color -= vec3(vPos.z * .01); // height factor
                     }
+                    color = vec4(color, 1.0);
 
     points:
         shaders:
