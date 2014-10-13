@@ -11,7 +11,7 @@ GLBuilders.debug = false;
 GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template)
 {
     var num_polygons = polygons.length;
-    for (var p=0; p < polygons.length; p++) {
+    for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
 
         var vertices = GL.triangulatePolygon(polygon);
