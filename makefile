@@ -21,10 +21,10 @@ dev: \
 
 # browserify --debug adds source maps
 dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/module.js)
-	node build.js > dist/tangram.debug.js
+	node build.js --debug=true --require './src/module.js' > dist/tangram.debug.js
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/scene_worker.js)
-	node build_worker.js > dist/temp.tangram-worker.debug.js
+	node build.js --debug=true --require './src/scene_worker.js' > dist/temp.tangram-worker.debug.js
 	cat $(EXTERNAL_LIBS) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
 	rm dist/temp.tangram-worker.debug.js
 
@@ -57,7 +57,7 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	rm -f src/gl/shaders/temp.glsl
 
 dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
-	node build_test.js > dist/testable.js
+	node build.js --debug=true --includeLet --all './test/*.js' > dist/testable.js
 
 unit: dist/testable.js
 	$(KARMA) run
