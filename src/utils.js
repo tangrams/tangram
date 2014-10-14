@@ -16,6 +16,9 @@ Utils.urlForPath = function(path) {
         for (var p in path) {
             protocol = path[p].toLowerCase().substr(0, 4);
             if (!(protocol === 'http' || protocol === 'file')) {
+                if (path[p][0] !== '/') {
+                    path[p][0] = '/' + path[p][0];
+                }
                 path[p] = window.location.origin + window.location.pathname + path[p];
             }
         }
@@ -24,6 +27,9 @@ Utils.urlForPath = function(path) {
         // Single path
         protocol = path.toLowerCase().substr(0, 4);
         if (!(protocol === 'http' || protocol === 'file')) {
+            if (path[0] !== '/') {
+                path[0] = '/' + path[0];
+            }
             path = window.location.origin + window.location.pathname + path;
         }
     }
