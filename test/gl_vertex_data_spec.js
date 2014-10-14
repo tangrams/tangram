@@ -3,7 +3,6 @@ let assert = chai.assert;
 import GLVertexLayout from '../src/gl/gl_vertex_layout';
 import {GLVertexData} from '../src/gl/gl_vertex_layout';
 import gl from '../src/gl/gl_constants';
-import {MethodNotImplemented} from '../src/errors';
 
 describe('GLVertexData', () => {
 
