@@ -59,8 +59,8 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
 	node build.js --debug=true --includeLet --all './test/*.js' > dist/testable.js
 
-unit: dist/testable.js
-	$(KARMA) run
+test: lint dist/testable.js
+	$(KARMA) start --single-run
 
 clean:
 	rm -f dist/*
@@ -71,4 +71,10 @@ lint:
 	$(JSHINT) src/*.js
 	$(JSHINT) test/*.js
 
-.PHONY : clean all dev unit lint
+karma-start:
+	$(KARMA) start --no-watch
+
+run-tests: lint dist/testable.js
+	$(KARMA) run
+
+.PHONY : clean all dev test lint karma-start run-tests

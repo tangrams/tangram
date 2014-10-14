@@ -30,3 +30,33 @@ The library will be minified in `dist/`, and `index.html` provides an example fo
 - [**NYC / Central Park**](http://vector.io/vector-map/#mapzen,40.78004586258099,-73.96652698516847,16)
 - [**Berlin**](http://vector.io/vector-map/#mapzen,52.52177659937554,13.373343944549562,16)
 - [**Colosseum & Roman ruins**](http://vector.io/vector-map/#mapzen,41.889367479706124,12.488912343978884,17)
+
+
+
+## Test
+
+To run all of the tests.
+
+```shell
+npm test
+```
+Every time this runs, an new browser instance is created. If you wish to
+have a single browser instance and run the test suite against that
+instance do the following,
+
+```shell
+make karma-start
+```
+
+And then run the tests with,
+
+```shell
+make run-tests
+```
+
+## Lint
+We use jshint to maintain code quality
+
+```shell
+make lint
+```
