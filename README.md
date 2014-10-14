@@ -1,6 +1,8 @@
 Tangram: WebGL for OpenStreetMap
 ===
 
+![Build status](https://circleci.com/gh/tangrams/tangram.png?circle-token=:circle-token)
+
 Tangram is a library for rendering 2D & 3D maps with WebGL, using GeoJSON/TopoJSON or binary vector tiles.
 
 ## Vector Tiles
