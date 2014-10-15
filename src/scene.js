@@ -9,9 +9,10 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
-
 import Queue from 'queue-async';
 import yaml from 'js-yaml';
+import Tile from './tile';
+
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -68,6 +69,7 @@ Scene.create = function ({tile_source, layers, styles}, options = {}) {
 };
 
 Scene.prototype.init = function (callback) {
+
     if (this.initialized) {
         return false;
     }
@@ -364,17 +366,17 @@ Scene.prototype.setBounds = function (sw, ne) {
     this.dirty = true;
 };
 
-Scene.prototype.isTileInZoom = function (tile) {
-    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
-};
+// Scene.prototype.isTileInZoom = function (tile) {
+//     return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
+// };
 
-// Update visibility and return true if changed
-Scene.prototype.updateVisibilityForTile = function (tile) {
-    var visible = tile.visible;
-    tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
-    tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-    return (visible !== tile.visible);
-};
+// // Update visibility and return true if changed
+// Scene.prototype.updateVisibilityForTile = function (tile) {
+//     var visible = tile.visible;
+//     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
+//     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
+//     return (visible !== tile.visible);
+// };
 
 Scene.prototype.resizeMap = function (width, height) {
     this.dirty = true;
@@ -752,48 +754,12 @@ Scene.prototype.loadQueuedTiles = function () {
     this.queued_tiles = [];
 };
 
-// Load a single tile
-Scene.prototype._loadTile = function (coords, div, callback) {
-    // Overzoom?
-    if (coords.z > this.tile_source.max_zoom) {
-        var zgap = coords.z - this.tile_source.max_zoom;
-        var original_tile = [coords.x, coords.y, coords.z].join('/');
-        coords.x = ~~(coords.x / Math.pow(2, zgap));
-        coords.y = ~~(coords.y / Math.pow(2, zgap));
-        coords.display_z = coords.z; // z without overzoom
-        coords.z -= zgap;
-        log.trace(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
-    }
-
-    this.trackTileSetLoadStart();
-
-    var key = [coords.x, coords.y, coords.z].join('/');
-
-    // Already loading/loaded?
-    if (this.tiles[key]) {
-        if (callback) {
-            callback(null, div);
-        }
-        return;
-    }
-
-    var tile = this.tiles[key] = {};
-    tile.key = key;
-    tile.coords = coords;
-    tile.min = Geo.metersForTile(tile.coords);
-    tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-    tile.span = { x: (tile.max.x - tile.min.x), y: (tile.max.y - tile.min.y) };
-    tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
-    tile.debug = {};
-    tile.loading = true;
-    tile.loaded = false;
-
-    this.buildTile(tile.key);
-    this.updateTileElement(tile, div);
-    this.updateVisibilityForTile(tile);
-
-    if (callback) {
-        callback(null, div);
+Scene.prototype._loadTile = function (coords, div, cb) {
+    var tile = Tile.create({coords});
+    if (!this.tiles[tile.getKey()]) {
+        tile.load(this, coords, div, cb);
+    } else {
+        cb(null, div);
     }
 };
 

@@ -29,7 +29,9 @@ function getMockTopoResponse() {
 
 function getMockMapboxResponse(cb) {
     return xhr({responseType: 'arraybuffer',
-                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => { cb(body); });
+                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => {
+                    if (error) { throw error; }
+                    cb(body); });
 }
 
 describe('TileSource', () => {
@@ -197,6 +199,11 @@ describe('TileSource', () => {
                     subject = new GeoJSONTileSource(options);
                 });
 
+                afterEach(() => {
+                    Utils.xhr.restore();
+                    subject = undefined;
+                });
+
                 it('calls back with an error object', (done) => {
                     subject.loadTile(mockTile, (error, tile) => {
                         assert.instanceOf(error, Error);
@@ -264,6 +271,7 @@ describe('TileSource', () => {
                 assert.instanceOf(subject, MapboxFormatTileSource);
             });
         });
+
 
         // this is failing because of an isssue with either the mapbox
         // example tile, or the protobuffer library

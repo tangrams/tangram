@@ -4,6 +4,7 @@ import Utils from '../src/utils';
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
+
 let makeOne;
 makeOne = ({options}) => {
     options = options || {};
@@ -32,38 +33,95 @@ describe('Scene', () => {
         });
     });
 
-    describe('.create(options)', () => {
+    describe.skip('.loadQueuedTiles()', () => {
+        let subject;
+
+        beforeEach((done) => {
+            subject = Scene.create(sampleScene);
+            subject.init(() => {
+                done();
+            });
+        });
+        afterEach(() => {
+            subject.destroy();
+            subject = null;
+        });
+
+        it('works', () => {
+            assert.isTrue(true);
+        });
+
+    });
+
+    describe.skip('._loadTile(coords, div, cb)', () => {
+        let subject;
+        beforeEach(() => {
+            subject = Scene.create(sampleScene);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = null;
+        });
+
+        it('does something', () => {
+            assert.instanceOf(subject, Scene);
+        });
+
+    });
+
+    describe.skip('.create(options)', () => {
         let subject;
 
         beforeEach(() => {
             subject = makeOne({});
+
         });
 
         afterEach( () => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, Scene);
         });
+
+        it('correctly sets the value of the tile source', () => {
+            assert.equal(subject.tile_source, sampleScene.tile_source);
+        });
+
+        it('correctly sets the value of the layers object', () => {
+            assert.equal(subject.layers, sampleScene.layers);
+        });
+
+        it('correctly sets the value of the styles object', () => {
+            assert.equal(subject.styles, sampleScene.styles);
+        });
+
+
     });
 
-    describe('.init(callback)', () => {
-        let subject;
-        beforeEach(() => {
-            subject = makeOne({});
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
+    describe.skip('.init(callback)', () => {
 
         describe('when the scene is not initialized', () => {
+            let subject;
             beforeEach((done) => {
                 subject = makeOne({});
                 subject.init(done);
+            });
+
+            afterEach(() => {
+                subject.destroy();
+                subject = null;
+            });
+
+            it('calls back', (done) => {
+                subject.init(() => {
+                    assert.ok(true);
+                    // console.log(subject);
+                    done();
+                });
             });
 
             it('calls back', () => {
@@ -99,17 +157,28 @@ describe('Scene', () => {
             });
         });
 
-        describe('when the scene is already initialized', () => {
+        describe.skip('when the scene is already initialized', () => {
+            let subject;
+            beforeEach(() => {
+                subject = makeOne({});
+            });
+
+            afterEach(() => {
+                subject.destroy();
+                subject = null;
+            });
+
             it('returns false', (done) => {
                 subject.init(() => {
                     assert.isFalse(subject.init());
                     done();
                 });
             });
+
         });
     });
 
-    describe('.resizeMap()', () => {
+    describe.skip('.resizeMap()', () => {
         let subject;
         let height = 100;
         let width = 200;
@@ -130,7 +199,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('marks the scene as dirty', () => {
@@ -175,7 +244,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.setCenter(lng, lat)', () => {
+    describe.skip('.setCenter(lng, lat)', () => {
         let subject;
         let [lng, lat] = nycLatLng;
 
@@ -185,7 +254,7 @@ describe('Scene', () => {
         });
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('sets the center scene?', () => {
@@ -197,7 +266,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('.startZoom()', () => {
+    describe.skip('.startZoom()', () => {
         let subject;
 
         beforeEach(() => {
@@ -220,7 +289,7 @@ describe('Scene', () => {
     });
 
     // TODO this method does a lot of stuff
-    describe('.setZoom(zoom)', () => {
+    describe.skip('.setZoom(zoom)', () => {
         let subject;
         beforeEach(() => {
             subject = makeOne({});
@@ -230,7 +299,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
         it('calls the removeTilesOutsideZoomRange method', () =>  {
             assert.isTrue(subject.removeTilesOutsideZoomRange.called);
@@ -241,7 +310,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('.loadTile(tile)', () => {
+    describe.skip('.loadTile(tile)', () => {
         let subject;
         let tile = { coords: null, div: null, callback: () => {}};
 
@@ -250,7 +319,7 @@ describe('Scene', () => {
         });
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('appends the queued_tiles array', () => {
@@ -259,7 +328,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.render()', () => {
+    describe.skip('.render()', () => {
         let subject;
         beforeEach((done) => {
             subject = makeOne({});
@@ -273,7 +342,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('calls the loadQueuedTiles method', () => {
@@ -367,7 +436,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
             Utils.xhr.restore();
         });
 
@@ -394,7 +463,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.makeWorkers(url)', () => {
+    describe.skip('.makeWorkers(url)', () => {
         let subject;
         let numWorkers = 2;
         let url = 'test.js';
@@ -405,7 +474,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         describe('when given a url', () => {
