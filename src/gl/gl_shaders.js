@@ -78,10 +78,14 @@ shader_sources['polygon_fragment'] =
 "uniform float u_map_zoom;\n" +
 "uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
-"uniform float u_test;\n" +
-"uniform float u_test2;\n" +
+"uniform sampler2D u_texture;\n" +
 "varying vec3 v_color;\n" +
 "varying vec4 v_world_position;\n" +
+"#if defined(TEXTURE_COORDS)\n" +
+"\n" +
+"varying vec2 v_texcoord;\n" +
+"#endif\n" +
+"\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
 "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
@@ -177,7 +181,6 @@ shader_sources['polygon_fragment'] =
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
-"  vec3 color_prelight = color;\n" +
 "  color *= lighting;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
@@ -202,8 +205,14 @@ shader_sources['polygon_vertex'] =
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec4 v_world_position;\n" +
 "varying vec3 v_color;\n" +
+"varying vec4 v_world_position;\n" +
+"#if defined(TEXTURE_COORDS)\n" +
+"\n" +
+"attribute vec2 a_texcoord;\n" +
+"varying vec2 v_texcoord;\n" +
+"#endif\n" +
+"\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
 "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
@@ -295,6 +304,9 @@ shader_sources['polygon_vertex'] =
 "  v_selection_color = a_selection_color;\n" +
 "  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"  #if defined(TEXTURE_COORDS)\n" +
+"  v_texcoord = a_texcoord;\n" +
+"  #endif\n" +
 "  v_world_position = u_tile_world * vec4(a_position, 1.);\n" +
 "  #if defined(WORLD_POSITION_WRAP)\n" +
 "  v_world_position.xy -= world_position_anchor;\n" +

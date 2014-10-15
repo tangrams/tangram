@@ -14,8 +14,14 @@ attribute vec3 a_normal;
 attribute vec3 a_color;
 attribute float a_layer;
 
-varying vec4 v_world_position;
 varying vec3 v_color;
+varying vec4 v_world_position;
+
+// Optional texture UVs
+#if defined(TEXTURE_COORDS)
+    attribute vec2 a_texcoord;
+    varying vec2 v_texcoord;
+#endif
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
 // e.g. at wrap 1000, the world space will wrap every 1000 meters
@@ -54,6 +60,7 @@ const float light_ambient = 0.5;
 #pragma tangram: camera
 
 void main() {
+    // Selection pass-specific rendering
     #if defined(FEATURE_SELECTION)
         if (a_selection_color.xyz == vec3(0.)) {
             // Discard by forcing invalid triangle if we're in the feature
@@ -65,7 +72,13 @@ void main() {
         v_selection_color = a_selection_color;
     #endif
 
+    // Position
     vec4 position = u_tile_view * vec4(a_position, 1.);
+
+    // Texture UVs
+    #if defined(TEXTURE_COORDS)
+        v_texcoord = a_texcoord;
+    #endif
 
     // World coordinates for 3d procedural textures
     v_world_position = u_tile_world * vec4(a_position, 1.);
@@ -73,6 +86,7 @@ void main() {
         v_world_position.xy -= world_position_anchor;
     #endif
 
+    // Style-specific vertex transformations
     #pragma tangram: vertex
 
     // Shading
@@ -91,6 +105,7 @@ void main() {
         v_color = a_color;
     #endif
 
+    // Camera
     cameraProjection(position);
 
     // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
