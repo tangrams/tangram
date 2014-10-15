@@ -8,30 +8,70 @@ GLBuilders.debug = false;
 
 // Tesselate a flat 2D polygon
 // x & y coordinates will be set as first two elements of provided vertex_template
-GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template)
+GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, texcoord_index)
 {
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
 
+        // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
+        if (texcoord_index) {
+            var min_x = Infinity,
+                max_x = -Infinity,
+                min_y = Infinity,
+                max_y = -Infinity;
+
+            var num_coords = polygon[0].length;
+            for (var c=0; c < num_coords; c++) {
+                var coord = polygon[0][c];
+
+                if (coord[0] < min_x) {
+                    min_x = coord[0];
+                }
+                if (coord[1] < min_y) {
+                    min_y = coord[1];
+                }
+                if (coord[0] > max_x) {
+                    max_x = coord[0];
+                }
+                if (coord[1] > max_y) {
+                    max_y = coord[1];
+                }
+            }
+
+            var span_x = max_x - min_x;
+            var span_y = max_y - min_y;
+        }
+
+        // Tessellate
         var vertices = GL.triangulatePolygon(polygon);
-        for (var vertex of vertices) {
+
+        // Add vertex data
+        var num_vertices = vertices.length;
+        for (var v=0; v < num_vertices; v++) {
+            var vertex = vertices[v];
             vertex_template[0] = vertex[0];
             vertex_template[1] = vertex[1];
+
+            if (texcoord_index) {
+                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) / span_x;
+                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) / span_y;
+            }
+
             vertex_data.addVertex(vertex_template);
         }
     }
 };
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, vertex_data, vertex_template, normal_index)
+GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, vertex_data, vertex_template, normal_index, texcoord_index)
 {
     var min_z = z + (min_height || 0);
     var max_z = z + height;
 
     // Top
     vertex_template[2] = max_z;
-    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template);
+    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template, texcoord_index);
 
     // Walls
     var num_polygons = polygons.length;
@@ -54,6 +94,19 @@ GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, ve
                     [contour[w+1][0], contour[w+1][1], max_z]
                 ];
 
+                // Fit UVs to wall quad
+                if (texcoord_index) {
+                    var texcoords = [
+                        [0, 1],
+                        [0, 0],
+                        [1, 0],
+
+                        [1, 0],
+                        [1, 1],
+                        [0, 1]
+                    ];
+                }
+
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
                 var normal = Vector.cross(
                     [0, 0, 1],
@@ -69,6 +122,12 @@ GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, ve
                     vertex_template[0] = wall_vertices[wv][0];
                     vertex_template[1] = wall_vertices[wv][1];
                     vertex_template[2] = wall_vertices[wv][2];
+
+                    if (texcoord_index) {
+                        vertex_template[texcoord_index + 0] = texcoords[wv][0];
+                        vertex_template[texcoord_index + 1] = texcoords[wv][1];
+                    }
+
                     vertex_data.addVertex(vertex_template);
                 }
             }
