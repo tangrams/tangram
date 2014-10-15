@@ -169,21 +169,6 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.log("worker refreshed config for tile rebuild");
 });
 
-// Experimenting with ES6 generators
-// Iterator for key/value pairs of an object
-// function* entries(obj) {
-//     for (var key of Object.keys(obj)) {
-//         yield [key, obj[key]];
-//     }
-// }
-
-// Iterator for values of an object
-// function* values(obj) {
-//     for (var key of Object.keys(obj)) {
-//         yield obj[key];
-//     }
-// }
-
 // TODO: fix, hacky half-initialization that calls _init() (but not init()) to force creation of vertex_layout
 SceneWorker.createModes = function (styles) {
     var modes = Scene.createModes(styles);
