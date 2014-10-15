@@ -197,16 +197,12 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
-        var req = new XMLHttpRequest();
-
-        req.onload = function () {
-            source = req.response;
+        Utils.xhr(Utils.urlForPath(block.url) + '?' + (+new Date()), (error, response, body) => {
+            if (error) { throw error; }
+            source = body;
             transforms[key].list[index] = source;
             complete();
-        };
-        req.open('GET', Utils.urlForPath(block.url) + '?' + (+new Date()), true /* async flag */);
-        req.responseType = 'text';
-        req.send();
+        });
     }
 };
 
