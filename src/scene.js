@@ -83,7 +83,7 @@ Scene.prototype.init = function (callback) {
 
         // Create rendering modes
         queue.defer(complete => {
-            this.modes = Scene.createModes(this.styles);
+            this.modes = Scene.createModes(this.styles.modes);
             this.updateActiveModes();
             complete();
         });
@@ -127,7 +127,7 @@ Scene.prototype.init = function (callback) {
 Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
-        this.modes[m].init(this.gl);
+        this.modes[m].setGL(this.gl);
     }
 };
 
@@ -1141,7 +1141,7 @@ Scene.prototype.refreshModes = function () {
         return;
     }
 
-    this.modes = Scene.refreshModes(this.modes, this.styles);
+    this.modes = Scene.refreshModes(this.modes, this.styles.modes);
 };
 
 Scene.prototype.updateActiveModes = function () {
@@ -1402,7 +1402,7 @@ Scene.processLayersForTile = function (layers, tile) {
 };
 
 // Called once on instantiation
-Scene.createModes = function (styles) {
+Scene.createModes = function (stylesheet_modes) {
     var modes = {};
 
     // Built-in modes
@@ -1411,23 +1411,24 @@ Scene.createModes = function (styles) {
         modes[m] = built_ins[m];
     }
 
-    // Stylesheet modes
-    for (m in styles.modes) {
-        // if (m != 'all') {
-            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
-        // }
+    // Stylesheet-defined modes
+    for (m in stylesheet_modes) {
+        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
+    }
+
+    // Initialize all
+    for (m in modes) {
+        modes[m].init();
     }
 
     return modes;
 };
 
-Scene.refreshModes = function (modes, styles) {
+Scene.refreshModes = function (modes, stylesheet_modes) {
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
-    for (var m in styles.modes) {
-        // if (m != 'all') {
-            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
-        // }
+    for (var m in stylesheet_modes) {
+        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
     }
 
     // Refresh all modes

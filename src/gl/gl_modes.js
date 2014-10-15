@@ -16,13 +16,9 @@ export var ModeManager = {};
 // Base
 
 var RenderMode = {
-    init: function (gl) {
+    setGL (gl) {
         this.gl = gl;
         this.makeGLProgram();
-
-        if (typeof this._init === 'function') {
-            this._init();
-        }
     },
     refresh: function () { // TODO: should this be async/non-blocking?
         this.makeGLProgram();
@@ -188,7 +184,7 @@ Modes.polygons.defines = {
 
 Modes.polygons.selection = true;
 
-Modes.polygons._init = function () {
+Modes.polygons.init = function () {
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
@@ -324,7 +320,7 @@ Modes.points.defines = {
 
 Modes.points.selection = true;
 
-Modes.points._init = function () {
+Modes.points.init = function () {
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
