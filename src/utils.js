@@ -10,16 +10,15 @@ Utils.urlForPath = function(path) {
         return null;
     }
 
+    var base = window.location.origin + window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')) + '/';
+
     // Can expand a single path, or an array of paths
     if (typeof path === 'object' && path.length > 0) {
         // Array of paths
         for (var p in path) {
             protocol = path[p].toLowerCase().substr(0, 4);
             if (!(protocol === 'http' || protocol === 'file')) {
-                if (path[p][0] !== '/') {
-                    path[p][0] = '/' + path[p][0];
-                }
-                path[p] = window.location.origin + window.location.pathname + path[p];
+                path[p] = base + path[p];
             }
         }
     }
@@ -27,10 +26,7 @@ Utils.urlForPath = function(path) {
         // Single path
         protocol = path.toLowerCase().substr(0, 4);
         if (!(protocol === 'http' || protocol === 'file')) {
-            if (path[0] !== '/') {
-                path[0] = '/' + path[0];
-            }
-            path = window.location.origin + window.location.pathname + path;
+            path = base + path;
         }
     }
     return path;
