@@ -2,6 +2,12 @@
 
 var Utils;
 export default Utils = {};
+import xhr from 'xhr';
+
+// allow for easier testing
+Utils.xhr = function (...args) {
+    xhr(...args);
+};
 
 // Simplistic detection of relative paths, append base if necessary
 Utils.urlForPath = function(path) {

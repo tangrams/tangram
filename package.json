@@ -16,7 +16,7 @@
     "OpenStreetMap"
   ],
   "scripts": {
-      "test": "make test"
+    "test": "make test"
   },
   "author": {
     "name": "Brett Camper",
@@ -30,7 +30,7 @@
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
     "queue-async": "^1.0.7",
-    "xhr": "~1.16.1"
+    "xhr": "~1.17.0"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
