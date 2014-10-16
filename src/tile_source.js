@@ -105,7 +105,8 @@ export class NetworkTileSource extends TileSource {
         tile.debug.network = +new Date();
 
         Utils.xhr({
-            uri: url
+            uri: url,
+            responseType: this.response_type
         }, (err, resp, body) => {
 
             if (err) { return callback(err); }
