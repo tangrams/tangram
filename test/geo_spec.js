@@ -2,6 +2,7 @@ import chai from 'chai';
 let assert = chai.assert;
 
 import {Geo} from '../src/geo';
+import simplePolygon from './fixtures/simple-polygon.json';
 
 describe('Geo', () => {
 
@@ -12,26 +13,13 @@ describe('Geo', () => {
     describe('Geo.transformGeometry(geometry, transformGeometry)', () => {});
 
     describe('Geo.findBoundingBox(polygon)', () => {
-        let min = { x: 2, y: 4 };
-        let max = { x: 10, y: 20 };
-        let polygon = [[
-            [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25],
-            [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
-            [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
-            [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
-            [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
-            [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
-            [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
-            [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
-        ]];
-
         let bbox;
         beforeEach(() => {
-            bbox = Geo.findBoundingBox(polygon);
+            bbox = Geo.findBoundingBox(simplePolygon.geometry.coordinates);
         });
 
         it('calculates the expected bounding box', () => {
-            assert.deepEqual(bbox, [4, 8, 8, 16]);
+            assert.deepEqual(bbox, simplePolygon.properties.bounds);
         });
     });
 

@@ -1,0 +1,16 @@
+{
+    "id": "123",
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [2,12],[8,8],[8,16],[6.8,12],[6,16],[4,16],[2,12]
+            ]
+        ]
+    },
+    "properties": {
+        "kind": "debug",
+        "description": "A single-ring test polygon",
+        "bounds": [2, 8, 8, 16]
+    }
+}
