@@ -216,9 +216,9 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output
     }
 
-    parseTile (tile) {
+    parseTile (tile, response) {
         // Convert Mapbox vector tile to GeoJSON
-        var data = new Uint8Array(tile.xhr.response);
+        var data = new Uint8Array(response);
         var buffer = new this.Protobuf(data);
         tile.data = new this.VectorTile(buffer);
         tile.layers = tile.data.toGeoJSON();
