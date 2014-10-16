@@ -89,9 +89,6 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    getDefaultHeaders() { return { "Content-Type": "application/json" }; }
-
-
     loadTile (tile, callback) {
 
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
