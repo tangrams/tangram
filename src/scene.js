@@ -1320,9 +1320,21 @@ Scene.loadLayers = function (url, callback) {
 
     Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
         if (error) { throw error; }
+        // Try JSON first, then YAML (if available)
         /* jshint ignore:start */
-        eval('layers = ' + body); // TODO: security!
+        try {
+            eval('layers = ' + body); // TODO: security!
+        } catch (e) {
+            try {
+                layers = yaml.safeLoad(body);
+            } catch (e) {
+                console.log("failed to parse layers!");
+                console.log(layers);
+                layers = null;
+            }
+        }
         /* jshint ignore:end */
+
         if (typeof callback === 'function') {
             callback(layers);
         }
@@ -1342,7 +1354,7 @@ Scene.loadStyles = function (url, callback) {
             try {
                 styles = yaml.safeLoad(body);
             } catch (e) {
-                nconsole.log("failed to parse styles!");
+                console.log("failed to parse styles!");
                 console.log(styles);
                 styles = null;
             }
