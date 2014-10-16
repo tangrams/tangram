@@ -5,11 +5,14 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
-uniform float u_test;
-uniform float u_test2;
+uniform sampler2D u_texture; // built-in uniform for texture maps
 
 varying vec3 v_color;
 varying vec4 v_world_position;
+
+#if defined(TEXTURE_COORDS)
+    varying vec2 v_texcoord;
+#endif
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
 // e.g. at wrap 1000, the world space will wrap every 1000 meters
@@ -67,10 +70,11 @@ void main (void) {
         vec3 lighting = v_lighting;
     #endif
 
-    // Apply lighting to color (can be overriden by transforms)
-    vec3 color_prelight = color;
+    // Apply lighting to color
+    // TODO: add transformation points to give more control to style-specific shaders
     color *= lighting;
 
+    // Style-specific vertex transformations
     #pragma tangram: fragment
 
     gl_FragColor = vec4(color, 1.0);
