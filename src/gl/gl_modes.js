@@ -185,34 +185,38 @@ Modes.polygons.defines = {
 Modes.polygons.selection = true;
 
 Modes.polygons.init = function () {
-    if (this.texcoords) {
-        this.defines['TEXTURE_COORDS'] = true;
-    }
-
-    // TODO: adapt vertex layout based on texture coords? no need to waste space on them if not requested
-    this.vertex_layout = new GLVertexLayout([
+    // Basic attributes, others can be added (see texture UVs below)
+    var attribs = [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
         // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
         // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
         { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
         { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
+    ];
+
+    // Optional texture UVs
+    if (this.texcoords) {
+        this.defines['TEXTURE_COORDS'] = true;
+
+        // Add vertex attribute for UVs only when needed
+        attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+    }
+
+    this.vertex_layout = new GLVertexLayout(attribs);
 };
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
 Modes.polygons.makeVertexTemplate = function (style) {
-    return [
+    // Basic attributes, others can be added (see texture UVs below)
+    var template = [
         // position - x & y coords will be filled in per-vertex below
         0, 0, style.z,
         // normal
         0, 0, 1,
-        // texture UVs
-        0, 0,
         // color
         // TODO: automate multiplication for normalized attribs?
         style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
@@ -221,6 +225,13 @@ Modes.polygons.makeVertexTemplate = function (style) {
         // layer number
         style.layer_num
     ];
+
+    if (this.texcoords) {
+        // Add texture UVs to template only if needed
+        template.push(0, 0);
+    }
+
+    return template;
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
