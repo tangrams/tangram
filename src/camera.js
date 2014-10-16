@@ -53,7 +53,7 @@ class PerspectiveCamera extends Camera {
 
     constructor(scene, options = {}) {
         super(scene);
-        this.focal_length = options.focal_length || 2.5;
+        this.focal_length = options.focal_length || [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]]; // pairs of [zoom, focal len]
         this.vanishing_point = options.vanishing_point || { x: 0, y: 0 };
         if (this.vanishing_point.length === 2) {
             this.vanishing_point = { x: this.vanishing_point[0], y: this.vanishing_point[1] }; // allow vanishingpoint to also be passed as 2-elem array
