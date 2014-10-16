@@ -124,6 +124,26 @@ Scene.prototype.init = function (callback) {
     });
 };
 
+Scene.prototype.destroy = function () {
+
+    if (this.canvas && this.canvas.parentNode) {
+        this.canvas.parentNode.removeChild(this.canvas);
+    }
+
+    this.gl = null;
+    this.fbo = null;
+    this.fbo_texture = null;
+    this.fbo_depth_rb = null;
+
+    if (Array.isArray(this.workers)) {
+        this.workers.forEach((worker) => {
+            worker.terminate();
+        });
+        this.workers = null;
+    }
+
+};
+
 Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {

@@ -22,12 +22,14 @@ describe('Scene', () => {
         it('returns a new instance', () => {
             let scene = new Scene();
             assert.instanceOf(scene, Scene);
+            scene.destroy();
         });
 
         describe('when given sensible defaults', () => {
             let scene = makeOne({});
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
+                scene.destroy();
             });
         });
     });
@@ -44,6 +46,7 @@ describe('Scene', () => {
         });
 
         afterEach( () => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -72,6 +75,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -142,6 +146,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -196,6 +201,7 @@ describe('Scene', () => {
             subject.setCenter(lng, lat);
         });
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -217,6 +223,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -239,6 +246,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
         it('calls the removeTilesOutsideZoomRange method', () =>  {
@@ -257,7 +265,10 @@ describe('Scene', () => {
         beforeEach(() => {
             subject = makeOne({}); subject.loadTile(tile);
         });
-        afterEach(() => { subject = undefined; });
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
 
         it('appends the queued_tiles array', () => {
             assert.include(subject.queued_tiles[0], tile);
@@ -277,7 +288,10 @@ describe('Scene', () => {
             });
         });
 
-        afterEach(() => { subject = undefined; });
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
 
         it('calls the loadQueuedTiles method', () => {
             subject.render();
@@ -328,6 +342,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
             Utils.xhr.restore();
         });
@@ -362,6 +377,11 @@ describe('Scene', () => {
         beforeEach(() => {
             subject = makeOne({options: {num_workers}});
             subject.makeWorkers(url);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
         });
 
         describe('when given a url', () => {
