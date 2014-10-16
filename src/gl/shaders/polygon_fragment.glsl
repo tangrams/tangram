@@ -53,7 +53,7 @@ void main (void) {
         vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
 
         // Replace object color with environment map
-        color = vec4(sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, 1.0);
+        color = vec4(sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, color[3]);
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting

@@ -169,7 +169,7 @@ shader_sources['polygon_fragment'] =
 "  vec4 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
 "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
-"  color = vec4(e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, 1.0);\n" +
+"  color = vec4(e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, color[3]);\n" +
 "  #endif\n" +
 "  \n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
