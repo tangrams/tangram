@@ -138,15 +138,19 @@ GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, ve
 // Build tessellated triangles for a polyline
 // Basically following the method described here for miter joints:
 // http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
-GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_template, options = {})
+GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_template, texcoord_index, options = {})
 {
     options.closed_polygon = options.closed_polygon || false;
     options.remove_tile_edges = options.remove_tile_edges || false;
 
     // Build triangles
-    var vertices = [];
-    var p, pa, pb;
-    var num_lines = lines.length;
+    var vertices = [],
+        texcoords = [],
+        p,
+        pa,
+        pb,
+        num_lines = lines.length;
+
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
 
@@ -225,9 +229,16 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
         }
     }
 
+    // Add vertices to buffer
     for (var v=0; v < vertices.length; v++) {
         vertex_template[0] = vertices[v][0];
         vertex_template[1] = vertices[v][1];
+
+        if (texcoord_index) {
+            vertex_template[texcoord_index + 0] = texcoords[v][0];
+            vertex_template[texcoord_index + 1] = texcoords[v][1];
+        }
+
         vertex_data.addVertex(vertex_template);
     }
 
@@ -245,6 +256,13 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
             pb_inner, pb_outer, pa_inner,
             pa_inner, pb_outer, pa_outer
         );
+
+        if (texcoord_index) {
+            texcoords.push(
+                [0, 0], [1, 0], [0, 1],
+                [0, 1], [1, 0], [1, 1]
+            );
+        }
     }
 
     // Build triangles for a 3-point 'anchor' shape, consisting of two line segments with a joint
@@ -314,6 +332,16 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
 
                 pb_inner[1], pb_outer[1], pb_inner[0],
                 pb_inner[0], pb_outer[1], pb_outer[0]
+            );
+        }
+
+        if (texcoord_index) {
+            texcoords.push(
+                [0, 0], [1, 0], [0, 1],
+                [0, 1], [1, 0], [1, 1],
+
+                [0, 0], [1, 0], [0, 1],
+                [0, 1], [1, 0], [1, 1]
             );
         }
     }
