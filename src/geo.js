@@ -103,3 +103,32 @@ Geo.boxIntersect = function (b1, b2)
         b2.ne.y < b1.sw.y
     );
 };
+
+// Finds the axis-aligned bounding box for a polygon
+Geo.findBoundingBox = function (polygon) {
+    var min_x = Infinity,
+        max_x = -Infinity,
+        min_y = Infinity,
+        max_y = -Infinity;
+
+    // Only need to examine outer ring (polygon[0])
+    var num_coords = polygon[0].length;
+    for (var c=0; c < num_coords; c++) {
+        var coord = polygon[0][c];
+
+        if (coord[0] < min_x) {
+            min_x = coord[0];
+        }
+        if (coord[1] < min_y) {
+            min_y = coord[1];
+        }
+        if (coord[0] > max_x) {
+            max_x = coord[0];
+        }
+        if (coord[1] > max_y) {
+            max_y = coord[1];
+        }
+    }
+
+    return [min_x, min_y, max_x, max_y];
+};

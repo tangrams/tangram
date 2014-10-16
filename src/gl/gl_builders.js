@@ -1,5 +1,6 @@
 import Point from '../point';
 import {Vector} from '../vector';
+import {Geo} from '../geo';
 import {GL} from './gl';
 
 export var GLBuilders = {};
@@ -16,29 +17,7 @@ GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, tex
 
         // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
         if (texcoord_index) {
-            var min_x = Infinity,
-                max_x = -Infinity,
-                min_y = Infinity,
-                max_y = -Infinity;
-
-            var num_coords = polygon[0].length;
-            for (var c=0; c < num_coords; c++) {
-                var coord = polygon[0][c];
-
-                if (coord[0] < min_x) {
-                    min_x = coord[0];
-                }
-                if (coord[1] < min_y) {
-                    min_y = coord[1];
-                }
-                if (coord[0] > max_x) {
-                    max_x = coord[0];
-                }
-                if (coord[1] > max_y) {
-                    max_y = coord[1];
-                }
-            }
-
+            var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon);
             var span_x = max_x - min_x;
             var span_y = max_y - min_y;
         }
