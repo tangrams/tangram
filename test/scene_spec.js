@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-
+import Utils from '../src/utils';
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
@@ -319,18 +319,36 @@ describe('Scene', () => {
     });
 
     describe('.createWorkers(cb)', () => {
-        // TODO, we should mock the http resonse and dig deeper in
-        // this method?
         let subject;
         beforeEach(() => {
+            sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
             subject = makeOne({});
             sinon.spy(subject, 'makeWorkers');
+            sinon.spy(subject, 'createObjectURL');
         });
-        afterEach(() => { subject = undefined; });
+
+        afterEach(() => {
+            subject = undefined;
+            Utils.xhr.restore();
+        });
 
         it('calls the makeWorkers method', (done) => {
             subject.createWorkers(() => {
-                assert.isTrue(subject.makeWorkers.called);
+                sinon.assert.called(subject.makeWorkers);
+                done();
+            });
+        });
+
+        it('calls the xhr method', (done) => {
+            subject.createWorkers(() => {
+                sinon.assert.called(Utils.xhr);
+                done();
+            });
+        });
+
+        it('calls the createObjectUrl', (done) => {
+            subject.createWorkers(() => {
+                sinon.assert.called(subject.createObjectURL);
                 done();
             });
         });

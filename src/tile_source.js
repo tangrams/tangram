@@ -3,6 +3,7 @@
 import {Geo}   from './geo';
 import Point from './point';
 import {MethodNotImplemented} from './errors';
+import Utils from './utils';
 
 export default class TileSource {
 
@@ -90,8 +91,9 @@ export class NetworkTileSource extends TileSource {
 
     getDefaultHeaders() { return { "Content-Type": "application/json" }; }
 
+
     loadTile (tile, callback) {
-        var req = new XMLHttpRequest();
+
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
 
         if (this.url_hosts != null) {
@@ -100,37 +102,32 @@ export class NetworkTileSource extends TileSource {
         }
 
         tile.url = url;
-        tile.xhr = req;
         tile.debug.network = +new Date();
 
-        req.onload = () => {
-            // Canceled while loading?
+        Utils.xhr({
+            uri: url
+        }, (err, resp, body) => {
+
+            if (err) { return callback(err); }
+
             if (tile.loading === false) {
                 return;
             }
 
-            if (tile.xhr.response === undefined) { tile.xhr.response = tile.xhr.responseText; }
-
-            tile.debug.response_size = tile.xhr.response.length || tile.xhr.response.byteLength;
+            tile.debug.response_size = body.length || body.byteLength;
             tile.debug.network = +new Date() - tile.debug.network;
 
             tile.debug.parsing = +new Date();
-            this.parseTile(tile, tile.xhr.response);
+            this.parseTile(tile, body);
             tile.debug.parsing = +new Date() - tile.debug.parsing;
 
-            delete tile.xhr;
             tile.loading = false;
             tile.loaded = true;
 
             if (callback) {
-                callback(tile);
+                callback(null, tile);
             }
-        };
-        // TODO: add XHR error handling
-        req.open('GET', url, true); // async flag
-        req.responseType = this.response_type;
-        req.send();
-
+        });
     }
 
     // Sub-classes must implement this method:
@@ -179,13 +176,13 @@ export class TopoJSONTileSource extends NetworkTileSource {
         }
     }
 
-    parseTile (tile) {
+    parseTile (tile, response) {
         if (typeof topojson === 'undefined') {
             tile.layers = {};
             return;
         }
 
-        tile.layers = JSON.parse(tile.xhr.response);
+        tile.layers = JSON.parse(response);
 
         // Single layer
         if (tile.layers.objects.vectiles != null) {

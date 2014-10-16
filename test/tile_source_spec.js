@@ -9,6 +9,7 @@ import {
     TopoJSONTileSource,
     MapboxFormatTileSource
 } from '../src/tile_source';
+import Utils from '../src/utils';
 
 import {MethodNotImplemented} from '../src/errors';
 
@@ -157,35 +158,49 @@ describe('TileSource', () => {
 
     describe('GeoJSONTileSource', () => {
         let mockHTTP = JSON.stringify(require('./fixtures/sample-http-response.json'));
+
         describe('.loadTile(tile, callback)', () => {
             describe('when there are no http errors', () => {
-                let subject, xhr, request, mockTile;
+                let subject, mockTile;
 
                 beforeEach(() => {
                     mockTile = _.clone(require('./fixtures/sample-tile.json'));
-                    xhr = sinon.useFakeXMLHttpRequest();
-                    xhr.onCreate = (req) => {
-                        request = req;
-                    };
+                    sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, mockHTTP);
                     subject = new GeoJSONTileSource(options);
                 });
                 afterEach(() => {
-                    xhr.restore();
-                    request = undefined;
+                    Utils.xhr.restore();
                     subject = undefined;
                 });
 
                 it('calls back with the tile object', (done) => {
-                    subject.loadTile(mockTile, (tile) => {
-                        assert.isObject(tile);
+                    subject.loadTile(mockTile, (error, tile) => {
+                        // require something that looks like a tile
+                        // object
+                        assert.property(tile, 'loading');
+                        assert.property(tile, 'coords');
+                        assert.property(tile, 'debug');
+                        assert.deepProperty(tile, 'layers.water');
+                        assert.deepProperty(tile, 'layers.land');
                         done();
                     });
-                    request.respond(200, {}, mockHTTP);
                 });
             });
 
             describe('when there are http errors', () => {
-                it('calls back with an error object');
+                let subject, mockTile;
+                beforeEach(() => {
+                    mockTile = _.clone(require('./fixtures/sample-tile.json'));
+                    sinon.stub(Utils, 'xhr').callsArgWith(1, new Error('message'), {}, '');
+                    subject = new GeoJSONTileSource(options);
+                });
+
+                it('calls back with an error object', (done) => {
+                    subject.loadTile(mockTile, (error, tile) => {
+                        assert.instanceOf(error, Error);
+                        done();
+                    });
+                });
             });
         });
     });
