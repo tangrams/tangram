@@ -166,7 +166,7 @@ shader_sources['polygon_fragment'] =
 "#pragma tangram: globals\n" +
 "\n" +
 "void main(void) {\n" +
-"  vec3 color = v_color;\n" +
+"  vec4 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
 "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
 "  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
@@ -175,12 +175,12 @@ shader_sources['polygon_fragment'] =
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
 "  vec3 lighting = a_x_lighting(v_position, v_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
-"  vec3 lighting = v_lighting;\n" +
+"  vec4 lighting = vec4(v_lighting, 1.0);\n" +
 "  #endif\n" +
-"  vec3 color_prelight = color;\n" +
+"  vec4 color_prelight = color;\n" +
 "  color *= lighting;\n" +
 "  #pragma tangram: fragment\n" +
-"  gl_FragColor = vec4(color, 1.0);\n" +
+"  gl_FragColor = color;\n" +
 "}\n" +
 "";
 

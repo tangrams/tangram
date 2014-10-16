@@ -287,7 +287,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
-    console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
+    // console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
@@ -412,8 +412,8 @@ Scene.prototype.resetFrame = function () {
     gl.depthFunc(gl.LESS);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
-    // gl.enable(gl.BLEND);
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 };
 
 Scene.prototype.renderGL = function () {

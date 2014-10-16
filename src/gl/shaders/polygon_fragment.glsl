@@ -8,7 +8,7 @@ uniform vec2 u_tile_origin;
 uniform float u_test;
 uniform float u_test2;
 
-varying vec3 v_color;
+varying vec4 v_color;
 varying vec4 v_world_position;
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
@@ -46,7 +46,7 @@ const float light_ambient = 0.5;
 #pragma tangram: globals
 
 void main (void) {
-    vec3 color = v_color;
+    vec4 color = v_color;
 
     #if defined(LIGHTING_ENVIRONMENT)
         // Approximate location of eye (TODO: make this configurable)
@@ -64,14 +64,14 @@ void main (void) {
             vec3(0.2, 0.7, -0.5), // direction of light for flat shading
             light_ambient);
     #else
-        vec3 lighting = v_lighting;
+        vec4 lighting = vec4(v_lighting, 1.0);
     #endif
 
     // Apply lighting to color (can be overriden by transforms)
-    vec3 color_prelight = color;
+    vec4 color_prelight = color;
     color *= lighting;
 
     #pragma tangram: fragment
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = color;
 }
