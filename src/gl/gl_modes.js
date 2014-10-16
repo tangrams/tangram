@@ -191,7 +191,7 @@ Modes.polygons._init = function () {
     this.vertex_layout = new GLVertexLayout(this.gl, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
@@ -201,7 +201,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 {
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
+        style.color[0], style.color[1], style.color[2], style.color[3],
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
@@ -209,7 +209,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     // Outlines have a slightly different set of constants, because the layer number is modified
     if (style.outline.color) {
         var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
+            style.outline.color[0], style.outline.color[1], style.outline.color[2], style.outline.color[3],
             style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
@@ -296,7 +296,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
+        style.color[0], style.color[1], style.color[2], style.color[3],
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
@@ -304,7 +304,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     // Outlines have a slightly different set of constants, because the layer number is modified
     if (style.outline.color) {
         var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
+            style.outline.color[0], style.outline.color[1], style.outline.color[2], style.outline.color[3],
             style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
             style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
         ];
@@ -340,7 +340,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
+        style.color[0], style.color[1], style.color[2], style.color[3],
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];
@@ -378,7 +378,7 @@ Modes.points._init = function () {
     this.vertex_layout = new GLVertexLayout(this.gl, [
         { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
         { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
     ]);
@@ -389,7 +389,7 @@ Modes.points.buildPoints = function (points, style, vertex_data)
     // TOOD: reduce redundancy of constant calc between builders
     // Color and layer number are currently constant across vertices
     var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
+        style.color[0], style.color[1], style.color[2], style.color[3],
         style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
         style.layer_num
     ];

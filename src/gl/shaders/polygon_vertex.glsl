@@ -11,7 +11,7 @@ uniform float u_num_layers;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
-attribute vec3 a_color;
+attribute vec4 a_color;
 attribute float a_layer;
 
 varying vec4 v_world_position;
@@ -77,7 +77,7 @@ void main() {
 
     // Shading
     #if defined(LIGHTING_VERTEX)
-        v_color = vec4(a_color, 1.0);
+        v_color = a_color;
         v_lighting = calculateLighting(
             position, a_normal, /*a_color*/ vec3(1.),
             vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
@@ -88,7 +88,7 @@ void main() {
         // Send to fragment shader for per-pixel lighting
         v_position = position;
         v_normal = a_normal;
-        v_color = vec4(a_color, 1.0);
+        v_color = a_color;
     #endif
 
     cameraProjection(position);

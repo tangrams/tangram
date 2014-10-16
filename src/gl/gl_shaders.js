@@ -6,10 +6,10 @@ shader_sources['point_fragment'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "void main(void) {\n" +
-"  vec3 color = v_color;\n" +
+"  vec4 color = v_color;\n" +
 "  vec3 lighting = vec3(1.);\n" +
 "  float len = length(v_texcoord);\n" +
 "  if(len > 1.) {\n" +
@@ -17,7 +17,7 @@ shader_sources['point_fragment'] =
 "  }\n" +
 "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "  #pragma tangram: fragment\n" +
-"  gl_FragColor = vec4(color, 1.);\n" +
+"  gl_FragColor = color;\n" +
 "}\n" +
 "";
 
@@ -29,9 +29,9 @@ shader_sources['point_vertex'] =
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
-"attribute vec3 a_color;\n" +
+"attribute vec4 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "#if defined(FEATURE_SELECTION)\n" +
 "\n" +
@@ -80,7 +80,7 @@ shader_sources['polygon_fragment'] =
 "uniform vec2 u_tile_origin;\n" +
 "uniform float u_test;\n" +
 "uniform float u_test2;\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec4 v_world_position;\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
@@ -166,10 +166,10 @@ shader_sources['polygon_fragment'] =
 "#pragma tangram: globals\n" +
 "\n" +
 "void main(void) {\n" +
-"  vec3 color = v_color;\n" +
+"  vec4 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
 "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
-"  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
+"  color = vec4(e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, 1.0);\n" +
 "  #endif\n" +
 "  \n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
@@ -177,10 +177,10 @@ shader_sources['polygon_fragment'] =
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
-"  vec3 color_prelight = color;\n" +
-"  color *= lighting;\n" +
+"  vec4 color_prelight = color;\n" +
+"  color *= vec4(lighting, 1.0);\n" +
 "  #pragma tangram: fragment\n" +
-"  gl_FragColor = vec4(color, 1.0);\n" +
+"  gl_FragColor = color;\n" +
 "}\n" +
 "";
 
@@ -200,10 +200,10 @@ shader_sources['polygon_vertex'] =
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
-"attribute vec3 a_color;\n" +
+"attribute vec4 a_color;\n" +
 "attribute float a_layer;\n" +
 "varying vec4 v_world_position;\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
 "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +

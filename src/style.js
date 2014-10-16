@@ -6,9 +6,9 @@ export var Style = {};
 // Style helpers
 
 Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c, 1.0]; }, // pseudo-random grayscale by geometry id
+    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1), 1.0]; }, // pseudo-random color by geometry id
+    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random(), 1.0]; } // random color
 };
 
 // Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
@@ -98,14 +98,14 @@ Style.expandMacros = function expandMacros (obj) {
 
 // Determine final style properties (color, width, etc.)
 Style.defaults = {
-    color: [1.0, 0, 0],
+    color: [1.0, 0.0, 0., 1.],
     width: 1,
     size: 1,
     extrude: false,
     height: 20,
     min_height: 0,
     outline: {
-        // color: [1.0, 0, 0],
+        // color: [1.0, 0, 0, 1.0],
         // width: 1,
         // dash: null
     },
