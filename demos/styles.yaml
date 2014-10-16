@@ -345,10 +345,17 @@ modes:
                 # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                 fragment: { url: demos/shaders/color_bleed.glsl }
 
-    # polygons:
-    #     shaders:
-    #         uniforms:
-    #             u_selected_id: 0
+    polygons:
+        texcoords: true
+        shaders:
+            uniforms:
+                u_texture: demos/images/LitSphere_test_02.jpg
+            transforms:
+                fragment: |
+                    color = vec3(v_texcoord.xy, 0.);
+                    //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+                    //color = texture2D(u_texture, v_texcoord).rgb;
+                    //color = texture2D(u_texture, vec2(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.))).rgb;
 
 layers:
     earth:
