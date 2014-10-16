@@ -1,7 +1,6 @@
 [
     {
-        name: 'earth',
-        data: 'earth'
+        name: 'earth'
     },
     {
         name: 'landuse',
@@ -19,8 +18,7 @@
         }
     },
     {
-        name: 'water',
-        data: 'water'
+        name: 'water'
     },
     {
         name: 'roads',
@@ -38,12 +36,10 @@
         }
     },
     {
-        name: 'buildings',
-        data: 'buildings'
+        name: 'buildings'
     },
     {
-        name: 'pois',
-        data: 'pois'
+        name: 'pois'
         // data: function (json) {
         //     if (!json['pois'] || !json['pois'].features) {
         //         return null;
@@ -57,7 +53,7 @@
         //         })
         //     };
         // }
-    },
+    }
     // {
     //     name: 'places',
     //     data: 'places'
