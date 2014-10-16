@@ -261,6 +261,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
                 style.outline.width,
                 vertex_data,
                 vertex_template,
+                this.texcoords && this.vertex_layout.index.a_texcoord,
                 {
                     closed_polygon: true,
                     remove_tile_edges: true
@@ -280,7 +281,8 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         style.z,
         style.width,
         vertex_data,
-        vertex_template
+        vertex_template,
+        this.texcoords && this.vertex_layout.index.a_texcoord
     );
 
     // Line outlines
@@ -301,7 +303,8 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
             style.z,
             style.width + 2 * style.outline.width,
             vertex_data,
-            vertex_template
+            vertex_template,
+            this.texcoords && this.vertex_layout.index.a_texcoord
         );
     }
 };
