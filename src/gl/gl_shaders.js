@@ -11,7 +11,8 @@ shader_sources['point_fragment'] =
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  vec3 lighting = vec3(1.);\n" +
-"  float len = length(v_texcoord);\n" +
+"  vec2 uv = v_texcoord * 2. - 1.;\n" +
+"  float len = length(uv);\n" +
 "  if(len > 1.) {\n" +
 "    discard;\n" +
 "  }\n" +

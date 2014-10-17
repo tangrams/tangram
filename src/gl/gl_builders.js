@@ -9,8 +9,12 @@ GLBuilders.debug = false;
 
 // Tesselate a flat 2D polygon
 // x & y coordinates will be set as first two elements of provided vertex_template
-GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, texcoord_index)
-{
+GLBuilders.buildPolygons = function (
+    polygons,
+    vertex_data, vertex_template,
+    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -20,6 +24,10 @@ GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, tex
             var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon);
             var span_x = max_x - min_x;
             var span_y = max_y - min_y;
+            var span_u = max_u - min_u;
+            var span_v = max_v - min_v;
+            var scale_u = (max_u - min_u) / span_x;
+            var scale_v = (max_v - min_v) / span_y;
         }
 
         // Tessellate
@@ -32,9 +40,10 @@ GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, tex
             vertex_template[0] = vertex[0];
             vertex_template[1] = vertex[1];
 
+            // Add UVs
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) / span_x;
-                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) / span_y;
+                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) * scale_u + min_u;
+                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) * scale_v + min_v;
             }
 
             vertex_data.addVertex(vertex_template);
@@ -43,14 +52,20 @@ GLBuilders.buildPolygons = function (polygons, vertex_data, vertex_template, tex
 };
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, vertex_data, vertex_template, normal_index, texcoord_index)
-{
+GLBuilders.buildExtrudedPolygons = function (
+    polygons,
+    z, height, min_height,
+    vertex_data, vertex_template,
+    normal_index,
+    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+
     var min_z = z + (min_height || 0);
     var max_z = z + height;
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
 
     // Top
     vertex_template[2] = max_z;
-    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template, texcoord_index);
+    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
 
     // Walls
     var num_polygons = polygons.length;
@@ -76,13 +91,13 @@ GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, ve
                 // Fit UVs to wall quad
                 if (texcoord_index) {
                     var texcoords = [
-                        [0, 1],
-                        [0, 0],
-                        [1, 0],
+                        [min_u, max_v],
+                        [min_u, min_v],
+                        [max_u, min_v],
 
-                        [1, 0],
-                        [1, 1],
-                        [0, 1]
+                        [max_u, min_v],
+                        [max_u, max_v],
+                        [min_u, max_v]
                     ];
                 }
 
@@ -117,10 +132,16 @@ GLBuilders.buildExtrudedPolygons = function (polygons, z, height, min_height, ve
 // Build tessellated triangles for a polyline
 // Basically following the method described here for miter joints:
 // http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
-GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_template, texcoord_index, options = {})
-{
-    options.closed_polygon = options.closed_polygon || false;
-    options.remove_tile_edges = options.remove_tile_edges || false;
+GLBuilders.buildPolylines = function (
+    lines,
+    z, width,
+    vertex_data, vertex_template,
+    {
+        closed_polygon = false,
+        remove_tile_edges = false,
+        texcoord_index,
+        texcoord_scale = [[0, 0], [1, 1]]
+    }) {
 
     // Build triangles
     var vertices = [],
@@ -129,6 +150,8 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
         pa,
         pb,
         num_lines = lines.length;
+
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
 
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
@@ -145,7 +168,7 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
                 // For closed polygons, calculate all midpoints since segments will wrap around to first midpoint
                 var mid = [];
                 var pmax;
-                if (options.closed_polygon === true) {
+                if (closed_polygon === true) {
                     p = 0; // start on first point
                     pmax = line.length - 1;
                 }
@@ -165,7 +188,7 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
 
                 // Same closed/open polygon logic as above: keep last midpoint for closed, skip for open
                 var mmax;
-                if (options.closed_polygon === true) {
+                if (closed_polygon === true) {
                     mmax = mid.length;
                 }
                 else {
@@ -184,7 +207,7 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
             }
 
             for (p=0; p < anchors.length; p++) {
-                if (!options.remove_tile_edges) {
+                if (!remove_tile_edges) {
                     buildAnchor(anchors[p][0], anchors[p][1], anchors[p][2]);
                 }
                 else {
@@ -213,6 +236,7 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
         vertex_template[0] = vertices[v][0];
         vertex_template[1] = vertices[v][1];
 
+        // Add UVs
         if (texcoord_index) {
             vertex_template[texcoord_index + 0] = texcoords[v][0];
             vertex_template[texcoord_index + 1] = texcoords[v][1];
@@ -236,10 +260,11 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
             pa_inner, pb_outer, pa_outer
         );
 
+        // Add UVs
         if (texcoord_index) {
             texcoords.push(
-                [0, 0], [1, 0], [0, 1],
-                [0, 1], [1, 0], [1, 1]
+                [min_u, min_v], [max_u, min_v], [min_u, max_v],
+                [min_u, max_v], [max_u, min_v], [max_u, max_v]
             );
         }
     }
@@ -316,19 +341,23 @@ GLBuilders.buildPolylines = function (lines, z, width, vertex_data, vertex_templ
 
         if (texcoord_index) {
             texcoords.push(
-                [0, 0], [1, 0], [0, 1],
-                [0, 1], [1, 0], [1, 1],
+                [min_u, min_v], [max_u, min_v], [min_u, max_v],
+                [min_u, max_v], [max_u, min_v], [max_u, max_v],
 
-                [0, 0], [1, 0], [0, 1],
-                [0, 1], [1, 0], [1, 1]
+                [min_u, min_v], [max_u, min_v], [min_u, max_v],
+                [min_u, max_v], [max_u, min_v], [max_u, max_v]
             );
         }
     }
 };
 
 // Build a quad centered on a point
-GLBuilders.buildQuadsForPoints = function (points, width, height, vertex_data, vertex_template, texcoord_index = null)
-{
+GLBuilders.buildQuadsForPoints = function (
+    points, width, height,
+    vertex_data, vertex_template,
+    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
     var num_points = points.length;
     for (var p=0; p < num_points; p++) {
         var point = points[p];
@@ -345,18 +374,18 @@ GLBuilders.buildQuadsForPoints = function (points, width, height, vertex_data, v
 
         if (texcoord_index) {
             var texcoords = [
-                [-1, -1],
-                [1, -1],
-                [1, 1],
+                [min_u, min_v],
+                [max_u, min_v],
+                [max_u, max_v],
 
-                [-1, -1],
-                [1, 1],
-                [-1, 1]
+                [min_u, min_v],
+                [max_u, max_v],
+                [min_u, max_v]
             ];
         }
 
         for (var pos=0; pos < 6; pos++) {
-            // Add UVs
+            // Add texcoords
             if (texcoord_index) {
                 vertex_template[texcoord_index + 0] = texcoords[pos][0];
                 vertex_template[texcoord_index + 1] = texcoords[pos][1];
