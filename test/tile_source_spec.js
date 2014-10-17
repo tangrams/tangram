@@ -122,20 +122,6 @@ describe('TileSource', () => {
 
     describe('NetworkTileSource', () => {
 
-        describe('.getDefaultHeaders()', () => {
-            let subject;
-            beforeEach(() => {
-                subject = new NetworkTileSource(options);
-            });
-
-            it('returns a default hash of headers', () => {
-                assert.deepEqual(
-                    subject.getDefaultHeaders(),
-                    {'Content-Type': 'application/json'}
-                );
-            });
-        });
-
         describe('.parseTile(tile)', () => {
             let subject;
             beforeEach(() => {
@@ -152,8 +138,6 @@ describe('TileSource', () => {
                 });
             });
         });
-
-
     });
 
     describe('GeoJSONTileSource', () => {
