@@ -35,8 +35,8 @@
   "devDependencies": {
     "uglify-js": "^2.4.14",
     "glslify": "^1.5.1",
-    "browserify": "3.33.1",
-    "es6ify": "1.4.0",
+    "browserify": "6.1.0",
+    "es6ify": "git://github.com/thlorenz/es6ify.git#53f1b43e4552efb2e4467636c3de45b555e82d59",
     "jshint": "git://github.com/jshint/jshint.git#befb880c0563d09a35e44ffbe99758b10bdcf328",
     "mocha": "~1.21.4",
     "karma-mocha": "~0.1.9",
