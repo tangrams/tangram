@@ -7,10 +7,12 @@ import Utils from '../utils';
 GLTexture.textures = {};
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
-export default function GLTexture (gl, name, options) {
-    options = options || {};
+export default function GLTexture (gl, name, options = {}) {
     this.gl = gl;
     this.texture = gl.createTexture();
+    if (this.texture) {
+        this.valid = true;
+    }
     this.bind(0);
     this.image = null;
 
@@ -24,14 +26,31 @@ export default function GLTexture (gl, name, options) {
     GLTexture.textures[this.name] = this;
 }
 
+GLTexture.prototype.destroy = function () {
+    if (!this.valid) {
+        return;
+    }
+    this.gl.deleteTexture(this.texture);
+    this.texture = null;
+    delete this.data;
+    this.data = null;
+    delete GLTexture.textures[this.name];
+    this.valid = false;
+};
+
 GLTexture.prototype.bind = function (unit) {
+    if (!this.valid) {
+        return;
+    }
     this.gl.activeTexture(this.gl.TEXTURE0 + unit);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
 };
 
 // Loads a texture from a URL
-GLTexture.prototype.load = function (url, options) {
-    options = options || {};
+GLTexture.prototype.load = function (url, options = {}) {
+    if (!this.valid) {
+        return;
+    }
     this.image = new Image();
     this.image.onload = () => {
         this.width = this.image.width;
@@ -44,7 +63,7 @@ GLTexture.prototype.load = function (url, options) {
 };
 
 // Sets texture to a raw image buffer
-GLTexture.prototype.setData = function (width, height, data, options) {
+GLTexture.prototype.setData = function (width, height, data, options = {}) {
     this.width = width;
     this.height = height;
     this.data = data;
@@ -55,8 +74,10 @@ GLTexture.prototype.setData = function (width, height, data, options) {
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
-GLTexture.prototype.update = function (options) {
-    options = options || {};
+GLTexture.prototype.update = function (options = {}) {
+    if (!this.valid) {
+        return;
+    }
 
     this.bind(0);
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
@@ -73,8 +94,11 @@ GLTexture.prototype.update = function (options) {
 
 // Determines appropriate filtering mode
 // Assumes texture to be operated on is already bound
-GLTexture.prototype.setTextureFiltering = function (options) {
-    options = options || {};
+GLTexture.prototype.setTextureFiltering = function (options = {}) {
+    if (!this.valid) {
+        return;
+    }
+
     options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
     var gl = this.gl;
 
