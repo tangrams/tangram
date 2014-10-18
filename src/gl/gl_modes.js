@@ -33,6 +33,20 @@ var RenderMode = {
     }
 };
 
+RenderMode.destroy = function () {
+    if (this.gl_program) {
+        this.gl_program.destroy();
+        this.gl_program = null;
+    }
+
+    if (this.selection_gl_program) {
+        this.selection_gl_program.destroy();
+        this.selection_gl_program = null;
+    }
+
+    delete Modes[this.name];
+};
+
 RenderMode.makeGLProgram = function ()
 {
     // console.log(this.name + ": " + "start building");
@@ -165,6 +179,18 @@ ModeManager.configureMode = function (name, settings)
 
     Modes[name].name = name;
     return Modes[name];
+};
+
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    var modes = Object.keys(Modes);
+    for (var m of modes) {
+        var mode = Modes[m];
+        if (mode.gl == gl) {
+            console.log(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    }
 };
 
 
