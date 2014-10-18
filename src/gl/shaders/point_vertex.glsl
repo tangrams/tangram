@@ -1,5 +1,4 @@
 uniform mat4 u_tile_view;
-uniform mat4 u_meter_view;
 uniform float u_num_layers;
 
 attribute vec3 a_position;
@@ -16,9 +15,10 @@ varying vec2 v_texcoord;
 #endif
 
 // Imported functions
-#pragma glslify: calculateZ = require(./modules/depth_scale)
+#pragma glslify: reorderLayers = require(./modules/reorder_layers)
 
 #pragma tangram: globals
+#pragma tangram: camera
 
 void main() {
     #if defined(FEATURE_SELECTION)
@@ -26,20 +26,24 @@ void main() {
             // Discard by forcing invalid triangle if we're in the feature
             // selection pass but have no selection info
             // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
-            gl_Position = vec4(0.);
+            gl_Position = vec4(0., 0., 0., 1.);
             return;
         }
         v_selection_color = a_selection_color;
     #endif
 
-    vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);
+    // vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);
+    vec4 position = u_tile_view * vec4(a_position, 1.);
 
     #pragma tangram: vertex
 
     v_color = a_color;
     v_texcoord = a_texcoord;
 
-    position.z = calculateZ(position.z, a_layer, u_num_layers, 256.);
+    cameraProjection(position);
+
+    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
+    reorderLayers(a_layer, u_num_layers, position);
 
     gl_Position = position;
 }

@@ -8,12 +8,15 @@ shader_sources['point_fragment'] =
 "uniform vec2 u_resolution;\n" +
 "varying vec3 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
-"#pragma tangram: globals\n" +
-"\n" +
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  vec3 lighting = vec3(1.);\n" +
-"  vec2 texcoord = v_texcoord;\n" +
+"  vec2 uv = v_texcoord * 2. - 1.;\n" +
+"  float len = length(uv);\n" +
+"  if(len > 1.) {\n" +
+"    discard;\n" +
+"  }\n" +
+"  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.);\n" +
 "}\n" +
@@ -24,7 +27,6 @@ shader_sources['point_vertex'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_meter_view;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
@@ -38,29 +40,30 @@ shader_sources['point_vertex'] =
 "varying vec4 v_selection_color;\n" +
 "#endif\n" +
 "\n" +
-"float a_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
-"  z = (z_layer_range - z) / z_layer_range;\n" +
-"  return z;\n" +
+"void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
+"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  position.z /= layer_order;\n" +
+"  position.xyw *= layer_order;\n" +
 "}\n" +
 "#pragma tangram: globals\n" +
+"\n" +
+"#pragma tangram: camera\n" +
 "\n" +
 "void main() {\n" +
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
 "  if(a_selection_color.xyz == vec3(0.)) {\n" +
-"    gl_Position = vec4(0.);\n" +
+"    gl_Position = vec4(0., 0., 0., 1.);\n" +
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
 "  #endif\n" +
-"  vec4 position = u_meter_view * u_tile_view * vec4(a_position, 1.);\n" +
+"  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
 "  #pragma tangram: vertex\n" +
 "  v_color = a_color;\n" +
 "  v_texcoord = a_texcoord;\n" +
-"  position.z = a_x_calculateZ(position.z, a_layer, u_num_layers, 256.);\n" +
+"  cameraProjection(position);\n" +
+"  a_x_reorderLayers(a_layer, u_num_layers, position);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -71,16 +74,19 @@ shader_sources['polygon_fragment'] =
 "\n" +
 "uniform vec2 u_resolution;\n" +
 "uniform vec2 u_aspect;\n" +
-"uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_time;\n" +
 "uniform float u_map_zoom;\n" +
 "uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
-"uniform float u_test;\n" +
-"uniform float u_test2;\n" +
+"uniform sampler2D u_texture;\n" +
 "varying vec3 v_color;\n" +
 "varying vec4 v_world_position;\n" +
+"#if defined(TEXTURE_COORDS)\n" +
+"\n" +
+"varying vec2 v_texcoord;\n" +
+"#endif\n" +
+"\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
 "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
@@ -176,7 +182,6 @@ shader_sources['polygon_fragment'] =
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
-"  vec3 color_prelight = color;\n" +
 "  color *= lighting;\n" +
 "  #pragma tangram: fragment\n" +
 "  gl_FragColor = vec4(color, 1.0);\n" +
@@ -195,15 +200,20 @@ shader_sources['polygon_vertex'] =
 "uniform vec2 u_tile_origin;\n" +
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
-"uniform mat4 u_meter_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_num_layers;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
 "attribute vec3 a_color;\n" +
 "attribute float a_layer;\n" +
-"varying vec4 v_world_position;\n" +
 "varying vec3 v_color;\n" +
+"varying vec4 v_world_position;\n" +
+"#if defined(TEXTURE_COORDS)\n" +
+"\n" +
+"attribute vec2 a_texcoord;\n" +
+"varying vec2 v_texcoord;\n" +
+"#endif\n" +
+"\n" +
 "#if defined(WORLD_POSITION_WRAP)\n" +
 "\n" +
 "vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);\n" +
@@ -233,27 +243,17 @@ shader_sources['polygon_vertex'] =
 "#endif\n" +
 "\n" +
 "const float light_ambient = 0.5;\n" +
-"vec4 a_x_perspective(vec4 position, const vec2 perspective_offset, const vec2 perspective_factor) {\n" +
-"  position.xy += position.z * perspective_factor * (position.xy - perspective_offset);\n" +
-"  return position;\n" +
+"void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
+"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  position.z /= layer_order;\n" +
+"  position.xyw *= layer_order;\n" +
 "}\n" +
-"vec4 b_x_isometric(vec4 position, const vec2 axis, const float multiplier) {\n" +
-"  position.xy += position.z * axis * multiplier / u_aspect;\n" +
-"  return position;\n" +
-"}\n" +
-"float c_x_calculateZ(float z, float layer, const float num_layers, const float z_layer_scale) {\n" +
-"  float z_layer_range = (num_layers + 1.) * z_layer_scale;\n" +
-"  float z_layer = (layer + 1.) * z_layer_scale;\n" +
-"  z = z_layer + clamp(z, 0., z_layer_scale);\n" +
-"  z = (z_layer_range - z) / z_layer_range;\n" +
-"  return z;\n" +
-"}\n" +
-"vec3 e_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
 "  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 f_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
+"vec3 d_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
 "  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
 "  vec3 view_pos = vec3(0., 0., 500.);\n" +
 "  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
@@ -271,21 +271,21 @@ shader_sources['polygon_vertex'] =
 "  color *= diffuse + specularReflection + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 g_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
+"vec3 e_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
 "  light_dir = normalize(light_dir);\n" +
 "  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
 "  return color;\n" +
 "}\n" +
-"vec3 d_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
+"vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
 "  \n" +
 "  #if defined(LIGHTING_POINT)\n" +
-"  color = e_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  color = c_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
-"  color = f_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
+"  color = d_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
 "  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = e_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
+"  color = c_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
 "  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = g_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
+"  color = e_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
 "  #else\n" +
 "  color = color;\n" +
 "  #endif\n" +
@@ -293,16 +293,21 @@ shader_sources['polygon_vertex'] =
 "}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
+"#pragma tangram: camera\n" +
+"\n" +
 "void main() {\n" +
 "  \n" +
 "  #if defined(FEATURE_SELECTION)\n" +
 "  if(a_selection_color.xyz == vec3(0.)) {\n" +
-"    gl_Position = vec4(0.);\n" +
+"    gl_Position = vec4(0., 0., 0., 1.);\n" +
 "    return;\n" +
 "  }\n" +
 "  v_selection_color = a_selection_color;\n" +
 "  #endif\n" +
 "  vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"  #if defined(TEXTURE_COORDS)\n" +
+"  v_texcoord = a_texcoord;\n" +
+"  #endif\n" +
 "  v_world_position = u_tile_world * vec4(a_position, 1.);\n" +
 "  #if defined(WORLD_POSITION_WRAP)\n" +
 "  v_world_position.xy -= world_position_anchor;\n" +
@@ -312,19 +317,14 @@ shader_sources['polygon_vertex'] =
 "  \n" +
 "  #if defined(LIGHTING_VERTEX)\n" +
 "  v_color = a_color;\n" +
-"  v_lighting = d_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_lighting = b_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
 "  #else\n" +
 "  v_position = position;\n" +
 "  v_normal = a_normal;\n" +
 "  v_color = a_color;\n" +
 "  #endif\n" +
-"  position = u_meter_view * position;\n" +
-"  #if defined(PROJECTION_PERSPECTIVE)\n" +
-"  position = a_x_perspective(position, vec2(0., 0.), vec2(0.6, 0.6));\n" +
-"  #elif defined(PROJECTION_ISOMETRIC) // || defined(PROJECTION_POPUP)\n" +
-"  position = b_x_isometric(position, vec2(0., 1.), 1.);\n" +
-"  #endif\n" +
-"  position.z = c_x_calculateZ(position.z, a_layer, u_num_layers, 4096.);\n" +
+"  cameraProjection(position);\n" +
+"  a_x_reorderLayers(a_layer, u_num_layers, position);\n" +
 "  gl_Position = position;\n" +
 "}\n" +
 "";
@@ -343,7 +343,7 @@ shader_sources['selection_fragment'] =
 "  #if defined(FEATURE_SELECTION)\n" +
 "  gl_FragColor = v_selection_color;\n" +
 "  #else\n" +
-"  gl_FragColor = vec3(0., 0., 0., 1.);\n" +
+"  gl_FragColor = vec4(0., 0., 0., 1.);\n" +
 "  #endif\n" +
 "  \n" +
 "}\n" +
@@ -451,5 +451,5 @@ shader_sources['simple_polygon_vertex'] =
 "}\n" +
 "";
 
-if (module.exports !== undefined) { module.exports = shader_sources; }
+module.exports = shader_sources; 
 

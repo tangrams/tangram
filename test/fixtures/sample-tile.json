@@ -1,0 +1,45 @@
+{
+    "min": { "x": 1, "y": 1 },
+    "debug": {},
+    "loading": true,
+    "coords": { "z": 10 },
+    "layers": {
+        "water": {
+            "features": [
+                {
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [10, 10]
+                    },
+                    "properties": {
+                        "name": "bob"
+                    }
+                },
+                {
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [11, 11]
+                    },
+                    "properties": {
+                        "name": "bob"
+                    }
+                }
+
+            ]
+        },
+        "land": {
+            "features": [
+                {
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [10, 10]
+                    },
+                    "properties": {
+                        "name": "bob"
+                    }
+                }
+            ]
+        }
+    }
+
+}

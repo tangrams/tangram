@@ -1,17 +1,23 @@
-var Point = require('./point.js');
-var Geo = require('./geo.js');
-var Style = require('./style.js');
-var ModeManager = require('./gl/gl_modes').ModeManager;
-var Utils = require('./utils.js');
+/*global Scene */
+import Point from './point';
+import {Geo} from './geo';
+import Utils from './utils';
+import {Style} from './style';
+import Queue from 'queue-async';
+import {GL} from './gl/gl';
+import {GLBuilders} from './gl/gl_builders';
+import GLProgram from './gl/gl_program';
+import GLTexture from './gl/gl_texture';
+import {ModeManager} from './gl/gl_modes';
+import Camera from './camera';
 
-var GL = require('./gl/gl.js');
-var GLBuilders = require('./gl/gl_builders.js');
-
-var mat4 = require('gl-matrix').mat4;
-var vec3 = require('gl-matrix').vec3;
+import glMatrix from 'gl-matrix';
+var mat4 = glMatrix.mat4;
+var vec3 = glMatrix.vec3;
 
 // Setup that happens on main thread only (skip in web worker)
 var yaml;
+
 Utils.runIfInMainThread(function() {
     try {
         yaml = require('js-yaml');
@@ -27,44 +33,27 @@ Utils.runIfInMainThread(function() {
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
-GL.Program.defines.TILE_SCALE = Scene.tile_scale;
+GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-function Scene (tile_source, layers, styles, options)
-{
-    var options = options || {};
+// TODO, convert this to the class sytnax once we get the runtime
+// working, IW
+export default function Scene(tile_source, layers, styles, options) {
+    options = options || {};
+    this.initialized = false;
+
     this.tile_source = tile_source;
     this.tiles = {};
+    this.queued_tiles = [];
     this.num_workers = options.num_workers || 1;
+    this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
 
-    if (typeof(layers) == 'string') {
-        this.layer_source = Utils.urlForPath(layers);
-        this.layers = Scene.loadLayers(this.layer_source);
-    }
-    else {
-        this.layers = layers;
-    }
-    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-
-    if (typeof(styles) == 'string') {
-        this.style_source = Utils.urlForPath(styles);
-        this.styles = Scene.loadStyles(this.style_source);
-    }
-    else {
-        this.styles = Scene.postProcessStyles(styles);
-    }
-    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+    this.layers = layers;
+    this.styles = styles;
 
     this.dirty = true; // request a redraw
     this.animated = false; // request redraw every frame
-    this.initialized = false;
-
-    this.modes = Scene.createModes({}, this.styles);
-    this.updateActiveModes();
-
-    this.createWorkers();
-    this.selection_map_worker_size = {};
 
     this.frame = 0;
     this.zoom = null;
@@ -79,45 +68,90 @@ function Scene (tile_source, layers, styles, options)
     this.resetTime();
 }
 
-Scene.prototype.init = function ()
-{
-    this.container = this.container || document.body;
-    this.canvas = document.createElement('canvas');
-    this.canvas.style.position = 'absolute';
-    this.canvas.style.top = 0;
-    this.canvas.style.left = 0;
-    this.canvas.style.zIndex = -1;
-    this.container.appendChild(this.canvas);
-
-    this.gl = GL.getContext(this.canvas);
-    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
-
-    this.initModes();
-    this.initSelectionBuffer();
-
-    // this.zoom_step = 0.02; // for fractional zoom user adjustment
-    this.last_render_count = null;
-    this.initInputHandlers();
-
-    // Init workers
-    this.workers.forEach(function(worker) {
-        worker.addEventListener('message', scene.workerBuildTileCompleted.bind(this));
-        worker.addEventListener('message', scene.workerGetFeatureSelection.bind(this));
-    }.bind(this));
-
-    this.initialized = true;
+Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    return new Scene(tile_source, layers, styles, options);
 };
 
-Scene.prototype.initModes = function ()
-{
+Scene.prototype.init = function (callback) {
+    if (this.initialized) {
+        return false;
+    }
+
+    // Load scene definition (layers, styles, etc.), then create modes & workers
+    this.loadScene(() => {
+        var queue = Queue();
+
+        // Create rendering modes
+        queue.defer(complete => {
+            this.modes = Scene.createModes(this.styles.modes);
+            this.updateActiveModes();
+            complete();
+        });
+
+        // Create web workers
+        queue.defer(complete => {
+            this.createWorkers(complete);
+        });
+
+        // Then create GL context
+        queue.await(() => {
+            // Create canvas & GL
+            this.container = this.container || document.body;
+            this.canvas = document.createElement('canvas');
+            this.canvas.style.position = 'absolute';
+            this.canvas.style.top = 0;
+            this.canvas.style.left = 0;
+            this.canvas.style.zIndex = -1;
+            this.container.appendChild(this.canvas);
+
+            this.gl = GL.getContext(this.canvas);
+            this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+
+            this.createCamera();
+            this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
+            this.initSelectionBuffer();
+
+            // this.zoom_step = 0.02; // for fractional zoom user adjustment
+            this.last_render_count = null;
+            this.initInputHandlers();
+
+            this.initialized = true;
+
+            if (typeof callback === 'function') {
+                callback();
+            }
+        });
+    });
+};
+
+Scene.prototype.destroy = function () {
+
+    if (this.canvas && this.canvas.parentNode) {
+        this.canvas.parentNode.removeChild(this.canvas);
+    }
+
+    this.gl = null;
+    this.fbo = null;
+    this.fbo_texture = null;
+    this.fbo_depth_rb = null;
+
+    if (Array.isArray(this.workers)) {
+        this.workers.forEach((worker) => {
+            worker.terminate();
+        });
+        this.workers = null;
+    }
+
+};
+
+Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
-        this.modes[m].init(this.gl);
+        this.modes[m].setGL(this.gl);
     }
 };
 
-Scene.prototype.initSelectionBuffer = function ()
-{
+Scene.prototype.initSelectionBuffer = function () {
     // Selection state tracking
     this.pixel = new Uint8Array(4);
     this.pixel32 = new Float32Array(this.pixel.buffer);
@@ -133,13 +167,13 @@ Scene.prototype.initSelectionBuffer = function ()
     this.fbo = this.gl.createFramebuffer();
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
     this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
+    this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
-    this.fbo_texture = GL.createTexture(this.gl);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.fbo_size.width, this.fbo_size.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-    GL.setTextureFiltering(this.gl, this.fbo_size.width, this.fbo_size.height, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture, 0);
+    this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+    this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture.texture, 0);
 
     // Renderbuffer for the FBO depth attachment
     this.fbo_depth_rb = this.gl.createRenderbuffer();
@@ -151,41 +185,68 @@ Scene.prototype.initSelectionBuffer = function ()
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-// Web workers handle heavy duty geometry processing
-Scene.prototype.createWorkers = function ()
-{
-    var url = Scene.library_base_url + 'vector-map-worker.min.js' + '?' + (+new Date());
+Scene.prototype.createObjectURL = function () {
+    return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+};
 
-    // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-    var req = new XMLHttpRequest();
-    req.onload = function () {
-        var worker_local_url = window.URL.createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
+// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
+Scene.prototype.createWorkers = function (callback) {
+    var queue = Queue();
+    // TODO, we should move the url to a config file
+    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
-        this.workers = [];
-        for (var w=0; w < this.num_workers; w++) {
-            this.workers.push(new Worker(worker_local_url));
-            this.workers[w].postMessage({
-                type: 'init',
-                worker_id: w,
-                num_workers: this.num_workers
-            })
+    // Load & instantiate workers
+    queue.defer((done) => {
+        // Local object URLs supported?
+        var createObjectURL = this.createObjectURL();
+        if (createObjectURL && this.allow_cross_domain_workers) {
+            // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
+
+            Utils.xhr(worker_url, (error, resp, body) => {
+                if (error) { throw error; }
+                var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
+                this.makeWorkers(worker_local_url);
+                done();
+            });
+        } else { // Traditional load from remote URL
+            console.log(this);
+            this.makeWorkers(worker_url);
+            done();
         }
-    }.bind(this);
-    req.open('GET', url, false /* async flag */);
-    req.send();
+    });
 
-    // Alternate for debugging - tradtional method of loading from remote URL instead of XHR-to-local-blob
-    // this.workers = [];
-    // for (var w=0; w < this.num_workers; w++) {
-    //     this.workers.push(new Worker(url));
-    // }
+    // Init workers
+    queue.await(() => {
+        this.workers.forEach((worker) => {
+            worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
+            worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
+            worker.addEventListener('message', this.workerLogMessage.bind(this));
+        });
 
-    this.next_worker = 0;
+        this.next_worker = 0;
+        this.selection_map_worker_size = {};
+
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+};
+
+// Instantiate workers from URL
+Scene.prototype.makeWorkers = function (url) {
+    this.workers = [];
+    for (var w=0; w < this.num_workers; w++) {
+        this.workers.push(new Worker(url));
+        this.workers[w].postMessage({
+            type: 'init',
+            worker_id: w,
+            num_workers: this.num_workers
+        });
+    }
 };
 
 // Post a message about a tile to the next worker (round robbin)
-Scene.prototype.workerPostMessageForTile = function (tile, message)
-{
+Scene.prototype.workerPostMessageForTile = function (tile, message) {
     if (tile.worker == null) {
         tile.worker = this.next_worker;
         this.next_worker = (tile.worker + 1) % this.workers.length;
@@ -193,26 +254,23 @@ Scene.prototype.workerPostMessageForTile = function (tile, message)
     this.workers[tile.worker].postMessage(message);
 };
 
-Scene.prototype.setCenter = function (lng, lat)
-{
+Scene.prototype.setCenter = function (lng, lat) {
     this.center = { lng: lng, lat: lat };
     this.dirty = true;
 };
 
-Scene.prototype.startZoom = function ()
-{
+Scene.prototype.startZoom = function () {
     this.last_zoom = this.zoom;
     this.zooming = true;
 };
 
 Scene.prototype.preserve_tiles_within_zoom = 2;
-Scene.prototype.setZoom = function (zoom)
-{
+Scene.prototype.setZoom = function (zoom) {
     // Schedule GL tiles for removal on zoom
     var below = zoom;
     var above = zoom;
     if (this.last_zoom != null) {
-        console.log("scene.last_zoom: " + this.last_zoom);
+        console.log(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
             if (zoom > this.last_zoom) {
                 below = zoom - this.preserve_tiles_within_zoom;
@@ -227,17 +285,29 @@ Scene.prototype.setZoom = function (zoom)
     this.zoom = zoom;
     this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     this.zooming = false;
+    this.updateMeterView();
 
     this.removeTilesOutsideZoomRange(below, above);
     this.dirty = true;
 };
 
-Scene.prototype.removeTilesOutsideZoomRange = function (below, above)
-{
+Scene.prototype.updateMeterView = function () {
+    this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
+
+    // Size of the half-viewport in meters at current zoom
+    if (this.css_size !== undefined) { // TODO: replace this check?
+        this.meter_zoom = {
+            x: this.css_size.width / 2 * this.meters_per_pixel,
+            y: this.css_size.height / 2 * this.meters_per_pixel
+        };
+    }
+};
+
+Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
-    console.log("removeTilesOutsideZoomRange [" + below + ", " + above + "])");
+    console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
@@ -247,19 +317,18 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above)
     }
     for (var r=0; r < remove_tiles.length; r++) {
         var key = remove_tiles[r];
-        console.log("removed " + key + " (outside range [" + below + ", " + above + "])");
+        console.log(`removed ${key} (outside range [${below}, ${above}])`);
         this.removeTile(key);
     }
 };
 
-Scene.prototype.setBounds = function (sw, ne)
-{
+Scene.prototype.setBounds = function (sw, ne) {
     this.bounds = {
         sw: { lng: sw.lng, lat: sw.lat },
         ne: { lng: ne.lng, lat: ne.lat }
     };
 
-    var buffer = 200 * Geo.meters_per_pixel[~~this.zoom]; // pixels -> meters
+    var buffer = 200 * this.meters_per_pixel; // pixels -> meters
     this.buffered_meter_bounds = {
         sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
         ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
@@ -274,7 +343,7 @@ Scene.prototype.setBounds = function (sw, ne)
         (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
     );
 
-    // console.log("set scene bounds to " + JSON.stringify(this.bounds));
+    // console.log(`set scene bounds to ${JSON.stringify(this.bounds)}`);
 
     // Mark tiles as visible/invisible
     for (var t in this.tiles) {
@@ -284,26 +353,25 @@ Scene.prototype.setBounds = function (sw, ne)
     this.dirty = true;
 };
 
-Scene.prototype.isTileInZoom = function (tile)
-{
-    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) == this.capped_zoom);
+Scene.prototype.isTileInZoom = function (tile) {
+    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
 };
 
 // Update visibility and return true if changed
-Scene.prototype.updateVisibilityForTile = function (tile)
-{
+Scene.prototype.updateVisibilityForTile = function (tile) {
     var visible = tile.visible;
     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-    return (visible != tile.visible);
+    return (visible !== tile.visible);
 };
 
-Scene.prototype.resizeMap = function (width, height)
-{
+Scene.prototype.resizeMap = function (width, height) {
     this.dirty = true;
 
     this.css_size = { width: width, height: height };
     this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
+    this.view_aspect = this.css_size.width / this.css_size.height;
+    this.updateMeterView();
 
     this.canvas.style.width = this.css_size.width + 'px';
     this.canvas.style.height = this.css_size.height + 'px';
@@ -314,25 +382,24 @@ Scene.prototype.resizeMap = function (width, height)
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
-Scene.prototype.requestRedraw = function ()
-{
+Scene.prototype.requestRedraw = function () {
     this.dirty = true;
 };
 
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
-Scene.calculateZ = function (layer, tile, layer_offset, feature_offset)
-{
+Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     // var layer_offset = layer_offset || 0;
     // var feature_offset = feature_offset || 0;
     var z = 0; // TODO: made this a no-op until revisiting where it should live - one-time calc here, in vertex layout/shader, etc.
     return z;
 };
 
-Scene.prototype.render = function ()
-{
+Scene.prototype.render = function () {
+    this.loadQueuedTiles();
+
     // Render on demand
-    if (this.dirty == false || this.initialized == false) {
+    if (this.dirty === false || this.initialized === false) {
         return false;
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
@@ -340,7 +407,7 @@ Scene.prototype.render = function ()
     this.renderGL();
 
     // Redraw every frame if animating
-    if (this.animated == true) {
+    if (this.animated === true) {
         this.dirty = true;
     }
 
@@ -350,8 +417,11 @@ Scene.prototype.render = function ()
     return true;
 };
 
-Scene.prototype.resetFrame = function ()
-{
+Scene.prototype.resetFrame = function () {
+    if (!this.initialized) {
+        return;
+    }
+
     // Reset frame state
     var gl = this.gl;
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -366,8 +436,7 @@ Scene.prototype.resetFrame = function ()
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 };
 
-Scene.prototype.renderGL = function ()
-{
+Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
     this.input();
@@ -375,22 +444,19 @@ Scene.prototype.renderGL = function ()
 
     // Map transforms
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
-    var meters_per_pixel = Geo.min_zoom_meters_per_pixel / Math.pow(2, this.zoom);
-    var meter_zoom = Point(this.css_size.width / 2 * meters_per_pixel, this.css_size.height / 2 * meters_per_pixel);
 
-    // Matrices
+    // Model-view matrices
     var tile_view_mat = mat4.create();
     var tile_world_mat = mat4.create();
-    var meter_view_mat = mat4.create();
 
-    // Convert mercator meters to screen space
-    mat4.scale(meter_view_mat, meter_view_mat, vec3.fromValues(1 / meter_zoom.x, 1 / meter_zoom.y, 1 / meter_zoom.y));
+    // Update camera
+    this.camera.update();
 
     // Renderable tile list
     var renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded == true && tile.visible == true) {
+        if (tile.loaded === true && tile.visible === true) {
             renderable_tiles.push(tile);
         }
     }
@@ -399,30 +465,40 @@ Scene.prototype.renderGL = function ()
     // Render main pass - tiles grouped by rendering mode (GL program)
     var render_count = 0;
     for (var mode in this.modes) {
+        // Per-frame mode updates/animations
+        // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
+        this.modes[mode].update();
+
         var gl_program = this.modes[mode].gl_program;
+        if (gl_program == null || gl_program.compiled === false) {
+            continue;
+        }
+
         var first_for_mode = true;
 
         // Render tile GL geometries
-        for (var t in renderable_tiles) {
-            var tile = renderable_tiles[t];
+        for (t in renderable_tiles) {
+            tile = renderable_tiles[t];
 
             if (tile.gl_geometry[mode] != null) {
                 // Setup mode if encountering for first time this frame
                 // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
-                if (first_for_mode == true) {
+                if (first_for_mode === true) {
                     first_for_mode = false;
 
-                    this.modes[mode].update();
+                    gl_program.use();
+                    this.modes[mode].setUniforms();
 
                     // TODO: don't set uniforms when they haven't changed
                     gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    gl_program.uniform('2f', 'u_aspect', this.device_size.width / this.device_size.height, 1.0);
+                    gl_program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
                     gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                     gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                    gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                    gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+                    gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                    this.camera.setupProgram(gl_program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
@@ -468,9 +544,10 @@ Scene.prototype.renderGL = function ()
 
         for (mode in this.modes) {
             gl_program = this.modes[mode].selection_gl_program;
-            if (gl_program == null) {
+            if (gl_program == null || gl_program.compiled === false) {
                 continue;
             }
+
             first_for_mode = true;
 
             // Render tile GL geometries
@@ -479,20 +556,21 @@ Scene.prototype.renderGL = function ()
 
                 if (tile.gl_geometry[mode] != null) {
                     // Setup mode if encountering for first time this frame
-                    if (first_for_mode == true) {
+                    if (first_for_mode === true) {
                         first_for_mode = false;
 
                         gl_program.use();
                         this.modes[mode].setUniforms();
 
                         gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.width / this.fbo_size.height, 1.0);
+                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
                         gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                         gl_program.uniform('1f', 'u_map_zoom', this.zoom);
                         gl_program.uniform('2f', 'u_map_center', center.x, center.y);
                         gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                        gl_program.uniform('1f', 'u_meters_per_pixel', meters_per_pixel);
-                        gl_program.uniform('Matrix4fv', 'u_meter_view', false, meter_view_mat);
+                        gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                        this.camera.setupProgram(gl_program);
                     }
 
                     // Tile origin
@@ -523,36 +601,7 @@ Scene.prototype.renderGL = function ()
             clearTimeout(this.selection_callback_timer);
         }
         this.selection_callback_timer = setTimeout(
-            function() {
-                gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-
-                // Check selection map against FBO
-                gl.readPixels(
-                    Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
-                    Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
-                    1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-                var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
-
-                // console.log(
-                //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
-                //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
-                //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
-
-                // If feature found, ask appropriate web worker to lookup feature
-                var worker_id = this.pixel[3];
-                if (worker_id != 255) { // 255 indicates an empty selection buffer pixel
-                    // console.log("worker_id: " + worker_id);
-                    if (this.workers[worker_id] != null) {
-                        // console.log("post message");
-                        this.workers[worker_id].postMessage({
-                            type: 'getFeatureSelection',
-                            key: feature_key
-                        });
-                    }
-                }
-
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            }.bind(this),
+            this.readSelectionBuffer.bind(this),
             this.selection_frame_delay
         );
 
@@ -561,8 +610,8 @@ Scene.prototype.renderGL = function ()
         gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    if (render_count != this.last_render_count) {
-        console.log("rendered " + render_count + " primitives");
+    if (render_count !== this.last_render_count) {
+        console.log(`rendered ${render_count} primitives`);
     }
     this.last_render_count = render_count;
 
@@ -571,10 +620,13 @@ Scene.prototype.renderGL = function ()
 
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
-Scene.prototype.getFeatureAt = function (pixel, callback)
-{
+Scene.prototype.getFeatureAt = function (pixel, callback) {
+    if (!this.initialized) {
+        return;
+    }
+
     // TODO: queue callbacks while still performing only one selection render pass within X time interval?
-    if (this.update_selection == true) {
+    if (this.update_selection === true) {
         return;
     }
 
@@ -584,11 +636,90 @@ Scene.prototype.getFeatureAt = function (pixel, callback)
     );
     this.selection_callback = callback;
     this.update_selection = true;
+    this.dirty = true;
+};
+
+Scene.prototype.readSelectionBuffer = function () {
+    var gl = this.gl;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+
+    // Check selection map against FBO
+    gl.readPixels(
+        Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
+        Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
+        1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
+    var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
+
+    // console.log(
+    //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
+    //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
+    //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
+
+    // If feature found, ask appropriate web worker to lookup feature
+    var worker_id = this.pixel[3];
+    if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
+        // console.log(`worker_id: ${worker_id}`);
+        if (this.workers[worker_id] != null) {
+            this.workers[worker_id].postMessage({
+                type: 'getFeatureSelection',
+                key: feature_key
+            });
+        }
+    }
+    // No feature found, but still need to notify via callback
+    else {
+        this.workerGetFeatureSelection({ data: { type: 'getFeatureSelection', feature: null } });
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+};
+
+// Called on main thread when a web worker finds a feature in the selection buffer
+Scene.prototype.workerGetFeatureSelection = function (event) {
+    if (event.data.type !== 'getFeatureSelection') {
+        return;
+    }
+
+    var feature = event.data.feature;
+    var changed = false;
+    if ((feature != null && this.selected_feature == null) ||
+        (feature == null && this.selected_feature != null) ||
+        (feature != null && this.selected_feature != null && feature.id !== this.selected_feature.id)) {
+        changed = true;
+    }
+
+    this.selected_feature = feature;
+
+    if (typeof this.selection_callback === 'function') {
+        this.selection_callback({ feature: this.selected_feature, changed: changed });
+    }
+};
+
+// Queue a tile for load
+Scene.prototype.loadTile = function (...args) {
+    this.queued_tiles[this.queued_tiles.length] = args;
+};
+
+// Load all queued tiles
+Scene.prototype.loadQueuedTiles = function () {
+    if (!this.initialized) {
+        return;
+    }
+
+    if (this.queued_tiles.length === 0) {
+        return;
+    }
+
+    for (var t=0; t < this.queued_tiles.length; t++) {
+        this._loadTile.apply(this, this.queued_tiles[t]);
+    }
+
+    this.queued_tiles = [];
 };
 
 // Load a single tile
-Scene.prototype.loadTile = function (coords, div, callback)
-{
+Scene.prototype._loadTile = function (coords, div, callback) {
     // Overzoom?
     if (coords.z > this.tile_source.max_zoom) {
         var zgap = coords.z - this.tile_source.max_zoom;
@@ -597,7 +728,7 @@ Scene.prototype.loadTile = function (coords, div, callback)
         coords.y = ~~(coords.y / Math.pow(2, zgap));
         coords.display_z = coords.z; // z without overzoom
         coords.z -= zgap;
-        // console.log("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/'));
+        // console.log(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
     }
 
     this.trackTileSetLoadStart();
@@ -607,10 +738,10 @@ Scene.prototype.loadTile = function (coords, div, callback)
     // Already loading/loaded?
     if (this.tiles[key]) {
         // if (this.tiles[key].loaded == true) {
-        //     console.log("use loaded tile " + key + " from cache");
+        //     console.log(`use loaded tile ${key} from cache`);
         // }
         // if (this.tiles[key].loading == true) {
-        //     console.log("already loading tile " + key + ", skip");
+        //     console.log(`already loading tile ${key}, skip`);
         // }
 
         if (callback) {
@@ -641,27 +772,30 @@ Scene.prototype.loadTile = function (coords, div, callback)
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function ()
-{
+Scene.prototype.rebuildTiles = function () {
+    if (!this.initialized) {
+        return;
+    }
+
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     this.selection_map = {};
 
     // Tell workers we're about to rebuild (so they can refresh styles, etc.)
-    this.workers.forEach(function(worker) {
+    this.workers.forEach(worker => {
         worker.postMessage({
             type: 'prepareForRebuild',
             layers: this.layers_serialized,
             styles: this.styles_serialized
         });
-    }.bind(this));
+    });
 
     // Rebuild visible tiles first, from center out
     // console.log("find visible");
     var visible = [], invisible = [];
     for (var t in this.tiles) {
-        if (this.tiles[t].visible == true) {
+        if (this.tiles[t].visible === true) {
             visible.push(t);
         }
         else {
@@ -670,23 +804,23 @@ Scene.prototype.rebuildTiles = function ()
     }
 
     // console.log("sort visible distance");
-    visible.sort(function(a, b) {
+    visible.sort((a, b) => {
         // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
         // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
         var ad = this.tiles[a].center_dist;
         var bd = this.tiles[b].center_dist;
-        return (bd > ad ? -1 : (bd == ad ? 0 : 1));
-    }.bind(this));
+        return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+    });
 
     // console.log("build visible");
-    for (var t in visible) {
+    for (t in visible) {
         this.buildTile(visible[t]);
     }
 
     // console.log("build invisible");
-    for (var t in invisible) {
+    for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (this.isTileInZoom(this.tiles[invisible[t]]) == true) {
+        if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
             this.buildTile(invisible[t]);
         }
         // Drop tiles outside current zoom
@@ -699,8 +833,7 @@ Scene.prototype.rebuildTiles = function ()
     this.resetTime();
 };
 
-Scene.prototype.buildTile = function(key)
-{
+Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
     this.workerPostMessageForTile(tile, {
@@ -720,30 +853,30 @@ Scene.prototype.buildTile = function(key)
 
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-Scene.addTile = function (tile, layers, styles, modes)
-{
-    var layer, style, feature, z, mode;
+Scene.addTile = function (tile, layers, styles, modes) {
+    var layer, style, feature, mode;
     var vertex_data = {};
 
     // Join line test pattern
     // if (Scene.debug) {
-    //     tile.layers['roads'].features.push(Scene.buildZigzagLineTestPattern());
+    //     tile.layers['roads'].features.push(GLBuilders.buildZigzagLineTestPattern());
     // }
 
     // Build raw geometry arrays
+    // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    for (var layer_num=0; layer_num < layers.length; layer_num++) {
+    // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
+    for (var layer_num = 0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
 
         // Skip layers with no styles defined, or layers set to not be visible
-        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible == false) {
+        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
             continue;
         }
 
         if (tile.layers[layer.name] != null) {
             var num_features = tile.layers[layer.name].features.length;
 
-            // Rendering reverse order aka top to bottom
             for (var f = num_features-1; f >= 0; f--) {
                 feature = tile.layers[layer.name].features[f];
                 style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
@@ -760,29 +893,29 @@ Scene.addTile = function (tile, layers, styles, modes)
                     lines = null,
                     polygons = null;
 
-                if (feature.geometry.type == 'Polygon') {
+                if (feature.geometry.type === 'Polygon') {
                     polygons = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiPolygon') {
+                else if (feature.geometry.type === 'MultiPolygon') {
                     polygons = feature.geometry.coordinates;
                 }
-                else if (feature.geometry.type == 'LineString') {
+                else if (feature.geometry.type === 'LineString') {
                     lines = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiLineString') {
+                else if (feature.geometry.type === 'MultiLineString') {
                     lines = feature.geometry.coordinates;
                 }
-                else if (feature.geometry.type == 'Point') {
+                else if (feature.geometry.type === 'Point') {
                     points = [feature.geometry.coordinates];
                 }
-                else if (feature.geometry.type == 'MultiPoint') {
+                else if (feature.geometry.type === 'MultiPoint') {
                     points = feature.geometry.coordinates;
                 }
 
                 // First feature in this render mode?
                 mode = style.mode.name;
                 if (vertex_data[mode] == null) {
-                    vertex_data[mode] = [];
+                    vertex_data[mode] = modes[mode].vertex_layout.createVertexData();
                 }
 
                 if (polygons != null) {
@@ -799,37 +932,45 @@ Scene.addTile = function (tile, layers, styles, modes)
 
                 tile.debug.features++;
             }
+
+            // console.log(layer.name);
+            // for (var m in vertex_data) {
+            //     console.log(`${m}: ${modes[m].vertex_layout.buffer.byteLength}`);
+            // }
         }
     }
 
     tile.vertex_data = {};
     for (var s in vertex_data) {
-        tile.vertex_data[s] = new Float32Array(vertex_data[s]);
+        // tile.vertex_data[s] = new Uint8Array(vertex_data[s].end().buffer); // TODO: typed array instance necessary?
+        tile.vertex_data[s] = vertex_data[s].end().buffer; // TODO: typed array instance necessary?
     }
 
+    // Return keys to be transfered from 'tile' object to main thread
     return {
         vertex_data: true
     };
 };
 
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-Scene.prototype.workerBuildTileCompleted = function (event)
-{
-    if (event.data.type != 'buildTileCompleted') {
+Scene.prototype.workerBuildTileCompleted = function (event) {
+    if (event.data.type !== 'buildTileCompleted') {
         return;
     }
 
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
     this.selection_map_size = 0;
-    Object.keys(this.selection_map_worker_size).forEach(function(w) { this.selection_map_size += this.selection_map_worker_size[w]; }.bind(this));
-    console.log("selection map: " + this.selection_map_size + " features");
+    for (var worker_id in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    }
+    console.log(`selection map: ${this.selection_map_size} features`);
 
     var tile = event.data.tile;
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        console.log("discarded tile " + tile.key + " in Scene.tileWorkerCompleted because previously removed");
+        console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
         return;
     }
 
@@ -844,8 +985,7 @@ Scene.prototype.workerBuildTileCompleted = function (event)
 };
 
 // Called on main thread when a web worker completes processing for a single tile
-Scene.prototype.buildGLGeometry = function (tile)
-{
+Scene.prototype.buildGLGeometry = function (tile) {
     var vertex_data = tile.vertex_data;
 
     // Cleanup existing GL geometry objects
@@ -870,9 +1010,13 @@ Scene.prototype.buildGLGeometry = function (tile)
 
 Scene.prototype.removeTile = function (key)
 {
-    console.log("tile unload for " + key);
+    if (!this.initialized) {
+        return;
+    }
 
-    if (this.zooming == true) {
+    console.log(`tile unload for ${key}`);
+
+    if (this.zooming === true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
     }
 
@@ -904,8 +1048,7 @@ Scene.prototype.freeTileResources = function (tile)
 };
 
 // Attaches tracking and debug into to the provided tile DOM element
-Scene.prototype.updateTileElement = function (tile, div)
-{
+Scene.prototype.updateTileElement = function (tile, div) {
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
     div.style.width = '256px';
@@ -931,8 +1074,7 @@ Scene.prototype.updateTileElement = function (tile, div)
 // Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
 // Used for selectively updating properties of tiles passed between main thread and worker
 // (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
-Scene.prototype.mergeTile = function (key, source_tile)
-{
+Scene.prototype.mergeTile = function (key, source_tile) {
     var tile = this.tiles[key];
 
     if (tile == null) {
@@ -941,61 +1083,88 @@ Scene.prototype.mergeTile = function (key, source_tile)
     }
 
     for (var p in source_tile) {
-        // console.log("merging " + p + ": " + source_tile[p]);
+        // console.log(`merging ${p}: ${source_tile[p]}`);
         tile[p] = source_tile[p];
     }
 
     return tile;
 };
 
-// Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (event)
-{
-    if (event.data.type != 'getFeatureSelection') {
+// Load (or reload) the scene config
+Scene.prototype.loadScene = function (callback) {
+    var queue = Queue();
+
+    // If this is the first time we're loading the scene, copy any URLs
+    if (!this.layer_source && typeof(this.layers) === 'string') {
+        this.layer_source = Utils.urlForPath(this.layers);
+    }
+
+    if (!this.style_source && typeof(this.styles) === 'string') {
+        this.style_source = Utils.urlForPath(this.styles);
+    }
+
+    // Layer by URL
+    if (this.layer_source) {
+        queue.defer(complete => {
+            Scene.loadLayers(
+                this.layer_source,
+                layers => {
+                    this.layers = layers;
+                    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+                    complete();
+                }
+            );
+        });
+    }
+
+    // Style by URL
+    if (this.style_source) {
+        queue.defer(complete => {
+            Scene.loadStyles(
+                this.style_source,
+                styles => {
+                    this.styles = styles;
+                    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+                    complete();
+                }
+            );
+        });
+    }
+    // Style object
+    else {
+        this.styles = Scene.postProcessStyles(this.styles);
+    }
+
+    // Everything is loaded
+    queue.await(function() {
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+};
+
+// Reload scene config and rebuild tiles
+Scene.prototype.reloadScene = function () {
+    if (!this.initialized) {
         return;
     }
 
-    var feature = event.data.feature;
-    var changed = false;
-    if ((feature != null && this.selected_feature == null) ||
-        (feature == null && this.selected_feature != null) ||
-        (feature != null && this.selected_feature != null && feature.id != this.selected_feature.id)) {
-        changed = true;
-    }
-
-    this.selected_feature = feature;
-
-    if (typeof this.selection_callback == 'function') {
-        this.selection_callback({ feature: this.selected_feature, changed: changed });
-    }
-};
-
-// Reload layers and styles (only if they were originally loaded by URL). Mostly useful for testing.
-Scene.prototype.reloadConfig = function ()
-{
-    if (this.layer_source != null) {
-        this.layers = Scene.loadLayers(this.layer_source);
-        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-    }
-
-    if (this.style_source != null) {
-        this.styles = Scene.loadStyles(this.style_source);
-        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-    }
-
-    if (this.layer_source != null || this.style_source != null) {
+    this.loadScene(() => {
+        this.refreshCamera();
         this.rebuildTiles();
-    }
+    });
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.refreshModes = function ()
-{
-    this.modes = Scene.refreshModes(this.modes, this.styles);
+Scene.prototype.refreshModes = function () {
+    if (!this.initialized) {
+        return;
+    }
+
+    this.modes = Scene.refreshModes(this.modes, this.styles.modes);
 };
 
-Scene.prototype.updateActiveModes = function ()
-{
+Scene.prototype.updateActiveModes = function () {
     // Make a set of currently active modes (used in a layer)
     this.active_modes = {};
     var animated = false; // is any active mode animated?
@@ -1005,7 +1174,7 @@ Scene.prototype.updateActiveModes = function ()
             this.active_modes[mode] = true;
 
             // Check if this mode is animated
-            if (animated == false && this.modes[mode].animated == true) {
+            if (animated === false && this.modes[mode].animated === true) {
                 animated = true;
             }
         }
@@ -1013,17 +1182,26 @@ Scene.prototype.updateActiveModes = function ()
     this.animated = animated;
 };
 
+// Create camera
+Scene.prototype.createCamera = function () {
+    this.camera = Camera.create(this, this.styles.camera);
+};
+
+// Replace camera
+Scene.prototype.refreshCamera = function () {
+    this.createCamera();
+    this.refreshModes();
+};
+
 // Reset internal clock, mostly useful for consistent experience when changing modes/debugging
-Scene.prototype.resetTime = function ()
-{
+Scene.prototype.resetTime = function () {
     this.start_time = +new Date();
 };
 
 // User input
 // TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
 
-Scene.prototype.initInputHandlers = function ()
-{
+Scene.prototype.initInputHandlers = function () {
     // this.key = null;
 
     // document.addEventListener('keydown', function (event) {
@@ -1053,8 +1231,7 @@ Scene.prototype.initInputHandlers = function ()
     // }.bind(this));
 };
 
-Scene.prototype.input = function ()
-{
+Scene.prototype.input = function () {
     // // Fractional zoom scaling
     // if (this.key == 'up') {
     //     this.setZoom(this.zoom + this.zoom_step);
@@ -1069,8 +1246,7 @@ Scene.prototype.input = function ()
 
 // Profiling methods used to track when sets of tiles start/stop loading together
 // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
-Scene.prototype.trackTileSetLoadStart = function ()
-{
+Scene.prototype.trackTileSetLoadStart = function () {
     // Start tracking new tile set if no other tiles already loading
     if (this.tile_set_loading == null) {
         this.tile_set_loading = +new Date();
@@ -1078,48 +1254,44 @@ Scene.prototype.trackTileSetLoadStart = function ()
     }
 };
 
-Scene.prototype.trackTileSetLoadEnd = function ()
-{
+Scene.prototype.trackTileSetLoadEnd = function () {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
         for (var t in this.tiles) {
-            if (this.tiles[t].loading == true) {
+            if (this.tiles[t].loading === true) {
                 end_tile_set = false;
                 break;
             }
         }
 
-        if (end_tile_set == true) {
+        if (end_tile_set === true) {
             this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
             this.tile_set_loading = null;
-            console.log("tile set load FINISHED in: " + this.last_tile_set_load);
+            console.log(`tile set load FINISHED in: ${this.last_tile_set_load}`);
         }
     }
 };
 
-Scene.prototype.printDebugForTile = function (tile)
-{
+Scene.prototype.printDebugForTile = function (tile) {
     console.log(
-        "debug for " + tile.key + ': [ ' +
-        Object.keys(tile.debug).map(function (t) { return t + ': ' + tile.debug[t]; }).join(', ') + ' ]'
+        `debug for ${tile.key}: [ ` +
+        Object.keys(tile.debug).map(function (t) { return `${t}: ${tile.debug[t]}`; }).join(', ') + ' ]'
     );
 };
 
 // Recompile all shaders
-Scene.prototype.compileShaders = function ()
-{
+Scene.prototype.compileShaders = function () {
     for (var m in this.modes) {
         this.modes[m].gl_program.compile();
     }
 };
 
 // Sum of a debug property across tiles
-Scene.prototype.getDebugSum = function (prop, filter)
-{
+Scene.prototype.getDebugSum = function (prop, filter) {
     var sum = 0;
     for (var t in this.tiles) {
-        if (this.tiles[t].debug[prop] != null && (typeof filter != 'function' || filter(this.tiles[t]) == true)) {
+        if (this.tiles[t].debug[prop] != null && (typeof filter !== 'function' || filter(this.tiles[t]) === true)) {
             sum += this.tiles[t].debug[prop];
         }
     }
@@ -1127,57 +1299,82 @@ Scene.prototype.getDebugSum = function (prop, filter)
 };
 
 // Average of a debug property across tiles
-Scene.prototype.getDebugAverage = function (prop, filter)
-{
+Scene.prototype.getDebugAverage = function (prop, filter) {
     return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
+};
+
+// Log messages pass through from web workers
+Scene.prototype.workerLogMessage = function (event) {
+    if (event.data.type !== 'log') {
+        return;
+    }
+
+    console.log(`worker ${event.data.worker_id}: ${event.data.msg}`);
 };
 
 
 /*** Class methods (stateless) ***/
 
-Scene.loadLayers = function (url)
-{
+Scene.loadLayers = function (url, callback) {
     var layers;
-    var req = new XMLHttpRequest();
-    req.onload = function () { eval('layers = ' + req.response); }; // TODO: security!
-    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
-    req.send();
-    return layers;
+
+    Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
+        if (error) { throw error; }
+        // Try JSON first, then YAML (if available)
+        /* jshint ignore:start */
+        try {
+            eval('layers = ' + body); // TODO: security!
+        } catch (e) {
+            try {
+                layers = yaml.safeLoad(body);
+            } catch (e) {
+                console.log("failed to parse layers!");
+                console.log(layers);
+                layers = null;
+            }
+        }
+        /* jshint ignore:end */
+
+        if (typeof callback === 'function') {
+            callback(layers);
+        }
+    });
 };
 
-Scene.loadStyles = function (url)
-{
-    var styles;
-    var req = new XMLHttpRequest();
-    req.onload = function () { styles = req.response; }
-    req.open('GET', url + '?' + (+new Date()), false /* async flag */);
-    req.send();
-
-    // Try JSON first, then YAML (if available)
-    try {
-        eval('styles = ' + req.response);
-    }
-    catch (e) {
+Scene.loadStyles = function (url, callback) {
+    Utils.xhr(url + '?' + (+new Date()), (error, response, body) => {
+        if (error) { throw error; }
+        var styles;
+        // Try JSON first, then YAML (if available)
+        /* jshint ignore:start */
         try {
-            styles = yaml.safeLoad(req.response);
-        }
-        catch (e) {
-            console.log("failed to parse styles!");
-            styles = null;
-        }
-    }
 
-    // Find generic functions & style macros
-    Utils.stringsToFunctions(styles);
-    Style.expandMacros(styles);
-    Scene.postProcessStyles(styles);
+            eval('styles = ' + body);
+        } catch (e) {
+            try {
+                styles = yaml.safeLoad(body);
+            } catch (e) {
+                console.log("failed to parse styles!");
+                console.log(styles);
+                styles = null;
+            }
+        }
+        /* jshint ignore:end */
+        // Find generic functions & style macros
+        Utils.stringsToFunctions(styles);
+        Style.expandMacros(styles);
+        Scene.postProcessStyles(styles);
 
-    return styles;
+        if (typeof callback === 'function') {
+            callback(styles);
+        }
+
+    });
+
 };
 
 // Normalize some style settings that may not have been explicitly specified in the stylesheet
-Scene.postProcessStyles = function (styles)
-{
+Scene.postProcessStyles = function (styles) {
     // Post-process styles
     for (var m in styles.layers) {
         if (styles.layers[m].visible !== false) {
@@ -1192,13 +1389,14 @@ Scene.postProcessStyles = function (styles)
         }
     }
 
+    styles.camera = styles.camera || {}; // ensure camera object
+
     return styles;
 };
 
 // Processes the tile response to create layers as defined by the scene
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
-Scene.processLayersForTile = function (layers, tile)
-{
+Scene.processLayersForTile = function (layers, tile) {
     var tile_layers = {};
     for (var t=0; t < layers.length; t++) {
         layers[t].number = t;
@@ -1209,11 +1407,11 @@ Scene.processLayersForTile = function (layers, tile)
                 tile_layers[layers[t].name] = tile.layers[layers[t].name];
             }
             // Pass through data but with different layer name in tile source data
-            else if (typeof layers[t].data == 'string') {
+            else if (typeof layers[t].data === 'string') {
                 tile_layers[layers[t].name] = tile.layers[layers[t].data];
             }
             // Apply the transform function for post-processing
-            else if (typeof layers[t].data == 'function') {
+            else if (typeof layers[t].data === 'function') {
                 tile_layers[layers[t].name] = layers[t].data(tile.layers);
             }
         }
@@ -1226,32 +1424,33 @@ Scene.processLayersForTile = function (layers, tile)
 };
 
 // Called once on instantiation
-Scene.createModes = function (modes, styles)
-{
+Scene.createModes = function (stylesheet_modes) {
+    var modes = {};
+
     // Built-in modes
-    var built_ins = require('./gl/gl_modes').Modes; // TODO: make this non-GL specific
+    var built_ins = require('./gl/gl_modes').Modes;
     for (var m in built_ins) {
         modes[m] = built_ins[m];
     }
 
-    // Stylesheet modes
-    for (var m in styles.modes) {
-        // if (m != 'all') {
-            modes[m] = ModeManager.configureMode(m, styles.modes[m]);
-        // }
+    // Stylesheet-defined modes
+    for (m in stylesheet_modes) {
+        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
+    }
+
+    // Initialize all
+    for (m in modes) {
+        modes[m].init();
     }
 
     return modes;
 };
 
-Scene.refreshModes = function (modes, styles)
-{
+Scene.refreshModes = function (modes, stylesheet_modes) {
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
-    for (var m in styles.modes) {
-        // if (m != 'all') {
-            ModeManager.configureMode(m, styles.modes[m]);
-        // }
+    for (var m in stylesheet_modes) {
+        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
     }
 
     // Refresh all modes
@@ -1267,22 +1466,17 @@ Scene.refreshModes = function (modes, styles)
 
 // Get base URL from which the library was loaded
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
-function findBaseLibraryURL ()
-{
+function findBaseLibraryURL () {
     Scene.library_base_url = '';
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
-        var match = scripts[s].src.indexOf('vector-map.debug.js');
-        if (match == -1) {
-            match = scripts[s].src.indexOf('vector-map.min.js');
+        var match = scripts[s].src.indexOf('tangram.debug.js');
+        if (match === -1) {
+            match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
             Scene.library_base_url = scripts[s].src.substr(0, match);
             break;
         }
     }
-};
-
-if (module !== undefined) {
-    module.exports = Scene;
 }

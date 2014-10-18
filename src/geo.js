@@ -1,18 +1,21 @@
 // Miscellaneous geo functions
-var Point = require('./point.js');
+import Point from './point';
 
-var Geo = {};
+export var Geo = {};
 
 // Projection constants
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
-Geo.map_origin_meters = Point(-Geo.half_circumference_meters, Geo.half_circumference_meters);
 Geo.min_zoom_meters_per_pixel = Geo.half_circumference_meters * 2 / Geo.tile_size; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
 Geo.max_zoom = 20;
 for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
 }
+
+Geo.metersPerPixel = function (zoom) {
+    return Geo.min_zoom_meters_per_pixel / Math.pow(2, zoom);
+};
 
 // Conversion functions based on an defined tile scale
 Geo.units_per_meter = [];
@@ -30,8 +33,8 @@ Geo.setTileScale = function(scale)
 Geo.metersForTile = function (tile)
 {
     return Point(
-        (tile.x * Geo.tile_size * Geo.meters_per_pixel[tile.z]) + Geo.map_origin_meters.x,
-        ((tile.y * Geo.tile_size * Geo.meters_per_pixel[tile.z]) * -1) + Geo.map_origin_meters.y
+        tile.x * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters,
+        -(tile.y * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters)
     );
 };
 
@@ -57,8 +60,8 @@ Geo.latLngToMeters = function(latlng)
     var c = Point.copy(latlng);
 
     // Latitude
-    c.y = Math.log(Math.tan((c.y + 90) * Math.PI / 360)) / (Math.PI / 180);
-    c.y = c.y * Geo.half_circumference_meters / 180;
+    c.y = Math.log(Math.tan(c.y*Math.PI/360 + Math.PI/4)) / Math.PI;
+    c.y = c.y * Geo.half_circumference_meters;
 
     // Longitude
     c.x = c.x * Geo.half_circumference_meters / 180;
@@ -69,18 +72,18 @@ Geo.latLngToMeters = function(latlng)
 // Run a transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform)
 {
-    if (geometry.type == 'Point') {
+    if (geometry.type === 'Point') {
         return transform(geometry.coordinates);
     }
-    else if (geometry.type == 'LineString' || geometry.type == 'MultiPoint') {
+    else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
         return geometry.coordinates.map(transform);
     }
-    else if (geometry.type == 'Polygon' || geometry.type == 'MultiLineString') {
+    else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
         return geometry.coordinates.map(function (coordinates) {
             return coordinates.map(transform);
         });
     }
-    else if (geometry.type == 'MultiPolygon') {
+    else if (geometry.type === 'MultiPolygon') {
         return geometry.coordinates.map(function (polygon) {
             return polygon.map(function (coordinates) {
                 return coordinates.map(transform);
@@ -101,68 +104,31 @@ Geo.boxIntersect = function (b1, b2)
     );
 };
 
-// Split the lines of a feature wherever two points are farther apart than a given tolerance
-Geo.splitFeatureLines  = function (feature, tolerance) {
-    var tolerance = tolerance || 0.001;
-    var tolerance_sq = tolerance * tolerance;
-    var geom = feature.geometry;
-    var lines;
+// Finds the axis-aligned bounding box for a polygon
+Geo.findBoundingBox = function (polygon) {
+    var min_x = Infinity,
+        max_x = -Infinity,
+        min_y = Infinity,
+        max_y = -Infinity;
 
-    if (geom.type == 'MultiLineString') {
-        lines = geom.coordinates;
-    }
-    else if (geom.type =='LineString') {
-        lines = [geom.coordinates];
-    }
-    else {
-        return feature;
-    }
+    // Only need to examine outer ring (polygon[0])
+    var num_coords = polygon[0].length;
+    for (var c=0; c < num_coords; c++) {
+        var coord = polygon[0][c];
 
-    var split_lines = [];
-
-    for (var s=0; s < lines.length; s++) {
-        var seg = lines[s];
-        var split_seg = [];
-        var last_coord = null;
-        var keep;
-
-        for (var c=0; c < seg.length; c++) {
-            var coord = seg[c];
-            keep = true;
-
-            if (last_coord != null) {
-                var dist = (coord[0] - last_coord[0]) * (coord[0] - last_coord[0]) + (coord[1] - last_coord[1]) * (coord[1] - last_coord[1]);
-                if (dist > tolerance_sq) {
-                    // console.log("split lines at (" + coord[0] + ", " + coord[1] + "), " + Math.sqrt(dist) + " apart");
-                    keep = false;
-                }
-            }
-
-            if (keep == false) {
-                split_lines.push(split_seg);
-                split_seg = [];
-            }
-            split_seg.push(coord);
-
-            last_coord = coord;
+        if (coord[0] < min_x) {
+            min_x = coord[0];
         }
-
-        split_lines.push(split_seg);
-        split_seg = [];
+        if (coord[1] < min_y) {
+            min_y = coord[1];
+        }
+        if (coord[0] > max_x) {
+            max_x = coord[0];
+        }
+        if (coord[1] > max_y) {
+            max_y = coord[1];
+        }
     }
 
-    if (split_lines.length == 1) {
-        geom.type = 'LineString';
-        geom.coordinates = split_lines[0];
-    }
-    else {
-        geom.type = 'MultiLineString';
-        geom.coordinates = split_lines;
-    }
-
-    return feature;
+    return [min_x, min_y, max_x, max_y];
 };
-
-if (module !== undefined) {
-    module.exports = Geo;
-}

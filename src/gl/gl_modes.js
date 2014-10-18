@@ -1,23 +1,26 @@
 // Rendering modes
+import GLVertexLayout from './gl_vertex_layout';
+import {GLBuilders} from './gl_builders';
+import GLProgram from './gl_program';
+import GLGeometry from './gl_geom';
+import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 
-var GL = require('./gl.js');
-var GLBuilders = require('./gl_builders.js');
-var GLGeometry = require('./gl_geom.js').GLGeometry;
-var GLVertexLayout = require('./gl_geom.js').GLVertexLayout;
-var shader_sources = require('./gl_shaders.js'); // built-in shaders
+var shader_sources = require('./gl_shaders'); // built-in shaders
+
+import Queue from 'queue-async';
+
+export var Modes = {};
+export var ModeManager = {};
+
 
 // Base
 
 var RenderMode = {
-    init: function (gl) {
+    setGL (gl) {
         this.gl = gl;
         this.makeGLProgram();
-
-        if (typeof this._init == 'function') {
-            this._init();
-        }
     },
-    refresh: function () {
+    refresh: function () { // TODO: should this be async/non-blocking?
         this.makeGLProgram();
     },
     defines: {},
@@ -32,20 +35,11 @@ var RenderMode = {
 
 RenderMode.makeGLProgram = function ()
 {
-    // Add any custom defines to built-in mode defines
-    var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
-    if (this.defines != null) {
-        for (var d in this.defines) {
-            defines[d] = this.defines[d];
-        }
-    }
-    if (this.shaders != null && this.shaders.defines != null) {
-        for (var d in this.shaders.defines) {
-            defines[d] = this.shaders.defines[d];
-        }
-    }
+    // console.log(this.name + ": " + "start building");
+    var queue = Queue();
 
-    // Alter defines for selection (need to create a new object since the first is stored as a reference by the program)
+    // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
+    var defines = this.buildDefineList();
     if (this.selection) {
         var selection_defines = Object.create(defines);
         selection_defines['FEATURE_SELECTION'] = true;
@@ -54,109 +48,108 @@ RenderMode.makeGLProgram = function ()
     // Get any custom code transforms
     var transforms = (this.shaders && this.shaders.transforms);
 
-    // Create shader from custom URLs
-    if (this.shaders && this.shaders.vertex_url && this.shaders.fragment_url) {
-        this.gl_program = GL.Program.createProgramFromURLs(
-            this.gl,
-            this.shaders.vertex_url,
-            this.shaders.fragment_url,
-            { defines: defines, transforms: transforms }
-        );
+    // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
+    var program = (this.hasOwnProperty('gl_program') && this.gl_program);
+    var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
 
-        if (this.selection) {
-            this.selection_gl_program = new GL.Program(
-                this.gl,
-                this.gl_program.vertex_shader_source,
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms }
-            );
-        }
-    }
-    // Create shader from built-in source
-    else {
-        this.gl_program = new GL.Program(
-            this.gl,
-            shader_sources[this.vertex_shader_key],
-            shader_sources[this.fragment_shader_key],
-            { defines: defines, transforms: transforms }
-        );
-
-        if (this.selection) {
-            this.selection_gl_program = new GL.Program(
+    queue.defer(complete => {
+        if (!program) {
+            // console.log(this.name + ": " + "instantiate");
+            program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
-                shader_sources['selection_fragment'],
-                { defines: selection_defines, transforms: transforms }
+                shader_sources[this.fragment_shader_key],
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name,
+                    callback: complete
+                }
             );
-       }
+        }
+        else {
+            // console.log(this.name + ": " + "re-compile");
+            program.defines = defines;
+            program.transforms = transforms;
+            program.compile(complete);
+        }
+    });
+
+    if (this.selection) {
+        queue.defer(complete => {
+            if (!selection_program) {
+                // console.log(this.name + ": " + "selection instantiate");
+                selection_program = new GLProgram(
+                    this.gl,
+                    shader_sources[this.vertex_shader_key],
+                    shader_sources['selection_fragment'],
+                    {
+                        defines: selection_defines,
+                        transforms: transforms,
+                        name: (this.name + ' (selection)'),
+                        callback: complete
+                    }
+                );
+            }
+            else {
+                // console.log(this.name + ": " + "selection re-compile");
+                selection_program.defines = selection_defines;
+                selection_program.transforms = transforms;
+                selection_program.compile(complete);
+            }
+        });
     }
+
+    // Wait for program(s) to compile before replacing them
+    // TODO: should this entire method offer a callback for when compilation completes?
+    queue.await(() => {
+       if (program) {
+           this.gl_program = program;
+       }
+
+       if (selection_program) {
+           this.selection_gl_program = selection_program;
+       }
+
+       // console.log(this.name + ": " + "finished building");
+    });
 };
 
-// TODO: make this a generic ORM-like feature for setting uniforms via JS objects on GL.Program
-RenderMode.setUniforms = function (options)
+// TODO: could probably combine and generalize this with similar method in GLProgram
+// (list of define objects that inherit from each other)
+RenderMode.buildDefineList = function ()
 {
-    options = options || {};
-    var gl_program = GL.Program.current; // operate on currently bound program
-
-    // TODO: only update uniforms when changed
-    if (this.shaders != null && this.shaders.uniforms != null) {
-        var texture_unit = 0;
-
-        for (var u in this.shaders.uniforms) {
-            var uniform = this.shaders.uniforms[u];
-
-            // Single float
-            if (typeof uniform == 'number') {
-                gl_program.uniform('1f', u, uniform);
-            }
-            // Multiple floats - vector or array
-            else if (typeof uniform == 'object') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform.length >= 2 && uniform.length <= 4) {
-                    gl_program.uniform(uniform.length + 'fv', u, uniform);
-                }
-                // float array
-                else if (uniform.length > 4) {
-                    gl_program.uniform('1fv', u + '[0]', uniform);
-                }
-                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-            }
-            // Boolean
-            else if (typeof this.shaders.uniforms[u] == 'boolean') {
-                gl_program.uniform('1i', u, uniform);
-            }
-            // Texture
-            else if (typeof uniform == 'string') {
-                var texture = GL.Texture.textures[uniform];
-                if (texture == null) {
-                    texture = new GL.Texture(this.gl, uniform);
-                    texture.load(uniform);
-                }
-
-                texture.bind(texture_unit);
-                gl_program.uniform('1i', u, texture_unit);
-                texture_unit++;
-            }
-            // TODO: support other non-float types? (int, etc.)
+    // Add any custom defines to built-in mode defines
+    var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
+    if (this.defines != null) {
+        for (var d in this.defines) {
+            defines[d] = this.defines[d];
         }
+    }
+    if (this.shaders != null && this.shaders.defines != null) {
+        for (d in this.shaders.defines) {
+            defines[d] = this.shaders.defines[d];
+        }
+    }
+    return defines;
+};
+
+// Set mode uniforms on currently bound program
+RenderMode.setUniforms = function ()
+{
+    var gl_program = GLProgram.current;
+    if (gl_program != null && this.shaders != null && this.shaders.uniforms != null) {
+        gl_program.setUniforms(this.shaders.uniforms);
     }
 };
 
 RenderMode.update = function ()
 {
-    this.gl_program.use(); // TODO: flexibility for multiple programs, e.g. for selection?
-
     // Mode-specific animation
-    if (typeof this.animation == 'function') {
+    if (typeof this.animation === 'function') {
         this.animation();
     }
-
-    this.setUniforms();
 };
-
-
-var Modes = {};
-var ModeManager = {};
 
 // Update built-in mode or create a new one
 ModeManager.configureMode = function (name, settings)
@@ -169,6 +162,8 @@ ModeManager.configureMode = function (name, settings)
     for (var s in settings) {
         Modes[name][s] = settings[s];
     }
+
+    Modes[name].name = name;
     return Modes[name];
 };
 
@@ -178,6 +173,7 @@ ModeManager.configureMode = function (name, settings)
 /*** Plain polygons ***/
 
 Modes.polygons = Object.create(RenderMode);
+Modes.polygons.name = 'polygons';
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
@@ -188,104 +184,98 @@ Modes.polygons.defines = {
 
 Modes.polygons.selection = true;
 
-Modes.polygons._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_normal', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
-    ]);
+Modes.polygons.init = function () {
+    // Basic attributes, others can be added (see texture UVs below)
+    var attribs = [
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+        // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
+        // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+        { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+    ];
+
+    // Optional texture UVs
+    if (this.texcoords) {
+        this.defines['TEXTURE_COORDS'] = true;
+
+        // Add vertex attribute for UVs only when needed
+        attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+    }
+
+    this.vertex_layout = new GLVertexLayout(attribs);
+};
+
+// A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+// A plain JS array matching the order of the vertex layout.
+Modes.polygons.makeVertexTemplate = function (style) {
+    // Basic attributes, others can be added (see texture UVs below)
+    var template = [
+        // position - x & y coords will be filled in per-vertex below
+        0, 0, style.z,
+        // normal
+        0, 0, 1,
+        // color
+        // TODO: automate multiplication for normalized attribs?
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        // selection color
+        style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+        // layer number
+        style.layer_num
+    ];
+
+    if (this.texcoords) {
+        // Add texture UVs to template only if needed
+        template.push(0, 0);
+    }
+
+    return template;
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 {
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
-
-    // Outlines have a slightly different set of constants, because the layer number is modified
-    if (style.outline.color) {
-        var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-            style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
-        ];
-    }
+    var vertex_template = this.makeVertexTemplate(style);
 
     // Extruded polygons (e.g. 3D buildings)
     if (style.extrude && style.height) {
         GLBuilders.buildExtrudedPolygons(
             polygons,
-            style.z,
-            style.height,
-            style.min_height,
-            vertex_data,
-            {
-                vertex_constants: vertex_constants
-            }
+            style.z, style.height, style.min_height,
+            vertex_data, vertex_template,
+            this.vertex_layout.index.a_normal,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
         );
     }
     // Regular polygons
     else {
         GLBuilders.buildPolygons(
             polygons,
-            style.z,
-            vertex_data,
-            {
-                normals: true,
-                vertex_constants: vertex_constants
-            }
+            vertex_data, vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
         );
-
-        // Callback-base builder (for future exploration)
-        // var normal_vertex_constants = [0, 0, 1].concat(vertex_constants);
-        // GLBuilders.buildPolygons2(
-        //     polygons,
-        //     z,
-        //     function (vertices) {
-        //         // var vs = vertices.positions;
-        //         // for (var v in vs) {
-        //         //     // var bc = [(v % 3) ? 0 : 1, ((v + 1) % 3) ? 0 : 1, ((v + 2) % 3) ? 0 : 1];
-        //         //     // var bc = [centroid.x, centroid.y, 0];
-        //         //     // vs[v] = vertices.positions[v].concat(z, 0, 0, 1, bc);
-
-        //         //     // vs[v] = vertices.positions[v].concat(z, 0, 0, 1);
-        //         //     vs[v] = vertices.positions[v].concat(0, 0, 1);
-        //         // }
-
-        //         GL.addVertices(vertices.positions, normal_vertex_constants, vertex_data);
-
-        //         // GL.addVerticesByAttributeLayout(
-        //         //     [
-        //         //         { name: 'a_position', data: vertices.positions },
-        //         //         { name: 'a_normal', data: [0, 0, 1] },
-        //         //         { name: 'a_color', data: [style.color[0], style.color[1], style.color[2]] },
-        //         //         { name: 'a_layer', data: style.layer_num }
-        //         //     ],
-        //         //     vertex_data
-        //         // );
-
-        //         // GL.addVerticesMultipleAttributes([vertices.positions], normal_vertex_constants, vertex_data);
-        //     }
-        // );
     }
 
     // Polygon outlines
     if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
                 polygons[mpc],
                 style.z,
                 style.outline.width,
                 vertex_data,
+                vertex_template,
                 {
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
                     closed_polygon: true,
-                    remove_tile_edges: true,
-                    vertex_constants: outline_vertex_constants
+                    remove_tile_edges: true
                 }
             );
         }
@@ -294,22 +284,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
 
 Modes.polygons.buildLines = function (lines, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
-
-    // Outlines have a slightly different set of constants, because the layer number is modified
-    if (style.outline.color) {
-        var outline_vertex_constants = [
-            style.outline.color[0], style.outline.color[1], style.outline.color[2],
-            style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-            style.layer_num - 0.5 // outlines sit between layers, underneath current layer but above the one below
-        ];
-    }
+    var vertex_template = this.makeVertexTemplate(style);
 
     // Main lines
     GLBuilders.buildPolylines(
@@ -317,20 +292,33 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         style.z,
         style.width,
         vertex_data,
+        vertex_template,
         {
-            vertex_constants: vertex_constants
+            texcoord_index: this.vertex_layout.index.a_texcoord
         }
     );
 
     // Line outlines
     if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
+        // Outlines sit between layers, underneath current layer but above the one below
+        // TODO: need more fine-grained styling controls for outlines
+        // (see complex road interchanges where casing outlines should be interleaved by road type)
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+
         GLBuilders.buildPolylines(
             lines,
             style.z,
             style.width + 2 * style.outline.width,
             vertex_data,
+            vertex_template,
             {
-                vertex_constants: outline_vertex_constants
+                texcoord_index: this.vertex_layout.index.a_texcoord
             }
         );
     }
@@ -338,25 +326,15 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
 
 Modes.polygons.buildPoints = function (points, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
+    var vertex_template = this.makeVertexTemplate(style);
 
     GLBuilders.buildQuadsForPoints(
         points,
         style.size * 2,
         style.size * 2,
-        style.z,
         vertex_data,
-        {
-            normals: true,
-            texcoords: false,
-            vertex_constants: vertex_constants
-        }
+        vertex_template,
+        { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
 };
 
@@ -364,6 +342,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 /*** Points w/simple distance field rendering ***/
 
 Modes.points = Object.create(RenderMode);
+Modes.points.name = 'points';
 
 Modes.points.vertex_shader_key = 'point_vertex';
 Modes.points.fragment_shader_key = 'point_fragment';
@@ -374,43 +353,44 @@ Modes.points.defines = {
 
 Modes.points.selection = true;
 
-Modes.points._init = function () {
-    this.vertex_layout = new GLVertexLayout(this.gl, [
-        { name: 'a_position', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_texcoord', size: 2, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_color', size: 3, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_selection_color', size: 4, type: this.gl.FLOAT, normalized: false },
-        { name: 'a_layer', size: 1, type: this.gl.FLOAT, normalized: false }
+Modes.points.init = function () {
+    this.vertex_layout = new GLVertexLayout([
+        { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+        { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+        { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+        { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
     ]);
+};
+
+// A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+// A plain JS array matching the order of the vertex layout.
+Modes.points.makeVertexTemplate = function (style) {
+    return [
+        // position - x & y coords will be filled in per-vertex below
+        0, 0, style.z,
+        // texture coords
+        0, 0,
+        // color
+        // TODO: automate multiplication for normalized attribs?
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        // selection color
+        style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+        // layer number
+        style.layer_num
+    ];
 };
 
 Modes.points.buildPoints = function (points, style, vertex_data)
 {
-    // TOOD: reduce redundancy of constant calc between builders
-    // Color and layer number are currently constant across vertices
-    var vertex_constants = [
-        style.color[0], style.color[1], style.color[2],
-        style.selection.color[0], style.selection.color[1], style.selection.color[2], style.selection.color[3],
-        style.layer_num
-    ];
+    var vertex_template = this.makeVertexTemplate(style);
 
     GLBuilders.buildQuadsForPoints(
         points,
         style.size * 2,
         style.size * 2,
-        style.z,
         vertex_data,
-        {
-            normals: false,
-            texcoords: true,
-            vertex_constants: vertex_constants
-        }
+        vertex_template,
+        { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
 };
-
-if (module !== undefined) {
-    module.exports = {
-        ModeManager: ModeManager,
-        Modes: Modes
-    };
-}

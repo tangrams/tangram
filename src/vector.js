@@ -1,11 +1,11 @@
 /*** Vector functions - vectors provided as [x, y, z] arrays ***/
 
-var Vector = {};
+export var Vector = {};
 
 // Vector length squared
 Vector.lengthSq = function (v)
 {
-    if (v.length == 2) {
+    if (v.length === 2) {
         return (v[0]*v[0] + v[1]*v[1]);
     }
     else {
@@ -23,20 +23,20 @@ Vector.length = function (v)
 Vector.normalize = function (v)
 {
     var d;
-    if (v.length == 2) {
+    if (v.length === 2) {
         d = v[0]*v[0] + v[1]*v[1];
         d = Math.sqrt(d);
 
-        if (d != 0) {
+        if (d !== 0) {
             return [v[0] / d, v[1] / d];
         }
         return [0, 0];
     }
     else {
-        var d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+        d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
         d = Math.sqrt(d);
 
-        if (d != 0) {
+        if (d !== 0) {
             return [v[0] / d, v[1] / d, v[2] / d];
         }
         return [0, 0, 0];
@@ -58,7 +58,7 @@ Vector.cross  = function (v1, v2)
 // http://en.wikipedia.org/wiki/Cramer's_rule
 Vector.lineIntersection = function (p1, p2, p3, p4, parallel_tolerance)
 {
-    var parallel_tolerance = parallel_tolerance || 0.01;
+    parallel_tolerance = parallel_tolerance || 0.01;
 
     // a1*x + b1*y = c1 for line (x1, y1) to (x2, y2)
     // a2*x + b2*y = c2 for line (x3, y3) to (x4, y4)
@@ -78,7 +78,3 @@ Vector.lineIntersection = function (p1, p2, p3, p4, parallel_tolerance)
     }
     return null; // return null if lines are (close to) parallel
 };
-
-if (module !== undefined) {
-    module.exports = Vector;
-}

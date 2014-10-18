@@ -1,3 +1,14 @@
+camera:
+    type: perspective
+    # focal_length: 1
+    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+    vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
+
+    # type: isometric
+    # axis: [1, .5]
+
+    # type: flat
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -59,7 +70,7 @@ modes:
         shaders:
             uniforms:
                 u_popup_radius: 330 # 225
-                u_popup_height: 5 # 1.1
+                u_popup_height: 3 # 1.1
             transforms:
                 globals:
                     - url: src/gl/shaders/modules/popup.glsl
@@ -335,17 +346,18 @@ modes:
                 fragment: { url: demos/shaders/color_bleed.glsl }
 
     # polygons:
+    #     texcoords: true
     #     shaders:
-    #         defines:
-    #             LIGHTING_ENVIRONMENT: true
+    #         uniforms:
+    #             u_texture: demos/images/LitSphere_test_02.jpg
+    #         transforms:
+    #             fragment: |
+    #                 color = vec3(v_texcoord.xy, 0.);
+    #                 //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+    #                 //color = texture2D(u_texture, v_texcoord).rgb;
+    #                 //color = texture2D(u_texture, vec2(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.))).rgb;
 
 layers:
-    water_ocean:
-        mode:
-            name: water
-        color:
-            default: [0.5, 0.5, 0.875]
-
     earth:
         color:
             default: [0.175, 0.175, 0.175]
@@ -361,7 +373,7 @@ layers:
         #     width:
         #         default: 1
 
-    water_areas:
+    water:
         mode:
             name: water
         interactive: true
@@ -436,10 +448,11 @@ layers:
         interactive: true
         color:
             # default: function(f) { var h = f.properties.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
+            # default: Style.color.randomColor
             # default: Style.color.pseudoRandomColor
             # default: Style.color.pseudoRandomGrayscale
             # default: function (f) { if (f.properties.name || f.properties.kind) { return [(f.properties.name && 0.6) || 0.2, 0.2, (f.properties.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default:
+            default: |
                 function (f) {
                     var c = [.6, .6, .6];
                     if (f.properties.name || f.properties.kind) {
@@ -459,6 +472,8 @@ layers:
         filter: function (f) { return f.properties.name != null; }
         # visible: false
         interactive: true
+        # z:
+        #     default: 25
         color:
             default: [1, 1, 0]
         size:

@@ -1,37 +1,48 @@
 // Miscellaneous utilities
 
+var Utils;
+export default Utils = {};
+import xhr from 'xhr';
+
+// allow for easier testing
+Utils.xhr = function (...args) {
+    xhr(...args);
+};
+
 // Simplistic detection of relative paths, append base if necessary
-function urlForPath (path) {
-    if (path == null || path == '') {
+Utils.urlForPath = function(path) {
+    var protocol;
+    if (path == null || path === '') {
         return null;
     }
 
+    var base = window.location.origin + window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')) + '/';
+
     // Can expand a single path, or an array of paths
-    if (typeof path == 'object' && path.length > 0) {
+    if (typeof path === 'object' && path.length > 0) {
         // Array of paths
         for (var p in path) {
-            var protocol = path[p].toLowerCase().substr(0, 4);
-            if (!(protocol == 'http' || protocol == 'file')) {
-                path[p] = window.location.origin + window.location.pathname + path[p];
+            protocol = path[p].toLowerCase().substr(0, 4);
+            if (!(protocol === 'http' || protocol === 'file')) {
+                path[p] = base + path[p];
             }
         }
     }
     else {
         // Single path
-        var protocol = path.toLowerCase().substr(0, 4);
-        if (!(protocol == 'http' || protocol == 'file')) {
-            path = window.location.origin + window.location.pathname + path;
+        protocol = path.toLowerCase().substr(0, 4);
+        if (!(protocol === 'http' || protocol === 'file')) {
+            path = base + path;
         }
     }
     return path;
 };
 
 // Stringify an object into JSON, but convert functions to strings
-function serializeWithFunctions (obj)
-{
+Utils.serializeWithFunctions = function (obj) {
     var serialized = JSON.stringify(obj, function(k, v) {
         // Convert functions to strings
-        if (typeof v == 'function') {
+        if (typeof v === 'function') {
             return v.toString();
         }
         return v;
@@ -41,27 +52,29 @@ function serializeWithFunctions (obj)
 };
 
 // Parse a JSON string, but convert function-like strings back into functions
-function deserializeWithFunctions (serialized) {
+Utils.deserializeWithFunctions = function(serialized) {
     var obj = JSON.parse(serialized);
-    obj = stringsToFunctions(obj);
+    obj = Utils.stringsToFunctions(obj);
 
     return obj;
 };
 
 // Recursively parse an object, attempting to convert string properties that look like functions back into functions
-function stringsToFunctions (obj) {
+Utils.stringsToFunctions = function(obj) {
     for (var p in obj) {
         var val = obj[p];
 
         // Loop through object properties
-        if (typeof val == 'object') {
-            obj[p] = stringsToFunctions(val);
+        if (typeof val === 'object') {
+            obj[p] = Utils.stringsToFunctions(val);
         }
         // Convert strings back into functions
-        else if (typeof val == 'string' && val.match(/^function.*\(.*\)/) != null) {
+        else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {
+                /*jshint ignore:start*/
                 eval('f = ' + val);
+                /*jshint ignore:end*/
                 obj[p] = f;
             }
             catch (e) {
@@ -75,32 +88,37 @@ function stringsToFunctions (obj) {
 };
 
 // Run a block if on the main thread (not in a web worker), with optional error (web worker) block
-function runIfInMainThread (block, err) {
+Utils.runIfInMainThread = function(block, err) {
     try {
         if (window.document !== undefined) {
             block();
         }
     }
     catch (e) {
-        if (typeof err == 'function') {
+        if (typeof err === 'function') {
             err();
         }
     }
-}
+};
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
-function isPowerOf2 (value) {
-    return (value & (value - 1)) == 0;
+Utils.isPowerOf2 = function(value) {
+    return (value & (value - 1)) === 0;
 };
 
-if (module !== undefined) {
-    module.exports = {
-        urlForPath: urlForPath,
-        serializeWithFunctions: serializeWithFunctions,
-        deserializeWithFunctions: deserializeWithFunctions,
-        stringsToFunctions: stringsToFunctions,
-        runIfInMainThread: runIfInMainThread,
-        isPowerOf2: isPowerOf2
-    };
-}
+// Iterators (ES6 generators)
+
+// Iterator for key/value pairs of an object
+Utils.entries = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield [key, obj[key]];
+    }
+};
+
+// Iterator for values of an object
+Utils.values = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield obj[key];
+    }
+};

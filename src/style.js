@@ -1,7 +1,7 @@
 /*** Style helpers ***/
-var Geo = require('./geo.js');
+import {Geo} from './geo';
 
-var Style = {};
+export var Style = {};
 
 // Style helpers
 
@@ -15,7 +15,9 @@ Style.color = {
 // The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
 Style.pixels = function (p, z) {
     var f;
+    /* jshint ignore:start */
     eval('f = function(f, t, h) { return ' + (typeof p == 'function' ? '(' + (p.toString() + '(f, t, h))') : p) + ' * h.Geo.meters_per_pixel[h.zoom]; }');
+    /* jshint ignore:end */
     return f;
 };
 
@@ -56,6 +58,7 @@ Style.resetSelectionMap = function ()
 // Find and expand style macros
 Style.macros = [
     'Style.color.pseudoRandomColor',
+    'Style.color.randomColor',
     'Style.pixels'
 ];
 
@@ -64,16 +67,18 @@ Style.expandMacros = function expandMacros (obj) {
         var val = obj[p];
 
         // Loop through object properties
-        if (typeof val == 'object') {
+        if (typeof val === 'object') {
             obj[p] = expandMacros(val);
         }
         // Convert strings back into functions
-        else if (typeof val == 'string') {
+        else if (typeof val === 'string') {
             for (var m in Style.macros) {
                 if (val.match(Style.macros[m])) {
                     var f;
                     try {
+                        /*jshint ignore:start */
                         eval('f = ' + val);
+                        /*jshint ignore:end */
                         obj[p] = f;
                         break;
                     }
@@ -124,38 +129,38 @@ Style.helpers = {
 
 Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 {
-    var layer_style = layer_style || {};
+    layer_style = layer_style || {};
     var style = {};
 
     Style.helpers.zoom = tile.coords.z;
 
     // Test whether features should be rendered at all
-    if (typeof layer_style.filter == 'function') {
-        if (layer_style.filter(feature, tile, Style.helpers) == false) {
+    if (typeof layer_style.filter === 'function') {
+        if (layer_style.filter(feature, tile, Style.helpers) === false) {
             return null;
         }
     }
 
     // Parse styles
     style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
-    if (typeof style.color == 'function') {
+    if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
-    if (typeof style.width == 'function') {
+    if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }
     style.width *= Geo.units_per_meter[tile.coords.z];
 
     style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
-    if (typeof style.size == 'function') {
+    if (typeof style.size === 'function') {
         style.size = style.size(feature, tile, Style.helpers);
     }
     style.size *= Geo.units_per_meter[tile.coords.z];
 
     style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
-    if (typeof style.extrude == 'function') {
+    if (typeof style.extrude === 'function') {
         // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
         style.extrude = style.extrude(feature, tile, Style.helpers);
     }
@@ -165,48 +170,48 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 
     // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
     if (style.extrude) {
-        if (typeof style.extrude == 'number') {
+        if (typeof style.extrude === 'number') {
             style.height = style.extrude;
         }
-        else if (typeof style.extrude == 'object' && style.extrude.length >= 2) {
+        else if (typeof style.extrude === 'object' && style.extrude.length >= 2) {
             style.min_height = style.extrude[0];
             style.height = style.extrude[1];
         }
     }
 
     style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
-    if (typeof style.z == 'function') {
+    if (typeof style.z === 'function') {
         style.z = style.z(feature, tile, Style.helpers);
     }
 
     style.outline = {};
     layer_style.outline = layer_style.outline || {};
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
-    if (typeof style.outline.color == 'function') {
+    if (typeof style.outline.color === 'function') {
         style.outline.color = style.outline.color(feature, tile, Style.helpers);
     }
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
-    if (typeof style.outline.width == 'function') {
+    if (typeof style.outline.width === 'function') {
         style.outline.width = style.outline.width(feature, tile, Style.helpers);
     }
     style.outline.width *= Geo.units_per_meter[tile.coords.z];
 
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
-    if (typeof style.outline.dash == 'function') {
+    if (typeof style.outline.dash === 'function') {
         style.outline.dash = style.outline.dash(feature, tile, Style.helpers);
     }
 
     // Interactivity (selection map)
     var interactive = false;
-    if (typeof layer_style.interactive == 'function') {
+    if (typeof layer_style.interactive === 'function') {
         interactive = layer_style.interactive(feature, tile, Style.helpers);
     }
     else {
         interactive = layer_style.interactive;
     }
 
-    if (interactive == true) {
+    if (interactive === true) {
         var selector = Style.generateSelection(Style.selection_map);
 
         selector.feature = {
@@ -237,6 +242,3 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     return style;
 };
 
-if (module !== undefined) {
-    module.exports = Style;
-}
