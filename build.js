@@ -16,7 +16,7 @@ function main() {
         es6ify.traceurOverrides = { blockBinding: true };
     }
 
-    var bundle = browserify({ debug: true}).
+    var bundle = browserify().
         add(es6ify.runtime).
         transform(es6ify.configure(/^(?!.*node_modules)+.+\.js$/));
 
@@ -34,7 +34,7 @@ function main() {
         });
     }
 
-    bundle.bundle().
+    bundle.bundle({ debug: true}).
         on('error', function (err) { console.error(err); }).
         pipe(process.stdout);
 
