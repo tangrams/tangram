@@ -6,9 +6,9 @@ export var Style = {};
 // Style helpers
 
 Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c, 1.0]; }, // pseudo-random grayscale by geometry id
+    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1), 1.0]; }, // pseudo-random color by geometry id
+    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random(), 1.0]; } // random color
 };
 
 // Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
@@ -99,14 +99,14 @@ Style.expandMacros = function expandMacros (obj) {
 
 // Determine final style properties (color, width, etc.)
 Style.defaults = {
-    color: [1.0, 0, 0],
+    color: [1, 0, 0, 1],
     width: 1,
     size: 1,
     extrude: false,
     height: 20,
     min_height: 0,
     outline: {
-        // color: [1.0, 0, 0],
+        // color: [1, 0, 0, 1],
         // width: 1,
         // dash: null
     },
@@ -146,6 +146,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
+    style.color[3] = style.color[3] || 1; // default to full alpha
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     if (typeof style.width === 'function') {
@@ -190,6 +191,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.outline.color === 'function') {
         style.outline.color = style.outline.color(feature, tile, Style.helpers);
     }
+    style.outline.color[3] = style.outline.color[3] || 1; // default to full alpha
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
     if (typeof style.outline.width === 'function') {

@@ -53,7 +53,7 @@ void main (void) {
         vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
 
         // Replace object color with environment map
-        color = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
+        color = vec4(sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, color[3]);
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
@@ -68,8 +68,7 @@ void main (void) {
     #endif
 
     // Apply lighting to color (can be overriden by transforms)
-    vec4 color_prelight = color;
-    color *= lighting;
+    color.xyz *= lighting;
 
     #pragma tangram: fragment
 

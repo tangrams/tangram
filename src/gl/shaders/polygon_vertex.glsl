@@ -11,11 +11,11 @@ uniform float u_num_layers;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
-attribute vec3 a_color;
+attribute vec4 a_color;
 attribute float a_layer;
 
 varying vec4 v_world_position;
-varying vec3 v_color;
+varying vec4 v_color;
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
 // e.g. at wrap 1000, the world space will wrap every 1000 meters
