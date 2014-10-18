@@ -130,10 +130,14 @@ Scene.prototype.destroy = function () {
         this.canvas.parentNode.removeChild(this.canvas);
     }
 
-    this.gl = null;
+    this.gl.deleteFramebuffer(this.fbo);
     this.fbo = null;
-    this.fbo_texture = null;
-    this.fbo_depth_rb = null;
+
+    GLTexture.destroy(this.gl);
+    ModeManager.destroy(this.gl);
+    this.modes = {};
+
+    this.gl = null;
 
     if (Array.isArray(this.workers)) {
         this.workers.forEach((worker) => {
@@ -142,6 +146,7 @@ Scene.prototype.destroy = function () {
         this.workers = null;
     }
 
+    this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
 Scene.prototype.initModes = function () {
@@ -171,15 +176,15 @@ Scene.prototype.initSelectionBuffer = function () {
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
-    this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
-    this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture.texture, 0);
+    var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+    fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 
     // Renderbuffer for the FBO depth attachment
-    this.fbo_depth_rb = this.gl.createRenderbuffer();
-    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    var fbo_depth_rb = this.gl.createRenderbuffer();
+    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, fbo_depth_rb);
     this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
-    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, fbo_depth_rb);
 
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
