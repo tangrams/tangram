@@ -128,6 +128,7 @@ Scene.prototype.destroy = function () {
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
+        this.canvas = null;
     }
 
     this.gl.deleteFramebuffer(this.fbo);
@@ -147,6 +148,7 @@ Scene.prototype.destroy = function () {
     }
 
     this.tiles = {}; // TODO: probably destroy each tile separately too
+    this.initialized = false;
 };
 
 Scene.prototype.initModes = function () {
