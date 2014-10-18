@@ -45,11 +45,15 @@ RenderMode.destroy = function () {
     }
 
     delete Modes[this.name];
+    this.valid = false;
 };
 
 RenderMode.makeGLProgram = function ()
 {
-    // console.log(this.name + ": " + "start building");
+    if (this.loading || this.valid === false) {
+        return false;
+    }
+    this.loading = true;
     var queue = Queue();
 
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
@@ -125,8 +129,10 @@ RenderMode.makeGLProgram = function ()
            this.selection_gl_program = selection_program;
        }
 
-       // console.log(this.name + ": " + "finished building");
+       this.loading = false;
     });
+
+    return true;
 };
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
