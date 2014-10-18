@@ -124,6 +124,26 @@ Scene.prototype.init = function (callback) {
     });
 };
 
+Scene.prototype.destroy = function () {
+
+    if (this.canvas && this.canvas.parentNode) {
+        this.canvas.parentNode.removeChild(this.canvas);
+    }
+
+    this.gl = null;
+    this.fbo = null;
+    this.fbo_texture = null;
+    this.fbo_depth_rb = null;
+
+    if (Array.isArray(this.workers)) {
+        this.workers.forEach((worker) => {
+            worker.terminate();
+        });
+        this.workers = null;
+    }
+
+};
+
 Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
@@ -165,6 +185,10 @@ Scene.prototype.initSelectionBuffer = function () {
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
+Scene.prototype.createObjectURL = function () {
+    return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+};
+
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
@@ -172,32 +196,28 @@ Scene.prototype.createWorkers = function (callback) {
     var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
 
     // Load & instantiate workers
-    queue.defer((complete) => {
+    queue.defer((done) => {
         // Local object URLs supported?
-        var createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+        var createObjectURL = this.createObjectURL();
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-            var req = new XMLHttpRequest();
-            req.onload = () => {
-                var worker_local_url = createObjectURL(new Blob([req.response], { type: 'application/javascript' }));
+
+            Utils.xhr(worker_url, (error, resp, body) => {
+                if (error) { throw error; }
+                var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
-                complete();
-            };
-            req.open('GET', worker_url, true /* async flag */);
-            req.responseType = 'text';
-            req.send();
-        }
-        // Traditional load from remote URL
-        else {
+                done();
+            });
+        } else { // Traditional load from remote URL
             console.log(this);
             this.makeWorkers(worker_url);
-            complete();
+            done();
         }
     });
 
     // Init workers
     queue.await(() => {
-        this.workers.forEach(worker => {
+        this.workers.forEach((worker) => {
             worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
             worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
             worker.addEventListener('message', this.workerLogMessage.bind(this));
@@ -1297,39 +1317,43 @@ Scene.prototype.workerLogMessage = function (event) {
 
 Scene.loadLayers = function (url, callback) {
     var layers;
-    var req = new XMLHttpRequest();
-    req.onload = function () {
-        // allow eval
+
+    Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
+        if (error) { throw error; }
+        // Try JSON first, then YAML (if available)
         /* jshint ignore:start */
-        eval('layers = ' + req.response); // TODO: security!
+        try {
+            eval('layers = ' + body); // TODO: security!
+        } catch (e) {
+            try {
+                layers = yaml.safeLoad(body);
+            } catch (e) {
+                console.log("failed to parse layers!");
+                console.log(layers);
+                layers = null;
+            }
+        }
         /* jshint ignore:end */
+
         if (typeof callback === 'function') {
             callback(layers);
         }
-    };
-    req.open('GET', url + '?' + (+new Date()), true /* async flag */);
-    req.responseType = 'text';
-    req.send();
+    });
 };
 
 Scene.loadStyles = function (url, callback) {
-    var styles;
-    var req = new XMLHttpRequest();
-
-    req.onload = function () {
-        styles = req.response;
-
+    Utils.xhr(url + '?' + (+new Date()), (error, response, body) => {
+        if (error) { throw error; }
+        var styles;
         // Try JSON first, then YAML (if available)
         /* jshint ignore:start */
         try {
 
-            eval('styles = ' + req.response);
-        }
-        catch (e) {
+            eval('styles = ' + body);
+        } catch (e) {
             try {
-                styles = yaml.safeLoad(req.response);
-            }
-            catch (e) {
+                styles = yaml.safeLoad(body);
+            } catch (e) {
                 console.log("failed to parse styles!");
                 console.log(styles);
                 styles = null;
@@ -1344,11 +1368,9 @@ Scene.loadStyles = function (url, callback) {
         if (typeof callback === 'function') {
             callback(styles);
         }
-    };
 
-    req.open('GET', url + '?' + (+new Date()), true /* async flag */);
-    req.responseType = 'text';
-    req.send();
+    });
+
 };
 
 // Normalize some style settings that may not have been explicitly specified in the stylesheet

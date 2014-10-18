@@ -5,11 +5,14 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
-uniform float u_test;
-uniform float u_test2;
+uniform sampler2D u_texture; // built-in uniform for texture maps
 
 varying vec4 v_color;
 varying vec4 v_world_position;
+
+#if defined(TEXTURE_COORDS)
+    varying vec2 v_texcoord;
+#endif
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
 // e.g. at wrap 1000, the world space will wrap every 1000 meters
@@ -53,7 +56,7 @@ void main (void) {
         vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
 
         // Replace object color with environment map
-        color = vec4(sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, color[3]);
+        color = vec4(sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb, color.a);
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
@@ -64,12 +67,13 @@ void main (void) {
             vec3(0.2, 0.7, -0.5), // direction of light for flat shading
             light_ambient);
     #else
-        vec4 lighting = vec4(v_lighting, 1.0);
+        vec3 lighting = v_lighting;
     #endif
 
     // Apply lighting to color (can be overriden by transforms)
     color.xyz *= lighting;
 
+    // Style-specific vertex transformations
     #pragma tangram: fragment
 
     gl_FragColor = color;

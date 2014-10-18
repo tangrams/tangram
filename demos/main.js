@@ -71,6 +71,7 @@
             styles: 'demos/styles.yaml'
         }
     };
+
     var locations = {
         'London': [51.508, -0.105, 15],
         'New York': [40.70531887544228, -74.00976419448853, 16],
@@ -138,7 +139,7 @@
     function setGLProgramDefinesForOptionSet(current_value, options) {
         Object.keys(options).forEach(function (key) {
             var value = options[key];
-            Tangram.GL.Program.defines[value] = ((value === current_value) && value !== '');
+            Tangram.GLProgram.defines[value] = ((value === current_value) && value !== '');
         });
     }
 

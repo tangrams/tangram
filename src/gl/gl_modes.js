@@ -185,7 +185,8 @@ Modes.polygons.defines = {
 Modes.polygons.selection = true;
 
 Modes.polygons.init = function () {
-    this.vertex_layout = new GLVertexLayout([
+    // Basic attributes, others can be added (see texture UVs below)
+    var attribs = [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
         // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
@@ -194,13 +195,24 @@ Modes.polygons.init = function () {
         // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
         { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
         { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
-    ]);
+    ];
+
+    // Optional texture UVs
+    if (this.texcoords) {
+        this.defines['TEXTURE_COORDS'] = true;
+
+        // Add vertex attribute for UVs only when needed
+        attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+    }
+
+    this.vertex_layout = new GLVertexLayout(attribs);
 };
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
 Modes.polygons.makeVertexTemplate = function (style) {
-    return [
+    // Basic attributes, others can be added (see texture UVs below)
+    var template = [
         // position - x & y coords will be filled in per-vertex below
         0, 0, style.z,
         // normal
@@ -213,6 +225,13 @@ Modes.polygons.makeVertexTemplate = function (style) {
         // layer number
         style.layer_num
     ];
+
+    if (this.texcoords) {
+        // Add texture UVs to template only if needed
+        template.push(0, 0);
+    }
+
+    return template;
 };
 
 Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
@@ -224,12 +243,18 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
         GLBuilders.buildExtrudedPolygons(
             polygons,
             style.z, style.height, style.min_height,
-            vertex_data, vertex_template, 3 /* index of normals in vertex layout */
+            vertex_data, vertex_template,
+            this.vertex_layout.index.a_normal,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
         );
     }
     // Regular polygons
     else {
-        GLBuilders.buildPolygons(polygons, vertex_data, vertex_template);
+        GLBuilders.buildPolygons(
+            polygons,
+            vertex_data, vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
+        );
     }
 
     // Polygon outlines
@@ -249,6 +274,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
                 vertex_data,
                 vertex_template,
                 {
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
                     closed_polygon: true,
                     remove_tile_edges: true
                 }
@@ -267,7 +293,10 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         style.z,
         style.width,
         vertex_data,
-        vertex_template
+        vertex_template,
+        {
+            texcoord_index: this.vertex_layout.index.a_texcoord
+        }
     );
 
     // Line outlines
@@ -289,7 +318,10 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
             style.z,
             style.width + 2 * style.outline.width,
             vertex_data,
-            vertex_template
+            vertex_template,
+            {
+                texcoord_index: this.vertex_layout.index.a_texcoord
+            }
         );
     }
 };
@@ -303,7 +335,8 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
         style.size * 2,
         style.size * 2,
         vertex_data,
-        vertex_template
+        vertex_template,
+        { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
 };
 
@@ -360,6 +393,6 @@ Modes.points.buildPoints = function (points, style, vertex_data)
         style.size * 2,
         vertex_data,
         vertex_template,
-        this.vertex_layout.index.a_texcoord
+        { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
 };

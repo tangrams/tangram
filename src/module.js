@@ -3,18 +3,16 @@
 // The leaflet layer plugin is currently the primary means of using the library
 
 import {LeafletLayer, leafletLayer} from './leaflet_layer';
-import {GL} from './gl/gl';
 import {Geo} from './geo';
+import GL from './gl/gl';
+import GLProgram from './gl/gl_program';
+import GLTexture from './gl/gl_texture';
 // GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
 
-GL.Program = require('./gl/gl_program.js').default;
-GL.Texture = require('./gl/gl_texture.js');
-
-module.exports = {
-    LeafletLayer: LeafletLayer,
-    leafletLayer: leafletLayer,
-    GL: GL,
-    Geo: Geo
-};
-
-window.Tangram = module.exports;
+window.Tangram = module.exports = {
+    LeafletLayer,
+    leafletLayer,
+    Geo,
+    GL,
+    GLProgram,
+    GLTexture };

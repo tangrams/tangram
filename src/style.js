@@ -191,7 +191,9 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.outline.color === 'function') {
         style.outline.color = style.outline.color(feature, tile, Style.helpers);
     }
-    style.outline.color[3] = style.outline.color[3] || 1; // default to full alpha
+    if (style.outline && style.outline.color) {
+        style.outline.color[3] = style.outline.color[3] || 1; // default to full alpha
+    }
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
     if (typeof style.outline.width === 'function') {

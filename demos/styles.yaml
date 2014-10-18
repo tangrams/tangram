@@ -63,7 +63,7 @@ modes:
                     }
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
-                    color = hsv2rgb(c);
+                    color.rgb = hsv2rgb(c);
 
     popup:
         extends: polygons
@@ -118,7 +118,7 @@ modes:
                 u_dot_color: [1, 1, 1]
             transforms:
                 globals: { url: demos/shaders/dots.glsl }
-                fragment: color *= dots(v_world_position.xyz);
+                fragment: color.rgb *= dots(v_world_position.xyz);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
 
@@ -134,7 +134,7 @@ modes:
                 u_wood_spacing: 1
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = lighting * wood(v_world_position.xyz);
+                fragment: color.rgb = wood(v_world_position.xyz) * lighting;
         # buildPolygons: |
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder
@@ -203,8 +203,8 @@ modes:
                     // Color mix
                     const vec3 white = vec3(1.0, 1.0, 1.0);
                     const vec3 black = vec3(0.0, 0.0, 0.0);
-                    // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
-                    color = mix(black, white, aastep(radius, dist));
+                    // color.rgb = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
+                    color.rgb = mix(black, white, aastep(radius, dist));
 
     # Halftone shader adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
     colorhalftone:
@@ -253,7 +253,7 @@ modes:
 
                     // Perform a rough RGB-to-CMYK conversion
                     vec4 cmyk;
-                    cmyk.xyz = 1.0 - color;
+                    cmyk.xyz = 1.0 - color.rgb;
                     cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
                     if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
 
@@ -279,7 +279,7 @@ modes:
                     //float luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b); // HSP color model
                     //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
 
-                    color = rgbscreen;
+                    color.rgb = rgbscreen;
 
     windows:
         extends: polygons
@@ -326,18 +326,21 @@ modes:
                     vec3 vPos = v_world_position.xyz / u_frequency;
                     vec3 mask = mix(vec3(0.0), vec3(1.0), step(fract(mod(vPos, .9)), vec3(.4, .4, .6)));
 
+                    vec3 wcolor;
                     if (mask.x + mask.y + mask.z > .5) {
-                        color = u_buildingColor;
-                        color -= vec3(vPos.z * .1); // height factor
+                        wcolor = u_buildingColor;
+                        wcolor -= vec3(vPos.z * .1); // height factor
                     } else {
                         float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
-                        color = u_windowColor * noiseColor;
+                        wcolor = u_windowColor * noiseColor;
                     }
 
                     if (v_normal.z > .6 || v_normal.z < -.6) {
-                        color = u_roofColor;
-                        color -= vec3(vPos.z * .01); // height factor
+                        wcolor = u_roofColor;
+                        wcolor -= vec3(vPos.z * .01); // height factor
                     }
+
+                    color.rgb = wcolor;
 
     points:
         shaders:
@@ -375,7 +378,7 @@ layers:
 
     water:
         mode:
-            # name: water
+            name: water
         interactive: true
         color:
             default: [0.5, 0.5, 0.875]

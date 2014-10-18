@@ -25,7 +25,7 @@ describe('Leaflet', () => {
         beforeEach(() => {
             subject = makeOne();
         });
-
+        afterEach(() => { subject.scene.destroy(); });
         it('returns a new instance', () => {
             assert.instanceOf(subject, LeafletLayer);
         });
@@ -35,7 +35,7 @@ describe('Leaflet', () => {
         });
     });
 
-    describe('.onAdd(map)', () => {
+    describe.skip('.onAdd(map)', () => {
         let subject;
         beforeEach(() => {
             subject = makeOne();
@@ -43,16 +43,15 @@ describe('Leaflet', () => {
         });
 
         afterEach(() => {
-
+            subject.scene.destroy();
         });
 
         it('calls the maps .getContainer() method', () => {
-            // assert.isTrue(subject._map.getContainer.called);
+            sinon.assert.called(subject.map.getContainer);
         });
 
     });
 
-    // TODO, this is broken
     describe.skip('.onRemove(map)', () => {
         let subject;
         beforeEach(() => {
@@ -63,6 +62,7 @@ describe('Leaflet', () => {
         });
         afterEach(() => {
             subject.removeFrom(map);
+            subject.scene.destroy();
             L.GridLayer.prototype.onRemove.restore();
         });
 
@@ -79,6 +79,10 @@ describe('Leaflet', () => {
             subject = makeOne();
             sinon.spy(subject.scene, 'loadTile');
             subject.createTile(coords);
+        });
+
+        afterEach(() => {
+            subject.scene.destroy();
         });
 
         it('calls the .scene.loadTile() method', () => {

@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-
+import Utils from '../src/utils';
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
@@ -22,12 +22,14 @@ describe('Scene', () => {
         it('returns a new instance', () => {
             let scene = new Scene();
             assert.instanceOf(scene, Scene);
+            scene.destroy();
         });
 
         describe('when given sensible defaults', () => {
             let scene = makeOne({});
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
+                scene.destroy();
             });
         });
     });
@@ -44,6 +46,7 @@ describe('Scene', () => {
         });
 
         afterEach( () => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -72,6 +75,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -142,6 +146,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -196,6 +201,7 @@ describe('Scene', () => {
             subject.setCenter(lng, lat);
         });
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -217,6 +223,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
 
@@ -239,6 +246,7 @@ describe('Scene', () => {
         });
 
         afterEach(() => {
+            subject.destroy();
             subject = undefined;
         });
         it('calls the removeTilesOutsideZoomRange method', () =>  {
@@ -257,7 +265,10 @@ describe('Scene', () => {
         beforeEach(() => {
             subject = makeOne({}); subject.loadTile(tile);
         });
-        afterEach(() => { subject = undefined; });
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
 
         it('appends the queued_tiles array', () => {
             assert.include(subject.queued_tiles[0], tile);
@@ -277,7 +288,10 @@ describe('Scene', () => {
             });
         });
 
-        afterEach(() => { subject = undefined; });
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
 
         it('calls the loadQueuedTiles method', () => {
             subject.render();
@@ -319,18 +333,37 @@ describe('Scene', () => {
     });
 
     describe('.createWorkers(cb)', () => {
-        // TODO, we should mock the http resonse and dig deeper in
-        // this method?
         let subject;
         beforeEach(() => {
+            sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
             subject = makeOne({});
             sinon.spy(subject, 'makeWorkers');
+            sinon.spy(subject, 'createObjectURL');
         });
-        afterEach(() => { subject = undefined; });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+            Utils.xhr.restore();
+        });
 
         it('calls the makeWorkers method', (done) => {
             subject.createWorkers(() => {
-                assert.isTrue(subject.makeWorkers.called);
+                sinon.assert.called(subject.makeWorkers);
+                done();
+            });
+        });
+
+        it('calls the xhr method', (done) => {
+            subject.createWorkers(() => {
+                sinon.assert.called(Utils.xhr);
+                done();
+            });
+        });
+
+        it('calls the createObjectUrl', (done) => {
+            subject.createWorkers(() => {
+                sinon.assert.called(subject.createObjectURL);
                 done();
             });
         });
@@ -344,6 +377,11 @@ describe('Scene', () => {
         beforeEach(() => {
             subject = makeOne({options: {num_workers}});
             subject.makeWorkers(url);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
         });
 
         describe('when given a url', () => {
