@@ -41,12 +41,11 @@ GLTexture.prototype.destroy = function () {
 
 // Destroy all texture instances for a given GL context
 GLTexture.destroy = function (gl) {
-    // for (var texture of GLTexture.textures) {
     var textures = Object.keys(GLTexture.textures);
     for (var t of textures) {
         var texture = GLTexture.textures[t];
         if (texture.gl == gl) {
-            // console.log(`destroying GLTexture ${texture.name}`);
+            console.log(`destroying GLTexture ${texture.name}`);
             texture.destroy();
         }
     }
