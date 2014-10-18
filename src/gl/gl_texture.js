@@ -44,7 +44,7 @@ GLTexture.destroy = function (gl) {
     var textures = Object.keys(GLTexture.textures);
     for (var t of textures) {
         var texture = GLTexture.textures[t];
-        if (texture.gl == gl) {
+        if (texture.gl === gl) {
             console.log(`destroying GLTexture ${texture.name}`);
             texture.destroy();
         }

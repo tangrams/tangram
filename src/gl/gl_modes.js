@@ -192,7 +192,7 @@ ModeManager.destroy = function (gl) {
     var modes = Object.keys(Modes);
     for (var m of modes) {
         var mode = Modes[m];
-        if (mode.gl == gl) {
+        if (mode.gl === gl) {
             console.log(`destroying render mode ${mode.name}`);
             mode.destroy();
         }
