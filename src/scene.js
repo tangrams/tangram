@@ -450,7 +450,7 @@ Scene.prototype.render = function () {
     return true;
 };
 
-Scene.prototype.resetFrame = function () {
+Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = {}) {
     if (!this.initialized) {
         return;
     }
@@ -460,20 +460,42 @@ Scene.prototype.resetFrame = function () {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // TODO: unnecessary repeat?
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LESS);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
-    // gl.enable(gl.BLEND);
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    // Defaults
+    // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
+    depth_test = (depth_test === false) ? false : true;
+    cull_face = (cull_face === false) ? false : true;
+    alpha_blend = (alpha_blend !== true) ? false : true;
+
+    if (depth_test !== false) {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+    }
+    else {
+        gl.disable(gl.DEPTH_TEST);
+    }
+
+    if (cull_face !== false) {
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
+    }
+    else {
+        gl.disable(gl.CULL_FACE);
+    }
+
+    if (alpha_blend !== false) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+    else {
+        gl.disable(gl.BLEND);
+    }
 };
 
 Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
     this.input();
-    this.resetFrame();
+    this.resetFrame({ alpha_blend: true });
 
     // Map transforms
     if (!this.center) {
@@ -591,7 +613,7 @@ Scene.prototype.renderGL = function () {
         // Switch to FBO
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
         gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
-        this.resetFrame();
+        this.resetFrame({ alpha_blend: false });
 
         for (style in this.styles) {
             program = this.styles[style].selection_program;

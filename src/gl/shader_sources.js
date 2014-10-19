@@ -154,11 +154,11 @@ shaderSources['modules/spherical_environment_map'] =
 shaderSources['point_fragment'] =
 "uniform vec2 u_resolution;\n" +
 "\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "\n" +
 "void main (void) {\n" +
-"    vec3 color = v_color;\n" +
+"    vec4 color = v_color;\n" +
 "    vec3 lighting = vec3(1.);\n" +
 "\n" +
 "    // Simple threshold at dot radius\n" +
@@ -167,11 +167,11 @@ shaderSources['point_fragment'] =
 "    if (len > 1.) {\n" +
 "        discard;\n" +
 "    }\n" +
-"    color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
+"    color.rgb *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" +
 "\n" +
 "    #pragma tangram: fragment\n" +
 "\n" +
-"    gl_FragColor = vec4(color, 1.);\n" +
+"    gl_FragColor = color;\n" +
 "}\n" +
 "";
 
@@ -181,10 +181,10 @@ shaderSources['point_vertex'] =
 "\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
-"attribute vec3 a_color;\n" +
+"attribute vec4 a_color;\n" +
 "attribute float a_layer;\n" +
 "\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "\n" +
 "#if defined(FEATURE_SELECTION)\n" +
@@ -197,7 +197,7 @@ shaderSources['point_vertex'] =
 "\n" +
 "void main() {\n" +
 "    #if defined(FEATURE_SELECTION)\n" +
-"        if (a_selection_color.xyz == vec3(0.)) {\n" +
+"        if (a_selection_color.rgb == vec3(0.)) {\n" +
 "            // Discard by forcing invalid triangle if we\'re in the feature\n" +
 "            // selection pass but have no selection info\n" +
 "            // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?\n" +
