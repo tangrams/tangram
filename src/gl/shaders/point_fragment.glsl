@@ -1,4 +1,5 @@
 uniform vec2 u_resolution;
+uniform vec2 u_time;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
