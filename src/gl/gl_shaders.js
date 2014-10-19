@@ -6,7 +6,7 @@ shader_sources['point_fragment'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
-"uniform vec2 u_time;\n" +
+"uniform float u_time;\n" +
 "varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "void main(void) {\n" +
