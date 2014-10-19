@@ -1,5 +1,6 @@
 uniform mat4 u_tile_view;
 uniform float u_num_layers;
+uniform float u_time;
 
 attribute vec3 a_position;
 attribute vec2 a_texcoord;

@@ -341,14 +341,19 @@ modes:
 
     ghosts:
         extends: points
+        animated: true
         shaders:
             uniforms:
-                u_texture: demos/images/ghost.gif
+                u_texture: demos/images/ghost_strip.gif
             transforms:
                 globals: |
                     uniform sampler2D u_texture;
                 fragment: |
-                    color = texture2D(u_texture, texcoord).rgb;
+                    float number_of_frames;
+                    float frames_per_second;
+                    
+                    float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
+                    color = texture2D(u_texture, (vec2(texcoord.x/number_of_frames., texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color[0] == 0. && color[1] == 0. && color[2] == 0.) discard;
                     
 
