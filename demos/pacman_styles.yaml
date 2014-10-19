@@ -1,3 +1,14 @@
+camera:
+    type: perspective
+    # focal_length: 1
+    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+    vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
+
+    # type: isometric
+    # axis: [1, .5]
+
+    # type: flat
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -328,23 +339,17 @@ modes:
                         color -= vec3(vPos.z * .01); // height factor
                     }
 
-    # points:
-    #     shaders:
-    #         transforms:
-    #             fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-    #             # fragment: { url: demos/shaders/color_bleed.glsl }
-
     ghosts:
         extends: points
         shaders:
             uniforms:
-                u_texture: demos/images/ghost_a.gif
+                u_texture: demos/images/ghost.gif
             transforms:
                 globals: |
                     uniform sampler2D u_texture;
                 fragment: |
-                    // offset texcoord to account for centered 0,0
-                    color = texture2D(u_texture, (texcoord + vec2(1.))/2.).rgb;
+                    color = texture2D(u_texture, texcoord).rgb;
+                    if (color[0] == 0. && color[1] == 0. && color[2] == 0.) discard;
                     
 
 
