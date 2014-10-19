@@ -6,6 +6,7 @@ shader_sources['point_fragment'] =
 "#define GLSLIFY 1\n" +
 "\n" +
 "uniform vec2 u_resolution;\n" +
+"uniform vec2 u_time;\n" +
 "varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "void main(void) {\n" +
@@ -28,6 +29,7 @@ shader_sources['point_vertex'] =
 "\n" +
 "uniform mat4 u_tile_view;\n" +
 "uniform float u_num_layers;\n" +
+"uniform float u_time;\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec2 a_texcoord;\n" +
 "attribute vec4 a_color;\n" +
