@@ -779,8 +779,8 @@ Scene.prototype.rebuildTiles = function (callback) {
         return;
     }
 
+    // Skip rebuild if already in progress
     if (this.building) {
-        console.log("SKIPPING rebuild because already in progress")
         callback(false);
         return;
     }
@@ -828,7 +828,6 @@ Scene.prototype.rebuildTiles = function (callback) {
 
     // console.log("build visible");
     for (t in visible) {
-        this.building.tiles[visible[t]] = true;
         this.buildTile(visible[t]);
     }
 
@@ -836,7 +835,6 @@ Scene.prototype.rebuildTiles = function (callback) {
     for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
         if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
-            this.building.tiles[invisible[t]] = true;
             this.buildTile(invisible[t]);
         }
         // Drop tiles outside current zoom
@@ -852,6 +850,7 @@ Scene.prototype.rebuildTiles = function (callback) {
 Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
+    this.trackTileBuildStart(key);
     this.workerPostMessageForTile(tile, {
         type: 'buildTile',
         tile: {
@@ -988,21 +987,39 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     if (this.tiles[tile.key] == null) {
         console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
     }
-    else {
+    else if (!tile.error) {
         // Update tile with properties from worker
         tile = this.mergeTile(tile.key, tile);
-
         this.buildGLGeometry(tile);
-
         this.dirty = true;
-        this.trackTileSetLoadEnd();
-        this.printDebugForTile(tile);
+    }
+    else {
+        console.log(`main thread tile load error for ${tile.key}: ${tile.error}`);
     }
 
+    this.trackTileSetLoadStop();
+    this.printDebugForTile(tile);
+    this.trackTileBuildStop(tile.key);
+};
+
+// Track tile build state
+Scene.prototype.trackTileBuildStart = function (key) {
+    if (!this.building) {
+        this.building = {
+            tiles: {}
+        };
+    }
+    this.building.tiles[key] = true;
+    // console.log(`trackTileBuildStart for ${key}: ${Object.keys(this.building.tiles).length}`);
+};
+
+Scene.prototype.trackTileBuildStop = function (key) {
     // Done building?
     if (this.building) {
-        delete this.building.tiles[tile.key];
+        // console.log(`trackTileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
+        delete this.building.tiles[key];
         if (Object.keys(this.building.tiles).length === 0) {
+            console.log(`scene build FINISHED`);
             var callback = this.building.callback;
             this.building = null;
             if (typeof callback === 'function') {
@@ -1282,7 +1299,7 @@ Scene.prototype.trackTileSetLoadStart = function () {
     }
 };
 
-Scene.prototype.trackTileSetLoadEnd = function () {
+Scene.prototype.trackTileSetLoadStop = function () {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;

@@ -106,8 +106,9 @@ export class NetworkTileSource extends TileSource {
             timeout: 60 * 1000,
             responseType: this.response_type
         }, (err, resp, body) => {
-
-            if (err) { return callback(err); }
+            if (err) {
+                return callback(err, tile);
+            }
 
             if (tile.loading === false) {
                 return;
