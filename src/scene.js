@@ -52,6 +52,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.layers = layers;
     this.styles = styles;
 
+    this.building = null;
     this.dirty = true; // request a redraw
     this.animated = false; // request redraw every frame
 
@@ -772,10 +773,23 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function () {
+Scene.prototype.rebuildTiles = function (callback) {
     if (!this.initialized) {
+        callback(false);
         return;
     }
+
+    if (this.building) {
+        console.log("SKIPPING rebuild because already in progress")
+        callback(false);
+        return;
+    }
+
+    // Track tile build state
+    this.building = {
+        callback,
+        tiles: {}
+    };
 
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
@@ -814,6 +828,7 @@ Scene.prototype.rebuildTiles = function () {
 
     // console.log("build visible");
     for (t in visible) {
+        this.building.tiles[visible[t]] = true;
         this.buildTile(visible[t]);
     }
 
@@ -821,6 +836,7 @@ Scene.prototype.rebuildTiles = function () {
     for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
         if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
+            this.building.tiles[invisible[t]] = true;
             this.buildTile(invisible[t]);
         }
         // Drop tiles outside current zoom
@@ -971,17 +987,29 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
         console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
-        return;
+    }
+    else {
+        // Update tile with properties from worker
+        tile = this.mergeTile(tile.key, tile);
+
+        this.buildGLGeometry(tile);
+
+        this.dirty = true;
+        this.trackTileSetLoadEnd();
+        this.printDebugForTile(tile);
     }
 
-    // Update tile with properties from worker
-    tile = this.mergeTile(tile.key, tile);
-
-    this.buildGLGeometry(tile);
-
-    this.dirty = true;
-    this.trackTileSetLoadEnd();
-    this.printDebugForTile(tile);
+    // Done building?
+    if (this.building) {
+        delete this.building.tiles[tile.key];
+        if (Object.keys(this.building.tiles).length === 0) {
+            var callback = this.building.callback;
+            this.building = null;
+            if (typeof callback === 'function') {
+                callback(true);
+            }
+        }
+    }
 };
 
 // Called on main thread when a web worker completes processing for a single tile
