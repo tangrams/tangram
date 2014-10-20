@@ -103,6 +103,7 @@ export class NetworkTileSource extends TileSource {
 
         Utils.xhr({
             uri: url,
+            timeout: 60 * 1000,
             responseType: this.response_type
         }, (err, resp, body) => {
 
