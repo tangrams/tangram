@@ -265,6 +265,10 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
 
+        // Polygon outlines sit over current layer but underneath the one above
+        // TODO: address inconsistency with line outlines
+        vertex_template[this.vertex_layout.index.a_layer] += 0.25;
+
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
                 polygons[mpc],
@@ -306,10 +310,11 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
 
-        // Outlines sit between layers, underneath current layer but above the one below
+        // Line outlines sit underneath current layer but above the one below
+        // TODO: address inconsistency with polygon outlines
         // TODO: need more fine-grained styling controls for outlines
         // (see complex road interchanges where casing outlines should be interleaved by road type)
-        vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
 
         GLBuilders.buildPolylines(
             lines,
