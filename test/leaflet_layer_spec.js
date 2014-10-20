@@ -8,6 +8,7 @@ let map = L.map(
     document.createElement('div'),
     { maxZoom: 20, inertia: false, keyboard: false}
 );
+map.setView([0, 0], 0);
 
 let makeOne = () => {
     return new LeafletLayer({
@@ -17,15 +18,20 @@ let makeOne = () => {
     });
 };
 
-describe('Leaflet', () => {
+describe('Leaflet plugin', () => {
 
     // leaflet calls it .initialize()
     describe('.constructor()', () => {
         let subject;
+
         beforeEach(() => {
             subject = makeOne();
         });
-        afterEach(() => { subject.scene.destroy(); });
+
+        afterEach(() => {
+            subject.scene.destroy();
+        });
+
         it('returns a new instance', () => {
             assert.instanceOf(subject, LeafletLayer);
         });
@@ -35,45 +41,67 @@ describe('Leaflet', () => {
         });
     });
 
-    describe.skip('.onAdd(map)', () => {
+    describe('.addTo(map)', () => {
         let subject;
-        beforeEach(() => {
+
+        beforeEach((done) => {
             subject = makeOne();
+            sinon.spy(map, 'getContainer');
+            subject.on('init', function() {
+                done();
+            });
             subject.addTo(map);
         });
 
         afterEach(() => {
-            subject.scene.destroy();
+            subject.remove();
+            map.getContainer.restore();
         });
 
-        it('calls the maps .getContainer() method', () => {
-            sinon.assert.called(subject.map.getContainer);
+        it('calls the map\'s .getContainer() method', () => {
+            sinon.assert.called(map.getContainer);
         });
 
     });
 
-    describe.skip('.onRemove(map)', () => {
-        let subject;
-        beforeEach(() => {
+    describe('.remove()', () => {
+        let subject, scene;
+
+        beforeEach((done) => {
             subject = makeOne();
-            subject.addTo(map);
+            scene = subject.scene;
+
             sinon.spy(L.GridLayer.prototype, 'onRemove');
-            subject.onRemove();
+            sinon.spy(scene, 'destroy');
+
+            subject.on('init', () => {
+                subject.remove();
+            });
+
+            map.on('layerremove', () => {
+                done();
+            });
+
+            subject.addTo(map);
         });
+
         afterEach(() => {
-            subject.removeFrom(map);
-            subject.scene.destroy();
             L.GridLayer.prototype.onRemove.restore();
         });
 
-        it('calls the .super', () => {
-            assert.isTrue(L.GridLayer.prototype.onRemove.called);
+        // it('calls the .super', () => {
+        //     assert.isTrue(L.GridLayer.prototype.onRemove.called);
+        // });
+
+        it('destroys the scene', () => {
+            assert.isTrue(scene.destroy.called);
+            assert.isNull(subject.scene);
         });
     });
 
     describe('.createTile(coords, done)', () => {
         let subject;
-        let coords = {x: 1, y: 1};
+        let coords = { x: 9647, y: 12320, z: 15 };
 
         beforeEach(() => {
             subject = makeOne();
@@ -82,7 +110,7 @@ describe('Leaflet', () => {
         });
 
         afterEach(() => {
-            subject.scene.destroy();
+            subject.remove();
         });
 
         it('calls the .scene.loadTile() method', () => {

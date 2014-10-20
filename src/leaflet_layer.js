@@ -12,12 +12,13 @@ export var LeafletLayer = L.GridLayer.extend({
         );
 
         this.scene.debug = this.options.debug;
-        this.scene.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
         this.hooks = {};
     },
 
     // Finish initializing scene and setup events when layer is added to map
-    onAdd: function (map) {
+    onAdd: function () {
+
+        L.GridLayer.prototype.onAdd.apply(this, arguments);
 
         this.hooks.tileunload = (event) => {
             var tile = event.tile;
@@ -73,15 +74,13 @@ export var LeafletLayer = L.GridLayer.extend({
         this.scene.setZoom(this._map.getZoom());
         this.updateBounds();
 
-        L.GridLayer.prototype.onAdd.apply(this, arguments);
-
         // Use leaflet's existing event system as the callback mechanism
         this.scene.init(() => {
             this.fire('init');
         });
     },
 
-    onRemove: function (map) {
+    onRemove: function () {
         L.GridLayer.prototype.onRemove.apply(this, arguments);
 
         this.off('tileunload', this.hooks.tileunload);
@@ -93,8 +92,10 @@ export var LeafletLayer = L.GridLayer.extend({
         this._map.off('dragend', this.hooks.dragend);
         this.hooks = {};
 
-        this.scene.destroy();
-        this.scene = null;
+        if (this.scene) {
+            this.scene.destroy();
+            this.scene = null;
+        }
         // TODO: allow layer to be re-added later, requiring scene re-initialization?
     },
 

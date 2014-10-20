@@ -131,14 +131,16 @@ Scene.prototype.destroy = function () {
         this.canvas = null;
     }
 
-    this.gl.deleteFramebuffer(this.fbo);
-    this.fbo = null;
+    if (this.gl) {
+        this.gl.deleteFramebuffer(this.fbo);
+        this.fbo = null;
 
-    GLTexture.destroy(this.gl);
-    ModeManager.destroy(this.gl);
-    this.modes = {};
+        GLTexture.destroy(this.gl);
+        ModeManager.destroy(this.gl);
+        this.modes = {};
 
-    this.gl = null;
+        this.gl = null;
+    }
 
     if (Array.isArray(this.workers)) {
         this.workers.forEach((worker) => {
@@ -1177,7 +1179,7 @@ Scene.prototype.updateActiveModes = function () {
     var animated = false; // is any active mode animated?
     for (var l in this.styles.layers) {
         var mode = this.styles.layers[l].mode.name;
-        if (this.styles.layers[l].visible !== false) {
+        if (this.styles.layers[l].visible !== false && this.modes[mode]) {
             this.active_modes[mode] = true;
 
             // Check if this mode is animated

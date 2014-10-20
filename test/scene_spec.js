@@ -7,12 +7,15 @@ import sampleScene from './fixtures/sample-scene';
 
 let makeOne;
 /* jshint ignore:start */
-makeOne = ({tile_source = sampleScene.tileSource,
-                layers  = sampleScene.layers,
-                styles  = sampleScene.styles,
-                options = {}
-           } = {}) => {
-    return new Scene(tile_source, layers, styles, options);
+// makeOne = ({tile_source = sampleScene.tileSource,
+//                 layers  = sampleScene.layers,
+//                 styles  = sampleScene.styles,
+//                 options = {}
+//            } = {}) => {
+//     return new Scene(tile_source, layers, styles, options);
+// };
+makeOne = ({options}) => {
+    return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
 };
 /* jshint ignore:end */
 
@@ -83,12 +86,15 @@ describe('Scene', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
+                    // console.log(subject);
                     done();
                 });
             });
 
             it('sets the initialized property', (done) => {
+                // console.log(subject);
                 subject.init(() => {
+                    // console.log(subject);
                     assert.isTrue(subject.initialized);
                     done();
                 });
