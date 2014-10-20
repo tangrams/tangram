@@ -781,15 +781,18 @@ Scene.prototype.rebuildTiles = function (callback) {
 
     // Skip rebuild if already in progress
     if (this.building) {
-        callback(false);
+        // Queue up to one rebuild call at a time, only save last request
+        if (this.building.queued && typeof this.building.queued.callback === 'function') {
+            this.building.queued.callback(false); // notify previous callback that it did not complete
+        }
+
+        // Save queued request
+        this.building.queued = { callback };
         return;
     }
 
     // Track tile build state
-    this.building = {
-        callback,
-        tiles: {}
-    };
+    this.building = { callback, tiles: {} };
 
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
@@ -1021,9 +1024,15 @@ Scene.prototype.trackTileBuildStop = function (key) {
         if (Object.keys(this.building.tiles).length === 0) {
             console.log(`scene build FINISHED`);
             var callback = this.building.callback;
-            this.building = null;
             if (typeof callback === 'function') {
-                callback(true);
+                callback(true); // notify build callback as completed
+            }
+
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                this.rebuildTiles(queued.callback);
             }
         }
     }
