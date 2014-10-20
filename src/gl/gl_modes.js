@@ -279,7 +279,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
                 {
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     closed_polygon: true,
-                    remove_tile_edges: true
+                    remove_tile_edges: !style.outline.tile_edges
                 }
             );
         }
