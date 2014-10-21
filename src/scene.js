@@ -34,7 +34,6 @@ Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
-Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 // TODO, convert this to the class sytnax once we get the runtime
@@ -129,12 +128,20 @@ Scene.prototype.destroy = function () {
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
+        this.canvas = null;
     }
+    this.container = null;
 
-    this.gl = null;
-    this.fbo = null;
-    this.fbo_texture = null;
-    this.fbo_depth_rb = null;
+    if (this.gl) {
+        this.gl.deleteFramebuffer(this.fbo);
+        this.fbo = null;
+
+        GLTexture.destroy(this.gl);
+        ModeManager.destroy(this.gl);
+        this.modes = {};
+
+        this.gl = null;
+    }
 
     if (Array.isArray(this.workers)) {
         this.workers.forEach((worker) => {
@@ -143,6 +150,8 @@ Scene.prototype.destroy = function () {
         this.workers = null;
     }
 
+    this.tiles = {}; // TODO: probably destroy each tile separately too
+    this.initialized = false;
 };
 
 Scene.prototype.initModes = function () {
@@ -172,15 +181,15 @@ Scene.prototype.initSelectionBuffer = function () {
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
-    this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
-    this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture.texture, 0);
+    var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+    fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 
     // Renderbuffer for the FBO depth attachment
-    this.fbo_depth_rb = this.gl.createRenderbuffer();
-    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    var fbo_depth_rb = this.gl.createRenderbuffer();
+    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, fbo_depth_rb);
     this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
-    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, fbo_depth_rb);
 
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -308,7 +317,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
-    console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
+    // console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
@@ -1224,7 +1233,7 @@ Scene.prototype.updateActiveModes = function () {
     var animated = false; // is any active mode animated?
     for (var l in this.styles.layers) {
         var mode = this.styles.layers[l].mode.name;
-        if (this.styles.layers[l].visible !== false) {
+        if (this.styles.layers[l].visible !== false && this.modes[mode]) {
             this.active_modes[mode] = true;
 
             // Check if this mode is animated

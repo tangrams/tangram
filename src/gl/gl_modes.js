@@ -18,6 +18,7 @@ export var ModeManager = {};
 var RenderMode = {
     setGL (gl) {
         this.gl = gl;
+        this.valid = true;
         this.makeGLProgram();
     },
     refresh: function () { // TODO: should this be async/non-blocking?
@@ -33,9 +34,31 @@ var RenderMode = {
     }
 };
 
+RenderMode.destroy = function () {
+    if (this.gl_program) {
+        this.gl_program.destroy();
+        this.gl_program = null;
+    }
+
+    if (this.selection_gl_program) {
+        this.selection_gl_program.destroy();
+        this.selection_gl_program = null;
+    }
+
+    this.gl = null;
+    this.valid = false;
+
+    if (!this.built_in) {
+        delete Modes[this.name];
+    }
+};
+
 RenderMode.makeGLProgram = function ()
 {
-    // console.log(this.name + ": " + "start building");
+    if (this.loading || this.valid === false) {
+        return false;
+    }
+    this.loading = true;
     var queue = Queue();
 
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
@@ -111,8 +134,10 @@ RenderMode.makeGLProgram = function ()
            this.selection_gl_program = selection_program;
        }
 
-       // console.log(this.name + ": " + "finished building");
+       this.loading = false;
     });
+
+    return true;
 };
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
@@ -167,6 +192,18 @@ ModeManager.configureMode = function (name, settings)
     return Modes[name];
 };
 
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    var modes = Object.keys(Modes);
+    for (var m of modes) {
+        var mode = Modes[m];
+        if (mode.gl === gl) {
+            // console.log(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    }
+};
+
 
 // Built-in rendering modes
 
@@ -174,6 +211,7 @@ ModeManager.configureMode = function (name, settings)
 
 Modes.polygons = Object.create(RenderMode);
 Modes.polygons.name = 'polygons';
+Modes.polygons.built_in = true;
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
@@ -348,6 +386,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 
 Modes.points = Object.create(RenderMode);
 Modes.points.name = 'points';
+Modes.points.built_in = true;
 
 Modes.points.vertex_shader_key = 'point_vertex';
 Modes.points.fragment_shader_key = 'point_fragment';

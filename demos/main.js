@@ -185,6 +185,7 @@
         unloadInvisibleTiles: false,
         updateWhenIdle: false
     });
+    window.layer = layer;
 
     var scene = layer.scene;
     window.scene = scene;

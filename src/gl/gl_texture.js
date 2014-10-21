@@ -26,6 +26,7 @@ export default function GLTexture (gl, name, options = {}) {
     GLTexture.textures[this.name] = this;
 }
 
+// Destroy a single texture instance
 GLTexture.prototype.destroy = function () {
     if (!this.valid) {
         return;
@@ -36,6 +37,18 @@ GLTexture.prototype.destroy = function () {
     this.data = null;
     delete GLTexture.textures[this.name];
     this.valid = false;
+};
+
+// Destroy all texture instances for a given GL context
+GLTexture.destroy = function (gl) {
+    var textures = Object.keys(GLTexture.textures);
+    for (var t of textures) {
+        var texture = GLTexture.textures[t];
+        if (texture.gl === gl) {
+            // console.log(`destroying GLTexture ${texture.name}`);
+            texture.destroy();
+        }
+    }
 };
 
 GLTexture.prototype.bind = function (unit) {

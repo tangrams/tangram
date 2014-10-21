@@ -31,6 +31,16 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.compile(options.callback);
 }
 
+GLProgram.prototype.destroy = function () {
+    this.gl.useProgram(null);
+    this.gl.deleteProgram(this.program);
+    this.program = null;
+    this.uniforms = {};
+    this.attribs = {};
+    delete GLProgram.programs[this.id];
+    this.compiled = false;
+};
+
 // Use program wrapper with simple state cache
 GLProgram.prototype.use = function ()
 {
@@ -267,6 +277,10 @@ GLProgram.buildDefineString = function (defines) {
 // Set uniforms from a JS object, with inferred types
 GLProgram.prototype.setUniforms = function (uniforms)
 {
+    if (!this.compiled) {
+        return;
+    }
+
     // TODO: only update uniforms when changed
     var texture_unit = 0;
 
