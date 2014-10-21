@@ -42,13 +42,11 @@ export var LeafletLayer = L.GridLayer.extend({
         this._map.on('move', this.hooks.move);
 
         this.hooks.zoomstart = () => {
-            console.log("map.zoomstart " + this._map.getZoom());
             this.scene.startZoom();
         };
         this._map.on('zoomstart', this.hooks.zoomstart);
 
         this.hooks.zoomend = () => {
-            console.log("map.zoomend " + this._map.getZoom());
             this.scene.setZoom(this._map.getZoom());
             this.updateBounds();
         };
@@ -70,7 +68,6 @@ export var LeafletLayer = L.GridLayer.extend({
 
         var center = this._map.getCenter();
         this.scene.setCenter(center.lng, center.lat);
-        console.log("zoom: " + this._map.getZoom());
         this.scene.setZoom(this._map.getZoom());
         this.updateBounds();
 

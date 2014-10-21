@@ -316,7 +316,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.tile_source.max_zoom || below);
     above = Math.min(above, this.tile_source.max_zoom || above);
 
-    console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
+    // console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];

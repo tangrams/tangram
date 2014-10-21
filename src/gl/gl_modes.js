@@ -193,7 +193,7 @@ ModeManager.destroy = function (gl) {
     for (var m of modes) {
         var mode = Modes[m];
         if (mode.gl === gl) {
-            console.log(`destroying render mode ${mode.name}`);
+            // console.log(`destroying render mode ${mode.name}`);
             mode.destroy();
         }
     }
