@@ -61,6 +61,10 @@ describe('Leaflet plugin', () => {
             sinon.assert.called(map.getContainer);
         });
 
+        it('initializes the scene', () => {
+            assert.isTrue(subject.scene.initialized);
+        });
+
     });
 
     describe('.remove()', () => {
@@ -95,6 +99,25 @@ describe('Leaflet plugin', () => {
         it('destroys the scene', () => {
             assert.isTrue(scene.destroy.called);
             assert.isNull(subject.scene);
+        });
+    });
+
+    describe('removing and then re-adding to a map', () => {
+        let subject = makeOne();
+        let scene = subject.scene;
+
+        sinon.spy(subject.scene, 'destroy');
+
+        subject.addTo(map);
+        subject.remove();
+        subject.addTo(map);
+
+        it('destroys the initial scene', () => {
+            assert.isTrue(scene.destroy.called);
+        });
+
+        it('re-initializes a new scene', () => {
+            assert.isTrue(subject.scene.initialized);
         });
     });
 
