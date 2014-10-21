@@ -8,7 +8,7 @@ let map = L.map(
     document.createElement('div'),
     { maxZoom: 20, inertia: false, keyboard: false}
 );
-map.setView([0, 0], 0);
+map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
     return new LeafletLayer({
