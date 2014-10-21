@@ -96,6 +96,7 @@ Scene.prototype.init = function (callback) {
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
             this.createCamera();
+            this.createLighting();
             this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
             this.initSelectionBuffer();
 
@@ -1201,7 +1202,9 @@ Scene.prototype.reloadScene = function () {
     }
 
     this.loadScene(() => {
-        this.refreshCamera();
+        this.createCamera();
+        this.createLighting();
+        this.refreshModes();
         this.rebuildTiles();
     });
 };
@@ -1241,6 +1244,28 @@ Scene.prototype.createCamera = function () {
 // Replace camera
 Scene.prototype.refreshCamera = function () {
     this.createCamera();
+    this.refreshModes();
+};
+
+// Create lighting
+Scene.prototype.createLighting = function () {
+    // Temporary #define-based lighting
+    // TODO: extract lighting models to classes & shader modules
+    var types = {
+        diffuse: 'LIGHTING_POINT',
+        specular: 'LIGHTING_POINT_SPECULAR',
+        flat: 'LIGHTING_DIRECTION',
+        night: 'LIGHTING_NIGHT' // TODO: this should just be config on top of a normal lighting mode, here temporarily for demo
+    };
+
+    for (var t in types) {
+        GLProgram.defines[types[t]] = (t === this.styles.lighting.type);
+    }
+};
+
+// Replace lighting
+Scene.prototype.refreshLighting = function () {
+    this.createLighting();
     this.refreshModes();
 };
 
@@ -1438,6 +1463,7 @@ Scene.postProcessStyles = function (styles) {
     }
 
     styles.camera = styles.camera || {}; // ensure camera object
+    styles.lighting = styles.lighting || {}; // ensure lighting object
 
     return styles;
 };
