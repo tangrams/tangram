@@ -52,7 +52,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.layers = layers;
     this.styles = styles;
 
-    this.building = null;
+    this.building = null; // tracks current scnee building state (tiles being built, callback when finished, etc.)
     this.dirty = true; // request a redraw
     this.animated = false; // request redraw every frame
 
