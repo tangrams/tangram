@@ -4,19 +4,24 @@ export var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
+        this.createScene();
+        this.hooks = {};
+    },
+
+    createScene: function () {
         this.scene = new Scene(
             this.options.vectorTileSource,
             this.options.vectorLayers,
             this.options.vectorStyles,
             { num_workers: this.options.numWorkers }
         );
-
-        this.scene.debug = this.options.debug;
-        this.hooks = {};
     },
 
     // Finish initializing scene and setup events when layer is added to map
     onAdd: function () {
+        if (!this.scene) {
+            this.createScene();
+        }
 
         L.GridLayer.prototype.onAdd.apply(this, arguments);
 
@@ -93,7 +98,6 @@ export var LeafletLayer = L.GridLayer.extend({
             this.scene.destroy();
             this.scene = null;
         }
-        // TODO: allow layer to be re-added later, requiring scene re-initialization?
     },
 
     createTile: function (coords, done) {

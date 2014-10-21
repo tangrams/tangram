@@ -34,7 +34,6 @@ Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
-Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 // TODO, convert this to the class sytnax once we get the runtime
@@ -130,6 +129,7 @@ Scene.prototype.destroy = function () {
         this.canvas.parentNode.removeChild(this.canvas);
         this.canvas = null;
     }
+    this.container = null;
 
     if (this.gl) {
         this.gl.deleteFramebuffer(this.fbo);

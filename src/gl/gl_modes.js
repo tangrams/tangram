@@ -18,6 +18,7 @@ export var ModeManager = {};
 var RenderMode = {
     setGL (gl) {
         this.gl = gl;
+        this.valid = true;
         this.makeGLProgram();
     },
     refresh: function () { // TODO: should this be async/non-blocking?
@@ -44,8 +45,12 @@ RenderMode.destroy = function () {
         this.selection_gl_program = null;
     }
 
-    delete Modes[this.name];
+    this.gl = null;
     this.valid = false;
+
+    if (!this.built_in) {
+        delete Modes[this.name];
+    }
 };
 
 RenderMode.makeGLProgram = function ()
@@ -206,6 +211,7 @@ ModeManager.destroy = function (gl) {
 
 Modes.polygons = Object.create(RenderMode);
 Modes.polygons.name = 'polygons';
+Modes.polygons.built_in = true;
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
@@ -380,6 +386,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 
 Modes.points = Object.create(RenderMode);
 Modes.points.name = 'points';
+Modes.points.built_in = true;
 
 Modes.points.vertex_shader_key = 'point_vertex';
 Modes.points.fragment_shader_key = 'point_fragment';
