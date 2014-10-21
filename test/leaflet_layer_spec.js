@@ -20,7 +20,6 @@ let makeOne = () => {
 
 describe('Leaflet plugin', () => {
 
-    // leaflet calls it .initialize()
     describe('.constructor()', () => {
         let subject;
 
@@ -78,7 +77,7 @@ describe('Leaflet plugin', () => {
                 subject.remove();
             });
 
-            map.on('layerremove', () => {
+            subject.on('remove', () => {
                 done();
             });
 
@@ -89,9 +88,9 @@ describe('Leaflet plugin', () => {
             L.GridLayer.prototype.onRemove.restore();
         });
 
-        // it('calls the .super', () => {
-        //     assert.isTrue(L.GridLayer.prototype.onRemove.called);
-        // });
+        it('calls the .super', () => {
+            assert.isTrue(L.GridLayer.prototype.onRemove.called);
+        });
 
         it('destroys the scene', () => {
             assert.isTrue(scene.destroy.called);
