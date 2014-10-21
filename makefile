@@ -2,8 +2,6 @@ BROWSERIFY = node_modules/.bin/browserify
 UGLIFY = node_modules/.bin/uglifyjs
 KARMA = ./node_modules/karma/bin/karma
 JSHINT = ./node_modules/.bin/jshint
-LIB_TESS = ./lib/libtess.cat.js
-EXTERNAL_LIBS = $(LIB_TESS)
 EXTERNAL_MODULES = js-yaml
 
 all: \
@@ -24,9 +22,7 @@ dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODU
 	node build.js --debug=true --require './src/module.js' > dist/tangram.debug.js
 
 dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -t es6ify -x $(EXTERNAL_MODULES) src/scene_worker.js)
-	node build.js --debug=true --require './src/scene_worker.js' > dist/temp.tangram-worker.debug.js
-	cat $(EXTERNAL_LIBS) ./dist/temp.tangram-worker.debug.js > ./dist/tangram-worker.debug.js
-	rm dist/temp.tangram-worker.debug.js
+	node build.js --debug=true --require './src/scene_worker.js' > dist/tangram-worker.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c -m -o dist/tangram.min.js
