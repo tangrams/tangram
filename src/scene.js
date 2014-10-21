@@ -52,6 +52,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.layers = layers;
     this.styles = styles;
 
+    this.building = null; // tracks current scnee building state (tiles being built, callback when finished, etc.)
     this.dirty = true; // request a redraw
     this.animated = false; // request redraw every frame
 
@@ -772,10 +773,26 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function () {
+Scene.prototype.rebuildTiles = function (callback) {
     if (!this.initialized) {
+        callback(false);
         return;
     }
+
+    // Skip rebuild if already in progress
+    if (this.building) {
+        // Queue up to one rebuild call at a time, only save last request
+        if (this.building.queued && typeof this.building.queued.callback === 'function') {
+            this.building.queued.callback(false); // notify previous callback that it did not complete
+        }
+
+        // Save queued request
+        this.building.queued = { callback };
+        return;
+    }
+
+    // Track tile build state
+    this.building = { callback, tiles: {} };
 
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
@@ -836,6 +853,7 @@ Scene.prototype.rebuildTiles = function () {
 Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
+    this.trackTileBuildStart(key);
     this.workerPostMessageForTile(tile, {
         type: 'buildTile',
         tile: {
@@ -971,17 +989,53 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
         console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
-        return;
+    }
+    else if (!tile.error) {
+        // Update tile with properties from worker
+        tile = this.mergeTile(tile.key, tile);
+        this.buildGLGeometry(tile);
+        this.dirty = true;
+    }
+    else {
+        console.log(`main thread tile load error for ${tile.key}: ${tile.error}`);
     }
 
-    // Update tile with properties from worker
-    tile = this.mergeTile(tile.key, tile);
-
-    this.buildGLGeometry(tile);
-
-    this.dirty = true;
-    this.trackTileSetLoadEnd();
+    this.trackTileSetLoadStop();
     this.printDebugForTile(tile);
+    this.trackTileBuildStop(tile.key);
+};
+
+// Track tile build state
+Scene.prototype.trackTileBuildStart = function (key) {
+    if (!this.building) {
+        this.building = {
+            tiles: {}
+        };
+    }
+    this.building.tiles[key] = true;
+    // console.log(`trackTileBuildStart for ${key}: ${Object.keys(this.building.tiles).length}`);
+};
+
+Scene.prototype.trackTileBuildStop = function (key) {
+    // Done building?
+    if (this.building) {
+        // console.log(`trackTileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
+        delete this.building.tiles[key];
+        if (Object.keys(this.building.tiles).length === 0) {
+            console.log(`scene build FINISHED`);
+            var callback = this.building.callback;
+            if (typeof callback === 'function') {
+                callback(true); // notify build callback as completed
+            }
+
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                this.rebuildTiles(queued.callback);
+            }
+        }
+    }
 };
 
 // Called on main thread when a web worker completes processing for a single tile
@@ -1254,7 +1308,7 @@ Scene.prototype.trackTileSetLoadStart = function () {
     }
 };
 
-Scene.prototype.trackTileSetLoadEnd = function () {
+Scene.prototype.trackTileSetLoadStop = function () {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
