@@ -11,25 +11,13 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
-// Setup that happens on main thread only (skip in web worker)
-var yaml;
-
-Utils.runIfInMainThread(function() {
-    try {
-        yaml = require('js-yaml');
-    }
-    catch (e) {
-        console.log("no YAML support, js-yaml module not found");
-    }
-
-    findBaseLibraryURL();
-});
-
 // Global setup
+Utils.runIfInMainThread(() => { findBaseLibraryURL(); }); // on main thread only (skip in web worker)
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
