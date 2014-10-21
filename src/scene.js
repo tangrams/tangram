@@ -3,7 +3,6 @@ import Point from './point';
 import {Geo} from './geo';
 import Utils from './utils';
 import {Style} from './style';
-import Queue from 'queue-async';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
@@ -11,6 +10,7 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
+import Queue from 'queue-async';
 import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
@@ -146,7 +146,7 @@ Scene.prototype.destroy = function () {
 Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
-        this.modes[m].setGL(this.gl);
+        this.modes[m].setGL(this.gl, () => { this.dirty = true; }); // make sure to mark scene as dirty after each programc compiles
     }
 };
 
@@ -1215,7 +1215,7 @@ Scene.prototype.refreshModes = function () {
         return;
     }
 
-    this.modes = Scene.refreshModes(this.modes, this.styles.modes);
+    this.modes = Scene.refreshModes(this.modes, this.styles.modes, () => { this.dirty = true; }); // mark scene as dirty when all programs have compiled
 };
 
 Scene.prototype.updateActiveModes = function () {
@@ -1520,7 +1520,10 @@ Scene.createModes = function (stylesheet_modes) {
     return modes;
 };
 
-Scene.refreshModes = function (modes, stylesheet_modes) {
+// Returns mode objects immediately, but only calls callback when all modes are done compiling
+Scene.refreshModes = function (modes, stylesheet_modes, callback) {
+    var queue = Queue();
+
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
     for (var m in stylesheet_modes) {
@@ -1529,9 +1532,19 @@ Scene.refreshModes = function (modes, stylesheet_modes) {
 
     // Refresh all modes
     for (m in modes) {
-        modes[m].refresh();
+        queue.defer(complete => {
+            modes[m].refresh(complete);
+        });
     }
 
+    // Callback when all modes are done compiling
+    queue.await(() => {
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+
+    // Modes can return immediately, will finish compiling later
     return modes;
 };
 

@@ -16,13 +16,13 @@ export var ModeManager = {};
 // Base
 
 var RenderMode = {
-    setGL (gl) {
+    setGL (gl, callback) {
         this.gl = gl;
         this.valid = true;
-        this.makeGLProgram();
+        this.makeGLProgram(callback);
     },
-    refresh: function () { // TODO: should this be async/non-blocking?
-        this.makeGLProgram();
+    refresh: function (callback) { // TODO: should this be async/non-blocking?
+        this.makeGLProgram(callback);
     },
     defines: {},
     selection: false,
@@ -53,12 +53,16 @@ RenderMode.destroy = function () {
     }
 };
 
-RenderMode.makeGLProgram = function ()
+RenderMode.makeGLProgram = function (callback)
 {
     if (this.loading || this.valid === false) {
+        if (typeof callback === 'function') {
+            callback(false);
+        }
         return false;
     }
     this.loading = true;
+
     var queue = Queue();
 
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
@@ -126,15 +130,19 @@ RenderMode.makeGLProgram = function ()
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
     queue.await(() => {
-       if (program) {
-           this.gl_program = program;
-       }
+        this.loading = false;
 
-       if (selection_program) {
-           this.selection_gl_program = selection_program;
-       }
+        if (program) {
+            this.gl_program = program;
+        }
 
-       this.loading = false;
+        if (selection_program) {
+            this.selection_gl_program = selection_program;
+        }
+
+        if (typeof callback === 'function') {
+            callback(true);
+        }
     });
 
     return true;
