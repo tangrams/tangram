@@ -1372,9 +1372,9 @@ Scene.loadLayers = function (url, callback) {
     Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
         if (error) { throw error; }
         // Try JSON first, then YAML (if available)
-        /* jshint ignore:start */
+
         try {
-            eval('layers = ' + body); // TODO: security!
+            eval('layers = ' + body); // jshint ignore:line
         } catch (e) {
             try {
                 layers = yaml.safeLoad(body);
@@ -1384,7 +1384,6 @@ Scene.loadLayers = function (url, callback) {
                 layers = null;
             }
         }
-        /* jshint ignore:end */
 
         if (typeof callback === 'function') {
             callback(layers);
@@ -1397,10 +1396,8 @@ Scene.loadStyles = function (url, callback) {
         if (error) { throw error; }
         var styles;
         // Try JSON first, then YAML (if available)
-        /* jshint ignore:start */
         try {
-
-            eval('styles = ' + body);
+            eval('styles = ' + body); // jshint ignore:line
         } catch (e) {
             try {
                 styles = yaml.safeLoad(body);
@@ -1410,7 +1407,7 @@ Scene.loadStyles = function (url, callback) {
                 styles = null;
             }
         }
-        /* jshint ignore:end */
+
         // Find generic functions & style macros
         Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
