@@ -106,11 +106,15 @@ export class NetworkTileSource extends TileSource {
             timeout: 60 * 1000,
             responseType: this.response_type
         }, (err, resp, body) => {
+            // Tile load errored
             if (err) {
-                return callback(err, tile);
+                tile.loaded = false;
+                tile.loading = false;
+                tile.error = err.toString();
+                return callback(err);
             }
-
-            if (tile.loading === false) {
+            // We already canceled the tile load, so just throw away the result
+            else if (tile.loading === false) {
                 return;
             }
 

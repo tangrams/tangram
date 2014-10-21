@@ -93,15 +93,10 @@ SceneWorker.worker.addEventListener('message', function (event) {
         tile.loading = true;
         tile.error = null;
 
-        SceneWorker.tile_source.loadTile(tile, (error, tile) => {
+        SceneWorker.tile_source.loadTile(tile, (error) => {
             // Tile load errored
             if (error) {
                 console.log(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
-
-                // Update loading state
-                tile.loaded = false;
-                tile.loading = false;
-                tile.error = error.toString();
             }
             else {
                 // Tile loaded successfully
