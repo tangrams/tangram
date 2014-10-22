@@ -1,7 +1,7 @@
 camera:
     type: perspective
-    # focal_length: 1
-    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+    focal_length: 1
+    # focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
     vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
 
     # type: isometric

@@ -100,7 +100,7 @@ Scene.prototype.init = function (callback) {
             this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
             this.initSelectionBuffer();
 
-            // this.zoom_step = 0.02; // for fractional zoom user adjustment
+            this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
 
@@ -282,11 +282,11 @@ Scene.prototype.setZoom = function (zoom) {
 
     this.last_zoom = this.zoom;
     this.zoom = zoom;
-    this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
+    this.capped_zoom = Math.min(Math.round(this.zoom), this.tile_source.max_zoom || Math.round(this.zoom));
     this.zooming = false;
     this.updateMeterView();
 
-    this.removeTilesOutsideZoomRange(below, above);
+    // this.removeTilesOutsideZoomRange(below, above);
     this.dirty = true;
 };
 
@@ -303,8 +303,8 @@ Scene.prototype.updateMeterView = function () {
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
-    below = Math.min(below, this.tile_source.max_zoom || below);
-    above = Math.min(above, this.tile_source.max_zoom || above);
+    below = Math.min(Math.round(below), this.tile_source.max_zoom || below);
+    above = Math.min(Math.round(above), this.tile_source.max_zoom || above);
 
     // console.log(`removeTilesOutsideZoomRange [${below}, ${above}]`);
     var remove_tiles = [];
@@ -1278,43 +1278,42 @@ Scene.prototype.resetTime = function () {
 // TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
 
 Scene.prototype.initInputHandlers = function () {
-    // this.key = null;
+    this.key = null;
 
-    // document.addEventListener('keydown', function (event) {
-    //     if (event.keyCode == 37) {
-    //         this.key = 'left';
-    //     }
-    //     else if (event.keyCode == 39) {
-    //         this.key = 'right';
-    //     }
-    //     else if (event.keyCode == 38) {
-    //         this.key = 'up';
-    //     }
-    //     else if (event.keyCode == 40) {
-    //         this.key = 'down';
-    //     }
-    //     else if (event.keyCode == 83) { // s
-    //         console.log("reloading shaders");
-    //         for (var mode in this.modes) {
-    //             this.modes[mode].gl_program.compile();
-    //         }
-    //         this.dirty = true;
-    //     }
-    // }.bind(this));
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode == 37) {
+            this.key = 'left';
+        }
+        else if (event.keyCode == 39) {
+            this.key = 'right';
+        }
+        else if (event.keyCode == 38) {
+            this.key = 'up';
+        }
+        else if (event.keyCode == 40) {
+            this.key = 'down';
+        }
+        else if (event.keyCode == 83) { // s
+            this.refreshModes();
+            this.rebuildTiles(() => { this.dirty = true; });
+        }
+    }.bind(this));
 
-    // document.addEventListener('keyup', function (event) {
-    //     this.key = null;
-    // }.bind(this));
+    document.addEventListener('keyup', function (event) {
+        this.key = null;
+    }.bind(this));
 };
 
 Scene.prototype.input = function () {
-    // // Fractional zoom scaling
-    // if (this.key == 'up') {
-    //     this.setZoom(this.zoom + this.zoom_step);
-    // }
-    // else if (this.key == 'down') {
-    //     this.setZoom(this.zoom - this.zoom_step);
-    // }
+    // Fractional zoom scaling
+    if (this.key == 'up') {
+        // this.setZoom(this.zoom + this.zoom_step);
+        window.layer._map.setZoom(this.zoom + this.zoom_step);
+    }
+    else if (this.key == 'down') {
+        // this.setZoom(this.zoom - this.zoom_step);
+        window.layer._map.setZoom(this.zoom - this.zoom_step);
+    }
 };
 
 
