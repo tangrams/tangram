@@ -107,10 +107,11 @@ Scene.prototype.init = function (callback) {
             this.last_render_count = null;
             this.initInputHandlers();
 
-            this.initialized = true;
             if (this.render_loop !== false) {
                 this.setupRenderLoop();
             }
+
+            this.initialized = true;
 
             if (typeof callback === 'function') {
                 callback();
@@ -120,6 +121,8 @@ Scene.prototype.init = function (callback) {
 };
 
 Scene.prototype.destroy = function () {
+    this.initialized = false;
+    this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
@@ -146,7 +149,6 @@ Scene.prototype.destroy = function () {
     }
 
     this.tiles = {}; // TODO: probably destroy each tile separately too
-    this.initialized = false;
 };
 
 Scene.prototype.initModes = function () {
@@ -403,23 +405,25 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
 // Setup the render loop
 Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
-        // Pre-render hook
-        if (typeof this.preRender === 'function') {
-            this.preRender();
-        }
+        if (this.initialized) {
+            // Pre-render hook
+            if (typeof this.preRender === 'function') {
+                this.preRender();
+            }
 
-        // Render the scene
-        this.render();
+            // Render the scene
+            this.render();
 
-        // Post-render hook
-        if (typeof this.postRender === 'function') {
-            this.postRender();
+            // Post-render hook
+            if (typeof this.postRender === 'function') {
+                this.postRender();
+            }
         }
 
         // Request the next frame
         Utils.requestAnimationFrame(this.renderLoop);
     };
-    this.renderLoop();
+    setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
 };
 
 Scene.prototype.render = function () {
@@ -470,6 +474,9 @@ Scene.prototype.renderGL = function () {
     this.resetFrame();
 
     // Map transforms
+    if (!this.center) {
+        return;
+    }
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
 
     // Model-view matrices

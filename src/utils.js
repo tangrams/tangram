@@ -107,15 +107,15 @@ Utils.runIfInMainThread(() => {
         if (typeof window.requestAnimationFrame === 'function') {
             return window.requestAnimationFrame;
         }
-        else {
-            return window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame    ||
-                window.oRequestAnimationFrame      ||
-                window.msRequestAnimationFrame     ||
-                function (cb) {
-                    setTimeout(cb, 1000 /60);
-                };
-        }
+        // else {
+        //     return window.webkitRequestAnimationFrame ||
+        //         window.mozRequestAnimationFrame    ||
+        //         window.oRequestAnimationFrame      ||
+        //         window.msRequestAnimationFrame     ||
+        //         function (cb) {
+        //             setTimeout(cb, 1000 /60);
+        //         };
+        // }
     })();
 
     Utils.requestAnimationFrame = function (frame) {
