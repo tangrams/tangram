@@ -700,8 +700,6 @@
                 .bringToFront()
                 .addTo(map);
         }
-
-        // frame();
     });
 
 
