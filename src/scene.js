@@ -421,7 +421,7 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
         }
 
         // Request the next frame
-        Utils.requestAnimationFrame(this.renderLoop);
+        window.requestAnimationFrame(this.renderLoop);
     };
     setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
 };

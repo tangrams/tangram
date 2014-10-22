@@ -101,27 +101,6 @@ Utils.runIfInMainThread = function(block, err) {
     }
 };
 
-// Request animation frame polyfill
-Utils.runIfInMainThread(() => {
-    var animationFrameFunc = (function(cb) {
-        if (typeof window.requestAnimationFrame === 'function') {
-            return window.requestAnimationFrame;
-        }
-        // else {
-        //     return window.webkitRequestAnimationFrame ||
-        //         window.mozRequestAnimationFrame    ||
-        //         window.oRequestAnimationFrame      ||
-        //         window.msRequestAnimationFrame     ||
-        //         function (cb) {
-        //             setTimeout(cb, 1000 /60);
-        //         };
-        // }
-    })();
-
-    Utils.requestAnimationFrame = function (frame) {
-        animationFrameFunc(frame);
-    };
-});
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
