@@ -13,7 +13,12 @@ export var LeafletLayer = L.GridLayer.extend({
             this.options.vectorTileSource,
             this.options.vectorLayers,
             this.options.vectorStyles,
-            { num_workers: this.options.numWorkers }
+            {
+                numWorkers: this.options.numWorkers,
+                preRender: this.options.preRender,
+                postRender: this.options.postRender,
+                disableRenderLoop: this.options.disableRenderLoop // advanced option, app will have to manually called scene.render() per frame
+            }
         );
     },
 

@@ -33,15 +33,18 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.num_workers || 1;
-    this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
+    this.num_workers = options.numWorkers || 1;
+    this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
     this.styles = styles;
 
-    this.building = null; // tracks current scnee building state (tiles being built, callback when finished, etc.)
-    this.dirty = true; // request a redraw
-    this.animated = false; // request redraw every frame
+    this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
+    this.dirty = true;                              // request a redraw
+    this.animated = false;                          // request redraw every frame
+    this.preRender = options.preRender;             // optional pre-rendering hook
+    this.postRender = options.postRender;           // optional post-rendering hook
+    this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
 
     this.frame = 0;
     this.zoom = null;
@@ -105,7 +108,9 @@ Scene.prototype.init = function (callback) {
             this.initInputHandlers();
 
             this.initialized = true;
-            this.setupRenderLoop();
+            if (this.render_loop !== false) {
+                this.setupRenderLoop();
+            }
 
             if (typeof callback === 'function') {
                 callback();
@@ -395,10 +400,23 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     return z;
 };
 
-// Start the render loop
-Scene.prototype.setupRenderLoop = function () {
+// Setup the render loop
+Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
+        // Pre-render hook
+        if (typeof this.preRender === 'function') {
+            this.preRender();
+        }
+
+        // Render the scene
         this.render();
+
+        // Post-render hook
+        if (typeof this.postRender === 'function') {
+            this.postRender();
+        }
+
+        // Request the next frame
         Utils.requestAnimationFrame(this.renderLoop);
     };
     this.renderLoop();
