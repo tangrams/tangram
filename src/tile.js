@@ -53,7 +53,7 @@ export default class Tile {
 
     buildTileAsMessage() {
         return {
-            key: this.key,
+            key: this.getKey(),
             coords: this.coords,
             min: this.min,
             max: this.max,
@@ -114,24 +114,18 @@ export default class Tile {
     }
 
     getKey() {
-        return [this.coords.x, this.coords.y, this.coords.z].join('/');
+
+        var zgap = this.coords.z - this.tile_source.max_zoom,
+            x = ~~(this.coords.x / Math.pow(2, zgap)),
+            y = ~~(this.coords.y / Math.pow(2, zgap)),
+            z = this.coords.z - zgap;
+
+        return [x, y, z].join('/');
     }
 
     load(scene, coords, div, cb) {
-        var key,
-            zgap = coords.z - scene.tile_source.max_zoom;
-        coords.x = ~~(coords.x / Math.pow(2, zgap));
-        coords.y = ~~(coords.y / Math.pow(2, zgap));
 
-
-        coords.display_z = coords.z;
-        coords.z -= zgap;
         scene.trackTileSetLoadStart();
-
-        this.key = [coords.x, coords.y, coords.z].join('/');
-
-        scene.tiles[this.key] = this;
-
         Object.assign(this, {
             coords: coords,
             min: Geo.metersForTile(coords),
@@ -140,58 +134,11 @@ export default class Tile {
             loading: true
         });
 
-        this.build(scene, key);
+        this.build(scene);
         this.updateElement(div);
         this.updateVisibility(scene);
 
         if (cb) { cb(null, div); }
     }
-
-/*
-    if (coords.z > this.tile_source.max_zoom) {
-        var zgap = coords.z - this.tile_source.max_zoom;
-        // var original_tile = [coords.x, coords.y, coords.z].join('/');
-        coords.x = ~~(coords.x / Math.pow(2, zgap));
-        coords.y = ~~(coords.y / Math.pow(2, zgap));
-        coords.display_z = coords.z; // z without overzoom
-        coords.z -= zgap;
-        // console.log(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
-    }
-
-    this.trackTileSetLoadStart();
-
-    var key = [coords.x, coords.y, coords.z].join('/');
-
-    // Already loading/loaded?
-    if (this.tiles[key]) {
-        // if (this.tiles[key].loaded == true) {
-        //     console.log(`use loaded tile ${key} from cache`);
-        // }
-        // if (this.tiles[key].loading == true) {
-        //     console.log(`already loading tile ${key}, skip`);
-        // }
-
-        if (callback) {
-            callback(null, div);
-        }
-        return;
-    }
-
-    var tile = this.tiles[key] = {};
-    tile.key = key;
-    tile.coords = coords;
-    tile.min = Geo.metersForTile(tile.coords);
-    tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-    tile.span = { x: (tile.max.x - tile.min.x), y: (tile.max.y - tile.min.y) };
-    tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
-    tile.debug = {};
-    tile.loading = true;
-    tile.loaded = false;
-
-    this.buildTile(tile.key);
-    this.updateTileElement(tile, div);
-    this.updateVisibilityForTile(tile);
-*/
-
 
 }

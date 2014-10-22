@@ -2,11 +2,13 @@ import chai from 'chai';
 let assert = chai.assert;
 import Utils from '../src/utils';
 import Scene from '../src/scene';
+import Tile from '../src/tile';
 import sampleScene from './fixtures/sample-scene';
 
+import samples from './fixtures/samples';
+let nyc_bounds = samples.nyc_bounds;
 
-let makeOne;
-makeOne = ({options}) => {
+let makeOne = ({options}) => {
     options = options || {};
     // options.disableRenderLoop = (options.disableRenderLoop === undefined) ? true : options.disableRenderLoop;
     options.disableRenderLoop = true;
@@ -33,30 +35,44 @@ describe('Scene', () => {
         });
     });
 
-    describe.skip('.loadQueuedTiles()', () => {
+    describe('.loadQueuedTiles()', () => {
         let subject;
 
         beforeEach((done) => {
+            let coords = {x: 10, y: 10, z: 1},
+                div    = document.createElement('div');
+
             subject = Scene.create(sampleScene);
+
+            sinon.spy(subject, '_loadTile');
+
             subject.init(() => {
+                subject.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
+                subject.loadTile(coords, div, () => {});
+                subject.loadQueuedTiles();
                 done();
             });
         });
+
         afterEach(() => {
             subject.destroy();
             subject = null;
         });
 
-        it('works', () => {
-            assert.isTrue(true);
+        it('calls _loadTile with the queued tile', () => {
+            sinon.assert.calledOnce(subject._loadTile);
         });
-
     });
 
-    describe.skip('._loadTile(coords, div, cb)', () => {
-        let subject;
+    describe('._loadTile(coords, div, cb)', () => {
+        let subject,
+            coord = {x: 10, y: 10, z: 2},
+            div = document.createElement('div');
+
         beforeEach(() => {
             subject = Scene.create(sampleScene);
+            subject.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
+            sinon.stub(subject, 'workerPostMessageForTile');
         });
 
         afterEach(() => {
@@ -64,13 +80,57 @@ describe('Scene', () => {
             subject = null;
         });
 
-        it('does something', () => {
-            assert.instanceOf(subject, Scene);
+        describe('when the scene has not loaded the tile', () => {
+
+            it('loads the tile', (done) => {
+                subject._loadTile(coord, div, (er, div, tile) => {
+                    assert.instanceOf(tile, Tile);
+                    done();
+                });
+            });
+
+            it('caches the result in the scene object', (done) => {
+                subject._loadTile(coord, div, (er, div, tile) => {
+                    let tiles = subject.tiles;
+                    assert.instanceOf(tiles[tile.getKey()], Tile);
+                    done();
+                });
+            });
         });
+
+        describe('when the scene already have the tile', () => {
+            let key = '2621440/2621440/20';
+
+            beforeEach(() => {
+                subject.tiles[key] = {};
+                sinon.spy(subject, 'addTile');
+            });
+
+            afterEach(() => {
+                subject.addTile.restore();
+                subject.tiles[key] = undefined;
+            });
+
+            it('does not add the tile to the cache', (done) => {
+                subject._loadTile(coord, div, () => {
+                    sinon.assert.notCalled(subject.addTile);
+                    done();
+                });
+            });
+
+            it('calls back with the div', (done) => {
+                subject._loadTile(coord, div, (error, div) => {
+                    assert.isNull(error);
+                    assert.instanceOf(div, HTMLElement);
+                    done();
+                });
+            });
+        });
+
 
     });
 
-    describe.skip('.create(options)', () => {
+    describe('.create(options)', () => {
         let subject;
 
         beforeEach(() => {
@@ -102,7 +162,7 @@ describe('Scene', () => {
 
     });
 
-    describe.skip('.init(callback)', () => {
+    describe('.init(callback)', () => {
 
         describe('when the scene is not initialized', () => {
             let subject;
@@ -157,7 +217,7 @@ describe('Scene', () => {
             });
         });
 
-        describe.skip('when the scene is already initialized', () => {
+        describe('when the scene is already initialized', () => {
             let subject;
             beforeEach(() => {
                 subject = makeOne({});
@@ -178,7 +238,7 @@ describe('Scene', () => {
         });
     });
 
-    describe.skip('.resizeMap()', () => {
+    describe('.resizeMap()', () => {
         let subject;
         let height = 100;
         let width = 200;
@@ -244,7 +304,7 @@ describe('Scene', () => {
 
     });
 
-    describe.skip('.setCenter(lng, lat)', () => {
+    describe('.setCenter(lng, lat)', () => {
         let subject;
         let [lng, lat] = nycLatLng;
 
@@ -266,7 +326,7 @@ describe('Scene', () => {
         });
     });
 
-    describe.skip('.startZoom()', () => {
+    describe('.startZoom()', () => {
         let subject;
 
         beforeEach(() => {
@@ -289,7 +349,7 @@ describe('Scene', () => {
     });
 
     // TODO this method does a lot of stuff
-    describe.skip('.setZoom(zoom)', () => {
+    describe('.setZoom(zoom)', () => {
         let subject;
         beforeEach(() => {
             subject = makeOne({});
@@ -310,7 +370,7 @@ describe('Scene', () => {
         });
     });
 
-    describe.skip('.loadTile(tile)', () => {
+    describe('.loadTile(tile)', () => {
         let subject;
         let tile = { coords: null, div: null, callback: () => {}};
 
@@ -328,7 +388,7 @@ describe('Scene', () => {
 
     });
 
-    describe.skip('.render()', () => {
+    describe('.render()', () => {
         let subject;
         beforeEach((done) => {
             subject = makeOne({});
@@ -429,7 +489,7 @@ describe('Scene', () => {
         let subject;
         beforeEach(() => {
             sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
-            subject = makeOne({});
+            subject = makeOne({options: {num_workers: 2}});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
         });
@@ -460,7 +520,6 @@ describe('Scene', () => {
                 done();
             });
         });
-
     });
 
     describe.skip('.makeWorkers(url)', () => {
@@ -486,7 +545,8 @@ describe('Scene', () => {
             it('creates the correct type of workers', () => {
                 assert.instanceOf(subject.workers[0], Worker);
             });
-
         });
+
     });
+
 });

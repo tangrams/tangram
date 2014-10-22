@@ -754,11 +754,24 @@ Scene.prototype.loadQueuedTiles = function () {
     this.queued_tiles = [];
 };
 
+Scene.prototype.addTile = function (tile) {
+    this.tiles[tile.getKey()] = tile;
+};
+
+// Load a single tile
 Scene.prototype._loadTile = function (coords, div, cb) {
-    var tile = Tile.create({coords});
-    if (!this.tiles[tile.getKey()]) {
-        tile.load(this, coords, div, cb);
+    // Overzoom?
+    var tile = Tile.create({coords: coords, tile_source: this.tile_source}),
+        key  = tile.getKey();
+    // when the tile does not exist
+    if (!this.tiles[key]) {
+        tile.load(this, coords, div, (error, div) => {
+            // after we done loading the tile, save a reference to it
+            this.addTile(tile);
+            cb(null, div, tile);
+        });
     } else {
+        // if we already cached the tile, call back with the div
         cb(null, div);
     }
 };
