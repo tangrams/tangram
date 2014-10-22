@@ -645,50 +645,50 @@
     }
 
 
-    function animationFrame(cb) {
-        if (typeof window.requestAnimationFrame === 'function') {
-            return window.requestAnimationFrame;
-        } else {
-            return window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame    ||
-                window.oRequestAnimationFrame      ||
-                window.msRequestAnimationFrame     ||
-                function (cb) {
-                    setTimeout(cb, 1000 /60);
-                };
-        }
-    }
+    // function animationFrame(cb) {
+    //     if (typeof window.requestAnimationFrame === 'function') {
+    //         return window.requestAnimationFrame;
+    //     } else {
+    //         return window.webkitRequestAnimationFrame ||
+    //             window.mozRequestAnimationFrame    ||
+    //             window.oRequestAnimationFrame      ||
+    //             window.msRequestAnimationFrame     ||
+    //             function (cb) {
+    //                 setTimeout(cb, 1000 /60);
+    //             };
+    //     }
+    // }
 
-    function frame () {
+    // function frame () {
 
-        if (rS != null) { // rstats
-            rS('frame').start();
-            // rS('raf').tick();
-            rS('fps').frame();
+    //     if (rS != null) { // rstats
+    //         rS('frame').start();
+    //         // rS('raf').tick();
+    //         rS('fps').frame();
 
-            if (scene.dirty) {
-                glS.start();
-            }
-        }
+    //         if (scene.dirty) {
+    //             glS.start();
+    //         }
+    //     }
 
-        layer.render();
+    //     layer.render();
 
-        if (rS != null) { // rstats
-            rS('frame').end();
-            rS('rendertiles').set(scene.renderable_tiles_count);
-            rS('glbuffers').set((scene.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
-            rS('features').set(scene.getDebugSum('features'));
-            rS().update();
-        }
+    //     if (rS != null) { // rstats
+    //         rS('frame').end();
+    //         rS('rendertiles').set(scene.renderable_tiles_count);
+    //         rS('glbuffers').set((scene.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
+    //         rS('features').set(scene.getDebugSum('features'));
+    //         rS().update();
+    //     }
 
-        // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
-        if (gui.queue_screenshot == true) {
-            gui.queue_screenshot = false;
-            screenshot();
-        }
+    //     // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
+    //     if (gui.queue_screenshot == true) {
+    //         gui.queue_screenshot = false;
+    //         screenshot();
+    //     }
 
-        animationFrame()(frame);
-    }
+    //     animationFrame()(frame);
+    // }
 
     /***** Render loop *****/
     window.addEventListener('load', function () {
@@ -716,7 +716,7 @@
                 .addTo(map);
         }
 
-        frame();
+        // frame();
     });
 
 

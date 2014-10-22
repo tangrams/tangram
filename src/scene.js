@@ -105,6 +105,7 @@ Scene.prototype.init = function (callback) {
             this.initInputHandlers();
 
             this.initialized = true;
+            this.setupRenderLoop();
 
             if (typeof callback === 'function') {
                 callback();
@@ -392,6 +393,15 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     // var feature_offset = feature_offset || 0;
     var z = 0; // TODO: made this a no-op until revisiting where it should live - one-time calc here, in vertex layout/shader, etc.
     return z;
+};
+
+// Start the render loop
+Scene.prototype.setupRenderLoop = function () {
+    this.renderLoop = () => {
+        this.render();
+        Utils.requestAnimationFrame(this.renderLoop);
+    };
+    this.renderLoop();
 };
 
 Scene.prototype.render = function () {
