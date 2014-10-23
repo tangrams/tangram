@@ -9,6 +9,9 @@ camera:
 
     # type: flat
 
+lighting:
+    type: none
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:
@@ -342,6 +345,7 @@ modes:
     ghosts:
         extends: points
         animated: true
+        texcoords: true
         shaders:
             uniforms:
                 u_texture: demos/images/ghost_strip.gif
@@ -349,11 +353,11 @@ modes:
                 globals: |
                     uniform sampler2D u_texture;
                 fragment: |
-                    float number_of_frames;
-                    float frames_per_second;
+                    float number_of_frames = 2.;
+                    float frames_per_second = 2.;
                     
                     float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color = texture2D(u_texture, (vec2(texcoord.x/number_of_frames., texcoord.y) + vec2(offset, 0.))).rgb;
+                    color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color[0] == 0. && color[1] == 0. && color[2] == 0.) discard;
                     
 
