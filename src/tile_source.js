@@ -9,7 +9,19 @@ export default class TileSource {
 
     constructor (source) {
         this.url_template = source.url;
-        this.max_zoom = source.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this
+        // overzoom will apply for zooms higher than this
+        this.max_zoom = source.max_zoom || Geo.max_zoom;
+    }
+
+    getZGap(coordinate) {
+        return coordinate.z - this.max_zoom;
+    }
+
+    buildAsMessage() {
+        return {
+            url: this.url_template,
+            max_zoom: this.max_zoom
+        };
     }
 
     // Create a tile source by type, factory-style

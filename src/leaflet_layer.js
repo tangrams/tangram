@@ -1,4 +1,5 @@
 import Scene from './scene';
+import TileSource from './tile_source';
 
 export var LeafletLayer = L.GridLayer.extend({
 
@@ -10,7 +11,7 @@ export var LeafletLayer = L.GridLayer.extend({
 
     createScene: function () {
         this.scene = new Scene(
-            this.options.vectorTileSource,
+            TileSource.create(this.options.vectorTileSource),
             this.options.vectorLayers,
             this.options.vectorStyles,
             {
