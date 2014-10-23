@@ -497,7 +497,8 @@ layers:
         color:
             default: [1, 1, 0]
         size:
-            default: 5
+            # default: 5
+            default: Style.pixels(5)
             # default: Style.pixels(20) # for ghosts
             # default: Style.pixels(function(f, t, h) { return 2 * Math.pow(h.zoom, 0.5); })
             # default: function(f, t, h) { return 2 * h.zoom; }
