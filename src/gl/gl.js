@@ -1,4 +1,5 @@
 // WebGL management and rendering functions
+import libtess from 'libtess';
 
 export var GL = {};
 

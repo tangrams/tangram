@@ -9,6 +9,9 @@ camera:
 
     # type: flat
 
+lighting:
+    type: diffuse
+
 modes:
     # note: consider this syntax as a special case for global mode settings
     # all:

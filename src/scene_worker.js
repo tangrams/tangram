@@ -28,17 +28,20 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 SceneWorker.buildTile = function (tile)
 {
-    tile.debug.rendering = +new Date();
-
     // Tile keys that will be sent back to main thread
     // We send a minimal subset to avoid unnecessary data exchange
-    var keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
-    tile.debug.rendering = +new Date() - tile.debug.rendering;
+    var keys = {};
+    if (tile.loaded === true) {
+        tile.debug.rendering = +new Date();
+        keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+        tile.debug.rendering = +new Date() - tile.debug.rendering;
+    }
 
     // Make sure we send some core pieces of info
     keys.key = true;
     keys.loading = true;
     keys.loaded = true;
+    keys.error = true;
     keys.debug = true;
 
     // Build the tile subset
@@ -88,10 +91,18 @@ SceneWorker.worker.addEventListener('message', function (event) {
         // Reset load state
         tile.loaded = false;
         tile.loading = true;
+        tile.error = null;
 
-        SceneWorker.tile_source.loadTile(tile, function (error, tile) {
-            if (error) { throw error; }
-            Scene.processLayersForTile(SceneWorker.layers, tile); // extract desired layers from full GeoJSON
+        SceneWorker.tile_source.loadTile(tile, (error) => {
+            // Tile load errored
+            if (error) {
+                console.log(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
+            }
+            else {
+                // Tile loaded successfully
+                Scene.processLayersForTile(SceneWorker.layers, tile); // extract desired layers from full GeoJSON
+            }
+
             SceneWorker.buildTile(tile);
         });
     }
@@ -122,19 +133,15 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // SceneWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
-        if (tile.loading === true) {
-            SceneWorker.log("cancel tile load for " + key);
-            // TODO: let tile source do this
-            tile.loading = false;
-
-            if (tile.xhr != null) {
-                tile.xhr.abort();
-                // SceneWorker.log("aborted XHR for tile " + tile.key);
-            }
-        }
-
         // Remove from cache
         delete SceneWorker.tiles[key];
+
+        // Cancel if loading
+        if (tile.loading === true) {
+            SceneWorker.log("cancel tile load for " + key);
+            tile.loading = false;
+            SceneWorker.buildTile(tile);
+        }
     }
 });
 

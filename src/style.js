@@ -202,6 +202,8 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
         style.outline.dash = style.outline.dash(feature, tile, Style.helpers);
     }
 
+    style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false;
+
     // Interactivity (selection map)
     var interactive = false;
     if (typeof layer_style.interactive === 'function') {
@@ -229,6 +231,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
         style.selection = Style.defaults.selection;
     }
 
+    // Render mode
     if (layer_style.mode != null && layer_style.mode.name != null) {
         style.mode = {};
         for (var m in layer_style.mode) {
