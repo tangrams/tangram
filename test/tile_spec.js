@@ -2,12 +2,13 @@ import chai from 'chai';
 let assert = chai.assert;
 
 import Tile from '../src/tile';
-import Scene from '../src/scene';
 
-import mockScene from './fixtures/sample-scene';
+import {makeScene} from './utils';
 import samples from './fixtures/samples';
 
+
 let nyc_bounds = samples.nyc_bounds;
+
 
 describe('Tile', () => {
     let subject,
@@ -15,10 +16,10 @@ describe('Tile', () => {
         div    = document.createElement('div');
 
     beforeEach((done) => {
-        scene = Scene.create(_.clone(mockScene));
+        scene = makeScene({});
         scene.init(() => {
             scene.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
-            subject = Tile.create({tile_source: mockScene.tile_source});
+            subject = Tile.create({tile_source: scene.tile_source});
             done();
         });
     });
@@ -59,8 +60,8 @@ describe('Tile', () => {
         });
 
         it('calls scene.workerPostMessageForTile()', () => {
-           subject.build(scene);
-           sinon.assert.called(scene.workerPostMessageForTile);
+            subject.build(scene);
+            sinon.assert.called(scene.workerPostMessageForTile);
         });
     });
 

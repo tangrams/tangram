@@ -29,9 +29,8 @@ GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-// TODO, convert this to the class sytnax once we get the runtime
-// working, IW
 export default function Scene(tile_source, layer_source, style_source, options) {
+
     options = options || {};
     this.initialized = false;
 
@@ -416,24 +415,11 @@ Scene.prototype.setBounds = function (sw, ne) {
 
     // Mark tiles as visible/invisible
     for (var t in this.tiles) {
-        this.updateVisibilityForTile(this.tiles[t]);
+        this.tiles[t].updateVisibility(this);
     }
 
     this.dirty = true;
 };
-
-// Scene.prototype.isTileInZoom = function (tile) {
-//     return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
-// };
-
-// // Update visibility and return true if changed
-// Scene.prototype.updateVisibilityForTile = function (tile) {
-//     var visible = tile.visible;
-//     tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
-//     tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-//     return (visible !== tile.visible);
-// };
->>>>>>> Tile class work
 
 Scene.prototype.resizeMap = function (width, height) {
     this.dirty = true;
@@ -811,20 +797,28 @@ Scene.prototype.loadQueuedTiles = function () {
     this.queued_tiles = [];
 };
 
-Scene.prototype.addTile = function (tile) {
-    this.tiles[tile.getKey()] = tile;
+Scene.prototype.cacheTile = function (tile) {
+    this.tiles[tile.key] = tile;
 };
+
+Scene.prototype.hasTile = function (key) {
+    return this.tiles[key] !== undefined;
+};
+
+Scene.prototype.deleteTile = function (key) {
+    delete this.tiles[key];
+};
+
 
 // Load a single tile
 Scene.prototype._loadTile = function (coords, div, cb) {
     // Overzoom?
-    var tile = Tile.create({coords: coords, tile_source: this.tile_source}),
-        key  = tile.getKey();
+    var tile = Tile.create({coords: coords, tile_source: this.tile_source});
     // when the tile does not exist
-    if (!this.tiles[key]) {
+    if (!this.hasTile(tile.key)) {
         tile.load(this, coords, div, (error, div) => {
             // after we done loading the tile, save a reference to it
-            this.addTile(tile);
+            this.cacheTile(tile);
             cb(null, div, tile);
         });
     } else {
@@ -902,7 +896,8 @@ Scene.prototype.rebuildGeometry = function (callback) {
         }
         // Drop tiles outside current zoom
         else {
-            this.removeTile(invisible[t]);
+            console.log(invisible[t]);
+            // this.removeTile(invisible[t]);
         }
     }
 
@@ -945,11 +940,6 @@ Scene.prototype.buildTile = function(key) {
 Scene.addTile = function (tile, layers, styles, modes) {
     var layer, style, feature, mode;
     var vertex_data = {};
-
-    // Join line test pattern
-    // if (Scene.debug) {
-    //     tile.layers['roads'].features.push(GLBuilders.buildZigzagLineTestPattern());
-    // }
 
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
@@ -1165,34 +1155,6 @@ Scene.prototype.freeTileResources = function (tile)
     }
 };
 
-// Attaches tracking and debug into to the provided tile DOM element
-Scene.prototype.updateTileElement = function (tile, div) {
-    if (!div) {
-        return;
-    }
-
-    // Debug info
-    div.setAttribute('data-tile-key', tile.key);
-    div.style.width = '256px';
-    div.style.height = '256px';
-
-    if (this.debug) {
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = tile.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        debug_overlay.style.fontSize = '16px';
-        // debug_overlay.style.textOutline = '1px #000000';
-        div.appendChild(debug_overlay);
-
-        div.style.borderStyle = 'solid';
-        div.style.borderColor = 'white';
-        div.style.borderWidth = '1px';
-    }
-};
-
 // Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
 // Used for selectively updating properties of tiles passed between main thread and worker
 // (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
@@ -1206,6 +1168,10 @@ Scene.prototype.mergeTile = function (key, source_tile) {
 
     for (var p in source_tile) {
         tile[p] = source_tile[p];
+        if (p !== 'key') {
+            log.debug(`merging ${p}: ${source_tile[p]}`);
+            tile[p] = source_tile[p];
+        }
     }
 
     return tile;

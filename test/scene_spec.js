@@ -3,17 +3,12 @@ let assert = chai.assert;
 import Utils from '../src/utils';
 import Scene from '../src/scene';
 import Tile from '../src/tile';
+
+import {makeScene} from './utils';
 import sampleScene from './fixtures/sample-scene';
 
 import samples from './fixtures/samples';
 let nyc_bounds = samples.nyc_bounds;
-
-let makeOne = ({options}) => {
-    options = options || {};
-    // options.disableRenderLoop = (options.disableRenderLoop === undefined) ? true : options.disableRenderLoop;
-    options.disableRenderLoop = true;
-    return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
-};
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
@@ -27,7 +22,7 @@ describe('Scene', () => {
         });
 
         describe('when given sensible defaults', () => {
-            let scene = makeOne({});
+            let scene = makeScene({});
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
                 scene.destroy();
@@ -42,7 +37,7 @@ describe('Scene', () => {
             let coords = {x: 10, y: 10, z: 1},
                 div    = document.createElement('div');
 
-            subject = Scene.create(sampleScene);
+            subject = makeScene({});
 
             sinon.spy(subject, '_loadTile');
 
@@ -70,7 +65,7 @@ describe('Scene', () => {
             div = document.createElement('div');
 
         beforeEach(() => {
-            subject = Scene.create(sampleScene);
+            subject = makeScene({});
             subject.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
             sinon.stub(subject, 'workerPostMessageForTile');
         });
@@ -165,8 +160,9 @@ describe('Scene', () => {
         describe('when the scene is not initialized', () => {
             let subject;
             beforeEach((done) => {
-                subject = makeOne({});
+                subject = makeScene({});
                 subject.init(done);
+
             });
 
             afterEach(() => {
@@ -177,7 +173,6 @@ describe('Scene', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
-                    // console.log(subject);
                     done();
                 });
             });
@@ -218,7 +213,7 @@ describe('Scene', () => {
         describe('when the scene is already initialized', () => {
             let subject;
             beforeEach(() => {
-                subject = makeOne({});
+                subject = makeScene({});
             });
 
             afterEach(() => {
@@ -245,7 +240,7 @@ describe('Scene', () => {
         let computedWidth  = Math.round(width * devicePixelRatio);
 
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.device_pixel_ratio = devicePixelRatio;
             subject.init(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
@@ -307,9 +302,10 @@ describe('Scene', () => {
         let [lng, lat] = nycLatLng;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.setCenter(...nycLatLng);
         });
+
         afterEach(() => {
             subject.destroy();
             subject = null;
@@ -328,7 +324,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.startZoom();
         });
 
@@ -350,7 +346,7 @@ describe('Scene', () => {
     describe('.setZoom(zoom)', () => {
         let subject;
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             sinon.spy(subject, 'removeTilesOutsideZoomRange');
             subject.setZoom(10);
         });
@@ -373,7 +369,7 @@ describe('Scene', () => {
         let tile = { coords: null, div: null, callback: () => {}};
 
         beforeEach(() => {
-            subject = makeOne({}); subject.loadTile(tile);
+            subject = makeScene({}); subject.loadTile(tile);
         });
         afterEach(() => {
             subject.destroy();
@@ -388,8 +384,9 @@ describe('Scene', () => {
 
     describe('.render()', () => {
         let subject;
+
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'renderGL');
             subject.init(() => {
@@ -527,7 +524,7 @@ describe('Scene', () => {
         let subject;
         beforeEach(() => {
             sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
-            subject = makeOne({options: {num_workers: 2}});
+            subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
         });
