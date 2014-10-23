@@ -806,7 +806,7 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function (callback) {
+Scene.prototype.rebuild = function (callback) {
     if (!this.initialized) {
         callback(false);
         return;
@@ -1065,7 +1065,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                this.rebuildTiles(queued.callback);
+                this.rebuild(queued.callback);
             }
         }
     }
@@ -1240,7 +1240,7 @@ Scene.prototype.reloadScene = function () {
         this.createCamera();
         this.createLighting();
         this.refreshModes();
-        this.rebuildTiles();
+        this.rebuild();
     });
 };
 
