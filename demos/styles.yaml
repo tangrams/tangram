@@ -445,6 +445,9 @@ layers:
             # name: colorhalftone
             # name: palette
             # name: envmap
+        # properties:
+        #     min_height: 50
+        # filter: function () { return feature.height >= properties.min_height; }
         # filter: function () { return feature.name != null; }
         # filter: function () { return Math.random() < 0.25; }
         # filter: function () { return true; }

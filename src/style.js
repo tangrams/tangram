@@ -15,9 +15,9 @@ Style.color = {
 // The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
 Style.pixels = function (p) {
     var f;
-    // /* jshint ignore:start */
+    /* jshint ignore:start */
     eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
-    // /* jshint ignore:end */
+    /* jshint ignore:end */
     return f;
 };
 
@@ -66,14 +66,16 @@ Style.macros = [
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - zoom: the current map zoom level
 // - meters_per_pixel: conversion for meters/pixels at current map zoom
-// - TODO: style: user-defined properties on the style object in the stylesheet
+// - properties: user-defined properties on the style-rule object in the stylesheet
 Style.wrapFunction = function (func) {
-    return `function(feature, tile, helpers) {
+    var f = `function(feature, tile, helpers) {
                 var feature = feature.properties;
                 var zoom = tile.coords.z;
                 var meters_per_pixel = helpers.Geo.metersPerPixel(zoom);
+                var properties = helpers.style_properties;
                 return (${func}());
             }`;
+    return f;
 };
 
 Style.expandMacros = function expandMacros (obj) {
@@ -148,7 +150,10 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     layer_style = layer_style || {};
     var style = {};
 
-    Style.helpers.zoom = tile.coords.z;
+    // Custom properties
+    if (layer_style.properties) {
+        Style.helpers.style_properties = Object.assign({}, layer_style.properties);
+    }
 
     // Test whether features should be rendered at all
     if (typeof layer_style.filter === 'function') {
