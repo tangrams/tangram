@@ -1231,7 +1231,7 @@ Scene.prototype.loadScene = function (callback) {
 };
 
 // Reload scene config and rebuild tiles
-Scene.prototype.reloadScene = function () {
+Scene.prototype.reload = function () {
     if (!this.initialized) {
         return;
     }
