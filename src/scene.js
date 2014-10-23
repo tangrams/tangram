@@ -1469,7 +1469,6 @@ Scene.loadStyles = function (url, callback) {
         }
 
         // Find generic functions & style macros
-        Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
         Scene.postProcessStyles(styles);
 

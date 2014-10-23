@@ -82,7 +82,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     // Refresh config
     SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source);
-    SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
+    SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles, Style.wrapFunction);
     SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
     SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles.modes);
 

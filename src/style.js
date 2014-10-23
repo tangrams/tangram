@@ -13,11 +13,11 @@ Style.color = {
 
 // Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
 // The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
-Style.pixels = function (p, z) {
+Style.pixels = function (p) {
     var f;
-    /* jshint ignore:start */
-    eval('f = function(f, t, h) { return ' + (typeof p == 'function' ? '(' + (p.toString() + '(f, t, h))') : p) + ' * h.Geo.meters_per_pixel[h.zoom]; }');
-    /* jshint ignore:end */
+    // /* jshint ignore:start */
+    eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
+    // /* jshint ignore:end */
     return f;
 };
 
@@ -62,6 +62,20 @@ Style.macros = [
     'Style.pixels'
 ];
 
+// Wraps style functions and provides a scope of commonly accessible data:
+// - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
+// - zoom: the current map zoom level
+// - meters_per_pixel: conversion for meters/pixels at current map zoom
+// - TODO: style: user-defined properties on the style object in the stylesheet
+Style.wrapFunction = function (func) {
+    return `function(feature, tile, helpers) {
+                var feature = feature.properties;
+                var zoom = tile.coords.z;
+                var meters_per_pixel = helpers.Geo.metersPerPixel(zoom);
+                return (${func}());
+            }`;
+};
+
 Style.expandMacros = function expandMacros (obj) {
     for (var p in obj) {
         var val = obj[p];
@@ -80,11 +94,13 @@ Style.expandMacros = function expandMacros (obj) {
                         eval('f = ' + val);
                         /*jshint ignore:end */
                         obj[p] = f;
+                        // console.log(`expanded macro ${val} to ${f}`);
                         break;
                     }
                     catch (e) {
                         // fall-back to original value if parsing failed
                         obj[p] = val;
+                        // console.log(`failed to expand macro ${val}`);
                     }
                 }
             }

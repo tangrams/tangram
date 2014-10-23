@@ -52,28 +52,33 @@ Utils.serializeWithFunctions = function (obj) {
 };
 
 // Parse a JSON string, but convert function-like strings back into functions
-Utils.deserializeWithFunctions = function(serialized) {
+Utils.deserializeWithFunctions = function(serialized, wrap) {
     var obj = JSON.parse(serialized);
-    obj = Utils.stringsToFunctions(obj);
-
+    obj = Utils.stringsToFunctions(obj, wrap);
     return obj;
 };
 
 // Recursively parse an object, attempting to convert string properties that look like functions back into functions
-Utils.stringsToFunctions = function(obj) {
+Utils.stringsToFunctions = function(obj, wrap) {
     for (var p in obj) {
         var val = obj[p];
 
         // Loop through object properties
         if (typeof val === 'object') {
-            obj[p] = Utils.stringsToFunctions(val);
+            obj[p] = Utils.stringsToFunctions(val, wrap);
         }
         // Convert strings back into functions
         else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {
                 /*jshint ignore:start*/
-                eval('f = ' + val);
+                if (typeof wrap === 'function') {
+                    // console.log(`wrapped function: ${wrap(val)}`);
+                    eval('f = ' + wrap(val));
+                }
+                else {
+                    eval('f = ' + val);
+                }
                 /*jshint ignore:end*/
                 obj[p] = f;
             }
