@@ -19,7 +19,7 @@
                 url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
             },
             layers: 'demos/layers.yaml',
-            styles: 'demos/pacman_styles.yaml'
+            styles: 'demos/styles.yaml'
         },
         'mapzen-dev': {
             source: {
