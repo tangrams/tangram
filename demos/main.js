@@ -151,7 +151,8 @@
         vectorLayers: tile_sources[default_tile_source].layers,
         vectorStyles: tile_sources[default_tile_source].styles,
         numWorkers: 2,
-        // debug: true,
+        preRender: preRender,
+        postRender: postRender,
         attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>',
         unloadInvisibleTiles: false,
         updateWhenIdle: false
@@ -644,23 +645,8 @@
         });
     }
 
-
-    function animationFrame(cb) {
-        if (typeof window.requestAnimationFrame === 'function') {
-            return window.requestAnimationFrame;
-        } else {
-            return window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame    ||
-                window.oRequestAnimationFrame      ||
-                window.msRequestAnimationFrame     ||
-                function (cb) {
-                    setTimeout(cb, 1000 /60);
-                };
-        }
-    }
-
-    function frame () {
-
+    // Pre-render hook
+    function preRender () {
         if (rS != null) { // rstats
             rS('frame').start();
             // rS('raf').tick();
@@ -670,9 +656,10 @@
                 glS.start();
             }
         }
+    }
 
-        layer.render();
-
+    // Post-render hook
+    function postRender () {
         if (rS != null) { // rstats
             rS('frame').end();
             rS('rendertiles').set(scene.renderable_tiles_count);
@@ -686,8 +673,6 @@
             gui.queue_screenshot = false;
             screenshot();
         }
-
-        animationFrame()(frame);
     }
 
     /***** Render loop *****/
@@ -715,8 +700,6 @@
                 .bringToFront()
                 .addTo(map);
         }
-
-        frame();
     });
 
 

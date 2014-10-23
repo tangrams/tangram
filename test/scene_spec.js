@@ -4,20 +4,13 @@ import Utils from '../src/utils';
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
-
 let makeOne;
-/* jshint ignore:start */
-// makeOne = ({tile_source = sampleScene.tileSource,
-//                 layers  = sampleScene.layers,
-//                 styles  = sampleScene.styles,
-//                 options = {}
-//            } = {}) => {
-//     return new Scene(tile_source, layers, styles, options);
-// };
 makeOne = ({options}) => {
+    options = options || {};
+    // options.disableRenderLoop = (options.disableRenderLoop === undefined) ? true : options.disableRenderLoop;
+    options.disableRenderLoop = true;
     return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
 };
-/* jshint ignore:end */
 
 describe('Scene', () => {
 
@@ -136,7 +129,7 @@ describe('Scene', () => {
         let subject;
         let height = 100;
         let width = 200;
-        let devicePixelRatio = 100;
+        let devicePixelRatio = 2;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
@@ -378,10 +371,10 @@ describe('Scene', () => {
 
     describe('.makeWorkers(url)', () => {
         let subject;
-        let num_workers = 2;
+        let numWorkers = 2;
         let url = 'test.js';
         beforeEach(() => {
-            subject = makeOne({options: {num_workers}});
+            subject = makeOne({options: {numWorkers}});
             subject.makeWorkers(url);
         });
 

@@ -33,15 +33,18 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.num_workers || 1;
-    this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
+    this.num_workers = options.numWorkers || 1;
+    this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
     this.styles = styles;
 
-    this.building = null; // tracks current scnee building state (tiles being built, callback when finished, etc.)
-    this.dirty = true; // request a redraw
-    this.animated = false; // request redraw every frame
+    this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
+    this.dirty = true;                              // request a redraw
+    this.animated = false;                          // request redraw every frame
+    this.preRender = options.preRender;             // optional pre-rendering hook
+    this.postRender = options.postRender;           // optional post-rendering hook
+    this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
 
     this.frame = 0;
     this.zoom = null;
@@ -104,6 +107,10 @@ Scene.prototype.init = function (callback) {
             this.last_render_count = null;
             this.initInputHandlers();
 
+            if (this.render_loop !== false) {
+                this.setupRenderLoop();
+            }
+
             this.initialized = true;
 
             if (typeof callback === 'function') {
@@ -114,6 +121,8 @@ Scene.prototype.init = function (callback) {
 };
 
 Scene.prototype.destroy = function () {
+    this.initialized = false;
+    this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
@@ -140,7 +149,6 @@ Scene.prototype.destroy = function () {
     }
 
     this.tiles = {}; // TODO: probably destroy each tile separately too
-    this.initialized = false;
 };
 
 Scene.prototype.initModes = function () {
@@ -394,6 +402,30 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     return z;
 };
 
+// Setup the render loop
+Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
+    this.renderLoop = () => {
+        if (this.initialized) {
+            // Pre-render hook
+            if (typeof this.preRender === 'function') {
+                this.preRender();
+            }
+
+            // Render the scene
+            this.render();
+
+            // Post-render hook
+            if (typeof this.postRender === 'function') {
+                this.postRender();
+            }
+        }
+
+        // Request the next frame
+        window.requestAnimationFrame(this.renderLoop);
+    };
+    setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+};
+
 Scene.prototype.render = function () {
     this.loadQueuedTiles();
 
@@ -442,6 +474,9 @@ Scene.prototype.renderGL = function () {
     this.resetFrame();
 
     // Map transforms
+    if (!this.center) {
+        return;
+    }
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
 
     // Model-view matrices

@@ -101,6 +101,7 @@ Utils.runIfInMainThread = function(block, err) {
     }
 };
 
+
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
 Utils.isPowerOf2 = function(value) {
