@@ -19,9 +19,8 @@ var RenderMode = {
     setGL (gl, callback) {
         this.gl = gl;
         this.valid = true;
-        this.makeGLProgram(callback);
     },
-    refresh: function (callback) { // TODO: should this be async/non-blocking?
+    compile: function (callback) {
         this.makeGLProgram(callback);
     },
     defines: {},
@@ -55,14 +54,18 @@ RenderMode.destroy = function () {
 
 RenderMode.makeGLProgram = function (callback)
 {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
     if (this.valid === false) {
-        if (typeof callback === 'function') {
-            callback(false);
-        }
-        return false;
+        callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode not valid`));
+        return;
+    }
+
+    if (this.loading) {
+        callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
+        return;
     }
     this.loading = true;
-    this.current_callback = callback; // track the most recent call, so we know which one is last
 
     var queue = Queue();
 
@@ -126,10 +129,11 @@ RenderMode.makeGLProgram = function (callback)
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await((err) => {
+    queue.await((error) => {
         this.loading = false;
-        if (err) {
-            callback(new Error(`refresh for mode ${this.name} errored: ${err.message}`));
+
+        if (error) {
+            callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
             return;
         }
 
@@ -141,18 +145,8 @@ RenderMode.makeGLProgram = function (callback)
             this.selection_gl_program = selection_program;
         }
 
-        if (typeof callback === 'function') {
-            if (callback === this.current_callback) {
-                this.current_callback = null;
-                callback();
-            }
-            else {
-                callback(new Error(`callback for mode ${this.name} is out of date`));
-            }
-        }
+        callback();
     });
-
-    return true;
 };
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
@@ -186,13 +180,13 @@ RenderMode.setUniforms = function ()
 RenderMode.update = function ()
 {
     // Mode-specific animation
-    if (typeof this.animation === 'function') {
-        this.animation();
-    }
+    // if (typeof this.animation === 'function') {
+    //     this.animation();
+    // }
 };
 
 // Update built-in mode or create a new one
-ModeManager.configureMode = function (name, settings)
+ModeManager.updateMode = function (name, settings)
 {
     Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
     if (Modes[settings.extends]) {
