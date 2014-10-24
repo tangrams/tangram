@@ -295,7 +295,7 @@
             scene.createCamera();
             scene.createLighting();
             scene.refreshModes();
-            scene.rebuildTiles();
+            scene.rebuild();
             updateURL();
 
             // Force-update dat.gui
@@ -573,7 +573,7 @@
                 add(layer_controls, l.name).
                 onChange(function(value) {
                     layer.scene.styles.layers[l.name].visible = value;
-                    layer.scene.rebuildTiles();
+                    layer.scene.rebuild();
                 });
         });
 

@@ -33,7 +33,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.numWorkers || 1;
+    this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
@@ -806,7 +806,7 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function (callback) {
+Scene.prototype.rebuild = function (callback) {
     if (!this.initialized) {
         callback(false);
         return;
@@ -1065,7 +1065,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                this.rebuildTiles(queued.callback);
+                this.rebuild(queued.callback);
             }
         }
     }
@@ -1231,7 +1231,7 @@ Scene.prototype.loadScene = function (callback) {
 };
 
 // Reload scene config and rebuild tiles
-Scene.prototype.reloadScene = function () {
+Scene.prototype.reload = function () {
     if (!this.initialized) {
         return;
     }
@@ -1240,7 +1240,7 @@ Scene.prototype.reloadScene = function () {
         this.createCamera();
         this.createLighting();
         this.refreshModes();
-        this.rebuildTiles();
+        this.rebuild();
     });
 };
 
@@ -1469,7 +1469,6 @@ Scene.loadStyles = function (url, callback) {
         }
 
         // Find generic functions & style macros
-        Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
         Scene.postProcessStyles(styles);
 
@@ -1567,15 +1566,20 @@ Scene.refreshModes = function (modes, stylesheet_modes, callback) {
 
     // Refresh all modes
     for (m in modes) {
-        queue.defer(complete => {
-            modes[m].refresh(complete);
+        queue.defer((complete) => {
+            var mode = modes[m];
+            mode.refresh((error) => {
+                // console.log(`refreshed mode ${mode.name}, error: ${error}`);
+                complete(error);
+            });
         });
     }
 
     // Callback when all modes are done compiling
-    queue.await(() => {
+    queue.await((error) => {
+        // console.log(`refreshed all modes, error: ${error}`);
         if (typeof callback === 'function') {
-            callback();
+            callback(error);
         }
     });
 

@@ -26,8 +26,20 @@ SceneWorker.worker.addEventListener('message', function (event) {
     Style.selection_map_prefix = SceneWorker.worker_id;
 });
 
-SceneWorker.buildTile = function (tile)
-{
+SceneWorker.refreshConfig = function (config) {
+    if (!SceneWorker.tile_source && config.tile_source) {
+        SceneWorker.tile_source = TileSource.create(config.tile_source);
+    }
+    if (!SceneWorker.layers && config.layers) {
+        SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
+    }
+    if (!SceneWorker.styles && config.styles) {
+        SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
+        SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
+    }
+};
+
+SceneWorker.buildTile = function (tile) {
     // Tile keys that will be sent back to main thread
     // We send a minimal subset to avoid unnecessary data exchange
     var keys = {};
@@ -80,11 +92,8 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // Update tile cache tile
     SceneWorker.tiles[tile.key] = tile;
 
-    // Refresh config
-    SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(event.data.tile_source);
-    SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(event.data.styles);
-    SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles.modes);
+    // Refresh config (layers, styles, etc.)
+    SceneWorker.refreshConfig(event.data);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -169,9 +178,10 @@ SceneWorker.worker.addEventListener('message', function (event) {
         return;
     }
 
-    SceneWorker.styles = Utils.deserializeWithFunctions(event.data.styles);
-    SceneWorker.layers = Utils.deserializeWithFunctions(event.data.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles.modes);
+    SceneWorker.layers = null;
+    SceneWorker.styles = null;
+    SceneWorker.modes = null;
+    SceneWorker.refreshConfig(event.data);
     Style.resetSelectionMap();
 
     SceneWorker.log("worker refreshed config for tile rebuild");
