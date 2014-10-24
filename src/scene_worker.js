@@ -27,10 +27,16 @@ SceneWorker.worker.addEventListener('message', function (event) {
 });
 
 SceneWorker.refreshConfig = function (config) {
-    SceneWorker.tile_source = SceneWorker.tile_source || TileSource.create(config.tile_source);
-    SceneWorker.styles = SceneWorker.styles || Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
-    SceneWorker.layers = SceneWorker.layers || Utils.deserializeWithFunctions(config.layers);
-    SceneWorker.modes = SceneWorker.modes || Scene.createModes(SceneWorker.styles.modes);
+    if (!SceneWorker.tile_source && config.tile_source) {
+        SceneWorker.tile_source = TileSource.create(config.tile_source);
+    }
+    if (!SceneWorker.layers && config.layers) {
+        SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
+    }
+    if (!SceneWorker.styles && config.styles) {
+        SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
+        SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
+    }
 };
 
 SceneWorker.buildTile = function (tile) {
