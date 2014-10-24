@@ -33,7 +33,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.numWorkers || 1;
+    this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
