@@ -360,6 +360,22 @@ modes:
     #                 //color = texture2D(u_texture, v_texcoord).rgb;
     #                 //color = texture2D(u_texture, vec2(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.))).rgb;
 
+    ghosts:
+        extends: polygons
+        animated: true
+        texcoords: true
+        shaders:
+            uniforms:
+                u_texture: demos/images/ghost_strip.gif
+            transforms:
+                fragment: |
+                    float number_of_frames = 2.;
+                    float frames_per_second = 2.;
+
+                    float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
+                    color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
+                    if (color == vec3(0.)) discard;
+
 layers:
     earth:
         color:
@@ -474,6 +490,7 @@ layers:
     pois:
         mode:
             name: points
+            # name: ghosts
             # name: formica
         filter: function () { return feature.name != null; }
         # visible: false
@@ -484,8 +501,8 @@ layers:
             default: [1, 1, 0]
         size:
             # default: 5
-            default: Style.pixels(5)
-            # default: Style.pixels(5 * zoom/5)
+            # default: Style.pixels(5)
+            # default: Style.pixels(20) # for ghosts
             # default: Style.pixels(function () { return Math.pow(1.2, zoom); })
             # default: function () { return 2 * zoom; }
 
