@@ -55,13 +55,14 @@ RenderMode.destroy = function () {
 
 RenderMode.makeGLProgram = function (callback)
 {
-    if (this.loading || this.valid === false) {
+    if (this.valid === false) {
         if (typeof callback === 'function') {
             callback(false);
         }
         return false;
     }
     this.loading = true;
+    this.current_callback = callback; // track the most recent call, so we know which one is last
 
     var queue = Queue();
 
@@ -81,7 +82,6 @@ RenderMode.makeGLProgram = function (callback)
 
     queue.defer(complete => {
         if (!program) {
-            // console.log(this.name + ": " + "instantiate");
             program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
@@ -95,7 +95,6 @@ RenderMode.makeGLProgram = function (callback)
             );
         }
         else {
-            // console.log(this.name + ": " + "re-compile");
             program.defines = defines;
             program.transforms = transforms;
             program.compile(complete);
@@ -105,7 +104,6 @@ RenderMode.makeGLProgram = function (callback)
     if (this.selection) {
         queue.defer(complete => {
             if (!selection_program) {
-                // console.log(this.name + ": " + "selection instantiate");
                 selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
@@ -119,7 +117,6 @@ RenderMode.makeGLProgram = function (callback)
                 );
             }
             else {
-                // console.log(this.name + ": " + "selection re-compile");
                 selection_program.defines = selection_defines;
                 selection_program.transforms = transforms;
                 selection_program.compile(complete);
@@ -129,8 +126,12 @@ RenderMode.makeGLProgram = function (callback)
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await(() => {
+    queue.await((err) => {
         this.loading = false;
+        if (err) {
+            callback(new Error(`refresh for mode ${this.name} errored: ${err.message}`));
+            return;
+        }
 
         if (program) {
             this.gl_program = program;
@@ -141,7 +142,13 @@ RenderMode.makeGLProgram = function (callback)
         }
 
         if (typeof callback === 'function') {
-            callback(true);
+            if (callback === this.current_callback) {
+                this.current_callback = null;
+                callback();
+            }
+            else {
+                callback(new Error(`callback for mode ${this.name} is out of date`));
+            }
         }
     });
 

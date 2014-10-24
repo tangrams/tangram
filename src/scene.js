@@ -33,7 +33,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.numWorkers || 1;
+    this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
@@ -1566,15 +1566,20 @@ Scene.refreshModes = function (modes, stylesheet_modes, callback) {
 
     // Refresh all modes
     for (m in modes) {
-        queue.defer(complete => {
-            modes[m].refresh(complete);
+        queue.defer((complete) => {
+            var mode = modes[m];
+            mode.refresh((error) => {
+                // console.log(`refreshed mode ${mode.name}, error: ${error}`);
+                complete(error);
+            });
         });
     }
 
     // Callback when all modes are done compiling
-    queue.await(() => {
+    queue.await((error) => {
+        // console.log(`refreshed all modes, error: ${error}`);
         if (typeof callback === 'function') {
-            callback();
+            callback(error);
         }
     });
 
