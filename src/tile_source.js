@@ -13,8 +13,19 @@ export default class TileSource {
         this.max_zoom = source.max_zoom || Geo.max_zoom;
     }
 
-    getZGap(coordinate) {
-        return coordinate.z - this.max_zoom;
+    // TODO fix the z adjustment for continuous zoom
+    calculateOverZoom(coordinate) {
+        var zgap,
+            {x, y, z} = coordinate;
+
+        if (z > this.max_zoom) {
+            zgap = z - this.max_zoom;
+            x = ~~(x / Math.pow(2, zgap));
+            y = ~~(y / Math.pow(2, zgap));
+            z -= zgap;
+        }
+
+        return {x, y, z};
     }
 
     buildAsMessage() {
