@@ -797,6 +797,7 @@ Scene.prototype.loadQueuedTiles = function () {
     this.queued_tiles = [];
 };
 
+// tile manager
 Scene.prototype.cacheTile = function (tile) {
     this.tiles[tile.key] = tile;
 };
@@ -805,7 +806,7 @@ Scene.prototype.hasTile = function (key) {
     return this.tiles[key] !== undefined;
 };
 
-Scene.prototype.deleteTile = function (key) {
+Scene.prototype.forgetTile = function (key) {
     delete this.tiles[key];
 };
 
@@ -886,18 +887,18 @@ Scene.prototype.rebuildGeometry = function (callback) {
     });
 
     for (t in visible) {
-        this.buildTile(visible[t]);
+        visible[t].build(this);
     }
 
     for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
-            this.buildTile(invisible[t]);
+        if (this.tiles[invisible[t]].isInZoom(this)) {
+            invisible[t].build(this);
         }
         // Drop tiles outside current zoom
         else {
             console.log(invisible[t]);
-            // this.removeTile(invisible[t]);
+            this.removeTile(invisible[t]);
         }
     }
 
@@ -916,25 +917,6 @@ Scene.prototype.rebuildGeometry = function (callback) {
     }
 };
 
-Scene.prototype.buildTile = function(key) {
-    var tile = this.tiles[key];
-
-    this.trackTileBuildStart(key);
-    this.workerPostMessageForTile(tile, {
-        type: 'buildTile',
-        tile: {
-            key: tile.key,
-            coords: tile.coords, // used by style helpers
-            min: tile.min, // used by TileSource to scale tile to local extents
-            max: tile.max, // used by TileSource to scale tile to local extents
-            debug: tile.debug
-        },
-        tile_source: this.tile_source,
-        layers: this.layers_serialized,
-        styles: this.styles_serialized
-    });
-};
-
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
 Scene.addTile = function (tile, layers, styles, modes) {
@@ -944,7 +926,6 @@ Scene.addTile = function (tile, layers, styles, modes) {
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
     for (var layer_num = 0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
 
@@ -1039,17 +1020,21 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     }
     log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
-    var tile = event.data.tile;
+    var raw = event.data.tile;
+    raw.tile_source = this.tile_source;
+    var tile = Tile.create(raw);
+
 
     // Removed this tile during load?
-    if (this.tiles[tile.key] == null) {
+    if (this.hasTile(tile.key)) {
         log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
     }
     else if (!tile.error) {
         // Update tile with properties from worker
         tile = this.mergeTile(tile.key, tile);
-        this.buildGLGeometry(tile);
+        tile.buildGLGeometry(this.modes);
         this.dirty = true;
+
     }
     else {
         log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
@@ -1093,30 +1078,6 @@ Scene.prototype.trackTileBuildStop = function (key) {
     }
 };
 
-// Called on main thread when a web worker completes processing for a single tile
-Scene.prototype.buildGLGeometry = function (tile) {
-    var vertex_data = tile.vertex_data;
-
-    // Cleanup existing GL geometry objects
-    this.freeTileResources(tile);
-    tile.gl_geometry = {};
-
-    // Create GL geometry objects
-    for (var s in vertex_data) {
-        tile.gl_geometry[s] = this.modes[s].makeGLGeometry(vertex_data[s]);
-    }
-
-    tile.debug.geometries = 0;
-    tile.debug.buffer_size = 0;
-    for (var p in tile.gl_geometry) {
-        tile.debug.geometries += tile.gl_geometry[p].geometry_count;
-        tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
-    }
-    tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-
-    delete tile.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
-};
-
 Scene.prototype.removeTile = function (key)
 {
     if (!this.initialized) {
@@ -1131,33 +1092,24 @@ Scene.prototype.removeTile = function (key)
     var tile = this.tiles[key];
 
     if (tile != null) {
-        this.freeTileResources(tile);
-
-        // Web worker will cancel XHR requests
-        this.workerPostMessageForTile(tile, {
-            type: 'removeTile',
-            key: tile.key
-        });
+        tile.freeResources();
+        tile.sendRemove(this);
     }
 
-    delete this.tiles[key];
+    this.forgetTile(tile.key);
+
     this.dirty = true;
 };
 
-// Free any GL / owned resources
-Scene.prototype.freeTileResources = function (tile)
-{
-    if (tile != null && tile.gl_geometry != null) {
-        for (var p in tile.gl_geometry) {
-            tile.gl_geometry[p].destroy();
-        }
-        tile.gl_geometry = null;
-    }
-};
+/**
+    Merge properties from a provided tile object into the main tile
+    store. Shallow merge (just copies top-level properties)!
 
-// Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
-// Used for selectively updating properties of tiles passed between main thread and worker
-// (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
+    Used for selectively updating properties of tiles passed between
+    main thread and worker
+    (so we don't have to pass the whole tile, including some
+    properties which cannot be cloned for a worker).
+*/
 Scene.prototype.mergeTile = function (key, source_tile) {
     var tile = this.tiles[key];
 

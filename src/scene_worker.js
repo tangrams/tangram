@@ -50,7 +50,7 @@ SceneWorker.buildTile = function (tile) {
     }
 
     // Make sure we send some core pieces of info
-    keys.key = true;
+    keys.coords = true;
     keys.loading = true;
     keys.loaded = true;
     keys.error = true;
