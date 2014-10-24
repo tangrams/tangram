@@ -72,6 +72,7 @@ GLProgram.removeTransform = function (key) {
 GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
+    this.current_callback = callback; // track the most recent call, so we know which one is last
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -135,7 +136,13 @@ GLProgram.prototype.compile = function (callback)
     // When all transform code snippets are collected, combine and inject them
     queue.await(error => {
         if (error) {
-            console.log("error loading transforms: " + error);
+            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) errored: ${error.message}`));
+            return;
+        }
+
+        // This compilation call has been superceded by a newer one
+        if (typeof callback === 'function' && callback !== this.current_callback ) {
+            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) was superceded`));
             return;
         }
 
@@ -189,6 +196,7 @@ GLProgram.prototype.compile = function (callback)
 
         // Notify caller
         if (typeof callback === 'function') {
+            this.current_callback = null;
             callback();
         }
     });

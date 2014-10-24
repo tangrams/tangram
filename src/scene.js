@@ -1567,15 +1567,20 @@ Scene.refreshModes = function (modes, stylesheet_modes, callback) {
 
     // Refresh all modes
     for (m in modes) {
-        queue.defer(complete => {
-            modes[m].refresh(complete);
+        queue.defer((complete) => {
+            var mode = modes[m];
+            mode.refresh((error) => {
+                // console.log(`refreshed mode ${mode.name}, error: ${error}`);
+                complete(error);
+            });
         });
     }
 
     // Callback when all modes are done compiling
-    queue.await(() => {
+    queue.await((error) => {
+        // console.log(`refreshed all modes, error: ${error}`);
         if (typeof callback === 'function') {
-            callback();
+            callback(error);
         }
     });
 
