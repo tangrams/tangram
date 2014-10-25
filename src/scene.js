@@ -200,7 +200,7 @@ Scene.prototype.createObjectURL = function () {
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
     // TODO, we should move the url to a config file
-    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
+    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
 
     // Load & instantiate workers
     queue.defer((done) => {
@@ -1597,10 +1597,14 @@ function findBaseLibraryURL () {
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('tangram.debug.js');
-        if (match === -1) {
+        if (match >= 0) {
+            Scene.library_type = 'debug';
+        }
+        else {
             match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
+            Scene.library_type = Scene.library_type || 'min';
             Scene.library_base_url = scripts[s].src.substr(0, match);
             break;
         }
