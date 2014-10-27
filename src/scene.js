@@ -3,7 +3,6 @@ import Point from './point';
 import {Geo} from './geo';
 import Utils from './utils';
 import {Style} from './style';
-import Queue from 'queue-async';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
@@ -11,30 +10,18 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
+import Queue from 'queue-async';
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
-// Setup that happens on main thread only (skip in web worker)
-var yaml;
-
-Utils.runIfInMainThread(function() {
-    try {
-        yaml = require('js-yaml');
-    }
-    catch (e) {
-        console.log("no YAML support, js-yaml module not found");
-    }
-
-    findBaseLibraryURL();
-});
-
 // Global setup
+Utils.runIfInMainThread(() => { findBaseLibraryURL(); }); // on main thread only (skip in web worker)
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
-Scene.debug = false;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 // TODO, convert this to the class sytnax once we get the runtime
@@ -46,14 +33,18 @@ export default function Scene(tile_source, layers, styles, options) {
     this.tile_source = tile_source;
     this.tiles = {};
     this.queued_tiles = [];
-    this.num_workers = options.num_workers || 1;
-    this.allow_cross_domain_workers = (options.allow_cross_domain_workers === false ? false : true);
+    this.num_workers = options.numWorkers || 2;
+    this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
     this.layers = layers;
     this.styles = styles;
 
-    this.dirty = true; // request a redraw
-    this.animated = false; // request redraw every frame
+    this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
+    this.dirty = true;                              // request a redraw
+    this.animated = false;                          // request redraw every frame
+    this.preRender = options.preRender;             // optional pre-rendering hook
+    this.postRender = options.postRender;           // optional post-rendering hook
+    this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
 
     this.frame = 0;
     this.zoom = null;
@@ -108,12 +99,17 @@ Scene.prototype.init = function (callback) {
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
             this.createCamera();
+            this.createLighting();
             this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
             this.initSelectionBuffer();
 
             // this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
+
+            if (this.render_loop !== false) {
+                this.setupRenderLoop();
+            }
 
             this.initialized = true;
 
@@ -125,15 +121,25 @@ Scene.prototype.init = function (callback) {
 };
 
 Scene.prototype.destroy = function () {
+    this.initialized = false;
+    this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
+        this.canvas = null;
     }
+    this.container = null;
 
-    this.gl = null;
-    this.fbo = null;
-    this.fbo_texture = null;
-    this.fbo_depth_rb = null;
+    if (this.gl) {
+        this.gl.deleteFramebuffer(this.fbo);
+        this.fbo = null;
+
+        GLTexture.destroy(this.gl);
+        ModeManager.destroy(this.gl);
+        this.modes = {};
+
+        this.gl = null;
+    }
 
     if (Array.isArray(this.workers)) {
         this.workers.forEach((worker) => {
@@ -142,12 +148,13 @@ Scene.prototype.destroy = function () {
         this.workers = null;
     }
 
+    this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
 Scene.prototype.initModes = function () {
     // Init GL context for modes (compiles programs, etc.)
     for (var m in this.modes) {
-        this.modes[m].setGL(this.gl);
+        this.modes[m].setGL(this.gl, () => { this.dirty = true; }); // make sure to mark scene as dirty after each programc compiles
     }
 };
 
@@ -171,15 +178,15 @@ Scene.prototype.initSelectionBuffer = function () {
     this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
 
     // Texture for the FBO color attachment
-    this.fbo_texture = new GLTexture(this.gl, 'selection_fbo');
-    this.fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.fbo_texture.texture, 0);
+    var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+    fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 
     // Renderbuffer for the FBO depth attachment
-    this.fbo_depth_rb = this.gl.createRenderbuffer();
-    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    var fbo_depth_rb = this.gl.createRenderbuffer();
+    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, fbo_depth_rb);
     this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
-    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, this.fbo_depth_rb);
+    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, fbo_depth_rb);
 
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -193,7 +200,7 @@ Scene.prototype.createObjectURL = function () {
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
     // TODO, we should move the url to a config file
-    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
+    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
 
     // Load & instantiate workers
     queue.defer((done) => {
@@ -395,6 +402,30 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
     return z;
 };
 
+// Setup the render loop
+Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
+    this.renderLoop = () => {
+        if (this.initialized) {
+            // Pre-render hook
+            if (typeof this.preRender === 'function') {
+                this.preRender();
+            }
+
+            // Render the scene
+            this.render();
+
+            // Post-render hook
+            if (typeof this.postRender === 'function') {
+                this.postRender();
+            }
+        }
+
+        // Request the next frame
+        window.requestAnimationFrame(this.renderLoop);
+    };
+    setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+};
+
 Scene.prototype.render = function () {
     this.loadQueuedTiles();
 
@@ -465,6 +496,9 @@ Scene.prototype.renderGL = function () {
     this.resetFrame({ alpha_blend: true });
 
     // Map transforms
+    if (!this.center) {
+        return;
+    }
     var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
 
     // Model-view matrices
@@ -794,10 +828,28 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildTiles = function () {
+Scene.prototype.rebuild = function (callback) {
     if (!this.initialized) {
+        if (typeof callback === 'function') {
+            callback(false);
+        }
         return;
     }
+
+    // Skip rebuild if already in progress
+    if (this.building) {
+        // Queue up to one rebuild call at a time, only save last request
+        if (this.building.queued && typeof this.building.queued.callback === 'function') {
+            this.building.queued.callback(null, false); // notify previous callback that it did not complete
+        }
+
+        // Save queued request
+        this.building.queued = { callback };
+        return;
+    }
+
+    // Track tile build state
+    this.building = { callback, tiles: {} };
 
     // Update layers & styles
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
@@ -853,11 +905,23 @@ Scene.prototype.rebuildTiles = function () {
 
     this.updateActiveModes();
     this.resetTime();
+
+    // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
+    if (this.building && Object.keys(this.building.tiles).length === 0) {
+        callback = this.building.callback;
+        this.building = null;
+        if (typeof callback === 'function') {
+            callback(null, true); // notify build callback as completed
+        }
+        // TODO: call any queued rebuild
+        // TODO: move this whole "finish build process / callback / call queue" to separate function to avoid repetition
+    }
 };
 
 Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
+    this.trackTileBuildStart(key);
     this.workerPostMessageForTile(tile, {
         type: 'buildTile',
         tile: {
@@ -993,17 +1057,53 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
         console.log(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
-        return;
+    }
+    else if (!tile.error) {
+        // Update tile with properties from worker
+        tile = this.mergeTile(tile.key, tile);
+        this.buildGLGeometry(tile);
+        this.dirty = true;
+    }
+    else {
+        console.log(`main thread tile load error for ${tile.key}: ${tile.error}`);
     }
 
-    // Update tile with properties from worker
-    tile = this.mergeTile(tile.key, tile);
-
-    this.buildGLGeometry(tile);
-
-    this.dirty = true;
-    this.trackTileSetLoadEnd();
+    this.trackTileSetLoadStop();
     this.printDebugForTile(tile);
+    this.trackTileBuildStop(tile.key);
+};
+
+// Track tile build state
+Scene.prototype.trackTileBuildStart = function (key) {
+    if (!this.building) {
+        this.building = {
+            tiles: {}
+        };
+    }
+    this.building.tiles[key] = true;
+    // console.log(`trackTileBuildStart for ${key}: ${Object.keys(this.building.tiles).length}`);
+};
+
+Scene.prototype.trackTileBuildStop = function (key) {
+    // Done building?
+    if (this.building) {
+        // console.log(`trackTileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
+        delete this.building.tiles[key];
+        if (Object.keys(this.building.tiles).length === 0) {
+            console.log(`scene build FINISHED`);
+            var callback = this.building.callback;
+            if (typeof callback === 'function') {
+                callback(null, true); // notify build callback as completed
+            }
+
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                this.rebuild(queued.callback);
+            }
+        }
+    }
 };
 
 // Called on main thread when a web worker completes processing for a single tile
@@ -1166,14 +1266,16 @@ Scene.prototype.loadScene = function (callback) {
 };
 
 // Reload scene config and rebuild tiles
-Scene.prototype.reloadScene = function () {
+Scene.prototype.reload = function () {
     if (!this.initialized) {
         return;
     }
 
     this.loadScene(() => {
-        this.refreshCamera();
-        this.rebuildTiles();
+        this.createCamera();
+        this.createLighting();
+        this.refreshModes();
+        this.rebuild();
     });
 };
 
@@ -1183,7 +1285,7 @@ Scene.prototype.refreshModes = function () {
         return;
     }
 
-    this.modes = Scene.refreshModes(this.modes, this.styles.modes);
+    this.modes = Scene.refreshModes(this.modes, this.styles.modes, () => { this.dirty = true; }); // mark scene as dirty when all programs have compiled
 };
 
 Scene.prototype.updateActiveModes = function () {
@@ -1192,7 +1294,7 @@ Scene.prototype.updateActiveModes = function () {
     var animated = false; // is any active mode animated?
     for (var l in this.styles.layers) {
         var mode = this.styles.layers[l].mode.name;
-        if (this.styles.layers[l].visible !== false) {
+        if (this.styles.layers[l].visible !== false && this.modes[mode]) {
             this.active_modes[mode] = true;
 
             // Check if this mode is animated
@@ -1212,6 +1314,28 @@ Scene.prototype.createCamera = function () {
 // Replace camera
 Scene.prototype.refreshCamera = function () {
     this.createCamera();
+    this.refreshModes();
+};
+
+// Create lighting
+Scene.prototype.createLighting = function () {
+    // Temporary #define-based lighting
+    // TODO: extract lighting models to classes & shader modules
+    var types = {
+        diffuse: 'LIGHTING_POINT',
+        specular: 'LIGHTING_POINT_SPECULAR',
+        flat: 'LIGHTING_DIRECTION',
+        night: 'LIGHTING_NIGHT' // TODO: this should just be config on top of a normal lighting mode, here temporarily for demo
+    };
+
+    for (var t in types) {
+        GLProgram.defines[types[t]] = (t === this.styles.lighting.type);
+    }
+};
+
+// Replace lighting
+Scene.prototype.refreshLighting = function () {
+    this.createLighting();
     this.refreshModes();
 };
 
@@ -1276,7 +1400,7 @@ Scene.prototype.trackTileSetLoadStart = function () {
     }
 };
 
-Scene.prototype.trackTileSetLoadEnd = function () {
+Scene.prototype.trackTileSetLoadStop = function () {
     // No more tiles actively loading?
     if (this.tile_set_loading != null) {
         var end_tile_set = true;
@@ -1343,9 +1467,9 @@ Scene.loadLayers = function (url, callback) {
     Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
         if (error) { throw error; }
         // Try JSON first, then YAML (if available)
-        /* jshint ignore:start */
+
         try {
-            eval('layers = ' + body); // TODO: security!
+            eval('layers = ' + body); // jshint ignore:line
         } catch (e) {
             try {
                 layers = yaml.safeLoad(body);
@@ -1355,7 +1479,6 @@ Scene.loadLayers = function (url, callback) {
                 layers = null;
             }
         }
-        /* jshint ignore:end */
 
         if (typeof callback === 'function') {
             callback(layers);
@@ -1368,10 +1491,8 @@ Scene.loadStyles = function (url, callback) {
         if (error) { throw error; }
         var styles;
         // Try JSON first, then YAML (if available)
-        /* jshint ignore:start */
         try {
-
-            eval('styles = ' + body);
+            eval('styles = ' + body); // jshint ignore:line
         } catch (e) {
             try {
                 styles = yaml.safeLoad(body);
@@ -1381,9 +1502,8 @@ Scene.loadStyles = function (url, callback) {
                 styles = null;
             }
         }
-        /* jshint ignore:end */
+
         // Find generic functions & style macros
-        Utils.stringsToFunctions(styles);
         Style.expandMacros(styles);
         Scene.postProcessStyles(styles);
 
@@ -1412,6 +1532,7 @@ Scene.postProcessStyles = function (styles) {
     }
 
     styles.camera = styles.camera || {}; // ensure camera object
+    styles.lighting = styles.lighting || {}; // ensure lighting object
 
     return styles;
 };
@@ -1468,7 +1589,10 @@ Scene.createModes = function (stylesheet_modes) {
     return modes;
 };
 
-Scene.refreshModes = function (modes, stylesheet_modes) {
+// Returns mode objects immediately, but only calls callback when all modes are done compiling
+Scene.refreshModes = function (modes, stylesheet_modes, callback) {
+    var queue = Queue();
+
     // Copy stylesheet modes
     // TODO: is this the best way to copy stylesheet changes to mode instances?
     for (var m in stylesheet_modes) {
@@ -1477,9 +1601,24 @@ Scene.refreshModes = function (modes, stylesheet_modes) {
 
     // Refresh all modes
     for (m in modes) {
-        modes[m].refresh();
+        queue.defer((complete) => {
+            var mode = modes[m];
+            mode.refresh((error) => {
+                // console.log(`refreshed mode ${mode.name}, error: ${error}`);
+                complete(error);
+            });
+        });
     }
 
+    // Callback when all modes are done compiling
+    queue.await((error) => {
+        // console.log(`refreshed all modes, error: ${error}`);
+        if (typeof callback === 'function') {
+            callback(error);
+        }
+    });
+
+    // Modes can return immediately, will finish compiling later
     return modes;
 };
 
@@ -1493,10 +1632,14 @@ function findBaseLibraryURL () {
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('tangram.debug.js');
-        if (match === -1) {
+        if (match >= 0) {
+            Scene.library_type = 'debug';
+        }
+        else {
             match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
+            Scene.library_type = Scene.library_type || 'min';
             Scene.library_base_url = scripts[s].src.substr(0, match);
             break;
         }

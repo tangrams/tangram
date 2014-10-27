@@ -31,6 +31,16 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.compile(options.callback);
 }
 
+GLProgram.prototype.destroy = function () {
+    this.gl.useProgram(null);
+    this.gl.deleteProgram(this.program);
+    this.program = null;
+    this.uniforms = {};
+    this.attribs = {};
+    delete GLProgram.programs[this.id];
+    this.compiled = false;
+};
+
 // Use program wrapper with simple state cache
 GLProgram.prototype.use = function ()
 {
@@ -62,6 +72,7 @@ GLProgram.removeTransform = function (key) {
 GLProgram.prototype.compile = function (callback)
 {
     var queue = Queue();
+    this.current_callback = callback; // track the most recent call, so we know which one is last
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -125,7 +136,13 @@ GLProgram.prototype.compile = function (callback)
     // When all transform code snippets are collected, combine and inject them
     queue.await(error => {
         if (error) {
-            console.log("error loading transforms: " + error);
+            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) errored: ${error.message}`));
+            return;
+        }
+
+        // This compilation call has been superceded by a newer one
+        if (typeof callback === 'function' && callback !== this.current_callback ) {
+            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) was superceded`));
             return;
         }
 
@@ -179,6 +196,7 @@ GLProgram.prototype.compile = function (callback)
 
         // Notify caller
         if (typeof callback === 'function') {
+            this.current_callback = null;
             callback();
         }
     });
@@ -267,6 +285,10 @@ GLProgram.buildDefineString = function (defines) {
 // Set uniforms from a JS object, with inferred types
 GLProgram.prototype.setUniforms = function (uniforms)
 {
+    if (!this.compiled) {
+        return;
+    }
+
     // TODO: only update uniforms when changed
     var texture_unit = 0;
 

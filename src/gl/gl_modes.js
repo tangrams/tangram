@@ -16,12 +16,13 @@ export var ModeManager = {};
 // Base
 
 var RenderMode = {
-    setGL (gl) {
+    setGL (gl, callback) {
         this.gl = gl;
-        this.makeGLProgram();
+        this.valid = true;
+        this.makeGLProgram(callback);
     },
-    refresh: function () { // TODO: should this be async/non-blocking?
-        this.makeGLProgram();
+    refresh: function (callback) { // TODO: should this be async/non-blocking?
+        this.makeGLProgram(callback);
     },
     defines: {},
     selection: false,
@@ -33,9 +34,36 @@ var RenderMode = {
     }
 };
 
-RenderMode.makeGLProgram = function ()
+RenderMode.destroy = function () {
+    if (this.gl_program) {
+        this.gl_program.destroy();
+        this.gl_program = null;
+    }
+
+    if (this.selection_gl_program) {
+        this.selection_gl_program.destroy();
+        this.selection_gl_program = null;
+    }
+
+    this.gl = null;
+    this.valid = false;
+
+    if (!this.built_in) {
+        delete Modes[this.name];
+    }
+};
+
+RenderMode.makeGLProgram = function (callback)
 {
-    // console.log(this.name + ": " + "start building");
+    if (this.valid === false) {
+        if (typeof callback === 'function') {
+            callback(false);
+        }
+        return false;
+    }
+    this.loading = true;
+    this.current_callback = callback; // track the most recent call, so we know which one is last
+
     var queue = Queue();
 
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
@@ -54,7 +82,6 @@ RenderMode.makeGLProgram = function ()
 
     queue.defer(complete => {
         if (!program) {
-            // console.log(this.name + ": " + "instantiate");
             program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
@@ -68,7 +95,6 @@ RenderMode.makeGLProgram = function ()
             );
         }
         else {
-            // console.log(this.name + ": " + "re-compile");
             program.defines = defines;
             program.transforms = transforms;
             program.compile(complete);
@@ -78,7 +104,6 @@ RenderMode.makeGLProgram = function ()
     if (this.selection) {
         queue.defer(complete => {
             if (!selection_program) {
-                // console.log(this.name + ": " + "selection instantiate");
                 selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
@@ -92,7 +117,6 @@ RenderMode.makeGLProgram = function ()
                 );
             }
             else {
-                // console.log(this.name + ": " + "selection re-compile");
                 selection_program.defines = selection_defines;
                 selection_program.transforms = transforms;
                 selection_program.compile(complete);
@@ -102,17 +126,33 @@ RenderMode.makeGLProgram = function ()
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await(() => {
-       if (program) {
-           this.gl_program = program;
-       }
+    queue.await((err) => {
+        this.loading = false;
+        if (err) {
+            callback(new Error(`refresh for mode ${this.name} errored: ${err.message}`));
+            return;
+        }
 
-       if (selection_program) {
-           this.selection_gl_program = selection_program;
-       }
+        if (program) {
+            this.gl_program = program;
+        }
 
-       // console.log(this.name + ": " + "finished building");
+        if (selection_program) {
+            this.selection_gl_program = selection_program;
+        }
+
+        if (typeof callback === 'function') {
+            if (callback === this.current_callback) {
+                this.current_callback = null;
+                callback();
+            }
+            else {
+                callback(new Error(`callback for mode ${this.name} is out of date`));
+            }
+        }
     });
+
+    return true;
 };
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
@@ -167,6 +207,18 @@ ModeManager.configureMode = function (name, settings)
     return Modes[name];
 };
 
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    var modes = Object.keys(Modes);
+    for (var m of modes) {
+        var mode = Modes[m];
+        if (mode.gl === gl) {
+            // console.log(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    }
+};
+
 
 // Built-in rendering modes
 
@@ -174,6 +226,7 @@ ModeManager.configureMode = function (name, settings)
 
 Modes.polygons = Object.create(RenderMode);
 Modes.polygons.name = 'polygons';
+Modes.polygons.built_in = true;
 
 Modes.polygons.vertex_shader_key = 'polygon_vertex';
 Modes.polygons.fragment_shader_key = 'polygon_fragment';
@@ -266,6 +319,10 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
         vertex_template[color_index + 3] = style.outline.color[3] * 255;
 
+        // Polygon outlines sit over current layer but underneath the one above
+        // TODO: address inconsistency with line outlines
+        vertex_template[this.vertex_layout.index.a_layer] += 0.25;
+
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
                 polygons[mpc],
@@ -276,7 +333,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
                 {
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     closed_polygon: true,
-                    remove_tile_edges: true
+                    remove_tile_edges: !style.outline.tile_edges
                 }
             );
         }
@@ -308,10 +365,11 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
         vertex_template[color_index + 3] = style.outline.color[3] * 255;
 
-        // Outlines sit between layers, underneath current layer but above the one below
+        // Line outlines sit underneath current layer but above the one below
+        // TODO: address inconsistency with polygon outlines
         // TODO: need more fine-grained styling controls for outlines
         // (see complex road interchanges where casing outlines should be interleaved by road type)
-        vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
 
         GLBuilders.buildPolylines(
             lines,
@@ -345,6 +403,7 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 
 Modes.points = Object.create(RenderMode);
 Modes.points.name = 'points';
+Modes.points.built_in = true;
 
 Modes.points.vertex_shader_key = 'point_vertex';
 Modes.points.fragment_shader_key = 'point_fragment';

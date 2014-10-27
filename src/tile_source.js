@@ -103,12 +103,18 @@ export class NetworkTileSource extends TileSource {
 
         Utils.xhr({
             uri: url,
+            timeout: 60 * 1000,
             responseType: this.response_type
         }, (err, resp, body) => {
-
-            if (err) { return callback(err); }
-
-            if (tile.loading === false) {
+            // Tile load errored
+            if (err) {
+                tile.loaded = false;
+                tile.loading = false;
+                tile.error = err.toString();
+                return callback(err);
+            }
+            // We already canceled the tile load, so just throw away the result
+            else if (tile.loading === false) {
                 return;
             }
 

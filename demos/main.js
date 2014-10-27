@@ -81,20 +81,6 @@
 
     /***** GUI/debug controls *****/
 
-    // GUI options for #define-based effects
-    var gl_define_options = {
-        lighting: {
-            lighting: 'LIGHTING_POINT',
-            options: {
-                'None': '',
-                'Diffuse': 'LIGHTING_POINT',
-                'Specular': 'LIGHTING_POINT_SPECULAR',
-                'Flat': 'LIGHTING_DIRECTION',
-                'Night': 'LIGHTING_NIGHT'
-            }
-        }
-    };
-
     /*** URL parsing ***/
 
     // URL hash pattern is one of:
@@ -136,21 +122,6 @@
         }
     }
 
-    function setGLProgramDefinesForOptionSet(current_value, options) {
-        Object.keys(options).forEach(function (key) {
-            var value = options[key];
-            Tangram.GLProgram.defines[value] = ((value === current_value) && value !== '');
-        });
-    }
-
-
-    function setGLProgramDefines() {
-        Object.keys(gl_define_options).forEach(function (key) {
-            setGLProgramDefinesForOptionSet(gl_define_options[key][key], gl_define_options[key].options);
-        });
-        layer.scene.requestRedraw();
-    }
-
     // Put current state on URL
     function updateURL() {
         var map_latlng = map.getCenter(),
@@ -180,11 +151,13 @@
         vectorLayers: tile_sources[default_tile_source].layers,
         vectorStyles: tile_sources[default_tile_source].styles,
         numWorkers: 2,
-        // debug: true,
-        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram">Source Code</a>',
+        preRender: preRender,
+        postRender: postRender,
+        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>',
         unloadInvisibleTiles: false,
         updateWhenIdle: false
     });
+    window.layer = layer;
 
     var scene = layer.scene;
     window.scene = scene;
@@ -203,19 +176,6 @@
 
     window.addEventListener('resize', resizeMap);
     resizeMap();
-
-    function addGUIDefines() {
-        Object.keys(gl_define_options).forEach(function (key) {
-            gui.
-                add(gl_define_options[key], key, gl_define_options[key].options).
-                onChange(function () {
-                    setGLProgramDefines();
-                    scene.refreshModes();
-                    updateURL();
-                }).
-                listen();
-        });
-    }
 
 
     // Take a screenshot and save file
@@ -332,10 +292,10 @@
             }
 
             // Recompile/rebuild
-            setGLProgramDefines();
             scene.createCamera();
+            scene.createLighting();
             scene.refreshModes();
-            scene.rebuildTiles();
+            scene.rebuild();
             updateURL();
 
             // Force-update dat.gui
@@ -576,8 +536,19 @@
             layer.scene.refreshCamera();
         });
 
-        // #define controls
-        addGUIDefines();
+        // Lighting
+        var lighting_types = {
+            'None': null,
+            'Diffuse': 'diffuse',
+            'Specular': 'specular',
+            'Flat': 'flat',
+            'Night': 'night'
+        };
+        gui.lighting = layer.scene.styles.lighting.type;
+        gui.add(gui, 'lighting', lighting_types).onChange(function(value) {
+            layer.scene.styles.lighting.type = value;
+            layer.scene.refreshLighting();
+        });
 
         // Feature selection on hover
         gui['feature info'] = true;
@@ -602,7 +573,7 @@
                 add(layer_controls, l.name).
                 onChange(function(value) {
                     layer.scene.styles.layers[l.name].visible = value;
-                    layer.scene.rebuildTiles();
+                    layer.scene.rebuild();
                 });
         });
 
@@ -674,23 +645,8 @@
         });
     }
 
-
-    function animationFrame(cb) {
-        if (typeof window.requestAnimationFrame === 'function') {
-            return window.requestAnimationFrame;
-        } else {
-            return window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame    ||
-                window.oRequestAnimationFrame      ||
-                window.msRequestAnimationFrame     ||
-                function (cb) {
-                    setTimeout(cb, 1000 /60);
-                };
-        }
-    }
-
-    function frame () {
-
+    // Pre-render hook
+    function preRender () {
         if (rS != null) { // rstats
             rS('frame').start();
             // rS('raf').tick();
@@ -700,9 +656,10 @@
                 glS.start();
             }
         }
+    }
 
-        layer.render();
-
+    // Post-render hook
+    function postRender () {
         if (rS != null) { // rstats
             rS('frame').end();
             rS('rendertiles').set(scene.renderable_tiles_count);
@@ -716,8 +673,6 @@
             gui.queue_screenshot = false;
             screenshot();
         }
-
-        animationFrame()(frame);
     }
 
     /***** Render loop *****/
@@ -729,7 +684,6 @@
             if (url_mode) {
                 gl_mode_options.setup(url_mode);
             } else {
-                setGLProgramDefines();
                 scene.refreshModes();
             }
             updateURL();
@@ -746,8 +700,6 @@
                 .bringToFront()
                 .addTo(map);
         }
-
-        frame();
     });
 
 

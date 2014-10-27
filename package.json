@@ -24,6 +24,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "libtess": "1.0.4",
     "pbf": "0.0.1",
     "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson",
     "glsl-noise": "0.0.0",
@@ -37,7 +38,7 @@
     "glslify": "^1.5.1",
     "browserify": "3.33.1",
     "es6ify": "1.4.0",
-    "jshint": "git://github.com/jshint/jshint.git#befb880c0563d09a35e44ffbe99758b10bdcf328",
+    "jshint": "git://github.com/jshint/jshint.git#199606ba6f48fa1a93b3ee7f312221d5c9e948aa",
     "mocha": "~1.21.4",
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
