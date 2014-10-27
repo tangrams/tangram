@@ -968,7 +968,6 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     raw.tile_source = this.tile_source;
     var tile = Tile.create(raw);
 
-
     // Removed this tile during load?
     if (this.hasTile(tile.key)) {
         log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
