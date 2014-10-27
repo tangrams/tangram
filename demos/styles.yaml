@@ -376,8 +376,8 @@ modes:
                     float frames_per_second = 2.;
 
                     float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
-                    if (color == vec3(0.)) discard;
+                    color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
+                    if (color.rgb == vec3(0.)) discard;
 
 layers:
     earth:
