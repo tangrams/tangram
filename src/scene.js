@@ -1020,17 +1020,21 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     }
     log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
-    var raw = event.data.tile;
-    raw.tile_source = this.tile_source;
-    var tile = Tile.create(raw);
+    var tile = Tile.create(Object.assign(
+        {}, event.data.tile, {tile_source: this.tile_source}
+    ));
 
     // Removed this tile during load?
-    if (this.hasTile(tile.key)) {
+    if (!this.hasTile(tile.key)) {
         log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
     }
     else if (!tile.error) {
+        var cached = this.tiles[tile.key];
+
         // Update tile with properties from worker
-        tile = this.mergeTile(tile.key, tile);
+        if (cached) {
+            tile = cached.merge(tile);
+        }
         tile.buildGLGeometry(this.modes);
         this.dirty = true;
 
@@ -1098,34 +1102,6 @@ Scene.prototype.removeTile = function (key)
     this.forgetTile(tile.key);
 
     this.dirty = true;
-};
-
-/**
-    Merge properties from a provided tile object into the main tile
-    store. Shallow merge (just copies top-level properties)!
-
-    Used for selectively updating properties of tiles passed between
-    main thread and worker
-    (so we don't have to pass the whole tile, including some
-    properties which cannot be cloned for a worker).
-*/
-Scene.prototype.mergeTile = function (key, source_tile) {
-    var tile = this.tiles[key];
-
-    if (tile == null) {
-        this.tiles[key] = source_tile;
-        return this.tiles[key];
-    }
-
-    for (var p in source_tile) {
-        tile[p] = source_tile[p];
-        if (p !== 'key') {
-            log.debug(`merging ${p}: ${source_tile[p]}`);
-            tile[p] = source_tile[p];
-        }
-    }
-
-    return tile;
 };
 
 // Load (or reload) the scene config
