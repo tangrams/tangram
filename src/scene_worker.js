@@ -1,5 +1,6 @@
 /*jshint worker: true*/
 import Utils from './utils';
+import WorkerBroker from './worker_broker'
 import {Style} from './style';
 import Scene  from './scene';
 import TileSource from './tile_source.js';
@@ -155,22 +156,14 @@ SceneWorker.worker.addEventListener('message', function (event) {
 });
 
 // Get a feature from the selection map
-SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type !== 'getFeatureSelection') {
-        return;
-    }
-
-    var key = event.data.key;
+SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
     var selection = Style.selection_map[key];
 
-    if (selection != null) {
-        SceneWorker.worker.postMessage({
-            type: 'getFeatureSelection',
-            key: key,
-            feature: selection.feature
-        });
-    }
-});
+    return {
+        id: id,
+        feature: (selection && selection.feature)
+    };
+};
 
 // Make layers/styles refresh config
 SceneWorker.worker.addEventListener('message', function (event) {

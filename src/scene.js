@@ -2,6 +2,7 @@
 import Point from './point';
 import {Geo} from './geo';
 import Utils from './utils';
+import WorkerBroker from './worker_broker'
 import {Style} from './style';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
@@ -112,6 +113,7 @@ Scene.prototype.init = function (callback) {
             }
 
             this.initialized = true;
+            this.render();
 
             if (typeof callback === 'function') {
                 callback();
@@ -162,12 +164,10 @@ Scene.prototype.initSelectionBuffer = function () {
     // Selection state tracking
     this.pixel = new Uint8Array(4);
     this.pixel32 = new Float32Array(this.pixel.buffer);
-    this.selection_point = Point(0, 0);
+    this.selection_requests = {};
     this.selected_feature = null;
-    this.selection_callback = null;
     this.selection_callback_timer = null;
     this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
-    this.update_selection = false;
 
     // Frame buffer for selection
     // TODO: initiate lazily in case we don't need to do any selection
@@ -216,7 +216,6 @@ Scene.prototype.createWorkers = function (callback) {
                 done();
             });
         } else { // Traditional load from remote URL
-            console.log(this);
             this.makeWorkers(worker_url);
             done();
         }
@@ -225,8 +224,10 @@ Scene.prototype.createWorkers = function (callback) {
     // Init workers
     queue.await(() => {
         this.workers.forEach((worker) => {
+            WorkerBroker.addWorker(worker);
+
+            // TODO: replace these with new WorkerBroker pattern
             worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
-            worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
             worker.addEventListener('message', this.workerLogMessage.bind(this));
         });
 
@@ -563,8 +564,7 @@ Scene.prototype.renderGL = function () {
     // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
     // mode program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
-    if (this.update_selection) {
-        this.update_selection = false; // reset selection check
+    if (Object.keys(this.selection_requests).length > 0) {
 
         // TODO: queue callback till panning is over? coords where selection was requested are out of date
         if (this.panning) {
@@ -635,7 +635,7 @@ Scene.prototype.renderGL = function () {
             clearTimeout(this.selection_callback_timer);
         }
         this.selection_callback_timer = setTimeout(
-            this.readSelectionBuffer.bind(this),
+            () => this.doFeatureSelectionRequests(),
             this.selection_frame_delay
         );
 
@@ -655,67 +655,89 @@ Scene.prototype.renderGL = function () {
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
 Scene.prototype.getFeatureAt = function (pixel, callback) {
+    if (typeof callback !== 'function') {
+        throw new Error("Scene.getFeatureAt() called without a valid callback function");
+    }
+
     if (!this.initialized) {
+        callback(new Error("Scene.getFeatureAt() called before scene was initialized"));
         return;
     }
 
-    // TODO: queue callbacks while still performing only one selection render pass within X time interval?
-    if (this.update_selection === true) {
-        return;
-    }
-
-    this.selection_point = Point(
-        pixel.x * this.device_pixel_ratio,
-        this.device_size.height - (pixel.y * this.device_pixel_ratio)
-    );
-    this.selection_callback = callback;
-    this.update_selection = true;
-    this.dirty = true;
+    // Queue requests for feature selection, and they will be picked up by the render loop
+    this.selection_request_id = (this.selection_request_id + 1) || 0;
+    this.selection_requests[this.selection_request_id] = {
+        type: 'point',
+        id: this.selection_request_id,
+        point: {
+            // TODO: move this pixel calc to a GL wrapper
+            x: pixel.x * this.device_pixel_ratio,
+            y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+        },
+        callback
+    };
+    this.dirty = true; // need to make sure the scene re-renders for these to be processed
 };
 
-Scene.prototype.readSelectionBuffer = function () {
+Scene.prototype.doFeatureSelectionRequests = function () {
     var gl = this.gl;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
-    // Check selection map against FBO
-    gl.readPixels(
-        Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
-        Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
-        1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-    var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
-
-    // console.log(
-    //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
-    //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
-    //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
-
-    // If feature found, ask appropriate web worker to lookup feature
-    var worker_id = this.pixel[3];
-    if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
-        // console.log(`worker_id: ${worker_id}`);
-        if (this.workers[worker_id] != null) {
-            this.workers[worker_id].postMessage({
-                type: 'getFeatureSelection',
-                key: feature_key
-            });
+    for (var request of Utils.values(this.selection_requests)) {
+        // This request was already sent to the worker, we're just awaiting its reply
+        if (request.sent) {
+            continue;
         }
-    }
-    // No feature found, but still need to notify via callback
-    else {
-        this.workerGetFeatureSelection({ data: { type: 'getFeatureSelection', feature: null } });
+
+        // TODO: support other selection types, such as features within a box
+        if (request.type !== 'point') {
+            continue;
+        }
+
+        // Check selection map against FBO
+        gl.readPixels(
+            Math.floor(request.point.x * this.fbo_size.width / this.device_size.width),
+            Math.floor(request.point.y * this.fbo_size.height / this.device_size.height),
+            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
+        var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
+
+        // console.log(
+        //     Math.floor(request.point.x * this.fbo_size.width / this.device_size.width) + ", " +
+        //     Math.floor(request.point.y * this.fbo_size.height / this.device_size.height) + ": (" +
+        //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
+
+        // If feature found, ask appropriate web worker to lookup feature
+        var worker_id = this.pixel[3];
+        if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
+            if (this.workers[worker_id] != null) {
+                WorkerBroker.postMessageToWorker(
+                    this.workers[worker_id],
+                    'getFeatureSelection',
+                    { id: request.id, key: feature_key },
+                    (message) => this.workerGetFeatureSelection(message)
+                );
+            }
+        }
+        // No feature found, but still need to notify via callback
+        else {
+            this.workerGetFeatureSelection({ id: request.id, feature: null });
+        }
+
+        request.sent = true;
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
 
 // Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (event) {
-    if (event.data.type !== 'getFeatureSelection') {
-        return;
+Scene.prototype.workerGetFeatureSelection = function (message) {
+    var request = this.selection_requests[message.id];
+    if (!request) {
+        throw new Error("Scene.workerGetFeatureSelection() called without any message");
     }
 
-    var feature = event.data.feature;
+    var feature = message.feature;
     var changed = false;
     if ((feature != null && this.selected_feature == null) ||
         (feature == null && this.selected_feature != null) ||
@@ -723,11 +745,13 @@ Scene.prototype.workerGetFeatureSelection = function (event) {
         changed = true;
     }
 
-    this.selected_feature = feature;
+    this.selected_feature = feature; // store the most recently selected feature
 
-    if (typeof this.selection_callback === 'function') {
-        this.selection_callback({ feature: this.selected_feature, changed: changed });
+    // Send the feature info the callback
+    if (typeof request.callback === 'function') {
+        request.callback({ feature, changed, request });
     }
+    delete this.selection_requests[message.id]; // done processing this request
 };
 
 // Queue a tile for load
