@@ -117,14 +117,14 @@ Style.expandMacros = function expandMacros (obj) {
 
 // Determine final style properties (color, width, etc.)
 Style.defaults = {
-    color: [1.0, 0, 0],
+    color: [1, 0, 0, 1],
     width: 1,
     size: 1,
     extrude: false,
     height: 20,
     min_height: 0,
     outline: {
-        // color: [1.0, 0, 0],
+        // color: [1, 0, 0, 1],
         // width: 1,
         // dash: null
     },
@@ -167,6 +167,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
+    style.color[3] = style.color[3] || 1; // default to full alpha
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     if (typeof style.width === 'function') {
@@ -210,6 +211,9 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
     if (typeof style.outline.color === 'function') {
         style.outline.color = style.outline.color(feature, tile, Style.helpers);
+    }
+    if (style.outline && style.outline.color) {
+        style.outline.color[3] = style.outline.color[3] || 1; // default to full alpha
     }
 
     style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;

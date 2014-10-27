@@ -272,7 +272,7 @@ Modes.polygons.makeVertexTemplate = function (style) {
         0, 0, 1,
         // color
         // TODO: automate multiplication for normalized attribs?
-        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
         // selection color
         style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
         // layer number
@@ -317,6 +317,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
         vertex_template[color_index + 0] = style.outline.color[0] * 255;
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
+        vertex_template[color_index + 3] = style.outline.color[3] * 255;
 
         // Polygon outlines sit over current layer but underneath the one above
         // TODO: address inconsistency with line outlines
@@ -362,6 +363,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         vertex_template[color_index + 0] = style.outline.color[0] * 255;
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
+        vertex_template[color_index + 3] = style.outline.color[3] * 255;
 
         // Line outlines sit underneath current layer but above the one below
         // TODO: address inconsistency with polygon outlines
@@ -432,7 +434,7 @@ Modes.points.makeVertexTemplate = function (style) {
         0, 0,
         // color
         // TODO: automate multiplication for normalized attribs?
-        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+        style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
         // selection color
         style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
         // layer number

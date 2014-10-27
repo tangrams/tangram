@@ -1,10 +1,11 @@
 uniform vec2 u_resolution;
+uniform float u_time;
 
-varying vec3 v_color;
+varying vec4 v_color;
 varying vec2 v_texcoord;
 
 void main (void) {
-    vec3 color = v_color;
+    vec4 color = v_color;
     vec3 lighting = vec3(1.);
 
     // Simple threshold at dot radius
@@ -17,5 +18,5 @@ void main (void) {
 
     #pragma tangram: fragment
 
-    gl_FragColor = vec4(color, 1.);
+    gl_FragColor = color;
 }
