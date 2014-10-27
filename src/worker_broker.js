@@ -1,3 +1,4 @@
+/*jshint worker: true*/
 // Broker between worker and main thread
 var WorkerBroker;
 export default WorkerBroker = {};
@@ -11,7 +12,12 @@ var worker_messages = {};
 try {
     if (window !== undefined) {
 
-        // Listen for messages, dispatch them, and callback to the main thread with any return value
+        // Send a message to the worker, and optionally get an async response
+        // - worker: the web worker instance
+        // - type: on the worker side, the method with this name will be invoked
+        // - message: will be passed to the method call in the worker
+        // - callback: if provided, worker will send the invoked method's return value back to the worker,
+        //     which will then pass it to the callback
         WorkerBroker.postMessageToWorker = function (worker, type, message, callback) {
             // Only need to track state of this message if we expect it to callback to the main thread
             var has_callback = (typeof callback === 'function');
@@ -21,7 +27,7 @@ try {
 
             worker.postMessage({
                 worker_message_id,  // unique id for this message, for life of program
-                type,               // will dispatch to a per-type function within the worker
+                type,               // will dispatch to a function of this name within the worker
                 message,            // message payload
                 has_callback        // flag indicating id worker should callback to main thread
             });
@@ -49,28 +55,30 @@ catch (e) {
 
         // Listen for messages initiating a call from the main thread, dispatch them,
         // and callback to the main thread with any return value
-        self.addEventListener('message', (event) => {
-            // Unique id for this message & return call to main thread
-            var id = event.data.worker_message_id;
-            if (id == null) {
-                return;
-            }
+        WorkerBroker.addWorker = function (worker) {
+            self.addEventListener('message', (event) => {
+                // Unique id for this message & return call to main thread
+                var id = event.data.worker_message_id;
+                if (id == null) {
+                    return;
+                }
 
-            // Call the requested worker method and save the return value
-            var dispatch = (typeof self[event.data.type] === 'function') && self[event.data.type];
-            if (!dispatch) {
-                throw Error(`Worker broker could not dispatch message type ${event.data.type} because worker has no method with that name`);
-            }
-            var result = dispatch(event.data.message);
+                // Call the requested worker method and save the return value
+                var dispatch = (typeof self[event.data.type] === 'function') && self[event.data.type];
+                if (!dispatch) {
+                    throw Error(`Worker broker could not dispatch message type ${event.data.type} because worker has no method with that name`);
+                }
+                var result = dispatch(event.data.message);
 
-            // Callback if main thread is expecting a return value
-            if (event.data.has_callback) {
-                self.postMessage({
-                    worker_message_id: id,
-                    message: result
-                });
-            }
-        });
+                // Callback if main thread is expecting a return value
+                if (event.data.has_callback) {
+                    self.postMessage({
+                        worker_message_id: id,
+                        message: result
+                    });
+                }
+            });
+        };
 
     }
 }

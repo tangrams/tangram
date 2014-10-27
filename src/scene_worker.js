@@ -1,14 +1,16 @@
 /*jshint worker: true*/
 import Utils from './utils';
-import WorkerBroker from './worker_broker'
+import WorkerBroker from './worker_broker';
 import {Style} from './style';
 import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
+WorkerBroker.addWorker(self);
+
 export var SceneWorker = {};
 SceneWorker.worker = self;
-SceneWorker.tiles = {}; // tiles being loaded by this worker (removed on load)
+SceneWorker.tiles = {}; // tiles processed by this worker
 
 // TODO: sync render mode state between main thread and worker
 // SceneWorker.modes = require('./gl/gl_modes').Modes;
