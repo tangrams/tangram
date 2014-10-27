@@ -20,12 +20,6 @@ export default class Tile {
                 y: null,
                 z: null
             },
-            layers: null,
-            max: {
-                x: null,
-                y: null
-            },
-            min: {},
             debug: {},
             loading: false,
             loaded: false
