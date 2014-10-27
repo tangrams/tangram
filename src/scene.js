@@ -832,7 +832,9 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 // TODO: also rebuild modes? (detect if changed)
 Scene.prototype.rebuild = function (callback) {
     if (!this.initialized) {
-        callback(false);
+        if (typeof callback === 'function') {
+            callback(false);
+        }
         return;
     }
 
@@ -840,7 +842,7 @@ Scene.prototype.rebuild = function (callback) {
     if (this.building) {
         // Queue up to one rebuild call at a time, only save last request
         if (this.building.queued && typeof this.building.queued.callback === 'function') {
-            this.building.queued.callback(false); // notify previous callback that it did not complete
+            this.building.queued.callback(null, false); // notify previous callback that it did not complete
         }
 
         // Save queued request
@@ -905,6 +907,17 @@ Scene.prototype.rebuild = function (callback) {
 
     this.updateActiveModes();
     this.resetTime();
+
+    // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
+    if (this.building && Object.keys(this.building.tiles).length === 0) {
+        callback = this.building.callback;
+        this.building = null;
+        if (typeof callback === 'function') {
+            callback(null, true); // notify build callback as completed
+        }
+        // TODO: call any queued rebuild
+        // TODO: move this whole "finish build process / callback / call queue" to separate function to avoid repetition
+    }
 };
 
 Scene.prototype.buildTile = function(key) {
@@ -1082,7 +1095,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             console.log(`scene build FINISHED`);
             var callback = this.building.callback;
             if (typeof callback === 'function') {
-                callback(true); // notify build callback as completed
+                callback(null, true); // notify build callback as completed
             }
 
             // Another rebuild queued?
