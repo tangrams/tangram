@@ -9,7 +9,6 @@ import samples from './fixtures/samples';
 
 let nyc_bounds = samples.nyc_bounds;
 
-
 describe('Tile', () => {
     let subject,
         scene,
@@ -34,13 +33,6 @@ describe('Tile', () => {
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, Tile);
-            assert.property(subject, 'max');
-            assert.property(subject, 'min');
-            assert.property(subject, 'debug');
-            assert.property(subject, 'bounds');
-            assert.property(subject, 'loading');
-            assert.property(subject, 'loaded');
-            assert.property(subject, 'key');
         });
     });
 
@@ -50,7 +42,7 @@ describe('Tile', () => {
         });
     });
 
-    describe('Tile.build(scene, key)', () => {
+    describe('Tile.sendBuild(scene, key)', () => {
         beforeEach(() => {
             sinon.stub(scene, 'workerPostMessageForTile');
         });
@@ -60,7 +52,7 @@ describe('Tile', () => {
         });
 
         it('calls scene.workerPostMessageForTile()', () => {
-            subject.build(scene);
+            subject.sendBuild(scene);
             sinon.assert.called(scene.workerPostMessageForTile);
         });
     });
@@ -72,7 +64,7 @@ describe('Tile', () => {
         }
 
         beforeEach(() => {
-            sinon.stub(subject, 'build');
+            sinon.stub(subject, 'sendBuild');
             sinon.spy(subject,  'updateElement');
             sinon.spy(subject,  'updateVisibility');
         });
@@ -86,9 +78,9 @@ describe('Tile', () => {
                 });
             });
 
-            it.skip('sets the key value', (done) => {
+            it('sets the key value', (done) => {
                 doLoad((error, el) => {
-                    assert.propertyVal(subject, 'key', '524288/524288/20');
+                    assert.propertyVal(subject, 'key', '150/192/9');
                     done();
                 });
             });
@@ -107,18 +99,18 @@ describe('Tile', () => {
                 });
             });
 
-            it.skip('calculates the min', (done) => {
+            it('calculates the min', (done) => {
                 doLoad((error, el) => {
-                    assert.deepPropertyVal(subject, 'min.x', 0);
-                    assert.deepPropertyVal(subject, 'min.y', 0);
+                    assert.deepPropertyVal(subject, 'min.x', -8296780.798186172);
+                    assert.deepPropertyVal(subject, 'min.y', 5009377.085697312);
                     done();
                 });
             });
 
-            it.skip('calculates the max', (done) => {
+            it('calculates the max', (done) => {
                 doLoad((error, el) => {
-                    assert.deepPropertyVal(subject, 'max.x', 38.218514144420624);
-                    assert.deepPropertyVal(subject, 'max.y', -38.218514144420624);
+                    assert.deepPropertyVal(subject, 'max.x', -8218509.281222152);
+                    assert.deepPropertyVal(subject, 'max.y', 4931105.56873329);
                     done();
                 });
             });

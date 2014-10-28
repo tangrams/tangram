@@ -897,7 +897,6 @@ Scene.prototype.rebuildGeometry = function (callback) {
         }
         // Drop tiles outside current zoom
         else {
-            console.log(invisible[t]);
             this.removeTile(invisible[t]);
         }
     }
