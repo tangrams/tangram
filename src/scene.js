@@ -1196,11 +1196,11 @@ Scene.prototype.loadScene = function (callback) {
 
     // If this is the first time we're loading the scene, copy any URLs
     if (!this.layer_source && typeof(this.layers) === 'string') {
-        this.layer_source = Utils.urlForPath(this.layers);
+        this.layer_source = this.layers;
     }
 
     if (!this.style_source && typeof(this.styles) === 'string') {
-        this.style_source = Utils.urlForPath(this.styles);
+        this.style_source = this.styles;
     }
 
     // Layer by URL

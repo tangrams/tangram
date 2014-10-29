@@ -9,35 +9,6 @@ Utils.xhr = function (...args) {
     xhr(...args);
 };
 
-// Simplistic detection of relative paths, append base if necessary
-Utils.urlForPath = function(path) {
-    var protocol;
-    if (path == null || path === '') {
-        return null;
-    }
-
-    var base = window.location.origin + window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')) + '/';
-
-    // Can expand a single path, or an array of paths
-    if (typeof path === 'object' && path.length > 0) {
-        // Array of paths
-        for (var p in path) {
-            protocol = path[p].toLowerCase().substr(0, 4);
-            if (!(protocol === 'http' || protocol === 'file')) {
-                path[p] = base + path[p];
-            }
-        }
-    }
-    else {
-        // Single path
-        protocol = path.toLowerCase().substr(0, 4);
-        if (!(protocol === 'http' || protocol === 'file')) {
-            path = base + path;
-        }
-    }
-    return path;
-};
-
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
     var serialized = JSON.stringify(obj, function(k, v) {

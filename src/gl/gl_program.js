@@ -215,7 +215,7 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
-        Utils.xhr(Utils.urlForPath(block.url) + '?' + (+new Date()), (error, response, body) => {
+        Utils.xhr(block.url + '?' + (+new Date()), (error, response, body) => {
             if (error) { throw error; }
             source = body;
             transforms[key].list[index] = source;
