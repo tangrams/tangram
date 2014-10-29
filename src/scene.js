@@ -199,7 +199,7 @@ Scene.prototype.createObjectURL = function () {
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
     // TODO, we should move the url to a config file
-    var worker_url = Scene.library_base_url + 'tangram-worker.debug.js' + '?' + (+new Date());
+    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
 
     // Load & instantiate workers
     queue.defer((done) => {
@@ -807,7 +807,9 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 // TODO: also rebuild modes? (detect if changed)
 Scene.prototype.rebuildGeometry = function (callback) {
     if (!this.initialized) {
-        callback(false);
+        if (typeof callback === 'function') {
+            callback(false);
+        }
         return;
     }
 
@@ -815,7 +817,7 @@ Scene.prototype.rebuildGeometry = function (callback) {
     if (this.building) {
         // Queue up to one rebuild call at a time, only save last request
         if (this.building.queued && typeof this.building.queued.callback === 'function') {
-            this.building.queued.callback(false); // notify previous callback that it did not complete
+            this.building.queued.callback(null, false); // notify previous callback that it did not complete
         }
 
         // Save queued request
@@ -880,6 +882,17 @@ Scene.prototype.rebuildGeometry = function (callback) {
 
     this.updateActiveModes();
     this.resetTime();
+
+    // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
+    if (this.building && Object.keys(this.building.tiles).length === 0) {
+        callback = this.building.callback;
+        this.building = null;
+        if (typeof callback === 'function') {
+            callback(null, true); // notify build callback as completed
+        }
+        // TODO: call any queued rebuild
+        // TODO: move this whole "finish build process / callback / call queue" to separate function to avoid repetition
+    }
 };
 
 Scene.prototype.buildTile = function(key) {
@@ -1057,7 +1070,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             console.log(`scene build FINISHED`);
             var callback = this.building.callback;
             if (typeof callback === 'function') {
-                callback(true); // notify build callback as completed
+                callback(null, true); // notify build callback as completed
             }
 
             // Another rebuild queued?
@@ -1182,11 +1195,11 @@ Scene.prototype.loadScene = function (callback) {
 
     // If this is the first time we're loading the scene, copy any URLs
     if (!this.layer_source && typeof(this.layers) === 'string') {
-        this.layer_source = Utils.urlForPath(this.layers);
+        this.layer_source = this.layers;
     }
 
     if (!this.style_source && typeof(this.styles) === 'string') {
-        this.style_source = Utils.urlForPath(this.styles);
+        this.style_source = this.styles;
     }
 
     // Layer by URL
@@ -1624,10 +1637,14 @@ function findBaseLibraryURL () {
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('tangram.debug.js');
-        if (match === -1) {
+        if (match >= 0) {
+            Scene.library_type = 'debug';
+        }
+        else {
             match = scripts[s].src.indexOf('tangram.min.js');
         }
         if (match >= 0) {
+            Scene.library_type = Scene.library_type || 'min';
             Scene.library_base_url = scripts[s].src.substr(0, match);
             break;
         }

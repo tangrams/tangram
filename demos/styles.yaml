@@ -17,7 +17,7 @@ modes:
     # all:
     #     shaders:
     #         transforms:
-    #             fragment: { url: demos/shaders/spotlight.glsl }
+    #             fragment: { url: /demos/shaders/spotlight.glsl }
 
     water:
         extends: polygons
@@ -27,9 +27,9 @@ modes:
                 EFFECT_NOISE_ANIMATED: true
             transforms:
                 globals:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
+                    url: /demos/shaders/glsl-noise-periodic-3d.glsl
                 fragment:
-                    url: demos/shaders/noise.glsl
+                    url: /demos/shaders/noise.glsl
 
     formica:
         extends: polygons
@@ -38,9 +38,9 @@ modes:
                 EFFECT_NOISE_TEXTURE: true
             transforms:
                 globals:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
+                    url: /demos/shaders/glsl-noise-periodic-3d.glsl
                 fragment:
-                    url: demos/shaders/noise.glsl
+                    url: /demos/shaders/noise.glsl
 
     colorbleed:
         extends: polygons
@@ -50,8 +50,8 @@ modes:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
                 fragment:
-                    - url: demos/shaders/color_bleed.glsl
-                    # - url: demos/shaders/spotlight.glsl
+                    - url: /demos/shaders/color_bleed.glsl
+                    # - url: /demos/shaders/spotlight.glsl
 
     rainbow:
         extends: polygons
@@ -76,15 +76,15 @@ modes:
                 u_popup_height: 3 # 1.1
             transforms:
                 globals:
-                    - url: src/gl/shaders/modules/popup.glsl
+                    - url: /src/gl/shaders/modules/popup.glsl
                     -
                         uniform float u_popup_radius;
                         uniform float u_popup_height;
                 vertex: |
                     position.z *= u_popup_height; // boost height for exaggerated visual effect
                     position = popup(position, vec2(0., 0.), u_popup_radius * u_meters_per_pixel);
-                # vertex: { url: demos/shaders/popup.glsl }
-                # fragment: { url: demos/shaders/color_bleed.glsl }
+                # vertex: { url: /demos/shaders/popup.glsl }
+                # fragment: { url: /demos/shaders/color_bleed.glsl }
 
     elevator:
         extends: polygons
@@ -92,7 +92,7 @@ modes:
         shaders:
             transforms:
                 vertex: position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings
-                # vertex: { url: demos/shaders/elevator.glsl }
+                # vertex: { url: /demos/shaders/elevator.glsl }
 
     breathe:
         extends: polygons
@@ -109,7 +109,7 @@ modes:
                     uniform float u_breathe_speed;
                 vertex:
                     position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time * u_breathe_speed)));
-                # vertex: { url: demos/shaders/breathe.glsl }
+                # vertex: { url: /demos/shaders/breathe.glsl }
 
     dots:
         extends: polygons
@@ -120,8 +120,8 @@ modes:
                 u_dot_background_color: [.5, .2, .2]
                 u_dot_color: [1, 1, 1]
             transforms:
-                globals: { url: demos/shaders/dots.glsl }
-                fragment: color *= dots(v_world_position.xyz);
+                globals: { url: /demos/shaders/dots.glsl }
+                fragment: color.rgb *= dots(v_world_position.xyz);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
 
@@ -136,8 +136,8 @@ modes:
                 u_wood_scale: 50
                 u_wood_spacing: 1
             transforms:
-                globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = lighting * wood(v_world_position.xyz);
+                globals: { url: '/demos/shaders/wood.glsl' }
+                fragment: color.rgb = wood(v_world_position.xyz) * lighting;
         # buildPolygons: |
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder
@@ -152,7 +152,7 @@ modes:
             defines:
                 LIGHTING_ENVIRONMENT: true
             uniforms:
-                u_env_map: demos/images/LitSphere_test_02.jpg
+                u_env_map: /demos/images/LitSphere_test_02.jpg
             transforms:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
@@ -346,13 +346,13 @@ modes:
         shaders:
             transforms:
                 # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-                fragment: { url: demos/shaders/color_bleed.glsl }
+                fragment: { url: /demos/shaders/color_bleed.glsl }
 
     # polygons:
     #     texcoords: true
     #     shaders:
     #         uniforms:
-    #             u_texture: demos/images/LitSphere_test_02.jpg
+    #             u_texture: /demos/images/LitSphere_test_02.jpg
     #         transforms:
     #             fragment: |
     #                 color = vec3(v_texcoord.xy, 0.);
@@ -366,7 +366,7 @@ modes:
         texcoords: true
         shaders:
             uniforms:
-                u_texture: demos/images/ghost_strip.gif
+                u_texture: /demos/images/ghost_strip.gif
             transforms:
                 fragment: |
                     float number_of_frames = 2.;
