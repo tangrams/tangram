@@ -3,6 +3,7 @@
 var Utils;
 export default Utils = {};
 import xhr from 'xhr';
+import log from 'loglevel';
 
 // allow for easier testing
 Utils.xhr = function (...args) {
@@ -42,15 +43,13 @@ Utils.stringsToFunctions = function(obj, wrap) {
         else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {
-                /*jshint ignore:start*/
                 if (typeof wrap === 'function') {
-                    // console.log(`wrapped function: ${wrap(val)}`);
-                    eval('f = ' + wrap(val));
+                    log.trace(`wrapped function: ${wrap(val)}`);
+                    eval('f = ' + wrap(val)); // jshint ignore:line
                 }
                 else {
-                    eval('f = ' + val);
+                    eval('f = ' + val); // jshint ignore:line
                 }
-                /*jshint ignore:end*/
                 obj[p] = f;
             }
             catch (e) {

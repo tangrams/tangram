@@ -4,7 +4,7 @@ import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
-
+import log from 'loglevel';
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
 import Queue from 'queue-async';
@@ -217,7 +217,7 @@ ModeManager.destroy = function (gl) {
     for (var m of modes) {
         var mode = Modes[m];
         if (mode.gl === gl) {
-            // console.log(`destroying render mode ${mode.name}`);
+            log.trace(`destroying render mode ${mode.name}`);
             mode.destroy();
         }
     }

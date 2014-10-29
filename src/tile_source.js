@@ -4,6 +4,7 @@ import {Geo}   from './geo';
 import Point from './point';
 import {MethodNotImplemented} from './errors';
 import Utils from './utils';
+import log from 'loglevel';
 
 export default class TileSource {
 
@@ -172,10 +173,10 @@ export class TopoJSONTileSource extends NetworkTileSource {
         if (typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
-                console.log("loaded TopoJSON library");
+                log.info('loaded Topojson library');
             }
             catch (e) {
-                console.error("failed to load TopoJSON library!", e);
+                log.error('failed to load TopoJSON library!');
             }
         }
     }

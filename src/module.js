@@ -7,9 +7,12 @@ import {Geo} from './geo';
 import GL from './gl/gl';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
-// GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
+import log from 'loglevel';
+// GL functions included for easier debugging / direct access to
+// setting global defines, reloading programs, etc.
 
 window.Tangram = module.exports = {
+    log,
     LeafletLayer,
     leafletLayer,
     Geo,

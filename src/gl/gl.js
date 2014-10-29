@@ -1,6 +1,6 @@
 // WebGL management and rendering functions
 import libtess from 'libtess';
-
+import log from 'loglevel';
 export var GL = {};
 
 // Setup a WebGL context
@@ -56,8 +56,7 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
         var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
-        // alert(err);
-        console.log(err);
+        log.error(err);
         return program;
     }
 
@@ -90,7 +89,7 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
             "ERROR: " + gl.getError() + "\n\n" +
             "--- Vertex Shader ---\n" + vertex_shader_source + "\n\n" +
             "--- Fragment Shader ---\n" + fragment_shader_source;
-        console.log(program_error);
+        log.error(program_error);
         throw program_error;
     }
 
@@ -144,7 +143,7 @@ try {
             // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
             // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
             // called only with GL_TRIANGLES."
-            // console.log('GL.tesselator: edge flag: ' + flag);
+            log.trace('GL.tesselator: edge flag: ' + flag);
         }
 
         tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
@@ -182,7 +181,7 @@ try {
     };
 }
 catch (e) {
-    // console.log("libtess not defined!");
+    log.error("libtess not defined!");
     // skip if libtess not defined
 }
 
