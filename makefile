@@ -63,7 +63,6 @@ lint:
 karma-start:
 	$(KARMA) start --no-watch
 
-
 run-tests: build-testable
 	$(KARMA) run
 

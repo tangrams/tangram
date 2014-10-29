@@ -12,6 +12,7 @@ import Camera from './camera';
 import Queue from 'queue-async';
 import yaml from 'js-yaml';
 import Tile from './tile';
+import TileSource from './tile_source';
 
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
@@ -64,11 +65,13 @@ export default function Scene(tile_source, layer_source, style_source, options) 
 }
 
 Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    if (!(tile_source instanceof TileSource)) {
+        tile_source = TileSource.create(tile_source);
+    }
     return new Scene(tile_source, layers, styles, options);
 };
 
 Scene.prototype.init = function (callback) {
-
     if (this.initialized) {
         return false;
     }
@@ -77,16 +80,15 @@ Scene.prototype.init = function (callback) {
     // Load scene definition (layers, styles, etc.), then create modes & workers
     this.loadScene(() => {
         var queue = Queue();
-
         // Create rendering modes
-        queue.defer(complete => {
+        queue.defer((complete) => {
             this.modes = Scene.createModes(this.styles.modes);
             this.updateActiveModes();
             complete();
         });
 
         // Create web workers
-        queue.defer(complete => {
+        queue.defer((complete) => {
             this.createWorkers(complete);
         });
 
