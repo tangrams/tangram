@@ -19,6 +19,9 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.compiling = false;
     this.defines = options.defines || {}; // key/values inserted as #defines into shaders at compile-time
     this.transforms = options.transforms || {}; // key/values for URLs of blocks that can be injected into shaders at compile-time
+    this.compiling = false;
+    this.defines = Object.assign({}, options.defines||{}); // key/values inserted as #defines into shaders at compile-time
+    this.transforms = Object.assign({}, options.transforms||{}); // key/values for URLs of blocks that can be injected into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
     this.attribs = {}; // program locations of vertex attributes
 
@@ -79,6 +82,7 @@ GLProgram.prototype.compile = function (callback)
         return;
     }
     this.compiling = true;
+    this.compiled = false;
 
     var queue = Queue();
 

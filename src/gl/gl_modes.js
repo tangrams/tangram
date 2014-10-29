@@ -16,21 +16,31 @@ export var ModeManager = {};
 // Base
 
 var RenderMode = {
+    init () {
+        this.defines = {};
+        this.shaders = {};
+        this.selection = false;
+        this.gl_program = null;
+        this.selection_gl_program = null;
+    },
+
     setGL (gl, callback) {
         this.gl = gl;
         this.valid = true;
     },
-    compile: function (callback) {
+
+    compile (callback) {
         this.makeGLProgram(callback);
     },
-    defines: {},
-    selection: false,
-    buildPolygons: function(){}, // build functions are no-ops until overriden
-    buildLines: function(){},
-    buildPoints: function(){},
-    makeGLGeometry: function (vertex_data) {
+
+    makeGLGeometry (vertex_data) {
         return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
-    }
+    },
+
+    // Build functions are no-ops until overriden
+    buildPolygons () {},
+    buildLines () {},
+    buildPoints () {}
 };
 
 RenderMode.destroy = function () {
@@ -72,7 +82,7 @@ RenderMode.makeGLProgram = function (callback)
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
     var defines = this.buildDefineList();
     if (this.selection) {
-        var selection_defines = Object.create(defines);
+        var selection_defines = Object.assign({}, defines);
         selection_defines['FEATURE_SELECTION'] = true;
     }
 
@@ -80,11 +90,11 @@ RenderMode.makeGLProgram = function (callback)
     var transforms = (this.shaders && this.shaders.transforms);
 
     // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
-    var program = (this.hasOwnProperty('gl_program') && this.gl_program);
-    var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
+    var program = this.gl_program;
+    var selection_program = this.selection_gl_program;
 
     queue.defer(complete => {
-        if (!program) {
+        // if (!program) {
             program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
@@ -96,17 +106,17 @@ RenderMode.makeGLProgram = function (callback)
                     callback: complete
                 }
             );
-        }
-        else {
-            program.defines = defines;
-            program.transforms = transforms;
-            program.compile(complete);
-        }
+        // }
+        // else {
+        //     program.defines = defines;
+        //     program.transforms = transforms;
+        //     program.compile(complete);
+        // }
     });
 
     if (this.selection) {
         queue.defer(complete => {
-            if (!selection_program) {
+            // if (!selection_program) {
                 selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
@@ -118,12 +128,12 @@ RenderMode.makeGLProgram = function (callback)
                         callback: complete
                     }
                 );
-            }
-            else {
-                selection_program.defines = selection_defines;
-                selection_program.transforms = transforms;
-                selection_program.compile(complete);
-            }
+            // }
+            // else {
+            //     selection_program.defines = selection_defines;
+            //     selection_program.transforms = transforms;
+            //     selection_program.compile(complete);
+            // }
         });
     }
 
@@ -218,20 +228,26 @@ ModeManager.destroy = function (gl) {
 
 /*** Plain polygons ***/
 
-Modes.polygons = Object.create(RenderMode);
-Modes.polygons.name = 'polygons';
-Modes.polygons.built_in = true;
+var Polygons = Object.create(RenderMode);
+Polygons.name = 'polygons';
+Modes[Polygons.name] = Polygons;
 
-Modes.polygons.vertex_shader_key = 'polygon_vertex';
-Modes.polygons.fragment_shader_key = 'polygon_fragment';
+Polygons.init = function () {
+    RenderMode.init.apply(this);
 
-Modes.polygons.defines = {
-    'WORLD_POSITION_WRAP': 100000 // default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-};
+    // Mark as built-in
+    this.built_in = (this === Polygons);
 
-Modes.polygons.selection = true;
+    // Base shaders
+    this.vertex_shader_key = 'polygon_vertex';
+    this.fragment_shader_key = 'polygon_fragment';
 
-Modes.polygons.init = function () {
+    // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+    this.defines['WORLD_POSITION_WRAP'] = 100000;
+
+    // Turn feature selection on
+    this.selection = true;
+
     // Basic attributes, others can be added (see texture UVs below)
     var attribs = [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -257,7 +273,7 @@ Modes.polygons.init = function () {
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
-Modes.polygons.makeVertexTemplate = function (style) {
+Polygons.makeVertexTemplate = function (style) {
     // Basic attributes, others can be added (see texture UVs below)
     var template = [
         // position - x & y coords will be filled in per-vertex below
@@ -281,7 +297,7 @@ Modes.polygons.makeVertexTemplate = function (style) {
     return template;
 };
 
-Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
+Polygons.buildPolygons = function (polygons, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -333,7 +349,7 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
     }
 };
 
-Modes.polygons.buildLines = function (lines, style, vertex_data)
+Polygons.buildLines = function (lines, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -376,7 +392,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     }
 };
 
-Modes.polygons.buildPoints = function (points, style, vertex_data)
+Polygons.buildPoints = function (points, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -393,20 +409,27 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 
 /*** Points w/simple distance field rendering ***/
 
-Modes.points = Object.create(RenderMode);
-Modes.points.name = 'points';
-Modes.points.built_in = true;
+var Points = Object.create(RenderMode);
+Points.name = 'points';
+Modes[Points.name] = Points;
 
-Modes.points.vertex_shader_key = 'point_vertex';
-Modes.points.fragment_shader_key = 'point_fragment';
+Points.init = function () {
+    RenderMode.init.apply(this);
 
-Modes.points.defines = {
-    'EFFECT_SCREEN_COLOR': true
-};
+    // Mark as built-in
+    this.built_in = (this === Points);
 
-Modes.points.selection = true;
+    // Base shaders
+    this.vertex_shader_key = 'point_vertex';
+    this.fragment_shader_key = 'point_fragment';
 
-Modes.points.init = function () {
+    // TODO: remove this hard-coded special effect
+    this.defines['EFFECT_SCREEN_COLOR'] = true;
+
+    // Turn feature selection on
+    this.selection = true;
+
+    // Vertex attributes
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
@@ -418,7 +441,7 @@ Modes.points.init = function () {
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
-Modes.points.makeVertexTemplate = function (style) {
+Points.makeVertexTemplate = function (style) {
     return [
         // position - x & y coords will be filled in per-vertex below
         0, 0, style.z,
@@ -434,7 +457,7 @@ Modes.points.makeVertexTemplate = function (style) {
     ];
 };
 
-Modes.points.buildPoints = function (points, style, vertex_data)
+Points.buildPoints = function (points, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
