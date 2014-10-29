@@ -13,7 +13,7 @@ module.exports = function (config) {
             {pattern: 'test/fixtures/*', watched: false, included: false, served: true},
             './demos/lib/leaflet/leaflet.js',
             'dist/tangram-worker.debug.js',
-            'dist/testable.js'
+            'dist/tangram.debug.js'
         ],
         exclude: [  ],
         preprocessors: {  },

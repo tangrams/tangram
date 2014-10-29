@@ -45,10 +45,10 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
-dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
-	node build.js --debug=true --includeLet --all './test/*.js' > dist/testable.js
+build-testable: clean lint src/gl/gl_shaders.js dist/tangram-worker.debug.js
+	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.debug.js
 
-test: lint dist/testable.js
+test: build-testable
 	$(KARMA) start --single-run
 
 clean:
@@ -63,7 +63,7 @@ lint:
 karma-start:
 	$(KARMA) start --no-watch
 
-run-tests: lint dist/testable.js
+run-tests: build-testable
 	$(KARMA) run
 
 .PHONY : clean all dev test lint karma-start run-tests
