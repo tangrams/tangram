@@ -45,6 +45,7 @@ export default function Scene(tile_source, layers, styles, options) {
     this.preRender = options.preRender;             // optional pre-rendering hook
     this.postRender = options.postRender;           // optional post-rendering hook
     this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
+    this.worker_url = options.worker_url;           // optional override for the web worker_url
 
     this.frame = 0;
     this.zoom = null;
@@ -199,8 +200,7 @@ Scene.prototype.createObjectURL = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
-    // TODO, we should move the url to a config file
-    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
+    var worker_url = this.worker_url || findWorkerUrl();
 
     // Load & instantiate workers
     queue.defer((done) => {
@@ -1602,6 +1602,31 @@ Scene.refreshModes = function (modes, stylesheet_modes, callback) {
 
 
 // Private/internal
+
+function findWorkerUrl() {
+    var scripts = document.getElementsByTagName('script'), s, script, type, url;
+
+    for (s = 0; s < scripts.length; s += 1) {
+        script = scripts[s];
+        var match = script.src.indexOf('tangram.debug.js');
+        if (match >= 0) {
+            type = 'debug';
+        } else {
+            match = script.src.indexOf('tangram.min.js');
+        }
+        if (match >= 0) {
+            type = type || 'min';
+            url = script.src.substr(0, match);
+            break;
+        }
+    }
+
+    if (type && url) {
+        return `${url}tangram-worker.${type}.js?${+new Date()}`;
+    }
+    // not sure what error message we should throw
+    throw new Error('The worker url was not provided and was not found, errors ahead.');
+}
 
 // Get base URL from which the library was loaded
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
