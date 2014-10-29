@@ -292,10 +292,8 @@
             }
 
             // Recompile/rebuild
-            scene.createCamera();
-            scene.createLighting();
-            scene.refreshModes();
-            scene.rebuild();
+            scene.updateStyles();
+            scene.rebuildGeometry();
             updateURL();
 
             // Force-update dat.gui
@@ -311,7 +309,7 @@
                     this.state.animated = scene.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
                     this.folder.add(this.state, 'animated').onChange(function(value) {
                         scene.modes[mode].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
-                        scene.refreshModes();
+                        scene.updateStyles();
                     });
                 }
             },
@@ -533,7 +531,7 @@
         gui.camera = layer.scene.styles.camera.type;
         gui.add(gui, 'camera', camera_types).onChange(function(value) {
             layer.scene.styles.camera.type = value;
-            layer.scene.refreshCamera();
+            layer.scene.updateStyles();
         });
 
         // Lighting
@@ -547,7 +545,7 @@
         gui.lighting = layer.scene.styles.lighting.type;
         gui.add(gui, 'lighting', lighting_types).onChange(function(value) {
             layer.scene.styles.lighting.type = value;
-            layer.scene.refreshLighting();
+            layer.scene.updateStyles();
         });
 
         // Feature selection on hover
@@ -573,7 +571,7 @@
                 add(layer_controls, l.name).
                 onChange(function(value) {
                     layer.scene.styles.layers[l.name].visible = value;
-                    layer.scene.rebuild();
+                    layer.scene.rebuildGeometry();
                 });
         });
 
@@ -683,8 +681,6 @@
 
             if (url_mode) {
                 gl_mode_options.setup(url_mode);
-            } else {
-                scene.refreshModes();
             }
             updateURL();
 

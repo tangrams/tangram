@@ -26,7 +26,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     Style.selection_map_prefix = SceneWorker.worker_id;
 });
 
-SceneWorker.refreshConfig = function (config) {
+SceneWorker.updateConfig = function (config) {
     if (!SceneWorker.tile_source && config.tile_source) {
         SceneWorker.tile_source = TileSource.create(config.tile_source);
     }
@@ -92,8 +92,8 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // Update tile cache tile
     SceneWorker.tiles[tile.key] = tile;
 
-    // Refresh config (layers, styles, etc.)
-    SceneWorker.refreshConfig(event.data);
+    // Update config (layers, styles, etc.)
+    SceneWorker.updateConfig(event.data);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -172,7 +172,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     }
 });
 
-// Make layers/styles refresh config
+// Make layers/styles update config
 SceneWorker.worker.addEventListener('message', function (event) {
     if (event.data.type !== 'prepareForRebuild') {
         return;
@@ -181,10 +181,10 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.layers = null;
     SceneWorker.styles = null;
     SceneWorker.modes = null;
-    SceneWorker.refreshConfig(event.data);
+    SceneWorker.updateConfig(event.data);
     Style.resetSelectionMap();
 
-    SceneWorker.log("worker refreshed config for tile rebuild");
+    SceneWorker.log("worker updated config for tile rebuild");
 });
 
 // Log wrapper to include worker id #

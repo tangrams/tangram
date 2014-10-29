@@ -67,6 +67,7 @@ Scene.prototype.init = function (callback) {
     if (this.initialized) {
         return false;
     }
+    this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
     this.loadScene(() => {
@@ -98,23 +99,28 @@ Scene.prototype.init = function (callback) {
             this.gl = GL.getContext(this.canvas);
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
-            this.createCamera();
-            this.createLighting();
-            this.initModes(); // TODO: remove gl context state from modes, and move init to create step above?
-            this.initSelectionBuffer();
-
             // this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
 
+            this.createCamera();
+            this.createLighting();
+            this.initSelectionBuffer();
+
+            // Init GL context for modes
+            for (var mode of Utils.values(this.modes)) {
+                mode.setGL(this.gl);
+            }
+            this.updateModes(() => {
+                this.initializing = false;
+                this.initialized = true;
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            });
+
             if (this.render_loop !== false) {
                 this.setupRenderLoop();
-            }
-
-            this.initialized = true;
-
-            if (typeof callback === 'function') {
-                callback();
             }
         });
     });
@@ -149,13 +155,6 @@ Scene.prototype.destroy = function () {
     }
 
     this.tiles = {}; // TODO: probably destroy each tile separately too
-};
-
-Scene.prototype.initModes = function () {
-    // Init GL context for modes (compiles programs, etc.)
-    for (var m in this.modes) {
-        this.modes[m].setGL(this.gl, () => { this.dirty = true; }); // make sure to mark scene as dirty after each programc compiles
-    }
 };
 
 Scene.prototype.initSelectionBuffer = function () {
@@ -806,7 +805,7 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuild = function (callback) {
+Scene.prototype.rebuildGeometry = function (callback) {
     if (!this.initialized) {
         if (typeof callback === 'function') {
             callback(false);
@@ -834,7 +833,7 @@ Scene.prototype.rebuild = function (callback) {
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     this.selection_map = {};
 
-    // Tell workers we're about to rebuild (so they can refresh styles, etc.)
+    // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
         worker.postMessage({
             type: 'prepareForRebuild',
@@ -1078,7 +1077,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                this.rebuild(queued.callback);
+                this.rebuildGeometry(queued.callback);
             }
         }
     }
@@ -1250,20 +1249,76 @@ Scene.prototype.reload = function () {
     }
 
     this.loadScene(() => {
-        this.createCamera();
-        this.createLighting();
-        this.refreshModes();
-        this.rebuild();
+        this.updateStyles();
+        this.rebuildGeometry();
     });
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.refreshModes = function () {
-    if (!this.initialized) {
-        return;
+Scene.prototype.updateModes = function (callback) {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
+    if (!this.initialized && !this.initializing) {
+        callback(new Error('Scene.updateModes() called before scene was initialized'));
     }
 
-    this.modes = Scene.refreshModes(this.modes, this.styles.modes, () => { this.dirty = true; }); // mark scene as dirty when all programs have compiled
+    // Skip if already in progress
+    if (this.compiling) {
+        // Queue up to one additional call at a time, only save last request
+        if (this.compiling.queued && typeof this.compiling.queued.callback === 'function') {
+            // notify previous callback that it did not complete
+            this.compiling.queued.callback(new Error('Scene.updateModes() queued request was superceded'));
+        }
+
+        // Save queued request
+        this.compiling.queued = { callback };
+        return;
+    }
+    this.compiling = { callback };
+
+    var queue = Queue();
+    var name;
+
+    // Copy stylesheet modes
+    // for ([name, mode] of Utils.entries(this.styles.modes)) { // jshint fails here
+    for (name in this.styles.modes) {
+        this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
+    }
+
+    // Compile all modes (async)
+    // for ([name, mode] of Utils.entries(this.modes)) { // jshint fails here
+    for (name in this.modes) {
+        queue.defer(
+            (_name, complete) => {
+                // Compile each mode and mark as done
+                this.modes[_name].compile((error) => {
+                    // console.log(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
+                    complete(error);
+                });
+            },
+            name
+        );
+    }
+
+    // Wait for all modes to finish compiling
+    queue.await((error) => {
+        console.log(`Scene.updateModes(): compiled all modes ${error ? error : ''}`);
+
+        this.dirty = true;
+
+        var callback = this.compiling.callback;
+        var queued = this.compiling.queued;
+        this.compiling = null;
+
+        // Complete this callback
+        callback(error);
+
+        // Another request queued?
+        if (queued) {
+            console.log(`Scene.updateModes(): starting queued request`);
+            this.updateModes(queued.callback);
+        }
+    });
 };
 
 Scene.prototype.updateActiveModes = function () {
@@ -1289,12 +1344,6 @@ Scene.prototype.createCamera = function () {
     this.camera = Camera.create(this, this.styles.camera);
 };
 
-// Replace camera
-Scene.prototype.refreshCamera = function () {
-    this.createCamera();
-    this.refreshModes();
-};
-
 // Create lighting
 Scene.prototype.createLighting = function () {
     // Temporary #define-based lighting
@@ -1309,12 +1358,23 @@ Scene.prototype.createLighting = function () {
     for (var t in types) {
         GLProgram.defines[types[t]] = (t === this.styles.lighting.type);
     }
+
+    // TODO: make this an actual lighting object, replacing the above
+    this.lighting = { type: this.styles.lighting.type };
 };
 
-// Replace lighting
-Scene.prototype.refreshLighting = function () {
-    this.createLighting();
-    this.refreshModes();
+// Update scene styles
+Scene.prototype.updateStyles = function () {
+    if (this.styles.camera.type !== this.camera.type) {
+        this.createCamera();
+    }
+
+    if (this.styles.lighting.type !== this.lighting.type) {
+        this.createLighting();
+    }
+
+    // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
+    this.updateModes();
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing modes/debugging
@@ -1556,7 +1616,7 @@ Scene.createModes = function (stylesheet_modes) {
 
     // Stylesheet-defined modes
     for (m in stylesheet_modes) {
-        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
+        modes[m] = ModeManager.updateMode(m, stylesheet_modes[m]);
     }
 
     // Initialize all
@@ -1564,39 +1624,6 @@ Scene.createModes = function (stylesheet_modes) {
         modes[m].init();
     }
 
-    return modes;
-};
-
-// Returns mode objects immediately, but only calls callback when all modes are done compiling
-Scene.refreshModes = function (modes, stylesheet_modes, callback) {
-    var queue = Queue();
-
-    // Copy stylesheet modes
-    // TODO: is this the best way to copy stylesheet changes to mode instances?
-    for (var m in stylesheet_modes) {
-        modes[m] = ModeManager.configureMode(m, stylesheet_modes[m]);
-    }
-
-    // Refresh all modes
-    for (m in modes) {
-        queue.defer((complete) => {
-            var mode = modes[m];
-            mode.refresh((error) => {
-                // console.log(`refreshed mode ${mode.name}, error: ${error}`);
-                complete(error);
-            });
-        });
-    }
-
-    // Callback when all modes are done compiling
-    queue.await((error) => {
-        // console.log(`refreshed all modes, error: ${error}`);
-        if (typeof callback === 'function') {
-            callback(error);
-        }
-    });
-
-    // Modes can return immediately, will finish compiling later
     return modes;
 };
 

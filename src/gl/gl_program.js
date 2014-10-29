@@ -16,8 +16,12 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.gl = gl;
     this.program = null;
     this.compiled = false;
+    this.compiling = false;
     this.defines = options.defines || {}; // key/values inserted as #defines into shaders at compile-time
     this.transforms = options.transforms || {}; // key/values for URLs of blocks that can be injected into shaders at compile-time
+    this.compiling = false;
+    this.defines = Object.assign({}, options.defines||{}); // key/values inserted as #defines into shaders at compile-time
+    this.transforms = Object.assign({}, options.transforms||{}); // key/values for URLs of blocks that can be injected into shaders at compile-time
     this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
     this.attribs = {}; // program locations of vertex attributes
 
@@ -71,8 +75,16 @@ GLProgram.removeTransform = function (key) {
 
 GLProgram.prototype.compile = function (callback)
 {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
+    if (this.compiling) {
+        callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
+        return;
+    }
+    this.compiling = true;
+    this.compiled = false;
+
     var queue = Queue();
-    this.current_callback = callback; // track the most recent call, so we know which one is last
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -135,14 +147,10 @@ GLProgram.prototype.compile = function (callback)
 
     // When all transform code snippets are collected, combine and inject them
     queue.await(error => {
-        if (error) {
-            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) errored: ${error.message}`));
-            return;
-        }
+        this.compiling = false;
 
-        // This compilation call has been superceded by a newer one
-        if (typeof callback === 'function' && callback !== this.current_callback ) {
-            callback(new Error(`GLProgram compilation for ${this.name} (${this.id}) was superceded`));
+        if (error) {
+            callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
             return;
         }
 
@@ -182,7 +190,6 @@ GLProgram.prototype.compile = function (callback)
         // Compile & set uniforms to cached values
         try {
             this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
-            // this.program = GL.updateProgram(this.gl, null, this.computed_vertex_shader, this.computed_fragment_shader);
             this.compiled = true;
         }
         catch (e) {
@@ -194,11 +201,7 @@ GLProgram.prototype.compile = function (callback)
         this.refreshUniforms();
         this.refreshAttributes();
 
-        // Notify caller
-        if (typeof callback === 'function') {
-            this.current_callback = null;
-            callback();
-        }
+        callback();
     });
 };
 
@@ -216,10 +219,11 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     // Remote code
     else if (typeof block === 'object' && block.url) {
         Utils.xhr(block.url + '?' + (+new Date()), (error, response, body) => {
-            if (error) { throw error; }
-            source = body;
-            transforms[key].list[index] = source;
-            complete();
+            if (!error) {
+                source = body;
+                transforms[key].list[index] = source;
+            }
+            complete(error);
         });
     }
 };
