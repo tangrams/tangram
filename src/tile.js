@@ -1,16 +1,6 @@
 /*global Tile */
 import {Geo} from './geo';
 
-class QueuedTile {
-
-    constructor({coords, div, cb}) {
-        this.coords = coords;
-        this.div    = div;
-        this.cb     = cb;
-    }
-    static create(spec) { return new QueuedTile(spec); }
-}
-
 export default class Tile {
 
     constructor(spec = {}) {
@@ -99,7 +89,6 @@ export default class Tile {
 
     showDebug(div) {
         var debug_overlay = document.createElement('div');
-
         debug_overlay.textContent = this.key;
         debug_overlay.style.position = 'absolute';
         debug_overlay.style.left = 0;
@@ -114,7 +103,7 @@ export default class Tile {
         return debug_overlay;
     }
 
-    updateElement(div) {
+    updateElement(div, scene) {
 
         div.setAttribute('data-tile-key', this.key);
 
@@ -123,7 +112,7 @@ export default class Tile {
             height: '256px'
         };
 
-        if (this.debug) {
+        if (scene.debug) {
             this.showDebug(div);
         }
     }
@@ -159,7 +148,7 @@ export default class Tile {
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
         this.sendBuild(scene);
-        this.updateElement(div);
+        this.updateElement(div, scene);
         this.updateVisibility(scene);
 
         if (cb) { cb(null, div); }

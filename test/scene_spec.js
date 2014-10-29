@@ -3,6 +3,7 @@ let assert = chai.assert;
 import Utils from '../src/utils';
 import Scene from '../src/scene';
 import Tile from '../src/tile';
+import TileSource from '../src/tile_source';
 
 import {makeScene} from './utils';
 import sampleScene from './fixtures/sample-scene';
@@ -106,13 +107,6 @@ describe('Scene', () => {
                 subject.tiles[key] = undefined;
             });
 
-            it('does not add the tile to the cache', (done) => {
-                subject._loadTile(coord, div, () => {
-//                    sinon.assert.notCalled(subject.cacheTile);
-                    done();
-                });
-            });
-
             it('calls back with the div', (done) => {
                 subject._loadTile(coord, div, (error, div) => {
                     assert.isNull(error);
@@ -141,7 +135,8 @@ describe('Scene', () => {
         });
 
         it('correctly sets the value of the tile source', () => {
-            assert.equal(subject.tile_source, sampleScene.tile_source);
+            assert.instanceOf(subject.tile_source, TileSource);
+
         });
 
         it('correctly sets the value of the layers object', () => {
@@ -562,7 +557,7 @@ describe('Scene', () => {
         let numWorkers = 2;
         let url = 'test.js';
         beforeEach(() => {
-            subject = makeOne({options: {numWorkers}});
+            subject = makeScene({options: {numWorkers}});
             subject.makeWorkers(url);
         });
 

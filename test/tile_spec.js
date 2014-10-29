@@ -1,6 +1,5 @@
 import chai from 'chai';
 let assert = chai.assert;
-
 import Tile from '../src/tile';
 
 import {makeScene} from './utils';
