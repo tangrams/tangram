@@ -45,8 +45,8 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
-build-testable: clean lint src/gl/gl_shaders.js dist/tangram-worker.debug.js
-	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.debug.js
+build-testable: lint src/gl/gl_shaders.js dist/tangram-worker.debug.js
+	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
 	$(KARMA) start --single-run
