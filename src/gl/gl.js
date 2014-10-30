@@ -90,7 +90,7 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
             "--- Vertex Shader ---\n" + vertex_shader_source + "\n\n" +
             "--- Fragment Shader ---\n" + fragment_shader_source;
         log.error(program_error);
-        throw program_error;
+        throw new Error(program_error);
     }
 
     return program;

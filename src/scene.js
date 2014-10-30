@@ -442,7 +442,7 @@ Scene.prototype.render = function () {
     }
 
     this.frame++;
-    log.debug('render map');
+    log.trace('render map');
     return true;
 };
 

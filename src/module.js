@@ -12,7 +12,7 @@ import log from 'loglevel';
 // setting global defines, reloading programs, etc.
 
 window.Tangram = module.exports = {
-    log,
+    debug: {log},
     LeafletLayer,
     leafletLayer,
     Geo,
