@@ -57,7 +57,7 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
     }
     catch(err) {
         log.error(err);
-        return program;
+        throw err;
     }
 
     gl.useProgram(null);
@@ -83,14 +83,16 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        var program_error =
-            "WebGL program error:\n" +
-            "VALIDATE_STATUS: " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n" +
-            "ERROR: " + gl.getError() + "\n\n" +
-            "--- Vertex Shader ---\n" + vertex_shader_source + "\n\n" +
-            "--- Fragment Shader ---\n" + fragment_shader_source;
+        var program_error = new Error(
+            `WebGL program error:
+            VALIDATE_STATUS: ${gl.getProgramParameter(program, gl.VALIDATE_STATUS)}
+            ERROR: ${gl.getError()}
+            --- Vertex Shader ---
+            ${vertex_shader_source}
+            --- Fragment Shader ---
+            ${fragment_shader_source}`);
         log.error(program_error);
-        throw new Error(program_error);
+        throw program_error;
     }
 
     return program;
@@ -117,73 +119,67 @@ GL.createShader = function GLcreateShader (gl, source, type)
 
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
-try {
-    GL.tesselator = (function initTesselator() {
-        var tesselator = new libtess.GluTesselator();
+GL.tesselator = (function initTesselator() {
+    var tesselator = new libtess.GluTesselator();
 
-        // Called for each vertex of tesselator output
-        function vertexCallback(data, polyVertArray) {
-            if (tesselator.z != null) {
-                polyVertArray.push([data[0], data[1], tesselator.z]);
-            }
-            else {
-                polyVertArray.push([data[0], data[1]]);
-            }
+    // Called for each vertex of tesselator output
+    function vertexCallback(data, polyVertArray) {
+        if (tesselator.z != null) {
+            polyVertArray.push([data[0], data[1], tesselator.z]);
         }
-
-        // Called when segments intersect and must be split
-        function combineCallback(coords, data, weight) {
-            return coords;
+        else {
+            polyVertArray.push([data[0], data[1]]);
         }
+    }
 
-        // Called when a vertex starts or stops a boundary edge of a polygon
-        function edgeCallback(flag) {
-            // No-op callback to force simple triangle primitives (no triangle strips or fans).
-            // See: http://www.glprogramming.com/red/chapter11.html
-            // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
-            // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
-            // called only with GL_TRIANGLES."
-            log.trace('GL.tesselator: edge flag: ' + flag);
+    // Called when segments intersect and must be split
+    function combineCallback(coords, data, weight) {
+        return coords;
+    }
+
+    // Called when a vertex starts or stops a boundary edge of a polygon
+    function edgeCallback(flag) {
+        // No-op callback to force simple triangle primitives (no triangle strips or fans).
+        // See: http://www.glprogramming.com/red/chapter11.html
+        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
+        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
+        // called only with GL_TRIANGLES."
+        log.trace('GL.tesselator: edge flag: ' + flag);
+    }
+
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+
+    // Brendan Kenny:
+    // libtess will take 3d verts and flatten to a plane for tesselation
+    // since only doing 2d tesselation here, provide z=1 normal to skip
+    // iterating over verts only to get the same answer.
+    // comment out to test normal-generation code
+    tesselator.gluTessNormal(0, 0, 1);
+
+    return tesselator;
+})();
+
+GL.triangulatePolygon = function GLTriangulate (contours, z)
+{
+    var triangleVerts = [];
+    GL.tesselator.z = z;
+    GL.tesselator.gluTessBeginPolygon(triangleVerts);
+
+    for (var i = 0; i < contours.length; i++) {
+        GL.tesselator.gluTessBeginContour();
+        var contour = contours[i];
+        for (var j = 0; j < contour.length; j ++) {
+            var coords = [contour[j][0], contour[j][1], 0];
+            GL.tesselator.gluTessVertex(coords, coords);
         }
+        GL.tesselator.gluTessEndContour();
+    }
 
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
-
-        // Brendan Kenny:
-        // libtess will take 3d verts and flatten to a plane for tesselation
-        // since only doing 2d tesselation here, provide z=1 normal to skip
-        // iterating over verts only to get the same answer.
-        // comment out to test normal-generation code
-        tesselator.gluTessNormal(0, 0, 1);
-
-        return tesselator;
-    })();
-
-    GL.triangulatePolygon = function GLTriangulate (contours, z)
-    {
-        var triangleVerts = [];
-        GL.tesselator.z = z;
-        GL.tesselator.gluTessBeginPolygon(triangleVerts);
-
-        for (var i = 0; i < contours.length; i++) {
-            GL.tesselator.gluTessBeginContour();
-            var contour = contours[i];
-            for (var j = 0; j < contour.length; j ++) {
-                var coords = [contour[j][0], contour[j][1], 0];
-                GL.tesselator.gluTessVertex(coords, coords);
-            }
-            GL.tesselator.gluTessEndContour();
-        }
-
-        GL.tesselator.gluTessEndPolygon();
-        return triangleVerts;
-    };
-}
-catch (e) {
-    log.error("libtess not defined!");
-    // skip if libtess not defined
-}
+    GL.tesselator.gluTessEndPolygon();
+    return triangleVerts;
+};
 
 // Add vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
 // Per-vertex attributes must be pre-packed into the vertices array

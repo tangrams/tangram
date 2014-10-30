@@ -184,7 +184,7 @@ export class GLVertexData {
 
             this.buffer = new_block;
             this.setBufferViews();
-            log.info(`expanded vertex block to ${this.block_size * this.block_num} vertices`);
+            log.info(`GLVertexData: expanded vertex block to ${this.block_size * this.block_num} vertices`);
         }
     }
 

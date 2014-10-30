@@ -4,7 +4,6 @@ import {Style} from './style';
 import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
-import log from 'loglevel';
 
 export var SceneWorker = {};
 SceneWorker.worker = self;
@@ -106,7 +105,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
         SceneWorker.tile_source.loadTile(tile, (error) => {
             // Tile load errored
             if (error) {
-                log.info(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
+                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
             }
             else {
                 // Tile loaded successfully
@@ -118,7 +117,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     }
     // Tile already loaded, just rebuild
     else {
-        SceneWorker.log("used worker cache for tile " + tile.key);
+        SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
         // Update loading state
         tile.loaded = true;
@@ -140,7 +139,6 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     var key = event.data.key;
     var tile = SceneWorker.tiles[key];
-    // SceneWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
         // Remove from cache
@@ -148,7 +146,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
         // Cancel if loading
         if (tile.loading === true) {
-            SceneWorker.log("cancel tile load for " + key);
+            SceneWorker.log('debug', `cancel tile load for ${key}`);
             tile.loading = false;
             SceneWorker.buildTile(tile);
         }
@@ -185,13 +183,14 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.updateConfig(event.data);
     Style.resetSelectionMap();
 
-    SceneWorker.log("worker updated config for tile rebuild");
+    SceneWorker.log('debug', `worker updated config for tile rebuild`);
 });
 
 // Log wrapper to include worker id #
-SceneWorker.log = function (msg) {
+SceneWorker.log = function (level, msg) {
     SceneWorker.worker.postMessage({
         type: 'log',
+        level: level || 'info',
         worker_id: SceneWorker.worker_id,
         msg: msg
     });

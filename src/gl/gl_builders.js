@@ -2,7 +2,6 @@ import Point from '../point';
 import {Vector} from '../vector';
 import {Geo} from '../geo';
 import {GL} from './gl';
-import log from 'loglevel';
 export var GLBuilders = {};
 
 GLBuilders.debug = false;
@@ -462,6 +461,5 @@ GLBuilders.buildZigzagLineTestPattern = function ()
             kind: 'debug'
         }
     };
-    log.trace(g.geometry.coordinates);
     return g;
 };

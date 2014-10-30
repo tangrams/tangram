@@ -173,10 +173,10 @@ export class TopoJSONTileSource extends NetworkTileSource {
         if (typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
-                log.info('loaded Topojson library');
+                log.info('TopoJSONTileSource: loaded topojson library');
             }
             catch (e) {
-                log.error('failed to load TopoJSON library!');
+                log.error('TopoJSONTileSource: failed to load TopoJSON library!');
             }
         }
     }

@@ -218,7 +218,6 @@ Scene.prototype.createWorkers = function (callback) {
                 done();
             });
         } else { // Traditional load from remote URL
-            log.info(this);
             this.makeWorkers(worker_url);
             done();
         }
@@ -279,7 +278,7 @@ Scene.prototype.setZoom = function (zoom) {
     var below = zoom;
     var above = zoom;
     if (this.last_zoom != null) {
-        log.info(`scene.last_zoom: ${this.last_zoom}`);
+        log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
             if (zoom > this.last_zoom) {
                 below = zoom - this.preserve_tiles_within_zoom;
@@ -442,7 +441,7 @@ Scene.prototype.render = function () {
     }
 
     this.frame++;
-    log.trace('render map');
+    log.trace('Scene.render()');
     return true;
 };
 
@@ -643,7 +642,7 @@ Scene.prototype.renderGL = function () {
     }
 
     if (render_count !== this.last_render_count) {
-        log.info(`rendered ${render_count} primitives`);
+        log.info(`Scene: rendered ${render_count} primitives`);
     }
     this.last_render_count = render_count;
 
@@ -683,15 +682,9 @@ Scene.prototype.readSelectionBuffer = function () {
         1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
     var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
 
-    // console.log(
-    //     Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width) + ", " +
-    //     Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height) + ": (" +
-    //     this.pixel[0] + ", " + this.pixel[1] + ", " + this.pixel[2] + ", " + this.pixel[3] + ")");
-
     // If feature found, ask appropriate web worker to lookup feature
     var worker_id = this.pixel[3];
     if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
-        log.debug(`worker_id: ${worker_id}`);
         if (this.workers[worker_id] != null) {
             this.workers[worker_id].postMessage({
                 type: 'getFeatureSelection',
@@ -760,7 +753,7 @@ Scene.prototype._loadTile = function (coords, div, callback) {
         coords.y = ~~(coords.y / Math.pow(2, zgap));
         coords.display_z = coords.z; // z without overzoom
         coords.z -= zgap;
-        log.debug(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
+        log.trace(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
     }
 
     this.trackTileSetLoadStart();
@@ -842,7 +835,6 @@ Scene.prototype.rebuildGeometry = function (callback) {
     });
 
     // Rebuild visible tiles first, from center out
-    log.debug('find visible');
     var visible = [], invisible = [];
     for (var t in this.tiles) {
         if (this.tiles[t].visible === true) {
@@ -852,7 +844,7 @@ Scene.prototype.rebuildGeometry = function (callback) {
             invisible.push(t);
         }
     }
-    log.debug('sort visible distance');
+
     visible.sort((a, b) => {
         // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
         // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
@@ -860,12 +852,11 @@ Scene.prototype.rebuildGeometry = function (callback) {
         var bd = this.tiles[b].center_dist;
         return (bd > ad ? -1 : (bd === ad ? 0 : 1));
     });
-    log.trace('build visible');
+
     for (t in visible) {
         this.buildTile(visible[t]);
     }
 
-    log.trace('build invisible');
     for (t in invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
         if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
@@ -992,18 +983,12 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
                 tile.debug.features++;
             }
-
-            log.trace(layer.name);
-            // for (var m in vertex_data) {
-            //     console.log(`${m}: ${modes[m].vertex_layout.buffer.byteLength}`);
-            // }
         }
     }
 
     tile.vertex_data = {};
     for (var s in vertex_data) {
-        // tile.vertex_data[s] = new Uint8Array(vertex_data[s].end().buffer); // TODO: typed array instance necessary?
-        tile.vertex_data[s] = vertex_data[s].end().buffer; // TODO: typed array instance necessary?
+        tile.vertex_data[s] = vertex_data[s].end().buffer;
     }
 
     // Return keys to be transfered from 'tile' object to main thread
@@ -1024,13 +1009,13 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     for (var worker_id in this.selection_map_worker_size) {
         this.selection_map_size += this.selection_map_worker_size[worker_id];
     }
-    log.info(`selection map: ${this.selection_map_size} features`);
+    log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
     var tile = event.data.tile;
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        log.info(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
+        log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
     }
     else if (!tile.error) {
         // Update tile with properties from worker
@@ -1039,7 +1024,7 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
         this.dirty = true;
     }
     else {
-        log.info(`main thread tile load error for ${tile.key}: ${tile.error}`);
+        log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
     }
 
     this.trackTileSetLoadStop();
@@ -1064,7 +1049,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
         log.trace(`trackTileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
         delete this.building.tiles[key];
         if (Object.keys(this.building.tiles).length === 0) {
-            log.info(`scene build FINISHED`);
+            log.info(`Scene: build geometry finished`);
             var callback = this.building.callback;
             if (typeof callback === 'function') {
                 callback(null, true); // notify build callback as completed
@@ -1109,7 +1094,7 @@ Scene.prototype.removeTile = function (key)
     if (!this.initialized) {
         return;
     }
-    log.info(`tile unload for ${key}`);
+    log.debug(`tile unload for ${key}`);
 
     if (this.zooming === true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
@@ -1178,7 +1163,6 @@ Scene.prototype.mergeTile = function (key, source_tile) {
     }
 
     for (var p in source_tile) {
-        log.debug(`merging ${p}: ${source_tile[p]}`);
         tile[p] = source_tile[p];
     }
 
@@ -1430,7 +1414,7 @@ Scene.prototype.trackTileSetLoadStart = function () {
     // Start tracking new tile set if no other tiles already loading
     if (this.tile_set_loading == null) {
         this.tile_set_loading = +new Date();
-        log.info('tile set load start');
+        log.info('Scene: tile set load start');
     }
 };
 
@@ -1448,13 +1432,13 @@ Scene.prototype.trackTileSetLoadStop = function () {
         if (end_tile_set === true) {
             this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
             this.tile_set_loading = null;
-            log.info(`tile set load FINISHED in: ${this.last_tile_set_load}`);
+            log.info(`Scene: tile set load finished in ${this.last_tile_set_load}ms`);
         }
     }
 };
 
 Scene.prototype.printDebugForTile = function (tile) {
-    log.info(`debug for ${tile.key}: [  ${JSON.stringify(tile.debug)} ]`);
+    log.debug(`Tile: debug for ${tile.key}: [  ${JSON.stringify(tile.debug)} ]`);
 };
 
 // Recompile all shaders
@@ -1486,7 +1470,14 @@ Scene.prototype.workerLogMessage = function (event) {
         return;
     }
 
-    log.info(`worker ${event.data.worker_id}: ${event.data.msg}`);
+    var { worker_id, level, msg } = event.data;
+
+    if (log[level]) {
+        log[level](`worker ${worker_id}: ${msg}`);
+    }
+    else {
+        log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
+    }
 };
 
 
@@ -1505,9 +1496,10 @@ Scene.loadLayers = function (url, callback) {
             try {
                 layers = yaml.safeLoad(body);
             } catch (e) {
-                log.error("failed to parse layers!");
+                log.error('Scene: failed to parse layers');
                 log.error(layers);
                 layers = null;
+                // TODO: throw error here?
             }
         }
 
@@ -1528,9 +1520,10 @@ Scene.loadStyles = function (url, callback) {
             try {
                 styles = yaml.safeLoad(body);
             } catch (e) {
-                log.error("failed to parse styles!");
+                log.error('Scene: failed to parse styles');
                 log.error(styles);
                 styles = null;
+                // TODO: throw error here?
             }
         }
 
