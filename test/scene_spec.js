@@ -125,6 +125,26 @@ describe('Scene', () => {
         });
     });
 
+    describe('.updateModes(callback)', () => {
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            subject.init(done);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
+
+        it('calls back', (done) => {
+            subject.updateModes((error) => {
+                assert.isNull(error);
+                done();
+            });
+        });
+    });
+
     describe('.resizeMap()', () => {
         let subject;
         let height = 100;
