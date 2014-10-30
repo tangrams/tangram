@@ -20,14 +20,6 @@ describe('Scene', () => {
             assert.instanceOf(scene, Scene);
             scene.destroy();
         });
-
-        describe('when given sensible defaults', () => {
-            let scene = makeOne({});
-            it('returns a instance', () => {
-                assert.instanceOf(scene, Scene);
-                scene.destroy();
-            });
-        });
     });
 
     describe('.create(options)', () => {
@@ -49,19 +41,6 @@ describe('Scene', () => {
         it('returns a new instance', () => {
             assert.instanceOf(subject, Scene);
         });
-
-        it('correctly sets the value of the tile source', () => {
-            assert.equal(subject.tile_source, sampleScene.tileSource);
-        });
-
-        it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layers, sampleScene.layers);
-        });
-
-        it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.styles, sampleScene.styles);
-        });
-
     });
 
     describe('.init(callback)', () => {
@@ -79,37 +58,13 @@ describe('Scene', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
-                    // console.log(subject);
                     done();
                 });
             });
 
             it('sets the initialized property', (done) => {
-                // console.log(subject);
                 subject.init(() => {
-                    // console.log(subject);
                     assert.isTrue(subject.initialized);
-                    done();
-                });
-            });
-
-            it('sets the container property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.container, HTMLBodyElement);
-                    done();
-                });
-            });
-
-            it('sets the canvas property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.canvas, HTMLCanvasElement);
-                    done();
-                });
-            });
-
-            it('sets the gl property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.gl, WebGLRenderingContext);
                     done();
                 });
             });
@@ -122,138 +77,6 @@ describe('Scene', () => {
                     done();
                 });
             });
-        });
-    });
-
-    describe('.resizeMap()', () => {
-        let subject;
-        let height = 100;
-        let width = 200;
-        let devicePixelRatio = 2;
-        let computedHeight = Math.round(height * devicePixelRatio);
-        let computedWidth  = Math.round(width * devicePixelRatio);
-
-        beforeEach((done) => {
-            subject = makeOne({});
-            subject.device_pixel_ratio = devicePixelRatio;
-            subject.init(() => {
-                sinon.spy(subject.gl, 'bindFramebuffer');
-                sinon.spy(subject.gl, 'viewport');
-                subject.resizeMap(width, height);
-                done();
-            });
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-
-        it('marks the scene as dirty', () => {
-            assert.isTrue(subject.dirty);
-        });
-
-        it('sets the device size property', () => {
-            assert.deepEqual(subject.device_size, {
-                height: computedHeight,
-                width: computedWidth
-            });
-        });
-
-        it('calls the gl.bindFrameBuffer method', () => {
-            assert.ok(subject.gl.bindFramebuffer.called);
-        });
-
-        it('calls the gl.viewport method', () => {
-            assert.ok(subject.gl.viewport);
-        });
-
-        describe('-canvas.style', () => {
-            it('sets the height', () => {
-                assert.equal(subject.canvas.style.height, height + 'px');
-            });
-
-            it('sets the width', () => {
-                assert.equal(subject.canvas.style.width, width + 'px');
-            });
-        });
-
-        describe('-canvas', () => {
-            it('sets the height property', () => {
-                assert.equal(subject.canvas.height, computedHeight);
-            });
-
-            it('sets the width property', () => {
-                assert.equal(subject.canvas.width, computedWidth);
-            });
-        });
-
-
-    });
-
-    describe('.setCenter(lng, lat)', () => {
-        let subject;
-        let [lng, lat] = [10, 10];
-
-        beforeEach(() => {
-            subject = makeOne({});
-            subject.setCenter(lng, lat);
-        });
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-
-        it('sets the center scene?', () => {
-            assert.deepEqual(subject.center, {lng, lat});
-        });
-
-        it('marks the scene as dirty', () => {
-            assert.isTrue(subject.dirty);
-        });
-    });
-
-    describe('.startZoom()', () => {
-        let subject;
-
-        beforeEach(() => {
-            subject = makeOne({});
-            subject.startZoom();
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-
-        it('sets the last zoom property with the value of the current zoom', () => {
-            assert.equal(subject.last_zoom, subject.zoom);
-        });
-
-        it('marks the scene as zooming', () => {
-            assert.isTrue(subject.zooming);
-        });
-    });
-
-    // TODO this method does a lot of stuff
-    describe('.setZoom(zoom)', () => {
-        let subject;
-        beforeEach(() => {
-            subject = makeOne({});
-            sinon.spy(subject, 'removeTilesOutsideZoomRange');
-            subject.setZoom(10);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-        it('calls the removeTilesOutsideZoomRange method', () =>  {
-            assert.isTrue(subject.removeTilesOutsideZoomRange.called);
-        });
-
-        it('marks the scene as dirty', () => {
-            assert.isTrue(subject.dirty);
         });
     });
 
@@ -365,34 +188,6 @@ describe('Scene', () => {
                 sinon.assert.called(subject.createObjectURL);
                 done();
             });
-        });
-
-    });
-
-    describe('.makeWorkers(url)', () => {
-        let subject;
-        let numWorkers = 2;
-        let url = 'test.js';
-        beforeEach(() => {
-            subject = makeOne({options: {numWorkers}});
-            subject.makeWorkers(url);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-
-        describe('when given a url', () => {
-
-            it('creates the correct number of workers', () => {
-                assert.equal(subject.workers.length, 2);
-            });
-
-            it('creates the correct type of workers', () => {
-                assert.instanceOf(subject.workers[0], Worker);
-            });
-
         });
     });
 });

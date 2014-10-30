@@ -15,8 +15,4 @@ describe('Point', () => {
             assert.instanceOf(subject, Point);
         });
     });
-
-    describe('Point.copy()', () => {
-        it('');
-    });
 });
