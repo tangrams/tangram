@@ -12,6 +12,8 @@ makeOne = ({options}) => {
     return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
 };
 
+let nycLatLng = [-73.97229909896852, 40.76456761707639];
+
 describe('Scene', () => {
 
     describe('.constructor()', () => {
@@ -125,26 +127,6 @@ describe('Scene', () => {
         });
     });
 
-    describe('.updateModes(callback)', () => {
-        let subject;
-        beforeEach((done) => {
-            subject = makeOne({});
-            subject.init(done);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
-
-        it('calls back', (done) => {
-            subject.updateModes((error) => {
-                assert.isNull(error);
-                done();
-            });
-        });
-    });
-
     describe('.resizeMap()', () => {
         let subject;
         let height = 100;
@@ -213,11 +195,11 @@ describe('Scene', () => {
 
     describe('.setCenter(lng, lat)', () => {
         let subject;
-        let [lng, lat] = [10, 10];
+        let [lng, lat] = nycLatLng;
 
         beforeEach(() => {
             subject = makeOne({});
-            subject.setCenter(lng, lat);
+            subject.setCenter(...nycLatLng);
         });
         afterEach(() => {
             subject.destroy();
@@ -302,7 +284,7 @@ describe('Scene', () => {
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'renderGL');
             subject.init(() => {
-                subject.setCenter({lng: 10, lat: 10});
+                subject.setCenter(...nycLatLng);
                 done();
             });
         });
@@ -349,6 +331,47 @@ describe('Scene', () => {
             assert.isTrue(subject.render());
         });
 
+    });
+
+    describe('.updateModes(callback)', () => {
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            subject.init(done);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
+
+        it('calls back', (done) => {
+            subject.updateModes((error) => {
+                assert.isNull(error);
+                done();
+            });
+        });
+    });
+
+    describe('.rebuildGeometry(callback)', () => {
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            subject.setCenter(...nycLatLng);
+            subject.init(done);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
+
+        it('calls back', (done) => {
+            subject.rebuildGeometry((error) => {
+                assert.isNull(error);
+                done();
+            });
+        });
     });
 
     describe('.createWorkers(cb)', () => {
