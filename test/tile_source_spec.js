@@ -1,5 +1,4 @@
 import chai from 'chai';
-import xhr  from 'xhr';
 let assert = chai.assert;
 
 import {Geo} from '../src/geo';
@@ -27,11 +26,6 @@ function getMockTopoResponse() {
     return JSON.stringify(_.clone(require('./fixtures/sample-topojson-response.json')));
 }
 
-function getMockMapboxResponse(cb) {
-    return xhr({responseType: 'arraybuffer',
-                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => { cb(body); });
-}
-
 describe('TileSource', () => {
 
     let url = 'http://localhost:8080/stuff';
@@ -46,12 +40,6 @@ describe('TileSource', () => {
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, TileSource);
-        });
-        it('sets the max_zoom level', () => {
-            assert.equal(subject.max_zoom, max_zoom);
-        });
-        it('sets the url', () => {
-            assert.equal(subject.url_template, url);
         });
     });
 
@@ -129,14 +117,6 @@ describe('TileSource', () => {
             TileSource.scaleTile(sampleTile);
             assert.strictEqual(Geo.transformGeometry.callCount, 3);
         });
-
-        // This test seems flaky
-        it.skip('scales the coordinates', () => {
-            let subject = TileSource.scaleTile(sampleTile);
-            let firstFeature = subject.layers.water.features[0];
-
-            assert.deepEqual(firstFeature.geometry.coordinates, [-0.006075396068253094,-0.006075396068253094]);
-        });
     });
 
     describe('NetworkTileSource', () => {
@@ -177,13 +157,7 @@ describe('TileSource', () => {
 
                 it('calls back with the tile object', (done) => {
                     subject.loadTile(mockTile, (error, tile) => {
-                        // require something that looks like a tile
-                        // object
-                        assert.property(tile, 'loading');
                         assert.property(tile, 'coords');
-                        assert.property(tile, 'debug');
-                        assert.deepProperty(tile, 'layers.buildings');
-                        assert.deepProperty(tile, 'layers.water');
                         done();
                     });
                 });
@@ -241,20 +215,11 @@ describe('TileSource', () => {
                 sinon.assert.called(TileSource.scaleTile);
             });
 
-            it('attaches the response to the tile object', () => {
-                let tile = getMockTile();
-                subject.parseTile(tile, getMockTopoResponse());
-                assert.property(tile, 'layers');
-                assert.deepProperty(tile, 'layers.buildings');
-                assert.deepProperty(tile, 'layers.water');
-            });
         });
     });
 
     describe('MapboxFormatTileSource', () => {
-        let subject,
-            tile   = getMockTile();
-
+        let subject;
         beforeEach(() => {
             subject = new MapboxFormatTileSource(options);
         });
@@ -262,22 +227,6 @@ describe('TileSource', () => {
         describe('.constructor()', () => {
             it('returns a new instance', () => {
                 assert.instanceOf(subject, MapboxFormatTileSource);
-            });
-        });
-
-        // this is failing because of an isssue with either the mapbox
-        // example tile, or the protobuffer library
-        describe.skip('.parseTile(tile, response)', (done) => {
-            it('attaches the response to the tile object', () => {
-
-                getMockMapboxResponse((body) => {
-                    subject.parseTile(tile, body);
-                    assert.property(tile, 'layers');
-                    assert.deepProperty(tile, 'layers.buildings');
-                    assert.deepProperty(tile, 'layers.water');
-                    done();
-                });
-
             });
         });
     });
