@@ -1,6 +1,6 @@
 /*** Style helpers ***/
 import {Geo} from './geo';
-
+import log from 'loglevel';
 export var Style = {};
 
 // Style helpers
@@ -96,13 +96,13 @@ Style.expandMacros = function expandMacros (obj) {
                         eval('f = ' + val);
                         /*jshint ignore:end */
                         obj[p] = f;
-                        // console.log(`expanded macro ${val} to ${f}`);
+                        log.trace(`expanded macro ${val} to ${f}`);
                         break;
                     }
                     catch (e) {
                         // fall-back to original value if parsing failed
                         obj[p] = val;
-                        // console.log(`failed to expand macro ${val}`);
+                        log.trace(`failed to expand macro ${val}`);
                     }
                 }
             }

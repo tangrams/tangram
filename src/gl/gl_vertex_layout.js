@@ -1,7 +1,7 @@
 /* global GLVertexLayout */
 
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
-
+import log from 'loglevel';
 // Describes a vertex layout that can be used with many different GL programs.
 export default class GLVertexLayout {
     // Attribs are an array, in layout order, of: name, size, type, normalized
@@ -184,8 +184,7 @@ export class GLVertexData {
 
             this.buffer = new_block;
             this.setBufferViews();
-
-            console.log(`expanded vertex block to ${this.block_size * this.block_num} vertices`);
+            log.info(`expanded vertex block to ${this.block_size * this.block_num} vertices`);
         }
     }
 

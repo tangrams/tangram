@@ -4,6 +4,7 @@ import {Style} from './style';
 import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
+import log from 'loglevel';
 
 export var SceneWorker = {};
 SceneWorker.worker = self;
@@ -105,7 +106,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
         SceneWorker.tile_source.loadTile(tile, (error) => {
             // Tile load errored
             if (error) {
-                console.log(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
+                log.info(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
             }
             else {
                 // Tile loaded successfully
@@ -189,7 +190,6 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
 // Log wrapper to include worker id #
 SceneWorker.log = function (msg) {
-    // console.log isn't always available in a web worker, so send message to main thread
     SceneWorker.worker.postMessage({
         type: 'log',
         worker_id: SceneWorker.worker_id,

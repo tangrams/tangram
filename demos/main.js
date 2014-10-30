@@ -153,6 +153,7 @@
         numWorkers: 2,
         preRender: preRender,
         postRender: postRender,
+        logLevel: 'debug',
         attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>',
         unloadInvisibleTiles: false,
         updateWhenIdle: false
