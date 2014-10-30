@@ -1,4 +1,3 @@
-import Point from '../point';
 import {Vector} from '../vector';
 import {Geo} from '../geo';
 import {GL} from './gl';
@@ -426,8 +425,8 @@ GLBuilders.isOnTileEdge = function (pa, pb, options)
 GLBuilders.setTileScale = function (scale)
 {
     GLBuilders.tile_bounds = [
-        Point(0, 0),
-        Point(scale, -scale) // TODO: correct for flipped y-axis?
+        { x: 0, y: 0},
+        { x: scale, y: -scale } // TODO: correct for flipped y-axis?
     ];
 };
 
@@ -440,8 +439,9 @@ GLBuilders.valuesWithinTolerance = function (a, b, tolerance)
 // Build a zigzag line pattern for testing joins and caps
 GLBuilders.buildZigzagLineTestPattern = function ()
 {
-    var min = Point(0, 0); // tile.min;
-    var max = Point(4096, 4096); // tile.max;
+    var min = { x: 0, y: 0}; //  tile.min;
+    var max = { x: 4096, y: 4096 }; // tile.max;
+
     var g = {
         id: 123,
         geometry: {
