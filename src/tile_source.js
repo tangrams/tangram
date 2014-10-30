@@ -1,7 +1,6 @@
 /*jshint worker: true */
 /*globals TileSource, topojson */
 import {Geo}   from './geo';
-import Point from './point';
 import {MethodNotImplemented} from './errors';
 import Utils from './utils';
 import log from 'loglevel';
@@ -34,10 +33,7 @@ export default class TileSource {
             var num_features = tile.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
-                    return [m.x, m.y];
-                });
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
             }
         }
 

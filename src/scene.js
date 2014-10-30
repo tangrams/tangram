@@ -1,6 +1,5 @@
 /*global Scene */
 import log from 'loglevel';
-import Point from './point';
 import {Geo} from './geo';
 import Utils from './utils';
 import {Style} from './style';
@@ -164,7 +163,7 @@ Scene.prototype.initSelectionBuffer = function () {
     // Selection state tracking
     this.pixel = new Uint8Array(4);
     this.pixel32 = new Float32Array(this.pixel.buffer);
-    this.selection_point = Point(0, 0);
+    this.selection_point = {x: 0, y: 0};
     this.selected_feature = null;
     this.selection_callback = null;
     this.selection_callback_timer = null;
@@ -336,19 +335,24 @@ Scene.prototype.setBounds = function (sw, ne) {
     };
 
     var buffer = 200 * this.meters_per_pixel; // pixels -> meters
+
+    var [swX, swY] = Geo.latLngToMeters([this.bounds.sw.lng, this.bounds.sw.lat]);
+    var [neX, neY] = Geo.latLngToMeters([this.bounds.ne.lng, this.bounds.ne.lat]);
+
     this.buffered_meter_bounds = {
-        sw: Geo.latLngToMeters(Point(this.bounds.sw.lng, this.bounds.sw.lat)),
-        ne: Geo.latLngToMeters(Point(this.bounds.ne.lng, this.bounds.ne.lat))
+        sw: { x: swX, y: swY },
+        ne: { x: neX, y: neY }
     };
+
     this.buffered_meter_bounds.sw.x -= buffer;
     this.buffered_meter_bounds.sw.y -= buffer;
     this.buffered_meter_bounds.ne.x += buffer;
     this.buffered_meter_bounds.ne.y += buffer;
 
-    this.center_meters = Point(
-        (this.buffered_meter_bounds.sw.x + this.buffered_meter_bounds.ne.x) / 2,
-        (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
-    );
+    this.center_meters = {
+        x: (this.buffered_meter_bounds.sw.x + this.buffered_meter_bounds.ne.x) / 2,
+        y: (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
+    };
 
     // Mark tiles as visible/invisible
     for (var t in this.tiles) {
@@ -474,7 +478,9 @@ Scene.prototype.renderGL = function () {
     if (!this.center) {
         return;
     }
-    var center = Geo.latLngToMeters(Point(this.center.lng, this.center.lat));
+
+    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+    var center = {x, y};
 
     // Model-view matrices
     var tile_view_mat = mat4.create();
@@ -661,10 +667,11 @@ Scene.prototype.getFeatureAt = function (pixel, callback) {
         return;
     }
 
-    this.selection_point = Point(
-        pixel.x * this.device_pixel_ratio,
-        this.device_size.height - (pixel.y * this.device_pixel_ratio)
-    );
+    this.selection_point = {
+        x: pixel.x * this.device_pixel_ratio,
+        y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+    };
+
     this.selection_callback = callback;
     this.update_selection = true;
     this.dirty = true;
