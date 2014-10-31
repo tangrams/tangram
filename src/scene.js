@@ -26,7 +26,7 @@ GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 // Layers & styles: pass an object directly, or a URL as string to load remotely
 // TODO, convert this to the class sytnax once we get the runtime
 // working, IW
-export default function Scene(tile_source, layers, styles, options) {
+export default function Scene(tile_source, layer_source, style_source, options) {
     options = options || {};
     this.initialized = false;
 
@@ -36,8 +36,10 @@ export default function Scene(tile_source, layers, styles, options) {
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
-    this.layers = layers;
-    this.styles = styles;
+    this.layer_source = layer_source;
+    this.style_source = style_source;
+    this.layers = null;
+    this.styles = null;
 
     this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
     this.dirty = true;                              // request a redraw
@@ -827,7 +829,7 @@ Scene.prototype.rebuildGeometry = function (callback) {
     // Track tile build state
     this.building = { callback, tiles: {} };
 
-    // Update layers & styles
+    // Update layers & styles (in case JS objects were manipulated directly)
     this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     this.selection_map = {};
@@ -1136,6 +1138,10 @@ Scene.prototype.freeTileResources = function (tile)
 
 // Attaches tracking and debug into to the provided tile DOM element
 Scene.prototype.updateTileElement = function (tile, div) {
+    if (!div) {
+        return;
+    }
+
     // Debug info
     div.setAttribute('data-tile-key', tile.key);
     div.style.width = '256px';
@@ -1180,46 +1186,13 @@ Scene.prototype.mergeTile = function (key, source_tile) {
 Scene.prototype.loadScene = function (callback) {
     var queue = Queue();
 
-    // If this is the first time we're loading the scene, copy any URLs
-    if (!this.layer_source && typeof(this.layers) === 'string') {
-        this.layer_source = this.layers;
-    }
+    queue.defer(complete => {
+        this.loadLayers(this.layer_source, complete);
+    });
 
-    if (!this.style_source && typeof(this.styles) === 'string') {
-        this.style_source = this.styles;
-    }
-
-    // Layer by URL
-    if (this.layer_source) {
-        queue.defer(complete => {
-            Scene.loadLayers(
-                this.layer_source,
-                layers => {
-                    this.layers = layers;
-                    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-                    complete();
-                }
-            );
-        });
-    }
-
-    // Style by URL
-    if (this.style_source) {
-        queue.defer(complete => {
-            Scene.loadStyles(
-                this.style_source,
-                styles => {
-                    this.styles = styles;
-                    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-                    complete();
-                }
-            );
-        });
-    }
-    // Style object
-    else {
-        this.styles = Scene.postProcessStyles(this.styles);
-    }
+    queue.defer(complete => {
+        this.loadStyles(this.style_source, complete);
+    });
 
     // Everything is loaded
     queue.await(function() {
@@ -1229,6 +1202,86 @@ Scene.prototype.loadScene = function (callback) {
     });
 };
 
+Scene.prototype.loadLayers = function (source, callback) {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
+    // URL was passed in
+    if (typeof source === 'string') {
+        Utils.xhr(source + '?' + (+new Date()), (error, resp, body) => {
+            if (error) {
+                throw error;
+            }
+
+            // Try JSON first, then YAML (if available)
+            var layers;
+            try {
+                eval('layers = ' + body); // jshint ignore:line
+            } catch (e) {
+                try {
+                    layers = yaml.safeLoad(body);
+                } catch (e) {
+                    log.error('Scene: failed to parse layers');
+                    log.error(layers);
+                    layers = null;
+                    // TODO: throw error here?
+                }
+            }
+
+            // Pre-processing
+            this.layers = layers;
+            this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+            callback();
+        });
+    }
+    // Existing JS object was passed in
+    else {
+        // Pre-processing
+        this.layers = source;
+        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+        callback();
+    }
+};
+
+Scene.prototype.loadStyles = function (source, callback) {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
+    // URL was passed in
+    if (typeof source === 'string') {
+        Utils.xhr(source + '?' + (+new Date()), (error, response, body) => {
+            if (error) { throw error; }
+            var styles;
+            // Try JSON first, then YAML (if available)
+            try {
+                eval('styles = ' + body); // jshint ignore:line
+            } catch (e) {
+                try {
+                    styles = yaml.safeLoad(body);
+                } catch (e) {
+                    log.error('Scene: failed to parse styles');
+                    log.error(styles);
+                    styles = null;
+                    // TODO: throw error here?
+                }
+            }
+
+            // Pre-processing
+            this.styles = styles;
+            Style.expandMacros(this.styles);
+            Scene.preProcessStyles(this.styles);
+            this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+            callback();
+        });
+    }
+    // Existing JS object was passed in
+    else {
+        // Pre-processing
+        this.styles = source;
+        Style.expandMacros(this.styles);
+        Scene.preProcessStyles(this.styles);
+        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+        callback();
+    }
+};
 // Reload scene config and rebuild tiles
 Scene.prototype.reload = function () {
     if (!this.initialized) {
@@ -1490,64 +1543,8 @@ Scene.prototype.workerLogMessage = function (event) {
 
 /*** Class methods (stateless) ***/
 
-Scene.loadLayers = function (url, callback) {
-    var layers;
-
-    Utils.xhr(url + '?' + (+new Date()), (error, resp, body) => {
-        if (error) { throw error; }
-        // Try JSON first, then YAML (if available)
-
-        try {
-            eval('layers = ' + body); // jshint ignore:line
-        } catch (e) {
-            try {
-                layers = yaml.safeLoad(body);
-            } catch (e) {
-                log.error('Scene: failed to parse layers');
-                log.error(layers);
-                layers = null;
-                // TODO: throw error here?
-            }
-        }
-
-        if (typeof callback === 'function') {
-            callback(layers);
-        }
-    });
-};
-
-Scene.loadStyles = function (url, callback) {
-    Utils.xhr(url + '?' + (+new Date()), (error, response, body) => {
-        if (error) { throw error; }
-        var styles;
-        // Try JSON first, then YAML (if available)
-        try {
-            eval('styles = ' + body); // jshint ignore:line
-        } catch (e) {
-            try {
-                styles = yaml.safeLoad(body);
-            } catch (e) {
-                log.error('Scene: failed to parse styles');
-                log.error(styles);
-                styles = null;
-                // TODO: throw error here?
-            }
-        }
-
-        // Find generic functions & style macros
-        Style.expandMacros(styles);
-        Scene.postProcessStyles(styles);
-
-        if (typeof callback === 'function') {
-            callback(styles);
-        }
-
-    });
-
-};
-
 // Normalize some style settings that may not have been explicitly specified in the stylesheet
-Scene.postProcessStyles = function (styles) {
+Scene.preProcessStyles = function (styles) {
     // Post-process styles
     for (var m in styles.layers) {
         if (styles.layers[m].visible !== false) {
