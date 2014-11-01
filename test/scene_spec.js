@@ -81,15 +81,12 @@ describe('Scene', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
-                    // console.log(subject);
                     done();
                 });
             });
 
             it('sets the initialized property', (done) => {
-                // console.log(subject);
                 subject.init(() => {
-                    // console.log(subject);
                     assert.isTrue(subject.initialized);
                     done();
                 });
