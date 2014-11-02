@@ -226,8 +226,6 @@ Scene.prototype.createWorkers = function (callback) {
     // Init workers
     queue.await(() => {
         this.workers.forEach((worker) => {
-            WorkerBroker.addWorker(worker);
-
             // TODO: replace these with new WorkerBroker pattern
             worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
             worker.addEventListener('message', this.workerLogMessage.bind(this));
@@ -245,23 +243,21 @@ Scene.prototype.createWorkers = function (callback) {
 // Instantiate workers from URL
 Scene.prototype.makeWorkers = function (url) {
     this.workers = [];
-    for (var w=0; w < this.num_workers; w++) {
-        this.workers.push(new Worker(url));
-        this.workers[w].postMessage({
-            type: 'init',
-            worker_id: w,
-            num_workers: this.num_workers
-        });
+    for (var id=0; id < this.num_workers; id++) {
+        var worker = new Worker(url);
+        this.workers[id] = worker;
+        WorkerBroker.addWorker(worker);
+        WorkerBroker.postMessage(worker, 'init', { worker_id: id });
     }
 };
 
 // Post a message about a tile to the next worker (round robbin)
-Scene.prototype.workerPostMessageForTile = function (tile, message) {
-    if (tile.worker == null) {
+Scene.prototype.workerPostMessageForTile = function (tile, ...message) {
+    if (!tile.worker) {
         tile.worker = this.next_worker;
         this.next_worker = (tile.worker + 1) % this.workers.length;
     }
-    this.workers[tile.worker].postMessage(message);
+    WorkerBroker.postMessage(this.workers[tile.worker], ...message);
 };
 
 Scene.prototype.setCenter = function (lng, lat) {
@@ -853,8 +849,7 @@ Scene.prototype.rebuildGeometry = function (callback) {
 
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
-        worker.postMessage({
-            type: 'prepareForRebuild',
+        WorkerBroker.postMessage(worker, 'prepareForRebuild', {
             layers: this.layers_serialized,
             styles: this.styles_serialized
         });
@@ -913,8 +908,7 @@ Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
     this.trackTileBuildStart(key);
-    this.workerPostMessageForTile(tile, {
-        type: 'buildTile',
+    this.workerPostMessageForTile(tile, 'buildTile', {
         tile: {
             key: tile.key,
             coords: tile.coords, // used by style helpers
@@ -1132,10 +1126,7 @@ Scene.prototype.removeTile = function (key)
         this.freeTileResources(tile);
 
         // Web worker will cancel XHR requests
-        this.workerPostMessageForTile(tile, {
-            type: 'removeTile',
-            key: tile.key
-        });
+        this.workerPostMessageForTile(tile, 'removeTile', tile.key);
     }
 
     delete this.tiles[key];

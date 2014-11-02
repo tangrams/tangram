@@ -16,16 +16,10 @@ SceneWorker.tiles = {}; // tiles processed by this worker
 GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker
-SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type !== 'init') {
-        return;
-    }
-
-    SceneWorker.worker_id = event.data.worker_id;
-    SceneWorker.num_workers = event.data.num_workers;
-
+SceneWorker.worker.init = function ({ worker_id }) {
+    SceneWorker.worker_id = worker_id;
     Style.selection_map_prefix = SceneWorker.worker_id;
-});
+};
 
 SceneWorker.updateConfig = function (config) {
     if (!SceneWorker.tile_source && config.tile_source) {
@@ -72,13 +66,7 @@ SceneWorker.buildTile = function (tile) {
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type !== 'buildTile') {
-        return;
-    }
-
-    var tile = event.data.tile;
-
+SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) {
     // Tile cached?
     if (SceneWorker.tiles[tile.key] != null) {
         // Already loading?
@@ -94,7 +82,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.tiles[tile.key] = tile;
 
     // Update config (layers, styles, etc.)
-    SceneWorker.updateConfig(event.data);
+    SceneWorker.updateConfig({ tile_source, layers, styles });
 
     // First time building the tile
     if (tile.layers == null) {
@@ -130,15 +118,10 @@ SceneWorker.worker.addEventListener('message', function (event) {
         // - benchmark tesselation time for comparison (and could cache tesselation)
         SceneWorker.buildTile(tile);
     }
-});
+};
 
 // Remove tile
-SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type !== 'removeTile') {
-        return;
-    }
-
-    var key = event.data.key;
+SceneWorker.worker.removeTile = function (key) {
     var tile = SceneWorker.tiles[key];
 
     if (tile != null) {
@@ -152,7 +135,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
             SceneWorker.buildTile(tile);
         }
     }
-});
+};
 
 // Get a feature from the selection map
 SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
@@ -165,19 +148,15 @@ SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
 };
 
 // Make layers/styles update config
-SceneWorker.worker.addEventListener('message', function (event) {
-    if (event.data.type !== 'prepareForRebuild') {
-        return;
-    }
-
+SceneWorker.worker.prepareForRebuild = function (config) {
     SceneWorker.layers = null;
     SceneWorker.styles = null;
     SceneWorker.modes = null;
-    SceneWorker.updateConfig(event.data);
+    SceneWorker.updateConfig(config);
     Style.resetSelectionMap();
 
     SceneWorker.log('debug', `worker updated config for tile rebuild`);
-});
+};
 
 // Log wrapper to include worker id #
 SceneWorker.log = function (level, msg) {
