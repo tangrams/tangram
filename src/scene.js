@@ -18,7 +18,7 @@ var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
 // Global setup
-Utils.runIfInMainThread(() => { findBaseLibraryURL(); }); // on main thread only (skip in web worker)
+Utils.inMainThread(() => { findBaseLibraryURL(); }); // on main thread only (skip in web worker)
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
@@ -711,7 +711,7 @@ Scene.prototype.doFeatureSelectionRequests = function () {
         var worker_id = this.pixel[3];
         if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
             if (this.workers[worker_id] != null) {
-                WorkerBroker.postMessageToWorker(
+                WorkerBroker.postMessage(
                     this.workers[worker_id],
                     'getFeatureSelection',
                     { id: request.id, key: feature_key },

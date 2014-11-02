@@ -60,20 +60,29 @@ Utils.stringsToFunctions = function(obj, wrap) {
     return obj;
 };
 
-// Run a block if on the main thread (not in a web worker), with optional error (web worker) block
-Utils.runIfInMainThread = function(block, err) {
+// Run a block of code only if in the main thread
+Utils.inMainThread = function(block) {
     try {
         if (window.document !== undefined) {
             block();
         }
     }
     catch (e) {
-        if (typeof err === 'function') {
-            err();
-        }
     }
 };
 
+// Run a block of code only if in a web worker thread
+Utils.inWorkerThread = function(block) {
+    try {
+        if (window.document !== undefined) {
+        }
+    }
+    catch (e) {
+        if (self !== undefined) {
+            block();
+        }
+    }
+};
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load

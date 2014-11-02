@@ -6,8 +6,6 @@ import Scene  from './scene';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
-WorkerBroker.addWorker(self);
-
 export var SceneWorker = {};
 SceneWorker.worker = self;
 SceneWorker.tiles = {}; // tiles processed by this worker
