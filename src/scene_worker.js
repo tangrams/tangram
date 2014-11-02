@@ -94,6 +94,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         SceneWorker.tile_source.loadTile(tile, (error) => {
             // Tile load errored
             if (error) {
+                tile.error = error.toString();
                 SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
             }
             else {
