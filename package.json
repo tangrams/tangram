@@ -31,7 +31,8 @@
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
     "queue-async": "^1.0.7",
-    "xhr": "~1.17.0"
+    "xhr": "~1.17.0",
+    "loglevel": "~1.2.0"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",

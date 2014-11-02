@@ -17,7 +17,9 @@ export var LeafletLayer = L.GridLayer.extend({
                 numWorkers: this.options.numWorkers,
                 preRender: this.options.preRender,
                 postRender: this.options.postRender,
-                disableRenderLoop: this.options.disableRenderLoop // advanced option, app will have to manually called scene.render() per frame
+                logLevel: this.options.logLevel,
+                // advanced option, app will have to manually called scene.render() per frame
+                disableRenderLoop: this.options.disableRenderLoop
             }
         );
     },

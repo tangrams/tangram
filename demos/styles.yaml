@@ -76,7 +76,7 @@ modes:
                 u_popup_height: 3 # 1.1
             transforms:
                 globals:
-                    - url: src/gl/shaders/modules/popup.glsl
+                    - url: ./src/gl/shaders/modules/popup.glsl
                     -
                         uniform float u_popup_radius;
                         uniform float u_popup_height;
@@ -121,7 +121,7 @@ modes:
                 u_dot_color: [1, 1, 1]
             transforms:
                 globals: { url: demos/shaders/dots.glsl }
-                fragment: color *= dots(v_world_position.xyz);
+                fragment: color.rgb *= dots(v_world_position.xyz);
                 # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
                 # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
 
@@ -137,7 +137,7 @@ modes:
                 u_wood_spacing: 1
             transforms:
                 globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color = lighting * wood(v_world_position.xyz);
+                fragment: color.rgb = wood(v_world_position.xyz) * lighting;
         # buildPolygons: |
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder

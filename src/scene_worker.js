@@ -29,7 +29,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     Style.selection_map_prefix = SceneWorker.worker_id;
 });
 
-SceneWorker.refreshConfig = function (config) {
+SceneWorker.updateConfig = function (config) {
     if (!SceneWorker.tile_source && config.tile_source) {
         SceneWorker.tile_source = TileSource.create(config.tile_source);
     }
@@ -95,8 +95,8 @@ SceneWorker.worker.addEventListener('message', function (event) {
     // Update tile cache tile
     SceneWorker.tiles[tile.key] = tile;
 
-    // Refresh config (layers, styles, etc.)
-    SceneWorker.refreshConfig(event.data);
+    // Update config (layers, styles, etc.)
+    SceneWorker.updateConfig(event.data);
 
     // First time building the tile
     if (tile.layers == null) {
@@ -108,7 +108,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
         SceneWorker.tile_source.loadTile(tile, (error) => {
             // Tile load errored
             if (error) {
-                console.log(`worker ${SceneWorker.worker_id} tile load error for ${tile.key}: ${error.toString()}`);
+                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
             }
             else {
                 // Tile loaded successfully
@@ -120,7 +120,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
     }
     // Tile already loaded, just rebuild
     else {
-        SceneWorker.log("used worker cache for tile " + tile.key);
+        SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
         // Update loading state
         tile.loaded = true;
@@ -142,7 +142,6 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
     var key = event.data.key;
     var tile = SceneWorker.tiles[key];
-    // SceneWorker.log("worker remove tile event for " + key);
 
     if (tile != null) {
         // Remove from cache
@@ -150,7 +149,7 @@ SceneWorker.worker.addEventListener('message', function (event) {
 
         // Cancel if loading
         if (tile.loading === true) {
-            SceneWorker.log("cancel tile load for " + key);
+            SceneWorker.log('debug', `cancel tile load for ${key}`);
             tile.loading = false;
             SceneWorker.buildTile(tile);
         }
@@ -167,7 +166,7 @@ SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
     };
 };
 
-// Make layers/styles refresh config
+// Make layers/styles update config
 SceneWorker.worker.addEventListener('message', function (event) {
     if (event.data.type !== 'prepareForRebuild') {
         return;
@@ -176,17 +175,17 @@ SceneWorker.worker.addEventListener('message', function (event) {
     SceneWorker.layers = null;
     SceneWorker.styles = null;
     SceneWorker.modes = null;
-    SceneWorker.refreshConfig(event.data);
+    SceneWorker.updateConfig(event.data);
     Style.resetSelectionMap();
 
-    SceneWorker.log("worker refreshed config for tile rebuild");
+    SceneWorker.log('debug', `worker updated config for tile rebuild`);
 });
 
 // Log wrapper to include worker id #
-SceneWorker.log = function (msg) {
-    // console.log isn't always available in a web worker, so send message to main thread
+SceneWorker.log = function (level, msg) {
     SceneWorker.worker.postMessage({
         type: 'log',
+        level: level || 'info',
         worker_id: SceneWorker.worker_id,
         msg: msg
     });

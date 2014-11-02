@@ -23,10 +23,10 @@ dist/tangram-worker.debug.js: $(shell $(BROWSERIFY) --list -t es6ify src/scene_w
 	node build.js --debug=true --require './src/scene_worker.js' > dist/tangram-worker.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
-	$(UGLIFY) dist/tangram.debug.js -c -m -o dist/tangram.min.js
+	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
 
 dist/tangram-worker.min.js: dist/tangram-worker.debug.js
-	$(UGLIFY) dist/tangram-worker.debug.js -c -m > dist/tangram-worker.min.js
+	$(UGLIFY) dist/tangram-worker.debug.js -c warnings=false -m > dist/tangram-worker.min.js
 
 # Process shaders into strings and export as a module
 src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/gl/shaders/*.glsl)
@@ -45,10 +45,10 @@ src/gl/gl_shaders.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/g
 	} > src/gl/gl_shaders.js
 	rm -f src/gl/shaders/temp.glsl
 
-dist/testable.js: clean src/gl/gl_shaders.js dist/tangram-worker.debug.js
-	node build.js --debug=true --includeLet --all './test/*.js' > dist/testable.js
+build-testable: lint src/gl/gl_shaders.js dist/tangram-worker.debug.js
+	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
 
-test: lint dist/testable.js
+test: build-testable
 	$(KARMA) start --single-run
 
 clean:
@@ -63,7 +63,7 @@ lint:
 karma-start:
 	$(KARMA) start --no-watch
 
-run-tests: lint dist/testable.js
+run-tests: build-testable
 	$(KARMA) run
 
 .PHONY : clean all dev test lint karma-start run-tests
