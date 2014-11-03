@@ -12,7 +12,7 @@ makeOne = ({options}) => {
     return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
 };
 
-let nycLatLng = [-73.97229909896852, 40.76456761707639];
+let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
 describe('Scene', () => {
 
@@ -57,11 +57,11 @@ describe('Scene', () => {
         });
 
         it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layers, sampleScene.layers);
+            assert.equal(subject.layer_source, sampleScene.layers);
         });
 
         it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.styles, sampleScene.styles);
+            assert.equal(subject.style_source, sampleScene.styles);
         });
 
     });
@@ -81,7 +81,6 @@ describe('Scene', () => {
             it('calls back', (done) => {
                 subject.init(() => {
                     assert.ok(true);
-                    // console.log(subject);
                     done();
                 });
             });
@@ -358,7 +357,19 @@ describe('Scene', () => {
         beforeEach((done) => {
             subject = makeOne({});
             subject.setCenter(...nycLatLng);
-            subject.init(done);
+            subject.init(() => {
+                subject.loadTile({ x: 38603, y: 49255, z: 17 });
+                subject.loadQueuedTiles();
+
+                var tile = subject.tiles['38603/49255/17'];
+                var check = setInterval(() => {
+                    // console.log("check tile load");
+                    if (tile.loaded) {
+                        clearInterval(check);
+                        done();
+                    }
+                }, 50);
+            });
         });
 
         afterEach(() => {
@@ -371,6 +382,34 @@ describe('Scene', () => {
                 assert.isNull(error);
                 done();
             });
+        });
+
+        it.skip('runs first call, queues second call, rejects the rest', (done) => {
+            let success = 0,
+                fail = 0,
+                complete = 0;
+
+            for (let i=0; i < 20; i++) {
+                subject.rebuildGeometry((error) => {
+                    if (error) {
+                        fail++;
+                    }
+                    else {
+                        success++;
+                    }
+                    complete++;
+
+                    if (complete === 20) {
+                        check();
+                    }
+                });
+            }
+
+            function check () {
+                assert.equal(success, 2);
+                assert.equal(fail, 18);
+                done();
+            }
         });
     });
 
