@@ -33,9 +33,14 @@ export var LeafletLayer = L.GridLayer.extend({
         L.GridLayer.prototype.onAdd.apply(this, arguments);
 
         this.hooks.tileunload = (event) => {
-            var tile = event.tile;
-            var key = tile.getAttribute('data-tile-key');
-            this.scene.removeTile(key);
+            // TODO: not expecting leaflet to fire this event for tiles that simply pan
+            // out of bounds when 'unloadInvisibleTiles' option is set, but it's firing
+            // since upgrading to latest master branch - force-checking for now
+            if (this.options.unloadInvisibleTiles) {
+                var tile = event.tile;
+                var key = tile.getAttribute('data-tile-key');
+                this.scene.removeTile(key);
+            }
         };
         this.on('tileunload', this.hooks.tileunload);
 
