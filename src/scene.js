@@ -253,7 +253,7 @@ Scene.prototype.makeWorkers = function (url) {
 
 // Post a message about a tile to the next worker (round robbin)
 Scene.prototype.workerPostMessageForTile = function (tile, ...message) {
-    if (!tile.worker) {
+    if (tile.worker == null) {
         tile.worker = this.next_worker;
         this.next_worker = (tile.worker + 1) % this.workers.length;
     }
