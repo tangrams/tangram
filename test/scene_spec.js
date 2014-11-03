@@ -137,15 +137,14 @@ describe('Scene', () => {
 
         it('correctly sets the value of the tile source', () => {
             assert.instanceOf(subject.tile_source, TileSource);
-
         });
 
         it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layers, sampleScene.layers);
+            assert.equal(subject.layer_source, sampleScene.layers);
         });
 
         it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.styles, sampleScene.styles);
+            assert.equal(subject.style_source, sampleScene.styles);
         });
 
 
@@ -166,27 +165,21 @@ describe('Scene', () => {
                 subject = null;
             });
 
-            it('calls back', (done) => {
-                subject.init(() => {
-                    assert.ok(true);
-                    done();
-                });
-            });
-
-            it('calls back', () => {
-                assert.ok(true);
-            });
-
             it('correctly sets the value of the tile source', () => {
-                assert.equal(subject.tile_source, sampleScene.tileSource);
+                assert.deepPropertyVal(subject, 'tile_source.max_zoom', 20);
+                assert.deepPropertyVal(
+                    subject,
+                    'tile_source.url_template',
+                    'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+                );
             });
 
             it('correctly sets the value of the layers object', () => {
-                assert.equal(subject.layers, sampleScene.layers);
+                assert.equal(subject.layer_source, sampleScene.layers);
             });
 
             it('correctly sets the value of the styles object', () => {
-                assert.equal(subject.styles, sampleScene.styles);
+                assert.equal(subject.style_source, sampleScene.styles);
             });
 
             it('sets the initialized property', () => {
