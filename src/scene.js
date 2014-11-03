@@ -1536,7 +1536,7 @@ Scene.prototype.workerLogMessage = function (event) {
     var { worker_id, level, msg } = event.data;
 
     if (log[level]) {
-        log[level](`worker ${worker_id}: ${msg}`);
+        log[level](`worker ${worker_id}:`,  ...msg);
     }
     else {
         log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);

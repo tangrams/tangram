@@ -159,8 +159,8 @@ SceneWorker.worker.prepareForRebuild = function (config) {
     SceneWorker.log('debug', `worker updated config for tile rebuild`);
 };
 
-// Log wrapper to include worker id #
-SceneWorker.log = function (level, msg) {
+// Log wrapper, sends message to main thread for display, and includes worker id #
+SceneWorker.log = function (level, ...msg) {
     SceneWorker.worker.postMessage({
         type: 'log',
         level: level || 'info',
