@@ -99,8 +99,6 @@ describe('Tile', () => {
             });
         });
 
-        describe('when the tile is already cached', () => {});
-
     });
 
     describe('.isInZoom(scene, zoom)', () => {});
