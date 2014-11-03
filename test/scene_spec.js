@@ -121,7 +121,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
 
         });
 
@@ -437,7 +437,7 @@ describe('Scene', () => {
     describe('.updateModes(callback)', () => {
         let subject;
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.init(done);
         });
 
@@ -457,7 +457,7 @@ describe('Scene', () => {
     describe('.rebuildGeometry(callback)', () => {
         let subject;
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.setCenter(...nycLatLng);
             subject.init(() => {
                 subject.loadTile({ x: 38603, y: 49255, z: 17 });
