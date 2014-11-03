@@ -115,7 +115,7 @@ export class NetworkTileSource extends TileSource {
                 tile.layers = null;
                 tile.error = err.toString();
                 callback(err);
-                return
+                return;
             }
             // We already canceled the tile load, so just throw away the result
             else if (tile.loading === false) {

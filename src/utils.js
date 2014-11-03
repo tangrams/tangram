@@ -1,4 +1,5 @@
 // Miscellaneous utilities
+/*jshint worker: true*/
 
 var Utils;
 export default Utils = {};
@@ -76,7 +77,7 @@ Utils.inWorkerThread = function(block) {
     try {
         if (window.document !== undefined) {
         }
-    }
+    } // jshint ignore:line
     catch (e) {
         if (self !== undefined) {
             block();

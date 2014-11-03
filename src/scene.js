@@ -928,8 +928,8 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
     // Track selection map size (for stats/debug) - update per worker and sum across workers
     this.selection_map_worker_size[worker_id] = selection_map_size;
     this.selection_map_size = 0;
-    for (var worker_id in this.selection_map_worker_size) {
-        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    for (var wid in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[wid];
     }
 
     // Removed this tile during load?
@@ -938,7 +938,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
     }
     else {
         // Update tile with properties from worker
-        var tile = this.mergeTile(tile.key, tile);
+        tile = this.mergeTile(tile.key, tile);
 
         if (!tile.error) {
             this.buildGLGeometry(tile);
