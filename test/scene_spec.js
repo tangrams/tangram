@@ -545,10 +545,11 @@ describe('Scene', () => {
         });
     });
 
-    describe.skip('.makeWorkers(url)', () => {
-        let subject;
-        let numWorkers = 2;
-        let url = 'test.js';
+    describe('.makeWorkers(url)', () => {
+        let subject,
+            numWorkers = 2,
+            url = '/tangram-worker.debug.js';
+
         beforeEach(() => {
             subject = makeScene({options: {numWorkers}});
             subject.makeWorkers(url);
@@ -569,7 +570,7 @@ describe('Scene', () => {
                 assert.instanceOf(subject.workers[0], Worker);
             });
         });
-
     });
+
 
 });
