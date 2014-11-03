@@ -36,11 +36,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach(() => {
-            subject = Scene.create({
-                tile_source: sampleScene.tileSource,
-                layers: sampleScene.layers,
-                styles: sampleScene.styles
-            });
+            subject = makeOne({});
         });
 
         afterEach( () => {
@@ -78,41 +74,41 @@ describe('Scene', () => {
         });
 
         describe('when the scene is not initialized', () => {
-            it('calls back', (done) => {
-                subject.init(() => {
-                    assert.ok(true);
-                    done();
-                });
+            beforeEach((done) => {
+                subject = makeOne({});
+                subject.init(done);
             });
 
-            it('sets the initialized property', (done) => {
-                // console.log(subject);
-                subject.init(() => {
-                    // console.log(subject);
-                    assert.isTrue(subject.initialized);
-                    done();
-                });
+            it('calls back', () => {
+                assert.ok(true);
             });
 
-            it('sets the container property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.container, HTMLBodyElement);
-                    done();
-                });
+            it('correctly sets the value of the tile source', () => {
+                assert.equal(subject.tile_source, sampleScene.tileSource);
             });
 
-            it('sets the canvas property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.canvas, HTMLCanvasElement);
-                    done();
-                });
+            it('correctly sets the value of the layers object', () => {
+                assert.equal(subject.layers, sampleScene.layers);
             });
 
-            it('sets the gl property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.gl, WebGLRenderingContext);
-                    done();
-                });
+            it('correctly sets the value of the styles object', () => {
+                assert.equal(subject.styles, sampleScene.styles);
+            });
+
+            it('sets the initialized property', () => {
+                assert.isTrue(subject.initialized);
+            });
+
+            it('sets the container property', () => {
+                assert.instanceOf(subject.container, HTMLBodyElement);
+            });
+
+            it('sets the canvas property', () => {
+                assert.instanceOf(subject.canvas, HTMLCanvasElement);
+            });
+
+            it('sets the gl property', () => {
+                assert.instanceOf(subject.gl, WebGLRenderingContext);
             });
         });
 

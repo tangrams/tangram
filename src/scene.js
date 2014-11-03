@@ -789,13 +789,6 @@ Scene.prototype._loadTile = function (coords, div, callback) {
 
     // Already loading/loaded?
     if (this.tiles[key]) {
-        // if (this.tiles[key].loaded == true) {
-        //     console.log(`use loaded tile ${key} from cache`);
-        // }
-        // if (this.tiles[key].loading == true) {
-        //     console.log(`already loading tile ${key}, skip`);
-        // }
-
         if (callback) {
             callback(null, div);
         }
@@ -1350,7 +1343,7 @@ Scene.prototype.updateModes = function (callback) {
             (_name, complete) => {
                 // Compile each mode and mark as done
                 this.modes[_name].compile((error) => {
-                    // console.log(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
+                    log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
                     complete(error);
                 });
             },
@@ -1360,7 +1353,7 @@ Scene.prototype.updateModes = function (callback) {
 
     // Wait for all modes to finish compiling
     queue.await((error) => {
-        console.log(`Scene.updateModes(): compiled all modes ${error ? error : ''}`);
+        log.debug(`Scene.updateModes(): compiled all modes ${error ? error : ''}`);
 
         this.dirty = true;
 
@@ -1373,7 +1366,7 @@ Scene.prototype.updateModes = function (callback) {
 
         // Another request queued?
         if (queued) {
-            console.log(`Scene.updateModes(): starting queued request`);
+            log.trace(`Scene.updateModes(): starting queued request`);
             this.updateModes(queued.callback);
         }
     });
@@ -1460,11 +1453,6 @@ Scene.prototype.initInputHandlers = function () {
     //         this.key = 'down';
     //     }
     //     else if (event.keyCode == 83) { // s
-    //         console.log("reloading shaders");
-    //         for (var mode in this.modes) {
-    //             this.modes[mode].gl_program.compile();
-    //         }
-    //         this.dirty = true;
     //     }
     // }.bind(this));
 

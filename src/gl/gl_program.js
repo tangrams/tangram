@@ -385,7 +385,6 @@ GLProgram.prototype.refreshAttributes = function ()
     // var len = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_ATTRIBUTES);
     // for (var i=0; i < len; i++) {
     //     var a = this.gl.getActiveAttrib(this.program, i);
-    //     console.log(a);
     // }
     this.attribs = {};
 };
