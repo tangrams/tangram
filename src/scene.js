@@ -226,8 +226,7 @@ Scene.prototype.createWorkers = function (callback) {
     // Init workers
     queue.await(() => {
         this.workers.forEach((worker) => {
-            // TODO: replace these with new WorkerBroker pattern
-            worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
+            // TODO: add ability for broker to initiate messages FROM worker
             worker.addEventListener('message', this.workerLogMessage.bind(this));
         });
 
@@ -711,7 +710,7 @@ Scene.prototype.doFeatureSelectionRequests = function () {
                     this.workers[worker_id],
                     'getFeatureSelection',
                     { id: request.id, key: feature_key },
-                    (message) => this.workerGetFeatureSelection(message)
+                    message => this.workerGetFeatureSelection(message)
                 );
             }
         }
@@ -867,8 +866,6 @@ Scene.prototype.rebuildGeometry = function (callback) {
     }
 
     visible.sort((a, b) => {
-        // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
-        // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
         var ad = this.tiles[a].center_dist;
         var bd = this.tiles[b].center_dist;
         return (bd > ad ? -1 : (bd === ad ? 0 : 1));
@@ -908,18 +905,53 @@ Scene.prototype.buildTile = function(key) {
     var tile = this.tiles[key];
 
     this.trackTileBuildStart(key);
-    this.workerPostMessageForTile(tile, 'buildTile', {
-        tile: {
-            key: tile.key,
-            coords: tile.coords, // used by style helpers
-            min: tile.min, // used by TileSource to scale tile to local extents
-            max: tile.max, // used by TileSource to scale tile to local extents
-            debug: tile.debug
+    this.workerPostMessageForTile(
+        tile, 'buildTile',
+        {
+            tile: {
+                key: tile.key,
+                coords: tile.coords, // used by style helpers
+                min: tile.min, // used by TileSource to scale tile to local extents
+                max: tile.max, // used by TileSource to scale tile to local extents
+                debug: tile.debug
+            },
+            tile_source: this.tile_source,
+            layers: this.layers_serialized,
+            styles: this.styles_serialized
         },
-        tile_source: this.tile_source,
-        layers: this.layers_serialized,
-        styles: this.styles_serialized
-    });
+        message => this.buildTileCompleted(message)
+    );
+};
+
+// Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
+Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_size }) {
+    // Track selection map size (for stats/debug) - update per worker and sum across workers
+    this.selection_map_worker_size[worker_id] = selection_map_size;
+    this.selection_map_size = 0;
+    for (var worker_id in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    }
+
+    // Removed this tile during load?
+    if (this.tiles[tile.key] == null) {
+        log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+    }
+    else {
+        // Update tile with properties from worker
+        var tile = this.mergeTile(tile.key, tile);
+
+        if (!tile.error) {
+            this.buildGLGeometry(tile);
+            this.dirty = true;
+        }
+        else {
+            log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
+        }
+    }
+
+    this.trackTileSetLoadStop();
+    this.printDebugForTile(tile);
+    this.trackTileBuildStop(tile.key);
 };
 
 // Process geometry for tile - called by web worker
@@ -935,6 +967,7 @@ Scene.addTile = function (tile, layers, styles, modes) {
 
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
+    tile.debug.rendering = +new Date();
     tile.debug.features = 0;
     // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
     for (var layer_num = 0; layer_num < layers.length; layer_num++) {
@@ -1011,45 +1044,12 @@ Scene.addTile = function (tile, layers, styles, modes) {
         tile.vertex_data[s] = vertex_data[s].end().buffer;
     }
 
+    tile.debug.rendering = +new Date() - tile.debug.rendering;
+
     // Return keys to be transfered from 'tile' object to main thread
     return {
         vertex_data: true
     };
-};
-
-// Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-Scene.prototype.workerBuildTileCompleted = function (event) {
-    if (event.data.type !== 'buildTileCompleted') {
-        return;
-    }
-
-    // Track selection map size (for stats/debug) - update per worker and sum across workers
-    this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
-    this.selection_map_size = 0;
-    for (var worker_id in this.selection_map_worker_size) {
-        this.selection_map_size += this.selection_map_worker_size[worker_id];
-    }
-    log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
-
-    var tile = event.data.tile;
-
-    // Removed this tile during load?
-    if (this.tiles[tile.key] == null) {
-        log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
-    }
-    else if (!tile.error) {
-        // Update tile with properties from worker
-        tile = this.mergeTile(tile.key, tile);
-        this.buildGLGeometry(tile);
-        this.dirty = true;
-    }
-    else {
-        log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
-    }
-
-    this.trackTileSetLoadStop();
-    this.printDebugForTile(tile);
-    this.trackTileBuildStop(tile.key);
 };
 
 // Track tile build state
@@ -1070,6 +1070,8 @@ Scene.prototype.trackTileBuildStop = function (key) {
         delete this.building.tiles[key];
         if (Object.keys(this.building.tiles).length === 0) {
             log.info(`Scene: build geometry finished`);
+            log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
+
             var callback = this.building.callback;
             if (typeof callback === 'function') {
                 callback(null, true); // notify build callback as completed
@@ -1180,13 +1182,14 @@ Scene.prototype.mergeTile = function (key, source_tile) {
 
     if (tile == null) {
         this.tiles[key] = source_tile;
+        // this.tiles[key] = Object.assign({}, source_tile);
         return this.tiles[key];
     }
 
     for (var p in source_tile) {
         tile[p] = source_tile[p];
     }
-
+    // Object.assign(tile, source_tile);
     return tile;
 };
 

@@ -34,17 +34,12 @@ SceneWorker.updateConfig = function (config) {
     }
 };
 
-SceneWorker.buildTile = function (tile) {
-    // Tile keys that will be sent back to main thread
-    // We send a minimal subset to avoid unnecessary data exchange
-    var keys = {};
-    if (tile.loaded === true) {
-        tile.debug.rendering = +new Date();
-        keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
-    }
-
-    // Make sure we send some core pieces of info
+// Slice a subset of keys out of a tile
+// Includes a minimum set of pre-defined keys for load state, debug. etc.
+// We use this to send a subset of the tile back to the main thread, to minimize unnecessary data transfer
+// (e.g. very large items like feature geometry are not needed on the main thread)
+SceneWorker.sliceTile = function (tile, keys) {
+    keys = keys || {};
     keys.key = true;
     keys.loading = true;
     keys.loaded = true;
@@ -57,12 +52,7 @@ SceneWorker.buildTile = function (tile) {
         tile_subset[k] = tile[k];
     }
 
-    SceneWorker.worker.postMessage({
-        type: 'buildTileCompleted',
-        worker_id: SceneWorker.worker_id,
-        tile: tile_subset,
-        selection_map_size: Object.keys(Style.selection_map).length
-    });
+    return tile_subset;
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
@@ -73,51 +63,56 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         if (SceneWorker.tiles[tile.key].loading === true) {
             return;
         }
-
-        // Get layers from cache
-        tile.layers = SceneWorker.tiles[tile.key].layers;
     }
 
-    // Update tile cache tile
-    SceneWorker.tiles[tile.key] = tile;
+    // Update tile cache
+    tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
     // Update config (layers, styles, etc.)
     SceneWorker.updateConfig({ tile_source, layers, styles });
 
     // First time building the tile
-    if (tile.layers == null) {
-        // Reset load state
-        tile.loaded = false;
-        tile.loading = true;
-        tile.error = null;
-
-        SceneWorker.tile_source.loadTile(tile, (error) => {
-            // Tile load errored
-            if (error) {
-                tile.error = error.toString();
-                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
-            }
-            else {
+    if (tile.loaded !== true) {
+        return new Promise((resolve) => {
+            SceneWorker.tile_source.loadTile(tile, error => {
+                // Tile load errored
+                if (error) {
+                    SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
+                    // TODO: reject promise here? we do need to update tile state on main thread
+                    // (currently done via value passed to resolve() below)
+                }
                 // Tile loaded successfully
-                Scene.processLayersForTile(SceneWorker.layers, tile); // extract desired layers from full GeoJSON
-            }
+                // Note: if tile load was canceled, then this callback will never be called
+                else {
+                    // Build geometry
+                    Scene.processLayersForTile(SceneWorker.layers, tile);
+                    var keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+                }
 
-            SceneWorker.buildTile(tile);
+                resolve({
+                    tile: SceneWorker.sliceTile(tile, keys),
+                    worker_id: SceneWorker.worker_id,
+                    selection_map_size: Object.keys(Style.selection_map).length
+                });
+            });
         });
     }
     // Tile already loaded, just rebuild
     else {
         SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
-        // Update loading state
-        tile.loaded = true;
-        tile.loading = false;
+        // Build geometry
+        var keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
 
         // TODO: should we rebuild layers here as well?
         // - if so, we need to save the raw un-processed tile data
         // - benchmark the layer processing time to see if it matters
         // - benchmark tesselation time for comparison (and could cache tesselation)
-        SceneWorker.buildTile(tile);
+        return {
+            tile: SceneWorker.sliceTile(tile, keys),
+            worker_id: SceneWorker.worker_id,
+            selection_map_size: Object.keys(Style.selection_map).length
+        };
     }
 };
 
@@ -126,15 +121,15 @@ SceneWorker.worker.removeTile = function (key) {
     var tile = SceneWorker.tiles[key];
 
     if (tile != null) {
-        // Remove from cache
-        delete SceneWorker.tiles[key];
-
         // Cancel if loading
         if (tile.loading === true) {
             SceneWorker.log('debug', `cancel tile load for ${key}`);
             tile.loading = false;
-            SceneWorker.buildTile(tile);
         }
+
+        // Remove from cache
+        delete SceneWorker.tiles[key];
+        SceneWorker.log('debug', `remove tile from cache for ${key}`);
     }
 };
 
