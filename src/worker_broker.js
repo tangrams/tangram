@@ -87,14 +87,29 @@ function setupWorkerThread () {
         if (!method) {
             throw Error(`Worker broker could not dispatch message type ${event.data.method} because worker has no method with that name`);
         }
+
+        // TODO: add try/catch behavior to pass back errors
         var result = method(event.data.message);
 
         // Callback if main thread is expecting a return value
         if (event.data.has_callback) {
-            self.postMessage({
-                message_id: id,
-                message: result
-            });
+            // Async result
+            if (result instanceof Promise) {
+                result.then((value, error) => {
+                    self.postMessage({
+                        message_id: id,
+                        message: value,
+                        error
+                    });
+                });
+            }
+            // Immediate result
+            else {
+                self.postMessage({
+                    message_id: id,
+                    message: result
+                });
+            }
         }
     });
 
