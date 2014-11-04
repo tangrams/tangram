@@ -37,8 +37,8 @@
   "devDependencies": {
     "uglify-js": "^2.4.14",
     "glslify": "^1.5.1",
-    "browserify": "3.33.1",
-    "es6ify": "1.4.0",
+    "browserify": "6.1.0",
+    "es6ify": "1.5.1",
     "jshint": "2.5.8",
     "mocha": "~1.21.4",
     "karma-mocha": "~0.1.9",
