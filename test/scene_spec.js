@@ -5,12 +5,22 @@ import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
 
-import {makeScene} from './utils';
+// import {makeScene} from './utils';
 import sampleScene from './fixtures/sample-scene';
 
-import samples from './fixtures/samples';
-let nyc_bounds = samples.nyc_bounds;
-let nycLatLng = [-73.97229909896852, 40.76456761707639];
+function makeScene(options) {
+    options = options || {};
+    options.disableRenderLoop = true;
+    return new Scene(
+        TileSource.create(_.clone(sampleScene.tile_source)),
+        sampleScene.layers,
+        sampleScene.styles,
+        options
+    );
+}
+
+let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
+let midtownTile = { x: 38603, y: 49255, z: 17 };
 
 describe('Scene', () => {
 
@@ -34,16 +44,16 @@ describe('Scene', () => {
         let subject;
 
         beforeEach((done) => {
-            let coords = {x: 10, y: 10, z: 1},
+            let coords = midtownTile,
                 div    = document.createElement('div');
 
             subject = makeScene({});
 
             sinon.spy(subject, '_loadTile');
 
+            subject.setCenter(...nycLatLng);
             subject.init(() => {
-                subject.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
-                subject.loadTile(coords, div, () => {});
+                subject.loadTile(coords, div);
                 subject.loadQueuedTiles();
                 done();
             });
@@ -61,13 +71,14 @@ describe('Scene', () => {
 
     describe('._loadTile(coords, div, cb)', () => {
         let subject,
-            coord = {x: 10, y: 10, z: 2},
+            coord = midtownTile,
             div = document.createElement('div');
 
-        beforeEach(() => {
+        beforeEach((done) => {
             subject = makeScene({});
-            subject.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
             sinon.stub(subject, 'workerPostMessageForTile');
+            subject.setCenter(...nycLatLng);
+            subject.init(done);
         });
 
         afterEach(() => {
@@ -114,7 +125,6 @@ describe('Scene', () => {
                 });
             });
         });
-
 
     });
 
@@ -172,14 +182,6 @@ describe('Scene', () => {
                     'tile_source.url_template',
                     'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
                 );
-            });
-
-            it('correctly sets the value of the layers object', () => {
-                assert.equal(subject.layer_source, sampleScene.layers);
-            });
-
-            it('correctly sets the value of the styles object', () => {
-                assert.equal(subject.style_source, sampleScene.styles);
             });
 
             it('sets the initialized property', () => {
@@ -358,7 +360,8 @@ describe('Scene', () => {
         let tile = { coords: null, div: null, callback: () => {}};
 
         beforeEach(() => {
-            subject = makeScene({}); subject.loadTile(tile);
+            subject = makeScene({});
+            subject.loadTile(tile);
         });
         afterEach(() => {
             subject.destroy();
@@ -378,10 +381,9 @@ describe('Scene', () => {
             subject = makeScene({});
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'renderGL');
-            subject.init(() => {
-                subject.setCenter(...nycLatLng);
-                done();
-            });
+
+            subject.setCenter(...nycLatLng);
+            subject.init(done);
         });
 
         afterEach(() => {
@@ -450,10 +452,24 @@ describe('Scene', () => {
 
     describe('.rebuildGeometry(callback)', () => {
         let subject;
+        let div = document.createElement('div');
+
         beforeEach((done) => {
             subject = makeScene({});
             subject.setCenter(...nycLatLng);
-            subject.init(done);
+            subject.init(() => {
+                subject.loadTile(midtownTile, div);
+                subject.loadQueuedTiles();
+
+                var tile = subject.tiles['38603/49255/17'];
+                var check = setInterval(() => {
+                    // console.log("check tile load");
+                    if (tile.loaded) {
+                        clearInterval(check);
+                        done();
+                    }
+                }, 50);
+            });
         });
 
         afterEach(() => {
@@ -466,6 +482,34 @@ describe('Scene', () => {
                 assert.isNull(error);
                 done();
             });
+        });
+
+        it.skip('runs first call, queues second call, rejects the rest', (done) => {
+            let success = 0,
+                fail = 0,
+                complete = 0;
+
+            for (let i=0; i < 20; i++) {
+                subject.rebuildGeometry((error) => {
+                    if (error) {
+                        fail++;
+                    }
+                    else {
+                        success++;
+                    }
+                    complete++;
+
+                    if (complete === 20) {
+                        check();
+                    }
+                });
+            }
+
+            function check () {
+                assert.equal(success, 2);
+                assert.equal(fail, 18);
+                done();
+            }
         });
     });
 

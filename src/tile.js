@@ -12,7 +12,8 @@ export default class Tile {
             },
             debug: {},
             loading: false,
-            loaded: false
+            loaded: false,
+            error: null
         }, spec);
     }
 
@@ -42,7 +43,7 @@ export default class Tile {
         };
     }
 
-    sendBuild(scene) {
+    build(scene) {
         scene.trackTileBuildStart(this.key);
         scene.workerPostMessageForTile(this, {
             type: 'buildTile',
@@ -53,8 +54,7 @@ export default class Tile {
         });
     }
 
-    // Web worker will cancel XHR requests
-    sendRemove(scene) {
+    remove(scene) {
         scene.workerPostMessageForTile(this, {
             type: 'removeTile',
             key: this.key
@@ -117,13 +117,15 @@ export default class Tile {
         }
     }
 
+    // TODO: pass bounds only, rest of scene isn't needed
     updateVisibility(scene) {
         var visible = this.visible;
-        this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.buffered_meter_bounds);
+        this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
         return (visible !== this.visible);
     }
 
+    // TODO: pass zoom only?
     isInZoom(scene) {
         return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
     }
@@ -147,7 +149,7 @@ export default class Tile {
 
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
-        this.sendBuild(scene);
+        this.build(scene);
         this.updateElement(div, scene);
         this.updateVisibility(scene);
 

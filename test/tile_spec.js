@@ -2,11 +2,25 @@ import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
 
-import {makeScene} from './utils';
+// import {makeScene} from './utils';
 import samples from './fixtures/samples';
 
+import TileSource  from '../src/tile_source';
+import Scene       from '../src/scene';
+import sampleScene from './fixtures/sample-scene';
 
-let nyc_bounds = samples.nyc_bounds;
+function makeScene(options) {
+    options = options || {};
+    options.disableRenderLoop = true;
+    return new Scene(
+        TileSource.create(_.clone(sampleScene.tile_source)),
+        sampleScene.layers,
+        sampleScene.styles,
+        options
+    );
+}
+
+let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
 describe('Tile', () => {
     let subject,
@@ -15,8 +29,8 @@ describe('Tile', () => {
 
     beforeEach((done) => {
         scene = makeScene({});
+        scene.setCenter(...nycLatLng);
         scene.init(() => {
-            scene.setBounds(nyc_bounds.south_west, nyc_bounds.north_east);
             subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }});
             done();
         });
@@ -41,7 +55,7 @@ describe('Tile', () => {
         });
     });
 
-    describe('.sendBuild(scene, key)', () => {
+    describe('.build(scene, key)', () => {
         beforeEach(() => {
             sinon.stub(scene, 'workerPostMessageForTile');
         });
@@ -51,7 +65,7 @@ describe('Tile', () => {
         });
 
         it('calls scene.workerPostMessageForTile()', () => {
-            subject.sendBuild(scene);
+            subject.build(scene);
             sinon.assert.called(scene.workerPostMessageForTile);
         });
     });
@@ -63,7 +77,7 @@ describe('Tile', () => {
         }
 
         beforeEach(() => {
-            sinon.stub(subject, 'sendBuild');
+            sinon.stub(subject, 'build');
             sinon.spy(subject,  'updateElement');
             sinon.spy(subject,  'updateVisibility');
         });

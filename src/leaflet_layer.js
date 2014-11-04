@@ -45,14 +45,12 @@ export var LeafletLayer = L.GridLayer.extend({
         this.hooks.resize = () => {
             var size = this._map.getSize();
             this.scene.resizeMap(size.x, size.y);
-            this.updateBounds();
         };
         this._map.on('resize', this.hooks.resize);
 
         this.hooks.move = () => {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat);
-            this.updateBounds();
         };
         this._map.on('move', this.hooks.move);
 
@@ -63,7 +61,6 @@ export var LeafletLayer = L.GridLayer.extend({
 
         this.hooks.zoomend = () => {
             this.scene.setZoom(this._map.getZoom());
-            this.updateBounds();
         };
         this._map.on('zoomend', this.hooks.zoomend);
 
@@ -82,9 +79,7 @@ export var LeafletLayer = L.GridLayer.extend({
         this.scene.container = this._map.getContainer();
 
         var center = this._map.getCenter();
-        this.scene.setCenter(center.lng, center.lat);
-        this.scene.setZoom(this._map.getZoom());
-        this.updateBounds();
+        this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
         // Use leaflet's existing event system as the callback mechanism
         this.scene.init(() => {
@@ -114,11 +109,6 @@ export var LeafletLayer = L.GridLayer.extend({
         var div = document.createElement('div');
         this.scene.loadTile(coords, div, done);
         return div;
-    },
-
-    updateBounds: function () {
-        var bounds = this._map.getBounds();
-        this.scene.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
     },
 
     render: function () {
