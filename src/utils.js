@@ -14,7 +14,7 @@ Utils.io = function (url, timeout = 100, responseType = 'text', method = 'GET', 
 
     return new Promise((resolve, reject) => {
         request.timeout = timeout;
-        request.responseType = responseType;
+
         request.onload = () => {
             if (request.status === 200) {
                 resolve(request.responseText);
@@ -24,14 +24,15 @@ Utils.io = function (url, timeout = 100, responseType = 'text', method = 'GET', 
         };
 
         request.onerror = (evt) => {
-            reject(Error('There was a network error' + evt.message));
+            reject(Error('There was a network error' + evt.toString()));
         };
 
         request.ontimeout = (evt) => {
-            reject(Error('timeout'));
+            reject(Error('timeout '+ evt.toString()));
         };
 
         request.open(method, url, true);
+        request.responseType = responseType;
         request.send();
     });
 };

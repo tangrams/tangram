@@ -203,22 +203,24 @@ Scene.prototype.createObjectURL = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function (callback) {
     var queue = Queue();
-    // TODO, we should move the url to a config file
     var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
 
     // Load & instantiate workers
     queue.defer((done) => {
         // Local object URLs supported?
+
         var createObjectURL = this.createObjectURL();
+
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-
-            Utils.xhr(worker_url, (error, resp, body) => {
-                if (error) { throw error; }
+            Utils.io(worker_url).then((body) => {
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 done();
+            }, (error) => {
+                throw error;
             });
+
         } else { // Traditional load from remote URL
             this.makeWorkers(worker_url);
             done();
@@ -1188,7 +1190,7 @@ Scene.prototype.formatResouceUrl = function (url) {
     return url + '?' + (+new Date());
 };
 
-Scene.prototype.maybeParseResource = function (body, resource) {
+Scene.prototype.parseResource = function (body) {
     var data = null;
     try {
         eval('data = ' + body); // jshint ignore:line
@@ -1196,18 +1198,18 @@ Scene.prototype.maybeParseResource = function (body, resource) {
         try {
             data = yaml.safeLoad(body);
         } catch (e) {
-            log.error('Scene: failed to parse: ' + resource);
-            log.error(data);
+            log.error('Scene: failed to parse');
+            log.error(e);
         }
     }
     return data;
 };
 
-Scene.prototype.loadResource = function (resource, source, postLoad) {
+Scene.prototype.loadResource = function (source, postLoad) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
             Utils.io(this.formatResouceUrl(source)).then((body) => {
-                var data = this.maybeParseResource(body, resource);
+                var data = this.parseResource(body);
                 postLoad(data);
                 resolve();
             }, reject);
@@ -1219,14 +1221,14 @@ Scene.prototype.loadResource = function (resource, source, postLoad) {
 };
 
 Scene.prototype.loadLayers = function (source) {
-    return this.loadResource('layers', source, (data) => {
+    return this.loadResource(source, (data) => {
         this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     });
 };
 
 Scene.prototype.loadStyles = function (source) {
-    return this.loadResource('styles', source, (styles) => {
+    return this.loadResource(source, (styles) => {
         this.styles = styles;
         Style.expandMacros(this.styles);
         Scene.preProcessStyles(this.styles);
