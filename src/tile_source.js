@@ -9,7 +9,30 @@ export default class TileSource {
 
     constructor (source) {
         this.url_template = source.url;
-        this.max_zoom = source.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this
+        // overzoom will apply for zooms higher than this
+        this.max_zoom = source.max_zoom || Geo.max_zoom;
+    }
+
+    // TODO fix the z adjustment for continuous zoom
+    calculateOverZoom(coordinate) {
+        var zgap,
+            {x, y, z} = coordinate;
+
+        if (z > this.max_zoom) {
+            zgap = z - this.max_zoom;
+            x = ~~(x / Math.pow(2, zgap));
+            y = ~~(y / Math.pow(2, zgap));
+            z -= zgap;
+        }
+
+        return {x, y, z};
+    }
+
+    buildAsMessage() {
+        return {
+            url: this.url_template,
+            max_zoom: this.max_zoom
+        };
     }
 
     // Create a tile source by type, factory-style
@@ -55,7 +78,8 @@ export default class TileSource {
                 var feature = tile.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
-                    coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z]; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
+                    // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
+                    coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z];
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                     return coordinates;
                 });
