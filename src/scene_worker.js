@@ -102,18 +102,14 @@ SceneWorker.worker.addEventListener('message', function (event) {
         tile.loading = true;
         tile.error = null;
 
-        SceneWorker.tile_source.loadTile(tile, (error) => {
-            // Tile load errored
-            if (error) {
-                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
-            }
-            else {
-                // Tile loaded successfully
-                Scene.processLayersForTile(SceneWorker.layers, tile); // extract desired layers from full GeoJSON
-            }
 
+        SceneWorker.tile_source.loadTile(tile).then(() => {
+            Scene.processLayersForTile(SceneWorker.layers, tile); // extract desired layers from full GeoJSON
             SceneWorker.buildTile(tile);
+        }, (error) => {
+            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
         });
+
     }
     // Tile already loaded, just rebuild
     else {

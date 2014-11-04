@@ -64,7 +64,7 @@ export default class TileSource {
         return tile;
     }
 
-    loadTile(tile, callback) { throw new MethodNotImplemented('loadTile'); }
+    loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
 }
 
 
@@ -86,8 +86,7 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    // should this method return promise?
-    loadTile (tile, callback) {
+    loadTile (tile) {
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
 
         if (this.url_hosts != null) {
@@ -98,31 +97,31 @@ export class NetworkTileSource extends TileSource {
         tile.url = url;
         tile.debug.network = +new Date();
 
-        Utils.io(url, 60 * 100, this.response_type).then((body) => {
-            if (tile.loading === false) {
-                return callback();
-            }
+        return new Promise((resolve, reject) => {
+            Utils.io(url, 60 * 100, this.response_type).then((body) => {
+                if (tile.loading === false) {
+                    reject(); // what should we do here?
+                }
 
-            tile.debug.response_size = body.length || body.byteLength;
-            tile.debug.network = +new Date() - tile.debug.network;
+                tile.debug.response_size = body.length || body.byteLength;
+                tile.debug.network = +new Date() - tile.debug.network;
 
-            tile.debug.parsing = +new Date();
-            this.parseTile(tile, body);
-            tile.debug.parsing = +new Date() - tile.debug.parsing;
+                tile.debug.parsing = +new Date();
+                this.parseTile(tile, body);
+                tile.debug.parsing = +new Date() - tile.debug.parsing;
 
-            tile.loading = false;
-            tile.loaded = true;
+                tile.loading = false;
+                tile.loaded = true;
+                resolve(tile);
+            }, (err) => {
+                tile.loaded = false;
+                tile.loading = false;
+                tile.error = err.toString();
+                reject(err);
+            });
 
-            if (callback) {
-                callback(null, tile);
-            }
-
-        }, (err) => {
-            tile.loaded = false;
-            tile.loading = false;
-            tile.error = err.toString();
-            callback(err);
         });
+
     }
 
     // Sub-classes must implement this method:
