@@ -14003,6 +14003,211 @@ Z.prototype.gluTessProperty=Z.prototype.R;Z.prototype.gluGetTessProperty=Z.proto
 }));
 
 },{}],38:[function(require,module,exports){
+'use strict';
+
+var ieee754 = require('ieee754');
+
+module.exports = Protobuf;
+function Protobuf(buf) {
+    this.buf = buf;
+    this.length = buf.length;
+    this.pos = 0;
+}
+
+Protobuf.prototype.destroy = function() {
+    this.buf = null;
+};
+
+Protobuf.prototype.readUInt32 = function() {
+    var val = this.readUInt32LE(this.pos);
+    this.pos += 4;
+    return val;
+};
+
+Protobuf.prototype.readUInt64 = function() {
+    var val = this.readUInt64LE(this.pos);
+    this.pos += 8;
+    return val;
+};
+
+Protobuf.prototype.readDouble = function() {
+    var val = ieee754.read(this.buf, this.pos, false, 52, 8);
+    this.pos += 8;
+    return val;
+};
+
+Protobuf.prototype.readVarint = function() {
+    // TODO: bounds checking
+    var pos = this.pos;
+    if (this.buf[pos] <= 0x7f) {
+        this.pos++;
+        return this.buf[pos];
+    } else if (this.buf[pos + 1] <= 0x7f) {
+        this.pos += 2;
+        return (this.buf[pos] & 0x7f) | (this.buf[pos + 1] << 7);
+    } else if (this.buf[pos + 2] <= 0x7f) {
+        this.pos += 3;
+        return (this.buf[pos] & 0x7f) | (this.buf[pos + 1] & 0x7f) << 7 | (this.buf[pos + 2]) << 14;
+    } else if (this.buf[pos + 3] <= 0x7f) {
+        this.pos += 4;
+        return (this.buf[pos] & 0x7f) | (this.buf[pos + 1] & 0x7f) << 7 | (this.buf[pos + 2] & 0x7f) << 14 | (this.buf[pos + 3]) << 21;
+    } else if (this.buf[pos + 4] <= 0x7f) {
+        this.pos += 5;
+        return ((this.buf[pos] & 0x7f) | (this.buf[pos + 1] & 0x7f) << 7 | (this.buf[pos + 2] & 0x7f) << 14 | (this.buf[pos + 3]) << 21) + (this.buf[pos + 4] * 268435456);
+    } else {
+        this.skip(0);
+        return 0;
+        // throw new Error("TODO: Handle 6+ byte varints");
+    }
+};
+
+Protobuf.prototype.readSVarint = function() {
+    var num = this.readVarint();
+    if (num > 2147483647) throw new Error('TODO: Handle numbers >= 2^30');
+    // zigzag encoding
+    return ((num >> 1) ^ -(num & 1));
+};
+
+Protobuf.prototype.readString = function() {
+    var bytes = this.readVarint();
+    // TODO: bounds checking
+    var chr = String.fromCharCode;
+    var b = this.buf;
+    var p = this.pos;
+    var end = this.pos + bytes;
+    var str = '';
+    while (p < end) {
+        if (b[p] <= 0x7F) str += chr(b[p++]);
+        else if (b[p] <= 0xBF) throw new Error('Invalid UTF-8 codepoint: ' + b[p]);
+        else if (b[p] <= 0xDF) str += chr((b[p++] & 0x1F) << 6 | (b[p++] & 0x3F));
+        else if (b[p] <= 0xEF) str += chr((b[p++] & 0x1F) << 12 | (b[p++] & 0x3F) << 6 | (b[p++] & 0x3F));
+        else if (b[p] <= 0xF7) p += 4; // We can't handle these codepoints in JS, so skip.
+        else if (b[p] <= 0xFB) p += 5;
+        else if (b[p] <= 0xFD) p += 6;
+        else throw new Error('Invalid UTF-8 codepoint: ' + b[p]);
+    }
+    this.pos += bytes;
+    return str;
+};
+
+Protobuf.prototype.readBuffer = function() {
+    var bytes = this.readVarint();
+    var buffer = this.buf.subarray(this.pos, this.pos + bytes);
+    this.pos += bytes;
+    return buffer;
+};
+
+Protobuf.prototype.readPacked = function(type) {
+    // TODO: bounds checking
+    var bytes = this.readVarint();
+    var end = this.pos + bytes;
+    var array = [];
+    while (this.pos < end) {
+        array.push(this['read' + type]());
+    }
+    return array;
+};
+
+Protobuf.prototype.skip = function(val) {
+    // TODO: bounds checking
+    var type = val & 0x7;
+    switch (type) {
+        /* varint */ case 0: while (this.buf[this.pos++] > 0x7f); break;
+        /* 64 bit */ case 1: this.pos += 8; break;
+        /* length */ case 2: var bytes = this.readVarint(); this.pos += bytes; break;
+        /* 32 bit */ case 5: this.pos += 4; break;
+        default: throw new Error('Unimplemented type: ' + type);
+    }
+};
+
+
+},{"ieee754":39}],39:[function(require,module,exports){
+exports.read = function(buffer, offset, isLE, mLen, nBytes) {
+  var e, m,
+      eLen = nBytes * 8 - mLen - 1,
+      eMax = (1 << eLen) - 1,
+      eBias = eMax >> 1,
+      nBits = -7,
+      i = isLE ? (nBytes - 1) : 0,
+      d = isLE ? -1 : 1,
+      s = buffer[offset + i];
+
+  i += d;
+
+  e = s & ((1 << (-nBits)) - 1);
+  s >>= (-nBits);
+  nBits += eLen;
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+  m = e & ((1 << (-nBits)) - 1);
+  e >>= (-nBits);
+  nBits += mLen;
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+  if (e === 0) {
+    e = 1 - eBias;
+  } else if (e === eMax) {
+    return m ? NaN : ((s ? -1 : 1) * Infinity);
+  } else {
+    m = m + Math.pow(2, mLen);
+    e = e - eBias;
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
+};
+
+exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c,
+      eLen = nBytes * 8 - mLen - 1,
+      eMax = (1 << eLen) - 1,
+      eBias = eMax >> 1,
+      rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
+      i = isLE ? 0 : (nBytes - 1),
+      d = isLE ? 1 : -1,
+      s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+
+  value = Math.abs(value);
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0;
+    e = eMax;
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2);
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--;
+      c *= 2;
+    }
+    if (e + eBias >= 1) {
+      value += rt / c;
+    } else {
+      value += rt * Math.pow(2, 1 - eBias);
+    }
+    if (value * c >= 2) {
+      e++;
+      c /= 2;
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0;
+      e = eMax;
+    } else if (e + eBias >= 1) {
+      m = (value * c - 1) * Math.pow(2, mLen);
+      e = e + eBias;
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
+      e = 0;
+    }
+  }
+
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8);
+
+  e = (e << mLen) | m;
+  eLen += mLen;
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
+
+  buffer[offset + i - d] |= s * 128;
+};
+
+},{}],40:[function(require,module,exports){
 (function() {
   var slice = [].slice;
 
@@ -14084,7 +14289,483 @@ Z.prototype.gluTessProperty=Z.prototype.R;Z.prototype.gluGetTessProperty=Z.proto
   else this.queue = queue;
 })();
 
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
+module.exports.VectorTile = require('./lib/vectortile.js');
+module.exports.VectorTileFeature = require('./lib/vectortilefeature.js');
+module.exports.VectorTileLayer = require('./lib/vectortilelayer.js');
+
+},{"./lib/vectortile.js":42,"./lib/vectortilefeature.js":43,"./lib/vectortilelayer.js":44}],42:[function(require,module,exports){
+'use strict';
+
+var VectorTileLayer = require('./vectortilelayer');
+
+module.exports = VectorTile;
+
+function VectorTile(buffer, end) {
+
+    this.layers = {};
+    this._buffer = buffer;
+
+    end = end || buffer.length;
+
+    while (buffer.pos < end) {
+        var val = buffer.readVarint(),
+            tag = val >> 3;
+
+        if (tag == 3) {
+            var layer = this.readLayer();
+            if (layer.length) this.layers[layer.name] = layer;
+        } else {
+            buffer.skip(val);
+        }
+    }
+}
+
+VectorTile.prototype.readLayer = function() {
+    var buffer = this._buffer,
+        bytes = buffer.readVarint(),
+        end = buffer.pos + bytes,
+        layer = new VectorTileLayer(buffer, end);
+
+    buffer.pos = end;
+
+    return layer;
+};
+
+// Returns a dictionary of layers as individual GeoJSON feature collections, keyed by layer name
+VectorTile.prototype.toGeoJSON = function () {
+    var json = {};
+    var layerNames = Object.keys(this.layers);
+
+    for (var n=0; n < layerNames.length; n++) {
+        json[layerNames[n]] = this.layers[layerNames[n]].toGeoJSON();
+    }
+
+    return json;
+};
+
+},{"./vectortilelayer":44}],43:[function(require,module,exports){
+'use strict';
+
+var Point = require('point-geometry');
+
+module.exports = VectorTileFeature;
+
+function VectorTileFeature(buffer, end, extent, keys, values) {
+
+    this.properties = {};
+
+    // Public
+    this.extent = extent;
+    this.type = 0;
+
+    // Private
+    this._buffer = buffer;
+    this._geometry = -1;
+    this._keys = keys;
+
+    end = end || buffer.length;
+
+    while (buffer.pos < end) {
+        var val = buffer.readVarint(),
+            tag = val >> 3;
+
+        if (tag == 1) {
+            this._id = buffer.readVarint();
+
+        } else if (tag == 2) {
+            var tagEnd = buffer.pos + buffer.readVarint();
+
+            while (buffer.pos < tagEnd) {
+                var key = keys[buffer.readVarint()];
+                var value = values[buffer.readVarint()];
+                this.properties[key] = value;
+            }
+
+        } else if (tag == 3) {
+            this.type = buffer.readVarint();
+
+        } else if (tag == 4) {
+            this._geometry = buffer.pos;
+            buffer.skip(val);
+
+        } else {
+            buffer.skip(val);
+        }
+    }
+}
+
+VectorTileFeature.types = ['Unknown', 'Point', 'LineString', 'Polygon'];
+
+VectorTileFeature.prototype.loadGeometry = function() {
+    var buffer = this._buffer;
+    buffer.pos = this._geometry;
+
+    var bytes = buffer.readVarint(),
+        end = buffer.pos + bytes,
+        cmd = 1,
+        length = 0,
+        x = 0,
+        y = 0,
+        lines = [],
+        line;
+
+    while (buffer.pos < end) {
+        if (!length) {
+            var cmd_length = buffer.readVarint();
+            cmd = cmd_length & 0x7;
+            length = cmd_length >> 3;
+        }
+
+        length--;
+
+        if (cmd === 1 || cmd === 2) {
+            x += buffer.readSVarint();
+            y += buffer.readSVarint();
+
+            if (cmd === 1) {
+                // moveTo
+                if (line) {
+                    lines.push(line);
+                }
+                line = [];
+            }
+
+            line.push(new Point(x, y));
+        } else if (cmd === 7) {
+            // closePolygon
+            line.push(line[0].clone());
+        } else {
+            throw new Error('unknown command ' + cmd);
+        }
+    }
+
+    if (line) lines.push(line);
+
+    return lines;
+};
+
+VectorTileFeature.prototype.bbox = function() {
+    var buffer = this._buffer;
+    buffer.pos = this._geometry;
+
+    var bytes = buffer.readVarint(),
+        end = buffer.pos + bytes,
+
+        cmd = 1,
+        length = 0,
+        x = 0,
+        y = 0,
+        x1 = Infinity,
+        x2 = -Infinity,
+        y1 = Infinity,
+        y2 = -Infinity;
+
+    while (buffer.pos < end) {
+        if (!length) {
+            var cmd_length = buffer.readVarint();
+            cmd = cmd_length & 0x7;
+            length = cmd_length >> 3;
+        }
+
+        length--;
+
+        if (cmd === 1 || cmd === 2) {
+            x += buffer.readSVarint();
+            y += buffer.readSVarint();
+            if (x < x1) x1 = x;
+            if (x > x2) x2 = x;
+            if (y < y1) y1 = y;
+            if (y > y2) y2 = y;
+
+        } else if (cmd !== 7) {
+            throw new Error('unknown command ' + cmd);
+        }
+    }
+
+    return [x1, y1, x2, y2];
+};
+
+VectorTileFeature.prototype.toGeoJSON = function () {
+    var geojson = {
+        type: 'Feature',
+        geometry: {},
+        properties: {}
+    };
+
+    for (var k=0; k < this._keys.length; k++) {
+        var key = this._keys[k];
+        geojson.properties[key] = this.properties[key];
+    }
+
+    geojson.geometry.coordinates = this.loadGeometry();
+    for (var r=0; r < geojson.geometry.coordinates.length; r++) {
+        var ring = geojson.geometry.coordinates[r];
+        for (var c=0; c < ring.length; c++) {
+            ring[c] = [
+                ring[c].x,
+                ring[c].y
+            ];
+        }
+    }
+
+    if (VectorTileFeature.types[this.type] == 'Point') {
+        geojson.geometry.type = 'Point';
+    }
+    else if (VectorTileFeature.types[this.type] == 'LineString') {
+        if (geojson.geometry.coordinates.length == 1) {
+            geojson.geometry.coordinates = geojson.geometry.coordinates[0];
+            geojson.geometry.type = 'LineString';
+        }
+        else {
+            geojson.geometry.type = 'MultiLineString';
+        }
+    }
+    else if (VectorTileFeature.types[this.type] == 'Polygon') {
+        geojson.geometry.type = 'Polygon';
+    }
+
+    return geojson;
+};
+
+},{"point-geometry":45}],44:[function(require,module,exports){
+'use strict';
+
+var VectorTileFeature = require('./vectortilefeature.js');
+
+module.exports = VectorTileLayer;
+function VectorTileLayer(buffer, end) {
+    // Public
+    this.version = 1;
+    this.name = null;
+    this.extent = 4096;
+    this.length = 0;
+
+    // Private
+    this._buffer = buffer;
+    this._keys = [];
+    this._values = [];
+    this._features = [];
+
+    var val, tag;
+
+    end = end || buffer.length;
+
+    while (buffer.pos < end) {
+        val = buffer.readVarint();
+        tag = val >> 3;
+
+        if (tag === 15) {
+            this.version = buffer.readVarint();
+        } else if (tag === 1) {
+            this.name = buffer.readString();
+        } else if (tag === 5) {
+            this.extent = buffer.readVarint();
+        } else if (tag === 2) {
+            this.length++;
+            this._features.push(buffer.pos);
+            buffer.skip(val);
+
+        } else if (tag === 3) {
+            this._keys.push(buffer.readString());
+        } else if (tag === 4) {
+            this._values.push(this.readFeatureValue());
+        } else {
+            buffer.skip(val);
+        }
+    }
+}
+
+VectorTileLayer.prototype.readFeatureValue = function() {
+    var buffer = this._buffer,
+        value = null,
+        bytes = buffer.readVarint(),
+        end = buffer.pos + bytes,
+        val, tag;
+
+    while (buffer.pos < end) {
+        val = buffer.readVarint();
+        tag = val >> 3;
+
+        if (tag == 1) {
+            value = buffer.readString();
+        } else if (tag == 2) {
+            throw new Error('read float');
+        } else if (tag == 3) {
+            value = buffer.readDouble();
+        } else if (tag == 4) {
+            value = buffer.readVarint();
+        } else if (tag == 5) {
+            throw new Error('read uint');
+        } else if (tag == 6) {
+            value = buffer.readSVarint();
+        } else if (tag == 7) {
+            value = Boolean(buffer.readVarint());
+        } else {
+            buffer.skip(val);
+        }
+    }
+
+    return value;
+};
+
+// return feature `i` from this layer as a `VectorTileFeature`
+VectorTileLayer.prototype.feature = function(i) {
+    if (i < 0 || i >= this._features.length) throw new Error('feature index out of bounds');
+
+    this._buffer.pos = this._features[i];
+    var end = this._buffer.readVarint() + this._buffer.pos;
+
+    return new VectorTileFeature(this._buffer, end, this.extent, this._keys, this._values);
+};
+
+VectorTileLayer.prototype.toGeoJSON = function () {
+    var geojson = {
+        type: 'FeatureCollection',
+        features: []
+    };
+
+    for (var f=0; f < this.length; f++) {
+        geojson.features.push(this.feature(f).toGeoJSON());
+    }
+
+    return geojson;
+};
+
+},{"./vectortilefeature.js":43}],45:[function(require,module,exports){
+'use strict';
+
+module.exports = Point;
+
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+Point.prototype = {
+    clone: function() { return new Point(this.x, this.y); },
+
+    add:     function(p) { return this.clone()._add(p);     },
+    sub:     function(p) { return this.clone()._sub(p);     },
+    mult:    function(k) { return this.clone()._mult(k);    },
+    div:     function(k) { return this.clone()._div(k);     },
+    rotate:  function(a) { return this.clone()._rotate(a);  },
+    matMult: function(m) { return this.clone()._matMult(m); },
+    unit:    function() { return this.clone()._unit(); },
+    perp:    function() { return this.clone()._perp(); },
+    round:   function() { return this.clone()._round(); },
+
+    mag: function() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    },
+
+    equals: function(p) {
+        return this.x === p.x &&
+               this.y === p.y;
+    },
+
+    dist: function(p) {
+        return Math.sqrt(this.distSqr(p));
+    },
+
+    distSqr: function(p) {
+        var dx = p.x - this.x,
+            dy = p.y - this.y;
+        return dx * dx + dy * dy;
+    },
+
+    angle: function() {
+        return Math.atan2(this.y, this.x);
+    },
+
+    angleTo: function(b) {
+        return Math.atan2(this.y - b.y, this.x - b.x);
+    },
+
+    angleWith: function(b) {
+        return this.angleWithSep(b.x, b.y);
+    },
+
+    // Find the angle of the two vectors, solving the formula for the cross product a x b = |a||b|sin(θ) for θ.
+    angleWithSep: function(x, y) {
+        return Math.atan2(
+            this.x * y - this.y * x,
+            this.x * x + this.y * y);
+    },
+
+    _matMult: function(m) {
+        var x = m[0] * this.x + m[1] * this.y,
+            y = m[2] * this.x + m[3] * this.y;
+        this.x = x;
+        this.y = y;
+        return this;
+    },
+
+    _add: function(p) {
+        this.x += p.x;
+        this.y += p.y;
+        return this;
+    },
+
+    _sub: function(p) {
+        this.x -= p.x;
+        this.y -= p.y;
+        return this;
+    },
+
+    _mult: function(k) {
+        this.x *= k;
+        this.y *= k;
+        return this;
+    },
+
+    _div: function(k) {
+        this.x /= k;
+        this.y /= k;
+        return this;
+    },
+
+    _unit: function() {
+        this._div(this.mag());
+        return this;
+    },
+
+    _perp: function() {
+        var y = this.y;
+        this.y = this.x;
+        this.x = -y;
+        return this;
+    },
+
+    _rotate: function(angle) {
+        var cos = Math.cos(angle),
+            sin = Math.sin(angle),
+            x = cos * this.x - sin * this.y,
+            y = sin * this.x + cos * this.y;
+        this.x = x;
+        this.y = y;
+        return this;
+    },
+
+    _round: function() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        return this;
+    }
+};
+
+// constructs Point from an array if necessary
+Point.convert = function (a) {
+    if (a instanceof Point) {
+        return a;
+    }
+    if (Array.isArray(a)) {
+        return new Point(a[0], a[1]);
+    }
+    return a;
+};
+
+},{}],46:[function(require,module,exports){
 var window = require("global/window")
 var once = require("once")
 var parseHeaders = require('parse-headers')
@@ -14262,7 +14943,7 @@ function createXHR(options, callback) {
 
 function noop() {}
 
-},{"global/window":40,"once":41,"parse-headers":45}],40:[function(require,module,exports){
+},{"global/window":47,"once":48,"parse-headers":52}],47:[function(require,module,exports){
 (function (global){
 if (typeof window !== "undefined") {
     module.exports = window;
@@ -14275,7 +14956,7 @@ if (typeof window !== "undefined") {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],41:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 module.exports = once
 
 once.proto = once(function () {
@@ -14296,7 +14977,7 @@ function once (fn) {
   }
 }
 
-},{}],42:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 var isFunction = require('is-function')
 
 module.exports = forEach
@@ -14344,7 +15025,7 @@ function forEachObject(object, iterator, context) {
     }
 }
 
-},{"is-function":43}],43:[function(require,module,exports){
+},{"is-function":50}],50:[function(require,module,exports){
 module.exports = isFunction
 
 var toString = Object.prototype.toString
@@ -14361,7 +15042,7 @@ function isFunction (fn) {
       fn === window.prompt))
 };
 
-},{}],44:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 
 exports = module.exports = trim;
 
@@ -14377,7 +15058,7 @@ exports.right = function(str){
   return str.replace(/\s*$/, '');
 };
 
-},{}],45:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 var trim = require('trim')
   , forEach = require('for-each')
   , isArray = function(arg) {
@@ -14409,7 +15090,7 @@ module.exports = function (headers) {
 
   return result
 }
-},{"for-each":42,"trim":44}],46:[function(require,module,exports){
+},{"for-each":49,"trim":51}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -14543,7 +15224,22 @@ var $FlatCamera = FlatCamera;
   }}, {}, IsometricCamera);
 
 
-},{"./geo":47,"./gl/gl_program":53,"gl-matrix":4}],47:[function(require,module,exports){
+},{"./geo":55,"./gl/gl_program":61,"gl-matrix":4}],54:[function(require,module,exports){
+"use strict";
+Object.defineProperties(exports, {
+  MethodNotImplemented: {get: function() {
+      return MethodNotImplemented;
+    }},
+  __esModule: {value: true}
+});
+var MethodNotImplemented = function MethodNotImplemented(methodName) {
+  this.name = 'MethodNotImplemented';
+  this.message = 'Method ' + methodName + ' must be implemented in subclass';
+};
+($traceurRuntime.createClass)(MethodNotImplemented, {}, {}, Error);
+
+
+},{}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Geo: {get: function() {
@@ -14643,7 +15339,7 @@ Geo.findBoundingBox = function(polygon) {
 };
 
 
-},{}],48:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GL: {get: function() {
@@ -14769,7 +15465,7 @@ GL.triangulatePolygon = function GLTriangulate(contours, z) {
 };
 
 
-},{"libtess":36,"loglevel":37}],49:[function(require,module,exports){
+},{"libtess":36,"loglevel":37}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GLBuilders: {get: function() {
@@ -15070,7 +15766,7 @@ GLBuilders.buildZigzagLineTestPattern = function() {
 };
 
 
-},{"../geo":47,"../vector":62,"./gl":48}],50:[function(require,module,exports){
+},{"../geo":55,"../vector":72,"./gl":56}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15379,7 +16075,7 @@ gl.UNPACK_COLORSPACE_CONVERSION_WEBGL = 0x9243;
 gl.BROWSER_DEFAULT_WEBGL = 0x9244;
 
 
-},{}],51:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15435,7 +16131,7 @@ GLGeometry.prototype.destroy = function() {
 };
 
 
-},{"./gl_program":53,"loglevel":37}],52:[function(require,module,exports){
+},{"./gl_program":61,"loglevel":37}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Modes: {get: function() {
@@ -15738,7 +16434,7 @@ Points.buildPoints = function(points, style, vertex_data) {
 };
 
 
-},{"./gl_builders":49,"./gl_constants":50,"./gl_geom":51,"./gl_program":53,"./gl_shaders":54,"./gl_vertex_layout":56,"loglevel":37,"queue-async":38}],53:[function(require,module,exports){
+},{"./gl_builders":57,"./gl_constants":58,"./gl_geom":59,"./gl_program":61,"./gl_shaders":62,"./gl_vertex_layout":64,"loglevel":37,"queue-async":40}],61:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16033,7 +16729,7 @@ GLProgram.prototype.attribute = function(name) {
 };
 
 
-},{"../utils":61,"./gl":48,"./gl_texture":55,"queue-async":38}],54:[function(require,module,exports){
+},{"../utils":71,"./gl":56,"./gl_texture":63,"queue-async":40}],62:[function(require,module,exports){
 "use strict";
 var shader_sources = {};
 shader_sources['point_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  vec3 lighting = vec3(1.);\n" + "  vec2 uv = v_texcoord * 2. - 1.;\n" + "  float len = length(uv);\n" + "  if(len > 1.) {\n" + "    discard;\n" + "  }\n" + "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.);\n" + "}\n" + "";
@@ -16046,7 +16742,7 @@ shader_sources['simple_polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + 
 module.exports = shader_sources;
 
 
-},{}],55:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16190,7 +16886,7 @@ GLTexture.prototype.setTextureFiltering = function() {
 };
 
 
-},{"../utils":61,"loglevel":37}],56:[function(require,module,exports){
+},{"../utils":71,"loglevel":37}],64:[function(require,module,exports){
 "use strict";
 var $__3;
 Object.defineProperties(exports, {
@@ -16386,7 +17082,7 @@ GLVertexData.prototype.array_types = ($__3 = {}, Object.defineProperty($__3, gl.
 }), $__3);
 
 
-},{"./gl_constants":50,"loglevel":37}],57:[function(require,module,exports){
+},{"./gl_constants":58,"loglevel":37}],65:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   LeafletLayer: {get: function() {
@@ -16406,11 +17102,14 @@ var LeafletLayer = L.GridLayer.extend({
     this.hooks = {};
   },
   createScene: function() {
-    this.scene = new Scene(this.options.vectorTileSource, this.options.vectorLayers, this.options.vectorStyles, {
+    this.scene = Scene.create({
+      tile_source: this.options.vectorTileSource,
+      layers: this.options.vectorLayers,
+      styles: this.options.vectorStyles
+    }, {
       numWorkers: this.options.numWorkers,
       preRender: this.options.preRender,
       postRender: this.options.postRender,
-      logLevel: this.options.logLevel,
       disableRenderLoop: this.options.disableRenderLoop
     });
   },
@@ -16493,7 +17192,7 @@ function leafletLayer(options) {
 }
 
 
-},{"./scene":59}],58:[function(require,module,exports){
+},{"./scene":67}],66:[function(require,module,exports){
 "use strict";
 var $__leaflet_95_layer__,
     $__loglevel__,
@@ -16522,7 +17221,7 @@ window.Tangram = module.exports = {
 };
 
 
-},{"./geo":47,"./gl/gl":48,"./gl/gl_program":53,"./gl/gl_texture":55,"./leaflet_layer":57,"loglevel":37}],59:[function(require,module,exports){
+},{"./geo":55,"./gl/gl":56,"./gl/gl_program":61,"./gl/gl_texture":63,"./leaflet_layer":65,"loglevel":37}],67:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16542,6 +17241,8 @@ var $__loglevel__,
     $__camera__,
     $__queue_45_async__,
     $__js_45_yaml__,
+    $__tile__,
+    $__tile_95_source__,
     $__gl_45_matrix__;
 var log = ($__loglevel__ = require("loglevel"), $__loglevel__ && $__loglevel__.__esModule && $__loglevel__ || {default: $__loglevel__}).default;
 var Geo = ($__geo__ = require("./geo"), $__geo__ && $__geo__.__esModule && $__geo__ || {default: $__geo__}).Geo;
@@ -16555,6 +17256,8 @@ var ModeManager = ($__gl_47_gl_95_modes__ = require("./gl/gl_modes"), $__gl_47_g
 var Camera = ($__camera__ = require("./camera"), $__camera__ && $__camera__.__esModule && $__camera__ || {default: $__camera__}).default;
 var Queue = ($__queue_45_async__ = require("queue-async"), $__queue_45_async__ && $__queue_45_async__.__esModule && $__queue_45_async__ || {default: $__queue_45_async__}).default;
 var yaml = ($__js_45_yaml__ = require("js-yaml"), $__js_45_yaml__ && $__js_45_yaml__.__esModule && $__js_45_yaml__ || {default: $__js_45_yaml__}).default;
+var Tile = ($__tile__ = require("./tile"), $__tile__ && $__tile__.__esModule && $__tile__ || {default: $__tile__}).default;
+var TileSource = ($__tile_95_source__ = require("./tile_source"), $__tile_95_source__ && $__tile_95_source__.__esModule && $__tile_95_source__ || {default: $__tile_95_source__}).default;
 var glMatrix = ($__gl_45_matrix__ = require("gl-matrix"), $__gl_45_matrix__ && $__gl_45_matrix__.__esModule && $__gl_45_matrix__ || {default: $__gl_45_matrix__}).default;
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -16596,16 +17299,19 @@ function Scene(tile_source, layer_source, style_source, options) {
   this.resetTime();
 }
 var $__default = Scene;
-Scene.create = function($__17) {
-  var $__18 = $__17,
-      tile_source = $__18.tile_source,
-      layers = $__18.layers,
-      styles = $__18.styles;
+Scene.create = function($__23) {
+  var $__24 = $__23,
+      tile_source = $__24.tile_source,
+      layers = $__24.layers,
+      styles = $__24.styles;
   var options = arguments[1] !== (void 0) ? arguments[1] : {};
+  if (!(tile_source instanceof TileSource)) {
+    tile_source = TileSource.create(tile_source);
+  }
   return new Scene(tile_source, layers, styles, options);
 };
 Scene.prototype.init = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   if (this.initialized) {
     return false;
   }
@@ -16613,44 +17319,44 @@ Scene.prototype.init = function(callback) {
   this.loadScene((function() {
     var queue = Queue();
     queue.defer((function(complete) {
-      $__13.modes = Scene.createModes($__13.styles.modes);
-      $__13.updateActiveModes();
+      $__15.modes = Scene.createModes($__15.styles.modes);
+      $__15.updateActiveModes();
       complete();
     }));
     queue.defer((function(complete) {
-      $__13.createWorkers(complete);
+      $__15.createWorkers(complete);
     }));
     queue.await((function() {
-      $__13.container = $__13.container || document.body;
-      $__13.canvas = document.createElement('canvas');
-      $__13.canvas.style.position = 'absolute';
-      $__13.canvas.style.top = 0;
-      $__13.canvas.style.left = 0;
-      $__13.canvas.style.zIndex = -1;
-      $__13.container.appendChild($__13.canvas);
-      $__13.gl = GL.getContext($__13.canvas);
-      $__13.resizeMap($__13.container.clientWidth, $__13.container.clientHeight);
-      $__13.last_render_count = null;
-      $__13.initInputHandlers();
-      $__13.createCamera();
-      $__13.createLighting();
-      $__13.initSelectionBuffer();
-      for (var $__14 = Utils.values($__13.modes)[Symbol.iterator](),
-          $__15; !($__15 = $__14.next()).done; ) {
-        var mode = $__15.value;
+      $__15.container = $__15.container || document.body;
+      $__15.canvas = document.createElement('canvas');
+      $__15.canvas.style.position = 'absolute';
+      $__15.canvas.style.top = 0;
+      $__15.canvas.style.left = 0;
+      $__15.canvas.style.zIndex = -1;
+      $__15.container.appendChild($__15.canvas);
+      $__15.gl = GL.getContext($__15.canvas);
+      $__15.resizeMap($__15.container.clientWidth, $__15.container.clientHeight);
+      $__15.last_render_count = null;
+      $__15.initInputHandlers();
+      $__15.createCamera();
+      $__15.createLighting();
+      $__15.initSelectionBuffer();
+      for (var $__16 = Utils.values($__15.modes)[Symbol.iterator](),
+          $__17; !($__17 = $__16.next()).done; ) {
+        var mode = $__17.value;
         {
-          mode.setGL($__13.gl);
+          mode.setGL($__15.gl);
         }
       }
-      $__13.updateModes((function() {
-        $__13.initializing = false;
-        $__13.initialized = true;
+      $__15.updateModes((function() {
+        $__15.initializing = false;
+        $__15.initialized = true;
         if (typeof callback === 'function') {
           callback();
         }
       }));
-      if ($__13.render_loop !== false) {
-        $__13.setupRenderLoop();
+      if ($__15.render_loop !== false) {
+        $__15.setupRenderLoop();
       }
     }));
   }));
@@ -16713,33 +17419,33 @@ Scene.prototype.createObjectURL = function() {
   return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 Scene.prototype.createWorkers = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   var queue = Queue();
   var worker_url = (Scene.library_base_url + "tangram-worker." + Scene.library_type + ".js?" + +new Date());
   queue.defer((function(done) {
-    var createObjectURL = $__13.createObjectURL();
-    if (createObjectURL && $__13.allow_cross_domain_workers) {
+    var createObjectURL = $__15.createObjectURL();
+    if (createObjectURL && $__15.allow_cross_domain_workers) {
       Utils.xhr(worker_url, (function(error, resp, body) {
         if (error) {
           throw error;
         }
         var worker_local_url = createObjectURL(new Blob([body], {type: 'application/javascript'}));
-        $__13.makeWorkers(worker_local_url);
+        $__15.makeWorkers(worker_local_url);
         done();
       }));
     } else {
-      $__13.makeWorkers(worker_url);
+      $__15.makeWorkers(worker_url);
       done();
     }
   }));
   queue.await((function() {
-    $__13.workers.forEach((function(worker) {
-      worker.addEventListener('message', $__13.workerBuildTileCompleted.bind($__13));
-      worker.addEventListener('message', $__13.workerGetFeatureSelection.bind($__13));
-      worker.addEventListener('message', $__13.workerLogMessage.bind($__13));
+    $__15.workers.forEach((function(worker) {
+      worker.addEventListener('message', $__15.workerBuildTileCompleted.bind($__15));
+      worker.addEventListener('message', $__15.workerGetFeatureSelection.bind($__15));
+      worker.addEventListener('message', $__15.workerLogMessage.bind($__15));
     }));
-    $__13.next_worker = 0;
-    $__13.selection_map_worker_size = {};
+    $__15.next_worker = 0;
+    $__15.selection_map_worker_size = {};
     if (typeof callback === 'function') {
       callback();
     }
@@ -16809,15 +17515,13 @@ Scene.prototype.updateBounds = function() {
     return;
   }
   this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
-  if (this.css_size !== undefined) {
-    this.meter_zoom = {
-      x: this.css_size.width / 2 * this.meters_per_pixel,
-      y: this.css_size.height / 2 * this.meters_per_pixel
-    };
-  }
-  var $__17 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__17[0],
-      y = $__17[1];
+  this.meter_zoom = {
+    x: this.css_size.width / 2 * this.meters_per_pixel,
+    y: this.css_size.height / 2 * this.meters_per_pixel
+  };
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   this.center_meters = {
     x: x,
     y: y
@@ -16843,8 +17547,12 @@ Scene.prototype.updateBounds = function() {
       y: this.bounds_meters.ne.y + buffer
     }
   };
-  for (var t in this.tiles) {
-    this.updateVisibilityForTile(this.tiles[t]);
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    var tile = $__17.value;
+    {
+      tile.updateVisibility(this);
+    }
   }
   this.dirty = true;
 };
@@ -16863,15 +17571,6 @@ Scene.prototype.removeTilesOutsideZoomRange = function(below, above) {
     log.debug(("removed " + key + " (outside range [" + below + ", " + above + "])"));
     this.removeTile(key);
   }
-};
-Scene.prototype.isTileInZoom = function(tile) {
-  return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
-};
-Scene.prototype.updateVisibilityForTile = function(tile) {
-  var visible = tile.visible;
-  tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.bounds_meters_buffered);
-  tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-  return (visible !== tile.visible);
 };
 Scene.prototype.resizeMap = function(width, height) {
   this.dirty = true;
@@ -16900,24 +17599,24 @@ Scene.calculateZ = function(layer, tile, layer_offset, feature_offset) {
   return z;
 };
 Scene.prototype.setupRenderLoop = function() {
-  var $__17 = arguments[0] !== (void 0) ? arguments[0] : {},
-      pre_render = $__17.pre_render,
-      post_render = $__17.post_render;
-  var $__13 = this;
+  var $__23 = arguments[0] !== (void 0) ? arguments[0] : {},
+      pre_render = $__23.pre_render,
+      post_render = $__23.post_render;
+  var $__15 = this;
   this.renderLoop = (function() {
-    if ($__13.initialized) {
-      if (typeof $__13.preRender === 'function') {
-        $__13.preRender();
+    if ($__15.initialized) {
+      if (typeof $__15.preRender === 'function') {
+        $__15.preRender();
       }
-      $__13.render();
-      if (typeof $__13.postRender === 'function') {
-        $__13.postRender();
+      $__15.render();
+      if (typeof $__15.postRender === 'function') {
+        $__15.postRender();
       }
     }
-    window.requestAnimationFrame($__13.renderLoop);
+    window.requestAnimationFrame($__15.renderLoop);
   });
   setTimeout((function() {
-    $__13.renderLoop();
+    $__15.renderLoop();
   }), 0);
 };
 Scene.prototype.render = function() {
@@ -16953,9 +17652,9 @@ Scene.prototype.renderGL = function() {
   if (!this.center) {
     return;
   }
-  var $__17 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__17[0],
-      y = $__17[1];
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   var center = {
     x: x,
     y: y
@@ -17120,8 +17819,8 @@ Scene.prototype.workerGetFeatureSelection = function(event) {
 };
 Scene.prototype.loadTile = function() {
   for (var args = [],
-      $__16 = 0; $__16 < arguments.length; $__16++)
-    args[$__16] = arguments[$__16];
+      $__22 = 0; $__22 < arguments.length; $__22++)
+    args[$__22] = arguments[$__22];
   this.queued_tiles[this.queued_tiles.length] = args;
 };
 Scene.prototype.loadQueuedTiles = function() {
@@ -17136,59 +17835,33 @@ Scene.prototype.loadQueuedTiles = function() {
   }
   this.queued_tiles = [];
 };
+Scene.prototype.cacheTile = function(tile) {
+  this.tiles[tile.key] = tile;
+};
+Scene.prototype.hasTile = function(key) {
+  return this.tiles[key] !== undefined;
+};
+Scene.prototype.forgetTile = function(key) {
+  delete this.tiles[key];
+};
 Scene.prototype._loadTile = function(coords, div, callback) {
-  if (coords.z > this.tile_source.max_zoom) {
-    var zgap = coords.z - this.tile_source.max_zoom;
-    var original_tile = [coords.x, coords.y, coords.z].join('/');
-    coords.x = ~~(coords.x / Math.pow(2, zgap));
-    coords.y = ~~(coords.y / Math.pow(2, zgap));
-    coords.display_z = coords.z;
-    coords.z -= zgap;
-    log.trace(("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/')));
-  }
-  this.trackTileSetLoadStart();
-  var key = [coords.x, coords.y, coords.z].join('/');
-  if (this.tiles[key]) {
-    if (callback) {
-      callback(null, div);
-    }
-    return;
-  }
-  var tile = this.tiles[key] = {};
-  tile.key = key;
-  tile.coords = coords;
-  tile.min = Geo.metersForTile(tile.coords);
-  tile.max = Geo.metersForTile({
-    x: tile.coords.x + 1,
-    y: tile.coords.y + 1,
-    z: tile.coords.z
+  var $__15 = this;
+  callback = (typeof callback === 'function') ? callback : function() {};
+  var tile = Tile.create({
+    coords: coords,
+    tile_source: this.tile_source
   });
-  tile.span = {
-    x: (tile.max.x - tile.min.x),
-    y: (tile.max.y - tile.min.y)
-  };
-  tile.bounds = {
-    sw: {
-      x: tile.min.x,
-      y: tile.max.y
-    },
-    ne: {
-      x: tile.max.x,
-      y: tile.min.y
-    }
-  };
-  tile.debug = {};
-  tile.loading = true;
-  tile.loaded = false;
-  this.buildTile(tile.key);
-  this.updateTileElement(tile, div);
-  this.updateVisibilityForTile(tile);
-  if (callback) {
+  if (!this.hasTile(tile.key)) {
+    tile.load(this, coords, div, (function(error, div) {
+      $__15.cacheTile(tile);
+      callback(null, div, tile);
+    }));
+  } else {
     callback(null, div);
   }
 };
 Scene.prototype.rebuildGeometry = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   if (!this.initialized) {
     if (typeof callback === 'function') {
       callback(false);
@@ -17212,32 +17885,43 @@ Scene.prototype.rebuildGeometry = function(callback) {
   this.workers.forEach((function(worker) {
     worker.postMessage({
       type: 'prepareForRebuild',
-      layers: $__13.layers_serialized,
-      styles: $__13.styles_serialized
+      layers: $__15.layers_serialized,
+      styles: $__15.styles_serialized
     });
   }));
-  var visible = [],
+  var tile,
+      visible = [],
       invisible = [];
-  for (var t in this.tiles) {
-    if (this.tiles[t].visible === true) {
-      visible.push(t);
-    } else {
-      invisible.push(t);
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    tile = $__17.value;
+    {
+      if (tile.visible === true) {
+        visible.push(tile);
+      } else {
+        invisible.push(tile);
+      }
     }
   }
   visible.sort((function(a, b) {
-    var ad = $__13.tiles[a].center_dist;
-    var bd = $__13.tiles[b].center_dist;
-    return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+    return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
   }));
-  for (t in visible) {
-    this.buildTile(visible[t]);
+  for (var $__18 = visible[Symbol.iterator](),
+      $__19; !($__19 = $__18.next()).done; ) {
+    tile = $__19.value;
+    {
+      tile.build(this);
+    }
   }
-  for (t in invisible) {
-    if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
-      this.buildTile(invisible[t]);
-    } else {
-      this.removeTile(invisible[t]);
+  for (var $__20 = invisible[Symbol.iterator](),
+      $__21; !($__21 = $__20.next()).done; ) {
+    tile = $__21.value;
+    {
+      if (tile.isInZoom(this)) {
+        tile.build(this);
+      } else {
+        this.removeTile(tile.key);
+      }
     }
   }
   this.updateActiveModes();
@@ -17249,23 +17933,6 @@ Scene.prototype.rebuildGeometry = function(callback) {
       callback(null, true);
     }
   }
-};
-Scene.prototype.buildTile = function(key) {
-  var tile = this.tiles[key];
-  this.trackTileBuildStart(key);
-  this.workerPostMessageForTile(tile, {
-    type: 'buildTile',
-    tile: {
-      key: tile.key,
-      coords: tile.coords,
-      min: tile.min,
-      max: tile.max,
-      debug: tile.debug
-    },
-    tile_source: this.tile_source,
-    layers: this.layers_serialized,
-    styles: this.styles_serialized
-  });
 };
 Scene.addTile = function(tile, layers, styles, modes) {
   var layer,
@@ -17338,12 +18005,15 @@ Scene.prototype.workerBuildTileCompleted = function(event) {
     this.selection_map_size += this.selection_map_worker_size[worker_id];
   }
   log.debug(("Scene: updated selection map: " + this.selection_map_size + " features"));
-  var tile = event.data.tile;
-  if (this.tiles[tile.key] == null) {
+  var tile = Tile.create(Object.assign({}, event.data.tile, {tile_source: this.tile_source}));
+  if (!this.hasTile(tile.key)) {
     log.debug(("discarded tile " + tile.key + " in Scene.workerBuildTileCompleted because previously removed"));
   } else if (!tile.error) {
-    tile = this.mergeTile(tile.key, tile);
-    this.buildGLGeometry(tile);
+    var cached = this.tiles[tile.key];
+    if (cached) {
+      tile = cached.merge(tile);
+    }
+    tile.buildGLGeometry(this.modes);
     this.dirty = true;
   } else {
     log.error(("main thread tile load error for " + tile.key + ": " + tile.error));
@@ -17377,22 +18047,6 @@ Scene.prototype.trackTileBuildStop = function(key) {
     }
   }
 };
-Scene.prototype.buildGLGeometry = function(tile) {
-  var vertex_data = tile.vertex_data;
-  this.freeTileResources(tile);
-  tile.gl_geometry = {};
-  for (var s in vertex_data) {
-    tile.gl_geometry[s] = this.modes[s].makeGLGeometry(vertex_data[s]);
-  }
-  tile.debug.geometries = 0;
-  tile.debug.buffer_size = 0;
-  for (var p in tile.gl_geometry) {
-    tile.debug.geometries += tile.gl_geometry[p].geometry_count;
-    tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
-  }
-  tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-  delete tile.vertex_data;
-};
 Scene.prototype.removeTile = function(key) {
   if (!this.initialized) {
     return;
@@ -17403,63 +18057,20 @@ Scene.prototype.removeTile = function(key) {
   }
   var tile = this.tiles[key];
   if (tile != null) {
-    this.freeTileResources(tile);
-    this.workerPostMessageForTile(tile, {
-      type: 'removeTile',
-      key: tile.key
-    });
+    tile.freeResources();
+    tile.remove(this);
   }
-  delete this.tiles[key];
+  this.forgetTile(tile.key);
   this.dirty = true;
 };
-Scene.prototype.freeTileResources = function(tile) {
-  if (tile != null && tile.gl_geometry != null) {
-    for (var p in tile.gl_geometry) {
-      tile.gl_geometry[p].destroy();
-    }
-    tile.gl_geometry = null;
-  }
-};
-Scene.prototype.updateTileElement = function(tile, div) {
-  if (!div) {
-    return;
-  }
-  div.setAttribute('data-tile-key', tile.key);
-  div.style.width = '256px';
-  div.style.height = '256px';
-  if (this.debug) {
-    var debug_overlay = document.createElement('div');
-    debug_overlay.textContent = tile.key;
-    debug_overlay.style.position = 'absolute';
-    debug_overlay.style.left = 0;
-    debug_overlay.style.top = 0;
-    debug_overlay.style.color = 'white';
-    debug_overlay.style.fontSize = '16px';
-    div.appendChild(debug_overlay);
-    div.style.borderStyle = 'solid';
-    div.style.borderColor = 'white';
-    div.style.borderWidth = '1px';
-  }
-};
-Scene.prototype.mergeTile = function(key, source_tile) {
-  var tile = this.tiles[key];
-  if (tile == null) {
-    this.tiles[key] = source_tile;
-    return this.tiles[key];
-  }
-  for (var p in source_tile) {
-    tile[p] = source_tile[p];
-  }
-  return tile;
-};
 Scene.prototype.loadScene = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   var queue = Queue();
   queue.defer((function(complete) {
-    $__13.loadLayers($__13.layer_source, complete);
+    $__15.loadLayers($__15.layer_source, complete);
   }));
   queue.defer((function(complete) {
-    $__13.loadStyles($__13.style_source, complete);
+    $__15.loadStyles($__15.style_source, complete);
   }));
   queue.await(function() {
     if (typeof callback === 'function') {
@@ -17468,7 +18079,7 @@ Scene.prototype.loadScene = function(callback) {
   });
 };
 Scene.prototype.loadLayers = function(source, callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (typeof source === 'string') {
     Utils.xhr(source + '?' + (+new Date()), (function(error, resp, body) {
@@ -17487,8 +18098,8 @@ Scene.prototype.loadLayers = function(source, callback) {
           layers = null;
         }
       }
-      $__13.layers = layers;
-      $__13.layers_serialized = Utils.serializeWithFunctions($__13.layers);
+      $__15.layers = layers;
+      $__15.layers_serialized = Utils.serializeWithFunctions($__15.layers);
       callback();
     }));
   } else {
@@ -17498,7 +18109,7 @@ Scene.prototype.loadLayers = function(source, callback) {
   }
 };
 Scene.prototype.loadStyles = function(source, callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (typeof source === 'string') {
     Utils.xhr(source + '?' + (+new Date()), (function(error, response, body) {
@@ -17517,10 +18128,10 @@ Scene.prototype.loadStyles = function(source, callback) {
           styles = null;
         }
       }
-      $__13.styles = styles;
-      Style.expandMacros($__13.styles);
-      Scene.preProcessStyles($__13.styles);
-      $__13.styles_serialized = Utils.serializeWithFunctions($__13.styles);
+      $__15.styles = styles;
+      Style.expandMacros($__15.styles);
+      Scene.preProcessStyles($__15.styles);
+      $__15.styles_serialized = Utils.serializeWithFunctions($__15.styles);
       callback();
     }));
   } else {
@@ -17532,17 +18143,17 @@ Scene.prototype.loadStyles = function(source, callback) {
   }
 };
 Scene.prototype.reload = function() {
-  var $__13 = this;
+  var $__15 = this;
   if (!this.initialized) {
     return;
   }
   this.loadScene((function() {
-    $__13.updateStyles();
-    $__13.rebuildGeometry();
+    $__15.updateStyles();
+    $__15.rebuildGeometry();
   }));
 };
 Scene.prototype.updateModes = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (!this.initialized && !this.initializing) {
     callback(new Error('Scene.updateModes() called before scene was initialized'));
@@ -17562,7 +18173,7 @@ Scene.prototype.updateModes = function(callback) {
   }
   for (name in this.modes) {
     queue.defer((function(_name, complete) {
-      $__13.modes[_name].compile((function(error) {
+      $__15.modes[_name].compile((function(error) {
         log.trace(("Scene.updateModes(): compiled mode " + _name + " " + (error ? error : '')));
         complete(error);
       }));
@@ -17570,14 +18181,14 @@ Scene.prototype.updateModes = function(callback) {
   }
   queue.await((function(error) {
     log.debug(("Scene.updateModes(): compiled all modes " + (error ? error : '')));
-    $__13.dirty = true;
-    var callback = $__13.compiling.callback;
-    var queued = $__13.compiling.queued;
-    $__13.compiling = null;
+    $__15.dirty = true;
+    var callback = $__15.compiling.callback;
+    var queued = $__15.compiling.queued;
+    $__15.compiling = null;
     callback(error);
     if (queued) {
       log.trace("Scene.updateModes(): starting queued request");
-      $__13.updateModes(queued.callback);
+      $__15.updateModes(queued.callback);
     }
   }));
 };
@@ -17670,10 +18281,10 @@ Scene.prototype.workerLogMessage = function(event) {
   if (event.data.type !== 'log') {
     return;
   }
-  var $__17 = event.data,
-      worker_id = $__17.worker_id,
-      level = $__17.level,
-      msg = $__17.msg;
+  var $__23 = event.data,
+      worker_id = $__23.worker_id,
+      level = $__23.level,
+      msg = $__23.msg;
   if (log[level]) {
     log[level](("worker " + worker_id + ": " + msg));
   } else {
@@ -17751,7 +18362,7 @@ function findBaseLibraryURL() {
 }
 
 
-},{"./camera":46,"./geo":47,"./gl/gl":48,"./gl/gl_builders":49,"./gl/gl_modes":52,"./gl/gl_program":53,"./gl/gl_texture":55,"./style":60,"./utils":61,"gl-matrix":4,"js-yaml":5,"loglevel":37,"queue-async":38}],60:[function(require,module,exports){
+},{"./camera":53,"./geo":55,"./gl/gl":56,"./gl/gl_builders":57,"./gl/gl_modes":60,"./gl/gl_program":61,"./gl/gl_texture":63,"./style":68,"./tile":69,"./tile_source":70,"./utils":71,"gl-matrix":4,"js-yaml":5,"loglevel":37,"queue-async":40}],68:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Style: {get: function() {
@@ -17940,7 +18551,397 @@ Style.parseStyleForFeature = function(feature, layer_name, layer_style, tile) {
 };
 
 
-},{"./geo":47,"loglevel":37}],61:[function(require,module,exports){
+},{"./geo":55,"loglevel":37}],69:[function(require,module,exports){
+"use strict";
+Object.defineProperties(exports, {
+  default: {get: function() {
+      return $__default;
+    }},
+  __esModule: {value: true}
+});
+var $__geo__;
+var Geo = ($__geo__ = require("./geo"), $__geo__ && $__geo__.__esModule && $__geo__ || {default: $__geo__}).Geo;
+var Tile = function Tile() {
+  var spec = arguments[0] !== (void 0) ? arguments[0] : {};
+  Object.assign(this, {
+    coords: {
+      x: null,
+      y: null,
+      z: null
+    },
+    debug: {},
+    loading: false,
+    loaded: false,
+    error: null
+  }, spec);
+};
+var $Tile = Tile;
+($traceurRuntime.createClass)(Tile, {
+  freeResources: function() {
+    if (this != null && this.gl_geometry != null) {
+      for (var p in this.gl_geometry) {
+        this.gl_geometry[p].destroy();
+      }
+      this.gl_geometry = null;
+    }
+  },
+  destroy: function() {
+    this.freeResources();
+    this.worker = null;
+  },
+  buildAsMessage: function() {
+    return {
+      key: this.key,
+      coords: this.coords,
+      min: this.min,
+      max: this.max,
+      debug: this.debug
+    };
+  },
+  build: function(scene) {
+    scene.trackTileBuildStart(this.key);
+    scene.workerPostMessageForTile(this, {
+      type: 'buildTile',
+      tile: this.buildAsMessage(),
+      tile_source: this.tile_source.buildAsMessage(),
+      layers: scene.layers_serialized,
+      styles: scene.styles_serialized
+    });
+  },
+  remove: function(scene) {
+    scene.workerPostMessageForTile(this, {
+      type: 'removeTile',
+      key: this.key
+    });
+  },
+  buildGLGeometry: function(modes) {
+    var vertex_data = this.vertex_data;
+    this.freeResources();
+    this.gl_geometry = {};
+    for (var s in vertex_data) {
+      this.gl_geometry[s] = modes[s].makeGLGeometry(vertex_data[s]);
+    }
+    this.debug.geometries = 0;
+    this.debug.buffer_size = 0;
+    for (var p in this.gl_geometry) {
+      this.debug.geometries += this.gl_geometry[p].geometry_count;
+      this.debug.buffer_size += this.gl_geometry[p].vertex_data.byteLength;
+    }
+    this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
+    delete this.vertex_data;
+  },
+  showDebug: function(div) {
+    var debug_overlay = document.createElement('div');
+    debug_overlay.textContent = this.key;
+    debug_overlay.style.position = 'absolute';
+    debug_overlay.style.left = 0;
+    debug_overlay.style.top = 0;
+    debug_overlay.style.color = 'white';
+    debug_overlay.style.fontSize = '16px';
+    debug_overlay.style.textOutline = '1px #000000';
+    div.appendChild(debug_overlay);
+    div.style.borderStyle = 'solid';
+    div.style.borderColor = 'white';
+    div.style.borderWidth = '1px';
+    return debug_overlay;
+  },
+  updateElement: function(div, scene) {
+    div.setAttribute('data-tile-key', this.key);
+    div.style = {
+      width: '256px',
+      height: '256px'
+    };
+    if (scene.debug) {
+      this.showDebug(div);
+    }
+  },
+  updateVisibility: function(scene) {
+    var visible = this.visible;
+    this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
+    this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
+    return (visible !== this.visible);
+  },
+  isInZoom: function(scene) {
+    return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
+  },
+  get key() {
+    var $__2 = this.tile_source.calculateOverZoom(this.coords),
+        x = $__2.x,
+        y = $__2.y,
+        z = $__2.z;
+    this.coords = {
+      x: x,
+      y: y,
+      z: z
+    };
+    return [x, y, z].join('/');
+  },
+  load: function(scene, coords, div, cb) {
+    scene.trackTileSetLoadStart();
+    Object.assign(this, {
+      coords: coords,
+      min: Geo.metersForTile(coords),
+      max: Geo.metersForTile({
+        x: coords.x + 1,
+        y: coords.y + 1,
+        z: coords.z
+      }),
+      loading: true
+    });
+    this.span = {
+      x: (this.max.x - this.min.x),
+      y: (this.max.y - this.min.y)
+    };
+    this.bounds = {
+      sw: {
+        x: this.min.x,
+        y: this.max.y
+      },
+      ne: {
+        x: this.max.x,
+        y: this.min.y
+      }
+    };
+    this.build(scene);
+    this.updateElement(div, scene);
+    this.updateVisibility(scene);
+    if (cb) {
+      cb(null, div);
+    }
+  },
+  merge: function(other) {
+    for (var key in other) {
+      if (key !== 'key') {
+        this[key] = other[key];
+      }
+    }
+    return this;
+  }
+}, {create: function(spec) {
+    return new $Tile(spec);
+  }});
+var $__default = Tile;
+
+
+},{"./geo":55}],70:[function(require,module,exports){
+"use strict";
+Object.defineProperties(exports, {
+  default: {get: function() {
+      return $__default;
+    }},
+  NetworkTileSource: {get: function() {
+      return NetworkTileSource;
+    }},
+  GeoJSONTileSource: {get: function() {
+      return GeoJSONTileSource;
+    }},
+  TopoJSONTileSource: {get: function() {
+      return TopoJSONTileSource;
+    }},
+  MapboxFormatTileSource: {get: function() {
+      return MapboxFormatTileSource;
+    }},
+  __esModule: {value: true}
+});
+var $__geo__,
+    $__errors__,
+    $__utils__,
+    $__loglevel__;
+var Geo = ($__geo__ = require("./geo"), $__geo__ && $__geo__.__esModule && $__geo__ || {default: $__geo__}).Geo;
+var MethodNotImplemented = ($__errors__ = require("./errors"), $__errors__ && $__errors__.__esModule && $__errors__ || {default: $__errors__}).MethodNotImplemented;
+var Utils = ($__utils__ = require("./utils"), $__utils__ && $__utils__.__esModule && $__utils__ || {default: $__utils__}).default;
+var log = ($__loglevel__ = require("loglevel"), $__loglevel__ && $__loglevel__.__esModule && $__loglevel__ || {default: $__loglevel__}).default;
+var TileSource = function TileSource(source) {
+  this.url_template = source.url;
+  this.max_zoom = source.max_zoom || Geo.max_zoom;
+};
+($traceurRuntime.createClass)(TileSource, {
+  calculateOverZoom: function(coordinate) {
+    var zgap,
+        $__6 = coordinate,
+        x = $__6.x,
+        y = $__6.y,
+        z = $__6.z;
+    if (z > this.max_zoom) {
+      zgap = z - this.max_zoom;
+      x = ~~(x / Math.pow(2, zgap));
+      y = ~~(y / Math.pow(2, zgap));
+      z -= zgap;
+    }
+    return {
+      x: x,
+      y: y,
+      z: z
+    };
+  },
+  buildAsMessage: function() {
+    return {
+      url: this.url_template,
+      max_zoom: this.max_zoom
+    };
+  },
+  loadTile: function(tile, callback) {
+    throw new MethodNotImplemented('loadTile');
+  }
+}, {
+  create: function(source) {
+    switch (source.type) {
+      case 'TopoJSONTileSource':
+        return new TopoJSONTileSource(source);
+      case 'MapboxFormatTileSource':
+        return new MapboxFormatTileSource(source);
+      case 'GeoJSONTileSource':
+      default:
+        return new GeoJSONTileSource(source);
+    }
+  },
+  projectTile: function(tile) {
+    var timer = +new Date();
+    for (var t in tile.layers) {
+      var num_features = tile.layers[t].features.length;
+      for (var f = 0; f < num_features; f++) {
+        var feature = tile.layers[t].features[f];
+        feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
+      }
+    }
+    if (tile.debug !== undefined) {
+      tile.debug.projection = +new Date() - timer;
+    }
+    return tile;
+  },
+  scaleTile: function(tile) {
+    for (var t in tile.layers) {
+      var num_features = tile.layers[t].features.length;
+      for (var f = 0; f < num_features; f++) {
+        var feature = tile.layers[t].features[f];
+        feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (function(coordinates) {
+          coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
+          coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z];
+          return coordinates;
+        }));
+      }
+    }
+    return tile;
+  }
+});
+var $__default = TileSource;
+var NetworkTileSource = function NetworkTileSource(source) {
+  $traceurRuntime.superCall(this, $NetworkTileSource.prototype, "constructor", [source]);
+  this.response_type = "";
+  this.url_hosts = null;
+  var host_match = this.url_template.match(/{s:\[([^}+]+)\]}/);
+  if (host_match != null && host_match.length > 1) {
+    this.url_hosts = host_match[1].split(',');
+    this.next_host = 0;
+  }
+};
+var $NetworkTileSource = NetworkTileSource;
+($traceurRuntime.createClass)(NetworkTileSource, {
+  loadTile: function(tile, callback) {
+    var $__4 = this;
+    var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+    if (this.url_hosts != null) {
+      url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
+      this.next_host = (this.next_host + 1) % this.url_hosts.length;
+    }
+    tile.url = url;
+    tile.debug.network = +new Date();
+    Utils.xhr({
+      uri: url,
+      timeout: 60 * 1000,
+      responseType: this.response_type
+    }, (function(err, resp, body) {
+      if (err) {
+        tile.loaded = false;
+        tile.loading = false;
+        tile.error = err.toString();
+        return callback(err);
+      } else if (tile.loading === false) {
+        return;
+      }
+      tile.debug.response_size = body.length || body.byteLength;
+      tile.debug.network = +new Date() - tile.debug.network;
+      tile.debug.parsing = +new Date();
+      $__4.parseTile(tile, body);
+      tile.debug.parsing = +new Date() - tile.debug.parsing;
+      tile.loading = false;
+      tile.loaded = true;
+      if (callback) {
+        callback(null, tile);
+      }
+    }));
+  },
+  parseTile: function(tile) {
+    throw new MethodNotImplemented('parseTile');
+  }
+}, {}, TileSource);
+var GeoJSONTileSource = function GeoJSONTileSource(source) {
+  $traceurRuntime.superCall(this, $GeoJSONTileSource.prototype, "constructor", [source]);
+};
+var $GeoJSONTileSource = GeoJSONTileSource;
+($traceurRuntime.createClass)(GeoJSONTileSource, {parseTile: function(tile, response) {
+    tile.layers = JSON.parse(response);
+    TileSource.projectTile(tile);
+    TileSource.scaleTile(tile);
+  }}, {}, NetworkTileSource);
+var TopoJSONTileSource = function TopoJSONTileSource(source) {
+  $traceurRuntime.superCall(this, $TopoJSONTileSource.prototype, "constructor", [source]);
+  if (typeof topojson === 'undefined') {
+    try {
+      importScripts('http://d3js.org/topojson.v1.min.js');
+      log.info('TopoJSONTileSource: loaded topojson library');
+    } catch (e) {
+      log.error('TopoJSONTileSource: failed to load TopoJSON library!');
+    }
+  }
+};
+var $TopoJSONTileSource = TopoJSONTileSource;
+($traceurRuntime.createClass)(TopoJSONTileSource, {parseTile: function(tile, response) {
+    if (typeof topojson === 'undefined') {
+      tile.layers = {};
+      return;
+    }
+    tile.layers = JSON.parse(response);
+    if (tile.layers.objects.vectiles != null) {
+      tile.layers = topojson.feature(tile.layers, tile.layers.objects.vectiles);
+    } else {
+      var layers = {};
+      for (var t in tile.layers.objects) {
+        layers[t] = topojson.feature(tile.layers, tile.layers.objects[t]);
+      }
+      tile.layers = layers;
+    }
+    TileSource.projectTile(tile);
+    TileSource.scaleTile(tile);
+  }}, {}, NetworkTileSource);
+var MapboxFormatTileSource = function MapboxFormatTileSource(source) {
+  $traceurRuntime.superCall(this, $MapboxFormatTileSource.prototype, "constructor", [source]);
+  this.response_type = "arraybuffer";
+  this.Protobuf = require('pbf');
+  this.VectorTile = require('vector-tile').VectorTile;
+};
+var $MapboxFormatTileSource = MapboxFormatTileSource;
+($traceurRuntime.createClass)(MapboxFormatTileSource, {parseTile: function(tile, response) {
+    var data = new Uint8Array(response);
+    var buffer = new this.Protobuf(data);
+    tile.data = new this.VectorTile(buffer);
+    tile.layers = tile.data.toGeoJSON();
+    delete tile.data;
+    for (var t in tile.layers) {
+      var num_features = tile.layers[t].features.length;
+      for (var f = 0; f < num_features; f++) {
+        var feature = tile.layers[t].features[f];
+        feature.properties.id = feature.properties.osm_id;
+        feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (function(coordinates) {
+          coordinates[1] = -coordinates[1];
+          return coordinates;
+        }));
+      }
+    }
+  }}, {}, NetworkTileSource);
+
+
+},{"./errors":54,"./geo":55,"./utils":71,"loglevel":37,"pbf":38,"vector-tile":41}],71:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18076,7 +19077,7 @@ Utils.values = $traceurRuntime.initGeneratorFunction(function $__5(obj) {
 });
 
 
-},{"xhr":39}],62:[function(require,module,exports){
+},{"xhr":46}],72:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Vector: {get: function() {
@@ -18132,4 +19133,4 @@ Vector.lineIntersection = function(p1, p2, p3, p4, parallel_tolerance) {
 };
 
 
-},{}]},{},[3,58])
+},{}]},{},[3,66])

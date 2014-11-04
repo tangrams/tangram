@@ -12,7 +12,7 @@ map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it wil
 
 let makeOne = () => {
     return new LeafletLayer({
-        vectorTileSource: sampleScene.tileSource,
+        vectorTileSource: sampleScene.tile_source,
         vectorLayers: sampleScene.layers,
         vectorStyles: sampleScene.styles,
         disableRenderLoop: true

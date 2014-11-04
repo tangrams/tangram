@@ -1,8 +1,10 @@
 {
-    "tileSource": {
+    "tile_source": {
+        "max_zoom": 20,
         "type": "GeoJSONTileSource",
         "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
     },
+    "max_zoom": 20,
     "styles": {
         "layers": {
             "earth": {

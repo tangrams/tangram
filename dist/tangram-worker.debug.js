@@ -15766,7 +15766,7 @@ GLBuilders.buildZigzagLineTestPattern = function() {
 };
 
 
-},{"../geo":55,"../vector":70,"./gl":56}],58:[function(require,module,exports){
+},{"../geo":55,"../vector":71,"./gl":56}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16729,7 +16729,7 @@ GLProgram.prototype.attribute = function(name) {
 };
 
 
-},{"../utils":69,"./gl":56,"./gl_texture":63,"queue-async":40}],62:[function(require,module,exports){
+},{"../utils":70,"./gl":56,"./gl_texture":63,"queue-async":40}],62:[function(require,module,exports){
 "use strict";
 var shader_sources = {};
 shader_sources['point_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  vec3 lighting = vec3(1.);\n" + "  vec2 uv = v_texcoord * 2. - 1.;\n" + "  float len = length(uv);\n" + "  if(len > 1.) {\n" + "    discard;\n" + "  }\n" + "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.);\n" + "}\n" + "";
@@ -16886,7 +16886,7 @@ GLTexture.prototype.setTextureFiltering = function() {
 };
 
 
-},{"../utils":69,"loglevel":37}],64:[function(require,module,exports){
+},{"../utils":70,"loglevel":37}],64:[function(require,module,exports){
 "use strict";
 var $__3;
 Object.defineProperties(exports, {
@@ -17102,6 +17102,8 @@ var $__loglevel__,
     $__camera__,
     $__queue_45_async__,
     $__js_45_yaml__,
+    $__tile__,
+    $__tile_95_source__,
     $__gl_45_matrix__;
 var log = ($__loglevel__ = require("loglevel"), $__loglevel__ && $__loglevel__.__esModule && $__loglevel__ || {default: $__loglevel__}).default;
 var Geo = ($__geo__ = require("./geo"), $__geo__ && $__geo__.__esModule && $__geo__ || {default: $__geo__}).Geo;
@@ -17115,6 +17117,8 @@ var ModeManager = ($__gl_47_gl_95_modes__ = require("./gl/gl_modes"), $__gl_47_g
 var Camera = ($__camera__ = require("./camera"), $__camera__ && $__camera__.__esModule && $__camera__ || {default: $__camera__}).default;
 var Queue = ($__queue_45_async__ = require("queue-async"), $__queue_45_async__ && $__queue_45_async__.__esModule && $__queue_45_async__ || {default: $__queue_45_async__}).default;
 var yaml = ($__js_45_yaml__ = require("js-yaml"), $__js_45_yaml__ && $__js_45_yaml__.__esModule && $__js_45_yaml__ || {default: $__js_45_yaml__}).default;
+var Tile = ($__tile__ = require("./tile"), $__tile__ && $__tile__.__esModule && $__tile__ || {default: $__tile__}).default;
+var TileSource = ($__tile_95_source__ = require("./tile_source"), $__tile_95_source__ && $__tile_95_source__.__esModule && $__tile_95_source__ || {default: $__tile_95_source__}).default;
 var glMatrix = ($__gl_45_matrix__ = require("gl-matrix"), $__gl_45_matrix__ && $__gl_45_matrix__.__esModule && $__gl_45_matrix__ || {default: $__gl_45_matrix__}).default;
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -17156,16 +17160,19 @@ function Scene(tile_source, layer_source, style_source, options) {
   this.resetTime();
 }
 var $__default = Scene;
-Scene.create = function($__17) {
-  var $__18 = $__17,
-      tile_source = $__18.tile_source,
-      layers = $__18.layers,
-      styles = $__18.styles;
+Scene.create = function($__23) {
+  var $__24 = $__23,
+      tile_source = $__24.tile_source,
+      layers = $__24.layers,
+      styles = $__24.styles;
   var options = arguments[1] !== (void 0) ? arguments[1] : {};
+  if (!(tile_source instanceof TileSource)) {
+    tile_source = TileSource.create(tile_source);
+  }
   return new Scene(tile_source, layers, styles, options);
 };
 Scene.prototype.init = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   if (this.initialized) {
     return false;
   }
@@ -17173,44 +17180,44 @@ Scene.prototype.init = function(callback) {
   this.loadScene((function() {
     var queue = Queue();
     queue.defer((function(complete) {
-      $__13.modes = Scene.createModes($__13.styles.modes);
-      $__13.updateActiveModes();
+      $__15.modes = Scene.createModes($__15.styles.modes);
+      $__15.updateActiveModes();
       complete();
     }));
     queue.defer((function(complete) {
-      $__13.createWorkers(complete);
+      $__15.createWorkers(complete);
     }));
     queue.await((function() {
-      $__13.container = $__13.container || document.body;
-      $__13.canvas = document.createElement('canvas');
-      $__13.canvas.style.position = 'absolute';
-      $__13.canvas.style.top = 0;
-      $__13.canvas.style.left = 0;
-      $__13.canvas.style.zIndex = -1;
-      $__13.container.appendChild($__13.canvas);
-      $__13.gl = GL.getContext($__13.canvas);
-      $__13.resizeMap($__13.container.clientWidth, $__13.container.clientHeight);
-      $__13.last_render_count = null;
-      $__13.initInputHandlers();
-      $__13.createCamera();
-      $__13.createLighting();
-      $__13.initSelectionBuffer();
-      for (var $__14 = Utils.values($__13.modes)[Symbol.iterator](),
-          $__15; !($__15 = $__14.next()).done; ) {
-        var mode = $__15.value;
+      $__15.container = $__15.container || document.body;
+      $__15.canvas = document.createElement('canvas');
+      $__15.canvas.style.position = 'absolute';
+      $__15.canvas.style.top = 0;
+      $__15.canvas.style.left = 0;
+      $__15.canvas.style.zIndex = -1;
+      $__15.container.appendChild($__15.canvas);
+      $__15.gl = GL.getContext($__15.canvas);
+      $__15.resizeMap($__15.container.clientWidth, $__15.container.clientHeight);
+      $__15.last_render_count = null;
+      $__15.initInputHandlers();
+      $__15.createCamera();
+      $__15.createLighting();
+      $__15.initSelectionBuffer();
+      for (var $__16 = Utils.values($__15.modes)[Symbol.iterator](),
+          $__17; !($__17 = $__16.next()).done; ) {
+        var mode = $__17.value;
         {
-          mode.setGL($__13.gl);
+          mode.setGL($__15.gl);
         }
       }
-      $__13.updateModes((function() {
-        $__13.initializing = false;
-        $__13.initialized = true;
+      $__15.updateModes((function() {
+        $__15.initializing = false;
+        $__15.initialized = true;
         if (typeof callback === 'function') {
           callback();
         }
       }));
-      if ($__13.render_loop !== false) {
-        $__13.setupRenderLoop();
+      if ($__15.render_loop !== false) {
+        $__15.setupRenderLoop();
       }
     }));
   }));
@@ -17273,33 +17280,33 @@ Scene.prototype.createObjectURL = function() {
   return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 Scene.prototype.createWorkers = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   var queue = Queue();
   var worker_url = (Scene.library_base_url + "tangram-worker." + Scene.library_type + ".js?" + +new Date());
   queue.defer((function(done) {
-    var createObjectURL = $__13.createObjectURL();
-    if (createObjectURL && $__13.allow_cross_domain_workers) {
+    var createObjectURL = $__15.createObjectURL();
+    if (createObjectURL && $__15.allow_cross_domain_workers) {
       Utils.xhr(worker_url, (function(error, resp, body) {
         if (error) {
           throw error;
         }
         var worker_local_url = createObjectURL(new Blob([body], {type: 'application/javascript'}));
-        $__13.makeWorkers(worker_local_url);
+        $__15.makeWorkers(worker_local_url);
         done();
       }));
     } else {
-      $__13.makeWorkers(worker_url);
+      $__15.makeWorkers(worker_url);
       done();
     }
   }));
   queue.await((function() {
-    $__13.workers.forEach((function(worker) {
-      worker.addEventListener('message', $__13.workerBuildTileCompleted.bind($__13));
-      worker.addEventListener('message', $__13.workerGetFeatureSelection.bind($__13));
-      worker.addEventListener('message', $__13.workerLogMessage.bind($__13));
+    $__15.workers.forEach((function(worker) {
+      worker.addEventListener('message', $__15.workerBuildTileCompleted.bind($__15));
+      worker.addEventListener('message', $__15.workerGetFeatureSelection.bind($__15));
+      worker.addEventListener('message', $__15.workerLogMessage.bind($__15));
     }));
-    $__13.next_worker = 0;
-    $__13.selection_map_worker_size = {};
+    $__15.next_worker = 0;
+    $__15.selection_map_worker_size = {};
     if (typeof callback === 'function') {
       callback();
     }
@@ -17369,15 +17376,13 @@ Scene.prototype.updateBounds = function() {
     return;
   }
   this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
-  if (this.css_size !== undefined) {
-    this.meter_zoom = {
-      x: this.css_size.width / 2 * this.meters_per_pixel,
-      y: this.css_size.height / 2 * this.meters_per_pixel
-    };
-  }
-  var $__17 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__17[0],
-      y = $__17[1];
+  this.meter_zoom = {
+    x: this.css_size.width / 2 * this.meters_per_pixel,
+    y: this.css_size.height / 2 * this.meters_per_pixel
+  };
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   this.center_meters = {
     x: x,
     y: y
@@ -17403,8 +17408,12 @@ Scene.prototype.updateBounds = function() {
       y: this.bounds_meters.ne.y + buffer
     }
   };
-  for (var t in this.tiles) {
-    this.updateVisibilityForTile(this.tiles[t]);
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    var tile = $__17.value;
+    {
+      tile.updateVisibility(this);
+    }
   }
   this.dirty = true;
 };
@@ -17423,15 +17432,6 @@ Scene.prototype.removeTilesOutsideZoomRange = function(below, above) {
     log.debug(("removed " + key + " (outside range [" + below + ", " + above + "])"));
     this.removeTile(key);
   }
-};
-Scene.prototype.isTileInZoom = function(tile) {
-  return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
-};
-Scene.prototype.updateVisibilityForTile = function(tile) {
-  var visible = tile.visible;
-  tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.bounds_meters_buffered);
-  tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-  return (visible !== tile.visible);
 };
 Scene.prototype.resizeMap = function(width, height) {
   this.dirty = true;
@@ -17460,24 +17460,24 @@ Scene.calculateZ = function(layer, tile, layer_offset, feature_offset) {
   return z;
 };
 Scene.prototype.setupRenderLoop = function() {
-  var $__17 = arguments[0] !== (void 0) ? arguments[0] : {},
-      pre_render = $__17.pre_render,
-      post_render = $__17.post_render;
-  var $__13 = this;
+  var $__23 = arguments[0] !== (void 0) ? arguments[0] : {},
+      pre_render = $__23.pre_render,
+      post_render = $__23.post_render;
+  var $__15 = this;
   this.renderLoop = (function() {
-    if ($__13.initialized) {
-      if (typeof $__13.preRender === 'function') {
-        $__13.preRender();
+    if ($__15.initialized) {
+      if (typeof $__15.preRender === 'function') {
+        $__15.preRender();
       }
-      $__13.render();
-      if (typeof $__13.postRender === 'function') {
-        $__13.postRender();
+      $__15.render();
+      if (typeof $__15.postRender === 'function') {
+        $__15.postRender();
       }
     }
-    window.requestAnimationFrame($__13.renderLoop);
+    window.requestAnimationFrame($__15.renderLoop);
   });
   setTimeout((function() {
-    $__13.renderLoop();
+    $__15.renderLoop();
   }), 0);
 };
 Scene.prototype.render = function() {
@@ -17513,9 +17513,9 @@ Scene.prototype.renderGL = function() {
   if (!this.center) {
     return;
   }
-  var $__17 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__17[0],
-      y = $__17[1];
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   var center = {
     x: x,
     y: y
@@ -17680,8 +17680,8 @@ Scene.prototype.workerGetFeatureSelection = function(event) {
 };
 Scene.prototype.loadTile = function() {
   for (var args = [],
-      $__16 = 0; $__16 < arguments.length; $__16++)
-    args[$__16] = arguments[$__16];
+      $__22 = 0; $__22 < arguments.length; $__22++)
+    args[$__22] = arguments[$__22];
   this.queued_tiles[this.queued_tiles.length] = args;
 };
 Scene.prototype.loadQueuedTiles = function() {
@@ -17696,59 +17696,33 @@ Scene.prototype.loadQueuedTiles = function() {
   }
   this.queued_tiles = [];
 };
+Scene.prototype.cacheTile = function(tile) {
+  this.tiles[tile.key] = tile;
+};
+Scene.prototype.hasTile = function(key) {
+  return this.tiles[key] !== undefined;
+};
+Scene.prototype.forgetTile = function(key) {
+  delete this.tiles[key];
+};
 Scene.prototype._loadTile = function(coords, div, callback) {
-  if (coords.z > this.tile_source.max_zoom) {
-    var zgap = coords.z - this.tile_source.max_zoom;
-    var original_tile = [coords.x, coords.y, coords.z].join('/');
-    coords.x = ~~(coords.x / Math.pow(2, zgap));
-    coords.y = ~~(coords.y / Math.pow(2, zgap));
-    coords.display_z = coords.z;
-    coords.z -= zgap;
-    log.trace(("adjusted for overzoom, tile " + original_tile + " -> " + [coords.x, coords.y, coords.z].join('/')));
-  }
-  this.trackTileSetLoadStart();
-  var key = [coords.x, coords.y, coords.z].join('/');
-  if (this.tiles[key]) {
-    if (callback) {
-      callback(null, div);
-    }
-    return;
-  }
-  var tile = this.tiles[key] = {};
-  tile.key = key;
-  tile.coords = coords;
-  tile.min = Geo.metersForTile(tile.coords);
-  tile.max = Geo.metersForTile({
-    x: tile.coords.x + 1,
-    y: tile.coords.y + 1,
-    z: tile.coords.z
+  var $__15 = this;
+  callback = (typeof callback === 'function') ? callback : function() {};
+  var tile = Tile.create({
+    coords: coords,
+    tile_source: this.tile_source
   });
-  tile.span = {
-    x: (tile.max.x - tile.min.x),
-    y: (tile.max.y - tile.min.y)
-  };
-  tile.bounds = {
-    sw: {
-      x: tile.min.x,
-      y: tile.max.y
-    },
-    ne: {
-      x: tile.max.x,
-      y: tile.min.y
-    }
-  };
-  tile.debug = {};
-  tile.loading = true;
-  tile.loaded = false;
-  this.buildTile(tile.key);
-  this.updateTileElement(tile, div);
-  this.updateVisibilityForTile(tile);
-  if (callback) {
+  if (!this.hasTile(tile.key)) {
+    tile.load(this, coords, div, (function(error, div) {
+      $__15.cacheTile(tile);
+      callback(null, div, tile);
+    }));
+  } else {
     callback(null, div);
   }
 };
 Scene.prototype.rebuildGeometry = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   if (!this.initialized) {
     if (typeof callback === 'function') {
       callback(false);
@@ -17772,32 +17746,43 @@ Scene.prototype.rebuildGeometry = function(callback) {
   this.workers.forEach((function(worker) {
     worker.postMessage({
       type: 'prepareForRebuild',
-      layers: $__13.layers_serialized,
-      styles: $__13.styles_serialized
+      layers: $__15.layers_serialized,
+      styles: $__15.styles_serialized
     });
   }));
-  var visible = [],
+  var tile,
+      visible = [],
       invisible = [];
-  for (var t in this.tiles) {
-    if (this.tiles[t].visible === true) {
-      visible.push(t);
-    } else {
-      invisible.push(t);
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    tile = $__17.value;
+    {
+      if (tile.visible === true) {
+        visible.push(tile);
+      } else {
+        invisible.push(tile);
+      }
     }
   }
   visible.sort((function(a, b) {
-    var ad = $__13.tiles[a].center_dist;
-    var bd = $__13.tiles[b].center_dist;
-    return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+    return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
   }));
-  for (t in visible) {
-    this.buildTile(visible[t]);
+  for (var $__18 = visible[Symbol.iterator](),
+      $__19; !($__19 = $__18.next()).done; ) {
+    tile = $__19.value;
+    {
+      tile.build(this);
+    }
   }
-  for (t in invisible) {
-    if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
-      this.buildTile(invisible[t]);
-    } else {
-      this.removeTile(invisible[t]);
+  for (var $__20 = invisible[Symbol.iterator](),
+      $__21; !($__21 = $__20.next()).done; ) {
+    tile = $__21.value;
+    {
+      if (tile.isInZoom(this)) {
+        tile.build(this);
+      } else {
+        this.removeTile(tile.key);
+      }
     }
   }
   this.updateActiveModes();
@@ -17809,23 +17794,6 @@ Scene.prototype.rebuildGeometry = function(callback) {
       callback(null, true);
     }
   }
-};
-Scene.prototype.buildTile = function(key) {
-  var tile = this.tiles[key];
-  this.trackTileBuildStart(key);
-  this.workerPostMessageForTile(tile, {
-    type: 'buildTile',
-    tile: {
-      key: tile.key,
-      coords: tile.coords,
-      min: tile.min,
-      max: tile.max,
-      debug: tile.debug
-    },
-    tile_source: this.tile_source,
-    layers: this.layers_serialized,
-    styles: this.styles_serialized
-  });
 };
 Scene.addTile = function(tile, layers, styles, modes) {
   var layer,
@@ -17898,12 +17866,15 @@ Scene.prototype.workerBuildTileCompleted = function(event) {
     this.selection_map_size += this.selection_map_worker_size[worker_id];
   }
   log.debug(("Scene: updated selection map: " + this.selection_map_size + " features"));
-  var tile = event.data.tile;
-  if (this.tiles[tile.key] == null) {
+  var tile = Tile.create(Object.assign({}, event.data.tile, {tile_source: this.tile_source}));
+  if (!this.hasTile(tile.key)) {
     log.debug(("discarded tile " + tile.key + " in Scene.workerBuildTileCompleted because previously removed"));
   } else if (!tile.error) {
-    tile = this.mergeTile(tile.key, tile);
-    this.buildGLGeometry(tile);
+    var cached = this.tiles[tile.key];
+    if (cached) {
+      tile = cached.merge(tile);
+    }
+    tile.buildGLGeometry(this.modes);
     this.dirty = true;
   } else {
     log.error(("main thread tile load error for " + tile.key + ": " + tile.error));
@@ -17937,22 +17908,6 @@ Scene.prototype.trackTileBuildStop = function(key) {
     }
   }
 };
-Scene.prototype.buildGLGeometry = function(tile) {
-  var vertex_data = tile.vertex_data;
-  this.freeTileResources(tile);
-  tile.gl_geometry = {};
-  for (var s in vertex_data) {
-    tile.gl_geometry[s] = this.modes[s].makeGLGeometry(vertex_data[s]);
-  }
-  tile.debug.geometries = 0;
-  tile.debug.buffer_size = 0;
-  for (var p in tile.gl_geometry) {
-    tile.debug.geometries += tile.gl_geometry[p].geometry_count;
-    tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
-  }
-  tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-  delete tile.vertex_data;
-};
 Scene.prototype.removeTile = function(key) {
   if (!this.initialized) {
     return;
@@ -17963,63 +17918,20 @@ Scene.prototype.removeTile = function(key) {
   }
   var tile = this.tiles[key];
   if (tile != null) {
-    this.freeTileResources(tile);
-    this.workerPostMessageForTile(tile, {
-      type: 'removeTile',
-      key: tile.key
-    });
+    tile.freeResources();
+    tile.remove(this);
   }
-  delete this.tiles[key];
+  this.forgetTile(tile.key);
   this.dirty = true;
 };
-Scene.prototype.freeTileResources = function(tile) {
-  if (tile != null && tile.gl_geometry != null) {
-    for (var p in tile.gl_geometry) {
-      tile.gl_geometry[p].destroy();
-    }
-    tile.gl_geometry = null;
-  }
-};
-Scene.prototype.updateTileElement = function(tile, div) {
-  if (!div) {
-    return;
-  }
-  div.setAttribute('data-tile-key', tile.key);
-  div.style.width = '256px';
-  div.style.height = '256px';
-  if (this.debug) {
-    var debug_overlay = document.createElement('div');
-    debug_overlay.textContent = tile.key;
-    debug_overlay.style.position = 'absolute';
-    debug_overlay.style.left = 0;
-    debug_overlay.style.top = 0;
-    debug_overlay.style.color = 'white';
-    debug_overlay.style.fontSize = '16px';
-    div.appendChild(debug_overlay);
-    div.style.borderStyle = 'solid';
-    div.style.borderColor = 'white';
-    div.style.borderWidth = '1px';
-  }
-};
-Scene.prototype.mergeTile = function(key, source_tile) {
-  var tile = this.tiles[key];
-  if (tile == null) {
-    this.tiles[key] = source_tile;
-    return this.tiles[key];
-  }
-  for (var p in source_tile) {
-    tile[p] = source_tile[p];
-  }
-  return tile;
-};
 Scene.prototype.loadScene = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   var queue = Queue();
   queue.defer((function(complete) {
-    $__13.loadLayers($__13.layer_source, complete);
+    $__15.loadLayers($__15.layer_source, complete);
   }));
   queue.defer((function(complete) {
-    $__13.loadStyles($__13.style_source, complete);
+    $__15.loadStyles($__15.style_source, complete);
   }));
   queue.await(function() {
     if (typeof callback === 'function') {
@@ -18028,7 +17940,7 @@ Scene.prototype.loadScene = function(callback) {
   });
 };
 Scene.prototype.loadLayers = function(source, callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (typeof source === 'string') {
     Utils.xhr(source + '?' + (+new Date()), (function(error, resp, body) {
@@ -18047,8 +17959,8 @@ Scene.prototype.loadLayers = function(source, callback) {
           layers = null;
         }
       }
-      $__13.layers = layers;
-      $__13.layers_serialized = Utils.serializeWithFunctions($__13.layers);
+      $__15.layers = layers;
+      $__15.layers_serialized = Utils.serializeWithFunctions($__15.layers);
       callback();
     }));
   } else {
@@ -18058,7 +17970,7 @@ Scene.prototype.loadLayers = function(source, callback) {
   }
 };
 Scene.prototype.loadStyles = function(source, callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (typeof source === 'string') {
     Utils.xhr(source + '?' + (+new Date()), (function(error, response, body) {
@@ -18077,10 +17989,10 @@ Scene.prototype.loadStyles = function(source, callback) {
           styles = null;
         }
       }
-      $__13.styles = styles;
-      Style.expandMacros($__13.styles);
-      Scene.preProcessStyles($__13.styles);
-      $__13.styles_serialized = Utils.serializeWithFunctions($__13.styles);
+      $__15.styles = styles;
+      Style.expandMacros($__15.styles);
+      Scene.preProcessStyles($__15.styles);
+      $__15.styles_serialized = Utils.serializeWithFunctions($__15.styles);
       callback();
     }));
   } else {
@@ -18092,17 +18004,17 @@ Scene.prototype.loadStyles = function(source, callback) {
   }
 };
 Scene.prototype.reload = function() {
-  var $__13 = this;
+  var $__15 = this;
   if (!this.initialized) {
     return;
   }
   this.loadScene((function() {
-    $__13.updateStyles();
-    $__13.rebuildGeometry();
+    $__15.updateStyles();
+    $__15.rebuildGeometry();
   }));
 };
 Scene.prototype.updateModes = function(callback) {
-  var $__13 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (!this.initialized && !this.initializing) {
     callback(new Error('Scene.updateModes() called before scene was initialized'));
@@ -18122,7 +18034,7 @@ Scene.prototype.updateModes = function(callback) {
   }
   for (name in this.modes) {
     queue.defer((function(_name, complete) {
-      $__13.modes[_name].compile((function(error) {
+      $__15.modes[_name].compile((function(error) {
         log.trace(("Scene.updateModes(): compiled mode " + _name + " " + (error ? error : '')));
         complete(error);
       }));
@@ -18130,14 +18042,14 @@ Scene.prototype.updateModes = function(callback) {
   }
   queue.await((function(error) {
     log.debug(("Scene.updateModes(): compiled all modes " + (error ? error : '')));
-    $__13.dirty = true;
-    var callback = $__13.compiling.callback;
-    var queued = $__13.compiling.queued;
-    $__13.compiling = null;
+    $__15.dirty = true;
+    var callback = $__15.compiling.callback;
+    var queued = $__15.compiling.queued;
+    $__15.compiling = null;
     callback(error);
     if (queued) {
       log.trace("Scene.updateModes(): starting queued request");
-      $__13.updateModes(queued.callback);
+      $__15.updateModes(queued.callback);
     }
   }));
 };
@@ -18230,10 +18142,10 @@ Scene.prototype.workerLogMessage = function(event) {
   if (event.data.type !== 'log') {
     return;
   }
-  var $__17 = event.data,
-      worker_id = $__17.worker_id,
-      level = $__17.level,
-      msg = $__17.msg;
+  var $__23 = event.data,
+      worker_id = $__23.worker_id,
+      level = $__23.level,
+      msg = $__23.msg;
   if (log[level]) {
     log[level](("worker " + worker_id + ": " + msg));
   } else {
@@ -18311,7 +18223,7 @@ function findBaseLibraryURL() {
 }
 
 
-},{"./camera":53,"./geo":55,"./gl/gl":56,"./gl/gl_builders":57,"./gl/gl_modes":60,"./gl/gl_program":61,"./gl/gl_texture":63,"./style":67,"./utils":69,"gl-matrix":4,"js-yaml":5,"loglevel":37,"queue-async":40}],66:[function(require,module,exports){
+},{"./camera":53,"./geo":55,"./gl/gl":56,"./gl/gl_builders":57,"./gl/gl_modes":60,"./gl/gl_program":61,"./gl/gl_texture":63,"./style":67,"./tile":68,"./tile_source":69,"./utils":70,"gl-matrix":4,"js-yaml":5,"loglevel":37,"queue-async":40}],66:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   SceneWorker: {get: function() {
@@ -18360,7 +18272,7 @@ SceneWorker.buildTile = function(tile) {
     keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
     tile.debug.rendering = +new Date() - tile.debug.rendering;
   }
-  keys.key = true;
+  keys.coords = true;
   keys.loading = true;
   keys.loaded = true;
   keys.error = true;
@@ -18458,7 +18370,7 @@ SceneWorker.log = function(level, msg) {
 };
 
 
-},{"./gl/gl_builders":57,"./scene":65,"./style":67,"./tile_source.js":68,"./utils":69}],67:[function(require,module,exports){
+},{"./gl/gl_builders":57,"./scene":65,"./style":67,"./tile_source.js":69,"./utils":70}],67:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Style: {get: function() {
@@ -18653,6 +18565,178 @@ Object.defineProperties(exports, {
   default: {get: function() {
       return $__default;
     }},
+  __esModule: {value: true}
+});
+var $__geo__;
+var Geo = ($__geo__ = require("./geo"), $__geo__ && $__geo__.__esModule && $__geo__ || {default: $__geo__}).Geo;
+var Tile = function Tile() {
+  var spec = arguments[0] !== (void 0) ? arguments[0] : {};
+  Object.assign(this, {
+    coords: {
+      x: null,
+      y: null,
+      z: null
+    },
+    debug: {},
+    loading: false,
+    loaded: false,
+    error: null
+  }, spec);
+};
+var $Tile = Tile;
+($traceurRuntime.createClass)(Tile, {
+  freeResources: function() {
+    if (this != null && this.gl_geometry != null) {
+      for (var p in this.gl_geometry) {
+        this.gl_geometry[p].destroy();
+      }
+      this.gl_geometry = null;
+    }
+  },
+  destroy: function() {
+    this.freeResources();
+    this.worker = null;
+  },
+  buildAsMessage: function() {
+    return {
+      key: this.key,
+      coords: this.coords,
+      min: this.min,
+      max: this.max,
+      debug: this.debug
+    };
+  },
+  build: function(scene) {
+    scene.trackTileBuildStart(this.key);
+    scene.workerPostMessageForTile(this, {
+      type: 'buildTile',
+      tile: this.buildAsMessage(),
+      tile_source: this.tile_source.buildAsMessage(),
+      layers: scene.layers_serialized,
+      styles: scene.styles_serialized
+    });
+  },
+  remove: function(scene) {
+    scene.workerPostMessageForTile(this, {
+      type: 'removeTile',
+      key: this.key
+    });
+  },
+  buildGLGeometry: function(modes) {
+    var vertex_data = this.vertex_data;
+    this.freeResources();
+    this.gl_geometry = {};
+    for (var s in vertex_data) {
+      this.gl_geometry[s] = modes[s].makeGLGeometry(vertex_data[s]);
+    }
+    this.debug.geometries = 0;
+    this.debug.buffer_size = 0;
+    for (var p in this.gl_geometry) {
+      this.debug.geometries += this.gl_geometry[p].geometry_count;
+      this.debug.buffer_size += this.gl_geometry[p].vertex_data.byteLength;
+    }
+    this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
+    delete this.vertex_data;
+  },
+  showDebug: function(div) {
+    var debug_overlay = document.createElement('div');
+    debug_overlay.textContent = this.key;
+    debug_overlay.style.position = 'absolute';
+    debug_overlay.style.left = 0;
+    debug_overlay.style.top = 0;
+    debug_overlay.style.color = 'white';
+    debug_overlay.style.fontSize = '16px';
+    debug_overlay.style.textOutline = '1px #000000';
+    div.appendChild(debug_overlay);
+    div.style.borderStyle = 'solid';
+    div.style.borderColor = 'white';
+    div.style.borderWidth = '1px';
+    return debug_overlay;
+  },
+  updateElement: function(div, scene) {
+    div.setAttribute('data-tile-key', this.key);
+    div.style = {
+      width: '256px',
+      height: '256px'
+    };
+    if (scene.debug) {
+      this.showDebug(div);
+    }
+  },
+  updateVisibility: function(scene) {
+    var visible = this.visible;
+    this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
+    this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
+    return (visible !== this.visible);
+  },
+  isInZoom: function(scene) {
+    return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
+  },
+  get key() {
+    var $__2 = this.tile_source.calculateOverZoom(this.coords),
+        x = $__2.x,
+        y = $__2.y,
+        z = $__2.z;
+    this.coords = {
+      x: x,
+      y: y,
+      z: z
+    };
+    return [x, y, z].join('/');
+  },
+  load: function(scene, coords, div, cb) {
+    scene.trackTileSetLoadStart();
+    Object.assign(this, {
+      coords: coords,
+      min: Geo.metersForTile(coords),
+      max: Geo.metersForTile({
+        x: coords.x + 1,
+        y: coords.y + 1,
+        z: coords.z
+      }),
+      loading: true
+    });
+    this.span = {
+      x: (this.max.x - this.min.x),
+      y: (this.max.y - this.min.y)
+    };
+    this.bounds = {
+      sw: {
+        x: this.min.x,
+        y: this.max.y
+      },
+      ne: {
+        x: this.max.x,
+        y: this.min.y
+      }
+    };
+    this.build(scene);
+    this.updateElement(div, scene);
+    this.updateVisibility(scene);
+    if (cb) {
+      cb(null, div);
+    }
+  },
+  merge: function(other) {
+    for (var key in other) {
+      if (key !== 'key') {
+        this[key] = other[key];
+      }
+    }
+    return this;
+  }
+}, {create: function(spec) {
+    return new $Tile(spec);
+  }});
+var $__default = Tile;
+
+
+},{"./geo":55}],69:[function(require,module,exports){
+"use strict";
+Object.defineProperties(exports, {
+  default: {get: function() {
+      return $__default;
+    }},
   NetworkTileSource: {get: function() {
       return NetworkTileSource;
     }},
@@ -18679,9 +18763,35 @@ var TileSource = function TileSource(source) {
   this.url_template = source.url;
   this.max_zoom = source.max_zoom || Geo.max_zoom;
 };
-($traceurRuntime.createClass)(TileSource, {loadTile: function(tile, callback) {
+($traceurRuntime.createClass)(TileSource, {
+  calculateOverZoom: function(coordinate) {
+    var zgap,
+        $__6 = coordinate,
+        x = $__6.x,
+        y = $__6.y,
+        z = $__6.z;
+    if (z > this.max_zoom) {
+      zgap = z - this.max_zoom;
+      x = ~~(x / Math.pow(2, zgap));
+      y = ~~(y / Math.pow(2, zgap));
+      z -= zgap;
+    }
+    return {
+      x: x,
+      y: y,
+      z: z
+    };
+  },
+  buildAsMessage: function() {
+    return {
+      url: this.url_template,
+      max_zoom: this.max_zoom
+    };
+  },
+  loadTile: function(tile, callback) {
     throw new MethodNotImplemented('loadTile');
-  }}, {
+  }
+}, {
   create: function(source) {
     switch (source.type) {
       case 'TopoJSONTileSource':
@@ -18839,7 +18949,7 @@ var $MapboxFormatTileSource = MapboxFormatTileSource;
   }}, {}, NetworkTileSource);
 
 
-},{"./errors":54,"./geo":55,"./utils":69,"loglevel":37,"pbf":38,"vector-tile":41}],69:[function(require,module,exports){
+},{"./errors":54,"./geo":55,"./utils":70,"loglevel":37,"pbf":38,"vector-tile":41}],70:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18975,7 +19085,7 @@ Utils.values = $traceurRuntime.initGeneratorFunction(function $__5(obj) {
 });
 
 
-},{"xhr":46}],70:[function(require,module,exports){
+},{"xhr":46}],71:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Vector: {get: function() {
