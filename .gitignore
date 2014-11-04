@@ -10,4 +10,4 @@ node_modules
 
 # storing some screenshots here
 screenshots
-/dist/testable.js
+dist/tangram.test.js

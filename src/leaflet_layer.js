@@ -4,68 +4,84 @@ export var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
         L.setOptions(this, options);
+        this.createScene();
+        this.hooks = {};
+    },
+
+    createScene: function () {
         this.scene = new Scene(
             this.options.vectorTileSource,
             this.options.vectorLayers,
             this.options.vectorStyles,
-            { num_workers: this.options.numWorkers }
+            {
+                numWorkers: this.options.numWorkers,
+                preRender: this.options.preRender,
+                postRender: this.options.postRender,
+                logLevel: this.options.logLevel,
+                // advanced option, app will have to manually called scene.render() per frame
+                disableRenderLoop: this.options.disableRenderLoop
+            }
         );
-
-        this.scene.debug = this.options.debug;
-        this.scene.continuous_animation = false; // set to true for animatinos, etc. (eventually will be automated)
     },
 
     // Finish initializing scene and setup events when layer is added to map
-    onAdd: function (map) {
+    onAdd: function () {
+        if (!this.scene) {
+            this.createScene();
+        }
 
-        this.on('tileunload', (event) => {
-            var tile = event.tile;
-            var key = tile.getAttribute('data-tile-key');
-            this.scene.removeTile(key);
-        });
+        L.GridLayer.prototype.onAdd.apply(this, arguments);
 
-        this._map.on('resize', () => {
+        this.hooks.tileunload = (event) => {
+            // TODO: not expecting leaflet to fire this event for tiles that simply pan
+            // out of bounds when 'unloadInvisibleTiles' option is set, but it's firing
+            // since upgrading to latest master branch - force-checking for now
+            if (this.options.unloadInvisibleTiles) {
+                var tile = event.tile;
+                var key = tile.getAttribute('data-tile-key');
+                this.scene.removeTile(key);
+            }
+        };
+        this.on('tileunload', this.hooks.tileunload);
+
+        this.hooks.resize = () => {
             var size = this._map.getSize();
             this.scene.resizeMap(size.x, size.y);
-            this.updateBounds();
-        });
+        };
+        this._map.on('resize', this.hooks.resize);
 
-        this._map.on('move',  () => {
+        this.hooks.move = () => {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat);
-            this.updateBounds();
-        });
+        };
+        this._map.on('move', this.hooks.move);
 
-        this._map.on('zoomstart', () => {
-            console.log("map.zoomstart " + this._map.getZoom());
+        this.hooks.zoomstart = () => {
             this.scene.startZoom();
-        });
+        };
+        this._map.on('zoomstart', this.hooks.zoomstart);
 
-        this._map.on('zoomend',  () => {
-            console.log("map.zoomend " + this._map.getZoom());
+        this.hooks.zoomend = () => {
             this.scene.setZoom(this._map.getZoom());
-            this.updateBounds();
-        });
+        };
+        this._map.on('zoomend', this.hooks.zoomend);
 
-        this._map.on('dragstart',  () => {
+        this.hooks.dragstart = () => {
             this.scene.panning = true;
-        });
+        };
+        this._map.on('dragstart', this.hooks.dragstart);
 
-        this._map.on('dragend', () => {
+        this.hooks.dragend = () => {
             this.scene.panning = false;
-        });
+        };
+        this._map.on('dragend', this.hooks.dragend);
 
         // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
         // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
         this.scene.container = this._map.getContainer();
 
         var center = this._map.getCenter();
-        this.scene.setCenter(center.lng, center.lat);
-        console.log("zoom: " + this._map.getZoom());
-        this.scene.setZoom(this._map.getZoom());
-        this.updateBounds();
-
-        L.GridLayer.prototype.onAdd.apply(this, arguments);
+        this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
         // Use leaflet's existing event system as the callback mechanism
         this.scene.init(() => {
@@ -73,9 +89,22 @@ export var LeafletLayer = L.GridLayer.extend({
         });
     },
 
-    onRemove: function (map) {
+    onRemove: function () {
         L.GridLayer.prototype.onRemove.apply(this, arguments);
-        // TODO: remove event handlers, destroy map
+
+        this.off('tileunload', this.hooks.tileunload);
+        this._map.off('resize', this.hooks.resize);
+        this._map.off('move', this.hooks.move);
+        this._map.off('zoomstart', this.hooks.zoomstart);
+        this._map.off('zoomend', this.hooks.zoomend);
+        this._map.off('dragstart', this.hooks.dragstart);
+        this._map.off('dragend', this.hooks.dragend);
+        this.hooks = {};
+
+        if (this.scene) {
+            this.scene.destroy();
+            this.scene = null;
+        }
     },
 
     createTile: function (coords, done) {
@@ -84,12 +113,10 @@ export var LeafletLayer = L.GridLayer.extend({
         return div;
     },
 
-    updateBounds: function () {
-        var bounds = this._map.getBounds();
-        this.scene.setBounds(bounds.getSouthWest(), bounds.getNorthEast());
-    },
-
     render: function () {
+        if (!this.scene) {
+            return;
+        }
         this.scene.render();
     }
 

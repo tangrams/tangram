@@ -8,24 +8,30 @@ let map = L.map(
     document.createElement('div'),
     { maxZoom: 20, inertia: false, keyboard: false}
 );
+map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
     return new LeafletLayer({
         vectorTileSource: sampleScene.tileSource,
         vectorLayers: sampleScene.layers,
-        vectorStyles: sampleScene.styles
+        vectorStyles: sampleScene.styles,
+        disableRenderLoop: true
     });
 };
 
-describe('Leaflet', () => {
+describe('Leaflet plugin', () => {
 
-    // leaflet calls it .initialize()
     describe('.constructor()', () => {
         let subject;
+
         beforeEach(() => {
             subject = makeOne();
         });
-        afterEach(() => { subject.scene.destroy(); });
+
+        afterEach(() => {
+            subject.scene.destroy();
+        });
+
         it('returns a new instance', () => {
             assert.instanceOf(subject, LeafletLayer);
         });
@@ -35,45 +41,103 @@ describe('Leaflet', () => {
         });
     });
 
-    describe.skip('.onAdd(map)', () => {
+    describe('.addTo(map)', () => {
         let subject;
-        beforeEach(() => {
+
+        beforeEach(function (done) {
             subject = makeOne();
+            sinon.spy(map, 'getContainer');
+            sinon.spy(subject.scene, 'init');
+
+            subject.on('init', () => {
+                done();
+            });
+
             subject.addTo(map);
         });
 
+
         afterEach(() => {
-            subject.scene.destroy();
+            subject.remove();
+            map.getContainer.restore();
         });
 
-        it('calls the maps .getContainer() method', () => {
-            sinon.assert.called(subject.map.getContainer);
+        it('calls the map\'s .getContainer() method', () => {
+            sinon.assert.called(map.getContainer);
+        });
+
+        it('initializes the scene', () => {
+            sinon.assert.called(subject.scene.init);
         });
 
     });
 
-    describe.skip('.onRemove(map)', () => {
-        let subject;
-        beforeEach(() => {
+    describe('.remove()', () => {
+        let subject, scene;
+
+        beforeEach((done) => {
             subject = makeOne();
-            subject.addTo(map);
+            scene = subject.scene;
             sinon.spy(L.GridLayer.prototype, 'onRemove');
-            subject.onRemove();
+            sinon.spy(scene, 'destroy');
+
+
+            subject.on('init', () => {
+                subject.remove();
+            });
+            subject.on('remove', () => {
+                done();
+            });
+
+            subject.addTo(map);
         });
+
         afterEach(() => {
-            subject.removeFrom(map);
-            subject.scene.destroy();
             L.GridLayer.prototype.onRemove.restore();
         });
 
         it('calls the .super', () => {
-            assert.isTrue(L.GridLayer.prototype.onRemove.called);
+            sinon.assert.called(L.GridLayer.prototype.onRemove);
+        });
+
+        it('destroys the scene', () => {
+            sinon.assert.called(scene.destroy);
+            assert.isNull(subject.scene);
+        });
+    });
+
+    describe('removing and then re-adding to a map', () => {
+        let subject, scene;
+
+        beforeEach((done) => {
+            var counter = 0;
+
+            subject = makeOne();
+            scene  = subject.scene;
+            sinon.spy(subject.scene, 'destroy');
+            subject.on('init', () => {
+                counter += 1;
+                if (counter === 2) {
+                    done();
+                }
+            });
+            subject.addTo(map);
+            subject.remove();
+            subject.addTo(map);
+        });
+
+        it('destroys the initial scene', () => {
+            sinon.assert.called(scene.destroy);
+        });
+
+        it('re-initializes a new scene', () => {
+            assert.isTrue(subject.scene.initialized);
         });
     });
 
     describe('.createTile(coords, done)', () => {
         let subject;
-        let coords = {x: 1, y: 1};
+        let coords = { x: 9647, y: 12320, z: 15 };
 
         beforeEach(() => {
             subject = makeOne();
@@ -82,7 +146,7 @@ describe('Leaflet', () => {
         });
 
         afterEach(() => {
-            subject.scene.destroy();
+            subject.remove();
         });
 
         it('calls the .scene.loadTile() method', () => {

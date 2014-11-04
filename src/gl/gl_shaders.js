@@ -41,7 +41,7 @@ shader_sources['point_vertex'] =
 "#endif\n" +
 "\n" +
 "void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
-"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  float layer_order = ((layer + 1.) / (num_layers + 1.)) + 1.;\n" +
 "  position.z /= layer_order;\n" +
 "  position.xyw *= layer_order;\n" +
 "}\n" +
@@ -244,7 +244,7 @@ shader_sources['polygon_vertex'] =
 "\n" +
 "const float light_ambient = 0.5;\n" +
 "void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
-"  float layer_order = (layer / num_layers) + 1.;\n" +
+"  float layer_order = ((layer + 1.) / (num_layers + 1.)) + 1.;\n" +
 "  position.z /= layer_order;\n" +
 "  position.xyw *= layer_order;\n" +
 "}\n" +

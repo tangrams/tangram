@@ -1,5 +1,6 @@
 // WebGL management and rendering functions
-
+import libtess from 'libtess';
+import log from 'loglevel';
 export var GL = {};
 
 // Setup a WebGL context
@@ -55,9 +56,8 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
         var fragment_shader = GL.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
-        // alert(err);
-        console.log(err);
-        return program;
+        log.error(err);
+        throw err;
     }
 
     gl.useProgram(null);
@@ -83,13 +83,15 @@ GL.updateProgram = function GLupdateProgram (gl, program, vertex_shader_source, 
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        var program_error =
-            "WebGL program error:\n" +
-            "VALIDATE_STATUS: " + gl.getProgramParameter(program, gl.VALIDATE_STATUS) + "\n" +
-            "ERROR: " + gl.getError() + "\n\n" +
-            "--- Vertex Shader ---\n" + vertex_shader_source + "\n\n" +
-            "--- Fragment Shader ---\n" + fragment_shader_source;
-        console.log(program_error);
+        var program_error = new Error(
+            `WebGL program error:
+            VALIDATE_STATUS: ${gl.getProgramParameter(program, gl.VALIDATE_STATUS)}
+            ERROR: ${gl.getError()}
+            --- Vertex Shader ---
+            ${vertex_shader_source}
+            --- Fragment Shader ---
+            ${fragment_shader_source}`);
+        log.error(program_error);
         throw program_error;
     }
 
@@ -117,150 +119,64 @@ GL.createShader = function GLcreateShader (gl, source, type)
 
 // Triangulation using libtess.js port of gluTesselator
 // https://github.com/brendankenny/libtess.js
-try {
-    GL.tesselator = (function initTesselator() {
-        var tesselator = new libtess.GluTesselator();
+GL.tesselator = (function initTesselator() {
+    var tesselator = new libtess.GluTesselator();
 
-        // Called for each vertex of tesselator output
-        function vertexCallback(data, polyVertArray) {
-            if (tesselator.z != null) {
-                polyVertArray.push([data[0], data[1], tesselator.z]);
-            }
-            else {
-                polyVertArray.push([data[0], data[1]]);
-            }
+    // Called for each vertex of tesselator output
+    function vertexCallback(data, polyVertArray) {
+        if (tesselator.z != null) {
+            polyVertArray.push([data[0], data[1], tesselator.z]);
         }
-
-        // Called when segments intersect and must be split
-        function combineCallback(coords, data, weight) {
-            return coords;
+        else {
+            polyVertArray.push([data[0], data[1]]);
         }
+    }
 
-        // Called when a vertex starts or stops a boundary edge of a polygon
-        function edgeCallback(flag) {
-            // No-op callback to force simple triangle primitives (no triangle strips or fans).
-            // See: http://www.glprogramming.com/red/chapter11.html
-            // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
-            // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
-            // called only with GL_TRIANGLES."
-            // console.log('GL.tesselator: edge flag: ' + flag);
-        }
+    // Called when segments intersect and must be split
+    function combineCallback(coords, data, weight) {
+        return coords;
+    }
 
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
-        tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+    // Called when a vertex starts or stops a boundary edge of a polygon
+    function edgeCallback(flag) {
+        // No-op callback to force simple triangle primitives (no triangle strips or fans).
+        // See: http://www.glprogramming.com/red/chapter11.html
+        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
+        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
+        // called only with GL_TRIANGLES."
+        log.trace('GL.tesselator: edge flag: ' + flag);
+    }
 
-        // Brendan Kenny:
-        // libtess will take 3d verts and flatten to a plane for tesselation
-        // since only doing 2d tesselation here, provide z=1 normal to skip
-        // iterating over verts only to get the same answer.
-        // comment out to test normal-generation code
-        tesselator.gluTessNormal(0, 0, 1);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
 
-        return tesselator;
-    })();
+    // Brendan Kenny:
+    // libtess will take 3d verts and flatten to a plane for tesselation
+    // since only doing 2d tesselation here, provide z=1 normal to skip
+    // iterating over verts only to get the same answer.
+    // comment out to test normal-generation code
+    tesselator.gluTessNormal(0, 0, 1);
 
-    GL.triangulatePolygon = function GLTriangulate (contours, z)
-    {
-        var triangleVerts = [];
-        GL.tesselator.z = z;
-        GL.tesselator.gluTessBeginPolygon(triangleVerts);
+    return tesselator;
+})();
 
-        for (var i = 0; i < contours.length; i++) {
-            GL.tesselator.gluTessBeginContour();
-            var contour = contours[i];
-            for (var j = 0; j < contour.length; j ++) {
-                var coords = [contour[j][0], contour[j][1], 0];
-                GL.tesselator.gluTessVertex(coords, coords);
-            }
-            GL.tesselator.gluTessEndContour();
-        }
-
-        GL.tesselator.gluTessEndPolygon();
-        return triangleVerts;
-    };
-}
-catch (e) {
-    // console.log("libtess not defined!");
-    // skip if libtess not defined
-}
-
-// Add vertices to an array (destined to be used as a GL buffer), 'striping' each vertex with constant data
-// Per-vertex attributes must be pre-packed into the vertices array
-// Used for adding values that are often constant per geometry or polygon, like colors, normals (for polys sitting flat on map), layer and material info, etc.
-GL.addVertices = function (vertices, vertex_constants, vertex_data)
+GL.triangulatePolygon = function GLTriangulate (contours, z)
 {
-    if (vertices == null) {
-        return vertex_data;
-    }
-    vertex_constants = vertex_constants || [];
+    var triangleVerts = [];
+    GL.tesselator.z = z;
+    GL.tesselator.gluTessBeginPolygon(triangleVerts);
 
-    for (var v=0, vlen = vertices.length; v < vlen; v++) {
-        vertex_data.push.apply(vertex_data, vertices[v]);
-        vertex_data.push.apply(vertex_data, vertex_constants);
-    }
-
-    return vertex_data;
-};
-
-// Add vertices to an array, 'striping' each vertex with constant data
-// Multiple, un-packed attribute arrays can be provided
-GL.addVerticesMultipleAttributes = function (dynamics, constants, vertex_data)
-{
-    var dlen = dynamics.length;
-    var vlen = dynamics[0].length;
-    constants = constants || [];
-
-    for (var v=0; v < vlen; v++) {
-        for (var d=0; d < dlen; d++) {
-            vertex_data.push.apply(vertex_data, dynamics[d][v]);
+    for (var i = 0; i < contours.length; i++) {
+        GL.tesselator.gluTessBeginContour();
+        var contour = contours[i];
+        for (var j = 0; j < contour.length; j ++) {
+            var coords = [contour[j][0], contour[j][1], 0];
+            GL.tesselator.gluTessVertex(coords, coords);
         }
-        vertex_data.push.apply(vertex_data, constants);
+        GL.tesselator.gluTessEndContour();
     }
 
-    return vertex_data;
+    GL.tesselator.gluTessEndPolygon();
+    return triangleVerts;
 };
-
-// Add vertices to an array, with a variable layout (both per-vertex dynamic and constant attribs)
-// GL.addVerticesByAttributeLayout = function (attribs, vertex_data)
-// {
-//     var max_length = 0;
-//     for (var a=0; a < attribs.length; a++) {
-//         // console.log(attribs[a].name);
-//         // console.log("a " + typeof attribs[a].data);
-//         if (typeof attribs[a].data == 'object') {
-//             // console.log("a[0] " + typeof attribs[a].data[0]);
-//             // Per-vertex list - array of array
-//             if (typeof attribs[a].data[0] == 'object') {
-//                 attribs[a].cursor = 0;
-//                 if (attribs[a].data.length > max_length) {
-//                     max_length = attribs[a].data.length;
-//                 }
-//             }
-//             // Static array for all vertices
-//             else {
-//                 attribs[a].next_vertex = attribs[a].data;
-//             }
-//         }
-//         else {
-//             // Static single value for all vertices, convert to array
-//             attribs[a].next_vertex = [attribs[a].data];
-//         }
-//     }
-
-//     for (var v=0; v < max_length; v++) {
-//         for (var a=0; a < attribs.length; a++) {
-//             if (attribs[a].cursor != null) {
-//                 // Next value in list
-//                 attribs[a].next_vertex = attribs[a].data[attribs[a].cursor];
-
-//                 // TODO: repeats if one list is shorter than others - desired behavior, or enforce same length?
-//                 if (attribs[a].cursor < attribs[a].data.length) {
-//                     attribs[a].cursor++;
-//                 }
-//             }
-//             vertex_data.push.apply(vertex_data, attribs[a].next_vertex);
-//         }
-//     }
-//     return vertex_data;
-// };

@@ -10,9 +10,10 @@ module.exports = function (config) {
         files: [
             'node_modules/topojson/topojson.js',
             'node_modules/lodash/lodash.js',
-            'demos/lib/leaflet-0.8-dev.js',
+            {pattern: 'test/fixtures/*', watched: false, included: false, served: true},
+            './demos/lib/leaflet/leaflet.js',
             'dist/tangram-worker.debug.js',
-            'dist/testable.js'
+            'dist/tangram.test.js'
         ],
         exclude: [  ],
         preprocessors: {  },

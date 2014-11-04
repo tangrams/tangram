@@ -53,6 +53,7 @@ class PerspectiveCamera extends Camera {
 
     constructor(scene, options = {}) {
         super(scene);
+        this.type = 'perspective';
         this.focal_length = options.focal_length || [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]]; // pairs of [zoom, focal len]
         this.vanishing_point = options.vanishing_point || { x: 0, y: 0 };
         if (this.vanishing_point.length === 2) {
@@ -118,8 +119,7 @@ class PerspectiveCamera extends Camera {
         var fov = Math.atan(1 / this.computed_focal_length) * 2;
         var aspect = this.scene.view_aspect;
         var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-        // var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
-        var zfar = (this.height + znear) * 1; // switching back to deeper clipping volume because we're now reordering layers
+        var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
 
         mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
 
@@ -152,6 +152,7 @@ class IsometricCamera extends Camera {
 
     constructor(scene, options = {}) {
         super(scene);
+        this.type = 'isometric';
         this.axis = options.axis || { x: 0, y: 1 };
         if (this.axis.length === 2) {
             this.axis = { x: this.axis[0], y: this.axis[1] }; // allow axis to also be passed as 2-elem array
@@ -191,6 +192,11 @@ class IsometricCamera extends Camera {
 
 // Flat projection (e.g. just top-down, no perspective) - a degenerate isometric camera
 class FlatCamera extends IsometricCamera {
+
+    constructor(scene, options = {}) {
+        super(scene, options);
+        this.type = 'flat';
+    }
 
     update() {
         // Axis is fixed to (0, 0) for flat camera

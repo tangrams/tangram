@@ -1,8 +1,6 @@
-import Point from '../point';
 import {Vector} from '../vector';
 import {Geo} from '../geo';
 import {GL} from './gl';
-
 export var GLBuilders = {};
 
 GLBuilders.debug = false;
@@ -12,9 +10,9 @@ GLBuilders.debug = false;
 GLBuilders.buildPolygons = function (
     polygons,
     vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+    { texcoord_index, texcoord_scale }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -24,8 +22,6 @@ GLBuilders.buildPolygons = function (
             var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon);
             var span_x = max_x - min_x;
             var span_y = max_y - min_y;
-            var span_u = max_u - min_u;
-            var span_v = max_v - min_v;
             var scale_u = (max_u - min_u) / span_x;
             var scale_v = (max_v - min_v) / span_y;
         }
@@ -57,11 +53,11 @@ GLBuilders.buildExtrudedPolygons = function (
     z, height, min_height,
     vertex_data, vertex_template,
     normal_index,
-    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+    { texcoord_index, texcoord_scale }) {
 
     var min_z = z + (min_height || 0);
     var max_z = z + height;
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Top
     vertex_template[2] = max_z;
@@ -137,10 +133,10 @@ GLBuilders.buildPolylines = function (
     z, width,
     vertex_data, vertex_template,
     {
-        closed_polygon = false,
-        remove_tile_edges = false,
+        closed_polygon,
+        remove_tile_edges,
         texcoord_index,
-        texcoord_scale = [[0, 0], [1, 1]]
+        texcoord_scale
     }) {
 
     // Build triangles
@@ -151,7 +147,7 @@ GLBuilders.buildPolylines = function (
         pb,
         num_lines = lines.length;
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
@@ -355,9 +351,9 @@ GLBuilders.buildPolylines = function (
 GLBuilders.buildQuadsForPoints = function (
     points, width, height,
     vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale = [[0, 0], [1, 1]] }) {
+    { texcoord_index, texcoord_scale }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale;
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     var num_points = points.length;
     for (var p=0; p < num_points; p++) {
         var point = points[p];
@@ -429,8 +425,8 @@ GLBuilders.isOnTileEdge = function (pa, pb, options)
 GLBuilders.setTileScale = function (scale)
 {
     GLBuilders.tile_bounds = [
-        Point(0, 0),
-        Point(scale, -scale) // TODO: correct for flipped y-axis?
+        { x: 0, y: 0},
+        { x: scale, y: -scale } // TODO: correct for flipped y-axis?
     ];
 };
 
@@ -443,8 +439,9 @@ GLBuilders.valuesWithinTolerance = function (a, b, tolerance)
 // Build a zigzag line pattern for testing joins and caps
 GLBuilders.buildZigzagLineTestPattern = function ()
 {
-    var min = Point(0, 0); // tile.min;
-    var max = Point(4096, 4096); // tile.max;
+    var min = { x: 0, y: 0}; //  tile.min;
+    var max = { x: 4096, y: 4096 }; // tile.max;
+
     var g = {
         id: 123,
         geometry: {
@@ -464,6 +461,5 @@ GLBuilders.buildZigzagLineTestPattern = function ()
             kind: 'debug'
         }
     };
-    // console.log(g.geometry.coordinates);
     return g;
 };

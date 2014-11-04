@@ -1,5 +1,4 @@
 // Miscellaneous geo functions
-import Point from './point';
 
 export var Geo = {};
 
@@ -30,43 +29,42 @@ Geo.setTileScale = function(scale)
 };
 
 // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
-Geo.metersForTile = function (tile)
-{
-    return Point(
-        tile.x * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters,
-        -(tile.y * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters)
-    );
+Geo.metersForTile = function (tile) {
+    return {
+        x: tile.x * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters,
+        y: -(tile.y * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters)
+    };
 };
 
-// Convert mercator meters to lat-lng
-Geo.metersToLatLng = function (meters)
-{
-    var c = Point.copy(meters);
+/**
+   Convert mercator meters to lat-lng
+*/
+Geo.metersToLatLng = function ([x, y]) {
 
-    c.x /= Geo.half_circumference_meters;
-    c.y /= Geo.half_circumference_meters;
+    x /= Geo.half_circumference_meters;
+    y /= Geo.half_circumference_meters;
 
-    c.y = (2 * Math.atan(Math.exp(c.y * Math.PI)) - (Math.PI / 2)) / Math.PI;
+    y = (2 * Math.atan(Math.exp(y * Math.PI)) - (Math.PI / 2)) / Math.PI;
 
-    c.x *= 180;
-    c.y *= 180;
+    x *= 180;
+    y *= 180;
 
-    return c;
+    return [x, y];
 };
 
-// Convert lat-lng to mercator meters
-Geo.latLngToMeters = function(latlng)
-{
-    var c = Point.copy(latlng);
+/**
+  Convert lat-lng to mercator meters
+*/
+Geo.latLngToMeters = function([x, y]) {
 
     // Latitude
-    c.y = Math.log(Math.tan(c.y*Math.PI/360 + Math.PI/4)) / Math.PI;
-    c.y = c.y * Geo.half_circumference_meters;
+    y = Math.log(Math.tan(y*Math.PI/360 + Math.PI/4)) / Math.PI;
+    y *= Geo.half_circumference_meters;
 
     // Longitude
-    c.x = c.x * Geo.half_circumference_meters / 180;
+    x *= Geo.half_circumference_meters / 180;
 
-    return c;
+    return [x, y];
 };
 
 // Run a transform function on each cooordinate in a GeoJSON geometry

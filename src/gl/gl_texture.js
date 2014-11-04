@@ -1,16 +1,18 @@
 /*global GLTexture */
 // Texture management
 import Utils from '../utils';
-
+import log from 'loglevel';
 
 // Global set of textures, by name
 GLTexture.textures = {};
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
-export default function GLTexture (gl, name, options) {
-    options = options || {};
+export default function GLTexture (gl, name, options = {}) {
     this.gl = gl;
     this.texture = gl.createTexture();
+    if (this.texture) {
+        this.valid = true;
+    }
     this.bind(0);
     this.image = null;
 
@@ -24,14 +26,44 @@ export default function GLTexture (gl, name, options) {
     GLTexture.textures[this.name] = this;
 }
 
+// Destroy a single texture instance
+GLTexture.prototype.destroy = function () {
+    if (!this.valid) {
+        return;
+    }
+    this.gl.deleteTexture(this.texture);
+    this.texture = null;
+    delete this.data;
+    this.data = null;
+    delete GLTexture.textures[this.name];
+    this.valid = false;
+};
+
+// Destroy all texture instances for a given GL context
+GLTexture.destroy = function (gl) {
+    var textures = Object.keys(GLTexture.textures);
+    for (var t of textures) {
+        var texture = GLTexture.textures[t];
+        if (texture.gl === gl) {
+            log.trace(`destroying GLTexture ${texture.name}`);
+            texture.destroy();
+        }
+    }
+};
+
 GLTexture.prototype.bind = function (unit) {
+    if (!this.valid) {
+        return;
+    }
     this.gl.activeTexture(this.gl.TEXTURE0 + unit);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
 };
 
 // Loads a texture from a URL
-GLTexture.prototype.load = function (url, options) {
-    options = options || {};
+GLTexture.prototype.load = function (url, options = {}) {
+    if (!this.valid) {
+        return;
+    }
     this.image = new Image();
     this.image.onload = () => {
         this.width = this.image.width;
@@ -44,7 +76,7 @@ GLTexture.prototype.load = function (url, options) {
 };
 
 // Sets texture to a raw image buffer
-GLTexture.prototype.setData = function (width, height, data, options) {
+GLTexture.prototype.setData = function (width, height, data, options = {}) {
     this.width = width;
     this.height = height;
     this.data = data;
@@ -55,8 +87,10 @@ GLTexture.prototype.setData = function (width, height, data, options) {
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
-GLTexture.prototype.update = function (options) {
-    options = options || {};
+GLTexture.prototype.update = function (options = {}) {
+    if (!this.valid) {
+        return;
+    }
 
     this.bind(0);
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
@@ -73,8 +107,11 @@ GLTexture.prototype.update = function (options) {
 
 // Determines appropriate filtering mode
 // Assumes texture to be operated on is already bound
-GLTexture.prototype.setTextureFiltering = function (options) {
-    options = options || {};
+GLTexture.prototype.setTextureFiltering = function (options = {}) {
+    if (!this.valid) {
+        return;
+    }
+
     options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
     var gl = this.gl;
 
@@ -88,20 +125,20 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'mipmap') {
-            // console.log("power-of-2 MIPMAP");
+            log.trace('power-of-2 MIPMAP');
             this.filtering = 'mipmap';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
         else if (options.filtering === 'linear') {
-            // console.log("power-of-2 LINEAR");
+            log.trace('power-of-2 LINEAR');
             this.filtering = 'linear';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
         else if (options.filtering === 'nearest') {
-            // console.log("power-of-2 NEAREST");
+            log.trace('power-of-2 NEAREST');
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -115,13 +152,13 @@ GLTexture.prototype.setTextureFiltering = function (options) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'nearest') {
-            // console.log("power-of-2 NEAREST");
+            log.trace('power-of-2 NEAREST');
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         }
         else { // default to linear for non-power-of-2 textures
-            // console.log("power-of-2 LINEAR");
+            log.trace('power-of-2 LINEAR');
             this.filtering = 'linear';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);

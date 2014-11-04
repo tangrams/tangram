@@ -1,20 +1,23 @@
 // Modules and dependencies to expose in the public Tangram module
 
-// The leaflet layer plugin is currently the primary means of using the library
-
+// The leaflet layer plugin is currently the primary public API
 import {LeafletLayer, leafletLayer} from './leaflet_layer';
-import {GL} from './gl/gl';
+
+// Additional modules are exposed for debugging
+import log from 'loglevel';
 import {Geo} from './geo';
-// GL functions included for easier debugging / direct access to setting global defines, reloading programs, etc.
+import GL from './gl/gl';
+import GLProgram from './gl/gl_program';
+import GLTexture from './gl/gl_texture';
 
-GL.Program = require('./gl/gl_program.js').default;
-GL.Texture = require('./gl/gl_texture.js');
-
-module.exports = {
-    LeafletLayer: LeafletLayer,
-    leafletLayer: leafletLayer,
-    GL: GL,
-    Geo: Geo
+window.Tangram = module.exports = {
+    LeafletLayer,
+    leafletLayer,
+    debug: {
+        log,
+        Geo,
+        GL,
+        GLProgram,
+        GLTexture
+    }
 };
-
-window.Tangram = module.exports;

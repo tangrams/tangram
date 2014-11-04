@@ -4,17 +4,15 @@ import Utils from '../src/utils';
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
-
 let makeOne;
-/* jshint ignore:start */
-makeOne = ({tile_source = sampleScene.tileSource,
-                layers  = sampleScene.layers,
-                styles  = sampleScene.styles,
-                options = {}
-           } = {}) => {
-    return new Scene(tile_source, layers, styles, options);
+makeOne = ({options}) => {
+    options = options || {};
+    // options.disableRenderLoop = (options.disableRenderLoop === undefined) ? true : options.disableRenderLoop;
+    options.disableRenderLoop = true;
+    return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
 };
-/* jshint ignore:end */
+
+let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
 describe('Scene', () => {
 
@@ -38,11 +36,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach(() => {
-            subject = Scene.create({
-                tile_source: sampleScene.tileSource,
-                layers: sampleScene.layers,
-                styles: sampleScene.styles
-            });
+            subject = makeOne({});
         });
 
         afterEach( () => {
@@ -59,11 +53,11 @@ describe('Scene', () => {
         });
 
         it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layers, sampleScene.layers);
+            assert.equal(subject.layer_source, sampleScene.layers);
         });
 
         it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.styles, sampleScene.styles);
+            assert.equal(subject.style_source, sampleScene.styles);
         });
 
     });
@@ -80,39 +74,41 @@ describe('Scene', () => {
         });
 
         describe('when the scene is not initialized', () => {
-            it('calls back', (done) => {
-                subject.init(() => {
-                    assert.ok(true);
-                    done();
-                });
+            beforeEach((done) => {
+                subject = makeOne({});
+                subject.init(done);
             });
 
-            it('sets the initialized property', (done) => {
-                subject.init(() => {
-                    assert.isTrue(subject.initialized);
-                    done();
-                });
+            it('calls back', () => {
+                assert.ok(true);
             });
 
-            it('sets the container property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.container, HTMLBodyElement);
-                    done();
-                });
+            it('correctly sets the value of the tile source', () => {
+                assert.equal(subject.tile_source, sampleScene.tileSource);
             });
 
-            it('sets the canvas property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.canvas, HTMLCanvasElement);
-                    done();
-                });
+            it('correctly sets the value of the layers object', () => {
+                assert.equal(subject.layers, sampleScene.layers);
             });
 
-            it('sets the gl property', (done) => {
-                subject.init(() => {
-                    assert.instanceOf(subject.gl, WebGLRenderingContext);
-                    done();
-                });
+            it('correctly sets the value of the styles object', () => {
+                assert.equal(subject.styles, sampleScene.styles);
+            });
+
+            it('sets the initialized property', () => {
+                assert.isTrue(subject.initialized);
+            });
+
+            it('sets the container property', () => {
+                assert.instanceOf(subject.container, HTMLBodyElement);
+            });
+
+            it('sets the canvas property', () => {
+                assert.instanceOf(subject.canvas, HTMLCanvasElement);
+            });
+
+            it('sets the gl property', () => {
+                assert.instanceOf(subject.gl, WebGLRenderingContext);
             });
         });
 
@@ -130,7 +126,7 @@ describe('Scene', () => {
         let subject;
         let height = 100;
         let width = 200;
-        let devicePixelRatio = 100;
+        let devicePixelRatio = 2;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
@@ -194,11 +190,11 @@ describe('Scene', () => {
 
     describe('.setCenter(lng, lat)', () => {
         let subject;
-        let [lng, lat] = [10, 10];
+        let [lng, lat] = nycLatLng;
 
         beforeEach(() => {
             subject = makeOne({});
-            subject.setCenter(lng, lat);
+            subject.setCenter(...nycLatLng);
         });
         afterEach(() => {
             subject.destroy();
@@ -283,7 +279,7 @@ describe('Scene', () => {
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'renderGL');
             subject.init(() => {
-                subject.setCenter({lng: 10, lat: 10});
+                subject.setCenter(...nycLatLng);
                 done();
             });
         });
@@ -332,6 +328,87 @@ describe('Scene', () => {
 
     });
 
+    describe('.updateModes(callback)', () => {
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            subject.init(done);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
+
+        it('calls back', (done) => {
+            subject.updateModes((error) => {
+                assert.isNull(error);
+                done();
+            });
+        });
+    });
+
+    describe('.rebuildGeometry(callback)', () => {
+        let subject;
+        beforeEach((done) => {
+            subject = makeOne({});
+            subject.setCenter(...nycLatLng);
+            subject.init(() => {
+                subject.loadTile({ x: 38603, y: 49255, z: 17 });
+                subject.loadQueuedTiles();
+
+                var tile = subject.tiles['38603/49255/17'];
+                var check = setInterval(() => {
+                    // console.log("check tile load");
+                    if (tile.loaded) {
+                        clearInterval(check);
+                        done();
+                    }
+                }, 50);
+            });
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = undefined;
+        });
+
+        it('calls back', (done) => {
+            subject.rebuildGeometry((error) => {
+                assert.isNull(error);
+                done();
+            });
+        });
+
+        it.skip('runs first call, queues second call, rejects the rest', (done) => {
+            let success = 0,
+                fail = 0,
+                complete = 0;
+
+            for (let i=0; i < 20; i++) {
+                subject.rebuildGeometry((error) => {
+                    if (error) {
+                        fail++;
+                    }
+                    else {
+                        success++;
+                    }
+                    complete++;
+
+                    if (complete === 20) {
+                        check();
+                    }
+                });
+            }
+
+            function check () {
+                assert.equal(success, 2);
+                assert.equal(fail, 18);
+                done();
+            }
+        });
+    });
+
     describe('.createWorkers(cb)', () => {
         let subject;
         beforeEach(() => {
@@ -372,10 +449,10 @@ describe('Scene', () => {
 
     describe('.makeWorkers(url)', () => {
         let subject;
-        let num_workers = 2;
+        let numWorkers = 2;
         let url = 'test.js';
         beforeEach(() => {
-            subject = makeOne({options: {num_workers}});
+            subject = makeOne({options: {numWorkers}});
             subject.makeWorkers(url);
         });
 

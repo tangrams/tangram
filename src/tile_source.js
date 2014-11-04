@@ -1,9 +1,9 @@
 /*jshint worker: true */
 /*globals TileSource, topojson */
 import {Geo}   from './geo';
-import Point from './point';
 import {MethodNotImplemented} from './errors';
 import Utils from './utils';
+import log from 'loglevel';
 
 export default class TileSource {
 
@@ -33,10 +33,7 @@ export default class TileSource {
             var num_features = tile.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
-                    return [m.x, m.y];
-                });
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
             }
         }
 
@@ -103,12 +100,18 @@ export class NetworkTileSource extends TileSource {
 
         Utils.xhr({
             uri: url,
+            timeout: 60 * 1000,
             responseType: this.response_type
         }, (err, resp, body) => {
-
-            if (err) { return callback(err); }
-
-            if (tile.loading === false) {
+            // Tile load errored
+            if (err) {
+                tile.loaded = false;
+                tile.loading = false;
+                tile.error = err.toString();
+                return callback(err);
+            }
+            // We already canceled the tile load, so just throw away the result
+            else if (tile.loading === false) {
                 return;
             }
 
@@ -166,10 +169,10 @@ export class TopoJSONTileSource extends NetworkTileSource {
         if (typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
-                console.log("loaded TopoJSON library");
+                log.info('TopoJSONTileSource: loaded topojson library');
             }
             catch (e) {
-                console.error("failed to load TopoJSON library!", e);
+                log.error('TopoJSONTileSource: failed to load TopoJSON library!');
             }
         }
     }

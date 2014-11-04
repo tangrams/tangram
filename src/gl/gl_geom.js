@@ -1,6 +1,7 @@
 /* global GLGeometry */
 /*** Manage rendering for primitives ***/
 import GLProgram from './gl_program';
+import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 export default function GLGeometry (gl, vertex_data, vertex_layout, options)
@@ -28,12 +29,15 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
+    this.valid = true;
 }
 
 // Render, by default with currently bound program, or otherwise with optionally provided one
-GLGeometry.prototype.render = function (options)
+GLGeometry.prototype.render = function (options = {})
 {
-    options = options || {};
+    if (!this.valid) {
+        return false;
+    }
 
     // GLVertexArrayObject.bind(this.vao);
 
@@ -50,11 +54,18 @@ GLGeometry.prototype.render = function (options)
     // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
     // GLVertexArrayObject.bind(null);
+    return true;
 };
 
 GLGeometry.prototype.destroy = function ()
 {
-    console.log("GLGeometry.destroy: delete buffer of size " + this.vertex_data.byteLength);
+    if (!this.valid) {
+        return false;
+    }
+    log.debug('GLGeometry.destroy: delete buffer of size ' + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
+    this.buffer = null;
     delete this.vertex_data;
+    this.valid = false;
+    return true;
 };

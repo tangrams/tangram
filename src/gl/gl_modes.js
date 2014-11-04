@@ -4,7 +4,7 @@ import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
-
+import log from 'loglevel';
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
 import Queue from 'queue-async';
@@ -16,32 +16,73 @@ export var ModeManager = {};
 // Base
 
 var RenderMode = {
-    setGL (gl) {
+    init () {
+        this.defines = {};
+        this.shaders = {};
+        this.selection = false;
+        this.gl_program = null;
+        this.selection_gl_program = null;
+    },
+
+    setGL (gl, callback) {
         this.gl = gl;
-        this.makeGLProgram();
+        this.valid = true;
     },
-    refresh: function () { // TODO: should this be async/non-blocking?
-        this.makeGLProgram();
+
+    compile (callback) {
+        this.makeGLProgram(callback);
     },
-    defines: {},
-    selection: false,
-    buildPolygons: function(){}, // build functions are no-ops until overriden
-    buildLines: function(){},
-    buildPoints: function(){},
-    makeGLGeometry: function (vertex_data) {
+
+    makeGLGeometry (vertex_data) {
         return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+    },
+
+    // Build functions are no-ops until overriden
+    buildPolygons () {},
+    buildLines () {},
+    buildPoints () {}
+};
+
+RenderMode.destroy = function () {
+    if (this.gl_program) {
+        this.gl_program.destroy();
+        this.gl_program = null;
+    }
+
+    if (this.selection_gl_program) {
+        this.selection_gl_program.destroy();
+        this.selection_gl_program = null;
+    }
+
+    this.gl = null;
+    this.valid = false;
+
+    if (!this.built_in) {
+        delete Modes[this.name];
     }
 };
 
-RenderMode.makeGLProgram = function ()
+RenderMode.makeGLProgram = function (callback)
 {
-    // console.log(this.name + ": " + "start building");
+    callback = (typeof callback === 'function') ? callback : function(){};
+
+    if (this.valid === false) {
+        callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode not valid`));
+        return;
+    }
+
+    if (this.loading) {
+        callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
+        return;
+    }
+    this.loading = true;
+
     var queue = Queue();
 
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
     var defines = this.buildDefineList();
     if (this.selection) {
-        var selection_defines = Object.create(defines);
+        var selection_defines = Object.assign({}, defines);
         selection_defines['FEATURE_SELECTION'] = true;
     }
 
@@ -49,12 +90,11 @@ RenderMode.makeGLProgram = function ()
     var transforms = (this.shaders && this.shaders.transforms);
 
     // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
-    var program = (this.hasOwnProperty('gl_program') && this.gl_program);
-    var selection_program = (this.hasOwnProperty('selection_gl_program') && this.selection_gl_program);
+    var program = this.gl_program;
+    var selection_program = this.selection_gl_program;
 
     queue.defer(complete => {
-        if (!program) {
-            // console.log(this.name + ": " + "instantiate");
+        // if (!program) {
             program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
@@ -66,19 +106,17 @@ RenderMode.makeGLProgram = function ()
                     callback: complete
                 }
             );
-        }
-        else {
-            // console.log(this.name + ": " + "re-compile");
-            program.defines = defines;
-            program.transforms = transforms;
-            program.compile(complete);
-        }
+        // }
+        // else {
+        //     program.defines = defines;
+        //     program.transforms = transforms;
+        //     program.compile(complete);
+        // }
     });
 
     if (this.selection) {
         queue.defer(complete => {
-            if (!selection_program) {
-                // console.log(this.name + ": " + "selection instantiate");
+            // if (!selection_program) {
                 selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
@@ -90,28 +128,34 @@ RenderMode.makeGLProgram = function ()
                         callback: complete
                     }
                 );
-            }
-            else {
-                // console.log(this.name + ": " + "selection re-compile");
-                selection_program.defines = selection_defines;
-                selection_program.transforms = transforms;
-                selection_program.compile(complete);
-            }
+            // }
+            // else {
+            //     selection_program.defines = selection_defines;
+            //     selection_program.transforms = transforms;
+            //     selection_program.compile(complete);
+            // }
         });
     }
 
     // Wait for program(s) to compile before replacing them
     // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await(() => {
-       if (program) {
-           this.gl_program = program;
-       }
+    queue.await((error) => {
+        this.loading = false;
 
-       if (selection_program) {
-           this.selection_gl_program = selection_program;
-       }
+        if (error) {
+            callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
+            return;
+        }
 
-       // console.log(this.name + ": " + "finished building");
+        if (program) {
+            this.gl_program = program;
+        }
+
+        if (selection_program) {
+            this.selection_gl_program = selection_program;
+        }
+
+        callback();
     });
 };
 
@@ -146,13 +190,13 @@ RenderMode.setUniforms = function ()
 RenderMode.update = function ()
 {
     // Mode-specific animation
-    if (typeof this.animation === 'function') {
-        this.animation();
-    }
+    // if (typeof this.animation === 'function') {
+    //     this.animation();
+    // }
 };
 
 // Update built-in mode or create a new one
-ModeManager.configureMode = function (name, settings)
+ModeManager.updateMode = function (name, settings)
 {
     Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
     if (Modes[settings.extends]) {
@@ -167,24 +211,43 @@ ModeManager.configureMode = function (name, settings)
     return Modes[name];
 };
 
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    var modes = Object.keys(Modes);
+    for (var m of modes) {
+        var mode = Modes[m];
+        if (mode.gl === gl) {
+            log.trace(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    }
+};
+
 
 // Built-in rendering modes
 
 /*** Plain polygons ***/
 
-Modes.polygons = Object.create(RenderMode);
-Modes.polygons.name = 'polygons';
+var Polygons = Object.create(RenderMode);
+Polygons.name = 'polygons';
+Modes[Polygons.name] = Polygons;
 
-Modes.polygons.vertex_shader_key = 'polygon_vertex';
-Modes.polygons.fragment_shader_key = 'polygon_fragment';
+Polygons.init = function () {
+    RenderMode.init.apply(this);
 
-Modes.polygons.defines = {
-    'WORLD_POSITION_WRAP': 100000 // default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-};
+    // Mark as built-in
+    this.built_in = (this === Polygons);
 
-Modes.polygons.selection = true;
+    // Base shaders
+    this.vertex_shader_key = 'polygon_vertex';
+    this.fragment_shader_key = 'polygon_fragment';
 
-Modes.polygons.init = function () {
+    // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+    this.defines['WORLD_POSITION_WRAP'] = 100000;
+
+    // Turn feature selection on
+    this.selection = true;
+
     // Basic attributes, others can be added (see texture UVs below)
     var attribs = [
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -210,7 +273,7 @@ Modes.polygons.init = function () {
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
-Modes.polygons.makeVertexTemplate = function (style) {
+Polygons.makeVertexTemplate = function (style) {
     // Basic attributes, others can be added (see texture UVs below)
     var template = [
         // position - x & y coords will be filled in per-vertex below
@@ -234,7 +297,7 @@ Modes.polygons.makeVertexTemplate = function (style) {
     return template;
 };
 
-Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
+Polygons.buildPolygons = function (polygons, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -265,6 +328,10 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
 
+        // Polygon outlines sit over current layer but underneath the one above
+        // TODO: address inconsistency with line outlines
+        vertex_template[this.vertex_layout.index.a_layer] += 0.25;
+
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
                 polygons[mpc],
@@ -275,14 +342,14 @@ Modes.polygons.buildPolygons = function (polygons, style, vertex_data)
                 {
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     closed_polygon: true,
-                    remove_tile_edges: true
+                    remove_tile_edges: !style.outline.tile_edges
                 }
             );
         }
     }
 };
 
-Modes.polygons.buildLines = function (lines, style, vertex_data)
+Polygons.buildLines = function (lines, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -306,10 +373,11 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
         vertex_template[color_index + 1] = style.outline.color[1] * 255;
         vertex_template[color_index + 2] = style.outline.color[2] * 255;
 
-        // Outlines sit between layers, underneath current layer but above the one below
+        // Line outlines sit underneath current layer but above the one below
+        // TODO: address inconsistency with polygon outlines
         // TODO: need more fine-grained styling controls for outlines
         // (see complex road interchanges where casing outlines should be interleaved by road type)
-        vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
 
         GLBuilders.buildPolylines(
             lines,
@@ -324,7 +392,7 @@ Modes.polygons.buildLines = function (lines, style, vertex_data)
     }
 };
 
-Modes.polygons.buildPoints = function (points, style, vertex_data)
+Polygons.buildPoints = function (points, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -341,19 +409,27 @@ Modes.polygons.buildPoints = function (points, style, vertex_data)
 
 /*** Points w/simple distance field rendering ***/
 
-Modes.points = Object.create(RenderMode);
-Modes.points.name = 'points';
+var Points = Object.create(RenderMode);
+Points.name = 'points';
+Modes[Points.name] = Points;
 
-Modes.points.vertex_shader_key = 'point_vertex';
-Modes.points.fragment_shader_key = 'point_fragment';
+Points.init = function () {
+    RenderMode.init.apply(this);
 
-Modes.points.defines = {
-    'EFFECT_SCREEN_COLOR': true
-};
+    // Mark as built-in
+    this.built_in = (this === Points);
 
-Modes.points.selection = true;
+    // Base shaders
+    this.vertex_shader_key = 'point_vertex';
+    this.fragment_shader_key = 'point_fragment';
 
-Modes.points.init = function () {
+    // TODO: remove this hard-coded special effect
+    this.defines['EFFECT_SCREEN_COLOR'] = true;
+
+    // Turn feature selection on
+    this.selection = true;
+
+    // Vertex attributes
     this.vertex_layout = new GLVertexLayout([
         { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
         { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
@@ -365,7 +441,7 @@ Modes.points.init = function () {
 
 // A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
 // A plain JS array matching the order of the vertex layout.
-Modes.points.makeVertexTemplate = function (style) {
+Points.makeVertexTemplate = function (style) {
     return [
         // position - x & y coords will be filled in per-vertex below
         0, 0, style.z,
@@ -381,7 +457,7 @@ Modes.points.makeVertexTemplate = function (style) {
     ];
 };
 
-Modes.points.buildPoints = function (points, style, vertex_data)
+Points.buildPoints = function (points, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
