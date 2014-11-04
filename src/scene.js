@@ -74,9 +74,8 @@ Scene.prototype.init = function (callback) {
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene(() => {
+    this.loadScene().then(() => {
         var queue = Queue();
-
         // Create rendering modes
         queue.defer(complete => {
             this.modes = Scene.createModes(this.styles.modes);
@@ -127,6 +126,8 @@ Scene.prototype.init = function (callback) {
                 this.setupRenderLoop();
             }
         });
+    }, (error) => {
+        callback(error);
     });
 };
 
@@ -1176,114 +1177,75 @@ Scene.prototype.mergeTile = function (key, source_tile) {
 };
 
 // Load (or reload) the scene config
-Scene.prototype.loadScene = function (callback) {
-    var queue = Queue();
+Scene.prototype.loadScene = function () {
+    return Promise.all([
+        this.loadLayers(this.layer_source),
+        this.loadStyles(this.style_source)
+    ]);
+};
 
-    queue.defer(complete => {
-        this.loadLayers(this.layer_source, complete);
-    });
+Scene.prototype.formatResouceUrl = function (url) {
+    return url + '?' + (+new Date());
+};
 
-    queue.defer(complete => {
-        this.loadStyles(this.style_source, complete);
-    });
+Scene.prototype.maybeParseResource = function (body, resource) {
+    var data = null;
+    try {
+        eval('data = ' + body); // jshint ignore:line
+    } catch (e) {
+        try {
+            data = yaml.safeLoad(body);
+        } catch (e) {
+            log.error('Scene: failed to parse: ' + resource);
+            log.error(data);
+        }
+    }
+    return data;
+};
 
-    // Everything is loaded
-    queue.await(function() {
-        if (typeof callback === 'function') {
-            callback();
+Scene.prototype.loadResource = function (resource, source, postLoad) {
+    return new Promise((resolve, reject) => {
+        if (typeof source === 'string') {
+            Utils.io(this.formatResouceUrl(source)).then((body) => {
+                var data = this.maybeParseResource(body, resource);
+                postLoad(data);
+                resolve();
+            }, reject);
+        } else {
+            postLoad(source);
+            resolve();
         }
     });
 };
 
-Scene.prototype.loadLayers = function (source, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
-    // URL was passed in
-    if (typeof source === 'string') {
-        Utils.xhr(source + '?' + (+new Date()), (error, resp, body) => {
-            if (error) {
-                throw error;
-            }
-
-            // Try JSON first, then YAML (if available)
-            var layers;
-            try {
-                eval('layers = ' + body); // jshint ignore:line
-            } catch (e) {
-                try {
-                    layers = yaml.safeLoad(body);
-                } catch (e) {
-                    log.error('Scene: failed to parse layers');
-                    log.error(layers);
-                    layers = null;
-                    // TODO: throw error here?
-                }
-            }
-
-            // Pre-processing
-            this.layers = layers;
-            this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-            callback();
-        });
-    }
-    // Existing JS object was passed in
-    else {
-        // Pre-processing
-        this.layers = source;
+Scene.prototype.loadLayers = function (source) {
+    return this.loadResource('layers', source, (data) => {
+        this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-        callback();
-    }
+    });
 };
 
-Scene.prototype.loadStyles = function (source, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
-    // URL was passed in
-    if (typeof source === 'string') {
-        Utils.xhr(source + '?' + (+new Date()), (error, response, body) => {
-            if (error) { throw error; }
-            var styles;
-            // Try JSON first, then YAML (if available)
-            try {
-                eval('styles = ' + body); // jshint ignore:line
-            } catch (e) {
-                try {
-                    styles = yaml.safeLoad(body);
-                } catch (e) {
-                    log.error('Scene: failed to parse styles');
-                    log.error(styles);
-                    styles = null;
-                    // TODO: throw error here?
-                }
-            }
-
-            // Pre-processing
-            this.styles = styles;
-            Style.expandMacros(this.styles);
-            Scene.preProcessStyles(this.styles);
-            this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-            callback();
-        });
-    }
-    // Existing JS object was passed in
-    else {
-        // Pre-processing
-        this.styles = source;
+Scene.prototype.loadStyles = function (source) {
+    return this.loadResource('styles', source, (styles) => {
+        this.styles = styles;
         Style.expandMacros(this.styles);
         Scene.preProcessStyles(this.styles);
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-        callback();
-    }
+    });
 };
+
+
 // Reload scene config and rebuild tiles
 Scene.prototype.reload = function () {
     if (!this.initialized) {
         return;
     }
 
-    this.loadScene(() => {
+    this.loadScene().then(() => {
         this.updateStyles();
         this.rebuildGeometry();
+    }, (error) => {
+        throw error;
     });
 };
 
