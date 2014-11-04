@@ -86,8 +86,8 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
+    // should this method return promise?
     loadTile (tile, callback) {
-
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
 
         if (this.url_hosts != null) {
@@ -98,21 +98,9 @@ export class NetworkTileSource extends TileSource {
         tile.url = url;
         tile.debug.network = +new Date();
 
-        Utils.xhr({
-            uri: url,
-            timeout: 60 * 1000,
-            responseType: this.response_type
-        }, (err, resp, body) => {
-            // Tile load errored
-            if (err) {
-                tile.loaded = false;
-                tile.loading = false;
-                tile.error = err.toString();
-                return callback(err);
-            }
-            // We already canceled the tile load, so just throw away the result
-            else if (tile.loading === false) {
-                return;
+        Utils.io(url, 60 * 100, this.response_type).then((body) => {
+            if (tile.loading === false) {
+                return callback();
             }
 
             tile.debug.response_size = body.length || body.byteLength;
@@ -128,6 +116,12 @@ export class NetworkTileSource extends TileSource {
             if (callback) {
                 callback(null, tile);
             }
+
+        }, (err) => {
+            tile.loaded = false;
+            tile.loading = false;
+            tile.error = err.toString();
+            callback(err);
         });
     }
 

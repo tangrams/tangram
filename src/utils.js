@@ -1,5 +1,4 @@
 // Miscellaneous utilities
-
 var Utils;
 export default Utils = {};
 import xhr from 'xhr';
@@ -7,6 +6,34 @@ import xhr from 'xhr';
 // allow for easier testing
 Utils.xhr = function (...args) {
     xhr(...args);
+};
+
+Utils.io = function (url, timeout = 100, responseType = 'text', method = 'GET', headers = {}) {
+
+    var request = new XMLHttpRequest();
+
+    return new Promise((resolve, reject) => {
+        request.timeout = timeout;
+        request.responseType = responseType;
+        request.onload = () => {
+            if (request.status === 200) {
+                resolve(request.responseText);
+            } else {
+                reject(Error('Request error with a status of ' + request.statusText));
+            }
+        };
+
+        request.onerror = (evt) => {
+            reject(Error('There was a network error' + evt.message));
+        };
+
+        request.ontimeout = (evt) => {
+            reject(Error('timeout'));
+        };
+
+        request.open(method, url, true);
+        request.send();
+    });
 };
 
 // Stringify an object into JSON, but convert functions to strings
