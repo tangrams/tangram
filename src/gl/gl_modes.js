@@ -392,7 +392,7 @@ Polygons.buildLines = function (lines, style, vertex_data)
     }
 };
 
-Polygons.buildPoints = function (points, style, vertex_data)
+Modes.polygons.buildPoints = function (points, style, vertex_data)
 {
     var vertex_template = this.makeVertexTemplate(style);
 
@@ -404,6 +404,29 @@ Polygons.buildPoints = function (points, style, vertex_data)
         vertex_template,
         { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
+
+    // point outlines
+    if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+        vertex_template[color_index + 3] = style.outline.color[3] * 255;
+
+        // Point outlines sit underneath current layer but above the one below
+        // See line outline issues
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
+
+        GLBuilders.buildQuadsForPoints(
+            points,
+            style.size * 2 + style.outline.width * 2,
+            style.size * 2 + style.outline.width * 2,
+            vertex_data,
+            vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
+        );
+    }
 };
 
 
@@ -469,4 +492,27 @@ Points.buildPoints = function (points, style, vertex_data)
         vertex_template,
         { texcoord_index: this.vertex_layout.index.a_texcoord }
     );
+
+    // point outlines
+    if (style.outline.color && style.outline.width) {
+        // Replace color in vertex template
+        var color_index = this.vertex_layout.index.a_color;
+        vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        vertex_template[color_index + 2] = style.outline.color[2] * 255;
+        vertex_template[color_index + 3] = style.outline.color[3] * 255;
+
+        // Point outlines sit underneath current layer but above the one below
+        // See line outline issues
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
+
+        GLBuilders.buildQuadsForPoints(
+            points,
+            style.size * 2 + style.outline.width * 2,
+            style.size * 2 + style.outline.width * 2,
+            vertex_data,
+            vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
+        );
+    }
 };

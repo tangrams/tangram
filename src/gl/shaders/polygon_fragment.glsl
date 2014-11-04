@@ -62,7 +62,8 @@ void main (void) {
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
         vec3 lighting = calculateLighting(
             v_position, v_normal, /*color*/ vec3(1.),
-            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            // vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            vec4(0., -150. * u_meters_per_pixel, 350. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
             vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
             vec3(0.2, 0.7, -0.5), // direction of light for flat shading
             light_ambient);

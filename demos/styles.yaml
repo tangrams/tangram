@@ -342,11 +342,11 @@ modes:
                         color -= vec3(vPos.z * .01); // height factor
                     }
 
-    points:
-        shaders:
-            transforms:
-                # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-                fragment: { url: demos/shaders/color_bleed.glsl }
+    # points:
+    #     shaders:
+    #         transforms:
+    #             fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+    #             fragment: { url: demos/shaders/color_bleed.glsl }
 
     # polygons:
     #     texcoords: true
@@ -379,13 +379,13 @@ modes:
 layers:
     earth:
         color:
-            default: [0.175, 0.175, 0.175]
+            default: [.627, .627, .627]
 
     landuse:
         interactive: true
         color:
-            default: [0.5, 0.875, 0.5]
-            pitch: [0.3, 0.675, 0.3]
+            default: [0.564, 0.794, 0.588]
+            pitch: [0.4, 0.675, 0.4]
         # outline:
         #     color:
         #         default: [1, 1, 1]
@@ -393,11 +393,11 @@ layers:
         #         default: 1
 
     water:
-        mode:
-            name: water
+        # mode:
+        #     name: water
         interactive: true
         color:
-            default: [0.5, 0.5, 0.875]
+            default: [0.554, 0.656, 0.870]
         outline:
             color:
                 default: [0.6, 0.6, 0.975]
@@ -415,13 +415,14 @@ layers:
         interactive: function () { return (zoom >= 18); }
         color:
             # default: Style.color.randomColor
-            default: [0.4, 0.4, 0.4]
-            highway: [1.0, 1.0, 1.0]
-            major_road: [0.5, 0.5, 0.5]
-            minor_road: [0.65, 0.65, 0.65]
-            path: [0.8, 0.8, 0.8]
-            rail: [0.5, 0.0, 0.0]
-            debug: [1, 0, 0]
+            # default: [0.4, 0.4, 0.4]
+            default: [1.0, 1.0, 1.0]
+            # highway: [1.0, 1.0, 1.0]
+            # major_road: [0.5, 0.5, 0.5]
+            # minor_road: [0.65, 0.65, 0.65]
+            # path: [0.8, 0.8, 0.8]
+            # rail: [0.5, 0.0, 0.0]
+            # debug: [1, 0, 0]
         width:
             # default: Style.pixels(5)
             default: function () { return 2 * Math.log(zoom); }
@@ -473,17 +474,18 @@ layers:
             # default: Style.color.randomColor
             # default: Style.color.pseudoRandomColor
             # default: Style.color.pseudoRandomGrayscale
-            # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.2, 0.2, (feature.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default: |
-                function () {
-                    var c = [.6, .6, .6];
-                    if (feature.name || feature.kind) {
-                        c = [.2, .2, .2];
-                        c[0] = (feature.name && .6) || c[0];
-                        c[2] = (feature.kind && .6) || c[2];
-                    }
-                    return c;
-                }
+            # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.3, 0.3, (feature.kind && 0.6) || 0.3]; } else { return [0.6, 0.6, 0.6] }; }
+            # default: |
+            #     function () {
+            #         var c = [.6, .6, .6];
+            #         if (feature.name || feature.kind) {
+            #             c = [.2, .2, .2];
+            #             c[0] = (feature.name && .6) || c[0];
+            #             c[2] = (feature.kind && .6) || c[2];
+            #         }
+            #         return c;
+            #     }
+            default: function () { if (feature.name) { return [.6, .3, .3]; } else { return [0.6, 0.6, 0.6] }; }
         extrude:
             default: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
@@ -498,13 +500,18 @@ layers:
         # z:
         #     default: 25
         color:
-            default: [1, 1, 0]
+            default: [1, .9, .6]
         size:
             # default: 5
             default: Style.pixels(5)
             # default: Style.pixels(20) # for ghosts
             # default: Style.pixels(function () { return Math.pow(1.2, zoom); })
             # default: function () { return 2 * zoom; }
+        outline:
+            color:
+                default: [1, 0, 0]
+            width:
+                default: Style.pixels(2)
 
     # places:
     #     filter: function(f, t) { return (zoom >= 13); }
