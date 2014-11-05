@@ -108,10 +108,8 @@ export default class Tile {
 
         div.setAttribute('data-tile-key', this.key);
 
-        div.style = {
-            width: '256px',
-            height: '256px'
-        };
+        div.style.width = '256px';
+        div.style.height = '256px';
 
         if (scene.debug) {
             this.showDebug(div);
