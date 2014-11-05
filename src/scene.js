@@ -1,5 +1,4 @@
 /*global Scene */
-import log from 'loglevel';
 import {Geo} from './geo';
 import Utils from './utils';
 import {Style} from './style';
@@ -14,6 +13,7 @@ import yaml from 'js-yaml';
 import Tile from './tile';
 import TileSource from './tile_source';
 
+import log from 'loglevel';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -1007,7 +1007,7 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     }
 
     this.trackTileSetLoadStop();
-    this.printDebugForTile(tile);
+    tile.printDebug();
     this.trackTileBuildStop(tile.key);
 };
 
@@ -1374,17 +1374,6 @@ Scene.prototype.trackTileSetLoadStop = function () {
             this.tile_set_loading = null;
             log.info(`Scene: tile set load finished in ${this.last_tile_set_load}ms`);
         }
-    }
-};
-
-Scene.prototype.printDebugForTile = function (tile) {
-    log.debug(`Tile: debug for ${tile.key}: [  ${JSON.stringify(tile.debug)} ]`);
-};
-
-// Recompile all shaders
-Scene.prototype.compileShaders = function () {
-    for (var m in this.modes) {
-        this.modes[m].gl_program.compile();
     }
 };
 
