@@ -358,8 +358,9 @@ describe('Scene', () => {
 
     describe('.createWorkers(cb)', () => {
         let subject;
+
         beforeEach(() => {
-            sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
+            sinon.stub(Utils, 'io').returns(Promise.resolve('(function () {})'));
             subject = makeOne({});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
@@ -368,7 +369,7 @@ describe('Scene', () => {
         afterEach(() => {
             subject.destroy();
             subject = undefined;
-            Utils.xhr.restore();
+            Utils.io.restore();
         });
 
         it('calls the makeWorkers method', (done) => {
@@ -380,7 +381,7 @@ describe('Scene', () => {
 
         it('calls the xhr method', (done) => {
             subject.createWorkers(() => {
-                sinon.assert.called(Utils.xhr);
+                sinon.assert.called(Utils.io);
                 done();
             });
         });

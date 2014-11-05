@@ -7,7 +7,7 @@ import Utils from '../src/utils';
 
 describe('Utils', () => {
 
-    describe.only('io', () => {
+    describe('io', () => {
         let subject = Utils.io,
             xhr,
             request;

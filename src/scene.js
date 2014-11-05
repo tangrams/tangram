@@ -1186,10 +1186,6 @@ Scene.prototype.loadScene = function () {
     ]);
 };
 
-Scene.prototype.formatResouceUrl = function (url) {
-    return url + '?' + (+new Date());
-};
-
 Scene.prototype.parseResource = function (body) {
     var data = null;
     try {
@@ -1208,7 +1204,7 @@ Scene.prototype.parseResource = function (body) {
 Scene.prototype.loadResource = function (source, postLoad) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
-            Utils.io(this.formatResouceUrl(source)).then((body) => {
+            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
                 var data = this.parseResource(body);
                 postLoad(data);
                 resolve();

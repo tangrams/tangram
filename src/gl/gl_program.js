@@ -205,11 +205,14 @@ GLProgram.prototype.compile = function (callback)
     });
 };
 
-// Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
-// Can be async, calls 'complete' callback when done
+/**
+   Retrieve a single transform, for a given injection point, at a
+   certain index (to preserve original order) Can be async, calls
+   'complete' callback when done
+
+   Can be an inline block of GLSL, or a URL to retrieve GLSL block from
+*/
 GLProgram.loadTransform = function (transforms, block, key, index, complete) {
-    // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
-    var source;
 
     // Inline code
     if (typeof block === 'string') {
@@ -218,13 +221,10 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
-        Utils.xhr(block.url + '?' + (+new Date()), (error, response, body) => {
-            if (!error) {
-                source = body;
-                transforms[key].list[index] = source;
-            }
-            complete(error);
-        });
+        Utils.io(Utils.cacheBusterForUrl(block.url)).then((body) => {
+            transforms[key].list[index] = body;
+            complete();
+        }, complete);
     }
 };
 

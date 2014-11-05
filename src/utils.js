@@ -1,14 +1,12 @@
 // Miscellaneous utilities
 var Utils;
 export default Utils = {};
-import xhr from 'xhr';
 
-// allow for easier testing
-Utils.xhr = function (...args) {
-    xhr(...args);
+Utils.cacheBusterForUrl = function (url) {
+    return url + '?' + (+new Date());
 };
 
-Utils.io = function (url, timeout = 100, responseType = 'text', method = 'GET', headers = {}) {
+Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET', headers = {}) {
 
     var request = new XMLHttpRequest();
 
