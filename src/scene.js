@@ -919,7 +919,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
         }
 
         if (!tile.error) {
-            tile.buildGLGeometry(this.modes);
+            tile.finalizeGeometry(this.modes);
             this.dirty = true;
         }
         else {
@@ -930,98 +930,6 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
     this.trackTileSetLoadStop();
     tile.printDebug();
     this.trackTileBuildStop(tile.key);
-};
-
-// Process geometry for tile - called by web worker
-// Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-Scene.addTile = function (tile, layers, styles, modes) {
-    var layer, style, feature, mode;
-    var vertex_data = {};
-
-    // Build raw geometry arrays
-    // Render layers, and features within each layer, in reverse order - aka top to bottom
-    tile.debug.rendering = +new Date();
-    tile.debug.features = 0;
-    for (var layer_num = 0; layer_num < layers.length; layer_num++) {
-        layer = layers[layer_num];
-
-        // Skip layers with no styles defined, or layers set to not be visible
-        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
-            continue;
-        }
-
-        if (tile.layers[layer.name] != null) {
-            var num_features = tile.layers[layer.name].features.length;
-
-            for (var f = num_features-1; f >= 0; f--) {
-                feature = tile.layers[layer.name].features[f];
-                style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
-
-                // Skip feature?
-                if (style == null) {
-                    continue;
-                }
-
-                style.layer_num = layer_num;
-                style.z = Scene.calculateZ(layer, tile) + style.z;
-
-                var points = null,
-                    lines = null,
-                    polygons = null;
-
-                if (feature.geometry.type === 'Polygon') {
-                    polygons = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiPolygon') {
-                    polygons = feature.geometry.coordinates;
-                }
-                else if (feature.geometry.type === 'LineString') {
-                    lines = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiLineString') {
-                    lines = feature.geometry.coordinates;
-                }
-                else if (feature.geometry.type === 'Point') {
-                    points = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiPoint') {
-                    points = feature.geometry.coordinates;
-                }
-
-                // First feature in this render mode?
-                mode = style.mode.name;
-                if (vertex_data[mode] == null) {
-                    vertex_data[mode] = modes[mode].vertex_layout.createVertexData();
-                }
-
-                if (polygons != null) {
-                    modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
-                }
-
-                if (lines != null) {
-                    modes[mode].buildLines(lines, style, vertex_data[mode]);
-                }
-
-                if (points != null) {
-                    modes[mode].buildPoints(points, style, vertex_data[mode]);
-                }
-
-                tile.debug.features++;
-            }
-        }
-    }
-
-    tile.vertex_data = {};
-    for (var s in vertex_data) {
-        tile.vertex_data[s] = vertex_data[s].end().buffer;
-    }
-
-    tile.debug.rendering = +new Date() - tile.debug.rendering;
-
-    // Return keys to be transfered from 'tile' object to main thread
-    return {
-        vertex_data: true
-    };
 };
 
 // Track tile build state

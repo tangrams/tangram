@@ -3,6 +3,7 @@ import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {Style} from './style';
 import Scene  from './scene';
+import Tile from './tile';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
@@ -86,7 +87,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
                 else {
                     // Build geometry
                     Scene.processLayersForTile(SceneWorker.layers, tile);
-                    var keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+                    var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
                 }
 
                 resolve({
@@ -102,7 +103,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
         // Build geometry
-        var keys = Scene.addTile(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+        var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
 
         // TODO: should we rebuild layers here as well?
         // - if so, we need to save the raw un-processed tile data
