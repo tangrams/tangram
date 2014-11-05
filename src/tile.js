@@ -1,5 +1,7 @@
 /*global Tile */
 import {Geo} from './geo';
+import {Style} from './style';
+import WorkerBroker from './worker_broker';
 
 import log from 'loglevel';
 
@@ -15,7 +17,8 @@ export default class Tile {
             debug: {},
             loading: false,
             loaded: false,
-            error: null
+            error: null,
+            worker: null
         }, spec);
     }
 
@@ -45,29 +48,111 @@ export default class Tile {
         };
     }
 
-    build(scene) {
-        scene.trackTileBuildStart(this.key);
-        scene.workerPostMessageForTile(this, {
-            type: 'buildTile',
-            tile: this.buildAsMessage(),
-            tile_source: this.tile_source.buildAsMessage(),
-            layers: scene.layers_serialized,
-            styles: scene.styles_serialized
-        });
+    workerMessage (scene, ...message) {
+        if (this.worker == null) {
+            this.worker = scene.nextWorker();
+        }
+        WorkerBroker.postMessage(this.worker, ...message);
     }
 
-    remove(scene) {
-        scene.workerPostMessageForTile(this, {
-            type: 'removeTile',
-            key: this.key
-        });
+    build(scene) {
+        scene.trackTileBuildStart(this.key);
+        this.workerMessage(
+            scene,
+            'buildTile',
+            {
+                tile: this.buildAsMessage(),
+                tile_source: this.tile_source.buildAsMessage(),
+                layers: scene.layers_serialized,
+                styles: scene.styles_serialized
+            },
+            message => scene.buildTileCompleted(message)
+        );
+    }
+
+    // Process geometry for tile - called by web worker
+    // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
+    static buildGeometry (tile, layers, styles, modes) {
+        var layer, style, feature, mode;
+        var vertex_data = {};
+        var mode_vertex_data;
+
+        // Build raw geometry arrays
+        // Render layers, and features within each layer, in reverse order - aka top to bottom
+        tile.debug.rendering = +new Date();
+        tile.debug.features = 0;
+        for (var layer_num = 0; layer_num < layers.length; layer_num++) {
+            layer = layers[layer_num];
+
+            // Skip layers with no styles defined, or layers set to not be visible
+            if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
+                continue;
+            }
+
+            if (tile.layers[layer.name] != null) {
+                var num_features = tile.layers[layer.name].features.length;
+
+                for (var f = num_features-1; f >= 0; f--) {
+                    feature = tile.layers[layer.name].features[f];
+                    style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
+
+                    // Skip feature?
+                    if (style == null) {
+                        continue;
+                    }
+
+                    // First feature in this render mode?
+                    mode = modes[style.mode.name];
+                    if (vertex_data[mode.name] == null) {
+                        vertex_data[mode.name] = mode.vertex_layout.createVertexData();
+                    }
+                    mode_vertex_data = vertex_data[mode.name];
+
+                    style.layer_num = layer_num;
+
+                    if (feature.geometry.type === 'Polygon') {
+                        mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
+                    }
+                    else if (feature.geometry.type === 'MultiPolygon') {
+                        mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
+                    }
+                    else if (feature.geometry.type === 'LineString') {
+                        mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
+                    }
+                    else if (feature.geometry.type === 'MultiLineString') {
+                        mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
+                    }
+                    else if (feature.geometry.type === 'Point') {
+                        mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
+                    }
+                    else if (feature.geometry.type === 'MultiPoint') {
+                        mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                    }
+
+                    tile.debug.features++;
+                }
+            }
+        }
+
+        // Finalize array buffer for each render mode
+        tile.vertex_data = {};
+        for (var m in vertex_data) {
+            tile.vertex_data[m] = vertex_data[m].end().buffer;
+        }
+
+        tile.debug.rendering = +new Date() - tile.debug.rendering;
+
+        // Return keys to be transfered to main thread
+        return {
+            vertex_data: true
+        };
     }
 
     /**
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    buildGLGeometry(modes) {
+    finalizeGeometry(modes) {
         var vertex_data = this.vertex_data;
         // Cleanup existing GL geometry objects
         this.freeResources();
@@ -87,6 +172,10 @@ export default class Tile {
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 
         delete this.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+    }
+
+    remove(scene) {
+        this.workerMessage(scene, 'removeTile', this.key);
     }
 
     showDebug(div) {

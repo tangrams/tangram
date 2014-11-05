@@ -1,6 +1,7 @@
 /*global Scene */
 import {Geo} from './geo';
 import Utils from './utils';
+import WorkerBroker from './worker_broker';
 import {Style} from './style';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
@@ -19,7 +20,7 @@ var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
 // Global setup
-Utils.runIfInMainThread(() => {
+Utils.inMainThread(() => {
     // On main thread only (skip in web worker)
     findBaseLibraryURL();
     Utils.requestAnimationFramePolyfill();
@@ -172,12 +173,10 @@ Scene.prototype.initSelectionBuffer = function () {
     // Selection state tracking
     this.pixel = new Uint8Array(4);
     this.pixel32 = new Float32Array(this.pixel.buffer);
-    this.selection_point = {x: 0, y: 0};
+    this.selection_requests = {};
     this.selected_feature = null;
-    this.selection_callback = null;
     this.selection_callback_timer = null;
     this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
-    this.update_selection = false;
 
     // Frame buffer for selection
     // TODO: initiate lazily in case we don't need to do any selection
@@ -234,8 +233,7 @@ Scene.prototype.createWorkers = function (callback) {
     // Init workers
     queue.await(() => {
         this.workers.forEach((worker) => {
-            worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
-            worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
+            // TODO: add ability for broker to initiate messages FROM worker
             worker.addEventListener('message', this.workerLogMessage.bind(this));
         });
 
@@ -251,23 +249,19 @@ Scene.prototype.createWorkers = function (callback) {
 // Instantiate workers from URL
 Scene.prototype.makeWorkers = function (url) {
     this.workers = [];
-    for (var w=0; w < this.num_workers; w++) {
-        this.workers.push(new Worker(url));
-        this.workers[w].postMessage({
-            type: 'init',
-            worker_id: w,
-            num_workers: this.num_workers
-        });
+    for (var id=0; id < this.num_workers; id++) {
+        var worker = new Worker(url);
+        this.workers[id] = worker;
+        WorkerBroker.addWorker(worker);
+        WorkerBroker.postMessage(worker, 'init', { worker_id: id });
     }
 };
 
-// Post a message about a tile to the next worker (round robbin)
-Scene.prototype.workerPostMessageForTile = function (tile, message) {
-    if (tile.worker == null) {
-        tile.worker = this.next_worker;
-        this.next_worker = (tile.worker + 1) % this.workers.length;
-    }
-    this.workers[tile.worker].postMessage(message);
+// Round robin selection of next worker
+Scene.prototype.nextWorker = function () {
+    var worker = this.workers[this.next_worker];
+    this.next_worker = (this.next_worker + 1) % this.workers.length;
+    return worker;
 };
 
 Scene.prototype.setCenter = function (lng, lat, zoom) {
@@ -579,8 +573,7 @@ Scene.prototype.renderGL = function () {
     // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
     // mode program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
-    if (this.update_selection) {
-        this.update_selection = false; // reset selection check
+    if (Object.keys(this.selection_requests).length > 0) {
 
         // TODO: queue callback till panning is over? coords where selection was requested are out of date
         if (this.panning) {
@@ -651,7 +644,7 @@ Scene.prototype.renderGL = function () {
             clearTimeout(this.selection_callback_timer);
         }
         this.selection_callback_timer = setTimeout(
-            this.readSelectionBuffer.bind(this),
+            () => this.doFeatureSelectionRequests(),
             this.selection_frame_delay
         );
 
@@ -671,62 +664,84 @@ Scene.prototype.renderGL = function () {
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
 Scene.prototype.getFeatureAt = function (pixel, callback) {
+    if (typeof callback !== 'function') {
+        throw new Error("Scene.getFeatureAt() called without a valid callback function");
+    }
+
     if (!this.initialized) {
+        callback(new Error("Scene.getFeatureAt() called before scene was initialized"));
         return;
     }
 
-    // TODO: queue callbacks while still performing only one selection render pass within X time interval?
-    if (this.update_selection === true) {
-        return;
-    }
-
-    this.selection_point = {
-        x: pixel.x * this.device_pixel_ratio,
-        y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+    // Queue requests for feature selection, and they will be picked up by the render loop
+    this.selection_request_id = (this.selection_request_id + 1) || 0;
+    this.selection_requests[this.selection_request_id] = {
+        type: 'point',
+        id: this.selection_request_id,
+        point: {
+            // TODO: move this pixel calc to a GL wrapper
+            x: pixel.x * this.device_pixel_ratio,
+            y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+        },
+        callback
     };
-
-    this.selection_callback = callback;
-    this.update_selection = true;
-    this.dirty = true;
+    this.dirty = true; // need to make sure the scene re-renders for these to be processed
 };
 
-Scene.prototype.readSelectionBuffer = function () {
+Scene.prototype.doFeatureSelectionRequests = function () {
     var gl = this.gl;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
-    // Check selection map against FBO
-    gl.readPixels(
-        Math.floor(this.selection_point.x * this.fbo_size.width / this.device_size.width),
-        Math.floor(this.selection_point.y * this.fbo_size.height / this.device_size.height),
-        1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-    var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
-
-    // If feature found, ask appropriate web worker to lookup feature
-    var worker_id = this.pixel[3];
-    if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
-        if (this.workers[worker_id] != null) {
-            this.workers[worker_id].postMessage({
-                type: 'getFeatureSelection',
-                key: feature_key
-            });
+    for (var request of Utils.values(this.selection_requests)) {
+        // This request was already sent to the worker, we're just awaiting its reply
+        if (request.sent) {
+            continue;
         }
-    }
-    // No feature found, but still need to notify via callback
-    else {
-        this.workerGetFeatureSelection({ data: { type: 'getFeatureSelection', feature: null } });
+
+        // TODO: support other selection types, such as features within a box
+        if (request.type !== 'point') {
+            continue;
+        }
+
+        // Check selection map against FBO
+        gl.readPixels(
+            Math.floor(request.point.x * this.fbo_size.width / this.device_size.width),
+            Math.floor(request.point.y * this.fbo_size.height / this.device_size.height),
+            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
+        var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
+
+        // If feature found, ask appropriate web worker to lookup feature
+        var worker_id = this.pixel[3];
+        if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
+            if (this.workers[worker_id] != null) {
+                WorkerBroker.postMessage(
+                    this.workers[worker_id],
+                    'getFeatureSelection',
+                    { id: request.id, key: feature_key },
+                    message => this.workerGetFeatureSelection(message)
+                );
+            }
+        }
+        // No feature found, but still need to notify via callback
+        else {
+            this.workerGetFeatureSelection({ id: request.id, feature: null });
+        }
+
+        request.sent = true;
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
 
 // Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (event) {
-    if (event.data.type !== 'getFeatureSelection') {
-        return;
+Scene.prototype.workerGetFeatureSelection = function (message) {
+    var request = this.selection_requests[message.id];
+    if (!request) {
+        throw new Error("Scene.workerGetFeatureSelection() called without any message");
     }
 
-    var feature = event.data.feature;
+    var feature = message.feature;
     var changed = false;
     if ((feature != null && this.selected_feature == null) ||
         (feature == null && this.selected_feature != null) ||
@@ -734,11 +749,13 @@ Scene.prototype.workerGetFeatureSelection = function (event) {
         changed = true;
     }
 
-    this.selected_feature = feature;
+    this.selected_feature = feature; // store the most recently selected feature
 
-    if (typeof this.selection_callback === 'function') {
-        this.selection_callback({ feature: this.selected_feature, changed: changed });
+    // Send the feature info the callback
+    if (typeof request.callback === 'function') {
+        request.callback({ feature, changed, request });
     }
+    delete this.selection_requests[message.id]; // done processing this request
 };
 
 // Queue a tile for load
@@ -828,8 +845,7 @@ Scene.prototype.rebuildGeometry = function (callback) {
 
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
-        worker.postMessage({
-            type: 'prepareForRebuild',
+        WorkerBroker.postMessage(worker, 'prepareForRebuild', {
             layers: this.layers_serialized,
             styles: this.styles_serialized
         });
@@ -880,130 +896,35 @@ Scene.prototype.rebuildGeometry = function (callback) {
     }
 };
 
-// Process geometry for tile - called by web worker
-// Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-Scene.addTile = function (tile, layers, styles, modes) {
-    var layer, style, feature, mode;
-    var vertex_data = {};
-
-    // Build raw geometry arrays
-    // Render layers, and features within each layer, in reverse order - aka top to bottom
-    tile.debug.features = 0;
-    for (var layer_num = 0; layer_num < layers.length; layer_num++) {
-        layer = layers[layer_num];
-
-        // Skip layers with no styles defined, or layers set to not be visible
-        if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
-            continue;
-        }
-
-        if (tile.layers[layer.name] != null) {
-            var num_features = tile.layers[layer.name].features.length;
-
-            for (var f = num_features-1; f >= 0; f--) {
-                feature = tile.layers[layer.name].features[f];
-                style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
-
-                // Skip feature?
-                if (style == null) {
-                    continue;
-                }
-
-                style.layer_num = layer_num;
-                style.z = Scene.calculateZ(layer, tile) + style.z;
-
-                var points = null,
-                    lines = null,
-                    polygons = null;
-
-                if (feature.geometry.type === 'Polygon') {
-                    polygons = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiPolygon') {
-                    polygons = feature.geometry.coordinates;
-                }
-                else if (feature.geometry.type === 'LineString') {
-                    lines = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiLineString') {
-                    lines = feature.geometry.coordinates;
-                }
-                else if (feature.geometry.type === 'Point') {
-                    points = [feature.geometry.coordinates];
-                }
-                else if (feature.geometry.type === 'MultiPoint') {
-                    points = feature.geometry.coordinates;
-                }
-
-                // First feature in this render mode?
-                mode = style.mode.name;
-                if (vertex_data[mode] == null) {
-                    vertex_data[mode] = modes[mode].vertex_layout.createVertexData();
-                }
-
-                if (polygons != null) {
-                    modes[mode].buildPolygons(polygons, style, vertex_data[mode]);
-                }
-
-                if (lines != null) {
-                    modes[mode].buildLines(lines, style, vertex_data[mode]);
-                }
-
-                if (points != null) {
-                    modes[mode].buildPoints(points, style, vertex_data[mode]);
-                }
-
-                tile.debug.features++;
-            }
-        }
-    }
-
-    tile.vertex_data = {};
-    for (var s in vertex_data) {
-        tile.vertex_data[s] = vertex_data[s].end().buffer;
-    }
-
-    // Return keys to be transfered from 'tile' object to main thread
-    return {
-        vertex_data: true
-    };
-};
-
+// TODO: move to Tile class
 // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-Scene.prototype.workerBuildTileCompleted = function (event) {
-    if (event.data.type !== 'buildTileCompleted') {
-        return;
-    }
-
+Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_size }) {
     // Track selection map size (for stats/debug) - update per worker and sum across workers
-    this.selection_map_worker_size[event.data.worker_id] = event.data.selection_map_size;
+    this.selection_map_worker_size[worker_id] = selection_map_size;
     this.selection_map_size = 0;
-    for (var worker_id in this.selection_map_worker_size) {
-        this.selection_map_size += this.selection_map_worker_size[worker_id];
+    for (var wid in this.selection_map_worker_size) {
+        this.selection_map_size += this.selection_map_worker_size[wid];
     }
-    log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
-
-    var tile = Tile.create(Object.assign(
-        {}, event.data.tile, {tile_source: this.tile_source}
-    ));
 
     // Removed this tile during load?
-    if (!this.hasTile(tile.key)) {
-        log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
+    if (this.tiles[tile.key] == null) {
+        log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
     }
-    else if (!tile.error) {
+    else {
         var cached = this.tiles[tile.key];
 
         // Update tile with properties from worker
         if (cached) {
             tile = cached.merge(tile);
         }
-        tile.buildGLGeometry(this.modes);
-        this.dirty = true;
 
-    }
-    else {
-        log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
+        if (!tile.error) {
+            tile.finalizeGeometry(this.modes);
+            this.dirty = true;
+        }
+        else {
+            log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
+        }
     }
 
     this.trackTileSetLoadStop();
@@ -1029,6 +950,8 @@ Scene.prototype.trackTileBuildStop = function (key) {
         delete this.building.tiles[key];
         if (Object.keys(this.building.tiles).length === 0) {
             log.info(`Scene: build geometry finished`);
+            log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
+
             var callback = this.building.callback;
             if (typeof callback === 'function') {
                 callback(null, true); // notify build callback as completed
@@ -1063,7 +986,6 @@ Scene.prototype.removeTile = function (key)
     }
 
     this.forgetTile(tile.key);
-
     this.dirty = true;
 };
 
@@ -1402,7 +1324,7 @@ Scene.prototype.workerLogMessage = function (event) {
     var { worker_id, level, msg } = event.data;
 
     if (log[level]) {
-        log[level](`worker ${worker_id}: ${msg}`);
+        log[level](`worker ${worker_id}:`,  ...msg);
     }
     else {
         log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);

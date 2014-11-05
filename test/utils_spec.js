@@ -7,7 +7,8 @@ describe('Utils', () => {
     describe('.serializeWithFunctions(obj)', () => {});
     describe('.deserializeWithFunctions(serialized)', () => {});
     describe('.stringsToFunctions(obj)', () => {});
-    describe('.runIfInMainThread(block, err)', () => {});
+    describe('.inMainThread(block)', () => {});
+    describe('.inWorkerThread(block, err)', () => {});
 
     describe('.isPowerOf2(value)', () => {
         let subject = Utils.isPowerOf2;

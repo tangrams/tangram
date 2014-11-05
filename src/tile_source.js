@@ -122,6 +122,11 @@ export class NetworkTileSource extends TileSource {
         tile.url = url;
         tile.debug.network = +new Date();
 
+        tile.loading = true;
+        tile.loaded = false;
+        tile.layers = null;
+        tile.error = null;
+
         Utils.xhr({
             uri: url,
             timeout: 60 * 1000,
@@ -129,13 +134,16 @@ export class NetworkTileSource extends TileSource {
         }, (err, resp, body) => {
             // Tile load errored
             if (err) {
-                tile.loaded = false;
                 tile.loading = false;
+                tile.loaded = false;
+                tile.layers = null;
                 tile.error = err.toString();
-                return callback(err);
+                callback(err);
+                return;
             }
             // We already canceled the tile load, so just throw away the result
             else if (tile.loading === false) {
+                // TODO: call the callback here anyway? weird to leave it dangling
                 return;
             }
 
@@ -148,6 +156,7 @@ export class NetworkTileSource extends TileSource {
 
             tile.loading = false;
             tile.loaded = true;
+            tile.error = null;
 
             if (callback) {
                 callback(null, tile);

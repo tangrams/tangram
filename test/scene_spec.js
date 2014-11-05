@@ -76,7 +76,6 @@ describe('Scene', () => {
 
         beforeEach((done) => {
             subject = makeScene({});
-            sinon.stub(subject, 'workerPostMessageForTile');
             subject.setCenter(...nycLatLng);
             subject.init(done);
         });
