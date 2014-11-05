@@ -1,5 +1,6 @@
 /*global Tile */
 import {Geo} from './geo';
+import WorkerBroker from './worker_broker';
 
 export default class Tile {
 
@@ -13,7 +14,8 @@ export default class Tile {
             debug: {},
             loading: false,
             loaded: false,
-            error: null
+            error: null,
+            worker: null
         }, spec);
     }
 
@@ -43,10 +45,17 @@ export default class Tile {
         };
     }
 
+    workerMessage (scene, ...message) {
+        if (this.worker == null) {
+            this.worker = scene.nextWorker();
+        }
+        WorkerBroker.postMessage(this.worker, ...message);
+    }
+
     build(scene) {
         scene.trackTileBuildStart(this.key);
-        scene.workerPostMessageForTile(
-            this,
+        this.workerMessage(
+            scene,
             'buildTile',
             {
                 tile: this.buildAsMessage(),
@@ -59,7 +68,7 @@ export default class Tile {
     }
 
     remove(scene) {
-        scene.workerPostMessageForTile(this, 'removeTile', this.key);
+        this.workerMessage(scene, 'removeTile', this.key);
     }
 
     /**

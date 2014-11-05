@@ -257,14 +257,11 @@ Scene.prototype.makeWorkers = function (url) {
     }
 };
 
-// TODO: move to Tile class
-// Post a message about a tile to the next worker (round robbin)
-Scene.prototype.workerPostMessageForTile = function (tile, ...message) {
-    if (tile.worker == null) {
-        tile.worker = this.next_worker;
-        this.next_worker = (tile.worker + 1) % this.workers.length;
-    }
-    WorkerBroker.postMessage(this.workers[tile.worker], ...message);
+// Round robin selection of next worker
+Scene.prototype.nextWorker = function () {
+    var worker = this.workers[this.next_worker];
+    this.next_worker = (this.next_worker + 1) % this.workers.length;
+    return worker;
 };
 
 Scene.prototype.setCenter = function (lng, lat, zoom) {

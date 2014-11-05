@@ -57,16 +57,16 @@ describe('Tile', () => {
 
     describe('.build(scene, key)', () => {
         beforeEach(() => {
-            sinon.stub(scene, 'workerPostMessageForTile');
+            sinon.stub(subject, 'workerMessage');
         });
 
         afterEach(() => {
-            scene.workerPostMessageForTile.restore();
+            subject.workerMessage.restore();
         });
 
-        it('calls scene.workerPostMessageForTile()', () => {
+        it('calls .workerMessage()', () => {
             subject.build(scene);
-            sinon.assert.called(scene.workerPostMessageForTile);
+            sinon.assert.called(subject.workerMessage);
         });
     });
 
