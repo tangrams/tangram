@@ -2,6 +2,8 @@
 import {Geo} from './geo';
 import WorkerBroker from './worker_broker';
 
+import log from 'loglevel';
+
 export default class Tile {
 
     constructor(spec = {}) {
@@ -113,6 +115,10 @@ export default class Tile {
         return debug_overlay;
     }
 
+    printDebug () {
+        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+    }
+
     updateElement(div, scene) {
 
         div.setAttribute('data-tile-key', this.key);
@@ -143,7 +149,6 @@ export default class Tile {
         this.coords = {x, y, z};
         return [x, y, z].join('/');
     }
-
 
     load(scene, coords, div, cb) {
 
