@@ -74,23 +74,16 @@ Scene.prototype.init = function (callback) {
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
+
     this.loadScene().then(() => {
-        var queue = Queue();
-        // Create rendering modes
-        queue.defer(complete => {
-            this.modes = Scene.createModes(this.styles.modes);
-            this.updateActiveModes();
-            complete();
-        });
-
-        // Create web workers
-        queue.defer(complete => {
-            this.createWorkers(complete);
-        });
-
-        // Then create GL context
-        queue.await(() => {
-            // Create canvas & GL
+        Promise.all([
+            new Promise((resolve, reject) => {
+                this.modes = Scene.createModes(this.styles.modes);
+                this.updateActiveModes();
+                resolve();
+            }),
+            this.createWorkers()
+        ]).then((resolve, reject) => {
             this.container = this.container || document.body;
             this.canvas = document.createElement('canvas');
             this.canvas.style.position = 'absolute';
@@ -125,10 +118,12 @@ Scene.prototype.init = function (callback) {
             if (this.render_loop !== false) {
                 this.setupRenderLoop();
             }
+        }, (error) => {
+            throw error;
         });
-    }, (error) => {
-        callback(error);
+
     });
+
 };
 
 Scene.prototype.destroy = function () {
@@ -200,48 +195,43 @@ Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 
+Scene.prototype.buildWorkerUrl = function () {
+    return `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
+};
+
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
-Scene.prototype.createWorkers = function (callback) {
-    var queue = Queue();
-    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
-
-    // Load & instantiate workers
-    queue.defer((done) => {
-        // Local object URLs supported?
-
-        var createObjectURL = this.createObjectURL();
+Scene.prototype.createWorkers = function () {
+    return new Promise((resolve, reject) => {
+        var worker_url = this.buildWorkerUrl(),
+            createObjectURL = this.createObjectURL();
 
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             Utils.io(worker_url).then((body) => {
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
-                done();
-            }, (error) => {
-                throw error;
-            });
+                this.initWorkerEvents();
+                resolve();
+            }, reject);
 
         } else { // Traditional load from remote URL
             this.makeWorkers(worker_url);
-            done();
+           this.initWorkerEvents();
+            resolve();
         }
     });
+};
 
-    // Init workers
-    queue.await(() => {
-        this.workers.forEach((worker) => {
-            worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
-            worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
-            worker.addEventListener('message', this.workerLogMessage.bind(this));
-        });
-
-        this.next_worker = 0;
-        this.selection_map_worker_size = {};
-
-        if (typeof callback === 'function') {
-            callback();
-        }
+// Init workers events
+Scene.prototype.initWorkerEvents = function () {
+    this.workers.forEach((worker) => {
+        worker.addEventListener('message', this.workerBuildTileCompleted.bind(this));
+        worker.addEventListener('message', this.workerGetFeatureSelection.bind(this));
+        worker.addEventListener('message', this.workerLogMessage.bind(this));
     });
+
+    this.next_worker = 0;
+    this.selection_map_worker_size = {};
 };
 
 // Instantiate workers from URL
