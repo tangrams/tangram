@@ -10,7 +10,6 @@ import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
 
-import Queue from 'queue-async';
 import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
@@ -1258,8 +1257,6 @@ Scene.prototype.updateModes = function (callback) {
         return;
     }
     this.compiling = { callback };
-
-    var queue = Queue();
     var name;
 
     // Copy stylesheet modes
@@ -1268,24 +1265,17 @@ Scene.prototype.updateModes = function (callback) {
         this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
     }
 
-    // Compile all modes (async)
-    // for ([name, mode] of Utils.entries(this.modes)) { // jshint fails here
-    for (name in this.modes) {
-        queue.defer(
-            (_name, complete) => {
-                // Compile each mode and mark as done
-                this.modes[_name].compile((error) => {
-                    log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
-                    complete(error);
-                });
-            },
-            name
-        );
-    }
-
-    // Wait for all modes to finish compiling
-    queue.await((error) => {
-        log.debug(`Scene.updateModes(): compiled all modes ${error ? error : ''}`);
+    Promise.all(Object.keys(this.modes).map((_name) => {
+        var mode = this.modes[_name];
+        return new Promise((resolve, reject) => {
+            mode.compile((error) => {
+                if (error) { reject(error); }
+                log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
+                resolve();
+            });
+        });
+    })).then(() => {
+        log.debug(`Scene.updateModes(): compiled all modes`);
 
         this.dirty = true;
 
@@ -1294,14 +1284,19 @@ Scene.prototype.updateModes = function (callback) {
         this.compiling = null;
 
         // Complete this callback
-        callback(error);
+        callback();
 
         // Another request queued?
         if (queued) {
             log.trace(`Scene.updateModes(): starting queued request`);
             this.updateModes(queued.callback);
         }
+
+    }, (error) => {
+        callback(error);
     });
+
+    // Wait for all modes to finish compiling
 };
 
 Scene.prototype.updateActiveModes = function () {
