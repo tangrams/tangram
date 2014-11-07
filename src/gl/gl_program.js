@@ -73,8 +73,7 @@ GLProgram.removeTransform = function (key) {
     GLProgram.transforms[key] = [];
 };
 
-GLProgram.prototype.compile = function (callback)
-{
+GLProgram.prototype.compile = function (callback) {
     callback = (typeof callback === 'function') ? callback : function(){};
 
     if (this.compiling) {
@@ -85,7 +84,7 @@ GLProgram.prototype.compile = function (callback)
     this.compiled = false;
 
     var queue = Queue();
-
+    var work_queue = [];
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
     this.computed_fragment_shader = this.fragment_shader;
@@ -138,21 +137,23 @@ GLProgram.prototype.compile = function (callback)
 
         // Get the code (possibly over the network, so needs to be async)
         for (var u=0; u < transform.length; u++) {
-            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+            work_queue.push(new Promise((resolve, reject) => {
+                GLProgram.loadTransform(loaded_transforms, transform[u], key, u, resolve, reject);
+            }));
+//            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
         }
 
         // Add a #define for this injection point
         defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
-    // When all transform code snippets are collected, combine and inject them
-    queue.await(error => {
+    Promise.all(work_queue).then(() => {
         this.compiling = false;
 
-        if (error) {
-            callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
-            return;
-        }
+        // if (error) {
+        //     callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
+        //     return;
+        // }
 
         // Do the code injection with the collected sources
         for (var t in loaded_transforms) {
@@ -202,7 +203,11 @@ GLProgram.prototype.compile = function (callback)
         this.refreshAttributes();
 
         callback();
+
+    }, (error) => {
+        throw error;
     });
+    // When all transform code snippets are collected, combine and inject them
 };
 
 /**
@@ -212,19 +217,19 @@ GLProgram.prototype.compile = function (callback)
 
    Can be an inline block of GLSL, or a URL to retrieve GLSL block from
 */
-GLProgram.loadTransform = function (transforms, block, key, index, complete) {
+GLProgram.loadTransform = function (transforms, block, key, index, onHappy, onError) {
 
     // Inline code
     if (typeof block === 'string') {
         transforms[key].list[index] = block;
-        complete();
+        onHappy();
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
         Utils.io(Utils.cacheBusterForUrl(block.url)).then((body) => {
             transforms[key].list[index] = body;
-            complete();
-        }, complete);
+            onHappy();
+        }, onError);
     }
 };
 

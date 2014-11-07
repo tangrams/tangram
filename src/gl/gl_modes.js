@@ -94,46 +94,32 @@ RenderMode.makeGLProgram = function (callback)
     var selection_program = this.selection_gl_program;
 
     queue.defer(complete => {
-        // if (!program) {
-            program = new GLProgram(
-                this.gl,
-                shader_sources[this.vertex_shader_key],
-                shader_sources[this.fragment_shader_key],
-                {
-                    defines: defines,
-                    transforms: transforms,
-                    name: this.name,
-                    callback: complete
-                }
-            );
-        // }
-        // else {
-        //     program.defines = defines;
-        //     program.transforms = transforms;
-        //     program.compile(complete);
-        // }
+        program = new GLProgram(
+            this.gl,
+            shader_sources[this.vertex_shader_key],
+            shader_sources[this.fragment_shader_key],
+            {
+                defines: defines,
+                transforms: transforms,
+                name: this.name,
+                callback: complete
+            }
+        );
     });
 
     if (this.selection) {
         queue.defer(complete => {
-            // if (!selection_program) {
-                selection_program = new GLProgram(
-                    this.gl,
-                    shader_sources[this.vertex_shader_key],
-                    shader_sources['selection_fragment'],
-                    {
-                        defines: selection_defines,
-                        transforms: transforms,
-                        name: (this.name + ' (selection)'),
-                        callback: complete
-                    }
-                );
-            // }
-            // else {
-            //     selection_program.defines = selection_defines;
-            //     selection_program.transforms = transforms;
-            //     selection_program.compile(complete);
-            // }
+            selection_program = new GLProgram(
+                this.gl,
+                shader_sources[this.vertex_shader_key],
+                shader_sources['selection_fragment'],
+                {
+                    defines: selection_defines,
+                    transforms: transforms,
+                    name: (this.name + ' (selection)'),
+                    callback: complete
+                }
+            );
         });
     }
 
