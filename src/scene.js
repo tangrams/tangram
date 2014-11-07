@@ -1414,16 +1414,16 @@ Scene.createModes = function (stylesheet_modes) {
 // Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
 function findBaseLibraryURL () {
     Scene.library_base_url = '';
-    Scene.library_type = 'debug';
+    Scene.library_type = '';
     var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
     for (var s=0; s < scripts.length; s++) {
         var match = scripts[s].src.indexOf('tangram.debug.js');
         if (match >= 0) {
             Scene.library_type = 'debug';
+            Scene.library_base_url = scripts[s].src.substr(0, match);
+            break;
         }
-        else {
-            match = scripts[s].src.indexOf('tangram.min.js');
-        }
+        match = scripts[s].src.indexOf('tangram.min.js');
         if (match >= 0) {
             Scene.library_type = 'min';
             Scene.library_base_url = scripts[s].src.substr(0, match);
