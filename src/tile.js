@@ -119,7 +119,7 @@ export default class Tile {
                     else if (feature.geometry.type === 'LineString') {
                         // separate layers by sort_key, so the outlines of roads with
                         // higher sort_keys will overlap those with lower
-                        style.layer_num -= feature.properties.sort_key * -.01;
+                        style.layer_num -= feature.properties.sort_key * -.00025;
                         mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
                     }
                     else if (feature.geometry.type === 'MultiLineString') {
