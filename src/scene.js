@@ -1411,23 +1411,20 @@ Scene.createModes = function (stylesheet_modes) {
 // Private/internal
 
 // Get base URL from which the library was loaded
-// Used to load additional resources like shaders, textures, etc. in cases where library was loaded from a relative path
+// Used to load worker script file, with the assumption that it resides alongside the main script file (by default)
 function findBaseLibraryURL () {
     Scene.library_base_url = '';
-    Scene.library_type = 'debug';
-    var scripts = document.getElementsByTagName('script'); // document.querySelectorAll('script[src*=".js"]');
-    for (var s=0; s < scripts.length; s++) {
-        var match = scripts[s].src.indexOf('tangram.debug.js');
-        if (match >= 0) {
-            Scene.library_type = 'debug';
-        }
-        else {
-            match = scripts[s].src.indexOf('tangram.min.js');
-        }
-        if (match >= 0) {
-            Scene.library_type = 'min';
-            Scene.library_base_url = scripts[s].src.substr(0, match);
-            break;
-        }
+    Scene.library_type = 'min'; // default unless matching debug/test build
+
+    // Find currently executing script
+    var script = document.currentScript;
+    if (!script) {
+        return;
+    }
+    Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+
+    // Check if we're using a debug/test build
+    if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
+        Scene.library_type = 'debug';
     }
 }

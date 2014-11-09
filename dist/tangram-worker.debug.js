@@ -18155,20 +18155,16 @@ Scene.createModes = function(stylesheet_modes) {
 };
 function findBaseLibraryURL() {
   Scene.library_base_url = '';
-  Scene.library_type = 'debug';
-  var scripts = document.getElementsByTagName('script');
-  for (var s = 0; s < scripts.length; s++) {
-    var match = scripts[s].src.indexOf('tangram.debug.js');
-    if (match >= 0) {
-      Scene.library_type = 'debug';
-    } else {
-      match = scripts[s].src.indexOf('tangram.min.js');
-    }
-    if (match >= 0) {
-      Scene.library_type = 'min';
-      Scene.library_base_url = scripts[s].src.substr(0, match);
-      break;
-    }
+  Scene.library_type = 'min';
+  var script = document.currentScript;
+  if (!script) {
+    return;
+  }
+  Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+  if (['debug', 'test'].some((function(build) {
+    return script.src.indexOf(("tangram." + build + ".js")) > -1;
+  }))) {
+    Scene.library_type = 'debug';
   }
 }
 
