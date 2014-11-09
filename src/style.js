@@ -123,6 +123,7 @@ Style.defaults = {
     extrude: false,
     height: 20,
     min_height: 0,
+    order: 0,
     outline: {
         // color: [1.0, 0, 0],
         // width: 1,
@@ -204,6 +205,16 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.z === 'function') {
         style.z = style.z(feature, tile, Style.helpers);
     }
+
+    // Adjusts feature render order *within* the overall layer
+    // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
+    // but all features on layers below this one will be drawn underneath, all features on layers above this one
+    // will be drawn on top
+    style.order = layer_style.order || Style.defaults.order;
+    if (typeof style.order === 'function') {
+        style.order = style.order(feature, tile, Style.helpers);
+    }
+    style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
 
     style.outline = {};
     layer_style.outline = layer_style.outline || {};

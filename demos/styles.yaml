@@ -413,6 +413,8 @@ layers:
 
     roads:
         interactive: function () { return (zoom >= 18); }
+        order: function () { return feature.sort_key * .000025; }
+        # order: "function () { return (feature.sort_key * .000025) - (feature.outline ? .0001 : 0); }"
         color:
             # default: Style.color.randomColor
             default: [0.4, 0.4, 0.4]

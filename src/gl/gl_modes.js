@@ -330,7 +330,7 @@ Polygons.buildPolygons = function (polygons, style, vertex_data)
 
         // Polygon outlines sit over current layer but underneath the one above
         // TODO: address inconsistency with line outlines
-        vertex_template[this.vertex_layout.index.a_layer] += 0.25;
+        vertex_template[this.vertex_layout.index.a_layer] += 0.0001;
 
         for (var mpc=0; mpc < polygons.length; mpc++) {
             GLBuilders.buildPolylines(
@@ -377,7 +377,7 @@ Polygons.buildLines = function (lines, style, vertex_data)
         // TODO: address inconsistency with polygon outlines
         // TODO: need more fine-grained styling controls for outlines
         // (see complex road interchanges where casing outlines should be interleaved by road type)
-        vertex_template[this.vertex_layout.index.a_layer] -= 0.25;
+        vertex_template[this.vertex_layout.index.a_layer] -= 0.0001;
 
         GLBuilders.buildPolylines(
             lines,

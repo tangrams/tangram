@@ -108,7 +108,11 @@ export default class Tile {
                     }
                     mode_vertex_data = vertex_data[mode.name];
 
-                    style.layer_num = layer_num;
+                    // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
+                    // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
+                    //  this one, all features on subsequent layers are drawn on top of this one
+                    style.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
+                    style.layer_num += style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
 
                     if (feature.geometry.type === 'Polygon') {
                         mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
@@ -117,9 +121,6 @@ export default class Tile {
                         mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
                     }
                     else if (feature.geometry.type === 'LineString') {
-                        // separate layers by sort_key, so the outlines of roads with
-                        // higher sort_keys will overlap those with lower
-                        style.layer_num -= feature.properties.sort_key * -.00025;
                         mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
                     }
                     else if (feature.geometry.type === 'MultiLineString') {
