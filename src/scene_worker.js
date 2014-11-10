@@ -85,6 +85,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
                 });
             }, (error) => {
                 SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
+                resolve();
             });
         });
     }
