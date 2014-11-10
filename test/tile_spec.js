@@ -1,10 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
-
-// import {makeScene} from './utils';
 import samples from './fixtures/samples';
-
 import TileSource  from '../src/tile_source';
 import Scene       from '../src/scene';
 import sampleScene from './fixtures/sample-scene';

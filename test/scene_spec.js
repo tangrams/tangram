@@ -4,9 +4,18 @@ import Utils from '../src/utils';
 import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
-
-import {makeScene} from './test_helpers.js';
 import sampleScene from './fixtures/sample-scene';
+
+function makeScene(options) {
+    options = options || {};
+    options.disableRenderLoop = true;
+    return new Scene(
+        TileSource.create(_.clone(sampleScene.tile_source)),
+        sampleScene.layers,
+        sampleScene.styles,
+        options
+    );
+}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
