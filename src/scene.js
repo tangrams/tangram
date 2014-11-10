@@ -9,7 +9,6 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
-import Queue from 'queue-async';
 import yaml from 'js-yaml';
 import Tile from './tile';
 import TileSource from './tile_source';
@@ -83,23 +82,15 @@ Scene.prototype.init = function (callback) {
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene(() => {
-        var queue = Queue();
-        // Create rendering modes
-        queue.defer((complete) => {
-            this.modes = Scene.createModes(this.styles.modes);
-            this.updateActiveModes();
-            complete();
-        });
-
-        // Create web workers
-        queue.defer((complete) => {
-            this.createWorkers(complete);
-        });
-
-        // Then create GL context
-        queue.await(() => {
-            // Create canvas & GL
+    this.loadScene().then(() => {
+        Promise.all([
+            new Promise((resolve, reject) => {
+                this.modes = Scene.createModes(this.styles.modes);
+                this.updateActiveModes();
+                resolve();
+            }),
+            this.createWorkers()
+        ]).then((resolve, reject) => {
             this.container = this.container || document.body;
             this.canvas = document.createElement('canvas');
             this.canvas.style.position = 'absolute';
@@ -107,18 +98,14 @@ Scene.prototype.init = function (callback) {
             this.canvas.style.left = 0;
             this.canvas.style.zIndex = -1;
             this.container.appendChild(this.canvas);
-
             this.gl = GL.getContext(this.canvas);
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
-
             // this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
-
             this.createCamera();
             this.createLighting();
             this.initSelectionBuffer();
-
             // Init GL context for modes
             for (var mode of Utils.values(this.modes)) {
                 mode.setGL(this.gl);
@@ -130,12 +117,14 @@ Scene.prototype.init = function (callback) {
                     callback();
                 }
             });
-
             if (this.render_loop !== false) {
                 this.setupRenderLoop();
             }
+        }, (error) => {
+            throw error;
         });
     });
+
 };
 
 Scene.prototype.destroy = function () {
@@ -205,45 +194,38 @@ Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 
-// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
-Scene.prototype.createWorkers = function (callback) {
-    var queue = Queue();
-    // TODO, we should move the url to a config file
-    var worker_url = `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
+Scene.prototype.buildWorkerUrl = function () {
+    return `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
+};
 
-    // Load & instantiate workers
-    queue.defer((done) => {
-        // Local object URLs supported?
-        var createObjectURL = this.createObjectURL();
+// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
+Scene.prototype.createWorkers = function () {
+    return new Promise((resolve, reject) => {
+        var worker_url = this.buildWorkerUrl(),
+            createObjectURL = this.createObjectURL();
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
-
-            Utils.xhr(worker_url, (error, resp, body) => {
-                if (error) { throw error; }
+            Utils.io(worker_url).then((body) => {
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
-                done();
-            });
+                this.initWorkerEvents();
+                resolve();
+            }, reject);
         } else { // Traditional load from remote URL
             this.makeWorkers(worker_url);
-            done();
+            this.initWorkerEvents();
+            resolve();
         }
     });
+};
 
-    // Init workers
-    queue.await(() => {
-        this.workers.forEach((worker) => {
-            // TODO: add ability for broker to initiate messages FROM worker
-            worker.addEventListener('message', this.workerLogMessage.bind(this));
-        });
-
-        this.next_worker = 0;
-        this.selection_map_worker_size = {};
-
-        if (typeof callback === 'function') {
-            callback();
-        }
+// Init workers events
+Scene.prototype.initWorkerEvents = function () {
+    this.workers.forEach((worker) => {
+        worker.addEventListener('message', this.workerLogMessage.bind(this));
     });
+    this.next_worker = 0;
+    this.selection_map_worker_size = {};
 };
 
 // Instantiate workers from URL
@@ -989,116 +971,77 @@ Scene.prototype.removeTile = function (key)
     this.dirty = true;
 };
 
-// Load (or reload) the scene config
-Scene.prototype.loadScene = function (callback) {
-    var queue = Queue();
+/**
+   Load (or reload) the scene config
+   @return {Promise}
+*/
+Scene.prototype.loadScene = function () {
+    return Promise.all([
+        this.loadLayers(this.layer_source),
+        this.loadStyles(this.style_source)
+    ]);
+};
 
-    queue.defer(complete => {
-        this.loadLayers(this.layer_source, complete);
-    });
+Scene.prototype.parseResource = function (body) {
+    var data = null;
+    try {
+        eval('data = ' + body); // jshint ignore:line
+    } catch (e) {
+        try {
+            data = yaml.safeLoad(body);
+        } catch (e) {
+            log.error('Scene: failed to parse');
+            log.error(e);
+        }
+    }
+    return data;
+};
 
-    queue.defer(complete => {
-        this.loadStyles(this.style_source, complete);
-    });
-
-    // Everything is loaded
-    queue.await(function() {
-        if (typeof callback === 'function') {
-            callback();
+Scene.prototype.loadResource = function (source, postLoad) {
+    return new Promise((resolve, reject) => {
+        if (typeof source === 'string') {
+            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
+                var data = this.parseResource(body);
+                postLoad(data);
+                resolve();
+            }, reject);
+        } else {
+            postLoad(source);
+            resolve();
         }
     });
 };
 
-Scene.prototype.loadLayers = function (source, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
 
-    // URL was passed in
-    if (typeof source === 'string') {
-        Utils.xhr(source + '?' + (+new Date()), (error, resp, body) => {
-            if (error) {
-                throw error;
-            }
-
-            // Try JSON first, then YAML (if available)
-            var layers;
-            try {
-                eval('layers = ' + body); // jshint ignore:line
-            } catch (e) {
-                try {
-                    layers = yaml.safeLoad(body);
-                } catch (e) {
-                    log.error('Scene: failed to parse layers');
-                    log.error(layers);
-                    layers = null;
-                    // TODO: throw error here?
-                }
-            }
-
-            // Pre-processing
-            this.layers = layers;
-            this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-            callback();
-        });
-    }
-    // Existing JS object was passed in
-    else {
-        // Pre-processing
-        this.layers = source;
+Scene.prototype.loadLayers = function (source) {
+    return this.loadResource(source, (data) => {
+        this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-        callback();
-    }
+    });
 };
 
-Scene.prototype.loadStyles = function (source, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
-    // URL was passed in
-    if (typeof source === 'string') {
-        Utils.xhr(source + '?' + (+new Date()), (error, response, body) => {
-            if (error) { throw error; }
-            var styles;
-            // Try JSON first, then YAML (if available)
-            try {
-                eval('styles = ' + body); // jshint ignore:line
-            } catch (e) {
-                try {
-                    styles = yaml.safeLoad(body);
-                } catch (e) {
-                    log.error('Scene: failed to parse styles');
-                    log.error(styles);
-                    styles = null;
-                    // TODO: throw error here?
-                }
-            }
-
-            // Pre-processing
-            this.styles = styles;
-            Style.expandMacros(this.styles);
-            Scene.preProcessStyles(this.styles);
-            this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-            callback();
-        });
-    }
-    // Existing JS object was passed in
-    else {
-        // Pre-processing
-        this.styles = source;
+Scene.prototype.loadStyles = function (source) {
+    return this.loadResource(source, (styles) => {
+        this.styles = styles;
         Style.expandMacros(this.styles);
         Scene.preProcessStyles(this.styles);
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-        callback();
-    }
+    });
 };
+
 // Reload scene config and rebuild tiles
 Scene.prototype.reload = function () {
     if (!this.initialized) {
         return;
     }
 
-    this.loadScene(() => {
+    this.loadScene().then(() => {
         this.updateStyles();
         this.rebuildGeometry();
+    }, (error) => {
+        throw error;
     });
+
 };
 
 // Called (currently manually) after modes are updated in stylesheet
@@ -1119,11 +1062,10 @@ Scene.prototype.updateModes = function (callback) {
 
         // Save queued request
         this.compiling.queued = { callback };
-        return;
+        return callback();
     }
     this.compiling = { callback };
 
-    var queue = Queue();
     var name;
 
     // Copy stylesheet modes
@@ -1134,22 +1076,18 @@ Scene.prototype.updateModes = function (callback) {
 
     // Compile all modes (async)
     // for ([name, mode] of Utils.entries(this.modes)) { // jshint fails here
-    for (name in this.modes) {
-        queue.defer(
-            (_name, complete) => {
-                // Compile each mode and mark as done
-                this.modes[_name].compile((error) => {
-                    log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
-                    complete(error);
-                });
-            },
-            name
-        );
-    }
 
-    // Wait for all modes to finish compiling
-    queue.await((error) => {
-        log.debug(`Scene.updateModes(): compiled all modes ${error ? error : ''}`);
+    Promise.all(Object.keys(this.modes).map((_name) => {
+        var mode = this.modes[_name];
+        return new Promise((resolve, reject) => {
+            mode.compile((error) => {
+                if (error) { reject(error); }
+                log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
+                resolve();
+            });
+        });
+    })).then(() => {
+        log.debug(`Scene.updateModes(): compiled all modes`);
 
         this.dirty = true;
 
@@ -1158,14 +1096,17 @@ Scene.prototype.updateModes = function (callback) {
         this.compiling = null;
 
         // Complete this callback
-        callback(error);
+        callback(null);
 
         // Another request queued?
         if (queued) {
             log.trace(`Scene.updateModes(): starting queued request`);
             this.updateModes(queued.callback);
         }
+    }, (error) => {
+        callback(error);
     });
+
 };
 
 Scene.prototype.updateActiveModes = function () {

@@ -88,7 +88,7 @@ export default class TileSource {
         return tile;
     }
 
-    loadTile(tile, callback) { throw new MethodNotImplemented('loadTile'); }
+    loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
 }
 
 
@@ -110,57 +110,33 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    loadTile (tile, callback) {
-
+    loadTile (tile) {
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
-
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
-
         tile.url = url;
         tile.debug.network = +new Date();
-
-        tile.loading = true;
-        tile.loaded = false;
-        tile.layers = null;
-        tile.error = null;
-
-        Utils.xhr({
-            uri: url,
-            timeout: 60 * 1000,
-            responseType: this.response_type
-        }, (err, resp, body) => {
-            // Tile load errored
-            if (err) {
+        return new Promise((resolve, reject) => {
+            Utils.io(url, 60 * 100, this.response_type).then((body) => {
+                if (tile.loading === false) {
+                    reject(); // what should we do here?
+                }
+                tile.debug.response_size = body.length || body.byteLength;
+                tile.debug.network = +new Date() - tile.debug.network;
+                tile.debug.parsing = +new Date();
+                this.parseTile(tile, body);
+                tile.debug.parsing = +new Date() - tile.debug.parsing;
                 tile.loading = false;
+                tile.loaded = true;
+                resolve(tile);
+            }, (err) => {
                 tile.loaded = false;
-                tile.layers = null;
+                tile.loading = false;
                 tile.error = err.toString();
-                callback(err);
-                return;
-            }
-            // We already canceled the tile load, so just throw away the result
-            else if (tile.loading === false) {
-                // TODO: call the callback here anyway? weird to leave it dangling
-                return;
-            }
-
-            tile.debug.response_size = body.length || body.byteLength;
-            tile.debug.network = +new Date() - tile.debug.network;
-
-            tile.debug.parsing = +new Date();
-            this.parseTile(tile, body);
-            tile.debug.parsing = +new Date() - tile.debug.parsing;
-
-            tile.loading = false;
-            tile.loaded = true;
-            tile.error = null;
-
-            if (callback) {
-                callback(null, tile);
-            }
+                reject(err);
+            });
         });
     }
 

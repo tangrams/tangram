@@ -5,19 +5,8 @@ import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
 
-// import {makeScene} from './utils';
+import {makeScene} from './utils';
 import sampleScene from './fixtures/sample-scene';
-
-function makeScene(options) {
-    options = options || {};
-    options.disableRenderLoop = true;
-    return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.layers,
-        sampleScene.styles,
-        options
-    );
-}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
@@ -431,8 +420,9 @@ describe('Scene', () => {
 
     describe('.updateModes(callback)', () => {
         let subject;
+
         beforeEach((done) => {
-            subject = makeScene({});
+            subject = makeScene();
             subject.init(done);
         });
 
@@ -515,7 +505,7 @@ describe('Scene', () => {
     describe('.createWorkers(cb)', () => {
         let subject;
         beforeEach(() => {
-            sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, '(function () { return this; })');
+            sinon.stub(Utils, 'io').returns(Promise.resolve('(function () {})'));
             subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
@@ -524,25 +514,25 @@ describe('Scene', () => {
         afterEach(() => {
             subject.destroy();
             subject = null;
-            Utils.xhr.restore();
+            Utils.io.restore();
         });
 
         it('calls the makeWorkers method', (done) => {
-            subject.createWorkers(() => {
+            subject.createWorkers().then(() => {
                 sinon.assert.called(subject.makeWorkers);
                 done();
             });
         });
 
         it('calls the xhr method', (done) => {
-            subject.createWorkers(() => {
-                sinon.assert.called(Utils.xhr);
+            subject.createWorkers().then(() => {
+                sinon.assert.called(Utils.io);
                 done();
             });
         });
 
         it('calls the createObjectUrl', (done) => {
-            subject.createWorkers(() => {
+            subject.createWorkers().then(() => {
                 sinon.assert.called(subject.createObjectURL);
                 done();
             });
