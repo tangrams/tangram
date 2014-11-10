@@ -98,14 +98,18 @@ Scene.prototype.init = function (callback) {
             this.canvas.style.left = 0;
             this.canvas.style.zIndex = -1;
             this.container.appendChild(this.canvas);
+
             this.gl = GL.getContext(this.canvas);
             this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+
             // this.zoom_step = 0.02; // for fractional zoom user adjustment
             this.last_render_count = null;
             this.initInputHandlers();
+
             this.createCamera();
             this.createLighting();
             this.initSelectionBuffer();
+
             // Init GL context for modes
             for (var mode of Utils.values(this.modes)) {
                 mode.setGL(this.gl);
@@ -117,6 +121,7 @@ Scene.prototype.init = function (callback) {
                     callback();
                 }
             });
+
             if (this.render_loop !== false) {
                 this.setupRenderLoop();
             }
@@ -124,7 +129,6 @@ Scene.prototype.init = function (callback) {
             throw error;
         });
     });
-
 };
 
 Scene.prototype.destroy = function () {
