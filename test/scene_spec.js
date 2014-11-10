@@ -2,17 +2,25 @@ import chai from 'chai';
 let assert = chai.assert;
 import Utils from '../src/utils';
 import Scene from '../src/scene';
+import Tile from '../src/tile';
+import TileSource from '../src/tile_source';
+
+// import {makeScene} from './utils';
 import sampleScene from './fixtures/sample-scene';
 
-let makeOne;
-makeOne = ({options}) => {
+function makeScene(options) {
     options = options || {};
-    // options.disableRenderLoop = (options.disableRenderLoop === undefined) ? true : options.disableRenderLoop;
     options.disableRenderLoop = true;
-    return new Scene(sampleScene.tileSource, sampleScene.layers, sampleScene.styles, options);
-};
+    return new Scene(
+        TileSource.create(_.clone(sampleScene.tile_source)),
+        sampleScene.layers,
+        sampleScene.styles,
+        options
+    );
+}
 
-let nycLatLng = [-73.97229909896852, 40.76456761707639];
+let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
+let midtownTile = { x: 38603, y: 49255, z: 17 };
 
 describe('Scene', () => {
 
@@ -24,7 +32,7 @@ describe('Scene', () => {
         });
 
         describe('when given sensible defaults', () => {
-            let scene = makeOne({});
+            let scene = makeScene({});
             it('returns a instance', () => {
                 assert.instanceOf(scene, Scene);
                 scene.destroy();
@@ -32,54 +40,148 @@ describe('Scene', () => {
         });
     });
 
+    describe('.loadQueuedTiles()', () => {
+        let subject;
+
+        beforeEach((done) => {
+            let coords = midtownTile,
+                div    = document.createElement('div');
+
+            subject = makeScene({});
+
+            sinon.spy(subject, '_loadTile');
+
+            subject.setCenter(...nycLatLng);
+            subject.init(() => {
+                subject.loadTile(coords, div);
+                subject.loadQueuedTiles();
+                done();
+            });
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = null;
+        });
+
+        it('calls _loadTile with the queued tile', () => {
+            sinon.assert.calledOnce(subject._loadTile);
+        });
+    });
+
+    describe('._loadTile(coords, div, cb)', () => {
+        let subject,
+            coord = midtownTile,
+            div = document.createElement('div');
+
+        beforeEach((done) => {
+            subject = makeScene({});
+            sinon.stub(subject, 'workerPostMessageForTile');
+            subject.setCenter(...nycLatLng);
+            subject.init(done);
+        });
+
+        afterEach(() => {
+            subject.destroy();
+            subject = null;
+        });
+
+        describe('when the scene has not loaded the tile', () => {
+
+            it('loads the tile', (done) => {
+                subject._loadTile(coord, div, (er, div, tile) => {
+                    assert.instanceOf(tile, Tile);
+                    done();
+                });
+            });
+
+            it('caches the result in the scene object', (done) => {
+                subject._loadTile(coord, div, (er, div, tile) => {
+                    let tiles = subject.tiles;
+                    assert.instanceOf(tiles[tile.key], Tile);
+                    done();
+                });
+            });
+        });
+
+        describe('when the scene already have the tile', () => {
+            let key = '2621440/2621440/20';
+
+            beforeEach(() => {
+                subject.tiles[key] = {};
+                sinon.spy(subject, 'cacheTile');
+            });
+
+            afterEach(() => {
+                subject.cacheTile.restore();
+                subject.tiles[key] = undefined;
+            });
+
+            it('calls back with the div', (done) => {
+                subject._loadTile(coord, div, (error, div) => {
+                    assert.isNull(error);
+                    assert.instanceOf(div, HTMLElement);
+                    done();
+                });
+            });
+        });
+
+    });
+
     describe('.create(options)', () => {
         let subject;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
+
         });
 
         afterEach( () => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, Scene);
         });
+
+        it('correctly sets the value of the tile source', () => {
+            assert.instanceOf(subject.tile_source, TileSource);
+        });
+
+        it('correctly sets the value of the layers object', () => {
+            assert.equal(subject.layer_source, sampleScene.layers);
+        });
+
+        it('correctly sets the value of the styles object', () => {
+            assert.equal(subject.style_source, sampleScene.styles);
+        });
+
+
     });
 
     describe('.init(callback)', () => {
-        let subject;
-        beforeEach(() => {
-            subject = makeOne({});
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
 
         describe('when the scene is not initialized', () => {
+            let subject;
             beforeEach((done) => {
-                subject = makeOne({});
+                subject = makeScene({});
                 subject.init(done);
+
             });
 
-            it('calls back', () => {
-                assert.ok(true);
+            afterEach(() => {
+                subject.destroy();
+                subject = null;
             });
 
             it('correctly sets the value of the tile source', () => {
-                assert.equal(subject.tile_source, sampleScene.tileSource);
-            });
-
-            it('correctly sets the value of the layers object', () => {
-                assert.equal(subject.layers, sampleScene.layers);
-            });
-
-            it('correctly sets the value of the styles object', () => {
-                assert.equal(subject.styles, sampleScene.styles);
+                assert.deepPropertyVal(subject, 'tile_source.max_zoom', 20);
+                assert.deepPropertyVal(
+                    subject,
+                    'tile_source.url_template',
+                    'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+                );
             });
 
             it('sets the initialized property', () => {
@@ -100,12 +202,23 @@ describe('Scene', () => {
         });
 
         describe('when the scene is already initialized', () => {
+            let subject;
+            beforeEach(() => {
+                subject = makeScene({});
+            });
+
+            afterEach(() => {
+                subject.destroy();
+                subject = null;
+            });
+
             it('returns false', (done) => {
                 subject.init(() => {
                     assert.isFalse(subject.init());
                     done();
                 });
             });
+
         });
     });
 
@@ -118,7 +231,7 @@ describe('Scene', () => {
         let computedWidth  = Math.round(width * devicePixelRatio);
 
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.device_pixel_ratio = devicePixelRatio;
             subject.init(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
@@ -130,7 +243,7 @@ describe('Scene', () => {
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('marks the scene as dirty', () => {
@@ -180,12 +293,13 @@ describe('Scene', () => {
         let [lng, lat] = nycLatLng;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.setCenter(...nycLatLng);
         });
+
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('sets the center scene?', () => {
@@ -201,7 +315,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.startZoom();
         });
 
@@ -223,14 +337,14 @@ describe('Scene', () => {
     describe('.setZoom(zoom)', () => {
         let subject;
         beforeEach(() => {
-            subject = makeOne({});
+            subject = makeScene({});
             sinon.spy(subject, 'removeTilesOutsideZoomRange');
             subject.setZoom(10);
         });
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
         it('calls the removeTilesOutsideZoomRange method', () =>  {
             assert.isTrue(subject.removeTilesOutsideZoomRange.called);
@@ -246,11 +360,12 @@ describe('Scene', () => {
         let tile = { coords: null, div: null, callback: () => {}};
 
         beforeEach(() => {
-            subject = makeOne({}); subject.loadTile(tile);
+            subject = makeScene({});
+            subject.loadTile(tile);
         });
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('appends the queued_tiles array', () => {
@@ -261,19 +376,19 @@ describe('Scene', () => {
 
     describe('.render()', () => {
         let subject;
+
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'renderGL');
-            subject.init(() => {
-                subject.setCenter(...nycLatLng);
-                done();
-            });
+
+            subject.setCenter(...nycLatLng);
+            subject.init(done);
         });
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         it('calls the loadQueuedTiles method', () => {
@@ -318,7 +433,7 @@ describe('Scene', () => {
     describe('.updateModes(callback)', () => {
         let subject;
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.init(done);
         });
 
@@ -337,10 +452,24 @@ describe('Scene', () => {
 
     describe('.rebuildGeometry(callback)', () => {
         let subject;
+        let div = document.createElement('div');
+
         beforeEach((done) => {
-            subject = makeOne({});
+            subject = makeScene({});
             subject.setCenter(...nycLatLng);
-            subject.init(done);
+            subject.init(() => {
+                subject.loadTile(midtownTile, div);
+                subject.loadQueuedTiles();
+
+                var tile = subject.tiles['38603/49255/17'];
+                var check = setInterval(() => {
+                    // console.log("check tile load");
+                    if (tile.loaded) {
+                        clearInterval(check);
+                        done();
+                    }
+                }, 50);
+            });
         });
 
         afterEach(() => {
@@ -354,6 +483,34 @@ describe('Scene', () => {
                 done();
             });
         });
+
+        it.skip('runs first call, queues second call, rejects the rest', (done) => {
+            let success = 0,
+                fail = 0,
+                complete = 0;
+
+            for (let i=0; i < 20; i++) {
+                subject.rebuildGeometry((error) => {
+                    if (error) {
+                        fail++;
+                    }
+                    else {
+                        success++;
+                    }
+                    complete++;
+
+                    if (complete === 20) {
+                        check();
+                    }
+                });
+            }
+
+            function check () {
+                assert.equal(success, 2);
+                assert.equal(fail, 18);
+                done();
+            }
+        });
     });
 
     describe('.createWorkers(cb)', () => {
@@ -361,7 +518,7 @@ describe('Scene', () => {
 
         beforeEach(() => {
             sinon.stub(Utils, 'io').returns(Promise.resolve('(function () {})'));
-            subject = makeOne({});
+            subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
         });
@@ -392,21 +549,21 @@ describe('Scene', () => {
                 done();
             });
         });
-
     });
 
     describe('.makeWorkers(url)', () => {
-        let subject;
-        let numWorkers = 2;
-        let url = 'test.js';
+        let subject,
+            numWorkers = 2,
+            url = '/tangram-worker.debug.js';
+
         beforeEach(() => {
-            subject = makeOne({options: {numWorkers}});
+            subject = makeScene({options: {numWorkers}});
             subject.makeWorkers(url);
         });
 
         afterEach(() => {
             subject.destroy();
-            subject = undefined;
+            subject = null;
         });
 
         describe('when given a url', () => {
@@ -418,7 +575,8 @@ describe('Scene', () => {
             it('creates the correct type of workers', () => {
                 assert.instanceOf(subject.workers[0], Worker);
             });
-
         });
     });
+
+
 });

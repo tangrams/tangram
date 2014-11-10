@@ -35,6 +35,20 @@ Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET',
     });
 };
 
+// Needed for older browsers that still support WebGL (Safari 6 etc.)
+Utils.requestAnimationFramePolyfill = function () {
+    if (typeof window.requestAnimationFrame !== 'function') {
+        window.requestAnimationFrame =
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame    ||
+            window.oRequestAnimationFrame      ||
+            window.msRequestAnimationFrame     ||
+            function (cb) {
+                setTimeout(cb, 1000 /60);
+            };
+    }
+};
+
 // Stringify an object into JSON, but convert functions to strings
 Utils.serializeWithFunctions = function (obj) {
     var serialized = JSON.stringify(obj, function(k, v) {

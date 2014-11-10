@@ -9,23 +9,28 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
-
 import yaml from 'js-yaml';
+import Tile from './tile';
+import TileSource from './tile_source';
+
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
 // Global setup
-Utils.runIfInMainThread(() => { findBaseLibraryURL(); }); // on main thread only (skip in web worker)
+Utils.runIfInMainThread(() => {
+    // On main thread only (skip in web worker)
+    findBaseLibraryURL();
+    Utils.requestAnimationFramePolyfill();
+ });
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Layers & styles: pass an object directly, or a URL as string to load remotely
-// TODO, convert this to the class sytnax once we get the runtime
-// working, IW
 export default function Scene(tile_source, layer_source, style_source, options) {
+
     options = options || {};
     this.initialized = false;
 
@@ -63,6 +68,9 @@ export default function Scene(tile_source, layer_source, style_source, options) 
 }
 
 Scene.create = function ({tile_source, layers, styles}, options = {}) {
+    if (!(tile_source instanceof TileSource)) {
+        tile_source = TileSource.create(tile_source);
+    }
     return new Scene(tile_source, layers, styles, options);
 };
 
@@ -73,7 +81,6 @@ Scene.prototype.init = function (callback) {
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-
     this.loadScene().then(() => {
         Promise.all([
             new Promise((resolve, reject) => {
@@ -255,9 +262,12 @@ Scene.prototype.workerPostMessageForTile = function (tile, message) {
     this.workers[tile.worker].postMessage(message);
 };
 
-Scene.prototype.setCenter = function (lng, lat) {
-    this.center = { lng: lng, lat: lat };
-    this.dirty = true;
+Scene.prototype.setCenter = function (lng, lat, zoom) {
+    this.center = { lng, lat };
+    if (zoom) {
+        this.setZoom(zoom);
+    }
+    this.updateBounds();
 };
 
 Scene.prototype.startZoom = function () {
@@ -286,22 +296,68 @@ Scene.prototype.setZoom = function (zoom) {
     this.zoom = zoom;
     this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
     this.zooming = false;
-    this.updateMeterView();
+    this.updateBounds();
 
     this.removeTilesOutsideZoomRange(below, above);
-    this.dirty = true;
 };
 
-Scene.prototype.updateMeterView = function () {
+Scene.prototype.viewReady = function () {
+    if (this.css_size == null || this.center == null || this.zoom == null) {
+         return false;
+    }
+    return true;
+};
+
+// Calculate viewport bounds based on current center and zoom
+Scene.prototype.updateBounds = function () {
+    // TODO: better concept of "readiness" state?
+    if (!this.viewReady()) {
+        return;
+    }
+
     this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
 
     // Size of the half-viewport in meters at current zoom
-    if (this.css_size !== undefined) { // TODO: replace this check?
-        this.meter_zoom = {
-            x: this.css_size.width / 2 * this.meters_per_pixel,
-            y: this.css_size.height / 2 * this.meters_per_pixel
-        };
+    this.meter_zoom = {
+        x: this.css_size.width / 2 * this.meters_per_pixel,
+        y: this.css_size.height / 2 * this.meters_per_pixel
+    };
+
+    // Center of viewport in meters
+    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+    this.center_meters = { x, y };
+
+    this.bounds_meters = {
+        sw: {
+            x: this.center_meters.x - this.meter_zoom.x,
+            y: this.center_meters.y - this.meter_zoom.y
+        },
+        ne: {
+            x: this.center_meters.x + this.meter_zoom.x,
+            y: this.center_meters.y + this.meter_zoom.y
+        }
+    };
+
+    // Buffered meter bounds catches objects outside viewport that stick into view space
+    // TODO: this is a hacky solution, need to revisit
+    var buffer = 200 * this.meters_per_pixel; // pixels -> meters
+    this.bounds_meters_buffered = {
+        sw: {
+            x: this.bounds_meters.sw.x - buffer,
+            y: this.bounds_meters.sw.y - buffer
+        },
+        ne: {
+            x: this.bounds_meters.ne.x + buffer,
+            y: this.bounds_meters.ne.y + buffer
+        }
+    };
+
+    // Mark tiles as visible/invisible
+    for (var tile of Utils.values(this.tiles)) {
+        tile.updateVisibility(this);
     }
+
+    this.dirty = true;
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
@@ -322,59 +378,13 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     }
 };
 
-Scene.prototype.setBounds = function (sw, ne) {
-    this.bounds = {
-        sw: { lng: sw.lng, lat: sw.lat },
-        ne: { lng: ne.lng, lat: ne.lat }
-    };
-
-    var buffer = 200 * this.meters_per_pixel; // pixels -> meters
-
-    var [swX, swY] = Geo.latLngToMeters([this.bounds.sw.lng, this.bounds.sw.lat]);
-    var [neX, neY] = Geo.latLngToMeters([this.bounds.ne.lng, this.bounds.ne.lat]);
-
-    this.buffered_meter_bounds = {
-        sw: { x: swX, y: swY },
-        ne: { x: neX, y: neY }
-    };
-
-    this.buffered_meter_bounds.sw.x -= buffer;
-    this.buffered_meter_bounds.sw.y -= buffer;
-    this.buffered_meter_bounds.ne.x += buffer;
-    this.buffered_meter_bounds.ne.y += buffer;
-
-    this.center_meters = {
-        x: (this.buffered_meter_bounds.sw.x + this.buffered_meter_bounds.ne.x) / 2,
-        y: (this.buffered_meter_bounds.sw.y + this.buffered_meter_bounds.ne.y) / 2
-    };
-
-    // Mark tiles as visible/invisible
-    for (var t in this.tiles) {
-        this.updateVisibilityForTile(this.tiles[t]);
-    }
-
-    this.dirty = true;
-};
-
-Scene.prototype.isTileInZoom = function (tile) {
-    return (Math.min(tile.coords.z, this.tile_source.max_zoom || tile.coords.z) === this.capped_zoom);
-};
-
-// Update visibility and return true if changed
-Scene.prototype.updateVisibilityForTile = function (tile) {
-    var visible = tile.visible;
-    tile.visible = this.isTileInZoom(tile) && Geo.boxIntersect(tile.bounds, this.buffered_meter_bounds);
-    tile.center_dist = Math.abs(this.center_meters.x - tile.min.x) + Math.abs(this.center_meters.y - tile.min.y);
-    return (visible !== tile.visible);
-};
-
 Scene.prototype.resizeMap = function (width, height) {
     this.dirty = true;
 
     this.css_size = { width: width, height: height };
     this.device_size = { width: Math.round(this.css_size.width * this.device_pixel_ratio), height: Math.round(this.css_size.height * this.device_pixel_ratio) };
     this.view_aspect = this.css_size.width / this.css_size.height;
-    this.updateMeterView();
+    this.updateBounds();
 
     this.canvas.style.width = this.css_size.width + 'px';
     this.canvas.style.height = this.css_size.height + 'px';
@@ -389,6 +399,7 @@ Scene.prototype.requestRedraw = function () {
     this.dirty = true;
 };
 
+// TODO: remove, unnecessary
 // Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
 // Features are assumed to be already sorted in desired draw order by the layer pre-processor
 Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
@@ -426,7 +437,7 @@ Scene.prototype.render = function () {
     this.loadQueuedTiles();
 
     // Render on demand
-    if (this.dirty === false || this.initialized === false) {
+    if (this.dirty === false || this.initialized === false || this.viewReady() === false) {
         return false;
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
@@ -744,47 +755,35 @@ Scene.prototype.loadQueuedTiles = function () {
     this.queued_tiles = [];
 };
 
+// tile manager
+Scene.prototype.cacheTile = function (tile) {
+    this.tiles[tile.key] = tile;
+};
+
+Scene.prototype.hasTile = function (key) {
+    return this.tiles[key] !== undefined;
+};
+
+Scene.prototype.forgetTile = function (key) {
+    delete this.tiles[key];
+};
+
+
 // Load a single tile
 Scene.prototype._loadTile = function (coords, div, callback) {
+    callback = (typeof callback === 'function') ? callback : function(){};
+
     // Overzoom?
-    if (coords.z > this.tile_source.max_zoom) {
-        var zgap = coords.z - this.tile_source.max_zoom;
-        var original_tile = [coords.x, coords.y, coords.z].join('/');
-        coords.x = ~~(coords.x / Math.pow(2, zgap));
-        coords.y = ~~(coords.y / Math.pow(2, zgap));
-        coords.display_z = coords.z; // z without overzoom
-        coords.z -= zgap;
-        log.trace(`adjusted for overzoom, tile ${original_tile} -> ${[coords.x, coords.y, coords.z].join('/')}`);
-    }
-
-    this.trackTileSetLoadStart();
-
-    var key = [coords.x, coords.y, coords.z].join('/');
-
-    // Already loading/loaded?
-    if (this.tiles[key]) {
-        if (callback) {
-            callback(null, div);
-        }
-        return;
-    }
-
-    var tile = this.tiles[key] = {};
-    tile.key = key;
-    tile.coords = coords;
-    tile.min = Geo.metersForTile(tile.coords);
-    tile.max = Geo.metersForTile({ x: tile.coords.x + 1, y: tile.coords.y + 1, z: tile.coords.z });
-    tile.span = { x: (tile.max.x - tile.min.x), y: (tile.max.y - tile.min.y) };
-    tile.bounds = { sw: { x: tile.min.x, y: tile.max.y }, ne: { x: tile.max.x, y: tile.min.y } };
-    tile.debug = {};
-    tile.loading = true;
-    tile.loaded = false;
-
-    this.buildTile(tile.key);
-    this.updateTileElement(tile, div);
-    this.updateVisibilityForTile(tile);
-
-    if (callback) {
+    var tile = Tile.create({coords: coords, tile_source: this.tile_source});
+    // when the tile does not exist
+    if (!this.hasTile(tile.key)) {
+        tile.load(this, coords, div, (error, div) => {
+            // after we done loading the tile, save a reference to it
+            this.cacheTile(tile);
+            callback(null, div, tile);
+        });
+    } else {
+        // if we already cached the tile, call back with the div
         callback(null, div);
     }
 };
@@ -829,36 +828,32 @@ Scene.prototype.rebuildGeometry = function (callback) {
     });
 
     // Rebuild visible tiles first, from center out
-    var visible = [], invisible = [];
-    for (var t in this.tiles) {
-        if (this.tiles[t].visible === true) {
-            visible.push(t);
+    var tile, visible = [], invisible = [];
+    for (tile of Utils.values(this.tiles)) {
+        if (tile.visible === true) {
+            visible.push(tile);
         }
         else {
-            invisible.push(t);
+            invisible.push(tile);
         }
     }
 
     visible.sort((a, b) => {
-        // var ad = Math.abs(this.center_meters.x - this.tiles[b].min.x) + Math.abs(this.center_meters.y - this.tiles[b].min.y);
-        // var bd = Math.abs(this.center_meters.x - this.tiles[a].min.x) + Math.abs(this.center_meters.y - this.tiles[a].min.y);
-        var ad = this.tiles[a].center_dist;
-        var bd = this.tiles[b].center_dist;
-        return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+        return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
     });
 
-    for (t in visible) {
-        this.buildTile(visible[t]);
+    for (tile of visible) {
+        tile.build(this);
     }
 
-    for (t in invisible) {
+    for (tile of invisible) {
         // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (this.isTileInZoom(this.tiles[invisible[t]]) === true) {
-            this.buildTile(invisible[t]);
+        if (tile.isInZoom(this)) {
+            tile.build(this);
         }
         // Drop tiles outside current zoom
         else {
-            this.removeTile(invisible[t]);
+            this.removeTile(tile.key);
         }
     }
 
@@ -877,40 +872,15 @@ Scene.prototype.rebuildGeometry = function (callback) {
     }
 };
 
-Scene.prototype.buildTile = function(key) {
-    var tile = this.tiles[key];
-
-    this.trackTileBuildStart(key);
-    this.workerPostMessageForTile(tile, {
-        type: 'buildTile',
-        tile: {
-            key: tile.key,
-            coords: tile.coords, // used by style helpers
-            min: tile.min, // used by TileSource to scale tile to local extents
-            max: tile.max, // used by TileSource to scale tile to local extents
-            debug: tile.debug
-        },
-        tile_source: this.tile_source,
-        layers: this.layers_serialized,
-        styles: this.styles_serialized
-    });
-};
-
 // Process geometry for tile - called by web worker
 // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
 Scene.addTile = function (tile, layers, styles, modes) {
     var layer, style, feature, mode;
     var vertex_data = {};
 
-    // Join line test pattern
-    // if (Scene.debug) {
-    //     tile.layers['roads'].features.push(GLBuilders.buildZigzagLineTestPattern());
-    // }
-
     // Build raw geometry arrays
     // Render layers, and features within each layer, in reverse order - aka top to bottom
     tile.debug.features = 0;
-    // for (var layer_num = layers.length-1; layer_num >= 0; layer_num--) {
     for (var layer_num = 0; layer_num < layers.length; layer_num++) {
         layer = layers[layer_num];
 
@@ -1005,17 +975,24 @@ Scene.prototype.workerBuildTileCompleted = function (event) {
     }
     log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
-    var tile = event.data.tile;
+    var tile = Tile.create(Object.assign(
+        {}, event.data.tile, {tile_source: this.tile_source}
+    ));
 
     // Removed this tile during load?
-    if (this.tiles[tile.key] == null) {
+    if (!this.hasTile(tile.key)) {
         log.debug(`discarded tile ${tile.key} in Scene.workerBuildTileCompleted because previously removed`);
     }
     else if (!tile.error) {
+        var cached = this.tiles[tile.key];
+
         // Update tile with properties from worker
-        tile = this.mergeTile(tile.key, tile);
-        this.buildGLGeometry(tile);
+        if (cached) {
+            tile = cached.merge(tile);
+        }
+        tile.buildGLGeometry(this.modes);
         this.dirty = true;
+
     }
     else {
         log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
@@ -1059,30 +1036,6 @@ Scene.prototype.trackTileBuildStop = function (key) {
     }
 };
 
-// Called on main thread when a web worker completes processing for a single tile
-Scene.prototype.buildGLGeometry = function (tile) {
-    var vertex_data = tile.vertex_data;
-
-    // Cleanup existing GL geometry objects
-    this.freeTileResources(tile);
-    tile.gl_geometry = {};
-
-    // Create GL geometry objects
-    for (var s in vertex_data) {
-        tile.gl_geometry[s] = this.modes[s].makeGLGeometry(vertex_data[s]);
-    }
-
-    tile.debug.geometries = 0;
-    tile.debug.buffer_size = 0;
-    for (var p in tile.gl_geometry) {
-        tile.debug.geometries += tile.gl_geometry[p].geometry_count;
-        tile.debug.buffer_size += tile.gl_geometry[p].vertex_data.byteLength;
-    }
-    tile.debug.geom_ratio = (tile.debug.geometries / tile.debug.features).toFixed(1);
-
-    delete tile.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
-};
-
 Scene.prototype.removeTile = function (key)
 {
     if (!this.initialized) {
@@ -1097,74 +1050,13 @@ Scene.prototype.removeTile = function (key)
     var tile = this.tiles[key];
 
     if (tile != null) {
-        this.freeTileResources(tile);
-
-        // Web worker will cancel XHR requests
-        this.workerPostMessageForTile(tile, {
-            type: 'removeTile',
-            key: tile.key
-        });
+        tile.freeResources();
+        tile.remove(this);
     }
 
-    delete this.tiles[key];
+    this.forgetTile(tile.key);
+
     this.dirty = true;
-};
-
-// Free any GL / owned resources
-Scene.prototype.freeTileResources = function (tile)
-{
-    if (tile != null && tile.gl_geometry != null) {
-        for (var p in tile.gl_geometry) {
-            tile.gl_geometry[p].destroy();
-        }
-        tile.gl_geometry = null;
-    }
-};
-
-// Attaches tracking and debug into to the provided tile DOM element
-Scene.prototype.updateTileElement = function (tile, div) {
-    if (!div) {
-        return;
-    }
-
-    // Debug info
-    div.setAttribute('data-tile-key', tile.key);
-    div.style.width = '256px';
-    div.style.height = '256px';
-
-    if (this.debug) {
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = tile.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        debug_overlay.style.fontSize = '16px';
-        // debug_overlay.style.textOutline = '1px #000000';
-        div.appendChild(debug_overlay);
-
-        div.style.borderStyle = 'solid';
-        div.style.borderColor = 'white';
-        div.style.borderWidth = '1px';
-    }
-};
-
-// Merge properties from a provided tile object into the main tile store. Shallow merge (just copies top-level properties)!
-// Used for selectively updating properties of tiles passed between main thread and worker
-// (so we don't have to pass the whole tile, including some properties which cannot be cloned for a worker).
-Scene.prototype.mergeTile = function (key, source_tile) {
-    var tile = this.tiles[key];
-
-    if (tile == null) {
-        this.tiles[key] = source_tile;
-        return this.tiles[key];
-    }
-
-    for (var p in source_tile) {
-        tile[p] = source_tile[p];
-    }
-
-    return tile;
 };
 
 // Load (or reload) the scene config
