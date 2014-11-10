@@ -5,7 +5,7 @@ import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
 
-import {makeScene} from './utils';
+import {makeScene} from './test_helpers';
 import sampleScene from './fixtures/sample-scene';
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
