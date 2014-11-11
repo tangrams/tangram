@@ -4,7 +4,6 @@
 import Utils from '../utils';
 import {GL} from './gl';
 import GLTexture from './gl_texture';
-import Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
@@ -103,7 +102,7 @@ GLProgram.prototype.compile = function ({resolve, reject}) {
     var transforms = this.buildShaderTransformList();
     var loaded_transforms = {}; // master list of transforms, with an ordered list for each (since we want to guarantee order of transforms)
     var regexp;
-    var queue = Queue();
+    var queue = [];
 
     for (var key in transforms) {
         var transform = transforms[key];
@@ -135,21 +134,17 @@ GLProgram.prototype.compile = function ({resolve, reject}) {
 
         // Get the code (possibly over the network, so needs to be async)
         for (var u=0; u < transform.length; u++) {
-            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+            queue.push(new Promise((resolve, reject) => {
+                GLProgram.loadTransform(loaded_transforms, transform[u], key, u, resolve, reject);
+            }));
         }
 
         // Add a #define for this injection point
         defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
-    // When all transform code snippets are collected, combine and inject them
-    queue.await(error => {
+    Promise.all(queue).then(() => {
         this.compiling = false;
-
-        if (error) {
-            reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
-            return;
-        }
 
         // Do the code injection with the collected sources
         for (var t in loaded_transforms) {
@@ -199,25 +194,28 @@ GLProgram.prototype.compile = function ({resolve, reject}) {
         this.refreshAttributes();
 
         resolve();
+    }, (error) => {
+        reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
     });
+
 };
 
 // Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
 // Can be async, calls 'complete' callback when done
-GLProgram.loadTransform = function (transforms, block, key, index, complete) {
+GLProgram.loadTransform = function (transforms, block, key, index, resolve, reject) {
     // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
     // Inline code
     if (typeof block === 'string') {
         transforms[key].list[index] = block;
-        complete();
+        resolve();
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
         Utils.io(Utils.cacheBusterForUrl(block.url)).then((body) => {
             transforms[key].list[index] = body;
-            complete(null);
+            resolve();
         }, (error) => {
-            complete(error);
+            reject(error);
         });
     }
 };
