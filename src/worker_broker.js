@@ -101,13 +101,11 @@ function setupWorkerThread () {
             // Async result
             if (result instanceof Promise) {
                 result.then((value) => {
-                    console.log('worker broker promise resolved', value);
                     self.postMessage({
                         message_id: id,
                         message: value
                     });
                 }, (value) => {
-                    console.log('worker broker promise rejected', value);
                     self.postMessage({
                         message_id: id,
                         error: value

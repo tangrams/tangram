@@ -18873,13 +18873,11 @@ function setupWorkerThread() {
     if (event.data.has_callback) {
       if (result instanceof Promise) {
         result.then((function(value) {
-          console.log('worker broker promise resolved', value);
           self.postMessage({
             message_id: id,
             message: value
           });
         }), (function(value) {
-          console.log('worker broker promise rejected', value);
           self.postMessage({
             message_id: id,
             error: value
