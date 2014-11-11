@@ -32,7 +32,7 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     GLProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
 
-    this.compile(options.callback);
+    this.compile({resolve: options.resolve, reject: options.reject});
 }
 
 GLProgram.prototype.destroy = function () {
@@ -73,18 +73,14 @@ GLProgram.removeTransform = function (key) {
     GLProgram.transforms[key] = [];
 };
 
-GLProgram.prototype.compile = function (callback)
-{
-    callback = (typeof callback === 'function') ? callback : function(){};
+GLProgram.prototype.compile = function ({resolve, reject}) {
 
     if (this.compiling) {
-        callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
+        reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
         return;
     }
     this.compiling = true;
     this.compiled = false;
-
-    var queue = Queue();
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -107,6 +103,7 @@ GLProgram.prototype.compile = function (callback)
     var transforms = this.buildShaderTransformList();
     var loaded_transforms = {}; // master list of transforms, with an ordered list for each (since we want to guarantee order of transforms)
     var regexp;
+    var queue = Queue();
 
     for (var key in transforms) {
         var transform = transforms[key];
@@ -150,7 +147,7 @@ GLProgram.prototype.compile = function (callback)
         this.compiling = false;
 
         if (error) {
-            callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
+            reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
             return;
         }
 
@@ -201,7 +198,7 @@ GLProgram.prototype.compile = function (callback)
         this.refreshUniforms();
         this.refreshAttributes();
 
-        callback();
+        resolve();
     });
 };
 
