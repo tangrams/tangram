@@ -14766,331 +14766,6 @@ Point.convert = function (a) {
 };
 
 },{}],46:[function(require,module,exports){
-var window = require("global/window")
-var once = require("once")
-var parseHeaders = require('parse-headers')
-
-var messages = {
-    "0": "Internal XMLHttpRequest Error",
-    "4": "4xx Client Error",
-    "5": "5xx Server Error"
-}
-
-var XHR = window.XMLHttpRequest || noop
-var XDR = "withCredentials" in (new XHR()) ? XHR : window.XDomainRequest
-
-module.exports = createXHR
-
-function createXHR(options, callback) {
-    if (typeof options === "string") {
-        options = { uri: options }
-    }
-
-    options = options || {}
-    callback = once(callback)
-
-    var xhr = options.xhr || null
-
-    if (!xhr) {
-        if (options.cors || options.useXDR) {
-            xhr = new XDR()
-        }else{
-            xhr = new XHR()
-        }
-    }
-
-    var uri = xhr.url = options.uri || options.url
-    var method = xhr.method = options.method || "GET"
-    var body = options.body || options.data
-    var headers = xhr.headers = options.headers || {}
-    var sync = !!options.sync
-    var isJson = false
-    var key
-    var load = options.response ? loadResponse : loadXhr
-
-    if ("json" in options) {
-        isJson = true
-        headers["Accept"] = "application/json"
-        if (method !== "GET" && method !== "HEAD") {
-            headers["Content-Type"] = "application/json"
-            body = JSON.stringify(options.json)
-        }
-    }
-
-    xhr.onreadystatechange = readystatechange
-    xhr.onload = load
-    xhr.onerror = error
-    // IE9 must have onprogress be set to a unique function.
-    xhr.onprogress = function () {
-        // IE must die
-    }
-    // hate IE
-    xhr.ontimeout = noop
-    xhr.open(method, uri, !sync)
-                                    //backward compatibility
-    if (options.withCredentials || (options.cors && options.withCredentials !== false)) {
-        xhr.withCredentials = true
-    }
-
-    // Cannot set timeout with sync request
-    if (!sync) {
-        xhr.timeout = "timeout" in options ? options.timeout : 5000
-    }
-
-    if (xhr.setRequestHeader) {
-        for(key in headers){
-            if(headers.hasOwnProperty(key)){
-                xhr.setRequestHeader(key, headers[key])
-            }
-        }
-    } else if (options.headers) {
-        throw new Error("Headers cannot be set on an XDomainRequest object")
-    }
-
-    if ("responseType" in options) {
-        xhr.responseType = options.responseType
-    }
-    
-    if ("beforeSend" in options && 
-        typeof options.beforeSend === "function"
-    ) {
-        options.beforeSend(xhr)
-    }
-
-    xhr.send(body)
-
-    return xhr
-
-    function readystatechange() {
-        if (xhr.readyState === 4) {
-            load()
-        }
-    }
-
-    function getBody() {
-        // Chrome with requestType=blob throws errors arround when even testing access to responseText
-        var body = null
-
-        if (xhr.response) {
-            body = xhr.response
-        } else if (xhr.responseType === 'text' || !xhr.responseType) {
-            body = xhr.responseText || xhr.responseXML
-        }
-
-        if (isJson) {
-            try {
-                body = JSON.parse(body)
-            } catch (e) {}
-        }
-
-        return body
-    }
-
-    function getStatusCode() {
-        return xhr.status === 1223 ? 204 : xhr.status
-    }
-
-    // if we're getting a none-ok statusCode, build & return an error
-    function errorFromStatusCode(status) {
-        var error = null
-        if (status === 0 || (status >= 400 && status < 600)) {
-            var message = (typeof body === "string" ? body : false) ||
-                messages[String(status).charAt(0)]
-            error = new Error(message)
-            error.statusCode = status
-        }
-
-        return error
-    }
-
-    // will load the data & process the response in a special response object
-    function loadResponse() {
-        var status = getStatusCode()
-        var error = errorFromStatusCode(status)
-        var response = {
-            body: getBody(),
-            statusCode: status,
-            statusText: xhr.statusText,
-            raw: xhr
-        }
-        if(xhr.getAllResponseHeaders){ //remember xhr can in fact be XDR for CORS in IE
-            response.headers = parseHeaders(xhr.getAllResponseHeaders())
-        } else {
-            response.headers = {}
-        }
-
-        callback(error, response, response.body)
-    }
-
-    // will load the data and add some response properties to the source xhr
-    // and then respond with that
-    function loadXhr() {
-        var status = getStatusCode()
-        var error = errorFromStatusCode(status)
-
-        xhr.status = xhr.statusCode = status
-        xhr.body = getBody()
-        xhr.headers = parseHeaders(xhr.getAllResponseHeaders())
-
-        callback(error, xhr, xhr.body)
-    }
-
-    function error(evt) {
-        callback(evt, xhr)
-    }
-}
-
-
-function noop() {}
-
-},{"global/window":47,"once":48,"parse-headers":52}],47:[function(require,module,exports){
-(function (global){
-if (typeof window !== "undefined") {
-    module.exports = window;
-} else if (typeof global !== "undefined") {
-    module.exports = global;
-} else if (typeof self !== "undefined"){
-    module.exports = self;
-} else {
-    module.exports = {};
-}
-
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],48:[function(require,module,exports){
-module.exports = once
-
-once.proto = once(function () {
-  Object.defineProperty(Function.prototype, 'once', {
-    value: function () {
-      return once(this)
-    },
-    configurable: true
-  })
-})
-
-function once (fn) {
-  var called = false
-  return function () {
-    if (called) return
-    called = true
-    return fn.apply(this, arguments)
-  }
-}
-
-},{}],49:[function(require,module,exports){
-var isFunction = require('is-function')
-
-module.exports = forEach
-
-var toString = Object.prototype.toString
-var hasOwnProperty = Object.prototype.hasOwnProperty
-
-function forEach(list, iterator, context) {
-    if (!isFunction(iterator)) {
-        throw new TypeError('iterator must be a function')
-    }
-
-    if (arguments.length < 3) {
-        context = this
-    }
-    
-    if (toString.call(list) === '[object Array]')
-        forEachArray(list, iterator, context)
-    else if (typeof list === 'string')
-        forEachString(list, iterator, context)
-    else
-        forEachObject(list, iterator, context)
-}
-
-function forEachArray(array, iterator, context) {
-    for (var i = 0, len = array.length; i < len; i++) {
-        if (hasOwnProperty.call(array, i)) {
-            iterator.call(context, array[i], i, array)
-        }
-    }
-}
-
-function forEachString(string, iterator, context) {
-    for (var i = 0, len = string.length; i < len; i++) {
-        // no such thing as a sparse string.
-        iterator.call(context, string.charAt(i), i, string)
-    }
-}
-
-function forEachObject(object, iterator, context) {
-    for (var k in object) {
-        if (hasOwnProperty.call(object, k)) {
-            iterator.call(context, object[k], k, object)
-        }
-    }
-}
-
-},{"is-function":50}],50:[function(require,module,exports){
-module.exports = isFunction
-
-var toString = Object.prototype.toString
-
-function isFunction (fn) {
-  var string = toString.call(fn)
-  return string === '[object Function]' ||
-    (typeof fn === 'function' && string !== '[object RegExp]') ||
-    (typeof window !== 'undefined' &&
-     // IE8 and below
-     (fn === window.setTimeout ||
-      fn === window.alert ||
-      fn === window.confirm ||
-      fn === window.prompt))
-};
-
-},{}],51:[function(require,module,exports){
-
-exports = module.exports = trim;
-
-function trim(str){
-  return str.replace(/^\s*|\s*$/g, '');
-}
-
-exports.left = function(str){
-  return str.replace(/^\s*/, '');
-};
-
-exports.right = function(str){
-  return str.replace(/\s*$/, '');
-};
-
-},{}],52:[function(require,module,exports){
-var trim = require('trim')
-  , forEach = require('for-each')
-  , isArray = function(arg) {
-      return Object.prototype.toString.call(arg) === '[object Array]';
-    }
-
-module.exports = function (headers) {
-  if (!headers)
-    return {}
-
-  var result = {}
-
-  forEach(
-      trim(headers).split('\n')
-    , function (row) {
-        var index = row.indexOf(':')
-          , key = trim(row.slice(0, index)).toLowerCase()
-          , value = trim(row.slice(index + 1))
-
-        if (typeof(result[key]) === 'undefined') {
-          result[key] = value
-        } else if (isArray(result[key])) {
-          result[key].push(value)
-        } else {
-          result[key] = [ result[key], value ]
-        }
-      }
-  )
-
-  return result
-}
-},{"for-each":49,"trim":51}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15224,7 +14899,7 @@ var $FlatCamera = FlatCamera;
   }}, {}, IsometricCamera);
 
 
-},{"./geo":55,"./gl/gl_program":61,"gl-matrix":4}],54:[function(require,module,exports){
+},{"./geo":48,"./gl/gl_program":54,"gl-matrix":4}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   MethodNotImplemented: {get: function() {
@@ -15239,7 +14914,7 @@ var MethodNotImplemented = function MethodNotImplemented(methodName) {
 ($traceurRuntime.createClass)(MethodNotImplemented, {}, {}, Error);
 
 
-},{}],55:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Geo: {get: function() {
@@ -15339,7 +15014,7 @@ Geo.findBoundingBox = function(polygon) {
 };
 
 
-},{}],56:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GL: {get: function() {
@@ -15465,7 +15140,7 @@ GL.triangulatePolygon = function GLTriangulate(contours, z) {
 };
 
 
-},{"libtess":36,"loglevel":37}],57:[function(require,module,exports){
+},{"libtess":36,"loglevel":37}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GLBuilders: {get: function() {
@@ -15766,7 +15441,7 @@ GLBuilders.buildZigzagLineTestPattern = function() {
 };
 
 
-},{"../geo":55,"../vector":72,"./gl":56}],58:[function(require,module,exports){
+},{"../geo":48,"../vector":65,"./gl":49}],51:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16075,7 +15750,7 @@ gl.UNPACK_COLORSPACE_CONVERSION_WEBGL = 0x9243;
 gl.BROWSER_DEFAULT_WEBGL = 0x9244;
 
 
-},{}],59:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16131,7 +15806,7 @@ GLGeometry.prototype.destroy = function() {
 };
 
 
-},{"./gl_program":61,"loglevel":37}],60:[function(require,module,exports){
+},{"./gl_program":54,"loglevel":37}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Modes: {get: function() {
@@ -16434,7 +16109,7 @@ Points.buildPoints = function(points, style, vertex_data) {
 };
 
 
-},{"./gl_builders":57,"./gl_constants":58,"./gl_geom":59,"./gl_program":61,"./gl_shaders":62,"./gl_vertex_layout":64,"loglevel":37,"queue-async":40}],61:[function(require,module,exports){
+},{"./gl_builders":50,"./gl_constants":51,"./gl_geom":52,"./gl_program":54,"./gl_shaders":55,"./gl_vertex_layout":57,"loglevel":37,"queue-async":40}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16586,16 +16261,14 @@ GLProgram.prototype.compile = function(callback) {
   }));
 };
 GLProgram.loadTransform = function(transforms, block, key, index, complete) {
-  var source;
   if (typeof block === 'string') {
     transforms[key].list[index] = block;
     complete();
   } else if (typeof block === 'object' && block.url) {
-    Utils.xhr(block.url + '?' + (+new Date()), (function(error, response, body) {
-      if (!error) {
-        source = body;
-        transforms[key].list[index] = source;
-      }
+    Utils.io(Utils.cacheBusterForUrl(block.url)).then((function(body) {
+      transforms[key].list[index] = body;
+      complete(null);
+    }), (function(error) {
       complete(error);
     }));
   }
@@ -16729,7 +16402,7 @@ GLProgram.prototype.attribute = function(name) {
 };
 
 
-},{"../utils":71,"./gl":56,"./gl_texture":63,"queue-async":40}],62:[function(require,module,exports){
+},{"../utils":64,"./gl":49,"./gl_texture":56,"queue-async":40}],55:[function(require,module,exports){
 "use strict";
 var shader_sources = {};
 shader_sources['point_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  vec3 lighting = vec3(1.);\n" + "  vec2 uv = v_texcoord * 2. - 1.;\n" + "  float len = length(uv);\n" + "  if(len > 1.) {\n" + "    discard;\n" + "  }\n" + "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.);\n" + "}\n" + "";
@@ -16742,7 +16415,7 @@ shader_sources['simple_polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + 
 module.exports = shader_sources;
 
 
-},{}],63:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16886,7 +16559,7 @@ GLTexture.prototype.setTextureFiltering = function() {
 };
 
 
-},{"../utils":71,"loglevel":37}],64:[function(require,module,exports){
+},{"../utils":64,"loglevel":37}],57:[function(require,module,exports){
 "use strict";
 var $__3;
 Object.defineProperties(exports, {
@@ -17082,7 +16755,7 @@ GLVertexData.prototype.array_types = ($__3 = {}, Object.defineProperty($__3, gl.
 }), $__3);
 
 
-},{"./gl_constants":58,"loglevel":37}],65:[function(require,module,exports){
+},{"./gl_constants":51,"loglevel":37}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   LeafletLayer: {get: function() {
@@ -17192,7 +16865,7 @@ function leafletLayer(options) {
 }
 
 
-},{"./scene":67}],66:[function(require,module,exports){
+},{"./scene":60}],59:[function(require,module,exports){
 "use strict";
 var $__leaflet_95_layer__,
     $__loglevel__,
@@ -17221,7 +16894,7 @@ window.Tangram = module.exports = {
 };
 
 
-},{"./geo":55,"./gl/gl":56,"./gl/gl_program":61,"./gl/gl_texture":63,"./leaflet_layer":65,"loglevel":37}],67:[function(require,module,exports){
+},{"./geo":48,"./gl/gl":49,"./gl/gl_program":54,"./gl/gl_texture":56,"./leaflet_layer":58,"loglevel":37}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -17239,7 +16912,6 @@ var $__geo__,
     $__gl_47_gl_95_texture__,
     $__gl_47_gl_95_modes__,
     $__camera__,
-    $__queue_45_async__,
     $__js_45_yaml__,
     $__tile__,
     $__tile_95_source__,
@@ -17255,7 +16927,6 @@ var GLProgram = ($__gl_47_gl_95_program__ = require("./gl/gl_program"), $__gl_47
 var GLTexture = ($__gl_47_gl_95_texture__ = require("./gl/gl_texture"), $__gl_47_gl_95_texture__ && $__gl_47_gl_95_texture__.__esModule && $__gl_47_gl_95_texture__ || {default: $__gl_47_gl_95_texture__}).default;
 var ModeManager = ($__gl_47_gl_95_modes__ = require("./gl/gl_modes"), $__gl_47_gl_95_modes__ && $__gl_47_gl_95_modes__.__esModule && $__gl_47_gl_95_modes__ || {default: $__gl_47_gl_95_modes__}).ModeManager;
 var Camera = ($__camera__ = require("./camera"), $__camera__ && $__camera__.__esModule && $__camera__ || {default: $__camera__}).default;
-var Queue = ($__queue_45_async__ = require("queue-async"), $__queue_45_async__ && $__queue_45_async__.__esModule && $__queue_45_async__ || {default: $__queue_45_async__}).default;
 var yaml = ($__js_45_yaml__ = require("js-yaml"), $__js_45_yaml__ && $__js_45_yaml__.__esModule && $__js_45_yaml__ || {default: $__js_45_yaml__}).default;
 var Tile = ($__tile__ = require("./tile"), $__tile__ && $__tile__.__esModule && $__tile__ || {default: $__tile__}).default;
 var TileSource = ($__tile_95_source__ = require("./tile_source"), $__tile_95_source__ && $__tile_95_source__.__esModule && $__tile_95_source__ || {default: $__tile_95_source__}).default;
@@ -17301,11 +16972,11 @@ function Scene(tile_source, layer_source, style_source, options) {
   this.resetTime();
 }
 var $__default = Scene;
-Scene.create = function($__24) {
-  var $__25 = $__24,
-      tile_source = $__25.tile_source,
-      layers = $__25.layers,
-      styles = $__25.styles;
+Scene.create = function($__23) {
+  var $__24 = $__23,
+      tile_source = $__24.tile_source,
+      layers = $__24.layers,
+      styles = $__24.styles;
   var options = arguments[1] !== (void 0) ? arguments[1] : {};
   if (!(tile_source instanceof TileSource)) {
     tile_source = TileSource.create(tile_source);
@@ -17313,53 +16984,50 @@ Scene.create = function($__24) {
   return new Scene(tile_source, layers, styles, options);
 };
 Scene.prototype.init = function(callback) {
-  var $__16 = this;
+  var $__15 = this;
   if (this.initialized) {
     return false;
   }
   this.initializing = true;
-  this.loadScene((function() {
-    var queue = Queue();
-    queue.defer((function(complete) {
-      $__16.modes = Scene.createModes($__16.styles.modes);
-      $__16.updateActiveModes();
-      complete();
-    }));
-    queue.defer((function(complete) {
-      $__16.createWorkers(complete);
-    }));
-    queue.await((function() {
-      $__16.container = $__16.container || document.body;
-      $__16.canvas = document.createElement('canvas');
-      $__16.canvas.style.position = 'absolute';
-      $__16.canvas.style.top = 0;
-      $__16.canvas.style.left = 0;
-      $__16.canvas.style.zIndex = -1;
-      $__16.container.appendChild($__16.canvas);
-      $__16.gl = GL.getContext($__16.canvas);
-      $__16.resizeMap($__16.container.clientWidth, $__16.container.clientHeight);
-      $__16.last_render_count = null;
-      $__16.initInputHandlers();
-      $__16.createCamera();
-      $__16.createLighting();
-      $__16.initSelectionBuffer();
-      for (var $__17 = Utils.values($__16.modes)[Symbol.iterator](),
-          $__18; !($__18 = $__17.next()).done; ) {
-        var mode = $__18.value;
+  this.loadScene().then((function() {
+    Promise.all([new Promise((function(resolve, reject) {
+      $__15.modes = Scene.createModes($__15.styles.modes);
+      $__15.updateActiveModes();
+      resolve();
+    })), $__15.createWorkers()]).then((function(resolve, reject) {
+      $__15.container = $__15.container || document.body;
+      $__15.canvas = document.createElement('canvas');
+      $__15.canvas.style.position = 'absolute';
+      $__15.canvas.style.top = 0;
+      $__15.canvas.style.left = 0;
+      $__15.canvas.style.zIndex = -1;
+      $__15.container.appendChild($__15.canvas);
+      $__15.gl = GL.getContext($__15.canvas);
+      $__15.resizeMap($__15.container.clientWidth, $__15.container.clientHeight);
+      $__15.last_render_count = null;
+      $__15.initInputHandlers();
+      $__15.createCamera();
+      $__15.createLighting();
+      $__15.initSelectionBuffer();
+      for (var $__16 = Utils.values($__15.modes)[Symbol.iterator](),
+          $__17; !($__17 = $__16.next()).done; ) {
+        var mode = $__17.value;
         {
-          mode.setGL($__16.gl);
+          mode.setGL($__15.gl);
         }
       }
-      $__16.updateModes((function() {
-        $__16.initializing = false;
-        $__16.initialized = true;
+      $__15.updateModes((function() {
+        $__15.initializing = false;
+        $__15.initialized = true;
         if (typeof callback === 'function') {
           callback();
         }
       }));
-      if ($__16.render_loop !== false) {
-        $__16.setupRenderLoop();
+      if ($__15.render_loop !== false) {
+        $__15.setupRenderLoop();
       }
+    }), (function(error) {
+      throw error;
     }));
   }));
 };
@@ -17415,36 +17083,35 @@ Scene.prototype.initSelectionBuffer = function() {
 Scene.prototype.createObjectURL = function() {
   return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
-Scene.prototype.createWorkers = function(callback) {
-  var $__16 = this;
-  var queue = Queue();
-  var worker_url = (Scene.library_base_url + "tangram-worker." + Scene.library_type + ".js?" + +new Date());
-  queue.defer((function(done) {
-    var createObjectURL = $__16.createObjectURL();
-    if (createObjectURL && $__16.allow_cross_domain_workers) {
-      Utils.xhr(worker_url, (function(error, resp, body) {
-        if (error) {
-          throw error;
-        }
+Scene.prototype.buildWorkerUrl = function() {
+  return (Scene.library_base_url + "tangram-worker." + Scene.library_type + ".js?" + +new Date());
+};
+Scene.prototype.createWorkers = function() {
+  var $__15 = this;
+  return new Promise((function(resolve, reject) {
+    var worker_url = $__15.buildWorkerUrl(),
+        createObjectURL = $__15.createObjectURL();
+    if (createObjectURL && $__15.allow_cross_domain_workers) {
+      Utils.io(worker_url).then((function(body) {
         var worker_local_url = createObjectURL(new Blob([body], {type: 'application/javascript'}));
-        $__16.makeWorkers(worker_local_url);
-        done();
-      }));
+        $__15.makeWorkers(worker_local_url);
+        $__15.initWorkerEvents();
+        resolve();
+      }), reject);
     } else {
-      $__16.makeWorkers(worker_url);
-      done();
+      $__15.makeWorkers(worker_url);
+      $__15.initWorkerEvents();
+      resolve();
     }
   }));
-  queue.await((function() {
-    $__16.workers.forEach((function(worker) {
-      worker.addEventListener('message', $__16.workerLogMessage.bind($__16));
-    }));
-    $__16.next_worker = 0;
-    $__16.selection_map_worker_size = {};
-    if (typeof callback === 'function') {
-      callback();
-    }
+};
+Scene.prototype.initWorkerEvents = function() {
+  var $__15 = this;
+  this.workers.forEach((function(worker) {
+    worker.addEventListener('message', $__15.workerLogMessage.bind($__15));
   }));
+  this.next_worker = 0;
+  this.selection_map_worker_size = {};
 };
 Scene.prototype.makeWorkers = function(url) {
   this.workers = [];
@@ -17510,9 +17177,9 @@ Scene.prototype.updateBounds = function() {
     x: this.css_size.width / 2 * this.meters_per_pixel,
     y: this.css_size.height / 2 * this.meters_per_pixel
   };
-  var $__24 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__24[0],
-      y = $__24[1];
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   this.center_meters = {
     x: x,
     y: y
@@ -17538,9 +17205,9 @@ Scene.prototype.updateBounds = function() {
       y: this.bounds_meters.ne.y + buffer
     }
   };
-  for (var $__17 = Utils.values(this.tiles)[Symbol.iterator](),
-      $__18; !($__18 = $__17.next()).done; ) {
-    var tile = $__18.value;
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    var tile = $__17.value;
     {
       tile.updateVisibility(this);
     }
@@ -17590,24 +17257,24 @@ Scene.calculateZ = function(layer, tile, layer_offset, feature_offset) {
   return z;
 };
 Scene.prototype.setupRenderLoop = function() {
-  var $__24 = arguments[0] !== (void 0) ? arguments[0] : {},
-      pre_render = $__24.pre_render,
-      post_render = $__24.post_render;
-  var $__16 = this;
+  var $__23 = arguments[0] !== (void 0) ? arguments[0] : {},
+      pre_render = $__23.pre_render,
+      post_render = $__23.post_render;
+  var $__15 = this;
   this.renderLoop = (function() {
-    if ($__16.initialized) {
-      if (typeof $__16.preRender === 'function') {
-        $__16.preRender();
+    if ($__15.initialized) {
+      if (typeof $__15.preRender === 'function') {
+        $__15.preRender();
       }
-      $__16.render();
-      if (typeof $__16.postRender === 'function') {
-        $__16.postRender();
+      $__15.render();
+      if (typeof $__15.postRender === 'function') {
+        $__15.postRender();
       }
     }
-    window.requestAnimationFrame($__16.renderLoop);
+    window.requestAnimationFrame($__15.renderLoop);
   });
   setTimeout((function() {
-    $__16.renderLoop();
+    $__15.renderLoop();
   }), 0);
 };
 Scene.prototype.render = function() {
@@ -17637,16 +17304,16 @@ Scene.prototype.resetFrame = function() {
   gl.cullFace(gl.BACK);
 };
 Scene.prototype.renderGL = function() {
-  var $__16 = this;
+  var $__15 = this;
   var gl = this.gl;
   this.input();
   this.resetFrame();
   if (!this.center) {
     return;
   }
-  var $__24 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
-      x = $__24[0],
-      y = $__24[1];
+  var $__23 = Geo.latLngToMeters([this.center.lng, this.center.lat]),
+      x = $__23[0],
+      y = $__23[1];
   var center = {
     x: x,
     y: y
@@ -17746,7 +17413,7 @@ Scene.prototype.renderGL = function() {
       clearTimeout(this.selection_callback_timer);
     }
     this.selection_callback_timer = setTimeout((function() {
-      return $__16.doFeatureSelectionRequests();
+      return $__15.doFeatureSelectionRequests();
     }), this.selection_frame_delay);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -17778,12 +17445,12 @@ Scene.prototype.getFeatureAt = function(pixel, callback) {
   this.dirty = true;
 };
 Scene.prototype.doFeatureSelectionRequests = function() {
-  var $__16 = this;
+  var $__15 = this;
   var gl = this.gl;
   gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-  for (var $__17 = Utils.values(this.selection_requests)[Symbol.iterator](),
-      $__18; !($__18 = $__17.next()).done; ) {
-    var request = $__18.value;
+  for (var $__16 = Utils.values(this.selection_requests)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    var request = $__17.value;
     {
       if (request.sent) {
         continue;
@@ -17800,7 +17467,7 @@ Scene.prototype.doFeatureSelectionRequests = function() {
             id: request.id,
             key: feature_key
           }, (function(message) {
-            return $__16.workerGetFeatureSelection(message);
+            return $__15.workerGetFeatureSelection(message);
           }));
         }
       } else {
@@ -17836,8 +17503,8 @@ Scene.prototype.workerGetFeatureSelection = function(message) {
 };
 Scene.prototype.loadTile = function() {
   for (var args = [],
-      $__23 = 0; $__23 < arguments.length; $__23++)
-    args[$__23] = arguments[$__23];
+      $__22 = 0; $__22 < arguments.length; $__22++)
+    args[$__22] = arguments[$__22];
   this.queued_tiles[this.queued_tiles.length] = args;
 };
 Scene.prototype.loadQueuedTiles = function() {
@@ -17862,7 +17529,7 @@ Scene.prototype.forgetTile = function(key) {
   delete this.tiles[key];
 };
 Scene.prototype._loadTile = function(coords, div, callback) {
-  var $__16 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   var tile = Tile.create({
     coords: coords,
@@ -17870,7 +17537,7 @@ Scene.prototype._loadTile = function(coords, div, callback) {
   });
   if (!this.hasTile(tile.key)) {
     tile.load(this, coords, div, (function(error, div) {
-      $__16.cacheTile(tile);
+      $__15.cacheTile(tile);
       callback(null, div, tile);
     }));
   } else {
@@ -17878,7 +17545,7 @@ Scene.prototype._loadTile = function(coords, div, callback) {
   }
 };
 Scene.prototype.rebuildGeometry = function(callback) {
-  var $__16 = this;
+  var $__15 = this;
   if (!this.initialized) {
     if (typeof callback === 'function') {
       callback(false);
@@ -17901,16 +17568,16 @@ Scene.prototype.rebuildGeometry = function(callback) {
   this.selection_map = {};
   this.workers.forEach((function(worker) {
     WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-      layers: $__16.layers_serialized,
-      styles: $__16.styles_serialized
+      layers: $__15.layers_serialized,
+      styles: $__15.styles_serialized
     });
   }));
   var tile,
       visible = [],
       invisible = [];
-  for (var $__17 = Utils.values(this.tiles)[Symbol.iterator](),
-      $__18; !($__18 = $__17.next()).done; ) {
-    tile = $__18.value;
+  for (var $__16 = Utils.values(this.tiles)[Symbol.iterator](),
+      $__17; !($__17 = $__16.next()).done; ) {
+    tile = $__17.value;
     {
       if (tile.visible === true) {
         visible.push(tile);
@@ -17922,16 +17589,16 @@ Scene.prototype.rebuildGeometry = function(callback) {
   visible.sort((function(a, b) {
     return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
   }));
-  for (var $__19 = visible[Symbol.iterator](),
-      $__20; !($__20 = $__19.next()).done; ) {
-    tile = $__20.value;
+  for (var $__18 = visible[Symbol.iterator](),
+      $__19; !($__19 = $__18.next()).done; ) {
+    tile = $__19.value;
     {
       tile.build(this);
     }
   }
-  for (var $__21 = invisible[Symbol.iterator](),
-      $__22; !($__22 = $__21.next()).done; ) {
-    tile = $__22.value;
+  for (var $__20 = invisible[Symbol.iterator](),
+      $__21; !($__21 = $__20.next()).done; ) {
+    tile = $__21.value;
     {
       if (tile.isInZoom(this)) {
         tile.build(this);
@@ -17950,11 +17617,11 @@ Scene.prototype.rebuildGeometry = function(callback) {
     }
   }
 };
-Scene.prototype.buildTileCompleted = function($__24) {
-  var $__25 = $__24,
-      tile = $__25.tile,
-      worker_id = $__25.worker_id,
-      selection_map_size = $__25.selection_map_size;
+Scene.prototype.buildTileCompleted = function($__23) {
+  var $__24 = $__23,
+      tile = $__24.tile,
+      worker_id = $__24.worker_id,
+      selection_map_size = $__24.selection_map_size;
   this.selection_map_worker_size[worker_id] = selection_map_size;
   this.selection_map_size = 0;
   for (var wid in this.selection_map_worker_size) {
@@ -18020,97 +17687,68 @@ Scene.prototype.removeTile = function(key) {
   this.forgetTile(tile.key);
   this.dirty = true;
 };
-Scene.prototype.loadScene = function(callback) {
-  var $__16 = this;
-  var queue = Queue();
-  queue.defer((function(complete) {
-    $__16.loadLayers($__16.layer_source, complete);
-  }));
-  queue.defer((function(complete) {
-    $__16.loadStyles($__16.style_source, complete);
-  }));
-  queue.await(function() {
-    if (typeof callback === 'function') {
-      callback();
+Scene.prototype.loadScene = function() {
+  return Promise.all([this.loadLayers(this.layer_source), this.loadStyles(this.style_source)]);
+};
+Scene.prototype.parseResource = function(body) {
+  var data = null;
+  try {
+    eval('data = ' + body);
+  } catch (e) {
+    try {
+      data = yaml.safeLoad(body);
+    } catch (e) {
+      log.error('Scene: failed to parse');
+      log.error(e);
     }
-  });
-};
-Scene.prototype.loadLayers = function(source, callback) {
-  var $__16 = this;
-  callback = (typeof callback === 'function') ? callback : function() {};
-  if (typeof source === 'string') {
-    Utils.xhr(source + '?' + (+new Date()), (function(error, resp, body) {
-      if (error) {
-        throw error;
-      }
-      var layers;
-      try {
-        eval('layers = ' + body);
-      } catch (e) {
-        try {
-          layers = yaml.safeLoad(body);
-        } catch (e) {
-          log.error('Scene: failed to parse layers');
-          log.error(layers);
-          layers = null;
-        }
-      }
-      $__16.layers = layers;
-      $__16.layers_serialized = Utils.serializeWithFunctions($__16.layers);
-      callback();
-    }));
-  } else {
-    this.layers = source;
-    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-    callback();
   }
+  return data;
 };
-Scene.prototype.loadStyles = function(source, callback) {
-  var $__16 = this;
-  callback = (typeof callback === 'function') ? callback : function() {};
-  if (typeof source === 'string') {
-    Utils.xhr(source + '?' + (+new Date()), (function(error, response, body) {
-      if (error) {
-        throw error;
-      }
-      var styles;
-      try {
-        eval('styles = ' + body);
-      } catch (e) {
-        try {
-          styles = yaml.safeLoad(body);
-        } catch (e) {
-          log.error('Scene: failed to parse styles');
-          log.error(styles);
-          styles = null;
-        }
-      }
-      $__16.styles = styles;
-      Style.expandMacros($__16.styles);
-      Scene.preProcessStyles($__16.styles);
-      $__16.styles_serialized = Utils.serializeWithFunctions($__16.styles);
-      callback();
-    }));
-  } else {
-    this.styles = source;
-    Style.expandMacros(this.styles);
-    Scene.preProcessStyles(this.styles);
-    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-    callback();
-  }
+Scene.prototype.loadResource = function(source, postLoad) {
+  var $__15 = this;
+  return new Promise((function(resolve, reject) {
+    if (typeof source === 'string') {
+      Utils.io(Utils.cacheBusterForUrl(source)).then((function(body) {
+        var data = $__15.parseResource(body);
+        postLoad(data);
+        resolve();
+      }), reject);
+    } else {
+      postLoad(source);
+      resolve();
+    }
+  }));
+};
+Scene.prototype.loadLayers = function(source) {
+  var $__15 = this;
+  return this.loadResource(source, (function(data) {
+    $__15.layers = data;
+    $__15.layers_serialized = Utils.serializeWithFunctions($__15.layers);
+  }));
+};
+Scene.prototype.loadStyles = function(source) {
+  var $__15 = this;
+  return this.loadResource(source, (function(styles) {
+    $__15.styles = styles;
+    Style.expandMacros($__15.styles);
+    Scene.preProcessStyles($__15.styles);
+    $__15.styles_serialized = Utils.serializeWithFunctions($__15.styles);
+  }));
 };
 Scene.prototype.reload = function() {
-  var $__16 = this;
+  var $__15 = this;
   if (!this.initialized) {
     return;
   }
-  this.loadScene((function() {
-    $__16.updateStyles();
-    $__16.rebuildGeometry();
+  this.loadScene().then((function() {
+    $__15.updateStyles();
+    $__15.rebuildGeometry();
+  }), (function(error) {
+    throw error;
   }));
 };
 Scene.prototype.updateModes = function(callback) {
-  var $__16 = this;
+  var $__15 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (!this.initialized && !this.initializing) {
     callback(new Error('Scene.updateModes() called before scene was initialized'));
@@ -18120,33 +17758,37 @@ Scene.prototype.updateModes = function(callback) {
       this.compiling.queued.callback(new Error('Scene.updateModes() queued request was superceded'));
     }
     this.compiling.queued = {callback: callback};
-    return;
+    return callback();
   }
   this.compiling = {callback: callback};
-  var queue = Queue();
   var name;
   for (name in this.styles.modes) {
     this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
   }
-  for (name in this.modes) {
-    queue.defer((function(_name, complete) {
-      $__16.modes[_name].compile((function(error) {
+  Promise.all(Object.keys(this.modes).map((function(_name) {
+    var mode = $__15.modes[_name];
+    return new Promise((function(resolve, reject) {
+      mode.compile((function(error) {
+        if (error) {
+          reject(error);
+        }
         log.trace(("Scene.updateModes(): compiled mode " + _name + " " + (error ? error : '')));
-        complete(error);
+        resolve();
       }));
-    }), name);
-  }
-  queue.await((function(error) {
-    log.debug(("Scene.updateModes(): compiled all modes " + (error ? error : '')));
-    $__16.dirty = true;
-    var callback = $__16.compiling.callback;
-    var queued = $__16.compiling.queued;
-    $__16.compiling = null;
-    callback(error);
+    }));
+  }))).then((function() {
+    log.debug("Scene.updateModes(): compiled all modes");
+    $__15.dirty = true;
+    var callback = $__15.compiling.callback;
+    var queued = $__15.compiling.queued;
+    $__15.compiling = null;
+    callback(null);
     if (queued) {
       log.trace("Scene.updateModes(): starting queued request");
-      $__16.updateModes(queued.callback);
+      $__15.updateModes(queued.callback);
     }
+  }), (function(error) {
+    callback(error);
   }));
 };
 Scene.prototype.updateActiveModes = function() {
@@ -18227,16 +17869,16 @@ Scene.prototype.getDebugAverage = function(prop, filter) {
   return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
 };
 Scene.prototype.workerLogMessage = function(event) {
-  var $__26;
+  var $__25;
   if (event.data.type !== 'log') {
     return;
   }
-  var $__24 = event.data,
-      worker_id = $__24.worker_id,
-      level = $__24.level,
-      msg = $__24.msg;
+  var $__23 = event.data,
+      worker_id = $__23.worker_id,
+      level = $__23.level,
+      msg = $__23.msg;
   if (log[level]) {
-    ($__26 = log)[level].apply($__26, $traceurRuntime.spread([("worker " + worker_id + ":")], msg));
+    ($__25 = log)[level].apply($__25, $traceurRuntime.spread([("worker " + worker_id + ":")], msg));
   } else {
     log.error(("Scene.workerLogMessage: unrecognized log level " + level));
   }
@@ -18308,7 +17950,7 @@ function findBaseLibraryURL() {
 }
 
 
-},{"./camera":53,"./geo":55,"./gl/gl":56,"./gl/gl_builders":57,"./gl/gl_modes":60,"./gl/gl_program":61,"./gl/gl_texture":63,"./style":68,"./tile":69,"./tile_source":70,"./utils":71,"./worker_broker":73,"gl-matrix":4,"js-yaml":5,"loglevel":37,"queue-async":40}],68:[function(require,module,exports){
+},{"./camera":46,"./geo":48,"./gl/gl":49,"./gl/gl_builders":50,"./gl/gl_modes":53,"./gl/gl_program":54,"./gl/gl_texture":56,"./style":61,"./tile":62,"./tile_source":63,"./utils":64,"./worker_broker":66,"gl-matrix":4,"js-yaml":5,"loglevel":37}],61:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Style: {get: function() {
@@ -18339,25 +17981,25 @@ Style.pixels = function(p) {
   return f;
 };
 Style.selection_map = {};
-Style.selection_map_current = 1;
+Style.selection_map_size = 1;
 Style.selection_map_prefix = 0;
-Style.generateSelection = function(color_map) {
-  Style.selection_map_current++;
-  var ir = Style.selection_map_current & 255;
-  var ig = (Style.selection_map_current >> 8) & 255;
-  var ib = (Style.selection_map_current >> 16) & 255;
+Style.generateSelection = function() {
+  Style.selection_map_size++;
+  var ir = Style.selection_map_size & 255;
+  var ig = (Style.selection_map_size >> 8) & 255;
+  var ib = (Style.selection_map_size >> 16) & 255;
   var ia = Style.selection_map_prefix;
   var r = ir / 255;
   var g = ig / 255;
   var b = ib / 255;
   var a = ia / 255;
   var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0;
-  color_map[key] = {color: [r, g, b, a]};
-  return color_map[key];
+  Style.selection_map[key] = {color: [r, g, b, a]};
+  return Style.selection_map[key];
 };
 Style.resetSelectionMap = function() {
   Style.selection_map = {};
-  Style.selection_map_current = 1;
+  Style.selection_map_size = 1;
 };
 Style.macros = ['Style.color.pseudoRandomColor', 'Style.color.randomColor', 'Style.pixels'];
 Style.wrapFunction = function(func) {
@@ -18472,7 +18114,7 @@ Style.parseStyleForFeature = function(feature, layer_name, layer_style, tile) {
     interactive = layer_style.interactive;
   }
   if (interactive === true) {
-    var selector = Style.generateSelection(Style.selection_map);
+    var selector = Style.generateSelection();
     selector.feature = {
       id: feature.id,
       properties: feature.properties
@@ -18497,7 +18139,7 @@ Style.parseStyleForFeature = function(feature, layer_name, layer_style, tile) {
 };
 
 
-},{"./geo":55,"loglevel":37}],69:[function(require,module,exports){
+},{"./geo":48,"loglevel":37}],62:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18739,7 +18381,7 @@ var $Tile = Tile;
 var $__default = Tile;
 
 
-},{"./geo":55,"./style":68,"./worker_broker":73,"loglevel":37}],70:[function(require,module,exports){
+},{"./geo":48,"./style":61,"./worker_broker":66,"loglevel":37}],63:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18796,7 +18438,7 @@ var TileSource = function TileSource(source) {
       max_zoom: this.max_zoom
     };
   },
-  loadTile: function(tile, callback) {
+  loadTile: function(tile) {
     throw new MethodNotImplemented('loadTile');
   }
 }, {
@@ -18853,7 +18495,7 @@ var NetworkTileSource = function NetworkTileSource(source) {
 };
 var $NetworkTileSource = NetworkTileSource;
 ($traceurRuntime.createClass)(NetworkTileSource, {
-  loadTile: function(tile, callback) {
+  loadTile: function(tile) {
     var $__4 = this;
     var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
     if (this.url_hosts != null) {
@@ -18862,36 +18504,25 @@ var $NetworkTileSource = NetworkTileSource;
     }
     tile.url = url;
     tile.debug.network = +new Date();
-    tile.loading = true;
-    tile.loaded = false;
-    tile.layers = null;
-    tile.error = null;
-    Utils.xhr({
-      uri: url,
-      timeout: 60 * 1000,
-      responseType: this.response_type
-    }, (function(err, resp, body) {
-      if (err) {
-        tile.loading = false;
-        tile.loaded = false;
-        tile.layers = null;
-        tile.error = err.toString();
-        callback(err);
-        return;
-      } else if (tile.loading === false) {
-        return;
-      }
-      tile.debug.response_size = body.length || body.byteLength;
-      tile.debug.network = +new Date() - tile.debug.network;
-      tile.debug.parsing = +new Date();
-      $__4.parseTile(tile, body);
-      tile.debug.parsing = +new Date() - tile.debug.parsing;
-      tile.loading = false;
-      tile.loaded = true;
+    return new Promise((function(resolve, reject) {
+      tile.loading = true;
+      tile.loaded = false;
       tile.error = null;
-      if (callback) {
-        callback(null, tile);
-      }
+      Utils.io(url, 60 * 100, $__4.response_type).then((function(body) {
+        tile.debug.response_size = body.length || body.byteLength;
+        tile.debug.network = +new Date() - tile.debug.network;
+        tile.debug.parsing = +new Date();
+        $__4.parseTile(tile, body);
+        tile.debug.parsing = +new Date() - tile.debug.parsing;
+        tile.loading = false;
+        tile.loaded = true;
+        resolve(tile);
+      }), (function(error) {
+        tile.loaded = false;
+        tile.loading = false;
+        tile.error = error.toString();
+        reject(error);
+      }));
     }));
   },
   parseTile: function(tile) {
@@ -18964,7 +18595,7 @@ var $MapboxFormatTileSource = MapboxFormatTileSource;
   }}, {}, NetworkTileSource);
 
 
-},{"./errors":54,"./geo":55,"./utils":71,"loglevel":37,"pbf":38,"vector-tile":41}],71:[function(require,module,exports){
+},{"./errors":47,"./geo":48,"./utils":64,"loglevel":37,"pbf":38,"vector-tile":41}],64:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18972,15 +18603,36 @@ Object.defineProperties(exports, {
     }},
   __esModule: {value: true}
 });
-var $__xhr__;
 var Utils;
 var $__default = Utils = {};
-var xhr = ($__xhr__ = require("xhr"), $__xhr__ && $__xhr__.__esModule && $__xhr__ || {default: $__xhr__}).default;
-Utils.xhr = function() {
-  for (var args = [],
-      $__3 = 0; $__3 < arguments.length; $__3++)
-    args[$__3] = arguments[$__3];
-  xhr.apply(null, $traceurRuntime.spread(args));
+Utils.cacheBusterForUrl = function(url) {
+  return url + '?' + (+new Date());
+};
+Utils.io = function(url) {
+  var timeout = arguments[1] !== (void 0) ? arguments[1] : 1000;
+  var responseType = arguments[2] !== (void 0) ? arguments[2] : 'text';
+  var method = arguments[3] !== (void 0) ? arguments[3] : 'GET';
+  var headers = arguments[4] !== (void 0) ? arguments[4] : {};
+  var request = new XMLHttpRequest();
+  return new Promise((function(resolve, reject) {
+    request.timeout = timeout;
+    request.onload = (function() {
+      if (request.status === 200) {
+        resolve(request.responseText);
+      } else {
+        reject(Error('Request error with a status of ' + request.statusText));
+      }
+    });
+    request.onerror = (function(evt) {
+      reject(Error('There was a network error' + evt.toString()));
+    });
+    request.ontimeout = (function(evt) {
+      reject(Error('timeout ' + evt.toString()));
+    });
+    request.open(method, url, true);
+    request.responseType = responseType;
+    request.send();
+  }));
 };
 Utils.requestAnimationFramePolyfill = function() {
   if (typeof window.requestAnimationFrame !== 'function') {
@@ -19043,22 +18695,22 @@ Utils.inWorkerThread = function(block) {
 Utils.isPowerOf2 = function(value) {
   return (value & (value - 1)) === 0;
 };
-Utils.entries = $traceurRuntime.initGeneratorFunction(function $__4(obj) {
-  var $__1,
-      $__2,
+Utils.entries = $traceurRuntime.initGeneratorFunction(function $__2(obj) {
+  var $__0,
+      $__1,
       key;
   return $traceurRuntime.createGeneratorInstance(function($ctx) {
     while (true)
       switch ($ctx.state) {
         case 0:
-          $__1 = Object.keys(obj)[Symbol.iterator]();
+          $__0 = Object.keys(obj)[Symbol.iterator]();
           $ctx.state = 4;
           break;
         case 4:
-          $ctx.state = (!($__2 = $__1.next()).done) ? 5 : -2;
+          $ctx.state = (!($__1 = $__0.next()).done) ? 5 : -2;
           break;
         case 5:
-          key = $__2.value;
+          key = $__1.value;
           $ctx.state = 6;
           break;
         case 6:
@@ -19071,24 +18723,24 @@ Utils.entries = $traceurRuntime.initGeneratorFunction(function $__4(obj) {
         default:
           return $ctx.end();
       }
-  }, $__4, this);
+  }, $__2, this);
 });
-Utils.values = $traceurRuntime.initGeneratorFunction(function $__5(obj) {
-  var $__1,
-      $__2,
+Utils.values = $traceurRuntime.initGeneratorFunction(function $__3(obj) {
+  var $__0,
+      $__1,
       key;
   return $traceurRuntime.createGeneratorInstance(function($ctx) {
     while (true)
       switch ($ctx.state) {
         case 0:
-          $__1 = Object.keys(obj)[Symbol.iterator]();
+          $__0 = Object.keys(obj)[Symbol.iterator]();
           $ctx.state = 4;
           break;
         case 4:
-          $ctx.state = (!($__2 = $__1.next()).done) ? 5 : -2;
+          $ctx.state = (!($__1 = $__0.next()).done) ? 5 : -2;
           break;
         case 5:
-          key = $__2.value;
+          key = $__1.value;
           $ctx.state = 6;
           break;
         case 6:
@@ -19101,11 +18753,11 @@ Utils.values = $traceurRuntime.initGeneratorFunction(function $__5(obj) {
         default:
           return $ctx.end();
       }
-  }, $__5, this);
+  }, $__3, this);
 });
 
 
-},{"xhr":46}],72:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Vector: {get: function() {
@@ -19161,7 +18813,7 @@ Vector.lineIntersection = function(p1, p2, p3, p4, parallel_tolerance) {
 };
 
 
-},{}],73:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -19174,13 +18826,14 @@ var $__default = WorkerBroker = {};
 var message_id = 0;
 var messages = {};
 function setupMainThread() {
-  WorkerBroker.postMessage = function(worker, method, message, callback) {
-    var has_callback = (typeof callback === 'function');
+  WorkerBroker.postMessage = function(worker, method, message, callback, error) {
+    var has_callback = (typeof callback === 'function') || (typeof error === 'function');
     if (has_callback) {
       messages[message_id] = {
         method: method,
         message: message,
-        callback: callback
+        callback: callback,
+        error: error
       };
     }
     worker.postMessage({
@@ -19196,7 +18849,11 @@ function setupMainThread() {
     worker.addEventListener('message', (function(event) {
       var id = event.data.message_id;
       if (messages[id]) {
-        messages[id].callback(event.data.message);
+        if (messages[id].error && event.data.error) {
+          messages[id].error(event.data.error);
+        } else if (messages[id].callback) {
+          messages[id].callback(event.data.message);
+        }
         delete messages[id];
       }
     }));
@@ -19215,11 +18872,17 @@ function setupWorkerThread() {
     var result = method(event.data.message);
     if (event.data.has_callback) {
       if (result instanceof Promise) {
-        result.then((function(value, error) {
+        result.then((function(value) {
+          console.log('worker broker promise resolved', value);
           self.postMessage({
             message_id: id,
-            message: value,
-            error: error
+            message: value
+          });
+        }), (function(value) {
+          console.log('worker broker promise rejected', value);
+          self.postMessage({
+            message_id: id,
+            error: value
           });
         }));
       } else {
@@ -19242,4 +18905,4 @@ try {
 }
 
 
-},{}]},{},[3,66])
+},{}]},{},[3,59])
