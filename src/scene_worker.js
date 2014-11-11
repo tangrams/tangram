@@ -74,18 +74,23 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
 
     // First time building the tile
     if (tile.loaded !== true) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             SceneWorker.tile_source.loadTile(tile).then(() => {
                 Scene.processLayersForTile(SceneWorker.layers, tile);
                 var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+
                 resolve({
                     tile: SceneWorker.sliceTile(tile, keys),
                     worker_id: SceneWorker.worker_id,
-                    selection_map_size: Object.keys(Style.selection_map).length
+                    selection_map_size: Style.selection_map_size
                 });
             }, (error) => {
                 SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
-                resolve();
+                resolve({
+                    tile: SceneWorker.sliceTile(tile),
+                    worker_id: SceneWorker.worker_id,
+                    selection_map_size: Style.selection_map_size
+                });
             });
         });
     }
@@ -103,7 +108,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         return {
             tile: SceneWorker.sliceTile(tile, keys),
             worker_id: SceneWorker.worker_id,
-            selection_map_size: Object.keys(Style.selection_map).length
+            selection_map_size: Style.selection_map_size
         };
     }
 };
