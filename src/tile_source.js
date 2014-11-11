@@ -119,23 +119,31 @@ export class NetworkTileSource extends TileSource {
         tile.url = url;
         tile.debug.network = +new Date();
         return new Promise((resolve, reject) => {
+            tile.loading = true;
+            tile.loaded = false;
+            tile.error = null;
+
+            // For testing network errors
+            // var promise = Utils.io(url, 60 * 100, this.response_type);
+            // if (Math.random() < .7) {
+            //     promise = Promise.reject(Error('fake tile error'));
+            // }
+            // promise.then((body) => {
             Utils.io(url, 60 * 100, this.response_type).then((body) => {
-                if (tile.loading === false) {
-                    reject(); // what should we do here?
-                }
                 tile.debug.response_size = body.length || body.byteLength;
                 tile.debug.network = +new Date() - tile.debug.network;
                 tile.debug.parsing = +new Date();
                 this.parseTile(tile, body);
                 tile.debug.parsing = +new Date() - tile.debug.parsing;
+
                 tile.loading = false;
                 tile.loaded = true;
                 resolve(tile);
-            }, (err) => {
+            }, (error) => {
                 tile.loaded = false;
                 tile.loading = false;
-                tile.error = err.toString();
-                reject(err);
+                tile.error = error.toString();
+                reject(error);
             });
         });
     }
