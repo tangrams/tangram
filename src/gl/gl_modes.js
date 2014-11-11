@@ -18,6 +18,7 @@ var RenderMode = {
         this.defines = {};
         this.shaders = {};
         this.selection = false;
+        this.loading = false;
         this.gl_program = null;
         this.selection_gl_program = null;
     },
