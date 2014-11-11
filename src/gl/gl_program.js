@@ -209,8 +209,6 @@ GLProgram.prototype.compile = function (callback)
 // Can be async, calls 'complete' callback when done
 GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
-    var source;
-
     // Inline code
     if (typeof block === 'string') {
         transforms[key].list[index] = block;
@@ -218,11 +216,10 @@ GLProgram.loadTransform = function (transforms, block, key, index, complete) {
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
-        Utils.xhr(block.url + '?' + (+new Date()), (error, response, body) => {
-            if (!error) {
-                source = body;
-                transforms[key].list[index] = source;
-            }
+        Utils.io(Utils.cacheBusterForUrl(block.url)).then((body) => {
+            transforms[key].list[index] = body;
+            complete(null);
+        }, (error) => {
             complete(error);
         });
     }
