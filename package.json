@@ -30,8 +30,6 @@
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
-    "queue-async": "^1.0.7",
-    "xhr": "~1.17.0",
     "loglevel": "~1.2.0"
   },
   "devDependencies": {
