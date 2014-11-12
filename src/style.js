@@ -62,11 +62,13 @@ Style.macros = [
     'Style.pixels'
 ];
 
-// Wraps style functions and provides a scope of commonly accessible data:
-// - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
-// - zoom: the current map zoom level
-// - meters_per_pixel: conversion for meters/pixels at current map zoom
-// - properties: user-defined properties on the style-rule object in the stylesheet
+/**
+    Wraps style functions and provides a scope of commonly accessible data:
+    - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
+    - zoom: the current map zoom level
+    - meters_per_pixel: conversion for meters/pixels at current map zoom
+    - properties: user-defined properties on the style-rule object in the stylesheet
+*/
 Style.wrapFunction = function (func) {
     var f = `function(feature, tile, helpers) {
                 var feature = feature.properties;
@@ -81,7 +83,6 @@ Style.wrapFunction = function (func) {
 Style.expandMacros = function expandMacros (obj) {
     for (var p in obj) {
         var val = obj[p];
-
         // Loop through object properties
         if (typeof val === 'object') {
             obj[p] = expandMacros(val);
@@ -92,9 +93,7 @@ Style.expandMacros = function expandMacros (obj) {
                 if (val.match(Style.macros[m])) {
                     var f;
                     try {
-                        /*jshint ignore:start */
-                        eval('f = ' + val);
-                        /*jshint ignore:end */
+                        eval('f = ' + val); // jshint ignore:line
                         obj[p] = f;
                         log.trace(`expanded macro ${val} to ${f}`);
                         break;
@@ -104,6 +103,8 @@ Style.expandMacros = function expandMacros (obj) {
                         obj[p] = val;
                         log.trace(`failed to expand macro ${val}`);
                     }
+                } else {
+                    log.trace(`Unable to find macro named ${val}`);
                 }
             }
         }
@@ -145,9 +146,9 @@ Style.helpers = {
     Geo: Geo
 };
 
-Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
-{
+Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     layer_style = layer_style || {};
+
     var style = {};
 
     // Custom properties
@@ -157,9 +158,11 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 
     // Test whether features should be rendered at all
     if (typeof layer_style.filter === 'function') {
-        if (layer_style.filter(feature, tile, Style.helpers) === false) {
-            return null;
-        }
+        try {
+            if (layer_style.filter(feature, tile, Style.helpers) === false) {
+                return null;
+            }
+        } catch (e) { throw e; }
     }
 
     // Parse styles
@@ -169,6 +172,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     }
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
+
     if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }

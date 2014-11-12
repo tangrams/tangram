@@ -48,11 +48,11 @@ export default class Tile {
         };
     }
 
-    workerMessage (scene, ...message) {
+    workerMessage (scene, ...args) {
         if (this.worker == null) {
             this.worker = scene.nextWorker();
         }
-        WorkerBroker.postMessage(this.worker, ...message);
+        WorkerBroker.postMessage(this.worker, ...args);
     }
 
     build(scene) {
@@ -66,7 +66,8 @@ export default class Tile {
                 layers: scene.layers_serialized,
                 styles: scene.styles_serialized
             },
-            message => scene.buildTileCompleted(message)
+            (message) => scene.buildTileCompleted(message),
+            (error) => { throw error;}
         );
     }
 
