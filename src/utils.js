@@ -4,6 +4,12 @@
 var Utils;
 export default Utils = {};
 
+Utils.noop = () => {};
+
+Utils.isFunction = (maybeFn) => {
+    return typeof maybeFn === 'function';
+};
+
 Utils.cacheBusterForUrl = function (url) {
     return url + '?' + (+new Date());
 };
