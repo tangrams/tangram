@@ -18,7 +18,6 @@ var RenderMode = {
         this.defines = {};
         this.shaders = {};
         this.selection = false;
-        this.loading = false;
         this.gl_program = null;
         this.selection_gl_program = null;
     },
@@ -65,12 +64,12 @@ RenderMode.makeGLProgram = function (callback)
 {
     callback = (typeof callback === 'function') ? callback : function(){};
 
-    if (this.valid === false) {
+    if (this.hasOwnProperty('valid') && (this.vaild === false)) {
         callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode not valid`));
         return;
     }
 
-    if (this.loading) {
+    if (this.hasOwnProperty('loading') && (this.loading)) {
         callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
         return;
     }
