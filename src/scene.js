@@ -911,10 +911,10 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
         else {
             log.error(`main thread tile load error for ${tile.key}: ${tile.error}`);
         }
+        tile.printDebug();
     }
 
     this.trackTileSetLoadStop();
-    tile.printDebug();
     this.trackTileBuildStop(tile.key);
 };
 
