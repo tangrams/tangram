@@ -4,7 +4,6 @@
 import Utils from '../utils';
 import {GL} from './gl';
 import GLTexture from './gl_texture';
-import Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
@@ -32,7 +31,7 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     GLProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
 
-    this.compile(options.callback);
+    this.compile({resolve: options.resolve, reject: options.reject});
 }
 
 GLProgram.prototype.destroy = function () {
@@ -73,18 +72,14 @@ GLProgram.removeTransform = function (key) {
     GLProgram.transforms[key] = [];
 };
 
-GLProgram.prototype.compile = function (callback)
-{
-    callback = (typeof callback === 'function') ? callback : function(){};
+GLProgram.prototype.compile = function ({resolve, reject}) {
 
     if (this.compiling) {
-        callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
+        reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
         return;
     }
     this.compiling = true;
     this.compiled = false;
-
-    var queue = Queue();
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -107,6 +102,7 @@ GLProgram.prototype.compile = function (callback)
     var transforms = this.buildShaderTransformList();
     var loaded_transforms = {}; // master list of transforms, with an ordered list for each (since we want to guarantee order of transforms)
     var regexp;
+    var queue = [];
 
     for (var key in transforms) {
         var transform = transforms[key];
@@ -138,21 +134,17 @@ GLProgram.prototype.compile = function (callback)
 
         // Get the code (possibly over the network, so needs to be async)
         for (var u=0; u < transform.length; u++) {
-            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+            queue.push(new Promise((resolve, reject) => {
+                GLProgram.loadTransform(loaded_transforms, transform[u], key, u, resolve, reject);
+            }));
         }
 
         // Add a #define for this injection point
         defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
-    // When all transform code snippets are collected, combine and inject them
-    queue.await(error => {
+    Promise.all(queue).then(() => {
         this.compiling = false;
-
-        if (error) {
-            callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
-            return;
-        }
 
         // Do the code injection with the collected sources
         for (var t in loaded_transforms) {
@@ -201,26 +193,29 @@ GLProgram.prototype.compile = function (callback)
         this.refreshUniforms();
         this.refreshAttributes();
 
-        callback();
+        resolve();
+    }, (error) => {
+        reject(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
     });
+
 };
 
 // Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
 // Can be async, calls 'complete' callback when done
-GLProgram.loadTransform = function (transforms, block, key, index, complete) {
+GLProgram.loadTransform = function (transforms, block, key, index, resolve, reject) {
     // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
     // Inline code
     if (typeof block === 'string') {
         transforms[key].list[index] = block;
-        complete();
+        resolve();
     }
     // Remote code
     else if (typeof block === 'object' && block.url) {
         Utils.io(Utils.cacheBusterForUrl(block.url)).then((body) => {
             transforms[key].list[index] = body;
-            complete(null);
+            resolve();
         }, (error) => {
-            complete(error);
+            reject(error);
         });
     }
 };

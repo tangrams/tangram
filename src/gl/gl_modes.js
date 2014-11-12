@@ -7,8 +7,6 @@ import gl from './gl_constants'; // web workers don't have access to GL context,
 import log from 'loglevel';
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
-import Queue from 'queue-async';
-
 export var Modes = {};
 export var ModeManager = {};
 
@@ -20,6 +18,7 @@ var RenderMode = {
         this.defines = {};
         this.shaders = {};
         this.selection = false;
+        this.loading = false;
         this.gl_program = null;
         this.selection_gl_program = null;
     },
@@ -77,8 +76,6 @@ RenderMode.makeGLProgram = function (callback)
     }
     this.loading = true;
 
-    var queue = Queue();
-
     // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
     var defines = this.buildDefineList();
     if (this.selection) {
@@ -93,8 +90,8 @@ RenderMode.makeGLProgram = function (callback)
     var program = this.gl_program;
     var selection_program = this.selection_gl_program;
 
-    queue.defer(complete => {
-        // if (!program) {
+    Promise.all([
+        new Promise((resolve, reject) => {
             program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
@@ -103,20 +100,13 @@ RenderMode.makeGLProgram = function (callback)
                     defines: defines,
                     transforms: transforms,
                     name: this.name,
-                    callback: complete
+                    resolve: resolve,
+                    reject: reject
                 }
             );
-        // }
-        // else {
-        //     program.defines = defines;
-        //     program.transforms = transforms;
-        //     program.compile(complete);
-        // }
-    });
-
-    if (this.selection) {
-        queue.defer(complete => {
-            // if (!selection_program) {
+        }),
+        new Promise((resolve, reject) => {
+            if (this.selection) {
                 selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
@@ -125,27 +115,16 @@ RenderMode.makeGLProgram = function (callback)
                         defines: selection_defines,
                         transforms: transforms,
                         name: (this.name + ' (selection)'),
-                        callback: complete
+                        resolve: resolve,
+                        reject: reject
                     }
                 );
-            // }
-            // else {
-            //     selection_program.defines = selection_defines;
-            //     selection_program.transforms = transforms;
-            //     selection_program.compile(complete);
-            // }
-        });
-    }
-
-    // Wait for program(s) to compile before replacing them
-    // TODO: should this entire method offer a callback for when compilation completes?
-    queue.await((error) => {
+            } else { resolve(); }
+        })
+    ]).then(() => {
+        // Wait for program(s) to compile before replacing them
+        // TODO: should this entire method offer a callback for when compilation completes?
         this.loading = false;
-
-        if (error) {
-            callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
-            return;
-        }
 
         if (program) {
             this.gl_program = program;
@@ -156,7 +135,11 @@ RenderMode.makeGLProgram = function (callback)
         }
 
         callback();
+
+    }, (error) => {
+        callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
     });
+
 };
 
 // TODO: could probably combine and generalize this with similar method in GLProgram
