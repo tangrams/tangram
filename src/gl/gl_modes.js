@@ -36,6 +36,10 @@ var RenderMode = {
         return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
     },
 
+    isBuiltIn () {
+        return this.hasOwnProperty('built_in');
+    },
+
     // Build functions are no-ops until overriden
     buildPolygons () {},
     buildLines () {},
@@ -56,7 +60,7 @@ RenderMode.destroy = function () {
     this.gl = null;
     this.valid = false;
 
-    if (!this.built_in) {
+    if (!this.isBuiltIn()) {
         delete Modes[this.name];
     }
 };
@@ -215,11 +219,10 @@ var Polygons = Object.create(RenderMode);
 Polygons.name = 'polygons';
 Modes[Polygons.name] = Polygons;
 
+Polygons.built_in = true;
+
 Polygons.init = function () {
     RenderMode.init.apply(this);
-
-    // Mark as built-in
-    this.built_in = (this === Polygons);
 
     // Base shaders
     this.vertex_shader_key = 'polygon_vertex';
@@ -396,11 +399,10 @@ var Points = Object.create(RenderMode);
 Points.name = 'points';
 Modes[Points.name] = Points;
 
+Points.built_in = true;
+
 Points.init = function () {
     RenderMode.init.apply(this);
-
-    // Mark as built-in
-    this.built_in = (this === Points);
 
     // Base shaders
     this.vertex_shader_key = 'point_vertex';
