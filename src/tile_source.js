@@ -130,12 +130,15 @@ export class NetworkTileSource extends TileSource {
             // }
             // promise.then((body) => {
             Utils.io(url, 60 * 100, this.response_type).then((body) => {
+                if (tile.loading !== true) {
+                    reject();
+                    return;
+                }
                 tile.debug.response_size = body.length || body.byteLength;
                 tile.debug.network = +new Date() - tile.debug.network;
                 tile.debug.parsing = +new Date();
                 this.parseTile(tile, body);
                 tile.debug.parsing = +new Date() - tile.debug.parsing;
-
                 tile.loading = false;
                 tile.loaded = true;
                 resolve(tile);
