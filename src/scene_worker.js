@@ -31,6 +31,7 @@ SceneWorker.updateConfig = function (config) {
     }
     if (!SceneWorker.styles && config.styles) {
         SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
+        Style.expandMacros(SceneWorker.styles);
         SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
     }
 };

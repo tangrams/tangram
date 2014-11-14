@@ -129,7 +129,7 @@ export class NetworkTileSource extends TileSource {
             //     promise = Promise.reject(Error('fake tile error'));
             // }
             // promise.then((body) => {
-            Utils.io(url, 60 * 100, this.response_type).then((body) => {
+            Utils.io(url, 60 * 1000, this.response_type).then((body) => {
                 tile.debug.response_size = body.length || body.byteLength;
                 tile.debug.network = +new Date() - tile.debug.network;
                 tile.debug.parsing = +new Date();

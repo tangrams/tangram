@@ -16,7 +16,8 @@ Style.color = {
 Style.pixels = function (p) {
     var f;
     /* jshint ignore:start */
-    eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
+//    eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
+    eval('f = function() { return ' + p() + ' * meters_per_pixel; }');
     /* jshint ignore:end */
     return f;
 };
@@ -55,12 +56,23 @@ Style.resetSelectionMap = function ()
     Style.selection_map_size = 1;
 };
 
+
+var Q = {
+    property: function (property, value) {
+        return function (feature) {
+            return Object.is(feature.properties[property], value);
+        };
+    }
+};
+
 // Find and expand style macros
 Style.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
-    'Style.pixels'
+    'Style.pixels',
+    'Q.property'
 ];
+
 
 /**
     Wraps style functions and provides a scope of commonly accessible data:
@@ -70,12 +82,12 @@ Style.macros = [
     - properties: user-defined properties on the style-rule object in the stylesheet
 */
 Style.wrapFunction = function (func) {
-    var f = `function(feature, tile, helpers) {
+    var f = `function(feature, tile, helpers, Q) {
                 var feature = feature.properties;
                 var zoom = tile.coords.z;
                 var meters_per_pixel = helpers.Geo.metersPerPixel(zoom);
                 var properties = helpers.style_properties;
-                return (${func}());
+                return (${func}(feature));
             }`;
     return f;
 };
@@ -89,6 +101,7 @@ Style.expandMacros = function expandMacros (obj) {
         }
         // Convert strings back into functions
         else if (typeof val === 'string') {
+
             for (var m in Style.macros) {
                 if (val.match(Style.macros[m])) {
                     var f;
@@ -103,8 +116,6 @@ Style.expandMacros = function expandMacros (obj) {
                         obj[p] = val;
                         log.trace(`failed to expand macro ${val}`);
                     }
-                } else {
-                    log.trace(`Unable to find macro named ${val}`);
                 }
             }
         }
@@ -149,6 +160,7 @@ Style.helpers = {
 Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     layer_style = layer_style || {};
 
+
     var style = {};
 
     // Custom properties
@@ -156,13 +168,20 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
         Style.helpers.style_properties = Object.assign({}, layer_style.properties);
     }
 
-    // Test whether features should be rendered at all
-    if (typeof layer_style.filter === 'function') {
-        try {
-            if (layer_style.filter(feature, tile, Style.helpers) === false) {
+    try {
+        // Test whether features should be rendered at all
+        if (layer_name === 'roads') {
+//            debugger;
+        }
+
+        if (typeof layer_style.filter === 'function') {
+            if (layer_style.filter(feature, tile, Style.helpers, Q) === false) {
                 return null;
             }
-        } catch (e) { throw e; }
+        }
+    } catch (e) {
+        // don't hide filter errors from the user
+        console.error(e);
     }
 
     // Parse styles

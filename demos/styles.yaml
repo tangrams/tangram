@@ -376,140 +376,147 @@ modes:
                     color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color == vec3(0.)) discard;
 
+#    filter: function () { return feature.properties.highway === 'residential'; }
 layers:
-    earth:
-        color:
-            default: [0.175, 0.175, 0.175]
+  roads:
+    filter: Q.property('highway', 'residential')
+    color:
+      default: [1, 1, 0]
+    width:
+      default: Style.pixels(function () { return (parseInt(Math.abs(feature.sort_key), 16) % 16); })
+  earth:
+    color:
+      default: [0.175, 0.175, 0.175]
 
-    landuse:
-        interactive: true
-        color:
-            default: [0.5, 0.875, 0.5]
-            pitch: [0.3, 0.675, 0.3]
-        # outline:
-        #     color:
-        #         default: [1, 1, 1]
-        #     width:
-        #         default: 1
+    # landuse:
+    #     interactive: true
+    #     color:
+    #         default: [0.5, 0.875, 0.5]
+    #         pitch: [0.3, 0.675, 0.3]
+    #     # outline:
+    #     #     color:
+    #     #         default: [1, 1, 1]
+    #     #     width:
+    #     #         default: 1
 
-    water:
-        mode:
-            name: water
-        interactive: true
-        color:
-            default: [0.5, 0.5, 0.875]
-        outline:
-            color:
-                default: [0.6, 0.6, 0.975]
-            width:
-                default:
-                    function () {
-                        return (
-                            zoom >= 16 &&
-                            (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
-                            (2.5 * Math.log(zoom))
-                        );
-                    }
+    # water:
+    #     mode:
+    #         name: water
+    #     interactive: true
+    #     color:
+    #         default: [0.5, 0.5, 0.875]
+    #     outline:
+    #         color:
+    #             default: [0.6, 0.6, 0.975]
+    #         width:
+    #             default:
+    #                 function () {
+    #                     return (
+    #                         zoom >= 16 &&
+    #                         (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
+    #                         (2.5 * Math.log(zoom))
+    #                     );
+    #                 }
 
-    roads:
-        interactive: function () { return (zoom >= 18); }
-        color:
-            # default: Style.color.randomColor
-            default: [0.4, 0.4, 0.4]
-            highway: [1.0, 1.0, 1.0]
-            major_road: [0.5, 0.5, 0.5]
-            minor_road: [0.65, 0.65, 0.65]
-            path: [0.8, 0.8, 0.8]
-            rail: [0.5, 0.0, 0.0]
-            debug: [1, 0, 0]
-        width:
-            # default: Style.pixels(5)
-            default: function () { return 2 * Math.log(zoom); }
-            highway: function () { return 3 * Math.log(zoom); }
-            major_road: function () { return 2.5 * Math.log(zoom); }
-            minor_road: function () { return 2 * Math.log(zoom); }
-            path: function () { return 1 * Math.log(zoom); }
-            debug: function () { return 5; }
-        # z:
-        #     path: 25
-        outline:
-            color:
-                default: [0.1, 0.7, 0.7]
-            width:
-                default:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                highway:
-                    function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-                major_road:
-                    function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
-                minor_road:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                path:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                debug:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+    # roads:
+    #     interactive: function () { return (zoom >= 18); }
+    #     color:
+    #         # default: Style.color.randomColor
+    #         default: [0.4, 0.4, 0.4]
+    #         highway: [1.0, 1.0, 1.0]
+    #         major_road: [0.5, 0.5, 0.5]
+    #         minor_road: [0.65, 0.65, 0.65]
+    #         path: [0.8, 0.8, 0.8]
+    #         rail: [0.5, 0.0, 0.0]
+    #         debug: [1, 0, 0]
+    #     width:
+    #         # default: Style.pixels(5)
+    #         default: function () { return 2 * Math.log(zoom); }
+    #         highway: function () { return 3 * Math.log(zoom); }
+    #         major_road: function () { return 2.5 * Math.log(zoom); }
+    #         minor_road: function () { return 2 * Math.log(zoom); }
+    #         path: function () { return 1 * Math.log(zoom); }
+    #         debug: function () { return 5; }
+    #     # z:
+    #     #     path: 25
+    #     outline:
+    #         color:
+    #             default: [0.1, 0.7, 0.7]
+    #         width:
+    #             default:
+    #                 function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+    #             highway:
+    #                 function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+    #             major_road:
+    #                 function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+    #             minor_road:
+    #                 function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+    #             path:
+    #                 function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+    #             debug:
+    #                 function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
-    buildings:
-        mode:
-            # name: popup
-            # name: breathe
-            # name: formica
-            # name: dots
-            # name: wood
-            # name: rainbow2
-            # name: windows
-            # name: colorhalftone
-            # name: palette
-            # name: envmap
-        # properties:
-        #     min_height: 50
-        # filter: function () { return feature.height >= properties.min_height; }
-        # filter: function () { return feature.name != null; }
-        # filter: function () { return Math.random() < 0.25; }
-        # filter: function () { return true; }
-        interactive: true
-        color:
-            # default: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
-            # default: Style.color.randomColor
-            # default: Style.color.pseudoRandomColor
-            # default: Style.color.pseudoRandomGrayscale
-            # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.2, 0.2, (feature.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default: |
-                function () {
-                    var c = [.6, .6, .6];
-                    if (feature.name || feature.kind) {
-                        c = [.2, .2, .2];
-                        c[0] = (feature.name && .6) || c[0];
-                        c[2] = (feature.kind && .6) || c[2];
-                    }
-                    return c;
-                }
-        extrude:
-            default: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+    # buildings:
+    #     mode:
+    #         # name: popup
+    #         # name: breathe
+    #         # name: formica
+    #         # name: dots
+    #         # name: wood
+    #         # name: rainbow2
+    #         # name: windows
+    #         # name: colorhalftone
+    #         # name: palette
+    #         # name: envmap
+    #     # properties:
+    #     #     min_height: 50
+    #     # filter: function () { return feature.height >= properties.min_height; }
+    #     # filter: function () { return feature.name != null; }
+    #     # filter: function () { return Math.random() < 0.25; }
+    #     # filter: function () { return true; }
+    #     interactive: true
+    #     color:
+    #         # default: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
+    #         # default: Style.color.randomColor
+    #         # default: Style.color.pseudoRandomColor
+    #         # default: Style.color.pseudoRandomGrayscale
+    #         # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.2, 0.2, (feature.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
+    #         default: |
+    #             function () {
+    #                 var c = [.6, .6, .6];
+    #                 if (feature.name || feature.kind) {
+    #                     c = [.2, .2, .2];
+    #                     c[0] = (feature.name && .6) || c[0];
+    #                     c[2] = (feature.kind && .6) || c[2];
+    #                 }
+    #                 return c;
+    #             }
+    #     extrude:
+    #         default: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
-    pois:
-        mode:
-            name: points
-            # name: ghosts
-            # name: formica
-        filter: function () { return feature.name != null; }
-        # visible: false
-        interactive: true
-        # z:
-        #     default: 25
-        color:
-            default: [1, 1, 0]
-        size:
-            # default: 5
-            default: Style.pixels(5)
-            # default: Style.pixels(20) # for ghosts
-            # default: Style.pixels(function () { return Math.pow(1.2, zoom); })
-            # default: function () { return 2 * zoom; }
-
-    # places:
-    #     filter: function(f, t) { return (zoom >= 13); }
-    #     color: {
-    #         # default: [0.0, 1.0, 1.0]
-    #         default: function(f) { return feature.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
+    # pois:
+    #     mode:
+    #         name: points
+    #         # name: ghosts
+    #         # name: formica
+    #     filter: function () { return feature.name != null; }
+    #     # visible: false
+    #     interactive: true
+    #     # z:
+    #     #     default: 25
+    #     color:
+    #         default: [1, 1, 0]
     #     size:
+    #         # default: 5
     #         default: Style.pixels(5)
+    #         # default: Style.pixels(20) # for ghosts
+    #         # default: Style.pixels(function () { return Math.pow(1.2, zoom); })
+    #         # default: function () { return 2 * zoom; }
+
+    # # places:
+    # #     filter: function(f, t) { return (zoom >= 13); }
+    # #     color: {
+    # #         # default: [0.0, 1.0, 1.0]
+    # #         default: function(f) { return feature.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
+    # #     size:
+    # #         default: Style.pixels(5)

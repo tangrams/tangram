@@ -71,6 +71,11 @@ function setupMainThread () {
                 delete messages[id];
             }
         });
+
+        worker.addEventListener('error', (error) => {
+            throw error;
+        });
+
     };
 
 }
