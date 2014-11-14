@@ -14208,93 +14208,11 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
 };
 
 },{}],40:[function(require,module,exports){
-(function() {
-  var slice = [].slice;
-
-  function queue(parallelism) {
-    var q,
-        tasks = [],
-        started = 0, // number of tasks that have been started (and perhaps finished)
-        active = 0, // number of tasks currently being executed (started but not finished)
-        remaining = 0, // number of tasks not yet finished
-        popping, // inside a synchronous task callback?
-        error = null,
-        await = noop,
-        all;
-
-    if (!parallelism) parallelism = Infinity;
-
-    function pop() {
-      while (popping = started < tasks.length && active < parallelism) {
-        var i = started++,
-            t = tasks[i],
-            a = slice.call(t, 1);
-        a.push(callback(i));
-        ++active;
-        t[0].apply(null, a);
-      }
-    }
-
-    function callback(i) {
-      return function(e, r) {
-        --active;
-        if (error != null) return;
-        if (e != null) {
-          error = e; // ignore new tasks and squelch active callbacks
-          started = remaining = NaN; // stop queued tasks from starting
-          notify();
-        } else {
-          tasks[i] = r;
-          if (--remaining) popping || pop();
-          else notify();
-        }
-      };
-    }
-
-    function notify() {
-      if (error != null) await(error);
-      else if (all) await(error, tasks);
-      else await.apply(null, [error].concat(tasks));
-    }
-
-    return q = {
-      defer: function() {
-        if (!error) {
-          tasks.push(arguments);
-          ++remaining;
-          pop();
-        }
-        return q;
-      },
-      await: function(f) {
-        await = f;
-        all = false;
-        if (!remaining) notify();
-        return q;
-      },
-      awaitAll: function(f) {
-        await = f;
-        all = true;
-        if (!remaining) notify();
-        return q;
-      }
-    };
-  }
-
-  function noop() {}
-
-  queue.version = "1.0.7";
-  if (typeof define === "function" && define.amd) define(function() { return queue; });
-  else if (typeof module === "object" && module.exports) module.exports = queue;
-  else this.queue = queue;
-})();
-
-},{}],41:[function(require,module,exports){
 module.exports.VectorTile = require('./lib/vectortile.js');
 module.exports.VectorTileFeature = require('./lib/vectortilefeature.js');
 module.exports.VectorTileLayer = require('./lib/vectortilelayer.js');
 
-},{"./lib/vectortile.js":42,"./lib/vectortilefeature.js":43,"./lib/vectortilelayer.js":44}],42:[function(require,module,exports){
+},{"./lib/vectortile.js":41,"./lib/vectortilefeature.js":42,"./lib/vectortilelayer.js":43}],41:[function(require,module,exports){
 'use strict';
 
 var VectorTileLayer = require('./vectortilelayer');
@@ -14344,7 +14262,7 @@ VectorTile.prototype.toGeoJSON = function () {
     return json;
 };
 
-},{"./vectortilelayer":44}],43:[function(require,module,exports){
+},{"./vectortilelayer":43}],42:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -14528,7 +14446,7 @@ VectorTileFeature.prototype.toGeoJSON = function () {
     return geojson;
 };
 
-},{"point-geometry":45}],44:[function(require,module,exports){
+},{"point-geometry":44}],43:[function(require,module,exports){
 'use strict';
 
 var VectorTileFeature = require('./vectortilefeature.js');
@@ -14632,7 +14550,7 @@ VectorTileLayer.prototype.toGeoJSON = function () {
     return geojson;
 };
 
-},{"./vectortilefeature.js":43}],45:[function(require,module,exports){
+},{"./vectortilefeature.js":42}],44:[function(require,module,exports){
 'use strict';
 
 module.exports = Point;
@@ -14765,7 +14683,7 @@ Point.convert = function (a) {
     return a;
 };
 
-},{}],46:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -14899,7 +14817,7 @@ var $FlatCamera = FlatCamera;
   }}, {}, IsometricCamera);
 
 
-},{"./geo":48,"./gl/gl_program":54,"gl-matrix":4}],47:[function(require,module,exports){
+},{"./geo":47,"./gl/gl_program":53,"gl-matrix":4}],46:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   MethodNotImplemented: {get: function() {
@@ -14914,7 +14832,7 @@ var MethodNotImplemented = function MethodNotImplemented(methodName) {
 ($traceurRuntime.createClass)(MethodNotImplemented, {}, {}, Error);
 
 
-},{}],48:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Geo: {get: function() {
@@ -15014,7 +14932,7 @@ Geo.findBoundingBox = function(polygon) {
 };
 
 
-},{}],49:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GL: {get: function() {
@@ -15140,7 +15058,7 @@ GL.triangulatePolygon = function GLTriangulate(contours, z) {
 };
 
 
-},{"libtess":36,"loglevel":37}],50:[function(require,module,exports){
+},{"libtess":36,"loglevel":37}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   GLBuilders: {get: function() {
@@ -15441,7 +15359,7 @@ GLBuilders.buildZigzagLineTestPattern = function() {
 };
 
 
-},{"../geo":48,"../vector":65,"./gl":49}],51:[function(require,module,exports){
+},{"../geo":47,"../vector":64,"./gl":48}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15750,7 +15668,7 @@ gl.UNPACK_COLORSPACE_CONVERSION_WEBGL = 0x9243;
 gl.BROWSER_DEFAULT_WEBGL = 0x9244;
 
 
-},{}],52:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -15806,7 +15724,7 @@ GLGeometry.prototype.destroy = function() {
 };
 
 
-},{"./gl_program":54,"loglevel":37}],53:[function(require,module,exports){
+},{"./gl_program":53,"loglevel":37}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Modes: {get: function() {
@@ -15822,8 +15740,7 @@ var $__gl_95_vertex_95_layout__,
     $__gl_95_program__,
     $__gl_95_geom__,
     $__gl_95_constants__,
-    $__loglevel__,
-    $__queue_45_async__;
+    $__loglevel__;
 var GLVertexLayout = ($__gl_95_vertex_95_layout__ = require("./gl_vertex_layout"), $__gl_95_vertex_95_layout__ && $__gl_95_vertex_95_layout__.__esModule && $__gl_95_vertex_95_layout__ || {default: $__gl_95_vertex_95_layout__}).default;
 var GLBuilders = ($__gl_95_builders__ = require("./gl_builders"), $__gl_95_builders__ && $__gl_95_builders__.__esModule && $__gl_95_builders__ || {default: $__gl_95_builders__}).GLBuilders;
 var GLProgram = ($__gl_95_program__ = require("./gl_program"), $__gl_95_program__ && $__gl_95_program__.__esModule && $__gl_95_program__ || {default: $__gl_95_program__}).default;
@@ -15831,7 +15748,6 @@ var GLGeometry = ($__gl_95_geom__ = require("./gl_geom"), $__gl_95_geom__ && $__
 var gl = ($__gl_95_constants__ = require("./gl_constants"), $__gl_95_constants__ && $__gl_95_constants__.__esModule && $__gl_95_constants__ || {default: $__gl_95_constants__}).default;
 var log = ($__loglevel__ = require("loglevel"), $__loglevel__ && $__loglevel__.__esModule && $__loglevel__ || {default: $__loglevel__}).default;
 var shader_sources = require('./gl_shaders');
-var Queue = ($__queue_45_async__ = require("queue-async"), $__queue_45_async__ && $__queue_45_async__.__esModule && $__queue_45_async__ || {default: $__queue_45_async__}).default;
 var Modes = {};
 var ModeManager = {};
 var RenderMode = {
@@ -15839,6 +15755,7 @@ var RenderMode = {
     this.defines = {};
     this.shaders = {};
     this.selection = false;
+    this.loading = false;
     this.gl_program = null;
     this.selection_gl_program = null;
   },
@@ -15851,6 +15768,9 @@ var RenderMode = {
   },
   makeGLGeometry: function(vertex_data) {
     return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+  },
+  isBuiltIn: function() {
+    return this.hasOwnProperty('built_in');
   },
   buildPolygons: function() {},
   buildLines: function() {},
@@ -15867,12 +15787,12 @@ RenderMode.destroy = function() {
   }
   this.gl = null;
   this.valid = false;
-  if (!this.built_in) {
+  if (!this.isBuiltIn()) {
     delete Modes[this.name];
   }
 };
 RenderMode.makeGLProgram = function(callback) {
-  var $__7 = this;
+  var $__6 = this;
   callback = (typeof callback === 'function') ? callback : function() {};
   if (this.valid === false) {
     callback(new Error(("mode.makeGLProgram(): skipping for " + this.name + " because mode not valid")));
@@ -15883,7 +15803,6 @@ RenderMode.makeGLProgram = function(callback) {
     return;
   }
   this.loading = true;
-  var queue = Queue();
   var defines = this.buildDefineList();
   if (this.selection) {
     var selection_defines = Object.assign({}, defines);
@@ -15892,37 +15811,37 @@ RenderMode.makeGLProgram = function(callback) {
   var transforms = (this.shaders && this.shaders.transforms);
   var program = this.gl_program;
   var selection_program = this.selection_gl_program;
-  queue.defer((function(complete) {
-    program = new GLProgram($__7.gl, shader_sources[$__7.vertex_shader_key], shader_sources[$__7.fragment_shader_key], {
+  Promise.all([new Promise((function(resolve, reject) {
+    program = new GLProgram($__6.gl, shader_sources[$__6.vertex_shader_key], shader_sources[$__6.fragment_shader_key], {
       defines: defines,
       transforms: transforms,
-      name: $__7.name,
-      callback: complete
+      name: $__6.name,
+      resolve: resolve,
+      reject: reject
     });
-  }));
-  if (this.selection) {
-    queue.defer((function(complete) {
-      selection_program = new GLProgram($__7.gl, shader_sources[$__7.vertex_shader_key], shader_sources['selection_fragment'], {
+  })), new Promise((function(resolve, reject) {
+    if ($__6.selection) {
+      selection_program = new GLProgram($__6.gl, shader_sources[$__6.vertex_shader_key], shader_sources['selection_fragment'], {
         defines: selection_defines,
         transforms: transforms,
-        name: ($__7.name + ' (selection)'),
-        callback: complete
+        name: ($__6.name + ' (selection)'),
+        resolve: resolve,
+        reject: reject
       });
-    }));
-  }
-  queue.await((function(error) {
-    $__7.loading = false;
-    if (error) {
-      callback(new Error(("mode.makeGLProgram(): mode " + $__7.name + " completed with error: " + error.message)));
-      return;
+    } else {
+      resolve();
     }
+  }))]).then((function() {
+    $__6.loading = false;
     if (program) {
-      $__7.gl_program = program;
+      $__6.gl_program = program;
     }
     if (selection_program) {
-      $__7.selection_gl_program = selection_program;
+      $__6.selection_gl_program = selection_program;
     }
     callback();
+  }), (function(error) {
+    callback(new Error(("mode.makeGLProgram(): mode " + $__6.name + " completed with error: " + error.message)));
   }));
 };
 RenderMode.buildDefineList = function() {
@@ -15959,9 +15878,9 @@ ModeManager.updateMode = function(name, settings) {
 };
 ModeManager.destroy = function(gl) {
   var modes = Object.keys(Modes);
-  for (var $__8 = modes[Symbol.iterator](),
-      $__9; !($__9 = $__8.next()).done; ) {
-    var m = $__9.value;
+  for (var $__7 = modes[Symbol.iterator](),
+      $__8; !($__8 = $__7.next()).done; ) {
+    var m = $__8.value;
     {
       var mode = Modes[m];
       if (mode.gl === gl) {
@@ -15974,9 +15893,9 @@ ModeManager.destroy = function(gl) {
 var Polygons = Object.create(RenderMode);
 Polygons.name = 'polygons';
 Modes[Polygons.name] = Polygons;
+Polygons.built_in = true;
 Polygons.init = function() {
   RenderMode.init.apply(this);
-  this.built_in = (this === Polygons);
   this.vertex_shader_key = 'polygon_vertex';
   this.fragment_shader_key = 'polygon_fragment';
   this.defines['WORLD_POSITION_WRAP'] = 100000;
@@ -16066,9 +15985,9 @@ Polygons.buildPoints = function(points, style, vertex_data) {
 var Points = Object.create(RenderMode);
 Points.name = 'points';
 Modes[Points.name] = Points;
+Points.built_in = true;
 Points.init = function() {
   RenderMode.init.apply(this);
-  this.built_in = (this === Points);
   this.vertex_shader_key = 'point_vertex';
   this.fragment_shader_key = 'point_fragment';
   this.defines['EFFECT_SCREEN_COLOR'] = true;
@@ -16109,7 +16028,7 @@ Points.buildPoints = function(points, style, vertex_data) {
 };
 
 
-},{"./gl_builders":50,"./gl_constants":51,"./gl_geom":52,"./gl_program":54,"./gl_shaders":55,"./gl_vertex_layout":57,"loglevel":37,"queue-async":40}],54:[function(require,module,exports){
+},{"./gl_builders":49,"./gl_constants":50,"./gl_geom":51,"./gl_program":53,"./gl_shaders":54,"./gl_vertex_layout":56,"loglevel":37}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16119,12 +16038,10 @@ Object.defineProperties(exports, {
 });
 var $___46__46__47_utils__,
     $__gl__,
-    $__gl_95_texture__,
-    $__queue_45_async__;
+    $__gl_95_texture__;
 var Utils = ($___46__46__47_utils__ = require("../utils"), $___46__46__47_utils__ && $___46__46__47_utils__.__esModule && $___46__46__47_utils__ || {default: $___46__46__47_utils__}).default;
 var GL = ($__gl__ = require("./gl"), $__gl__ && $__gl__.__esModule && $__gl__ || {default: $__gl__}).GL;
 var GLTexture = ($__gl_95_texture__ = require("./gl_texture"), $__gl_95_texture__ && $__gl_95_texture__.__esModule && $__gl_95_texture__ || {default: $__gl_95_texture__}).default;
-var Queue = ($__queue_45_async__ = require("queue-async"), $__queue_45_async__ && $__queue_45_async__.__esModule && $__queue_45_async__ || {default: $__queue_45_async__}).default;
 GLProgram.id = 0;
 GLProgram.programs = {};
 function GLProgram(gl, vertex_shader, fragment_shader, options) {
@@ -16145,7 +16062,10 @@ function GLProgram(gl, vertex_shader, fragment_shader, options) {
   this.id = GLProgram.id++;
   GLProgram.programs[this.id] = this;
   this.name = options.name;
-  this.compile(options.callback);
+  this.compile({
+    resolve: options.resolve,
+    reject: options.reject
+  });
 }
 var $__default = GLProgram;
 GLProgram.prototype.destroy = function() {
@@ -16170,32 +16090,34 @@ GLProgram.current = null;
 GLProgram.defines = {};
 GLProgram.transforms = {};
 GLProgram.addTransform = function(key) {
-  var $__7;
+  var $__8;
   for (var transforms = [],
-      $__5 = 1; $__5 < arguments.length; $__5++)
-    transforms[$__5 - 1] = arguments[$__5];
+      $__4 = 1; $__4 < arguments.length; $__4++)
+    transforms[$__4 - 1] = arguments[$__4];
   GLProgram.transforms[key] = GLProgram.transforms[key] || [];
-  ($__7 = GLProgram.transforms[key]).push.apply($__7, $traceurRuntime.spread(transforms));
+  ($__8 = GLProgram.transforms[key]).push.apply($__8, $traceurRuntime.spread(transforms));
 };
 GLProgram.removeTransform = function(key) {
   GLProgram.transforms[key] = [];
 };
-GLProgram.prototype.compile = function(callback) {
-  var $__4 = this;
-  callback = (typeof callback === 'function') ? callback : function() {};
+GLProgram.prototype.compile = function($__6) {
+  var $__7 = $__6,
+      resolve = $__7.resolve,
+      reject = $__7.reject;
+  var $__3 = this;
   if (this.compiling) {
-    callback(new Error(("GLProgram.compile(): skipping for " + this.id + " (" + this.name + ") because already compiling")));
+    reject(new Error(("GLProgram.compile(): skipping for " + this.id + " (" + this.name + ") because already compiling")));
     return;
   }
   this.compiling = true;
   this.compiled = false;
-  var queue = Queue();
   this.computed_vertex_shader = this.vertex_shader;
   this.computed_fragment_shader = this.fragment_shader;
   var defines = this.buildDefineList();
   var transforms = this.buildShaderTransformList();
   var loaded_transforms = {};
   var regexp;
+  var queue = [];
   for (var key in transforms) {
     var transform = transforms[key];
     if (transform == null) {
@@ -16216,60 +16138,60 @@ GLProgram.prototype.compile = function(callback) {
     loaded_transforms[key].inject_fragment = (inject_fragment != null);
     loaded_transforms[key].list = [];
     for (var u = 0; u < transform.length; u++) {
-      queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+      queue.push(new Promise((function(resolve, reject) {
+        GLProgram.loadTransform(loaded_transforms, transform[u], key, u, resolve, reject);
+      })));
     }
     defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
   }
-  queue.await((function(error) {
-    $__4.compiling = false;
-    if (error) {
-      callback(new Error(("GLProgram.compile(): skipping for " + $__4.id + " (" + $__4.name + ") errored: " + error.message)));
-      return;
-    }
+  Promise.all(queue).then((function() {
+    $__3.compiling = false;
     for (var t in loaded_transforms) {
       var combined_source = "";
       for (var s = 0; s < loaded_transforms[t].list.length; s++) {
         combined_source += loaded_transforms[t].list[s] + '\n';
       }
       if (loaded_transforms[t].inject_vertex != null) {
-        $__4.computed_vertex_shader = $__4.computed_vertex_shader.replace(loaded_transforms[t].regexp, combined_source);
+        $__3.computed_vertex_shader = $__3.computed_vertex_shader.replace(loaded_transforms[t].regexp, combined_source);
       }
       if (loaded_transforms[t].inject_fragment != null) {
-        $__4.computed_fragment_shader = $__4.computed_fragment_shader.replace(loaded_transforms[t].regexp, combined_source);
+        $__3.computed_fragment_shader = $__3.computed_fragment_shader.replace(loaded_transforms[t].regexp, combined_source);
       }
     }
     var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
-    $__4.computed_vertex_shader = $__4.computed_vertex_shader.replace(regexp, '');
-    $__4.computed_fragment_shader = $__4.computed_fragment_shader.replace(regexp, '');
+    $__3.computed_vertex_shader = $__3.computed_vertex_shader.replace(regexp, '');
+    $__3.computed_fragment_shader = $__3.computed_fragment_shader.replace(regexp, '');
     var define_str = GLProgram.buildDefineString(defines);
-    $__4.computed_vertex_shader = define_str + $__4.computed_vertex_shader;
-    $__4.computed_fragment_shader = define_str + $__4.computed_fragment_shader;
-    var info = ($__4.name ? ($__4.name + ' / id ' + $__4.id) : ('id ' + $__4.id));
-    $__4.computed_vertex_shader = '// Program: ' + info + '\n' + $__4.computed_vertex_shader;
-    $__4.computed_fragment_shader = '// Program: ' + info + '\n' + $__4.computed_fragment_shader;
+    $__3.computed_vertex_shader = define_str + $__3.computed_vertex_shader;
+    $__3.computed_fragment_shader = define_str + $__3.computed_fragment_shader;
+    var info = ($__3.name ? ($__3.name + ' / id ' + $__3.id) : ('id ' + $__3.id));
+    $__3.computed_vertex_shader = '// Program: ' + info + '\n' + $__3.computed_vertex_shader;
+    $__3.computed_fragment_shader = '// Program: ' + info + '\n' + $__3.computed_fragment_shader;
     try {
-      $__4.program = GL.updateProgram($__4.gl, $__4.program, $__4.computed_vertex_shader, $__4.computed_fragment_shader);
-      $__4.compiled = true;
+      $__3.program = GL.updateProgram($__3.gl, $__3.program, $__3.computed_vertex_shader, $__3.computed_fragment_shader);
+      $__3.compiled = true;
     } catch (e) {
-      $__4.program = null;
-      $__4.compiled = false;
+      $__3.program = null;
+      $__3.compiled = false;
     }
-    $__4.use();
-    $__4.refreshUniforms();
-    $__4.refreshAttributes();
-    callback();
+    $__3.use();
+    $__3.refreshUniforms();
+    $__3.refreshAttributes();
+    resolve();
+  }), (function(error) {
+    reject(new Error(("GLProgram.compile(): skipping for " + $__3.id + " (" + $__3.name + ") errored: " + error.message)));
   }));
 };
-GLProgram.loadTransform = function(transforms, block, key, index, complete) {
+GLProgram.loadTransform = function(transforms, block, key, index, resolve, reject) {
   if (typeof block === 'string') {
     transforms[key].list[index] = block;
-    complete();
+    resolve();
   } else if (typeof block === 'object' && block.url) {
     Utils.io(Utils.cacheBusterForUrl(block.url)).then((function(body) {
       transforms[key].list[index] = body;
-      complete(null);
+      resolve();
     }), (function(error) {
-      complete(error);
+      reject(error);
     }));
   }
 };
@@ -16285,14 +16207,14 @@ GLProgram.prototype.buildDefineList = function() {
   return defines;
 };
 GLProgram.prototype.buildShaderTransformList = function() {
-  var $__7,
-      $__8;
+  var $__8,
+      $__9;
   var d,
       transforms = {};
   for (d in GLProgram.transforms) {
     transforms[d] = [];
     if (typeof GLProgram.transforms[d] === 'object' && GLProgram.transforms[d].length >= 0) {
-      ($__7 = transforms[d]).push.apply($__7, $traceurRuntime.spread(GLProgram.transforms[d]));
+      ($__8 = transforms[d]).push.apply($__8, $traceurRuntime.spread(GLProgram.transforms[d]));
     } else {
       transforms[d] = [GLProgram.transforms[d]];
     }
@@ -16300,7 +16222,7 @@ GLProgram.prototype.buildShaderTransformList = function() {
   for (d in this.transforms) {
     transforms[d] = transforms[d] || [];
     if (typeof this.transforms[d] === 'object' && this.transforms[d].length >= 0) {
-      ($__8 = transforms[d]).push.apply($__8, $traceurRuntime.spread(this.transforms[d]));
+      ($__9 = transforms[d]).push.apply($__9, $traceurRuntime.spread(this.transforms[d]));
     } else {
       transforms[d].push(this.transforms[d]);
     }
@@ -16353,8 +16275,8 @@ GLProgram.prototype.setUniforms = function(uniforms) {
 };
 GLProgram.prototype.uniform = function(method, name) {
   for (var values = [],
-      $__6 = 2; $__6 < arguments.length; $__6++)
-    values[$__6 - 2] = arguments[$__6];
+      $__5 = 2; $__5 < arguments.length; $__5++)
+    values[$__5 - 2] = arguments[$__5];
   if (!this.compiled) {
     return;
   }
@@ -16402,7 +16324,7 @@ GLProgram.prototype.attribute = function(name) {
 };
 
 
-},{"../utils":64,"./gl":49,"./gl_texture":56,"queue-async":40}],55:[function(require,module,exports){
+},{"../utils":63,"./gl":48,"./gl_texture":55}],54:[function(require,module,exports){
 "use strict";
 var shader_sources = {};
 shader_sources['point_fragment'] = "\n" + "#define GLSLIFY 1\n" + "\n" + "uniform vec2 u_resolution;\n" + "varying vec3 v_color;\n" + "varying vec2 v_texcoord;\n" + "void main(void) {\n" + "  vec3 color = v_color;\n" + "  vec3 lighting = vec3(1.);\n" + "  vec2 uv = v_texcoord * 2. - 1.;\n" + "  float len = length(uv);\n" + "  if(len > 1.) {\n" + "    discard;\n" + "  }\n" + "  color *= (1. - smoothstep(.25, 1., len)) + 0.5;\n" + "  #pragma tangram: fragment\n" + "  gl_FragColor = vec4(color, 1.);\n" + "}\n" + "";
@@ -16415,7 +16337,7 @@ shader_sources['simple_polygon_vertex'] = "\n" + "#define GLSLIFY 1\n" + "\n" + 
 module.exports = shader_sources;
 
 
-},{}],56:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -16559,7 +16481,7 @@ GLTexture.prototype.setTextureFiltering = function() {
 };
 
 
-},{"../utils":64,"loglevel":37}],57:[function(require,module,exports){
+},{"../utils":63,"loglevel":37}],56:[function(require,module,exports){
 "use strict";
 var $__3;
 Object.defineProperties(exports, {
@@ -16755,7 +16677,7 @@ GLVertexData.prototype.array_types = ($__3 = {}, Object.defineProperty($__3, gl.
 }), $__3);
 
 
-},{"./gl_constants":51,"loglevel":37}],58:[function(require,module,exports){
+},{"./gl_constants":50,"loglevel":37}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   LeafletLayer: {get: function() {
@@ -16865,7 +16787,7 @@ function leafletLayer(options) {
 }
 
 
-},{"./scene":60}],59:[function(require,module,exports){
+},{"./scene":59}],58:[function(require,module,exports){
 "use strict";
 var $__leaflet_95_layer__,
     $__loglevel__,
@@ -16894,7 +16816,7 @@ window.Tangram = module.exports = {
 };
 
 
-},{"./geo":48,"./gl/gl":49,"./gl/gl_program":54,"./gl/gl_texture":56,"./leaflet_layer":58,"loglevel":37}],60:[function(require,module,exports){
+},{"./geo":47,"./gl/gl":48,"./gl/gl_program":53,"./gl/gl_texture":55,"./leaflet_layer":57,"loglevel":37}],59:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -17640,9 +17562,9 @@ Scene.prototype.buildTileCompleted = function($__23) {
     } else {
       log.error(("main thread tile load error for " + tile.key + ": " + tile.error));
     }
+    tile.printDebug();
   }
   this.trackTileSetLoadStop();
-  tile.printDebug();
   this.trackTileBuildStop(tile.key);
 };
 Scene.prototype.trackTileBuildStart = function(key) {
@@ -17950,7 +17872,7 @@ function findBaseLibraryURL() {
 }
 
 
-},{"./camera":46,"./geo":48,"./gl/gl":49,"./gl/gl_builders":50,"./gl/gl_modes":53,"./gl/gl_program":54,"./gl/gl_texture":56,"./style":61,"./tile":62,"./tile_source":63,"./utils":64,"./worker_broker":66,"gl-matrix":4,"js-yaml":5,"loglevel":37}],61:[function(require,module,exports){
+},{"./camera":45,"./geo":47,"./gl/gl":48,"./gl/gl_builders":49,"./gl/gl_modes":52,"./gl/gl_program":53,"./gl/gl_texture":55,"./style":60,"./tile":61,"./tile_source":62,"./utils":63,"./worker_broker":65,"gl-matrix":4,"js-yaml":5,"loglevel":37}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Style: {get: function() {
@@ -18139,7 +18061,7 @@ Style.parseStyleForFeature = function(feature, layer_name, layer_style, tile) {
 };
 
 
-},{"./geo":48,"loglevel":37}],62:[function(require,module,exports){
+},{"./geo":47,"loglevel":37}],61:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18381,7 +18303,7 @@ var $Tile = Tile;
 var $__default = Tile;
 
 
-},{"./geo":48,"./style":61,"./worker_broker":66,"loglevel":37}],63:[function(require,module,exports){
+},{"./geo":47,"./style":60,"./worker_broker":65,"loglevel":37}],62:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18509,6 +18431,10 @@ var $NetworkTileSource = NetworkTileSource;
       tile.loaded = false;
       tile.error = null;
       Utils.io(url, 60 * 100, $__4.response_type).then((function(body) {
+        if (tile.loading !== true) {
+          reject();
+          return;
+        }
         tile.debug.response_size = body.length || body.byteLength;
         tile.debug.network = +new Date() - tile.debug.network;
         tile.debug.parsing = +new Date();
@@ -18595,7 +18521,7 @@ var $MapboxFormatTileSource = MapboxFormatTileSource;
   }}, {}, NetworkTileSource);
 
 
-},{"./errors":47,"./geo":48,"./utils":64,"loglevel":37,"pbf":38,"vector-tile":41}],64:[function(require,module,exports){
+},{"./errors":46,"./geo":47,"./utils":63,"loglevel":37,"pbf":38,"vector-tile":40}],63:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18757,7 +18683,7 @@ Utils.values = $traceurRuntime.initGeneratorFunction(function $__3(obj) {
 });
 
 
-},{}],65:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   Vector: {get: function() {
@@ -18813,7 +18739,7 @@ Vector.lineIntersection = function(p1, p2, p3, p4, parallel_tolerance) {
 };
 
 
-},{}],66:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 "use strict";
 Object.defineProperties(exports, {
   default: {get: function() {
@@ -18903,4 +18829,4 @@ try {
 }
 
 
-},{}]},{},[3,59])
+},{}]},{},[3,58])

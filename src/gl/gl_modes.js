@@ -35,6 +35,10 @@ var RenderMode = {
         return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
     },
 
+    isBuiltIn () {
+        return this.hasOwnProperty('built_in');
+    },
+
     // Build functions are no-ops until overriden
     buildPolygons () {},
     buildLines () {},
@@ -54,7 +58,8 @@ var RenderMode = {
         this.gl = null;
         this.valid = false;
 
-        if (!this.built_in) {
+
+        if (!this.isBuildIn()) {
             delete Modes[this.name];
         }
     },
@@ -205,6 +210,9 @@ ModeManager.destroy = function (gl) {
 
 /*** Plain polygons ***/
 var Polygons = Object.create(RenderMode, {
+    build_in: {
+        value: true
+    },
     init: {
         value: function () {
             RenderMode.init.call(this);
@@ -241,7 +249,6 @@ var Polygons = Object.create(RenderMode, {
                 // Add vertex attribute for UVs only when needed
                 attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
             }
-
             this.vertex_layout = new GLVertexLayout(attribs);
         }
     },
@@ -378,7 +385,6 @@ var Polygons = Object.create(RenderMode, {
     buildPoints: {
         value: function (points, style, vertex_data) {
             var vertex_template = this.makeVertexTemplate(style);
-
             GLBuilders.buildQuadsForPoints(
                 points,
                 style.size * 2,
@@ -397,6 +403,9 @@ Modes[Polygons.name] = Polygons;
 
 /*** Points w/simple distance field rendering ***/
 var Points = Object.create(RenderMode, {
+    built_in: {
+        value: true
+    },
     init: {
         value: function () {
             RenderMode.init.apply(this);

@@ -85,7 +85,13 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
                     selection_map_size: Style.selection_map_size
                 });
             }, (error) => {
-                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
+                if (error) {
+                    SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
+                }
+                else {
+                    SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
+                }
+
                 resolve({
                     tile: SceneWorker.sliceTile(tile),
                     worker_id: SceneWorker.worker_id,
