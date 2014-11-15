@@ -50,14 +50,12 @@ varying vec4 v_world_position;
     varying vec3 v_lighting;
 #endif
 
-const float light_ambient = 0.5;
-
 // Imported functions
 #pragma glslify: reorderLayers = require(./modules/reorder_layers)
-#pragma glslify: calculateLighting = require(./modules/lighting)
 
 #pragma tangram: globals
 #pragma tangram: camera
+#pragma tangram: lighting
 
 void main() {
     // Selection pass-specific rendering
@@ -93,11 +91,11 @@ void main() {
     #if defined(LIGHTING_VERTEX)
         v_color = a_color;
         v_lighting = calculateLighting(
-            position, a_normal, /*a_color*/ vec3(1.),
-            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
-            vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
-            vec3(0.2, 0.7, -0.5), // direction of light for flat shading
-            light_ambient);
+            position, a_normal, /*a_color*/ vec3(1.));
+            // vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
+            // vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
+            // vec3(0.2, 0.7, -0.5), // direction of light for flat shading
+            // light_ambient);
     #else
         // Send to fragment shader for per-pixel lighting
         v_position = position;

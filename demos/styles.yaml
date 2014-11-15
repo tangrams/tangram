@@ -10,7 +10,7 @@ camera:
     # type: flat
 
 lighting:
-    type: diffuse
+    type: point
 
 modes:
     # note: consider this syntax as a special case for global mode settings

@@ -9,11 +9,12 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
-import yaml from 'js-yaml';
+import Lighting from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 
 import log from 'loglevel';
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -1138,21 +1139,7 @@ Scene.prototype.createCamera = function () {
 
 // Create lighting
 Scene.prototype.createLighting = function () {
-    // Temporary #define-based lighting
-    // TODO: extract lighting models to classes & shader modules
-    var types = {
-        diffuse: 'LIGHTING_POINT',
-        specular: 'LIGHTING_POINT_SPECULAR',
-        flat: 'LIGHTING_DIRECTION',
-        night: 'LIGHTING_NIGHT' // TODO: this should just be config on top of a normal lighting mode, here temporarily for demo
-    };
-
-    for (var t in types) {
-        GLProgram.defines[types[t]] = (t === this.styles.lighting.type);
-    }
-
-    // TODO: make this an actual lighting object, replacing the above
-    this.lighting = { type: this.styles.lighting.type };
+    this.lighting = Lighting.create(this, this.styles.lighting);
 };
 
 // Update scene styles
