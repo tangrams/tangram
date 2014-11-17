@@ -51,6 +51,7 @@ export var LeafletLayer = L.GridLayer.extend({
         this.hooks.move = () => {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat);
+            this.scene.immediateRedraw();
         };
         this._map.on('move', this.hooks.move);
 

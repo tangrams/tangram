@@ -38,11 +38,11 @@ function setupMainThread () {
     // - message: will be passed to the method call in the worker
     // - callback: if provided, worker will send the invoked method's return value back to the worker,
     //     which will then pass it to the callback
-    WorkerBroker.postMessage = function (worker, method, message, callback) {
+    WorkerBroker.postMessage = function (worker, method, message, callback, error) {
         // Only need to track state of this message if we expect it to callback to the main thread
-        var has_callback = (typeof callback === 'function');
+        var has_callback = (typeof callback === 'function') || (typeof error === 'function');
         if (has_callback) {
-            messages[message_id] = { method, message, callback };
+            messages[message_id] = { method, message, callback, error };
         }
 
         worker.postMessage({
@@ -62,7 +62,12 @@ function setupMainThread () {
             // Pass the result along to the callback
             var id = event.data.message_id;
             if (messages[id]) {
-                messages[id].callback(event.data.message);
+                if (messages[id].error && event.data.error) {
+                    messages[id].error(event.data.error);
+                }
+                else if (messages[id].callback) {
+                    messages[id].callback(event.data.message);
+                }
                 delete messages[id];
             }
         });
@@ -95,11 +100,15 @@ function setupWorkerThread () {
         if (event.data.has_callback) {
             // Async result
             if (result instanceof Promise) {
-                result.then((value, error) => {
+                result.then((value) => {
                     self.postMessage({
                         message_id: id,
-                        message: value,
-                        error
+                        message: value
+                    });
+                }, (value) => {
+                    self.postMessage({
+                        message_id: id,
+                        error: value
                     });
                 });
             }

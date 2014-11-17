@@ -26,15 +26,15 @@ Style.pixels = function (p) {
 // need the main thread to know where each feature color originated. To accomplish this,
 // we partition the map by setting the 4th component (alpha channel) to the worker's id.
 Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
-Style.selection_map_current = 1; // start at 1 since 1 will be divided by this
+Style.selection_map_size = 1; // start at 1 since 1 will be divided by this
 Style.selection_map_prefix = 0; // set by worker to worker id #
-Style.generateSelection = function (color_map)
+Style.generateSelection = function ()
 {
     // 32-bit color key
-    Style.selection_map_current++;
-    var ir = Style.selection_map_current & 255;
-    var ig = (Style.selection_map_current >> 8) & 255;
-    var ib = (Style.selection_map_current >> 16) & 255;
+    Style.selection_map_size++;
+    var ir = Style.selection_map_size & 255;
+    var ig = (Style.selection_map_size >> 8) & 255;
+    var ib = (Style.selection_map_size >> 16) & 255;
     var ia = Style.selection_map_prefix;
     var r = ir / 255;
     var g = ig / 255;
@@ -42,17 +42,17 @@ Style.generateSelection = function (color_map)
     var a = ia / 255;
     var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
-    color_map[key] = {
+    Style.selection_map[key] = {
         color: [r, g, b, a],
     };
 
-    return color_map[key];
+    return Style.selection_map[key];
 };
 
 Style.resetSelectionMap = function ()
 {
     Style.selection_map = {};
-    Style.selection_map_current = 1;
+    Style.selection_map_size = 1;
 };
 
 // Find and expand style macros
@@ -246,7 +246,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     }
 
     if (interactive === true) {
-        var selector = Style.generateSelection(Style.selection_map);
+        var selector = Style.generateSelection();
 
         selector.feature = {
             id: feature.id,

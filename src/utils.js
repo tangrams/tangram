@@ -3,12 +3,34 @@
 
 var Utils;
 export default Utils = {};
-import xhr from 'xhr';
 
-// allow for easier testing
-Utils.xhr = function (...args) {
-    xhr(...args);
+Utils.cacheBusterForUrl = function (url) {
+    return url + '?' + (+new Date());
 };
+
+Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET', headers = {}) {
+    var request = new XMLHttpRequest();
+    return new Promise((resolve, reject) => {
+        request.timeout = timeout;
+        request.onload = () => {
+            if (request.status === 200) {
+                resolve(request.responseText);
+            } else {
+                reject(Error('Request error with a status of ' + request.statusText));
+            }
+        };
+        request.onerror = (evt) => {
+            reject(Error('There was a network error' + evt.toString()));
+        };
+        request.ontimeout = (evt) => {
+            reject(Error('timeout '+ evt.toString()));
+        };
+        request.open(method, url, true);
+        request.responseType = responseType;
+        request.send();
+    });
+};
+
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
 Utils.requestAnimationFramePolyfill = function () {
