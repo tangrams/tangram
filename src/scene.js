@@ -383,8 +383,18 @@ Scene.prototype.resizeMap = function (width, height) {
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 };
 
+// Request scene be redrawn at next animation loop
 Scene.prototype.requestRedraw = function () {
     this.dirty = true;
+};
+
+// Redraw scene immediately - don't wait for animation loop
+// Use sparingly, but for cases where you need the closest possible sync with other UI elements,
+// such as other, non-WebGL map layers (e.g. Leaflet raster layers, markers, etc.)
+// TODO: pre and post-render hooks currently aren't called here - probably should be?
+Scene.prototype.immediateRedraw = function () {
+    this.dirty = true;
+    this.render();
 };
 
 // TODO: remove, unnecessary
@@ -401,18 +411,8 @@ Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
 Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
         if (this.initialized) {
-            // Pre-render hook
-            if (typeof this.preRender === 'function') {
-                this.preRender();
-            }
-
             // Render the scene
             this.render();
-
-            // Post-render hook
-            if (typeof this.postRender === 'function') {
-                this.postRender();
-            }
         }
 
         // Request the next frame
@@ -430,7 +430,18 @@ Scene.prototype.render = function () {
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
 
+    // Pre-render hook
+    if (typeof this.preRender === 'function') {
+        this.preRender();
+    }
+
+    // Render the scene
     this.renderGL();
+
+    // Post-render hook
+    if (typeof this.postRender === 'function') {
+        this.postRender();
+    }
 
     // Redraw every frame if animating
     if (this.animated === true) {
