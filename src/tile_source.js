@@ -129,7 +129,7 @@ export class NetworkTileSource extends TileSource {
             //     promise = Promise.reject(Error('fake tile error'));
             // }
             // promise.then((body) => {
-            Utils.io(url, 60 * 100, this.response_type).then((body) => {
+            Utils.io(url, 60 * 1000, this.response_type).then((body) => {
                 if (tile.loading !== true) {
                     reject();
                     return;
