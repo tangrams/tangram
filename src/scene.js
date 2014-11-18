@@ -491,8 +491,9 @@ Scene.prototype.renderGL = function () {
     var tile_view_mat = mat4.create();
     var tile_world_mat = mat4.create();
 
-    // Update camera
+    // Update camera & lights
     this.camera.update();
+    this.lighting.update();
 
     // Renderable tile list
     var renderable_tiles = [];
@@ -541,6 +542,7 @@ Scene.prototype.renderGL = function () {
                     gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                     this.camera.setupProgram(gl_program);
+                    this.lighting.setupProgram(gl_program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
@@ -612,6 +614,7 @@ Scene.prototype.renderGL = function () {
                         gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                         this.camera.setupProgram(gl_program);
+                        this.lighting.setupProgram(gl_program);
                     }
 
                     // Tile origin
