@@ -14,7 +14,12 @@ Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET',
         request.timeout = timeout;
         request.onload = () => {
             if (request.status === 200) {
-                resolve(request.responseText);
+                if (['text', 'json'].indexOf(request.responseType) > -1) {
+                    resolve(request.responseText);
+                }
+                else {
+                    resolve(request.response);
+                }
             } else {
                 reject(Error('Request error with a status of ' + request.statusText));
             }

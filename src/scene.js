@@ -375,13 +375,15 @@ Scene.prototype.resizeMap = function (width, height) {
     this.view_aspect = this.css_size.width / this.css_size.height;
     this.updateBounds();
 
-    this.canvas.style.width = this.css_size.width + 'px';
-    this.canvas.style.height = this.css_size.height + 'px';
-    this.canvas.width = this.device_size.width;
-    this.canvas.height = this.device_size.height;
+    if (this.canvas) {
+        this.canvas.style.width = this.css_size.width + 'px';
+        this.canvas.style.height = this.css_size.height + 'px';
+        this.canvas.width = this.device_size.width;
+        this.canvas.height = this.device_size.height;
 
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
 };
 
 // Request scene be redrawn at next animation loop
@@ -1366,6 +1368,11 @@ function findBaseLibraryURL () {
     var script = document.currentScript;
     if (script) {
         Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+
+        // Check if we're using a debug/test build
+        if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
+            Scene.library_type = 'debug';
+        }
     }
     else {
         // Fallback on looping through <script> elements if document.currentScript is not supported
@@ -1384,10 +1391,5 @@ function findBaseLibraryURL () {
                break;
             }
         }
-    }
-
-    // Check if we're using a debug/test build
-    if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
-        Scene.library_type = 'debug';
     }
 }
