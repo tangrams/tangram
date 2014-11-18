@@ -14,7 +14,7 @@ Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET',
         request.timeout = timeout;
         request.onload = () => {
             if (request.status === 200) {
-                resolve(request.responseText);
+                resolve(request.response);
             } else {
                 reject(Error('Request error with a status of ' + request.statusText));
             }
