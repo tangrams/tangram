@@ -105,6 +105,9 @@ class DirectionalLight extends Light {
         super(scene);
         this.type = 'directional';
 
+        this.direction = (options.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        this.ambient = options.ambient || 0.5;
+
         GLProgram.removeTransform(Light.transform);
         GLProgram.addTransform(Light.transform, `
             vec3 directionalLight (
@@ -119,6 +122,9 @@ class DirectionalLight extends Light {
                 return color;
             }
 
+            uniform vec3 u_directional_light_direction;
+            uniform float u_directional_light_ambient;
+
             vec3 calculateLighting(
                 vec4 position,
                 vec3 normal,
@@ -126,11 +132,16 @@ class DirectionalLight extends Light {
 
                 return directionalLight(
                     normal, color,
-                    vec3(0.2, 0.7, -0.5), // direction of light for flat shading
-                    0.5 // ambient light
+                    u_directional_light_direction,
+                    u_directional_light_ambient
                 );
             }`
         );
+    }
+
+    setupProgram(gl_program) {
+        gl_program.uniform('3fv', 'u_directional_light_direction', this.direction);
+        gl_program.uniform('1f', 'u_directional_light_ambient', this.ambient);
     }
 
 }
