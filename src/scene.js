@@ -1376,6 +1376,11 @@ function findBaseLibraryURL () {
     var script = document.currentScript;
     if (script) {
         Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+
+        // Check if we're using a debug/test build
+        if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
+            Scene.library_type = 'debug';
+        }
     }
     else {
         // Fallback on looping through <script> elements if document.currentScript is not supported
@@ -1394,10 +1399,5 @@ function findBaseLibraryURL () {
                break;
             }
         }
-    }
-
-    // Check if we're using a debug/test build
-    if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
-        Scene.library_type = 'debug';
     }
 }
