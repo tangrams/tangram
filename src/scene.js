@@ -374,13 +374,15 @@ Scene.prototype.resizeMap = function (width, height) {
     this.view_aspect = this.css_size.width / this.css_size.height;
     this.updateBounds();
 
-    this.canvas.style.width = this.css_size.width + 'px';
-    this.canvas.style.height = this.css_size.height + 'px';
-    this.canvas.width = this.device_size.width;
-    this.canvas.height = this.device_size.height;
+    if (this.canvas) {
+        this.canvas.style.width = this.css_size.width + 'px';
+        this.canvas.style.height = this.css_size.height + 'px';
+        this.canvas.width = this.device_size.width;
+        this.canvas.height = this.device_size.height;
 
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
 };
 
 // Request scene be redrawn at next animation loop
