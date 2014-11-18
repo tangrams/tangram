@@ -10,14 +10,14 @@ camera:
     # type: flat
 
 lighting:
-    # type: point
-    # position: [0, 0, 150] # relative to camera position, in pixels
-    # ambient: 0.5
-    # backlight: true
-
-    type: directional
-    direction: [-1, 0, -.5]
+    type: point
+    position: [0, 0, 150] # relative to camera position, in pixels
     ambient: 0.5
+    backlight: true
+
+    # type: directional
+    # direction: [-1, 0, -.5]
+    # ambient: 0.5
 
 modes:
     # note: consider this syntax as a special case for global mode settings
