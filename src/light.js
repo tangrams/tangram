@@ -115,7 +115,7 @@ class DirectionalLight extends Light {
 
                 // Flat shading
                 light_dir = normalize(light_dir);
-                color *= dot(normal, light_dir * -1.0) + light_ambient;
+                color *= max(0., dot(normal, light_dir * -1.0)) + light_ambient;
                 return color;
             }
 
