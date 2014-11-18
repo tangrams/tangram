@@ -1,6 +1,6 @@
 - name: earth
-- name: landuse
-- name: water
+#- name: landuse
+#- name: water
 - name: roads
-- name: buildings
-- name: pois
+#- name: buildings
+#- name: pois

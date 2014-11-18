@@ -99,7 +99,12 @@ function setupWorkerThread () {
         }
 
         // TODO: add try/catch behavior to pass back errors
-        var result = method(event.data.message);
+        try {
+            var result = method(event.data.message);
+        } catch (e) {
+            console.error(e);
+        }
+
 
         // Callback if main thread is expecting a return value
         if (event.data.has_callback) {

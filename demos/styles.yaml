@@ -376,17 +376,32 @@ modes:
                     color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color == vec3(0.)) discard;
 
-#    filter: function () { return feature.properties.highway === 'residential'; }
 layers:
   roads:
-    filter: Q.property('highway', 'residential')
-    color:
-      default: [1, 1, 0]
-    width:
-      default: Style.pixels(function () { return (parseInt(Math.abs(feature.sort_key), 16) % 16); })
+    name: 'roads'
+    filter: Q.property('name', 'roads')
+#    filter: Q.returns(false)
+    layers:
+      - name: residential
+#        filter: Q.property('properties.highway', 'residential')
+        filter: Q.returns(false)
+        style:
+          name: polygons
+          color: [0, 0, 0]
+          width: 5
+
+      - name: highway
+        filter: Q.property('properties.kind', 'highway')
+        style:
+          name: polygons
+          color: [0, 0, 0]
+          width: 10
+
   earth:
-    color:
-      default: [0.175, 0.175, 0.175]
+    filter: Q.property('name', 'earth')
+    style:
+      color: [255, 255, 255]
+
 
     # landuse:
     #     interactive: true

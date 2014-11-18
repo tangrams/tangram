@@ -2,7 +2,6 @@
 import {Geo} from './geo';
 import {Style} from './style';
 import WorkerBroker from './worker_broker';
-
 import log from 'loglevel';
 
 export default class Tile {
@@ -78,29 +77,68 @@ export default class Tile {
         var vertex_data = {};
         var mode_vertex_data;
 
+
+        function findStyleForFeature(layer, feature) {
+            var foundStyle, key, style;
+
+            for (key in styles.layers) {
+                style = styles.layers[key];
+                if ((typeof style.filter === 'function') && (style.filter(layer) !== false)) {
+                    foundStyle = style;
+                    break;
+                }
+            }
+
+            if (foundStyle.layers) {
+                for (key in foundStyle.layers) {
+                    style = foundStyle.layers[key];
+                    if (typeof style.filter === 'function' && style.filter(feature) !== false) {
+                        foundStyle = style;
+                        break;
+                    }
+                }
+            }
+            return foundStyle;
+        }
+
+
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
+
+
         for (var layer_num = 0; layer_num < layers.length; layer_num++) {
             layer = layers[layer_num];
+            console.log(layer.name);
 
             // Skip layers with no styles defined, or layers set to not be visible
-            if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
-                continue;
-            }
+            // if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
+            //     continue;
+            // }
 
             if (tile.layers[layer.name] != null) {
                 var num_features = tile.layers[layer.name].features.length;
 
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = tile.layers[layer.name].features[f];
-                    style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
+
+                    var styleConfig = findStyleForFeature(layer, feature);
 
                     // Skip feature?
-                    if (style == null) {
+                    if (styleConfig == null) {
+                        console.log(`Skipping feature ${feature.id}`);
                         continue;
                     }
+
+                    style = Style.parseStyleForFeature(
+                        feature,
+                        layer.name,
+                        styleConfig,
+                        tile
+                    );
+
+                    debugger;
 
                     // First feature in this render mode?
                     mode = modes[style.mode.name];

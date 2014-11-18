@@ -235,6 +235,7 @@ Scene.prototype.initWorkerEvents = function () {
 // Instantiate workers from URL
 Scene.prototype.makeWorkers = function (url) {
     this.workers = [];
+    this.num_workers = 1;
     for (var id=0; id < this.num_workers; id++) {
         var worker = new Worker(url);
         this.workers[id] = worker;

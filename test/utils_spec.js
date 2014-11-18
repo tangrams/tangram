@@ -6,6 +6,31 @@ chai.use(chaiAsPromised);
 
 describe('Utils', () => {
 
+
+    describe.only('.getDeep', () => {
+        let subject = Utils.getDeep;
+
+        describe('when given a deeply nested property', () => {
+            let obj = {a: {b: {c: 10}}};
+
+            it('returns the value of that property', () => {
+                let result = subject(obj, 'a.b.c');
+                assert.equal(result, 10);
+            });
+
+            it('it also works with keys that are not deep', () => {
+                assert.deepEqual(subject(obj, 'a'), {b: {c: 10}});
+            });
+
+            describe('when the property does not exist', () => {
+                it('returns undefined', () => {
+                    assert.isUndefined(subject(obj, 'a.d.c'));
+                });
+            });
+        });
+    });
+
+
     describe('io', () => {
         let subject = Utils.io,
             xhr,

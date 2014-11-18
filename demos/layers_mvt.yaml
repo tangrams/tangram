@@ -1,29 +1,29 @@
--
-    name: landuse
-    data: |
-        function (json) {
-            return {
-                type: 'FeatureCollection',
-                features: ((json['landuse']||{}).features||[]).filter(function (feature) {
-                    feature.properties.kind = feature.properties.class;
-                    return feature;
-                })
-            };
-        }
+# -
+#     name: landuse
+#     data: |
+#         function (json) {
+#             return {
+#                 type: 'FeatureCollection',
+#                 features: ((json['landuse']||{}).features||[]).filter(function (feature) {
+#                     feature.properties.kind = feature.properties.class;
+#                     return feature;
+#                 })
+#             };
+#         }
 
--
-    name: water
-    data: |
-        function (json) {
-            var water = (json['water'] && json['water'].features) || [];
-            var waterway = (json['waterway'] && json['waterway'].features) || [];
-            var features = water.concat(waterway);
+# -
+#     name: water
+#     data: |
+#         function (json) {
+#             var water = (json['water'] && json['water'].features) || [];
+#             var waterway = (json['waterway'] && json['waterway'].features) || [];
+#             var features = water.concat(waterway);
 
-            return {
-                type: 'FeatureCollection',
-                features: features
-            };
-        }
+#             return {
+#                 type: 'FeatureCollection',
+#                 features: features
+#             };
+#         }
 
 -
     name: roads
@@ -49,19 +49,19 @@
             };
         }
 
--
-    name: buildings
-    data: building
+# -
+#     name: buildings
+#     data: building
 
--
-    name: pois
-    data: |
-        function (json) {
-            return {
-                type: 'FeatureCollection',
-                features: ((json['poi_label']||{}).features||[]).filter(function (feature) {
-                    feature.properties.kind = feature.properties.type;
-                    return feature;
-                })
-            };
-        }
+# -
+#     name: pois
+#     data: |
+#         function (json) {
+#             return {
+#                 type: 'FeatureCollection',
+#                 features: ((json['poi_label']||{}).features||[]).filter(function (feature) {
+#                     feature.properties.kind = feature.properties.type;
+#                     return feature;
+#                 })
+#             };
+#         }

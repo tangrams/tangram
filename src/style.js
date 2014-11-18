@@ -1,5 +1,6 @@
 /*** Style helpers ***/
 import {Geo} from './geo';
+import Utils from './utils';
 import log from 'loglevel';
 export var Style = {};
 
@@ -59,9 +60,12 @@ Style.resetSelectionMap = function ()
 
 var Q = {
     property: function (property, value) {
-        return function (feature) {
-            return Object.is(feature.properties[property], value);
+        return function (obj) {
+            return Object.is(Utils.getattr(obj, property), value);
         };
+    },
+    returns: function (value) {
+        return function () { return value; };
     }
 };
 
@@ -70,7 +74,8 @@ Style.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
     'Style.pixels',
-    'Q.property'
+    'Q.property',
+    'Q.returns'
 ];
 
 
@@ -83,14 +88,23 @@ Style.macros = [
 */
 Style.wrapFunction = function (func) {
     var f = `function(feature, tile, helpers, Q) {
-                var feature = feature.properties;
-                var zoom = tile.coords.z;
-                var meters_per_pixel = helpers.Geo.metersPerPixel(zoom);
-                var properties = helpers.style_properties;
+                var properties = (feature !== undefined) ? feature.properties : {};
+                var zoom = (tile !== undefined) ? tile.coords.z ? {};
+                var meters_per_pixel = (helpers !== undefined) ? helpers.Geo.metersPerPixel(zoom) : {};
+                var properties = (helpers !== undefined) ? helpers.style_properties : {};
                 return (${func}(feature));
             }`;
     return f;
 };
+
+/**
+ * Wraps the marcos, sets the function scope to something that is useful
+ */
+function wrapMacro(fn) {
+    return function(...args) {
+        return eval(fn).apply(null, args); // jshint ignore:line
+    };
+}
 
 Style.expandMacros = function expandMacros (obj) {
     for (var p in obj) {
@@ -106,14 +120,13 @@ Style.expandMacros = function expandMacros (obj) {
                 if (val.match(Style.macros[m])) {
                     var f;
                     try {
-                        eval('f = ' + val); // jshint ignore:line
-                        obj[p] = f;
+                        obj[p] = wrapMacro(val);
                         log.trace(`expanded macro ${val} to ${f}`);
                         break;
                     }
                     catch (e) {
                         // fall-back to original value if parsing failed
-                        obj[p] = val;
+                        obj[p] = e;
                         log.trace(`failed to expand macro ${val}`);
                     }
                 }
@@ -160,7 +173,6 @@ Style.helpers = {
 Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     layer_style = layer_style || {};
 
-
     var style = {};
 
     // Custom properties
@@ -168,30 +180,28 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
         Style.helpers.style_properties = Object.assign({}, layer_style.properties);
     }
 
-    try {
-        // Test whether features should be rendered at all
-        if (layer_name === 'roads') {
-//            debugger;
-        }
+    // try {
+    //     // Test whether features should be rendered at all
 
-        if (typeof layer_style.filter === 'function') {
-            if (layer_style.filter(feature, tile, Style.helpers, Q) === false) {
-                return null;
-            }
-        }
-    } catch (e) {
-        // don't hide filter errors from the user
-        console.error(e);
-    }
+    //     if (typeof layer_style.filter === 'function') {
+    //         if (layer_style.filter(feature, tile, Style.helpers, Q) === false) {
+    //             return null;
+    //         }
+    //     }
+    // } catch (e) {
+    //     // don't hide filter errors from the user
+    //     console.error(e);
+    // }
 
     // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
+    style.color = layer_style.style.color || Style.defaults.color;
+//    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
-
+//    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
+    style.width = layer_style.style.width || Style.defaults.width;
     if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }
@@ -286,6 +296,8 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
         style.mode = Style.defaults.mode;
     }
 
+
     return style;
+
 };
 

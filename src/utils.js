@@ -4,6 +4,28 @@
 var Utils;
 export default Utils = {};
 
+/**
+ * Funtion that is able to return nested objects. Similar to a normal
+ * property based lookup, but accepts a string that is dot delimited.
+ *
+ * var obj = {a: {b: {c: 10}}};
+ * getattr(obj, 'a.b.c'); // 10
+ */
+Utils.getattr = function (obj, key) {
+
+    function walk(obj, keys) {
+        var key = keys[0];
+        if (keys.length === 0) {
+            return obj;
+        } else if (!obj.hasOwnProperty(key)) {
+            return;
+        }
+        return walk(obj[key], keys.slice(1));
+    }
+
+    return walk(obj, key.split('.'));
+};
+
 Utils.cacheBusterForUrl = function (url) {
     return url + '?' + (+new Date());
 };
