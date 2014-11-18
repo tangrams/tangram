@@ -47,6 +47,10 @@ class PointLight extends Light {
         super(scene);
         this.type = 'point';
 
+        this.position = options.position || [0, 0, 150]; // [x, y, z]
+        this.ambient = options.ambient || 0.5;
+        this.backlight = options.backlight || false;
+
         GLProgram.removeTransform(Light.transform);
         GLProgram.addTransform(Light.transform, `
             vec3 pointLight(
@@ -63,6 +67,10 @@ class PointLight extends Light {
                 return color;
             }
 
+            uniform vec4 u_point_light_position;
+            uniform float u_point_light_ambient;
+            uniform bool u_point_light_backlight;
+
             vec3 calculateLighting(
                 vec4 position,
                 vec3 normal,
@@ -70,12 +78,22 @@ class PointLight extends Light {
 
                 return pointLight(
                     position, normal, color,
-                    vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground))
-                    0.5,    // ambient light
-                    true    // backlight flag
+                    u_point_light_position,
+                    u_point_light_ambient,
+                    u_point_light_backlight
                 );
             }`
         );
+    }
+
+    setupProgram(gl_program) {
+        gl_program.uniform('4f', 'u_point_light_position',
+            this.position[0] * this.scene.meters_per_pixel,
+            this.position[1] * this.scene.meters_per_pixel,
+            this.position[2] * this.scene.meters_per_pixel,
+            1);
+        gl_program.uniform('1f', 'u_point_light_ambient', this.ambient);
+        gl_program.uniform('1i', 'u_point_light_backlight', this.backlight);
     }
 
 }
