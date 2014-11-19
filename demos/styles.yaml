@@ -387,20 +387,29 @@ layers:
         filter: Q.returns(false)
         style:
           name: polygons
-          color: [0, 0, 0]
+          color: [255, 0, 0]
           width: 5
+
+      - name: highway
+        filter: Q.property('properties.kind', 'highway').and().zoom(10)
+        style:
+          name: polygons
+          color: [255, 0, 0]
+           width: 10
 
       - name: highway
         filter: Q.property('properties.kind', 'highway')
         style:
           name: polygons
-          color: [0, 0, 0]
-          width: 10
+          color: [255, 0, 1]
+           width: 10
 
+           
   earth:
     filter: Q.property('name', 'earth')
-    style:
-      color: [255, 255, 255]
+    default:
+      style:
+        color: [255, 255, 255]
 
 
     # landuse:
