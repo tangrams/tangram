@@ -79,7 +79,8 @@ export default class Tile {
 
 
         function findStyleForFeature(layer, feature) {
-            var foundStyle, key, style;
+            var foundStyle, key, style, featureMatch;
+
 
             for (key in styles.layers) {
                 style = styles.layers[key];
@@ -94,11 +95,12 @@ export default class Tile {
                     style = foundStyle.layers[key];
                     if (typeof style.filter === 'function' && style.filter(feature) !== false) {
                         foundStyle = style;
+                        featureMatch = true;
                         break;
                     }
                 }
             }
-            return foundStyle;
+            return featureMatch ? foundStyle : foundStyle.default;
         }
 
 
@@ -127,48 +129,54 @@ export default class Tile {
 
                     // Skip feature?
                     if (styleConfig == null) {
-                        console.log(`Skipping feature ${feature.id}`);
+                        console.log(`Skipping feature ${feature.id} for layer ${layer.name}`);
                         continue;
+                    } else {
+                        console.log(`Attempting to render feature ${feature.id} for layer ${layer.name}`);
                     }
 
-                    style = Style.parseStyleForFeature(
-                        feature,
-                        layer.name,
-                        styleConfig,
-                        tile
-                    );
+                    try {
+                        style = Style.parseStyleForFeature(
+                            feature,
+                            layer.name,
+                            styleConfig,
+                            tile
+                        );
 
-                    debugger;
+                        // First feature in this render mode?
+                        mode = modes[style.mode.name];
+                        if (vertex_data[mode.name] == null) {
+                            vertex_data[mode.name] = mode.vertex_layout.createVertexData();
+                        }
+                        mode_vertex_data = vertex_data[mode.name];
 
-                    // First feature in this render mode?
-                    mode = modes[style.mode.name];
-                    if (vertex_data[mode.name] == null) {
-                        vertex_data[mode.name] = mode.vertex_layout.createVertexData();
-                    }
-                    mode_vertex_data = vertex_data[mode.name];
+                        style.layer_num = layer_num;
 
-                    style.layer_num = layer_num;
+                        if (feature.geometry.type === 'Polygon') {
+                            mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPolygon') {
+                            mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'LineString') {
+                            mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiLineString') {
+                            mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'Point') {
+                            mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPoint') {
+                            mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
 
-                    if (feature.geometry.type === 'Polygon') {
-                        mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPolygon') {
-                        mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'LineString') {
-                        mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiLineString') {
-                        mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'Point') {
-                        mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPoint') {
-                        mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                        tile.debug.features++;
+
+                    } catch (e) {
+                        console.error(e);
                     }
 
-                    tile.debug.features++;
                 }
             }
         }

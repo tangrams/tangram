@@ -7,8 +7,8 @@ chai.use(chaiAsPromised);
 describe('Utils', () => {
 
 
-    describe.only('.getDeep', () => {
-        let subject = Utils.getDeep;
+    describe('.getattr', () => {
+        let subject = Utils.getattr;
 
         describe('when given a deeply nested property', () => {
             let obj = {a: {b: {c: 10}}};

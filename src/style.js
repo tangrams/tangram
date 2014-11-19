@@ -58,7 +58,7 @@ Style.resetSelectionMap = function ()
 };
 
 
-var Q = {
+var Q = { // jshint ignore:line
     property: function (property, value) {
         return function (obj) {
             return Object.is(Utils.getattr(obj, property), value);
@@ -180,40 +180,26 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
         Style.helpers.style_properties = Object.assign({}, layer_style.properties);
     }
 
-    // try {
-    //     // Test whether features should be rendered at all
-
-    //     if (typeof layer_style.filter === 'function') {
-    //         if (layer_style.filter(feature, tile, Style.helpers, Q) === false) {
-    //             return null;
-    //         }
-    //     }
-    // } catch (e) {
-    //     // don't hide filter errors from the user
-    //     console.error(e);
-    // }
-
     // Parse styles
+
     style.color = layer_style.style.color || Style.defaults.color;
-//    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
 
-//    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     style.width = layer_style.style.width || Style.defaults.width;
     if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }
     style.width *= Geo.units_per_meter[tile.coords.z];
 
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
+    style.size = layer_style.size || Style.defaults.size;
     if (typeof style.size === 'function') {
         style.size = style.size(feature, tile, Style.helpers);
     }
     style.size *= Geo.units_per_meter[tile.coords.z];
 
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
+    style.extrude = layer_style.style.extrude || Style.defaults.extrude;
     if (typeof style.extrude === 'function') {
         // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
         style.extrude = style.extrude(feature, tile, Style.helpers);
@@ -232,8 +218,10 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
             style.height = style.extrude[1];
         }
     }
+    style.z = layer_style.style.z || Style.defaults.z || 0;
 
     style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
+
     if (typeof style.z === 'function') {
         style.z = style.z(feature, tile, Style.helpers);
     }
