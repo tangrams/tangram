@@ -1,61 +1,139 @@
+import Utils from './utils';
 
+export var whiteList = ['filter', 'order', 'style', 'color', 'width'];
 
-//var whiteList = ['filter', 'order', 'style', 'color', 'width'];
-
-export class Style {
-    constructor({color, width}) {
-        this.color = color;
-        this.width = width;
-    }
+function isWhiteListed(key) {
+    return whiteList.indexOf(key) > -1;
 }
 
-export class Rule {
-    constructor({filter, order, style, rules}) {
-        this.filter = filter;
-        this.order  = order;
-        this.style  = new Style(style);
+export function wrapMacro(fn) {
+    return function(...args) {
+        return eval(fn).apply(null, args); // jshint ignore:line
+    };
+}
+
+export var Macros = {
+    'property': function (property, value) {
+        return function (obj) {
+            return Object.is(Utils.getattr(obj, property), value);
+        };
+    },
+    'returns': function (value) {
+        return function () { return value; };
+    }
+};
+
+export function walkRuleTree(rules, cb) {
+    if (rules.length === 0) {
+        return;
+    }
+    var first = rules[0];
+
+    cb(first);
+
+    if (first.rules && first.rules.length !== 0) {
+        walkRuleTree(first.rules, cb);
+    }
+
+    walkRuleTree(rules.slice(1), cb);
+
+}
+
+
+class Style {
+    constructor(name, rules = []) {
+        this.name = name;
         this.rules = rules;
     }
 
-    addRule(rule) {
-        this.rules.push(rule);
+    matchFeature(feature) {
+        var matchedStyles = [];
+
+        walkRuleTree(this.rules, (rule) => {
+            if (typeof rule.filter === 'function' && rule.filter(feature) !== false) {
+                matchedStyles.push(rule.style);
+            }
+        });
+
+        return matchedStyles;
     }
 }
 
-// function makeRuleTree() {
-//     return new Rule({});
+class Rule {
 
-// }
-
-// function createRule(stylizers) {
-//     var properties = {};
-
-//     Object.keys(stylizers).forEach((property) => {
-//         if (whiteList.contains(property)) {
-//             properties[property] = stylizers[property];
-//             delete stylizers[property];
-//         }
-//     });
-//     return new Rule(properties);
-// }
+    constructor(root, name, filter, order, style, rules = []) {
+        this.root = root;
+        this.name = name;
+        this.filter = filter;
+        this.order = order;
+        this.style = style;
+        this.rules = rules;
+    }
 
 
-// function isWhiteListed(key) {
-//     return whiteList.indexOf(key) === 1;
-// }
+    calculateFullFilter() {
+        var parentFilters = (root, filters) => {
+            if (root.filter != null) {
+                if (root.filter.size) {
+                    root.filter.forEach((x) => {
+                        filters.add(x);
+                    });
+                } else {
+                    filters.add(root.filter);
+                }
+            }
+            if (root.root != null) {
+                return parentFilters(root.root, filters);
+            }
+            return filters;
+        };
+        return parentFilters(this.root, new Set()).add(this.filter);
+    }
 
-function parseStyle(style, rules) {
-    return {};
+    toJSON() {
+        return {
+            name:   this.name,
+            filter: this.filter,
+            order:  this.order,
+            style:  this.style,
+            rules:  this.rules
+        };
+    }
+
 }
 
-export function parseStylizers(stylizers) {
-    var rules = [];
+function parseStyle(name, style, root) {
+    var rule = new Rule(root, name);
 
-    Object.keys(stylizers).forEach((_name) => {
-        var style = stylizers[_name];
-        return parseStyle(style, rules);
+    Object.keys(style).filter(isWhiteListed).forEach((key) => {
+        rule[key] = style[key];
+        delete style[key];
     });
 
-    return rules;
+    root.rules.push(rule);
+
+    Object.keys(style).forEach((name) => {
+        var property = style[name];
+        if (typeof property === 'object') {
+            parseStyle(name, property, rule);
+        } else {
+            throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
+        }
+    });
+
+    return root;
 }
 
+
+export function parseLayers(layers) {
+    var obj = {};
+
+    Object.keys(layers).forEach((key) => {
+        var layer = layers[key],
+            root  = new Style(key);
+        obj[key] = parseStyle(key, layer, root);
+    });
+
+    return obj;
+
+}

@@ -78,32 +78,6 @@ export default class Tile {
         var mode_vertex_data;
 
 
-        function findStyleForFeature(layer, feature) {
-            var foundStyle, key, style, featureMatch;
-
-
-            for (key in styles.layers) {
-                style = styles.layers[key];
-                if ((typeof style.filter === 'function') && (style.filter(layer) !== false)) {
-                    foundStyle = style;
-                    break;
-                }
-            }
-
-            if (foundStyle.layers) {
-                for (key in foundStyle.layers) {
-                    style = foundStyle.layers[key];
-                    if (typeof style.filter === 'function' && style.filter(feature) !== false) {
-                        foundStyle = style;
-                        featureMatch = true;
-                        break;
-                    }
-                }
-            }
-            return featureMatch ? foundStyle : foundStyle.default;
-        }
-
-
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
         tile.debug.rendering = +new Date();
@@ -125,7 +99,7 @@ export default class Tile {
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = tile.layers[layer.name].features[f];
 
-                    var styleConfig = findStyleForFeature(layer, feature);
+                    var styleConfig = {};
 
                     // Skip feature?
                     if (styleConfig == null) {
