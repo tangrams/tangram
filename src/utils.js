@@ -147,10 +147,13 @@ Utils.isPowerOf2 = function(value) {
 // TODO: add other interpolation methods besides linear
 //
 Utils.interpolate = function(x, points) {
+    console.log("interpolate: "+points);
     if (!Array.isArray(points)) {
+        console.log("points is not an array");
         return points;
     }
     else if (points.length < 1) {
+        console.log("points.length < 1");
         return null;
     }
     var y;
