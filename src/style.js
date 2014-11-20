@@ -59,7 +59,8 @@ Style.resetSelectionMap = function ()
 Style.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
-    'Style.pixels'
+    'Style.pixels',
+    'property'
 ];
 
 // Wraps style functions and provides a scope of commonly accessible data:
@@ -167,7 +168,8 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     }
 
     // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
+
+    style.color = layer_style.style.color || Style.default.color;
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }

@@ -4,6 +4,7 @@ import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {Style} from './style';
 import Scene  from './scene';
 import Tile from './tile';
+import {parseLayers} from './rule';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
@@ -31,6 +32,8 @@ SceneWorker.updateConfig = function (config) {
     }
     if (!SceneWorker.styles && config.styles) {
         SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
+        Style.expandMacros(SceneWorker.styles);
+        SceneWorker.rules = parseLayers(SceneWorker.styles.layers);
         SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
     }
 };
@@ -77,7 +80,19 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         return new Promise((resolve, reject) => {
             SceneWorker.tile_source.loadTile(tile).then(() => {
                 Scene.processLayersForTile(SceneWorker.layers, tile);
-                var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+                try {
+                    var keys = Tile.buildGeometry(
+                        tile,
+                        SceneWorker.layers,
+                        SceneWorker.styles,
+                        SceneWorker.modes,
+                        SceneWorker.rules
+                    );
+
+                } catch (e) {
+                    console.error(e);
+                }
+
 
                 resolve({
                     tile: SceneWorker.sliceTile(tile, keys),
@@ -105,7 +120,19 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
         // Build geometry
-        var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+        try {
+            var keys = Tile.buildGeometry(
+                tile,
+                SceneWorker.layers,
+                SceneWorker.styles,
+                SceneWorker.modes,
+                SceneWorker.rules
+            );
+        } catch (e) {
+            console.error(e);
+        }
+
+
 
         // TODO: should we rebuild layers here as well?
         // - if so, we need to save the raw un-processed tile data

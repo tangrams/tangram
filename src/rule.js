@@ -1,6 +1,6 @@
 import Utils from './utils';
 
-export var whiteList = ['filter', 'order', 'style', 'color', 'width'];
+export var whiteList = ['filter', 'order', 'style', 'color', 'width', 'visible', 'mode'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
@@ -52,10 +52,20 @@ class Style {
         walkRuleTree(this.rules, (rule) => {
             if (typeof rule.filter === 'function') {
                 if (rule.filter(feature) !== false) {
-                    matchedStyles.push(rule.style);
+                    matchedStyles.push({
+                        style: rule.style,
+                        mode: rule.mode,
+                        visible: rule.visible
+                    });
                 }
-            } else { // if the filter does not have a match
-                matchedStyles.push(rule.style);
+            } else { // if there is no filter
+                matchedStyles.push(
+                    {
+                        style: rule.style,
+                        mode: rule.mode,
+                        visible: rule.visible
+                    }
+                );
             }
         });
 
@@ -106,17 +116,16 @@ class Rule {
 
 }
 
-function parseStyle(name, style, root) {
+export function parseStyle(name, style, root) {
     var rule = new Rule(root, name);
 
     Object.keys(style).filter(isWhiteListed).forEach((key) => {
         rule[key] = style[key];
-        delete style[key];
     });
 
     root.rules.push(rule);
 
-    Object.keys(style).forEach((name) => {
+    Object.keys(style).filter((key) => {return !isWhiteListed(key);}).forEach((name) => {
         var property = style[name];
         if (typeof property === 'object') {
             parseStyle(name, property, rule);
@@ -130,6 +139,7 @@ function parseStyle(name, style, root) {
 
 
 export function parseLayers(layers) {
+
     var obj = {};
 
     Object.keys(layers).forEach((key) => {
