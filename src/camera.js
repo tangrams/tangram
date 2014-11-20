@@ -118,8 +118,8 @@ class PerspectiveCamera extends Camera {
         // passing the final value expected to be in the perspective matrix, so we need to reverse-calculate the original FOV here.
         var fov = Math.atan(1 / this.computed_focal_length) * 2;
         var aspect = this.scene.view_aspect;
-        var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-        var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
+        var znear = 1;
+        var zfar = (this.height + 1);
 
         mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
 
