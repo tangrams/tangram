@@ -146,8 +146,11 @@ Style.helpers = {
     Geo: Geo
 };
 
-Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
-{
+/*
+
+*/
+
+Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     layer_style = layer_style || {};
     var style = {};
 
@@ -181,11 +184,11 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     }
     style.size *= Geo.units_per_meter[tile.coords.z];
 
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
-    if (typeof style.extrude === 'function') {
-        // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
-        style.extrude = style.extrude(feature, tile, Style.helpers);
-    }
+    // style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
+    // if (typeof style.extrude === 'function') {
+    //     // returning a boolean will extrude with the feature's height, a number will override the feature height (see below)
+    //     style.extrude = style.extrude(feature, tile, Style.helpers);
+    // }
 
     style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
     style.min_height = (feature.properties && feature.properties.min_height) || Style.defaults.min_height;
@@ -237,32 +240,33 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false;
 
     // Interactivity (selection map)
-    var interactive = false;
-    if (typeof layer_style.interactive === 'function') {
-        interactive = layer_style.interactive(feature, tile, Style.helpers);
-    }
-    else {
-        interactive = layer_style.interactive;
-    }
+    // var interactive = false;
+    // if (typeof layer_style.interactive === 'function') {
+    //     interactive = layer_style.interactive(feature, tile, Style.helpers);
+    // }
+    // else {
+    //     interactive = layer_style.interactive;
+    // }
 
-    if (interactive === true) {
-        var selector = Style.generateSelection();
+    // if (interactive === true) {
+    //     var selector = Style.generateSelection();
 
-        selector.feature = {
-            id: feature.id,
-            properties: feature.properties
-        };
-        selector.feature.properties.layer = layer_name; // add layer name to properties
+    //     selector.feature = {
+    //         id: feature.id,
+    //         properties: feature.properties
+    //     };
+    //     selector.feature.properties.layer = layer_name; // add layer name to properties
 
-        style.selection = {
-            active: true,
-            color: selector.color
-        };
-    }
-    else {
-        style.selection = Style.defaults.selection;
-    }
+    //     style.selection = {
+    //         active: true,
+    //         color: selector.color
+    //     };
+    // }
+    // else {
+    //
+    // }
 
+    style.selection = Style.defaults.selection;
     // Render mode
     if (layer_style.mode != null && layer_style.mode.name != null) {
         style.mode = {};
