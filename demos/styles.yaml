@@ -395,8 +395,8 @@ modes:
 
 layers:
     earth:
-        color:
-            default: [0.175, 0.175, 0.175]
+      style:
+        color: [1, 1, 0]
 
     landuse:
         interactive: true

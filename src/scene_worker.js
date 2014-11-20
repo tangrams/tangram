@@ -4,6 +4,7 @@ import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {Style} from './style';
 import Scene  from './scene';
 import Tile from './tile';
+import {parseLayers} from './rule';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
@@ -35,6 +36,8 @@ Utils.inWorkerThread(() => {
         }
         if (!SceneWorker.styles && config.styles) {
             SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
+            Style.expandMacros(SceneWorker.styles);
+            SceneWorker.rules = parseLayers(SceneWorker.styles.layers);
             SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
         }
     };
@@ -69,7 +72,6 @@ Utils.inWorkerThread(() => {
                 return;
             }
         }
-
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
@@ -81,7 +83,7 @@ Utils.inWorkerThread(() => {
             return new Promise((resolve, reject) => {
                 SceneWorker.tile_source.loadTile(tile).then(() => {
                     Scene.processLayersForTile(SceneWorker.layers, tile);
-                    var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+                    var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes, SceneWorker.rules);
 
                     resolve({
                         tile: SceneWorker.sliceTile(tile, keys),
@@ -109,7 +111,7 @@ Utils.inWorkerThread(() => {
             SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
             // Build geometry
-            var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+            var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes, SceneWorker.rules);
 
             // TODO: should we rebuild layers here as well?
             // - if so, we need to save the raw un-processed tile data
@@ -143,7 +145,6 @@ Utils.inWorkerThread(() => {
     // Get a feature from the selection map
     SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
         var selection = Style.selection_map[key];
-
         return {
             id: id,
             feature: (selection && selection.feature)

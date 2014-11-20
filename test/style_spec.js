@@ -108,7 +108,7 @@ let outStyle = {
 let layerName = 'earth';
 
 
-describe.only('Style', () => {
+describe('Style', () => {
 
     describe('Style.parseStyleForFeatures', () => {
 
