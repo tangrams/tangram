@@ -159,7 +159,6 @@ Utils.interpolate = function(x, points) {
     if (points[0][1].length) {
         for (var j = 0; j < points[0][1].length; j++ ) {
             var z;
-            console.log("x: ", x);
             // Min bounds
             if (x <= points[0][0]) {
                 z = points[0][1][j];
