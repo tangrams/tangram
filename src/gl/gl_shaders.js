@@ -114,51 +114,7 @@ shader_sources['polygon_fragment'] =
 "varying vec3 v_lighting;\n" +
 "#endif\n" +
 "\n" +
-"const float light_ambient = 0.5;\n" +
-"vec3 b_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
-"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 c_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
-"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  vec3 view_pos = vec3(0., 0., 500.);\n" +
-"  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
-"  vec3 specularReflection;\n" +
-"  if(dot(normal, -light_dir) < 0.0) {\n" +
-"    specularReflection = vec3(0.0, 0.0, 0.0);\n" +
-"  } else {\n" +
-"    float attenuation = 1.0;\n" +
-"    float lightSpecularTerm = 1.0;\n" +
-"    float materialSpecularTerm = 10.0;\n" +
-"    float materialShininessTerm = 10.0;\n" +
-"    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" +
-"  }\n" +
-"  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" +
-"  color *= diffuse + specularReflection + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 d_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
-"  light_dir = normalize(light_dir);\n" +
-"  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 a_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
-"  \n" +
-"  #if defined(LIGHTING_POINT)\n" +
-"  color = b_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
-"  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
-"  color = c_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
-"  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = b_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
-"  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = d_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
-"  #else\n" +
-"  color = color;\n" +
-"  #endif\n" +
-"  return color;\n" +
-"}\n" +
-"vec4 e_x_sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2D envmap) {\n" +
+"vec4 a_x_sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2D envmap) {\n" +
 "  vec3 eye = normalize(position.xyz - view_pos.xyz);\n" +
 "  if(eye.z > 0.01) {\n" +
 "    eye.z = 0.01;\n" +
@@ -171,15 +127,17 @@ shader_sources['polygon_fragment'] =
 "}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
+"#pragma tangram: lighting\n" +
+"\n" +
 "void main(void) {\n" +
 "  vec3 color = v_color;\n" +
 "  #if defined(LIGHTING_ENVIRONMENT)\n" +
 "  vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
-"  color = e_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
+"  color = a_x_sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
 "  #endif\n" +
 "  \n" +
 "  #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
-"  vec3 lighting = a_x_lighting(v_position, v_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));\n" +
 "  #else\n" +
 "  vec3 lighting = v_lighting;\n" +
 "  #endif\n" +
@@ -243,58 +201,16 @@ shader_sources['polygon_vertex'] =
 "varying vec3 v_lighting;\n" +
 "#endif\n" +
 "\n" +
-"const float light_ambient = 0.5;\n" +
 "void a_x_reorderLayers(float layer, float num_layers, inout vec4 position) {\n" +
 "  float layer_order = ((layer + 1.) / (num_layers + 1.)) + 1.;\n" +
 "  position.z /= layer_order;\n" +
 "  position.xyw *= layer_order;\n" +
 "}\n" +
-"vec3 c_x_pointLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
-"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 d_x_specularLight(vec4 position, vec3 normal, vec3 color, vec4 light_pos, float light_ambient, const bool backlight) {\n" +
-"  vec3 light_dir = normalize(position.xyz - light_pos.xyz);\n" +
-"  vec3 view_pos = vec3(0., 0., 500.);\n" +
-"  vec3 view_dir = normalize(position.xyz - view_pos.xyz);\n" +
-"  vec3 specularReflection;\n" +
-"  if(dot(normal, -light_dir) < 0.0) {\n" +
-"    specularReflection = vec3(0.0, 0.0, 0.0);\n" +
-"  } else {\n" +
-"    float attenuation = 1.0;\n" +
-"    float lightSpecularTerm = 1.0;\n" +
-"    float materialSpecularTerm = 10.0;\n" +
-"    float materialShininessTerm = 10.0;\n" +
-"    specularReflection = attenuation * vec3(lightSpecularTerm) * vec3(materialSpecularTerm) * pow(max(0.0, dot(reflect(-light_dir, normal), view_dir)), materialShininessTerm);\n" +
-"  }\n" +
-"  float diffuse = abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0)));\n" +
-"  color *= diffuse + specularReflection + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 e_x_directionalLight(vec3 normal, vec3 color, vec3 light_dir, float light_ambient) {\n" +
-"  light_dir = normalize(light_dir);\n" +
-"  color *= dot(normal, light_dir * -1.0) + light_ambient;\n" +
-"  return color;\n" +
-"}\n" +
-"vec3 b_x_lighting(vec4 position, vec3 normal, vec3 color, vec4 light_pos, vec4 night_light_pos, vec3 light_dir, float light_ambient) {\n" +
-"  \n" +
-"  #if defined(LIGHTING_POINT)\n" +
-"  color = c_x_pointLight(position, normal, color, light_pos, light_ambient, true);\n" +
-"  #elif defined(LIGHTING_POINT_SPECULAR)\n" +
-"  color = d_x_specularLight(position, normal, color, light_pos, light_ambient, true);\n" +
-"  #elif defined(LIGHTING_NIGHT)\n" +
-"  color = c_x_pointLight(position, normal, color, night_light_pos, 0., false);\n" +
-"  #elif defined(LIGHTING_DIRECTION)\n" +
-"  color = e_x_directionalLight(normal, color, light_dir, light_ambient);\n" +
-"  #else\n" +
-"  color = color;\n" +
-"  #endif\n" +
-"  return color;\n" +
-"}\n" +
 "#pragma tangram: globals\n" +
 "\n" +
 "#pragma tangram: camera\n" +
+"\n" +
+"#pragma tangram: lighting\n" +
 "\n" +
 "void main() {\n" +
 "  \n" +
@@ -318,7 +234,7 @@ shader_sources['polygon_vertex'] =
 "  \n" +
 "  #if defined(LIGHTING_VERTEX)\n" +
 "  v_color = a_color;\n" +
-"  v_lighting = b_x_lighting(position, a_normal, vec3(1.), vec4(0., 0., 150. * u_meters_per_pixel, 1.), vec4(0., 0., 50. * u_meters_per_pixel, 1.), vec3(0.2, 0.7, -0.5), light_ambient);\n" +
+"  v_lighting = calculateLighting(position, a_normal, vec3(1.));\n" +
 "  #else\n" +
 "  v_position = position;\n" +
 "  v_normal = a_normal;\n" +

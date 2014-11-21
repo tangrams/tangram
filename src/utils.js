@@ -132,6 +132,53 @@ Utils.isPowerOf2 = function(value) {
     return (value & (value - 1)) === 0;
 };
 
+// Interpolate 'x' along a series of control points
+// 'points' is an array of control points in the form [x, y]
+//
+// Example:
+//     Control points:
+//         [0, 5]:  when x=0, y=5
+//         [4, 10]: when x=4, y=10
+//
+//     Utils.interpolate(2, [[0, 5], [4, 10]]);
+//     -> computes x=2, halfway between x=0 and x=4: (10 - 5) / 2 +5
+//     -> returns 7.5
+//
+// TODO: add other interpolation methods besides linear
+//
+Utils.interpolate = function(x, points) {
+    if (!Array.isArray(points)) {
+        return points;
+    }
+    else if (points.length < 1) {
+        return null;
+    }
+    var y;
+
+    // Min bounds
+    if (x <= points[0][0]) {
+        y = points[0][1];
+    }
+    // Max bounds
+    else if (x >= points[points.length-1][0]) {
+        y = points[points.length-1][1];
+    }
+    // Find which control points x is between
+    else {
+        for (var i=0; i < points.length - 1; i++) {
+            if (x >= points[i][0] && x < points[i+1][0]) {
+                // Linear interpolation
+                var d = points[i+1][1] - points[i][1];
+                var x1 = points[i][0];
+                var x2 = points[i+1][0];
+                y = d * (x - x1) / (x2 - x1) + points[i][1];
+                break;
+            }
+        }
+    }
+    return y;
+};
+
 // Iterators (ES6 generators)
 
 // Iterator for key/value pairs of an object

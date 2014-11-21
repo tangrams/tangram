@@ -538,10 +538,10 @@
         // Lighting
         var lighting_types = {
             'None': null,
-            'Diffuse': 'diffuse',
-            'Specular': 'specular',
-            'Flat': 'flat',
-            'Night': 'night'
+            'Point': 'point',
+            // 'Specular': 'specular',
+            'Directional': 'directional'
+            // 'Night': 'night'
         };
         gui.lighting = layer.scene.styles.lighting.type;
         gui.add(gui, 'lighting', lighting_types).onChange(function(value) {
