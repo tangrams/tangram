@@ -147,38 +147,66 @@ Utils.isPowerOf2 = function(value) {
 // TODO: add other interpolation methods besides linear
 //
 Utils.interpolate = function(x, points) {
-    console.log("interpolate: "+points);
     if (!Array.isArray(points)) {
-        console.log("points is not an array");
         return points;
     }
     else if (points.length < 1) {
-        console.log("points.length < 1");
         return null;
     }
-    var y;
-
-    // Min bounds
-    if (x <= points[0][0]) {
-        y = points[0][1];
-    }
-    // Max bounds
-    else if (x >= points[points.length-1][0]) {
-        y = points[points.length-1][1];
-    }
-    // Find which control points x is between
-    else {
-        for (var i=0; i < points.length - 1; i++) {
-            if (x >= points[i][0] && x < points[i+1][0]) {
-                // Linear interpolation
-                var d = points[i+1][1] - points[i][1];
-                var x1 = points[i][0];
-                var x2 = points[i+1][0];
-                y = d * (x - x1) / (x2 - x1) + points[i][1];
-                break;
+    var y = [];
+    // handle points of multiple lengths
+    // if it has a length, it's an array - evaluate each index separately
+    if (points[0][1].length) {
+        for (var j = 0; j < points[0][1].length; j++ ) {
+            var z;
+            console.log("x: ", x);
+            // Min bounds
+            if (x <= points[0][0]) {
+                z = points[0][1][j];
+            }
+            // Max bounds
+            else if (x >= points[points.length-1][0]) {
+                z = points[points.length-1][1][j];
+            }
+            // Find which control points x is between
+            else {
+                for (var i=0; i < points.length - 1; i++) {
+                    if (x >= points[i][0] && x < points[i+1][0]) {
+                        // Linear interpolation
+                        var d = points[i+1][1][j] - points[i][1][j];
+                        var x1 = points[i][0];
+                        var x2 = points[i+1][0];
+                        z = d * (x - x1) / (x2 - x1) + points[i][1][j];
+                        break;
+                    }
+                }
+            }
+            y.push(z);
+        }
+    } else { // not an array - a single value
+        // Min bounds
+        if (x <= points[0][0]) {
+            y = points[0][1];
+        }
+        // Max bounds
+        else if (x >= points[points.length-1][0]) {
+            y = points[points.length-1][1];
+        }
+        // Find which control points x is between
+        else {
+            for (var i=0; i < points.length - 1; i++) {
+                if (x >= points[i][0] && x < points[i+1][0]) {
+                    // Linear interpolation
+                    var d = points[i+1][1] - points[i][1];
+                    var x1 = points[i][0];
+                    var x2 = points[i+1][0];
+                    y = d * (x - x1) / (x2 - x1) + points[i][1];
+                    break;
+                }
             }
         }
     }
+
     return y;
 };
 

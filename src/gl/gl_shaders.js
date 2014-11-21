@@ -120,7 +120,8 @@ shader_sources['polygon_fragment'] =
 "    eye.z = 0.01;\n" +
 "  }\n" +
 "  vec3 r = reflect(eye, normal);\n" +
-"  float m = 2. * sqrt(pow(r.x, 2.) + pow(r.y, 2.) + pow(r.z + 1., 2.));\n" +
+"  r.z += 1.;\n" +
+"  float m = 2. * length(r);\n" +
 "  vec2 uv = r.xy / m + .5;\n" +
 "  return texture2D(envmap, uv);\n" +
 "}\n" +
