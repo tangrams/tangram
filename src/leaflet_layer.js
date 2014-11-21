@@ -83,8 +83,11 @@ export var LeafletLayer = L.GridLayer.extend({
         this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
         // Use leaflet's existing event system as the callback mechanism
-        this.scene.init(() => {
+        this.scene.init().then(() => {
             this.fire('init');
+        }, (error) => {
+            console.log('scene init error', error);
+            throw error;
         });
     },
 

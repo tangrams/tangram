@@ -50,7 +50,7 @@ describe('Scene', () => {
             sinon.spy(subject, '_loadTile');
 
             subject.setCenter(...nycLatLng);
-            subject.init(() => {
+            subject.init().then(() => {
                 subject.loadTile(coords, div);
                 subject.loadQueuedTiles();
                 done();
@@ -75,7 +75,7 @@ describe('Scene', () => {
         beforeEach((done) => {
             subject = makeScene({});
             subject.setCenter(...nycLatLng);
-            subject.init(done);
+            subject.init().then(done);
         });
 
         afterEach(() => {
@@ -163,7 +163,7 @@ describe('Scene', () => {
             let subject;
             beforeEach((done) => {
                 subject = makeScene({});
-                subject.init(done);
+                subject.init().then(done);
 
             });
 
@@ -209,10 +209,9 @@ describe('Scene', () => {
                 subject = null;
             });
 
-            it('returns false', (done) => {
-                subject.init(() => {
-                    assert.isFalse(subject.init());
-                    done();
+            it('handles second init() call', (done) => {
+                subject.init().then(() => {
+                    subject.init().then(done);
                 });
             });
 
@@ -230,7 +229,7 @@ describe('Scene', () => {
         beforeEach((done) => {
             subject = makeScene({});
             subject.device_pixel_ratio = devicePixelRatio;
-            subject.init(() => {
+            subject.init().then(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
                 subject.resizeMap(width, height);
@@ -380,7 +379,7 @@ describe('Scene', () => {
             sinon.spy(subject, 'renderGL');
 
             subject.setCenter(...nycLatLng);
-            subject.init(done);
+            subject.init().then(done);
         });
 
         afterEach(() => {
@@ -432,7 +431,7 @@ describe('Scene', () => {
 
         beforeEach((done) => {
             subject = makeScene();
-            subject.init(done);
+            subject.init().then(done);
         });
 
         afterEach(() => {
@@ -455,7 +454,7 @@ describe('Scene', () => {
         beforeEach((done) => {
             subject = makeScene({});
             subject.setCenter(...nycLatLng);
-            subject.init(() => {
+            subject.init().then(() => {
                 subject.loadTile(midtownTile, div);
                 subject.loadQueuedTiles();
 
