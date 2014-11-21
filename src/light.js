@@ -49,7 +49,7 @@ class PointLight extends Light {
         super(scene);
         this.type = 'point';
 
-        this.position = (options.position || [0, 0, 150]).map(parseFloat); // [x, y, z]
+        this.position = (options.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
         this.ambient = parseFloat(options.ambient || 0.5);
         this.backlight = options.backlight || false;
 
