@@ -194,12 +194,12 @@ Utils.interpolate = function(x, points) {
         }
         // Find which control points x is between
         else {
-            for (var i=0; i < points.length - 1; i++) {
+            for (i=0; i < points.length - 1; i++) {
                 if (x >= points[i][0] && x < points[i+1][0]) {
                     // Linear interpolation
-                    var d = points[i+1][1] - points[i][1];
-                    var x1 = points[i][0];
-                    var x2 = points[i+1][0];
+                    d = points[i+1][1] - points[i][1];
+                    x1 = points[i][0];
+                    x2 = points[i+1][0];
                     y = d * (x - x1) / (x2 - x1) + points[i][1];
                     break;
                 }
