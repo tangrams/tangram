@@ -19,11 +19,8 @@ vec4 sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2
     vec3 r = reflect(eye, normal);
 
     // Map reflected vector onto the surface of a sphere
-    float m = 2. * sqrt(
-        pow(r.x, 2.) +
-        pow(r.y, 2.) +
-        pow(r.z + 1., 2.)
-    );
+    r.z += 1.;
+    float m = 2. * length(r);
 
     // Adjust xy to account for spherical shape, and center in middle of texture
     vec2 uv = r.xy / m + .5;
