@@ -1162,13 +1162,8 @@ Scene.prototype.createLighting = function () {
 
 // Update scene styles
 Scene.prototype.updateStyles = function () {
-    if (this.styles.camera.type !== this.camera.type) {
-        this.createCamera();
-    }
-
-    if (this.styles.lighting.type !== this.lighting.type) {
-        this.createLighting();
-    }
+    this.createCamera();
+    this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateModes();
