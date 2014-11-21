@@ -211,6 +211,9 @@ Scene.prototype.createWorkers = function () {
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             Utils.io(worker_url).then((body) => {
+                if (body.length === 0) {
+                    reject(new Error('Web worker loaded with content length zero'));
+                }
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 this.initWorkerEvents();
