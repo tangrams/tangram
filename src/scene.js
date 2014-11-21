@@ -394,7 +394,6 @@ Scene.prototype.requestRedraw = function () {
 // Redraw scene immediately - don't wait for animation loop
 // Use sparingly, but for cases where you need the closest possible sync with other UI elements,
 // such as other, non-WebGL map layers (e.g. Leaflet raster layers, markers, etc.)
-// TODO: pre and post-render hooks currently aren't called here - probably should be?
 Scene.prototype.immediateRedraw = function () {
     this.dirty = true;
     this.render();
