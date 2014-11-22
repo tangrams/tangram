@@ -1,4 +1,5 @@
 /*** Style helpers ***/
+import Utils from './utils';
 import {Geo} from './geo';
 import log from 'loglevel';
 export var Style = {};
@@ -146,10 +147,43 @@ Style.helpers = {
     Geo: Geo
 };
 
+Style.interpolate = function(x, val) {
+    if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
+        return Utils.interpolate(x, val);
+    }
+    return val;
+};
+
+Style.convertUnits = function(val, zoom) {
+    if (typeof val === 'string') {
+        // Convert from pixels
+        if (val.indexOf('px') === val.length - 2) {
+            val = parseFloat(val.substr(0, val.length-2)) * Geo.metersPerPixel(zoom);
+        }
+        // Convert from string
+        else {
+            val = parseFloat(val);
+        }
+    }
+    else if (Array.isArray(val)) {
+        // Array of arrays, e.g. zoom-interpolated stops
+        if (val.every(v => { return Array.isArray(v); })) {
+            return val.map(v => { return [v[0], Style.convertUnits(v[1], zoom)]; });
+        }
+        // Array of values
+        else {
+            return val.map(v => { return Style.convertUnits(v, zoom); });
+        }
+    }
+    return val;
+};
+
 Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 {
     layer_style = layer_style || {};
     var style = {};
+    var zoom = tile.coords.z;
+    var units_per_meter = Geo.units_per_meter[zoom];
 
     // Custom properties
     if (layer_style.properties) {
@@ -168,18 +202,21 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
+    style.color = Style.interpolate(zoom, style.color);
 
     style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }
-    style.width *= Geo.units_per_meter[tile.coords.z];
+    style.width = Style.convertUnits(style.width, zoom);
+    style.width = Style.interpolate(zoom, style.width);
+    style.width *= units_per_meter;
 
     style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
     if (typeof style.size === 'function') {
         style.size = style.size(feature, tile, Style.helpers);
     }
-    style.size *= Geo.units_per_meter[tile.coords.z];
+    style.size *= units_per_meter;
 
     style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
     if (typeof style.extrude === 'function') {
@@ -227,7 +264,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     if (typeof style.outline.width === 'function') {
         style.outline.width = style.outline.width(feature, tile, Style.helpers);
     }
-    style.outline.width *= Geo.units_per_meter[tile.coords.z];
+    style.outline.width *= units_per_meter;
 
     style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
     if (typeof style.outline.dash === 'function') {
