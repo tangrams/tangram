@@ -168,6 +168,12 @@ Utils.interpolate = function(x, points) {
     else {
         for (var i=0; i < points.length - 1; i++) {
             if (x >= points[i][0] && x < points[i+1][0]) {
+                // Boolean? Just treat each control point as a threshold, no interpolation
+                if (typeof points[i][1] === 'boolean') {
+                    y = points[i][1];
+                    break;
+                }
+
                 // Linear interpolation
                 x1 = points[i][0];
                 x2 = points[i+1][0];
