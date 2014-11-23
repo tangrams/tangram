@@ -27,7 +27,7 @@ describe('Tile', () => {
     beforeEach((done) => {
         scene = makeScene({});
         scene.setCenter(...nycLatLng);
-        scene.init(() => {
+        scene.init().then(() => {
             subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }});
             done();
         });

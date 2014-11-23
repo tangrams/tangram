@@ -11,7 +11,7 @@ camera:
 
 lighting:
     type: point
-    position: [0, 0, 150] # relative to camera position, in pixels
+    position: [0, 0, 200]
     ambient: 0.5
     backlight: true
 

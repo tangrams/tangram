@@ -49,8 +49,8 @@ class PointLight extends Light {
         super(scene);
         this.type = 'point';
 
-        this.position = (options.position || [0, 0, 150]).map(parseFloat); // [x, y, z]
-        this.ambient = parseFloat(options.ambient || 0.5);
+        this.position = (options.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
+        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
         this.backlight = options.backlight || false;
 
         GLProgram.removeTransform(Light.transform);
@@ -110,7 +110,7 @@ class SpotLight extends Light {
         this.direction = (options.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
         this.inner_angle = parseFloat(options.inner_angle || 20);
         this.outer_angle = parseFloat(options.outer_angle || 25);
-        this.ambient = parseFloat(options.ambient || 0.2);
+        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.2;
 
         GLProgram.removeTransform(Light.transform);
         GLProgram.addTransform(Light.transform, `
@@ -194,7 +194,7 @@ class DirectionalLight extends Light {
         this.type = 'directional';
 
         this.direction = (options.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
-        this.ambient = options.ambient || 0.5;
+        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
 
         GLProgram.removeTransform(Light.transform);
         GLProgram.addTransform(Light.transform, `

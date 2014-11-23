@@ -76,58 +76,58 @@ Scene.create = function ({tile_source, layers, styles}, options = {}) {
     return new Scene(tile_source, layers, styles, options);
 };
 
-Scene.prototype.init = function (callback) {
+Scene.prototype.init = function () {
     if (this.initialized) {
-        return false;
+        return Promise.resolve();
     }
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene().then(() => {
-        Promise.all([
-            new Promise((resolve, reject) => {
-                this.modes = Scene.createModes(this.styles.modes);
-                this.updateActiveModes();
-                resolve();
-            }),
-            this.createWorkers()
-        ]).then((resolve, reject) => {
-            this.container = this.container || document.body;
-            this.canvas = document.createElement('canvas');
-            this.canvas.style.position = 'absolute';
-            this.canvas.style.top = 0;
-            this.canvas.style.left = 0;
-            this.canvas.style.zIndex = -1;
-            this.container.appendChild(this.canvas);
+    return new Promise((resolve, reject) => {
+        this.loadScene().then(() => {
+            Promise.all([
+                new Promise((resolve, reject) => {
+                    this.modes = Scene.createModes(this.styles.modes);
+                    this.updateActiveModes();
+                    resolve();
+                }),
+                this.createWorkers()
+            ]).then(() => {
+                this.container = this.container || document.body;
+                this.canvas = document.createElement('canvas');
+                this.canvas.style.position = 'absolute';
+                this.canvas.style.top = 0;
+                this.canvas.style.left = 0;
+                this.canvas.style.zIndex = -1;
+                this.container.appendChild(this.canvas);
 
-            this.gl = GL.getContext(this.canvas);
-            this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.gl = GL.getContext(this.canvas);
+                this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
-            // this.zoom_step = 0.02; // for fractional zoom user adjustment
-            this.last_render_count = null;
-            this.initInputHandlers();
+                // this.zoom_step = 0.02; // for fractional zoom user adjustment
+                this.last_render_count = null;
+                this.initInputHandlers();
 
-            this.createCamera();
-            this.createLighting();
-            this.initSelectionBuffer();
+                this.createCamera();
+                this.createLighting();
+                this.initSelectionBuffer();
 
-            // Init GL context for modes
-            for (var mode of Utils.values(this.modes)) {
-                mode.setGL(this.gl);
-            }
-            this.updateModes(() => {
-                this.initializing = false;
-                this.initialized = true;
-                if (typeof callback === 'function') {
-                    callback();
+                // Init GL context for modes
+                for (var mode of Utils.values(this.modes)) {
+                    mode.setGL(this.gl);
                 }
-            });
+                this.updateModes(() => {
+                    this.initializing = false;
+                    this.initialized = true;
+                    resolve();
+                });
 
-            if (this.render_loop !== false) {
-                this.setupRenderLoop();
-            }
-        }, (error) => {
-            throw error;
+                if (this.render_loop !== false) {
+                    this.setupRenderLoop();
+                }
+            }, (error) => {
+                reject(error);
+            });
         });
     });
 };
@@ -211,6 +211,9 @@ Scene.prototype.createWorkers = function () {
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             Utils.io(worker_url).then((body) => {
+                if (body.length === 0) {
+                    reject(new Error('Web worker loaded with content length zero'));
+                }
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 this.initWorkerEvents();
@@ -1159,13 +1162,8 @@ Scene.prototype.createLighting = function () {
 
 // Update scene styles
 Scene.prototype.updateStyles = function () {
-    if (this.styles.camera.type !== this.camera.type) {
-        this.createCamera();
-    }
-
-    if (this.styles.lighting.type !== this.lighting.type) {
-        this.createLighting();
-    }
+    this.createCamera();
+    this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateModes();

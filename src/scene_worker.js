@@ -13,7 +13,6 @@ SceneWorker.tiles = {}; // tiles processed by this worker
 
 // TODO: sync render mode state between main thread and worker
 // SceneWorker.modes = require('./gl/gl_modes').Modes;
-
 GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker

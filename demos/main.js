@@ -536,16 +536,42 @@
         });
 
         // Lighting
-        var lighting_types = {
-            'None': null,
-            'Point': 'point',
-            // 'Specular': 'specular',
-            'Directional': 'directional'
-            // 'Night': 'night'
+        var lighting_presets = {
+            'Point': {
+                type: 'point',
+                position: [0, 0, 200],
+                ambient: 0.5,
+                backlight: true
+            },
+            'Directional': {
+                type: 'directional',
+                direction: [-1, 0, -.5],
+                ambient: 0.5
+            },
+            'Spotlight': {
+                type: 'spotlight',
+                position: [0, 0, 500],
+                direction: [0, 0, -1],
+                inner_angle: 20,
+                outer_angle: 25,
+                ambient: 0.2
+            },
+            'Night': {
+                type: 'point',
+                position: [0, 0, 50],
+                ambient: 0,
+                backlight: false
+            }
         };
-        gui.lighting = layer.scene.styles.lighting.type;
-        gui.add(gui, 'lighting', lighting_types).onChange(function(value) {
-            layer.scene.styles.lighting.type = value;
+        var lighting_options = Object.keys(lighting_presets);
+        for (var k=0; k < lighting_options.length; k++) {
+            if (lighting_presets[lighting_options[k]].type === layer.scene.styles.lighting.type) {
+                gui.lighting = lighting_options[k];
+                break;
+            }
+        }
+        gui.add(gui, 'lighting', lighting_options).onChange(function(value) {
+            layer.scene.styles.lighting = lighting_presets[value];
             layer.scene.updateStyles();
         });
 
