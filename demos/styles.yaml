@@ -2,7 +2,7 @@ camera:
     type: perspective
     # focal_length: 1
     focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
-    vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
+    vanishing_point: [-250, -250] # relative to center of screen, in pixels
 
     # type: isometric
     # axis: [1, .5]
@@ -10,7 +10,21 @@ camera:
     # type: flat
 
 lighting:
-    type: diffuse
+    type: point
+    position: [0, 0, 200]
+    ambient: 0.5
+    backlight: true
+
+    # type: directional
+    # direction: [-1, 0, -.5]
+    # ambient: 0.5
+
+    # type: spotlight
+    # position: [0, 0, 500]
+    # direction: [0, 0, -1]
+    # inner_angle: 20
+    # outer_angle: 25
+    # ambient: 0.2
 
 modes:
     # note: consider this syntax as a special case for global mode settings

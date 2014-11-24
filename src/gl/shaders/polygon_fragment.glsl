@@ -40,13 +40,11 @@ varying vec4 v_world_position;
     varying vec3 v_lighting;
 #endif
 
-const float light_ambient = 0.5;
-
 // Imported functions
-#pragma glslify: calculateLighting = require(./modules/lighting)
 #pragma glslify: sphericalEnvironmentMap = require(./modules/spherical_environment_map)
 
 #pragma tangram: globals
+#pragma tangram: lighting
 
 void main (void) {
     vec3 color = v_color;
@@ -60,12 +58,7 @@ void main (void) {
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
-        vec3 lighting = calculateLighting(
-            v_position, v_normal, /*color*/ vec3(1.),
-            vec4(0., 0., 150. * u_meters_per_pixel, 1.), // location of point light (in pixels above ground)
-            vec4(0., 0., 50. * u_meters_per_pixel, 1.), // location of point light for 'night' mode (in pixels above ground)
-            vec3(0.2, 0.7, -0.5), // direction of light for flat shading
-            light_ambient);
+        vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));
     #else
         vec3 lighting = v_lighting;
     #endif

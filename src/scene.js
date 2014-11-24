@@ -9,11 +9,12 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {ModeManager} from './gl/gl_modes';
 import Camera from './camera';
-import yaml from 'js-yaml';
+import Lighting from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 
 import log from 'loglevel';
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -75,58 +76,58 @@ Scene.create = function ({tile_source, layers, styles}, options = {}) {
     return new Scene(tile_source, layers, styles, options);
 };
 
-Scene.prototype.init = function (callback) {
+Scene.prototype.init = function () {
     if (this.initialized) {
-        return false;
+        return Promise.resolve();
     }
     this.initializing = true;
 
     // Load scene definition (layers, styles, etc.), then create modes & workers
-    this.loadScene().then(() => {
-        Promise.all([
-            new Promise((resolve, reject) => {
-                this.modes = Scene.createModes(this.styles.modes);
-                this.updateActiveModes();
-                resolve();
-            }),
-            this.createWorkers()
-        ]).then((resolve, reject) => {
-            this.container = this.container || document.body;
-            this.canvas = document.createElement('canvas');
-            this.canvas.style.position = 'absolute';
-            this.canvas.style.top = 0;
-            this.canvas.style.left = 0;
-            this.canvas.style.zIndex = -1;
-            this.container.appendChild(this.canvas);
+    return new Promise((resolve, reject) => {
+        this.loadScene().then(() => {
+            Promise.all([
+                new Promise((resolve, reject) => {
+                    this.modes = Scene.createModes(this.styles.modes);
+                    this.updateActiveModes();
+                    resolve();
+                }),
+                this.createWorkers()
+            ]).then(() => {
+                this.container = this.container || document.body;
+                this.canvas = document.createElement('canvas');
+                this.canvas.style.position = 'absolute';
+                this.canvas.style.top = 0;
+                this.canvas.style.left = 0;
+                this.canvas.style.zIndex = -1;
+                this.container.appendChild(this.canvas);
 
-            this.gl = GL.getContext(this.canvas);
-            this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.gl = GL.getContext(this.canvas);
+                this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
-            // this.zoom_step = 0.02; // for fractional zoom user adjustment
-            this.last_render_count = null;
-            this.initInputHandlers();
+                // this.zoom_step = 0.02; // for fractional zoom user adjustment
+                this.last_render_count = null;
+                this.initInputHandlers();
 
-            this.createCamera();
-            this.createLighting();
-            this.initSelectionBuffer();
+                this.createCamera();
+                this.createLighting();
+                this.initSelectionBuffer();
 
-            // Init GL context for modes
-            for (var mode of Utils.values(this.modes)) {
-                mode.setGL(this.gl);
-            }
-            this.updateModes(() => {
-                this.initializing = false;
-                this.initialized = true;
-                if (typeof callback === 'function') {
-                    callback();
+                // Init GL context for modes
+                for (var mode of Utils.values(this.modes)) {
+                    mode.setGL(this.gl);
                 }
-            });
+                this.updateModes(() => {
+                    this.initializing = false;
+                    this.initialized = true;
+                    resolve();
+                });
 
-            if (this.render_loop !== false) {
-                this.setupRenderLoop();
-            }
-        }, (error) => {
-            throw error;
+                if (this.render_loop !== false) {
+                    this.setupRenderLoop();
+                }
+            }, (error) => {
+                reject(error);
+            });
         });
     });
 };
@@ -210,6 +211,9 @@ Scene.prototype.createWorkers = function () {
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             Utils.io(worker_url).then((body) => {
+                if (body.length === 0) {
+                    reject(new Error('Web worker loaded with content length zero'));
+                }
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
                 this.makeWorkers(worker_local_url);
                 this.initWorkerEvents();
@@ -374,13 +378,15 @@ Scene.prototype.resizeMap = function (width, height) {
     this.view_aspect = this.css_size.width / this.css_size.height;
     this.updateBounds();
 
-    this.canvas.style.width = this.css_size.width + 'px';
-    this.canvas.style.height = this.css_size.height + 'px';
-    this.canvas.width = this.device_size.width;
-    this.canvas.height = this.device_size.height;
+    if (this.canvas) {
+        this.canvas.style.width = this.css_size.width + 'px';
+        this.canvas.style.height = this.css_size.height + 'px';
+        this.canvas.width = this.device_size.width;
+        this.canvas.height = this.device_size.height;
 
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
 };
 
 // Request scene be redrawn at next animation loop
@@ -391,7 +397,6 @@ Scene.prototype.requestRedraw = function () {
 // Redraw scene immediately - don't wait for animation loop
 // Use sparingly, but for cases where you need the closest possible sync with other UI elements,
 // such as other, non-WebGL map layers (e.g. Leaflet raster layers, markers, etc.)
-// TODO: pre and post-render hooks currently aren't called here - probably should be?
 Scene.prototype.immediateRedraw = function () {
     this.dirty = true;
     this.render();
@@ -490,8 +495,9 @@ Scene.prototype.renderGL = function () {
     var tile_view_mat = mat4.create();
     var tile_world_mat = mat4.create();
 
-    // Update camera
+    // Update camera & lights
     this.camera.update();
+    this.lighting.update();
 
     // Renderable tile list
     var renderable_tiles = [];
@@ -540,6 +546,7 @@ Scene.prototype.renderGL = function () {
                     gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                     this.camera.setupProgram(gl_program);
+                    this.lighting.setupProgram(gl_program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
@@ -611,6 +618,7 @@ Scene.prototype.renderGL = function () {
                         gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                         this.camera.setupProgram(gl_program);
+                        this.lighting.setupProgram(gl_program);
                     }
 
                     // Tile origin
@@ -1149,32 +1157,13 @@ Scene.prototype.createCamera = function () {
 
 // Create lighting
 Scene.prototype.createLighting = function () {
-    // Temporary #define-based lighting
-    // TODO: extract lighting models to classes & shader modules
-    var types = {
-        diffuse: 'LIGHTING_POINT',
-        specular: 'LIGHTING_POINT_SPECULAR',
-        flat: 'LIGHTING_DIRECTION',
-        night: 'LIGHTING_NIGHT' // TODO: this should just be config on top of a normal lighting mode, here temporarily for demo
-    };
-
-    for (var t in types) {
-        GLProgram.defines[types[t]] = (t === this.styles.lighting.type);
-    }
-
-    // TODO: make this an actual lighting object, replacing the above
-    this.lighting = { type: this.styles.lighting.type };
+    this.lighting = Lighting.create(this, this.styles.lighting);
 };
 
 // Update scene styles
 Scene.prototype.updateStyles = function () {
-    if (this.styles.camera.type !== this.camera.type) {
-        this.createCamera();
-    }
-
-    if (this.styles.lighting.type !== this.lighting.type) {
-        this.createLighting();
-    }
+    this.createCamera();
+    this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateModes();
@@ -1374,13 +1363,30 @@ function findBaseLibraryURL () {
 
     // Find currently executing script
     var script = document.currentScript;
-    if (!script) {
-        return;
-    }
-    Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+    if (script) {
+        Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
 
-    // Check if we're using a debug/test build
-    if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
-        Scene.library_type = 'debug';
+        // Check if we're using a debug/test build
+        if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
+            Scene.library_type = 'debug';
+        }
+    }
+    else {
+        // Fallback on looping through <script> elements if document.currentScript is not supported
+        var scripts = document.getElementsByTagName('script');
+        for (var s=0; s < scripts.length; s++) {
+            var match = scripts[s].src.indexOf('tangram.debug.js');
+            if (match >= 0) {
+               Scene.library_type = 'debug';
+               Scene.library_base_url = scripts[s].src.substr(0, match);
+               break;
+            }
+            match = scripts[s].src.indexOf('tangram.min.js');
+            if (match >= 0) {
+               Scene.library_type = 'min';
+               Scene.library_base_url = scripts[s].src.substr(0, match);
+               break;
+            }
+        }
     }
 }

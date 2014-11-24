@@ -1,5 +1,6 @@
 /*global Camera */
 import {Geo} from './geo';
+import Utils from './utils';
 import GLProgram from './gl/gl_program';
 
 import glMatrix from 'gl-matrix';
@@ -42,8 +43,6 @@ export default class Camera {
 // constrains the camera height above the ground plane such that the displayed ground area of the map matches that of
 // a traditional web mercator map. This means you can set the camera location by [lat, lng, zoom] as you would a typical
 // web mercator map, then adjust the focal length as needed.
-// Vanishing point can also be adjusted to achieve different "viewing angles", while likewise preserving the area displayed
-// on the ground plane.
 // Vanishing point can also be adjusted to achieve different "viewing angles", e.g. instead of looking straight down into
 // the center of the viewport, the camera appears to be tilted at an angle. For example:
 // [0, 0] = looking towards center of screen
@@ -54,11 +53,12 @@ class PerspectiveCamera extends Camera {
     constructor(scene, options = {}) {
         super(scene);
         this.type = 'perspective';
-        this.focal_length = options.focal_length || [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]]; // pairs of [zoom, focal len]
-        this.vanishing_point = options.vanishing_point || { x: 0, y: 0 };
-        if (this.vanishing_point.length === 2) {
-            this.vanishing_point = { x: this.vanishing_point[0], y: this.vanishing_point[1] }; // allow vanishingpoint to also be passed as 2-elem array
-        }
+
+        // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
+        this.focal_length = options.focal_length || [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]];
+
+        this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
+        this._vanishing_point = [];
 
         this.height = null;
         this.computed_focal_length = null;
@@ -82,32 +82,7 @@ class PerspectiveCamera extends Camera {
         var meter_zoom_y = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
 
         // Determine focal length, which can be a constant value, or interpolated across zoom levels
-        if (!(typeof this.focal_length === 'object' && this.focal_length.length >= 0)) {
-            this.computed_focal_length = this.focal_length;
-        }
-        else {
-            // Min zoom
-            if (this.scene.zoom <= this.focal_length[0][0]) {
-                this.computed_focal_length = this.focal_length[0][1];
-            }
-            // Max zoom
-            else if (this.scene.zoom >= this.focal_length[this.focal_length.length-1][0]) {
-                this.computed_focal_length = this.focal_length[this.focal_length.length-1][1];
-            }
-            // Interpolated zoom
-            else {
-                for (var i=0; i < this.focal_length.length - 1; i++) {
-                    if (this.scene.zoom >= this.focal_length[i][0] && this.scene.zoom < this.focal_length[i+1][0]) {
-                        var focal_diff = this.focal_length[i+1][1] - this.focal_length[i][1];
-                        var min_zoom = this.focal_length[i][0];
-                        var max_zoom = this.focal_length[i+1][0];
-                        // TODO: log interpolation
-                        this.computed_focal_length = focal_diff * (this.scene.zoom - min_zoom) / (max_zoom - min_zoom) + this.focal_length[i][1];
-                        break;
-                    }
-                }
-            }
-        }
+        this.computed_focal_length = Utils.interpolate(this.scene.zoom, this.focal_length);
 
         // Distance that camera should be from ground such that it fits the field of view expected
         // for a conventional web mercator map at the current zoom level and camera focal length
@@ -118,21 +93,25 @@ class PerspectiveCamera extends Camera {
         // passing the final value expected to be in the perspective matrix, so we need to reverse-calculate the original FOV here.
         var fov = Math.atan(1 / this.computed_focal_length) * 2;
         var aspect = this.scene.view_aspect;
-        var znear = 1;                           // zero clipping plane cause artifacts, looks like z precision issues (TODO: why?)
-        var zfar = (this.height + znear) * 5;  // put geometry in near 20% of clipping plane, to take advantage of higher-precision depth range (TODO: calculate the depth needed to place geometry at z=0 in normalized device coords?)
+        var znear = 1;
+        var zfar = (this.height + 1);
 
         mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
 
+        // Convert vanishing point from pixels to viewport space
+        this._vanishing_point[0] = this.vanishing_point[0] / this.scene.css_size.width;
+        this._vanishing_point[1] = this.vanishing_point[1] / this.scene.css_size.height;
+
         // Adjust perspective matrix to include vanishing point skew
-        this.perspective_mat[8] = -this.vanishing_point.x; // z column of x row, e.g. factor by which z coordinate skews x coordinate
-        this.perspective_mat[9] = -this.vanishing_point.y; // z column of y row, e.g. factor by which z coordinate skews y coordinate
+        this.perspective_mat[8] = -this._vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate skews x coordinate
+        this.perspective_mat[9] = -this._vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate skews y coordinate
 
         // Translate geometry into the distance so that camera is appropriate height above ground
         // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed ground
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
         mat4.translate(this.perspective_mat, this.perspective_mat, vec3.fromValues(
-            meter_zoom_y/2 * aspect * -this.vanishing_point.x,
-            meter_zoom_y/2 * -this.vanishing_point.y,
+            meter_zoom_y/2 * aspect * -this._vanishing_point[0],
+            meter_zoom_y/2 * -this._vanishing_point[1],
             -this.height)
         );
     }

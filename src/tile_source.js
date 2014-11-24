@@ -30,6 +30,7 @@ export default class TileSource {
 
     buildAsMessage() {
         return {
+            type: this.type,
             url: this.url_template,
             max_zoom: this.max_zoom
         };
@@ -129,7 +130,7 @@ export class NetworkTileSource extends TileSource {
             //     promise = Promise.reject(Error('fake tile error'));
             // }
             // promise.then((body) => {
-            Utils.io(url, 60 * 100, this.response_type).then((body) => {
+            Utils.io(url, 60 * 1000, this.response_type).then((body) => {
                 if (tile.loading !== true) {
                     reject();
                     return;
@@ -166,6 +167,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'GeoJSONTileSource';
     }
 
     parseTile (tile, response) {
@@ -183,6 +185,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'TopoJSONTileSource';
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
@@ -231,6 +234,7 @@ export class MapboxFormatTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'MapboxFormatTileSource';
         this.response_type = "arraybuffer"; // binary data
         this.Protobuf = require('pbf');
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output
