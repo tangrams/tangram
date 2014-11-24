@@ -34,6 +34,7 @@
             "outline": {
                 "order": -1,
                 "style": {
+                    "type": "line",
                     "color": [1, 1, 0],
                     "width": 12
                 }
@@ -44,9 +45,34 @@
             "style": {
                 "order": 2,
                 "color": [0, 1, 1]
+            },
+            "another-style": {
+                "style": {
+                    "color": [0.5, 1, 1]
+                }
+            }
+        },
+        "stuff": {
+            "style": {
+                "color": [1, 0, 1]
+            }
+        }
+    },
+
+    "roads2": {
+        "filter": "property('layer', 'roads')",
+        "order": 1,
+        "style": {
+            "color": [1, 0, 1]
+        },
+        "more-stuff": {
+            "order": 3.14,
+            "style": {
+                "color": [1, 0.5, 1]
             }
         }
     }
+
 }
 
 
