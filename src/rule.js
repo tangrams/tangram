@@ -6,24 +6,34 @@ function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
 }
 
-export function wrapMacro(fn) {
+export function wrapMacro(fn, context) {
     return function(...args) {
-        return eval(fn).apply(null, args); // jshint ignore:line
-    };
+        return eval(fn).apply(context, args); // jshint ignore:line
+    }.bind(context);
 }
 
 export var Macros = {
-    'property': function (property, value) {
+    property: function (property, value) {
         return function (obj) {
-            return Object.is(Utils.getattr(obj, property), value);
+            return Object.is(Utils.getIn(obj, property.split('.')), value);
         };
     },
-    'returns': function (value) {
+    returns: function (value) {
         return function () { return value; };
     }
 };
 
-export function walkRuleTree(rules, cb) {
+export function findMacro(value) {
+    for (var key in Macros) {
+        if (value.match(key)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+export function walkAllRules(rules, cb) {
     if (rules.length === 0) {
         return;
     }
@@ -32,58 +42,80 @@ export function walkRuleTree(rules, cb) {
     cb(first);
 
     if (first.rules && first.rules.length !== 0) {
-        walkRuleTree(first.rules, cb);
+        walkAllRules(first.rules, cb);
     }
 
-    walkRuleTree(rules.slice(1), cb);
+    walkAllRules(rules.slice(1), cb);
 
 }
 
+export function matchFeature(feature, rules, depth = 0, collectedStyles = []) {
 
-class Style {
-    constructor(name, rules = []) {
-        this.name = name;
-        this.rules = rules;
+    if (rules.length === 0) {
+        return;
+    }
+    var first = rules[0];
+
+    if ((typeof first.filter === 'function') && (first.filter(feature))) {
+
+        if (first instanceof Rule) {
+            collectedStyles.push(first);
+        } else if (first.rules.length !== 0) {
+            matchFeature(feature, first.rules, depth += 1, collectedStyles);
+        }
+    }
+
+    matchFeature(feature, rules.slice(1), depth, collectedStyles);
+}
+
+
+export function buildFilterFunction(filter) {
+
+    // allow users to not have to use `this` in their filters
+    if (!filter.startsWith('this.')) {
+        filter = 'this.' + filter;
+    }
+
+    var macroContext = findMacro(filter);
+    if (macroContext) {
+        return wrapMacro(filter, Macros);
+    }
+}
+
+export function buildFilterObject(filter) {
+    return false;
+}
+
+
+export function buildFilter(rule) {
+    if (rule.filter) {
+        if (typeof rule.filter === 'string') {
+            return buildFilterFunction(rule.filter);
+        }
+        if (typeof rule.filter === 'object') {
+            return buildFilterObject(rule.filter);
+        }
+    }
+}
+
+
+class RuleGroup {
+
+    constructor(options) {
+        Object.assign(this, options);
+        this.rules = options.rules || [];
     }
 
     matchFeature(feature) {
-        var matchedStyles = [];
-
-        walkRuleTree(this.rules, (rule) => {
-            if (typeof rule.filter === 'function') {
-                if (rule.filter(feature) !== false) {
-                    matchedStyles.push({
-                        style: rule.style,
-                        mode: rule.mode,
-                        visible: rule.visible
-                    });
-                }
-            } else { // if there is no filter
-                matchedStyles.push(
-                    {
-                        style: rule.style,
-                        mode: rule.mode,
-                        visible: rule.visible
-                    }
-                );
-            }
-        });
-
-        return matchedStyles;
+        return {};
     }
 }
 
 class Rule {
 
-    constructor(root, name, filter, order, style, rules = []) {
-        this.root = root;
-        this.name = name;
-        this.filter = filter;
-        this.order = order;
-        this.style = style;
-        this.rules = rules;
+    constructor(options) {
+        Object.assign(this, options);
     }
-
 
     calculateFullFilter() {
         var parentFilters = (root, filters) => {
@@ -117,18 +149,35 @@ class Rule {
 }
 
 export function parseStyle(name, style, root) {
-    var rule = new Rule(root, name);
+    var properties = {name, root}, rule, leftOvers, group;
 
     Object.keys(style).filter(isWhiteListed).forEach((key) => {
-        rule[key] = style[key];
+        properties[key] = style[key];
     });
+
+    leftOvers = Object.keys(style).filter((key) => {return !isWhiteListed(key);});
+
+    // if we are a leaf
+    if (leftOvers.length === 0) {
+        rule = new Rule(properties);
+    } else {
+        group = new RuleGroup({name});
+        rule = new Rule(properties);
+        group.rules.push(rule);
+    }
+
+    // TODO, FIXME
+    var originalFilter = rule.filter;
+    rule.filter = buildFilter(rule);
+    rule.originalFilter = originalFilter;
+
 
     root.rules.push(rule);
 
-    Object.keys(style).filter((key) => {return !isWhiteListed(key);}).forEach((name) => {
+    leftOvers.forEach((name) => {
         var property = style[name];
         if (typeof property === 'object') {
-            parseStyle(name, property, rule);
+            parseStyle(name, property, group);
         } else {
             throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
         }
@@ -139,15 +188,11 @@ export function parseStyle(name, style, root) {
 
 
 export function parseLayers(layers) {
-
-    var obj = {};
-
-    Object.keys(layers).forEach((key) => {
-        var layer = layers[key],
-            root  = new Style(key);
-        obj[key] = parseStyle(key, layer, root);
-    });
-
-    return obj;
+    return Object.keys(layers).reduce((c, name) => {
+        var layer = layers[name],
+            root  = new RuleGroup({name});
+        c[name] = parseStyle(name, layer, root);
+        return c;
+    }, {});
 
 }
