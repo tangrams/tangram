@@ -432,9 +432,10 @@ layers:
         color:
             # default: Style.color.randomColor
             default: [0.4, 0.4, 0.4]
+            highway: [1.0, 1.0, 1.0]
             # highway: 'red'
             # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-            highway: [[13, 'darkorchid'], [17, 'honeydew']]
+            # highway: [[13, 'darkorchid'], [17, 'honeydew']]
             # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
             major_road: [0.5, 0.5, 0.5]
             minor_road: [0.65, 0.65, 0.65]
@@ -444,15 +445,16 @@ layers:
         width:
             # default: Style.pixels(5)
             default: function () { return 2 * Math.log(zoom); }
+            highway: function () { return 3 * Math.log(zoom); }
             # highway: [[16, 20], [17, 16], [18, 12], [19, 8], [20, 6]]
             # highway: [[13, 3px], [15, 5px], [16, 20px]]
-            highway: |
-                function() {
-                    if (feature.is_link == 'yes' || feature.is_tunnel == 'yes') {
-                        return [[13, '0px'], [15, '4px'], [16, '6px'], [18, '10px']];
-                    }
-                    return [[10, '2px'], [13, '3px'], [15, '5px'], [16, '8px'], [18, '12px']];
-                }
+            # highway: |
+            #     function() {
+            #         if (feature.is_link == 'yes' || feature.is_tunnel == 'yes') {
+            #             return [[13, '0px'], [15, '4px'], [16, '6px'], [18, '10px']];
+            #         }
+            #         return [[10, '2px'], [13, '3px'], [15, '5px'], [16, '8px'], [18, '12px']];
+            #     }
             major_road: function () { return 2.5 * Math.log(zoom); }
             minor_road: function () { return 2 * Math.log(zoom); }
             path: function () { return 1 * Math.log(zoom); }
