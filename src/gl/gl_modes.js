@@ -212,7 +212,9 @@ ModeManager.destroy = function (gl) {
 
 /*** Plain polygons ***/
 
-var Polygons = Object.create(Object.assign({}, RenderMode, {
+var Polygons = Object.create(RenderMode);
+
+Object.assign(Polygons, {
     built_in: true,
     init() {
         RenderMode.init.apply(this);
@@ -386,7 +388,7 @@ var Polygons = Object.create(Object.assign({}, RenderMode, {
 
     },
     name: 'polygons'
-}));
+});
 
 //Polygons.name = 'polygons';
 Modes[Polygons.name] = Polygons;
@@ -395,7 +397,9 @@ Modes[Polygons.name] = Polygons;
 
 /*** Points w/simple distance field rendering ***/
 
-var Points = Object.create(Object.assign({}, RenderMode, {
+var Points = Object.create(RenderMode);
+
+Object.assign(Points, {
     name: 'points',
     built_in: true,
     init() {
@@ -455,6 +459,6 @@ var Points = Object.create(Object.assign({}, RenderMode, {
 
     }
 
-}));
+});
 
 Modes[Points.name] = Points;
