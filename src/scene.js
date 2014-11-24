@@ -1077,7 +1077,7 @@ Scene.prototype.updateModes = function (callback) {
 
         // Save queued request
         this.compiling.queued = { callback };
-        return callback();
+        return;
     }
     this.compiling = { callback };
 
@@ -1111,7 +1111,7 @@ Scene.prototype.updateModes = function (callback) {
         this.compiling = null;
 
         // Complete this callback
-        callback(null);
+        callback();
 
         // Another request queued?
         if (queued) {
