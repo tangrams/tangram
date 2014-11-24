@@ -1020,31 +1020,28 @@ Scene.prototype.parseResource = function (body) {
     return data;
 };
 
-Scene.prototype.loadResource = function (source, postLoad) {
+Scene.prototype.loadResource = function (source) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
             Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
                 var data = this.parseResource(body);
-                postLoad(data);
-                resolve();
+                resolve(data);
             }, reject);
         } else {
-            postLoad(source);
-            resolve();
+            resolve(source);
         }
     });
 };
 
-
 Scene.prototype.loadLayers = function (source) {
-    return this.loadResource(source, (data) => {
+    return this.loadResource(source).then((data) => {
         this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     });
 };
 
 Scene.prototype.loadStyles = function (source) {
-    return this.loadResource(source, (styles) => {
+    return this.loadResource(source).then((styles) => {
         this.styles = styles;
         Style.expandMacros(this.styles);
         Scene.preProcessStyles(this.styles);
