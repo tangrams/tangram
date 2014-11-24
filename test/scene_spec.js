@@ -441,7 +441,7 @@ describe('Scene', () => {
 
         it('calls back', (done) => {
             subject.updateModes((error) => {
-                assert.isNull(error);
+                assert.isUndefined(error);
                 done();
             });
         });
