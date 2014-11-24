@@ -432,7 +432,10 @@ layers:
         color:
             # default: Style.color.randomColor
             default: [0.4, 0.4, 0.4]
-            highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+            # highway: 'red'
+            # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+            highway: [[13, 'darkorchid'], [17, 'honeydew']]
+            # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
             major_road: [0.5, 0.5, 0.5]
             minor_road: [0.65, 0.65, 0.65]
             path: [0.8, 0.8, 0.8]
@@ -458,7 +461,8 @@ layers:
         #     path: 25
         outline:
             color:
-                default: [0.1, 0.7, 0.7]
+                # default: [0.1, 0.7, 0.7]
+                default: [0.7, 0.7, 0.7]
             width:
                 default:
                     function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }

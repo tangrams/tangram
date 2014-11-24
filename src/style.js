@@ -1,6 +1,7 @@
 import Utils from './utils';
 import {Geo} from './geo';
 
+import parseCSSColor from 'csscolorparser';
 import log from 'loglevel';
 
 export var Style = {};
@@ -189,6 +190,29 @@ Style.parseColor = function(val, context) {
     if (typeof val === 'function') {
         val = val(context);
     }
+
+    // Parse CSS-style colors
+    // TODO: change all colors to use 0-255 range internally to avoid dividing and then re-multiplying in geom builder
+    if (typeof val === 'string') {
+        val = parseCSSColor.parseCSSColor(val);
+        if (val && val.length === 4) {
+            val = val.slice(0, 3).map(c => { return c / 255; });
+        }
+    }
+    else if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
+        // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
+        val = val.map(v => {
+            if (typeof v[1] === 'string') {
+                var vc = parseCSSColor.parseCSSColor(v[1]);
+                if (vc && vc.length === 4) {
+                    vc = vc.slice(0, 3).map(c => { return c / 255; });
+                }
+                return [v[0], vc];
+            }
+            return v;
+        });
+    }
+
     val = Style.interpolate(context.zoom, val);
     return val;
 };
