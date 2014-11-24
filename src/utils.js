@@ -153,7 +153,8 @@ Utils.interpolate = function(x, points) {
     else if (points.length < 1) {
         return null;
     }
-    var y;
+
+    var x1, x2, d, y;
 
     // Min bounds
     if (x <= points[0][0]) {
@@ -167,11 +168,29 @@ Utils.interpolate = function(x, points) {
     else {
         for (var i=0; i < points.length - 1; i++) {
             if (x >= points[i][0] && x < points[i+1][0]) {
+                // Boolean? Just treat each control point as a threshold, no interpolation
+                if (typeof points[i][1] === 'boolean') {
+                    y = points[i][1];
+                    break;
+                }
+
                 // Linear interpolation
-                var d = points[i+1][1] - points[i][1];
-                var x1 = points[i][0];
-                var x2 = points[i+1][0];
-                y = d * (x - x1) / (x2 - x1) + points[i][1];
+                x1 = points[i][0];
+                x2 = points[i+1][0];
+
+                // Multiple values
+                if (Array.isArray(points[i][1])) {
+                    y = [];
+                    for (var c=0; c < points[i][1].length; c++) {
+                        d = points[i+1][1][c] - points[i][1][c];
+                        y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
+                    }
+                }
+                // Single value
+                else {
+                    d = points[i+1][1] - points[i][1];
+                    y = d * (x - x1) / (x2 - x1) + points[i][1];
+                }
                 break;
             }
         }

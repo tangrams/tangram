@@ -30,6 +30,7 @@
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
+    "csscolorparser": "^1.0.2",
     "loglevel": "~1.2.0"
   },
   "devDependencies": {

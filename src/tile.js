@@ -94,7 +94,13 @@ export default class Tile {
 
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = tile.layers[layer.name].features[f];
-                    style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
+                    try {
+                        style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
+                    }
+                    catch(error) {
+                        log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
+                        throw error;
+                    }
 
                     // Skip feature?
                     if (style == null) {
