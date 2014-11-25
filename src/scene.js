@@ -1015,7 +1015,8 @@ Scene.prototype.loadStyles = function (source) {
     return Utils.loadResource(source).then((styles) => {
         this.styles = styles;
         Style.expandMacros(this.styles);
-        Scene.preProcessStyles(this.styles);
+        return Scene.preProcessStyles(this.styles);
+    }).then(() => {
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     });
 };
@@ -1266,7 +1267,50 @@ Scene.preProcessStyles = function (styles) {
     styles.camera = styles.camera || {}; // ensure camera object
     styles.lighting = styles.lighting || {}; // ensure lighting object
 
-    return styles;
+    return Scene.preloadModes(styles.modes);
+};
+
+// Preloads network resources in the stylesheet (shaders, textures, etc.)
+Scene.preloadModes = function (modes) {
+    // Preload shaders
+    var queue = [];
+    if (modes) {
+        for (var mode of Utils.values(modes)) {
+            if (mode.shaders && mode.shaders.transforms) {
+                let _transforms = mode.shaders.transforms;
+
+                for (var [key, transform] of Utils.entries(mode.shaders.transforms)) {
+                    let _key = key;
+
+                    // Array of transforms
+                    if (Array.isArray(transform)) {
+                        for (let t=0; t < transform.length; t++) {
+                            if (typeof transform[t] === 'object' && transform[t].url) {
+                                let _index = t;
+                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
+                                    _transforms[_key][_index] = data;
+                                }, (error) => {
+                                    log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                }));
+                            }
+                        }
+                    }
+                    // Single transform
+                    else if (typeof transform === 'object' && transform.url) {
+                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
+                            _transforms[_key] = data;
+                        }, (error) => {
+                            log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, error);
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: also preload textures
+
+    return Promise.all(queue); // TODO: add error
 };
 
 // Processes the tile response to create layers as defined by the scene
