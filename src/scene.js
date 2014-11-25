@@ -1058,47 +1058,38 @@ Scene.prototype.updateModes = function (callback) {
     }
     this.compiling = { callback };
 
-    var name;
-
     // Copy stylesheet modes
-    // for ([name, mode] of Utils.entries(this.styles.modes)) { // jshint fails here
-    for (name in this.styles.modes) {
+    for (var name in this.styles.modes) {
         this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
     }
 
-    // Compile all modes (async)
-    // for ([name, mode] of Utils.entries(this.modes)) { // jshint fails here
-
-    Promise.all(Object.keys(this.modes).map((_name) => {
-        var mode = this.modes[_name];
-        return new Promise((resolve, reject) => {
-            mode.compile((error) => {
-                if (error) { reject(error); }
-                log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
-                resolve();
-            });
-        });
-    })).then(() => {
-        log.debug(`Scene.updateModes(): compiled all modes`);
-
-        this.dirty = true;
-
-        var callback = this.compiling.callback;
-        var queued = this.compiling.queued;
-        this.compiling = null;
-
-        // Complete this callback
-        callback();
-
-        // Another request queued?
-        if (queued) {
-            log.trace(`Scene.updateModes(): starting queued request`);
-            this.updateModes(queued.callback);
+    // Compile all modes
+    for (name in this.modes) {
+        try {
+            this.modes[name].compile();
+            log.trace(`Scene.updateModes(): compiled mode ${name}`);
         }
-    }, (error) => {
-        callback(error);
-    });
+        catch(error) {
+            log.error(`Scene.updateModes(): error compiling mode ${name}:`, error);
+        }
+    }
 
+    log.debug(`Scene.updateModes(): compiled all modes`);
+
+    this.dirty = true;
+
+    callback = this.compiling.callback;
+    var queued = this.compiling.queued;
+    this.compiling = null;
+
+    // Complete this callback
+    callback();
+
+    // Another request queued?
+    if (queued) {
+        log.trace(`Scene.updateModes(): starting queued request`);
+        this.updateModes(queued.callback);
+    }
 };
 
 Scene.prototype.updateActiveModes = function () {

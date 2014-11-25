@@ -25,11 +25,10 @@ var RenderMode = {
 
     setGL (gl, callback) {
         this.gl = gl;
-        this.valid = true;
     },
 
-    compile (callback) {
-        this.makeGLProgram(callback);
+    compile () {
+        this.makeGLProgram();
     },
 
     makeGLGeometry (vertex_data) {
@@ -56,24 +55,19 @@ var RenderMode = {
         }
 
         this.gl = null;
-        this.valid = false;
 
         if (!this.isBuiltIn()) {
             delete Modes[this.name];
         }
     },
 
-    makeGLProgram(callback) {
-        callback = (typeof callback === 'function') ? callback : function(){};
-
-        if (this.valid === false) {
-            callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode not valid`));
-            return;
+    makeGLProgram () {
+        if (!this.gl) {
+            throw(new Error(`mode.makeGLProgram(): skipping for ${this.name} because no GL context`));
         }
 
         if (this.loading) {
-            callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
-            return;
+            throw(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
         }
         this.loading = true;
 
@@ -87,60 +81,41 @@ var RenderMode = {
         // Get any custom code transforms
         var transforms = (this.shaders && this.shaders.transforms);
 
-        // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
-        var program = this.gl_program;
-        var selection_program = this.selection_gl_program;
+        // Create shaders
+        try {
+            this.gl_program = new GLProgram(
+                this.gl,
+                shader_sources[this.vertex_shader_key],
+                shader_sources[this.fragment_shader_key],
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name
+                }
+            );
 
-        Promise.all([
-            new Promise((resolve, reject) => {
-                program = new GLProgram(
+            if (this.selection) {
+                this.gl_selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
-                    shader_sources[this.fragment_shader_key],
+                    shader_sources['selection_fragment'],
                     {
-                        defines: defines,
+                        defines: selection_defines,
                         transforms: transforms,
-                        name: this.name,
-                        resolve: resolve,
-                        reject: reject
+                        name: (this.name + ' (selection)')
                     }
                 );
-            }),
-            new Promise((resolve, reject) => {
-                if (this.selection) {
-                    selection_program = new GLProgram(
-                        this.gl,
-                        shader_sources[this.vertex_shader_key],
-                        shader_sources['selection_fragment'],
-                        {
-                            defines: selection_defines,
-                            transforms: transforms,
-                            name: (this.name + ' (selection)'),
-                            resolve: resolve,
-                            reject: reject
-                        }
-                    );
-                } else { resolve(); }
-            })
-        ]).then(() => {
-            // Wait for program(s) to compile before replacing them
-            // TODO: should this entire method offer a callback for when compilation completes?
+            }
+            else {
+                this.gl_selection_program = null;
+            }
+        }
+        catch(error) {
             this.loading = false;
+            throw(new Error(`mode.makeGLProgram(): mode ${this.name} error:`, error));
+        }
 
-            if (program) {
-                this.gl_program = program;
-            }
-
-            if (selection_program) {
-                this.selection_gl_program = selection_program;
-            }
-
-            callback();
-
-        }, (error) => {
-            callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
-        });
-
+        this.loading = false;
     },
 
     /** TODO: could probably combine and generalize this with similar method in GLProgram

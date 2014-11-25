@@ -1,6 +1,7 @@
 // Miscellaneous utilities
 /*jshint worker: true*/
 
+import log from 'loglevel';
 import yaml from 'js-yaml';
 
 var Utils;
