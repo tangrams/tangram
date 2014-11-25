@@ -40,6 +40,7 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
+    this.worker_url = options.workerUrl;
 
     this.layer_source = layer_source;
     this.style_source = style_source;
@@ -201,8 +202,7 @@ Scene.prototype.createObjectURL = function () {
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function () {
     return new Promise((resolve, reject) => {
-        // TODO: support arbitrary library script name as a config option
-        var worker_url = Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        var worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
         if (!worker_url) {
             reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
             return;

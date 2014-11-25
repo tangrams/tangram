@@ -15,7 +15,8 @@ let makeOne = () => {
         vectorTileSource: sampleScene.tile_source,
         vectorLayers: sampleScene.layers,
         vectorStyles: sampleScene.styles,
-        disableRenderLoop: true
+        disableRenderLoop: true,
+        workerUrl: '/base/dist/tangram.debug.js'
     });
 };
 
@@ -111,7 +112,6 @@ describe('Leaflet plugin', () => {
 
         beforeEach((done) => {
             var counter = 0;
-
             subject = makeOne();
             scene  = subject.scene;
             sinon.spy(subject.scene, 'destroy');

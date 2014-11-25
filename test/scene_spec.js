@@ -9,6 +9,8 @@ import sampleScene from './fixtures/sample-scene';
 function makeScene(options) {
     options = options || {};
     options.disableRenderLoop = true;
+    options.workerUrl = '/base/dist/tangram.debug.js';
+
     return new Scene(
         TileSource.create(_.clone(sampleScene.tile_source)),
         sampleScene.layers,

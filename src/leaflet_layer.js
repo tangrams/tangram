@@ -28,7 +28,8 @@ Utils.inMainThread(() => {
                 preRender: this.options.preRender,
                 postRender: this.options.postRender,
                 // advanced option, app will have to manually called scene.render() per frame
-                disableRenderLoop: this.options.disableRenderLoop
+                disableRenderLoop: this.options.disableRenderLoop,
+                workerUrl: this.options.workerUrl
             });
         },
 
