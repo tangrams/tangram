@@ -14,7 +14,6 @@ import Tile from './tile';
 import TileSource from './tile_source';
 
 import log from 'loglevel';
-import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -1005,43 +1004,15 @@ Scene.prototype.loadScene = function () {
     ]);
 };
 
-Scene.prototype.parseResource = function (body) {
-    var data = null;
-    try {
-        eval('data = ' + body); // jshint ignore:line
-    } catch (e) {
-        try {
-            data = yaml.safeLoad(body);
-        } catch (e) {
-            log.error('Scene: failed to parse');
-            log.error(e);
-        }
-    }
-    return data;
-};
-
-Scene.prototype.loadResource = function (source) {
-    return new Promise((resolve, reject) => {
-        if (typeof source === 'string') {
-            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
-                var data = this.parseResource(body);
-                resolve(data);
-            }, reject);
-        } else {
-            resolve(source);
-        }
-    });
-};
-
 Scene.prototype.loadLayers = function (source) {
-    return this.loadResource(source).then((data) => {
+    return Utils.loadResource(source).then((data) => {
         this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     });
 };
 
 Scene.prototype.loadStyles = function (source) {
-    return this.loadResource(source).then((styles) => {
+    return Utils.loadResource(source).then((styles) => {
         this.styles = styles;
         Style.expandMacros(this.styles);
         Scene.preProcessStyles(this.styles);
