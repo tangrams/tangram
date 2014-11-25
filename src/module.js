@@ -1,3 +1,5 @@
+/*jshint worker: true*/
+
 // Modules and dependencies to expose in the public Tangram module
 import Utils from './utils';
 
@@ -25,6 +27,15 @@ Utils.inMainThread(() => {
             GL,
             GLProgram,
             GLTexture
+        }
+    };
+});
+
+// Make some modules accessible in worker for debugging
+Utils.inWorkerThread(() => {
+    self.Tangram = {
+        debug: {
+            SceneWorker
         }
     };
 });
