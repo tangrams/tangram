@@ -200,7 +200,8 @@ Scene.prototype.createObjectURL = function () {
 };
 
 Scene.prototype.buildWorkerUrl = function () {
-    return `${Scene.library_base_url}tangram-worker.${Scene.library_type}.js?${+new Date()}`;
+    // no cache buster since we want to use browser cache to prevent additional load
+    return `${Scene.library_base_url}tangram.${Scene.library_type}.js`;
 };
 
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
@@ -1355,6 +1356,7 @@ Scene.createModes = function (stylesheet_modes) {
 // Get base URL from which the library was loaded
 // Used to load worker script file, with the assumption that it resides alongside the main script file (by default)
 function findBaseLibraryURL () {
+    Scene.library_url = '';
     Scene.library_base_url = '';
     Scene.library_type = 'min'; // default unless matching debug/test build
 
@@ -1362,6 +1364,7 @@ function findBaseLibraryURL () {
     var script = document.currentScript;
     if (script) {
         Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
+        Scene.library_url = srcipt.src;
 
         // Check if we're using a debug/test build
         if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
@@ -1376,12 +1379,14 @@ function findBaseLibraryURL () {
             if (match >= 0) {
                Scene.library_type = 'debug';
                Scene.library_base_url = scripts[s].src.substr(0, match);
+               Scene.library_url = scripts[s].src;
                break;
             }
             match = scripts[s].src.indexOf('tangram.min.js');
             if (match >= 0) {
                Scene.library_type = 'min';
                Scene.library_base_url = scripts[s].src.substr(0, match);
+               Scene.library_url = scripts[s].src;
                break;
             }
         }
