@@ -22,7 +22,6 @@ var vec3 = glMatrix.vec3;
 // Global setup
 Utils.inMainThread(() => {
     // On main thread only (skip in web worker)
-    findBaseLibraryURL();
     Utils.requestAnimationFramePolyfill();
  });
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
@@ -199,16 +198,17 @@ Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 
-Scene.prototype.buildWorkerUrl = function () {
-    // no cache buster since we want to use browser cache to prevent additional load
-    return `${Scene.library_base_url}tangram.${Scene.library_type}.js`;
-};
-
 // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
 Scene.prototype.createWorkers = function () {
     return new Promise((resolve, reject) => {
-        var worker_url = this.buildWorkerUrl(),
-            createObjectURL = this.createObjectURL();
+        // TODO: support arbitrary library script name as a config option
+        var worker_url = Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+        if (!worker_url) {
+            reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
+            return;
+        }
+
+        var createObjectURL = this.createObjectURL();
         if (createObjectURL && this.allow_cross_domain_workers) {
             // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
             Utils.io(worker_url).then((body) => {
@@ -1350,45 +1350,3 @@ Scene.createModes = function (stylesheet_modes) {
 
     return modes;
 };
-
-// Private/internal
-
-// Get base URL from which the library was loaded
-// Used to load worker script file, with the assumption that it resides alongside the main script file (by default)
-function findBaseLibraryURL () {
-    Scene.library_url = '';
-    Scene.library_base_url = '';
-    Scene.library_type = 'min'; // default unless matching debug/test build
-
-    // Find currently executing script
-    var script = document.currentScript;
-    if (script) {
-        Scene.library_base_url = script.src.substr(0, script.src.lastIndexOf('/')) + '/';
-        Scene.library_url = srcipt.src;
-
-        // Check if we're using a debug/test build
-        if (['debug', 'test'].some(build => script.src.indexOf(`tangram.${build}.js`) > -1)) {
-            Scene.library_type = 'debug';
-        }
-    }
-    else {
-        // Fallback on looping through <script> elements if document.currentScript is not supported
-        var scripts = document.getElementsByTagName('script');
-        for (var s=0; s < scripts.length; s++) {
-            var match = scripts[s].src.indexOf('tangram.debug.js');
-            if (match >= 0) {
-               Scene.library_type = 'debug';
-               Scene.library_base_url = scripts[s].src.substr(0, match);
-               Scene.library_url = scripts[s].src;
-               break;
-            }
-            match = scripts[s].src.indexOf('tangram.min.js');
-            if (match >= 0) {
-               Scene.library_type = 'min';
-               Scene.library_base_url = scripts[s].src.substr(0, match);
-               Scene.library_url = scripts[s].src;
-               break;
-            }
-        }
-    }
-}
