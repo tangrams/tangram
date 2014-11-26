@@ -806,85 +806,87 @@ Scene.prototype._loadTile = function (coords, options = {}) {
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildGeometry = function (callback) {
+Scene.prototype.rebuildGeometry = function () {
     if (!this.initialized) {
-        if (typeof callback === 'function') {
-            callback(false);
-        }
-        return;
+        return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
     }
 
-    // Skip rebuild if already in progress
-    if (this.building) {
-        // Queue up to one rebuild call at a time, only save last request
-        if (this.building.queued && typeof this.building.queued.callback === 'function') {
-            this.building.queued.callback(null, false); // notify previous callback that it did not complete
+    return new Promise((resolve, reject) => {
+        // Skip rebuild if already in progress
+        if (this.building) {
+            // Queue up to one rebuild call at a time, only save last request
+            if (this.building.queued && this.building.queued.reject) {
+                this.building.queued.reject(); // notify previous callback that it did not complete
+            }
+
+            // Save queued request
+            this.building.queued = { resolve, reject };
+            log.trace(`Scene: queuing rebuildGeometry() request`);
+            return;
         }
 
-        // Save queued request
-        this.building.queued = { callback };
-        return;
-    }
+        // Track tile build state
+        this.building = { resolve, reject, tiles: {} };
 
-    // Track tile build state
-    this.building = { callback, tiles: {} };
+        // Update layers & styles (in case JS objects were manipulated directly)
+        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+        this.selection_map = {};
 
-    // Update layers & styles (in case JS objects were manipulated directly)
-    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-    this.selection_map = {};
-
-    // Tell workers we're about to rebuild (so they can update styles, etc.)
-    this.workers.forEach(worker => {
-        WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-            layers: this.layers_serialized,
-            styles: this.styles_serialized
+        // Tell workers we're about to rebuild (so they can update styles, etc.)
+        this.workers.forEach(worker => {
+            WorkerBroker.postMessage(worker, 'prepareForRebuild', {
+                layers: this.layers_serialized,
+                styles: this.styles_serialized
+            });
         });
-    });
 
-    // Rebuild visible tiles first, from center out
-    var tile, visible = [], invisible = [];
-    for (tile of Utils.values(this.tiles)) {
-        if (tile.visible === true) {
-            visible.push(tile);
+        // Rebuild visible tiles first, from center out
+        var tile, visible = [], invisible = [];
+        for (tile of Utils.values(this.tiles)) {
+            if (tile.visible === true) {
+                visible.push(tile);
+            }
+            else {
+                invisible.push(tile);
+            }
         }
-        else {
-            invisible.push(tile);
-        }
-    }
 
-    visible.sort((a, b) => {
-        return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
-    });
+        visible.sort((a, b) => {
+            return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
+        });
 
-    for (tile of visible) {
-        tile.build(this);
-    }
-
-    for (tile of invisible) {
-        // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (tile.isInZoom(this)) {
+        for (tile of visible) {
             tile.build(this);
         }
-        // Drop tiles outside current zoom
-        else {
-            this.removeTile(tile.key);
-        }
-    }
 
-    this.updateActiveModes();
-    this.resetTime();
-
-    // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
-    if (this.building && Object.keys(this.building.tiles).length === 0) {
-        callback = this.building.callback;
-        this.building = null;
-        if (typeof callback === 'function') {
-            callback(null, true); // notify build callback as completed
+        for (tile of invisible) {
+            // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
+            if (tile.isInZoom(this)) {
+                tile.build(this);
+            }
+            // Drop tiles outside current zoom
+            else {
+                this.removeTile(tile.key);
+            }
         }
-        // TODO: call any queued rebuild
-        // TODO: move this whole "finish build process / callback / call queue" to separate function to avoid repetition
-    }
+
+        this.updateActiveModes();
+        this.resetTime();
+
+        // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
+        if (this.building && Object.keys(this.building.tiles).length === 0) {
+            resolve();
+
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                this.rebuildGeometry().then(queued.resolve, queued.reject);
+            }
+        }
+    });
 };
 
 // TODO: move to Tile class
@@ -943,16 +945,16 @@ Scene.prototype.trackTileBuildStop = function (key) {
             log.info(`Scene: build geometry finished`);
             log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
-            var callback = this.building.callback;
-            if (typeof callback === 'function') {
-                callback(null, true); // notify build callback as completed
+            if (this.building.resolve) {
+                this.building.resolve();
             }
 
             // Another rebuild queued?
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                this.rebuildGeometry(queued.callback);
+                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                this.rebuildGeometry().then(queued.resolve, queued.reject);
             }
         }
     }
@@ -1016,7 +1018,7 @@ Scene.prototype.reload = function () {
 
     this.loadScene().then(() => {
         this.updateStyles();
-        this.rebuildGeometry();
+        return this.rebuildGeometry();
     }, (error) => {
         throw error;
     });
