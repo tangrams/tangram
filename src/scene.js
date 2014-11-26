@@ -46,7 +46,7 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.layers = null;
     this.styles = null;
 
-    this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
+    this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
     this.animated = false;                          // request redraw every frame
     this.preRender = options.preRender;             // optional pre-rendering hook
@@ -168,7 +168,7 @@ Scene.prototype.initSelectionBuffer = function () {
     this.pixel32 = new Float32Array(this.pixel.buffer);
     this.selection_requests = {};
     this.selected_feature = null;
-    this.selection_callback_timer = null;
+    this.selection_delay_timer = null;
     this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
 
     // Frame buffer for selection
@@ -577,8 +577,6 @@ Scene.prototype.renderGL = function () {
     // mode program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
     if (Object.keys(this.selection_requests).length > 0) {
-
-        // TODO: queue callback till panning is over? coords where selection was requested are out of date
         if (this.panning) {
             return;
         }
@@ -644,10 +642,10 @@ Scene.prototype.renderGL = function () {
         // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
         // Calling readPixels synchronously caused a massive performance hit, presumably since it
         // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
-        if (this.selection_callback_timer != null) {
-            clearTimeout(this.selection_callback_timer);
+        if (this.selection_delay_timer != null) {
+            clearTimeout(this.selection_delay_timer);
         }
-        this.selection_callback_timer = setTimeout(
+        this.selection_delay_timer = setTimeout(
             () => this.doFeatureSelectionRequests(),
             this.selection_frame_delay
         );
@@ -667,29 +665,27 @@ Scene.prototype.renderGL = function () {
 
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
-Scene.prototype.getFeatureAt = function (pixel, callback) {
-    if (typeof callback !== 'function') {
-        throw new Error("Scene.getFeatureAt() called without a valid callback function");
-    }
+Scene.prototype.getFeatureAt = function (pixel) {
+    return new Promise((resolve, reject) => {
+        if (!this.initialized) {
+            reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
+            return;
+        }
 
-    if (!this.initialized) {
-        callback(new Error("Scene.getFeatureAt() called before scene was initialized"));
-        return;
-    }
-
-    // Queue requests for feature selection, and they will be picked up by the render loop
-    this.selection_request_id = (this.selection_request_id + 1) || 0;
-    this.selection_requests[this.selection_request_id] = {
-        type: 'point',
-        id: this.selection_request_id,
-        point: {
-            // TODO: move this pixel calc to a GL wrapper
-            x: pixel.x * this.device_pixel_ratio,
-            y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
-        },
-        callback
-    };
-    this.dirty = true; // need to make sure the scene re-renders for these to be processed
+        // Queue requests for feature selection, and they will be picked up by the render loop
+        this.selection_request_id = (this.selection_request_id + 1) || 0;
+        this.selection_requests[this.selection_request_id] = {
+            type: 'point',
+            id: this.selection_request_id,
+            point: {
+                // TODO: move this pixel calc to a GL wrapper
+                x: pixel.x * this.device_pixel_ratio,
+                y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+            },
+            resolve
+        };
+        this.dirty = true; // need to make sure the scene re-renders for these to be processed
+    });
 };
 
 Scene.prototype.doFeatureSelectionRequests = function () {
@@ -755,10 +751,8 @@ Scene.prototype.workerGetFeatureSelection = function (message) {
 
     this.selected_feature = feature; // store the most recently selected feature
 
-    // Send the feature info the callback
-    if (typeof request.callback === 'function') {
-        request.callback({ feature, changed, request });
-    }
+    // Resolve the request
+    request.resolve({ feature, changed, request });
     delete this.selection_requests[message.id]; // done processing this request
 };
 

@@ -23,7 +23,7 @@ var RenderMode = {
         this.selection_program = null;
     },
 
-    setGL (gl, callback) {
+    setGL (gl) {
         this.gl = gl;
     },
 
