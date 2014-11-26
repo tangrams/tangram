@@ -62,7 +62,7 @@ GLGeometry.prototype.destroy = function ()
     if (!this.valid) {
         return false;
     }
-    log.debug('GLGeometry.destroy: delete buffer of size ' + this.vertex_data.byteLength);
+    log.trace('GLGeometry.destroy: delete buffer of size ' + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
     this.buffer = null;
     delete this.vertex_data;
