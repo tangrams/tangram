@@ -515,8 +515,8 @@ Scene.prototype.renderGL = function () {
         // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
         this.modes[mode].update();
 
-        var gl_program = this.modes[mode].gl_program;
-        if (gl_program == null || gl_program.compiled === false) {
+        var program = this.modes[mode].program;
+        if (program == null || program.compiled === false) {
             continue;
         }
 
@@ -532,38 +532,38 @@ Scene.prototype.renderGL = function () {
                 if (first_for_mode === true) {
                     first_for_mode = false;
 
-                    gl_program.use();
+                    program.use();
                     this.modes[mode].setUniforms();
 
                     // TODO: don't set uniforms when they haven't changed
-                    gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    gl_program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
-                    gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-                    gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                    gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
+                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                    program.uniform('2f', 'u_map_center', center.x, center.y);
+                    program.uniform('1f', 'u_num_layers', this.layers.length);
+                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
-                    this.camera.setupProgram(gl_program);
-                    this.lighting.setupProgram(gl_program);
+                    this.camera.setupProgram(program);
+                    this.lighting.setupProgram(program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
 
                 // Tile origin
-                gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
                 // Tile view matrix - transform tile space into view space (meters, relative to camera)
                 mat4.identity(tile_view_mat);
                 mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
                 mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
+                program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                 // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(tile_world_mat);
                 mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
                 mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
+                program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
                 tile.gl_geometry[mode].render();
@@ -589,8 +589,8 @@ Scene.prototype.renderGL = function () {
         this.resetFrame();
 
         for (mode in this.modes) {
-            gl_program = this.modes[mode].selection_gl_program;
-            if (gl_program == null || gl_program.compiled === false) {
+            program = this.modes[mode].selection_program;
+            if (program == null || program.compiled === false) {
                 continue;
             }
 
@@ -605,35 +605,35 @@ Scene.prototype.renderGL = function () {
                     if (first_for_mode === true) {
                         first_for_mode = false;
 
-                        gl_program.use();
+                        program.use();
                         this.modes[mode].setUniforms();
 
-                        gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
-                        gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                        gl_program.uniform('1f', 'u_map_zoom', this.zoom);
-                        gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-                        gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                        gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                        program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
+                        program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
+                        program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                        program.uniform('1f', 'u_map_zoom', this.zoom);
+                        program.uniform('2f', 'u_map_center', center.x, center.y);
+                        program.uniform('1f', 'u_num_layers', this.layers.length);
+                        program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
-                        this.camera.setupProgram(gl_program);
-                        this.lighting.setupProgram(gl_program);
+                        this.camera.setupProgram(program);
+                        this.lighting.setupProgram(program);
                     }
 
                     // Tile origin
-                    gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                    program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
                     mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
+                    program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                     // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                     mat4.identity(tile_world_mat);
                     mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
                     mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
+                    program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile
                     tile.gl_geometry[mode].render();

@@ -19,16 +19,12 @@ var RenderMode = {
         this.shaders = {};
         this.selection = false;
         this.loading = false;
-        this.gl_program = null;
-        this.selection_gl_program = null;
+        this.program = null;
+        this.selection_program = null;
     },
 
     setGL (gl, callback) {
         this.gl = gl;
-    },
-
-    compile () {
-        this.makeGLProgram();
     },
 
     makeGLGeometry (vertex_data) {
@@ -44,14 +40,14 @@ var RenderMode = {
     buildLines () {},
     buildPoints () {},
     destroy() {
-        if (this.gl_program) {
-            this.gl_program.destroy();
-            this.gl_program = null;
+        if (this.program) {
+            this.program.destroy();
+            this.program = null;
         }
 
-        if (this.selection_gl_program) {
-            this.selection_gl_program.destroy();
-            this.selection_gl_program = null;
+        if (this.selection_program) {
+            this.selection_program.destroy();
+            this.selection_program = null;
         }
 
         this.gl = null;
@@ -61,13 +57,13 @@ var RenderMode = {
         }
     },
 
-    makeGLProgram () {
+    compile () {
         if (!this.gl) {
-            throw(new Error(`mode.makeGLProgram(): skipping for ${this.name} because no GL context`));
+            throw(new Error(`mode.compile(): skipping for ${this.name} because no GL context`));
         }
 
         if (this.loading) {
-            throw(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
+            throw(new Error(`mode.compile(): skipping for ${this.name} because mode is already loading`));
         }
         this.loading = true;
 
@@ -83,7 +79,7 @@ var RenderMode = {
 
         // Create shaders
         try {
-            this.gl_program = new GLProgram(
+            this.program = new GLProgram(
                 this.gl,
                 shader_sources[this.vertex_shader_key],
                 shader_sources[this.fragment_shader_key],
@@ -95,7 +91,7 @@ var RenderMode = {
             );
 
             if (this.selection) {
-                this.gl_selection_program = new GLProgram(
+                this.selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
                     shader_sources['selection_fragment'],
@@ -107,12 +103,12 @@ var RenderMode = {
                 );
             }
             else {
-                this.gl_selection_program = null;
+                this.selection_program = null;
             }
         }
         catch(error) {
             this.loading = false;
-            throw(new Error(`mode.makeGLProgram(): mode ${this.name} error:`, error));
+            throw(new Error(`mode.compile(): mode ${this.name} error:`, error));
         }
 
         this.loading = false;
@@ -141,9 +137,9 @@ var RenderMode = {
 
     // Set mode uniforms on currently bound program
     setUniforms() {
-        var gl_program = GLProgram.current;
-        if (gl_program != null && this.shaders != null && this.shaders.uniforms != null) {
-            gl_program.setUniforms(this.shaders.uniforms);
+        var program = GLProgram.current;
+        if (program != null && this.shaders != null && this.shaders.uniforms != null) {
+            program.setUniforms(this.shaders.uniforms);
         }
     },
 

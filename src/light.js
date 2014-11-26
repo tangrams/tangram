@@ -1,10 +1,5 @@
 /*global Light */
 import GLProgram from './gl/gl_program';
-// import shaders from './gl/gl_shaders'; // built-in shaders
-
-// import glMatrix from 'gl-matrix';
-// var mat4 = glMatrix.mat4;
-// var vec3 = glMatrix.vec3;
 
 // Abstract base class
 export default class Light {
@@ -33,7 +28,7 @@ export default class Light {
     }
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
-    setupProgram(gl_program) {
+    setupProgram(program) {
     }
 
 }
@@ -88,14 +83,14 @@ class PointLight extends Light {
         );
     }
 
-    setupProgram(gl_program) {
-        gl_program.uniform('4f', 'u_point_light_position',
+    setupProgram(program) {
+        program.uniform('4f', 'u_point_light_position',
             this.position[0] * this.scene.meters_per_pixel,
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
-        gl_program.uniform('1f', 'u_point_light_ambient', this.ambient);
-        gl_program.uniform('1i', 'u_point_light_backlight', this.backlight);
+        program.uniform('1f', 'u_point_light_ambient', this.ambient);
+        program.uniform('1i', 'u_point_light_backlight', this.backlight);
     }
 
 }
@@ -172,16 +167,16 @@ class SpotLight extends Light {
         );
     }
 
-    setupProgram(gl_program) {
-        gl_program.uniform('4f', 'u_spotlight_position',
+    setupProgram(program) {
+        program.uniform('4f', 'u_spotlight_position',
             this.position[0] * this.scene.meters_per_pixel,
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
-        gl_program.uniform('3fv', 'u_spotlight_direction', this.direction);
-        gl_program.uniform('1f', 'u_spotlight_inner_angle', this.inner_angle);
-        gl_program.uniform('1f', 'u_spotlight_outer_angle', this.outer_angle);
-        gl_program.uniform('1f', 'u_spotlight_ambient', this.ambient);
+        program.uniform('3fv', 'u_spotlight_direction', this.direction);
+        program.uniform('1f', 'u_spotlight_inner_angle', this.inner_angle);
+        program.uniform('1f', 'u_spotlight_outer_angle', this.outer_angle);
+        program.uniform('1f', 'u_spotlight_ambient', this.ambient);
     }
 
 }
@@ -227,9 +222,9 @@ class DirectionalLight extends Light {
         );
     }
 
-    setupProgram(gl_program) {
-        gl_program.uniform('3fv', 'u_directional_light_direction', this.direction);
-        gl_program.uniform('1f', 'u_directional_light_ambient', this.ambient);
+    setupProgram(program) {
+        program.uniform('3fv', 'u_directional_light_direction', this.direction);
+        program.uniform('1f', 'u_directional_light_ambient', this.ambient);
     }
 
 }
