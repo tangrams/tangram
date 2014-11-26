@@ -109,9 +109,9 @@ export var LeafletLayer = L.GridLayer.extend({
         }
     },
 
-    createTile: function (coords, done) {
+    createTile: function (coords) {
         var div = document.createElement('div');
-        this.scene.loadTile(coords, div, done);
+        this.scene.loadTile(coords, { debugElement: div });
         return div;
     },
 

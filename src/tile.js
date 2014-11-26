@@ -208,14 +208,12 @@ export default class Tile {
         log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
-    updateElement(div, scene) {
-
+    updateDebugElement(div, show) {
         div.setAttribute('data-tile-key', this.key);
-
         div.style.width = '256px';
         div.style.height = '256px';
 
-        if (scene.debug) {
+        if (show) {
             this.showDebug(div);
         }
     }
@@ -239,8 +237,7 @@ export default class Tile {
         return [x, y, z].join('/');
     }
 
-    load(scene, coords, div, cb) {
-
+    load(scene, coords) {
         scene.trackTileSetLoadStart();
         Object.assign(this, {
             coords: coords,
@@ -252,10 +249,7 @@ export default class Tile {
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
         this.build(scene);
-        this.updateElement(div, scene);
         this.updateVisibility(scene);
-
-        if (cb) { cb(null, div); }
     }
 
     merge(other) {

@@ -723,7 +723,7 @@ Scene.prototype.doFeatureSelectionRequests = function () {
                 );
             }
         }
-        // No feature found, but still need to notify via callback
+        // No feature found, but still need to resolve promise
         else {
             this.workerGetFeatureSelection({ id: request.id, feature: null });
         }
@@ -793,21 +793,14 @@ Scene.prototype.forgetTile = function (key) {
 
 
 // Load a single tile
-Scene.prototype._loadTile = function (coords, div, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
-    // Overzoom?
+Scene.prototype._loadTile = function (coords, options = {}) {
     var tile = Tile.create({coords: coords, tile_source: this.tile_source});
-    // when the tile does not exist
     if (!this.hasTile(tile.key)) {
-        tile.load(this, coords, div, (error, div) => {
-            // after we done loading the tile, save a reference to it
-            this.cacheTile(tile);
-            callback(null, div, tile);
-        });
-    } else {
-        // if we already cached the tile, call back with the div
-        callback(null, div);
+        this.cacheTile(tile);
+        tile.load(this, coords);
+        if (options.debugElement) {
+            tile.updateDebugElement(options.debugElement, this.debug);
+        }
     }
 };
 
