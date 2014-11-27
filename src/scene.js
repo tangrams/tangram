@@ -802,6 +802,7 @@ Scene.prototype._loadTile = function (coords, options = {}) {
             tile.updateDebugElement(options.debugElement, this.debug);
         }
     }
+    return tile;
 };
 
 // Rebuild all tiles
@@ -816,7 +817,8 @@ Scene.prototype.rebuildGeometry = function () {
         if (this.building) {
             // Queue up to one rebuild call at a time, only save last request
             if (this.building.queued && this.building.queued.reject) {
-                this.building.queued.reject(); // notify previous callback that it did not complete
+                // notify previous callback that it did not complete
+                this.building.queued.reject(new Error('Scene.rebuildGeometry: request superceded by a newer call'));
             }
 
             // Save queued request

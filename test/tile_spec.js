@@ -21,8 +21,7 @@ let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
 describe('Tile', () => {
     let subject,
-        scene,
-        div    = document.createElement('div');
+        scene;
 
     beforeEach((done) => {
         scene = makeScene({});
@@ -67,47 +66,24 @@ describe('Tile', () => {
         });
     });
 
-    describe('.load(scene, coords, div, cb)', () => {
-
-        function doLoad(cb) {
-            subject.load(scene, _.clone(samples.nyc_coords), div, cb);
-        }
+    describe('.load(scene, coords)', () => {
 
         beforeEach(() => {
             sinon.stub(subject, 'build');
-            sinon.spy(subject,  'updateElement');
             sinon.spy(subject,  'updateVisibility');
+            subject.load(scene, _.clone(samples.nyc_coords));
         });
 
-        describe('when the tile was not already loaded', () => {
+        afterEach(() => {
+            subject.updateVisibility.restore();
+        });
 
-            it('calls back with the div', (done) => {
-                doLoad((error, el) => {
-                    assert.instanceOf(el, HTMLElement);
-                    done();
-                });
-            });
+        it('sets the key value', () => {
+            assert.propertyVal(subject, 'key', '150/192/9');
+        });
 
-            it('sets the key value', (done) => {
-                doLoad((error, el) => {
-                    assert.propertyVal(subject, 'key', '150/192/9');
-                    done();
-                });
-            });
-
-            it('updates the html element', (done) => {
-                doLoad((error, el) => {
-                    sinon.assert.called(subject.updateElement);
-                    done();
-                });
-            });
-
-            it('updates the visiblility', (done) => {
-                doLoad((error, el) => {
-                    sinon.assert.called(subject.updateVisibility);
-                    done();
-                });
-            });
+        it('updates the visiblility', () => {
+            sinon.assert.called(subject.updateVisibility);
         });
 
     });
