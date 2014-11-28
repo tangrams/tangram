@@ -1,5 +1,7 @@
 import Scene from './scene';
 
+import log from 'loglevel';
+
 export var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
@@ -84,9 +86,10 @@ export var LeafletLayer = L.GridLayer.extend({
 
         // Use leaflet's existing event system as the callback mechanism
         this.scene.init().then(() => {
+            log.debug('Scene: init() finished');
             this.fire('init');
         }, (error) => {
-            console.log('scene init error', error);
+            log.error('Scene: init() error', error);
             throw error;
         });
     },
