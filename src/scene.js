@@ -115,11 +115,11 @@ Scene.prototype.init = function () {
                 for (var mode of Utils.values(this.modes)) {
                     mode.setGL(this.gl);
                 }
-                this.updateModes(() => {
-                    this.initializing = false;
-                    this.initialized = true;
-                    resolve();
-                });
+                this.updateModes();
+
+                this.initializing = false;
+                this.initialized = true;
+                resolve();
 
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
@@ -823,7 +823,7 @@ Scene.prototype.rebuildGeometry = function () {
 
             // Save queued request
             this.building.queued = { resolve, reject };
-            log.trace(`Scene: queuing rebuildGeometry() request`);
+            log.trace(`Scene.rebuildGeometry(): queuing request`);
             return;
         }
 
@@ -1028,26 +1028,10 @@ Scene.prototype.reload = function () {
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.updateModes = function (callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
+Scene.prototype.updateModes = function () {
     if (!this.initialized && !this.initializing) {
-        callback(new Error('Scene.updateModes() called before scene was initialized'));
+        throw new Error('Scene.updateModes() called before scene was initialized');
     }
-
-    // Skip if already in progress
-    if (this.compiling) {
-        // Queue up to one additional call at a time, only save last request
-        if (this.compiling.queued && typeof this.compiling.queued.callback === 'function') {
-            // notify previous callback that it did not complete
-            this.compiling.queued.callback(new Error('Scene.updateModes() queued request was superceded'));
-        }
-
-        // Save queued request
-        this.compiling.queued = { callback };
-        return;
-    }
-    this.compiling = { callback };
 
     // Copy stylesheet modes
     for (var name in this.styles.modes) {
@@ -1065,22 +1049,8 @@ Scene.prototype.updateModes = function (callback) {
         }
     }
 
-    log.debug(`Scene.updateModes(): compiled all modes`);
-
     this.dirty = true;
-
-    callback = this.compiling.callback;
-    var queued = this.compiling.queued;
-    this.compiling = null;
-
-    // Complete this callback
-    callback();
-
-    // Another request queued?
-    if (queued) {
-        log.trace(`Scene.updateModes(): starting queued request`);
-        this.updateModes(queued.callback);
-    }
+    log.debug(`Scene.updateModes(): compiled all modes`);
 };
 
 Scene.prototype.updateActiveModes = function () {

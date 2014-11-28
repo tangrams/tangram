@@ -151,7 +151,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.init(callback)', () => {
+    describe('.init()', () => {
 
         describe('when the scene is not initialized', () => {
             let subject;
@@ -189,6 +189,11 @@ describe('Scene', () => {
 
             it('sets the gl property', () => {
                 assert.instanceOf(subject.gl, WebGLRenderingContext);
+            });
+
+            it('compiles render modes', () => {
+                assert.isTrue(subject.modes.rainbow.compiled);
+                assert.ok(subject.modes.rainbow.program);
             });
         });
 
@@ -420,7 +425,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.updateModes(callback)', () => {
+    describe('.updateModes()', () => {
         let subject;
 
         beforeEach((done) => {
@@ -433,11 +438,32 @@ describe('Scene', () => {
             subject = undefined;
         });
 
-        it('calls back', (done) => {
-            subject.updateModes((error) => {
-                assert.isUndefined(error);
-                done();
-            });
+        it('adds a new mode', () => {
+            subject.styles.modes.elevator = {
+                "extends": "polygons",
+                "animated": true,
+                "shaders": {
+                    "transforms": {
+                        "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
+                    }
+                }
+            };
+
+            subject.updateModes();
+            assert.isTrue(subject.modes.elevator.compiled);
+            assert.ok(subject.modes.elevator.program);
+        });
+
+        it('adds properties to an existing mode', () => {
+            subject.styles.modes.rainbow.shaders.uniforms = { u_test: 10 };
+            subject.styles.modes.rainbow.properties = { test: 20 };
+            subject.updateModes();
+
+            assert.ok(subject.modes.rainbow);
+            assert.isTrue(subject.modes.rainbow.compiled);
+            assert.ok(subject.modes.rainbow.program);
+            assert.deepPropertyVal(subject, 'modes.rainbow.shaders.uniforms.u_test', 10);
+            assert.deepPropertyVal(subject, 'modes.rainbow.properties.test', 20);
         });
     });
 

@@ -18,7 +18,8 @@ var RenderMode = {
         this.defines = {};
         this.shaders = {};
         this.selection = false;
-        this.loading = false;
+        this.compiling = false;
+        this.compiled = false;
         this.program = null;
         this.selection_program = null;
     },
@@ -39,7 +40,8 @@ var RenderMode = {
     buildPolygons () {},
     buildLines () {},
     buildPoints () {},
-    destroy() {
+
+    destroy () {
         if (this.program) {
             this.program.destroy();
             this.program = null;
@@ -62,10 +64,11 @@ var RenderMode = {
             throw(new Error(`mode.compile(): skipping for ${this.name} because no GL context`));
         }
 
-        if (this.loading) {
-            throw(new Error(`mode.compile(): skipping for ${this.name} because mode is already loading`));
+        if (this.compiling) {
+            throw(new Error(`mode.compile(): skipping for ${this.name} because mode is already compiling`));
         }
-        this.loading = true;
+        this.compiling = true;
+        this.compiled = false;
 
         // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
         var defines = this.buildDefineList();
@@ -107,17 +110,19 @@ var RenderMode = {
             }
         }
         catch(error) {
-            this.loading = false;
+            this.compiling = false;
+            this.compiled = false;
             throw(new Error(`mode.compile(): mode ${this.name} error:`, error));
         }
 
-        this.loading = false;
+        this.compiling = false;
+        this.compiled = true;
     },
 
     /** TODO: could probably combine and generalize this with similar method in GLProgram
      * (list of define objects that inherit from each other)
      */
-    buildDefineList() {
+    buildDefineList () {
         // Add any custom defines to built-in mode defines
         var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
         if (this.defines != null) {
@@ -136,14 +141,14 @@ var RenderMode = {
 
 
     // Set mode uniforms on currently bound program
-    setUniforms() {
+    setUniforms () {
         var program = GLProgram.current;
         if (program != null && this.shaders != null && this.shaders.uniforms != null) {
             program.setUniforms(this.shaders.uniforms);
         }
     },
 
-    update() {
+    update () {
         // Mode-specific animation
         // if (typeof this.animation === 'function') {
         //     this.animation();
