@@ -824,7 +824,7 @@ Scene.prototype.rebuildGeometry = function () {
         if (this.building) {
             // Queue up to one rebuild call at a time, only save last request
             if (this.building.queued && this.building.queued.reject) {
-                // notify previous callback that it did not complete
+                // notify previous request that it did not complete
                 this.building.queued.reject(new Error('Scene.rebuildGeometry: request superceded by a newer call'));
             }
 
@@ -883,7 +883,7 @@ Scene.prototype.rebuildGeometry = function () {
         this.updateActiveModes();
         this.resetTime();
 
-        // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
+        // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
         if (this.building && Object.keys(this.building.tiles).length === 0) {
             resolve();
 

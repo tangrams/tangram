@@ -68,15 +68,17 @@ var message_id = 0;
 var messages = {};
 
 // Main thread:
-// Send messages to workers, and optionally receive an async response that is then routed a callback
+// Send messages to workers, and optionally receive an async response that is then returned in a promise
 function setupMainThread () {
 
     // Send a message to the worker, and optionally get an async response
-    // - worker: the web worker instance
-    // - method: on the worker side, the method with this name will be invoked
-    // - message: will be passed to the method call in the worker
-    // - callback: if provided, worker will send the invoked method's return value back to the worker,
-    //     which will then pass it to the callback
+    // Arguments:
+    //   - worker: the web worker instance
+    //   - method: on the worker side, the method with this name will be invoked
+    //   - message: will be passed to the method call in the worker
+    // Returns:
+    //   - a promise that will be fulfilled if the worker method returns a value (could be immediately, or async)
+    //
     WorkerBroker.postMessage = function (worker, method, ...message) {
         // Track state of this message
         var promise = new Promise((resolve, reject) => {
@@ -94,10 +96,10 @@ function setupMainThread () {
         return promise;
     };
 
-    // Listen for messages coming back from the worker, and pass them to that messages's callback
+    // Listen for messages coming back from the worker, and fulfill that message's promise
     WorkerBroker.addWorker = function (worker) {
         worker.addEventListener('message', (event) => {
-            // Pass the result along to the callback
+            // Pass the result to the promise
             var id = event.data.message_id;
             if (messages[id]) {
                 if (event.data.error) {
@@ -124,7 +126,7 @@ function setupMainThread () {
 
 // Worker threads:
 // Listen for messages initiating a call from the main thread, dispatch them,
-// and callback to the main thread with any return value
+// and send any return value back to the main thread
 function setupWorkerThread () {
 
     self.addEventListener('message', (event) => {

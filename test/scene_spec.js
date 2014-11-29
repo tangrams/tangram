@@ -352,7 +352,7 @@ describe('Scene', () => {
 
     describe('.loadTile(tile)', () => {
         let subject;
-        let tile = { coords: null, div: null, callback: () => {}};
+        let tile = { coords: null };
 
         beforeEach(() => {
             subject = makeScene({});
