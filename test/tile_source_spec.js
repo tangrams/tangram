@@ -59,7 +59,7 @@ describe('TileSource', () => {
         });
     });
 
-    describe('.loadTile(tile, cb)', () => {
+    describe('.loadTile(tile)', () => {
         let subject = new TileSource(options);
         describe('when the .loadTile method is not overridden', () => {
             it('throws a MethodNotImplemented error', () => {
@@ -165,7 +165,7 @@ describe('TileSource', () => {
 
     describe('GeoJSONTileSource', () => {
 
-        describe('.loadTile(tile, callback)', () => {
+        describe('.loadTile(tile)', () => {
 
             describe('when there are no http errors', () => {
                 let subject, mockTile;

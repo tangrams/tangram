@@ -18,18 +18,14 @@ var RenderMode = {
         this.defines = {};
         this.shaders = {};
         this.selection = false;
-        this.loading = false;
-        this.gl_program = null;
-        this.selection_gl_program = null;
+        this.compiling = false;
+        this.compiled = false;
+        this.program = null;
+        this.selection_program = null;
     },
 
-    setGL (gl, callback) {
+    setGL (gl) {
         this.gl = gl;
-        this.valid = true;
-    },
-
-    compile (callback) {
-        this.makeGLProgram(callback);
     },
 
     makeGLGeometry (vertex_data) {
@@ -44,38 +40,35 @@ var RenderMode = {
     buildPolygons () {},
     buildLines () {},
     buildPoints () {},
-    destroy() {
-        if (this.gl_program) {
-            this.gl_program.destroy();
-            this.gl_program = null;
+
+    destroy () {
+        if (this.program) {
+            this.program.destroy();
+            this.program = null;
         }
 
-        if (this.selection_gl_program) {
-            this.selection_gl_program.destroy();
-            this.selection_gl_program = null;
+        if (this.selection_program) {
+            this.selection_program.destroy();
+            this.selection_program = null;
         }
 
         this.gl = null;
-        this.valid = false;
 
         if (!this.isBuiltIn()) {
             delete Modes[this.name];
         }
     },
 
-    makeGLProgram(callback) {
-        callback = (typeof callback === 'function') ? callback : function(){};
-
-        if (this.valid === false) {
-            callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode not valid`));
-            return;
+    compile () {
+        if (!this.gl) {
+            throw(new Error(`mode.compile(): skipping for ${this.name} because no GL context`));
         }
 
-        if (this.loading) {
-            callback(new Error(`mode.makeGLProgram(): skipping for ${this.name} because mode is already loading`));
-            return;
+        if (this.compiling) {
+            throw(new Error(`mode.compile(): skipping for ${this.name} because mode is already compiling`));
         }
-        this.loading = true;
+        this.compiling = true;
+        this.compiled = false;
 
         // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
         var defines = this.buildDefineList();
@@ -87,66 +80,49 @@ var RenderMode = {
         // Get any custom code transforms
         var transforms = (this.shaders && this.shaders.transforms);
 
-        // Create shaders - programs may point to inherited parent properties, but should be replaced by subclass version
-        var program = this.gl_program;
-        var selection_program = this.selection_gl_program;
+        // Create shaders
+        try {
+            this.program = new GLProgram(
+                this.gl,
+                shader_sources[this.vertex_shader_key],
+                shader_sources[this.fragment_shader_key],
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name
+                }
+            );
 
-        Promise.all([
-            new Promise((resolve, reject) => {
-                program = new GLProgram(
+            if (this.selection) {
+                this.selection_program = new GLProgram(
                     this.gl,
                     shader_sources[this.vertex_shader_key],
-                    shader_sources[this.fragment_shader_key],
+                    shader_sources['selection_fragment'],
                     {
-                        defines: defines,
+                        defines: selection_defines,
                         transforms: transforms,
-                        name: this.name,
-                        resolve: resolve,
-                        reject: reject
+                        name: (this.name + ' (selection)')
                     }
                 );
-            }),
-            new Promise((resolve, reject) => {
-                if (this.selection) {
-                    selection_program = new GLProgram(
-                        this.gl,
-                        shader_sources[this.vertex_shader_key],
-                        shader_sources['selection_fragment'],
-                        {
-                            defines: selection_defines,
-                            transforms: transforms,
-                            name: (this.name + ' (selection)'),
-                            resolve: resolve,
-                            reject: reject
-                        }
-                    );
-                } else { resolve(); }
-            })
-        ]).then(() => {
-            // Wait for program(s) to compile before replacing them
-            // TODO: should this entire method offer a callback for when compilation completes?
-            this.loading = false;
-
-            if (program) {
-                this.gl_program = program;
             }
-
-            if (selection_program) {
-                this.selection_gl_program = selection_program;
+            else {
+                this.selection_program = null;
             }
+        }
+        catch(error) {
+            this.compiling = false;
+            this.compiled = false;
+            throw(new Error(`mode.compile(): mode ${this.name} error:`, error));
+        }
 
-            callback();
-
-        }, (error) => {
-            callback(new Error(`mode.makeGLProgram(): mode ${this.name} completed with error: ${error.message}`));
-        });
-
+        this.compiling = false;
+        this.compiled = true;
     },
 
     /** TODO: could probably combine and generalize this with similar method in GLProgram
      * (list of define objects that inherit from each other)
      */
-    buildDefineList() {
+    buildDefineList () {
         // Add any custom defines to built-in mode defines
         var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
         if (this.defines != null) {
@@ -165,14 +141,14 @@ var RenderMode = {
 
 
     // Set mode uniforms on currently bound program
-    setUniforms() {
-        var gl_program = GLProgram.current;
-        if (gl_program != null && this.shaders != null && this.shaders.uniforms != null) {
-            gl_program.setUniforms(this.shaders.uniforms);
+    setUniforms () {
+        var program = GLProgram.current;
+        if (program != null && this.shaders != null && this.shaders.uniforms != null) {
+            program.setUniforms(this.shaders.uniforms);
         }
     },
 
-    update() {
+    update () {
         // Mode-specific animation
         // if (typeof this.animation === 'function') {
         //     this.animation();

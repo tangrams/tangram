@@ -33,7 +33,7 @@ export default class Camera {
     }
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
-    setupProgram(gl_program) {
+    setupProgram(program) {
     }
 
 }
@@ -116,8 +116,8 @@ class PerspectiveCamera extends Camera {
         );
     }
 
-    setupProgram(gl_program) {
-        gl_program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_mat);
+    setupProgram(program) {
+        program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_mat);
     }
 
 }
@@ -162,9 +162,9 @@ class IsometricCamera extends Camera {
         mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));
     }
 
-    setupProgram(gl_program) {
-        gl_program.uniform('2f', 'u_isometric_axis', this.axis.x / this.scene.view_aspect, this.axis.y);
-        gl_program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
+    setupProgram(program) {
+        program.uniform('2f', 'u_isometric_axis', this.axis.x / this.scene.view_aspect, this.axis.y);
+        program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
     }
 
 }

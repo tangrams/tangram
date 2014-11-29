@@ -19,6 +19,7 @@ function makeScene(options) {
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
+let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
 describe('Scene', () => {
 
@@ -42,8 +43,7 @@ describe('Scene', () => {
         let subject;
 
         beforeEach((done) => {
-            let coords = midtownTile,
-                div    = document.createElement('div');
+            let coords = midtownTile;
 
             subject = makeScene({});
 
@@ -51,7 +51,7 @@ describe('Scene', () => {
 
             subject.setCenter(...nycLatLng);
             subject.init().then(() => {
-                subject.loadTile(coords, div);
+                subject.loadTile(coords);
                 subject.loadQueuedTiles();
                 done();
             });
@@ -67,7 +67,7 @@ describe('Scene', () => {
         });
     });
 
-    describe('._loadTile(coords, div, cb)', () => {
+    describe('._loadTile(coords, options)', () => {
         let subject,
             coord = midtownTile,
             div = document.createElement('div');
@@ -85,28 +85,26 @@ describe('Scene', () => {
 
         describe('when the scene has not loaded the tile', () => {
 
-            it('loads the tile', (done) => {
-                subject._loadTile(coord, div, (er, div, tile) => {
-                    assert.instanceOf(tile, Tile);
-                    done();
-                });
+            it('loads the tile', () => {
+                let tile = subject._loadTile(coord, { debugElement: div });
+                assert.instanceOf(tile, Tile);
             });
 
-            it('caches the result in the scene object', (done) => {
-                subject._loadTile(coord, div, (er, div, tile) => {
-                    let tiles = subject.tiles;
-                    assert.instanceOf(tiles[tile.key], Tile);
-                    done();
-                });
+            it('caches the result in the scene object', () => {
+                let tile = subject._loadTile(coord, { debugElement: div });
+                let tiles = subject.tiles;
+                assert.instanceOf(tiles[tile.key], Tile);
             });
         });
 
         describe('when the scene already have the tile', () => {
-            let key = '2621440/2621440/20';
+            let key = midtownTileKey;
+            let tile;
 
             beforeEach(() => {
                 subject.tiles[key] = {};
                 sinon.spy(subject, 'cacheTile');
+                tile = subject._loadTile(coord, { debugElement: div });
             });
 
             afterEach(() => {
@@ -114,12 +112,8 @@ describe('Scene', () => {
                 subject.tiles[key] = undefined;
             });
 
-            it('calls back with the div', (done) => {
-                subject._loadTile(coord, div, (error, div) => {
-                    assert.isNull(error);
-                    assert.instanceOf(div, HTMLElement);
-                    done();
-                });
+            it('updates the div', () => {
+                assert.equal(div.getAttribute('data-tile-key'), key);
             });
         });
 
@@ -157,7 +151,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.init(callback)', () => {
+    describe('.init()', () => {
 
         describe('when the scene is not initialized', () => {
             let subject;
@@ -195,6 +189,11 @@ describe('Scene', () => {
 
             it('sets the gl property', () => {
                 assert.instanceOf(subject.gl, WebGLRenderingContext);
+            });
+
+            it('compiles render modes', () => {
+                assert.isTrue(subject.modes.rainbow.compiled);
+                assert.ok(subject.modes.rainbow.program);
             });
         });
 
@@ -353,7 +352,7 @@ describe('Scene', () => {
 
     describe('.loadTile(tile)', () => {
         let subject;
-        let tile = { coords: null, div: null, callback: () => {}};
+        let tile = { coords: null };
 
         beforeEach(() => {
             subject = makeScene({});
@@ -426,7 +425,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.updateModes(callback)', () => {
+    describe('.updateModes()', () => {
         let subject;
 
         beforeEach((done) => {
@@ -439,15 +438,36 @@ describe('Scene', () => {
             subject = undefined;
         });
 
-        it('calls back', (done) => {
-            subject.updateModes((error) => {
-                assert.isUndefined(error);
-                done();
-            });
+        it('adds a new mode', () => {
+            subject.styles.modes.elevator = {
+                "extends": "polygons",
+                "animated": true,
+                "shaders": {
+                    "transforms": {
+                        "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
+                    }
+                }
+            };
+
+            subject.updateModes();
+            assert.isTrue(subject.modes.elevator.compiled);
+            assert.ok(subject.modes.elevator.program);
+        });
+
+        it('adds properties to an existing mode', () => {
+            subject.styles.modes.rainbow.shaders.uniforms = { u_test: 10 };
+            subject.styles.modes.rainbow.properties = { test: 20 };
+            subject.updateModes();
+
+            assert.ok(subject.modes.rainbow);
+            assert.isTrue(subject.modes.rainbow.compiled);
+            assert.ok(subject.modes.rainbow.program);
+            assert.deepPropertyVal(subject, 'modes.rainbow.shaders.uniforms.u_test', 10);
+            assert.deepPropertyVal(subject, 'modes.rainbow.properties.test', 20);
         });
     });
 
-    describe('.rebuildGeometry(callback)', () => {
+    describe('.rebuildGeometry()', () => {
         let subject;
         let div = document.createElement('div');
 
@@ -460,7 +480,6 @@ describe('Scene', () => {
 
                 var tile = subject.tiles['38603/49255/17'];
                 var check = setInterval(() => {
-                    // console.log("check tile load");
                     if (tile.loaded) {
                         clearInterval(check);
                         done();
@@ -475,48 +494,34 @@ describe('Scene', () => {
         });
 
         it('calls back', (done) => {
-            subject.rebuildGeometry((error) => {
-                assert.isNull(error);
+            subject.rebuildGeometry().then(done);
+        });
+
+        it('queues the second call & then runs it when the first call is complete', (done) => {
+            subject.rebuildGeometry();
+            subject.rebuildGeometry().then(done);
+        });
+
+        it('runs first call, queues second call, then rejects second call when third call is made', (done) => {
+            let rejectedSecond;
+            subject.rebuildGeometry();
+            subject.rebuildGeometry().catch((error) => {
+                rejectedSecond = (error.message === 'Scene.rebuildGeometry: request superceded by a newer call');
+            });
+            subject.rebuildGeometry().then(() => {
+                assert.isTrue(rejectedSecond);
                 done();
             });
         });
-
-        it.skip('runs first call, queues second call, rejects the rest', (done) => {
-            let success = 0,
-                fail = 0,
-                complete = 0;
-
-            for (let i=0; i < 20; i++) {
-                subject.rebuildGeometry((error) => {
-                    if (error) {
-                        fail++;
-                    }
-                    else {
-                        success++;
-                    }
-                    complete++;
-
-                    if (complete === 20) {
-                        check();
-                    }
-                });
-            }
-
-            function check () {
-                assert.equal(success, 2);
-                assert.equal(fail, 18);
-                done();
-            }
-        });
     });
 
-    describe('.createWorkers(cb)', () => {
+    describe('.createWorkers()', () => {
         let subject;
         beforeEach(() => {
-            sinon.stub(Utils, 'io').returns(Promise.resolve('(function () {})'));
             subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
+            sinon.spy(Utils, 'io');
         });
 
         afterEach(() => {

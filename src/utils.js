@@ -1,6 +1,9 @@
 // Miscellaneous utilities
 /*jshint worker: true*/
 
+import log from 'loglevel';
+import yaml from 'js-yaml';
+
 var Utils;
 export default Utils = {};
 
@@ -36,6 +39,32 @@ Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET',
     });
 };
 
+Utils.parseResource = function (body) {
+    var data = null;
+    try {
+        eval('data = ' + body); // jshint ignore:line
+    } catch (e) {
+        try {
+            data = yaml.safeLoad(body);
+        } catch (e) {
+            log.error('Utils.parseResource: failed to parse', body, e);
+        }
+    }
+    return data;
+};
+
+Utils.loadResource = function (source) {
+    return new Promise((resolve, reject) => {
+        if (typeof source === 'string') {
+            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
+                var data = Utils.parseResource(body);
+                resolve(data);
+            }, reject);
+        } else {
+            resolve(source);
+        }
+    });
+};
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
 Utils.requestAnimationFramePolyfill = function () {
