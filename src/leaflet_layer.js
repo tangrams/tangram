@@ -86,10 +86,10 @@ export var LeafletLayer = L.GridLayer.extend({
 
         // Use leaflet's existing event system as the callback mechanism
         this.scene.init().then(() => {
-            log.debug('Scene: init() finished');
+            log.debug('Scene.init() succeeded');
             this.fire('init');
         }, (error) => {
-            log.error('Scene: init() error', error);
+            log.error('Scene.init() failed with error:', error);
             throw error;
         });
     },

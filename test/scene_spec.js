@@ -515,13 +515,13 @@ describe('Scene', () => {
         });
     });
 
-    describe('.createWorkers(cb)', () => {
+    describe('.createWorkers()', () => {
         let subject;
         beforeEach(() => {
-            sinon.stub(Utils, 'io').returns(Promise.resolve('(function () {})'));
             subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
             sinon.spy(subject, 'createObjectURL');
+            sinon.spy(Utils, 'io');
         });
 
         afterEach(() => {

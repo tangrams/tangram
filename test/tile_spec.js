@@ -53,7 +53,7 @@ describe('Tile', () => {
 
     describe('.build(scene, key)', () => {
         beforeEach(() => {
-            sinon.stub(subject, 'workerMessage');
+            sinon.spy(subject, 'workerMessage');
         });
 
         afterEach(() => {

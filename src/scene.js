@@ -124,9 +124,7 @@ Scene.prototype.init = function () {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
-            }, (error) => {
-                reject(error);
-            });
+            }, reject);
         });
     });
 };
@@ -214,36 +212,44 @@ Scene.prototype.createWorkers = function () {
                     reject(new Error('Web worker loaded with content length zero'));
                 }
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-                this.makeWorkers(worker_local_url);
-                this.initWorkerEvents();
-                resolve();
+                this.makeWorkers(worker_local_url).then(resolve, reject);
             }, reject);
         } else { // Traditional load from remote URL
-            this.makeWorkers(worker_url);
-            this.initWorkerEvents();
-            resolve();
+            this.makeWorkers(worker_url).then(resolve, reject);
         }
     });
 };
 
-// Init workers events
-Scene.prototype.initWorkerEvents = function () {
-    this.workers.forEach((worker) => {
-        worker.addEventListener('message', this.workerLogMessage.bind(this));
-    });
-    this.next_worker = 0;
-    this.selection_map_worker_size = {};
-};
-
-// Instantiate workers from URL
+// Instantiate workers from URL, init event handlers
 Scene.prototype.makeWorkers = function (url) {
+    var queue = [];
+
     this.workers = [];
     for (var id=0; id < this.num_workers; id++) {
         var worker = new Worker(url);
         this.workers[id] = worker;
+
+        worker.addEventListener('message', this.workerLogMessage.bind(this));
         WorkerBroker.addWorker(worker);
-        WorkerBroker.postMessage(worker, 'init', { worker_id: id });
+
+        log.debug(`Scene.makeWorkers: initializing worker ${id}`);
+        let _id = id;
+        queue.push(WorkerBroker.postMessage(worker, 'init', id).then(
+            (id) => {
+                log.debug(`Scene.makeWorkers: initialized worker ${id}`);
+                return id;
+            },
+            (error) => {
+                log.error(`Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
+                return Promise.reject(error);
+            })
+        );
     }
+
+    this.next_worker = 0;
+    this.selection_map_worker_size = {};
+
+    return Promise.all(queue);
 };
 
 // Round robin selection of next worker
@@ -718,9 +724,10 @@ Scene.prototype.doFeatureSelectionRequests = function () {
                 WorkerBroker.postMessage(
                     this.workers[worker_id],
                     'getFeatureSelection',
-                    { id: request.id, key: feature_key },
-                    message => this.workerGetFeatureSelection(message)
-                );
+                    { id: request.id, key: feature_key })
+                .then(message => {
+                    this.workerGetFeatureSelection(message);
+                });
             }
         }
         // No feature found, but still need to resolve promise

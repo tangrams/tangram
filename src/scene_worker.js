@@ -16,9 +16,10 @@ SceneWorker.tiles = {}; // tiles processed by this worker
 GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker
-SceneWorker.worker.init = function ({ worker_id }) {
+SceneWorker.worker.init = function (worker_id) {
     SceneWorker.worker_id = worker_id;
     Style.selection_map_prefix = SceneWorker.worker_id;
+    return worker_id;
 };
 
 SceneWorker.updateConfig = function (config) {

@@ -52,7 +52,7 @@ export default class Tile {
         if (this.worker == null) {
             this.worker = scene.nextWorker();
         }
-        WorkerBroker.postMessage(this.worker, ...message);
+        return WorkerBroker.postMessage(this.worker, ...message);
     }
 
     build(scene) {
@@ -65,9 +65,10 @@ export default class Tile {
                 tile_source: this.tile_source.buildAsMessage(),
                 layers: scene.layers_serialized,
                 styles: scene.styles_serialized
-            },
-            message => scene.buildTileCompleted(message)
-        );
+            })
+        .then(message => {
+            scene.buildTileCompleted(message);
+        });
     }
 
     // Process geometry for tile - called by web worker
