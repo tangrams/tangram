@@ -5,13 +5,56 @@ import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import log from 'loglevel';
-var shader_sources = require('./gl_shaders'); // built-in shaders
+import shaderSources from './shader_sources'; // built-in shaders
 
 export var Modes = {};
 export var ModeManager = {};
 
+// Manage modes
 
-// Base
+// Global configuration for all modes
+ModeManager.init = function () {
+    GLProgram.removeTransform('globals');
+
+    // Layer re-ordering function
+    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+
+    // Spherical environment map
+    GLProgram.addTransform('globals', `
+        #if defined(LIGHTING_ENVIRONMENT)
+        ${shaderSources['modules/spherical_environment_map']}
+        #endif
+    `);
+};
+
+// Update built-in mode or create a new one
+ModeManager.updateMode = function (name, settings) {
+    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
+    if (Modes[settings.extends]) {
+        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
+    }
+
+    for (var s in settings) {
+        Modes[name][s] = settings[s];
+    }
+
+    Modes[name].name = name;
+    return Modes[name];
+};
+
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    Object.keys(Modes).forEach((_name) => {
+        var mode = Modes[_name];
+        if (mode.gl === gl) {
+            log.trace(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    });
+};
+
+
+// Base class
 
 var RenderMode = {
     init () {
@@ -84,8 +127,8 @@ var RenderMode = {
         try {
             this.program = new GLProgram(
                 this.gl,
-                shader_sources[this.vertex_shader_key],
-                shader_sources[this.fragment_shader_key],
+                shaderSources[this.vertex_shader_key],
+                shaderSources[this.fragment_shader_key],
                 {
                     defines: defines,
                     transforms: transforms,
@@ -96,8 +139,8 @@ var RenderMode = {
             if (this.selection) {
                 this.selection_program = new GLProgram(
                     this.gl,
-                    shader_sources[this.vertex_shader_key],
-                    shader_sources['selection_fragment'],
+                    shaderSources[this.vertex_shader_key],
+                    shaderSources['selection_fragment'],
                     {
                         defines: selection_defines,
                         transforms: transforms,
@@ -154,33 +197,6 @@ var RenderMode = {
         //     this.animation();
         // }
     }
-};
-
-// Update built-in mode or create a new one
-ModeManager.updateMode = function (name, settings)
-{
-    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
-    if (Modes[settings.extends]) {
-        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
-    }
-
-    for (var s in settings) {
-        Modes[name][s] = settings[s];
-    }
-
-    Modes[name].name = name;
-    return Modes[name];
-};
-
-// Destroy all modes for a given GL context
-ModeManager.destroy = function (gl) {
-    Object.keys(Modes).forEach((_name) => {
-        var mode = Modes[_name];
-        if (mode.gl === gl) {
-            log.trace(`destroying render mode ${mode.name}`);
-            mode.destroy();
-        }
-    });
 };
 
 

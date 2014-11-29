@@ -1304,6 +1304,7 @@ Scene.processLayersForTile = function (layers, tile) {
 // Called once on instantiation
 Scene.createModes = function (stylesheet_modes) {
     var modes = {};
+    ModeManager.init();
 
     // Built-in modes
     var built_ins = require('./gl/gl_modes').Modes;
