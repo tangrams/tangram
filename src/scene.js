@@ -14,7 +14,6 @@ import Tile from './tile';
 import TileSource from './tile_source';
 
 import log from 'loglevel';
-import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
@@ -47,7 +46,7 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.layers = null;
     this.styles = null;
 
-    this.building = null;                           // tracks current scnee building state (tiles being built, callback when finished, etc.)
+    this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
     this.animated = false;                          // request redraw every frame
     this.preRender = options.preRender;             // optional pre-rendering hook
@@ -116,18 +115,16 @@ Scene.prototype.init = function () {
                 for (var mode of Utils.values(this.modes)) {
                     mode.setGL(this.gl);
                 }
-                this.updateModes(() => {
-                    this.initializing = false;
-                    this.initialized = true;
-                    resolve();
-                });
+                this.updateModes();
+
+                this.initializing = false;
+                this.initialized = true;
+                resolve();
 
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
-            }, (error) => {
-                reject(error);
-            });
+            }, reject);
         });
     });
 };
@@ -169,7 +166,7 @@ Scene.prototype.initSelectionBuffer = function () {
     this.pixel32 = new Float32Array(this.pixel.buffer);
     this.selection_requests = {};
     this.selected_feature = null;
-    this.selection_callback_timer = null;
+    this.selection_delay_timer = null;
     this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
 
     // Frame buffer for selection
@@ -216,36 +213,44 @@ Scene.prototype.createWorkers = function () {
                     reject(new Error('Web worker loaded with content length zero'));
                 }
                 var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-                this.makeWorkers(worker_local_url);
-                this.initWorkerEvents();
-                resolve();
+                this.makeWorkers(worker_local_url).then(resolve, reject);
             }, reject);
         } else { // Traditional load from remote URL
-            this.makeWorkers(worker_url);
-            this.initWorkerEvents();
-            resolve();
+            this.makeWorkers(worker_url).then(resolve, reject);
         }
     });
 };
 
-// Init workers events
-Scene.prototype.initWorkerEvents = function () {
-    this.workers.forEach((worker) => {
-        worker.addEventListener('message', this.workerLogMessage.bind(this));
-    });
-    this.next_worker = 0;
-    this.selection_map_worker_size = {};
-};
-
-// Instantiate workers from URL
+// Instantiate workers from URL, init event handlers
 Scene.prototype.makeWorkers = function (url) {
+    var queue = [];
+
     this.workers = [];
     for (var id=0; id < this.num_workers; id++) {
         var worker = new Worker(url);
         this.workers[id] = worker;
+
+        worker.addEventListener('message', this.workerLogMessage.bind(this));
         WorkerBroker.addWorker(worker);
-        WorkerBroker.postMessage(worker, 'init', { worker_id: id });
+
+        log.debug(`Scene.makeWorkers: initializing worker ${id}`);
+        let _id = id;
+        queue.push(WorkerBroker.postMessage(worker, 'init', id).then(
+            (id) => {
+                log.debug(`Scene.makeWorkers: initialized worker ${id}`);
+                return id;
+            },
+            (error) => {
+                log.error(`Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
+                return Promise.reject(error);
+            })
+        );
     }
+
+    this.next_worker = 0;
+    this.selection_map_worker_size = {};
+
+    return Promise.all(queue);
 };
 
 // Round robin selection of next worker
@@ -517,8 +522,8 @@ Scene.prototype.renderGL = function () {
         // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
         this.modes[mode].update();
 
-        var gl_program = this.modes[mode].gl_program;
-        if (gl_program == null || gl_program.compiled === false) {
+        var program = this.modes[mode].program;
+        if (program == null || program.compiled === false) {
             continue;
         }
 
@@ -534,38 +539,38 @@ Scene.prototype.renderGL = function () {
                 if (first_for_mode === true) {
                     first_for_mode = false;
 
-                    gl_program.use();
+                    program.use();
                     this.modes[mode].setUniforms();
 
                     // TODO: don't set uniforms when they haven't changed
-                    gl_program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    gl_program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
-                    gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    gl_program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-                    gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                    gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
+                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                    program.uniform('2f', 'u_map_center', center.x, center.y);
+                    program.uniform('1f', 'u_num_layers', this.layers.length);
+                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
-                    this.camera.setupProgram(gl_program);
-                    this.lighting.setupProgram(gl_program);
+                    this.camera.setupProgram(program);
+                    this.lighting.setupProgram(program);
                 }
 
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
 
                 // Tile origin
-                gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
                 // Tile view matrix - transform tile space into view space (meters, relative to camera)
                 mat4.identity(tile_view_mat);
                 mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
                 mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
+                program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                 // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(tile_world_mat);
                 mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
                 mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
+                program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
                 tile.gl_geometry[mode].render();
@@ -579,8 +584,6 @@ Scene.prototype.renderGL = function () {
     // mode program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
     if (Object.keys(this.selection_requests).length > 0) {
-
-        // TODO: queue callback till panning is over? coords where selection was requested are out of date
         if (this.panning) {
             return;
         }
@@ -591,8 +594,8 @@ Scene.prototype.renderGL = function () {
         this.resetFrame();
 
         for (mode in this.modes) {
-            gl_program = this.modes[mode].selection_gl_program;
-            if (gl_program == null || gl_program.compiled === false) {
+            program = this.modes[mode].selection_program;
+            if (program == null || program.compiled === false) {
                 continue;
             }
 
@@ -607,35 +610,35 @@ Scene.prototype.renderGL = function () {
                     if (first_for_mode === true) {
                         first_for_mode = false;
 
-                        gl_program.use();
+                        program.use();
                         this.modes[mode].setUniforms();
 
-                        gl_program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        gl_program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
-                        gl_program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                        gl_program.uniform('1f', 'u_map_zoom', this.zoom);
-                        gl_program.uniform('2f', 'u_map_center', center.x, center.y);
-                        gl_program.uniform('1f', 'u_num_layers', this.layers.length);
-                        gl_program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                        program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
+                        program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
+                        program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                        program.uniform('1f', 'u_map_zoom', this.zoom);
+                        program.uniform('2f', 'u_map_center', center.x, center.y);
+                        program.uniform('1f', 'u_num_layers', this.layers.length);
+                        program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
-                        this.camera.setupProgram(gl_program);
-                        this.lighting.setupProgram(gl_program);
+                        this.camera.setupProgram(program);
+                        this.lighting.setupProgram(program);
                     }
 
                     // Tile origin
-                    gl_program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                    program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
                     // Tile view matrix - transform tile space into view space (meters, relative to camera)
                     mat4.identity(tile_view_mat);
                     mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
                     mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
+                    program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
 
                     // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
                     mat4.identity(tile_world_mat);
                     mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
                     mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    gl_program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
+                    program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile
                     tile.gl_geometry[mode].render();
@@ -646,10 +649,10 @@ Scene.prototype.renderGL = function () {
         // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
         // Calling readPixels synchronously caused a massive performance hit, presumably since it
         // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
-        if (this.selection_callback_timer != null) {
-            clearTimeout(this.selection_callback_timer);
+        if (this.selection_delay_timer != null) {
+            clearTimeout(this.selection_delay_timer);
         }
-        this.selection_callback_timer = setTimeout(
+        this.selection_delay_timer = setTimeout(
             () => this.doFeatureSelectionRequests(),
             this.selection_frame_delay
         );
@@ -669,29 +672,27 @@ Scene.prototype.renderGL = function () {
 
 // Request feature selection
 // Runs asynchronously, schedules selection buffer to be updated
-Scene.prototype.getFeatureAt = function (pixel, callback) {
-    if (typeof callback !== 'function') {
-        throw new Error("Scene.getFeatureAt() called without a valid callback function");
-    }
+Scene.prototype.getFeatureAt = function (pixel) {
+    return new Promise((resolve, reject) => {
+        if (!this.initialized) {
+            reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
+            return;
+        }
 
-    if (!this.initialized) {
-        callback(new Error("Scene.getFeatureAt() called before scene was initialized"));
-        return;
-    }
-
-    // Queue requests for feature selection, and they will be picked up by the render loop
-    this.selection_request_id = (this.selection_request_id + 1) || 0;
-    this.selection_requests[this.selection_request_id] = {
-        type: 'point',
-        id: this.selection_request_id,
-        point: {
-            // TODO: move this pixel calc to a GL wrapper
-            x: pixel.x * this.device_pixel_ratio,
-            y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
-        },
-        callback
-    };
-    this.dirty = true; // need to make sure the scene re-renders for these to be processed
+        // Queue requests for feature selection, and they will be picked up by the render loop
+        this.selection_request_id = (this.selection_request_id + 1) || 0;
+        this.selection_requests[this.selection_request_id] = {
+            type: 'point',
+            id: this.selection_request_id,
+            point: {
+                // TODO: move this pixel calc to a GL wrapper
+                x: pixel.x * this.device_pixel_ratio,
+                y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
+            },
+            resolve
+        };
+        this.dirty = true; // need to make sure the scene re-renders for these to be processed
+    });
 };
 
 Scene.prototype.doFeatureSelectionRequests = function () {
@@ -724,12 +725,13 @@ Scene.prototype.doFeatureSelectionRequests = function () {
                 WorkerBroker.postMessage(
                     this.workers[worker_id],
                     'getFeatureSelection',
-                    { id: request.id, key: feature_key },
-                    message => this.workerGetFeatureSelection(message)
-                );
+                    { id: request.id, key: feature_key })
+                .then(message => {
+                    this.workerGetFeatureSelection(message);
+                });
             }
         }
-        // No feature found, but still need to notify via callback
+        // No feature found, but still need to resolve promise
         else {
             this.workerGetFeatureSelection({ id: request.id, feature: null });
         }
@@ -757,10 +759,8 @@ Scene.prototype.workerGetFeatureSelection = function (message) {
 
     this.selected_feature = feature; // store the most recently selected feature
 
-    // Send the feature info the callback
-    if (typeof request.callback === 'function') {
-        request.callback({ feature, changed, request });
-    }
+    // Resolve the request
+    request.resolve({ feature, changed, request });
     delete this.selection_requests[message.id]; // done processing this request
 };
 
@@ -801,105 +801,102 @@ Scene.prototype.forgetTile = function (key) {
 
 
 // Load a single tile
-Scene.prototype._loadTile = function (coords, div, callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
-    // Overzoom?
+Scene.prototype._loadTile = function (coords, options = {}) {
     var tile = Tile.create({coords: coords, tile_source: this.tile_source});
-    // when the tile does not exist
     if (!this.hasTile(tile.key)) {
-        tile.load(this, coords, div, (error, div) => {
-            // after we done loading the tile, save a reference to it
-            this.cacheTile(tile);
-            callback(null, div, tile);
-        });
-    } else {
-        // if we already cached the tile, call back with the div
-        callback(null, div);
+        this.cacheTile(tile);
+        tile.load(this, coords);
+        if (options.debugElement) {
+            tile.updateDebugElement(options.debugElement, this.debug);
+        }
     }
+    return tile;
 };
 
 // Rebuild all tiles
 // TODO: also rebuild modes? (detect if changed)
-Scene.prototype.rebuildGeometry = function (callback) {
+Scene.prototype.rebuildGeometry = function () {
     if (!this.initialized) {
-        if (typeof callback === 'function') {
-            callback(false);
-        }
-        return;
+        return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
     }
 
-    // Skip rebuild if already in progress
-    if (this.building) {
-        // Queue up to one rebuild call at a time, only save last request
-        if (this.building.queued && typeof this.building.queued.callback === 'function') {
-            this.building.queued.callback(null, false); // notify previous callback that it did not complete
+    return new Promise((resolve, reject) => {
+        // Skip rebuild if already in progress
+        if (this.building) {
+            // Queue up to one rebuild call at a time, only save last request
+            if (this.building.queued && this.building.queued.reject) {
+                // notify previous request that it did not complete
+                this.building.queued.reject(new Error('Scene.rebuildGeometry: request superceded by a newer call'));
+            }
+
+            // Save queued request
+            this.building.queued = { resolve, reject };
+            log.trace(`Scene.rebuildGeometry(): queuing request`);
+            return;
         }
 
-        // Save queued request
-        this.building.queued = { callback };
-        return;
-    }
+        // Track tile build state
+        this.building = { resolve, reject, tiles: {} };
 
-    // Track tile build state
-    this.building = { callback, tiles: {} };
+        // Update layers & styles (in case JS objects were manipulated directly)
+        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+        this.selection_map = {};
 
-    // Update layers & styles (in case JS objects were manipulated directly)
-    this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-    this.styles_serialized = Utils.serializeWithFunctions(this.styles);
-    this.selection_map = {};
-
-    // Tell workers we're about to rebuild (so they can update styles, etc.)
-    this.workers.forEach(worker => {
-        WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-            layers: this.layers_serialized,
-            styles: this.styles_serialized
+        // Tell workers we're about to rebuild (so they can update styles, etc.)
+        this.workers.forEach(worker => {
+            WorkerBroker.postMessage(worker, 'prepareForRebuild', {
+                layers: this.layers_serialized,
+                styles: this.styles_serialized
+            });
         });
-    });
 
-    // Rebuild visible tiles first, from center out
-    var tile, visible = [], invisible = [];
-    for (tile of Utils.values(this.tiles)) {
-        if (tile.visible === true) {
-            visible.push(tile);
+        // Rebuild visible tiles first, from center out
+        var tile, visible = [], invisible = [];
+        for (tile of Utils.values(this.tiles)) {
+            if (tile.visible === true) {
+                visible.push(tile);
+            }
+            else {
+                invisible.push(tile);
+            }
         }
-        else {
-            invisible.push(tile);
-        }
-    }
 
-    visible.sort((a, b) => {
-        return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
-    });
+        visible.sort((a, b) => {
+            return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
+        });
 
-    for (tile of visible) {
-        tile.build(this);
-    }
-
-    for (tile of invisible) {
-        // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-        if (tile.isInZoom(this)) {
+        for (tile of visible) {
             tile.build(this);
         }
-        // Drop tiles outside current zoom
-        else {
-            this.removeTile(tile.key);
-        }
-    }
 
-    this.updateActiveModes();
-    this.resetTime();
-
-    // Edge case: if nothing is being rebuilt, immediately call the callback and don't lock further rebuilds
-    if (this.building && Object.keys(this.building.tiles).length === 0) {
-        callback = this.building.callback;
-        this.building = null;
-        if (typeof callback === 'function') {
-            callback(null, true); // notify build callback as completed
+        for (tile of invisible) {
+            // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
+            if (tile.isInZoom(this)) {
+                tile.build(this);
+            }
+            // Drop tiles outside current zoom
+            else {
+                this.removeTile(tile.key);
+            }
         }
-        // TODO: call any queued rebuild
-        // TODO: move this whole "finish build process / callback / call queue" to separate function to avoid repetition
-    }
+
+        this.updateActiveModes();
+        this.resetTime();
+
+        // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
+        if (this.building && Object.keys(this.building.tiles).length === 0) {
+            resolve();
+
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                this.rebuildGeometry().then(queued.resolve, queued.reject);
+            }
+        }
+    });
 };
 
 // TODO: move to Tile class
@@ -958,16 +955,16 @@ Scene.prototype.trackTileBuildStop = function (key) {
             log.info(`Scene: build geometry finished`);
             log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
-            var callback = this.building.callback;
-            if (typeof callback === 'function') {
-                callback(null, true); // notify build callback as completed
+            if (this.building.resolve) {
+                this.building.resolve();
             }
 
             // Another rebuild queued?
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                this.rebuildGeometry(queued.callback);
+                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                this.rebuildGeometry().then(queued.resolve, queued.reject);
             }
         }
     }
@@ -1006,46 +1003,19 @@ Scene.prototype.loadScene = function () {
     ]);
 };
 
-Scene.prototype.parseResource = function (body) {
-    var data = null;
-    try {
-        eval('data = ' + body); // jshint ignore:line
-    } catch (e) {
-        try {
-            data = yaml.safeLoad(body);
-        } catch (e) {
-            log.error('Scene: failed to parse');
-            log.error(e);
-        }
-    }
-    return data;
-};
-
-Scene.prototype.loadResource = function (source) {
-    return new Promise((resolve, reject) => {
-        if (typeof source === 'string') {
-            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
-                var data = this.parseResource(body);
-                resolve(data);
-            }, reject);
-        } else {
-            resolve(source);
-        }
-    });
-};
-
 Scene.prototype.loadLayers = function (source) {
-    return this.loadResource(source).then((data) => {
+    return Utils.loadResource(source).then((data) => {
         this.layers = data;
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
     });
 };
 
 Scene.prototype.loadStyles = function (source) {
-    return this.loadResource(source).then((styles) => {
+    return Utils.loadResource(source).then((styles) => {
         this.styles = styles;
         Style.expandMacros(this.styles);
-        Scene.preProcessStyles(this.styles);
+        return Scene.preProcessStyles(this.styles);
+    }).then(() => {
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     });
 };
@@ -1058,7 +1028,7 @@ Scene.prototype.reload = function () {
 
     this.loadScene().then(() => {
         this.updateStyles();
-        this.rebuildGeometry();
+        return this.rebuildGeometry();
     }, (error) => {
         throw error;
     });
@@ -1066,68 +1036,29 @@ Scene.prototype.reload = function () {
 };
 
 // Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.updateModes = function (callback) {
-    callback = (typeof callback === 'function') ? callback : function(){};
-
+Scene.prototype.updateModes = function () {
     if (!this.initialized && !this.initializing) {
-        callback(new Error('Scene.updateModes() called before scene was initialized'));
+        throw new Error('Scene.updateModes() called before scene was initialized');
     }
-
-    // Skip if already in progress
-    if (this.compiling) {
-        // Queue up to one additional call at a time, only save last request
-        if (this.compiling.queued && typeof this.compiling.queued.callback === 'function') {
-            // notify previous callback that it did not complete
-            this.compiling.queued.callback(new Error('Scene.updateModes() queued request was superceded'));
-        }
-
-        // Save queued request
-        this.compiling.queued = { callback };
-        return;
-    }
-    this.compiling = { callback };
-
-    var name;
 
     // Copy stylesheet modes
-    // for ([name, mode] of Utils.entries(this.styles.modes)) { // jshint fails here
-    for (name in this.styles.modes) {
+    for (var name in this.styles.modes) {
         this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
     }
 
-    // Compile all modes (async)
-    // for ([name, mode] of Utils.entries(this.modes)) { // jshint fails here
-
-    Promise.all(Object.keys(this.modes).map((_name) => {
-        var mode = this.modes[_name];
-        return new Promise((resolve, reject) => {
-            mode.compile((error) => {
-                if (error) { reject(error); }
-                log.trace(`Scene.updateModes(): compiled mode ${_name} ${error ? error : ''}`);
-                resolve();
-            });
-        });
-    })).then(() => {
-        log.debug(`Scene.updateModes(): compiled all modes`);
-
-        this.dirty = true;
-
-        var callback = this.compiling.callback;
-        var queued = this.compiling.queued;
-        this.compiling = null;
-
-        // Complete this callback
-        callback();
-
-        // Another request queued?
-        if (queued) {
-            log.trace(`Scene.updateModes(): starting queued request`);
-            this.updateModes(queued.callback);
+    // Compile all modes
+    for (name in this.modes) {
+        try {
+            this.modes[name].compile();
+            log.trace(`Scene.updateModes(): compiled mode ${name}`);
         }
-    }, (error) => {
-        callback(error);
-    });
+        catch(error) {
+            log.error(`Scene.updateModes(): error compiling mode ${name}:`, error);
+        }
+    }
 
+    this.dirty = true;
+    log.debug(`Scene.updateModes(): compiled all modes`);
 };
 
 Scene.prototype.updateActiveModes = function () {
@@ -1296,7 +1227,50 @@ Scene.preProcessStyles = function (styles) {
     styles.camera = styles.camera || {}; // ensure camera object
     styles.lighting = styles.lighting || {}; // ensure lighting object
 
-    return styles;
+    return Scene.preloadModes(styles.modes);
+};
+
+// Preloads network resources in the stylesheet (shaders, textures, etc.)
+Scene.preloadModes = function (modes) {
+    // Preload shaders
+    var queue = [];
+    if (modes) {
+        for (var mode of Utils.values(modes)) {
+            if (mode.shaders && mode.shaders.transforms) {
+                let _transforms = mode.shaders.transforms;
+
+                for (var [key, transform] of Utils.entries(mode.shaders.transforms)) {
+                    let _key = key;
+
+                    // Array of transforms
+                    if (Array.isArray(transform)) {
+                        for (let t=0; t < transform.length; t++) {
+                            if (typeof transform[t] === 'object' && transform[t].url) {
+                                let _index = t;
+                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
+                                    _transforms[_key][_index] = data;
+                                }, (error) => {
+                                    log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                }));
+                            }
+                        }
+                    }
+                    // Single transform
+                    else if (typeof transform === 'object' && transform.url) {
+                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
+                            _transforms[_key] = data;
+                        }, (error) => {
+                            log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, error);
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: also preload textures
+
+    return Promise.all(queue); // TODO: add error
 };
 
 // Processes the tile response to create layers as defined by the scene

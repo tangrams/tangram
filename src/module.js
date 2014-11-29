@@ -15,6 +15,7 @@ import {Geo} from './geo';
 import GL from './gl/gl';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
+import WorkerBroker from './worker_broker';
 
 // Window can only be set in main thread
 Utils.inMainThread(() => {
@@ -26,7 +27,8 @@ Utils.inMainThread(() => {
             Geo,
             GL,
             GLProgram,
-            GLTexture
+            GLTexture,
+            WorkerBroker
         }
     };
 });
@@ -35,7 +37,8 @@ Utils.inMainThread(() => {
 Utils.inWorkerThread(() => {
     self.Tangram = {
         debug: {
-            SceneWorker
+            SceneWorker,
+            WorkerBroker
         }
     };
 });
