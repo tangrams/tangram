@@ -4,8 +4,13 @@
         "order": 1,
         "style": {
             "color": [255, 255, 255]
+        },
+        "fill": {
+            "order": 1,
+            "style": {
+                "color": [1, 1, 0]
+            }
         }
-
     },
 
     "roads": {

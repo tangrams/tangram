@@ -49,25 +49,36 @@ export function walkAllRules(rules, cb) {
 
 }
 
-export function matchFeature(feature, rules, depth = 0, collectedStyles = []) {
+export function matchFeature(feature, rules, collectedStyles = []) {
 
     if (rules.length === 0) {
         return;
     }
     var first = rules[0];
 
-    if ((typeof first.filter === 'function') && (first.filter(feature))) {
-
-        if (first instanceof Rule) {
+    if (first instanceof Rule) {
+        if (typeof first.filter === 'function') {
+            if (first.filter(feature)) {
+                collectedStyles.push(first);
+            }
+        }
+        else if (first.filter === undefined) {
             collectedStyles.push(first);
-        } else if (first.rules.length !== 0) {
-            matchFeature(feature, first.rules, depth += 1, collectedStyles);
+        }
+    }
+    else if (first instanceof RuleGroup) {
+        if (typeof first.filter === 'function') {
+            if (first.filter(feature)) {
+                matchFeature(feature, first.rules, collectedStyles);
+            }
+        }
+        else if (first.filter === undefined) {
+            matchFeature(feature, first.rules, collectedStyles);
         }
     }
 
-    matchFeature(feature, rules.slice(1), depth, collectedStyles);
+    matchFeature(feature, rules.slice(1), collectedStyles);
 }
-
 
 export function buildFilterFunction(filter) {
 
@@ -86,7 +97,6 @@ export function buildFilterObject(filter) {
     return false;
 }
 
-
 export function buildFilter(rule) {
     if (rule.filter) {
         if (typeof rule.filter === 'string') {
@@ -98,7 +108,6 @@ export function buildFilter(rule) {
     }
 }
 
-
 class RuleGroup {
 
     constructor(options) {
@@ -106,9 +115,13 @@ class RuleGroup {
         this.rules = options.rules || [];
     }
 
+    // TODO, fix me
     matchFeature(feature) {
-        return {};
+        var rules = [];
+        matchFeature(feature, this.rules, rules);
+        return rules;
     }
+
 }
 
 class Rule {
@@ -117,24 +130,6 @@ class Rule {
         Object.assign(this, options);
     }
 
-    calculateFullFilter() {
-        var parentFilters = (root, filters) => {
-            if (root.filter != null) {
-                if (root.filter.size) {
-                    root.filter.forEach((x) => {
-                        filters.add(x);
-                    });
-                } else {
-                    filters.add(root.filter);
-                }
-            }
-            if (root.root != null) {
-                return parentFilters(root.root, filters);
-            }
-            return filters;
-        };
-        return parentFilters(this.root, new Set()).add(this.filter);
-    }
 
     toJSON() {
         return {
@@ -145,11 +140,10 @@ class Rule {
             rules:  this.rules
         };
     }
-
 }
 
-export function parseStyle(name, style, root) {
-    var properties = {name, root}, rule, leftOvers, group;
+export function parseStyle(name, style, parent) {
+    var properties = {name, parent}, rule, leftOvers, group, filter;
 
     Object.keys(style).filter(isWhiteListed).forEach((key) => {
         properties[key] = style[key];
@@ -160,10 +154,14 @@ export function parseStyle(name, style, root) {
     // if we are a leaf
     if (leftOvers.length === 0) {
         rule = new Rule(properties);
-    } else {
-        group = new RuleGroup({name});
+        parent.rules.push(rule);
+    }
+    else {
         rule = new Rule(properties);
+        filter = buildFilter(rule);
+        group = new RuleGroup({name, filter});
         group.rules.push(rule);
+        parent.rules.push(group);
     }
 
     // TODO, FIXME
@@ -172,27 +170,24 @@ export function parseStyle(name, style, root) {
     rule.originalFilter = originalFilter;
 
 
-    root.rules.push(rule);
-
     leftOvers.forEach((name) => {
         var property = style[name];
         if (typeof property === 'object') {
             parseStyle(name, property, group);
-        } else {
+        }
+        else {
             throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
         }
     });
 
-    return root;
+    return parent;
 }
 
-
-export function parseLayers(layers) {
+export function parseRules(layers) {
     return Object.keys(layers).reduce((c, name) => {
         var layer = layers[name],
-            root  = new RuleGroup({name});
-        c[name] = parseStyle(name, layer, root);
+            parent  = new RuleGroup({name});
+        c[name] = parseStyle(name, layer, parent);
         return c;
     }, {});
-
 }
