@@ -1039,24 +1039,8 @@ Scene.prototype.updateModes = function () {
         throw new Error('Scene.updateModes() called before scene was initialized');
     }
 
-    // Copy stylesheet modes
-    for (var name in this.styles.modes) {
-        this.modes[name] = ModeManager.updateMode(name, this.styles.modes[name]);
-    }
-
-    // Compile all modes
-    for (name in this.modes) {
-        try {
-            this.modes[name].compile();
-            log.trace(`Scene.updateModes(): compiled mode ${name}`);
-        }
-        catch(error) {
-            log.error(`Scene.updateModes(): error compiling mode ${name}:`, error);
-        }
-    }
-
+    this.modes = ModeManager.updateModes(this.styles.modes);
     this.dirty = true;
-    log.debug(`Scene.updateModes(): compiled all modes`);
 };
 
 Scene.prototype.updateActiveModes = function () {

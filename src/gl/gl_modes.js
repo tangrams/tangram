@@ -15,17 +15,17 @@ export var ModeManager = {};
 
 // Global configuration for all modes
 ModeManager.init = function () {
-    GLProgram.removeTransform('globals');
+    // GLProgram.removeTransform('globals');
 
-    // Layer re-ordering function
-    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+    // // Layer re-ordering function
+    // GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
 
-    // Spherical environment map
-    GLProgram.addTransform('globals', `
-        #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['modules/spherical_environment_map']}
-        #endif
-    `);
+    // // Spherical environment map
+    // GLProgram.addTransform('globals', `
+    //     #if defined(LIGHTING_ENVIRONMENT)
+    //     ${shaderSources['modules/spherical_environment_map']}
+    //     #endif
+    // `);
 };
 
 // Update built-in mode or create a new one
@@ -96,7 +96,7 @@ ModeManager.preloadModes = function (modes) {
                                 queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
                                     _transforms[_key][_index] = data;
                                 }, (error) => {
-                                    log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                    log.error(`ModeManager.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
                                 }));
                             }
                         }
@@ -106,7 +106,7 @@ ModeManager.preloadModes = function (modes) {
                         queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
                             _transforms[_key] = data;
                         }, (error) => {
-                            log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, error);
+                            log.error(`ModeManager.preProcessStyles: error loading shader transform`, _transforms, _key, error);
                         }));
                     }
                 }
@@ -121,27 +121,41 @@ ModeManager.preloadModes = function (modes) {
 
 // Called once on instantiation
 ModeManager.createModes = function (stylesheet_modes) {
-    var modes = {};
     ModeManager.init();
 
-    // Built-in modes
-    // var built_ins = require('./gl/gl_modes').Modes;
-    var built_ins = Modes;
-    for (var m in built_ins) {
-        modes[m] = built_ins[m];
-    }
-
     // Stylesheet-defined modes
-    for (m in stylesheet_modes) {
-        modes[m] = ModeManager.updateMode(m, stylesheet_modes[m]);
+    for (var name in stylesheet_modes) {
+        Modes[name] = ModeManager.updateMode(name, stylesheet_modes[name]);
     }
 
     // Initialize all
-    for (m in modes) {
-        modes[m].init();
+    for (name in Modes) {
+        Modes[name].init();
     }
 
-    return modes;
+    return Modes;
+};
+
+// Called when modes are updated in stylesheet
+ModeManager.updateModes = function (stylesheet_modes) {
+    // Copy stylesheet modes
+    for (var name in stylesheet_modes) {
+        Modes[name] = ModeManager.updateMode(name, stylesheet_modes[name]);
+    }
+
+    // Compile all modes
+    for (name in Modes) {
+        try {
+            Modes[name].compile();
+            log.trace(`ModeManager.updateModes(): compiled mode ${name}`);
+        }
+        catch(error) {
+            log.error(`ModeManager.updateModes(): error compiling mode ${name}:`, error);
+        }
+    }
+
+    log.debug(`ModeManager.updateModes(): compiled all modes`);
+    return Modes;
 };
 
 

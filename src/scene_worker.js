@@ -31,18 +31,7 @@ SceneWorker.updateConfig = function (config) {
         SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
     }
     if (!SceneWorker.styles && config.styles) {
-        // SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
-        // SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, (val) => {
-            // console.log('pre-expandMacros', val);
-        //     var obj = Style.expandMacros({val});
-        //     // console.log('post-expandMacros', obj.val);
-        //     return Style.wrapFunction(obj.val);
-        // });
-
-        var styles = JSON.parse(config.styles);
-        Style.expandMacros(styles);
-        SceneWorker.styles = Utils.stringsToFunctions(styles, Style.wrapFunction);
-
+        SceneWorker.styles = Utils.stringsToFunctions(Style.expandMacros(JSON.parse(config.styles)), Style.wrapFunction);
         SceneWorker.modes = ModeManager.createModes(SceneWorker.styles.modes);
     }
 };
