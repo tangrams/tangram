@@ -24,4 +24,11 @@ layers:
     roads:
       filter: property('layer', 'roads')
       style:
+        color: [0, 0, 0]
+        width: 2
+
+    roads2:
+      filter: property('layer', 'roads')
+      style:
         color: [1, 0, 0]
+        width: 10
