@@ -189,6 +189,111 @@ var RenderMode = {
     buildLines () {},
     buildPoints () {},
 
+    parseFeature (feature, layer_name, feature_style, tile) {
+        // return Style.parseStyleForFeature(feature, layer_name, feature_style, tile);
+
+        feature_style = feature_style || {};
+        var style = {};
+        var context = Style.getFeatureParseContext(feature, feature_style, tile);
+
+        // Test whether features should be rendered at all
+        if (typeof feature_style.filter === 'function') {
+            if (feature_style.filter(context) === false) {
+                return null;
+            }
+        }
+
+        // Parse styles
+        style.color = (feature_style.color && (feature_style.color[feature.properties.kind] || feature_style.color.default)) || Style.defaults.color;
+        style.color = Style.parseColor(style.color, context);
+
+        style.width = (feature_style.width && (feature_style.width[feature.properties.kind] || feature_style.width.default)) || Style.defaults.width;
+        style.width = Style.parseDistance(style.width, context);
+
+        // style.size = (feature_style.size && (feature_style.size[feature.properties.kind] || feature_style.size.default)) || Style.defaults.size;
+        // style.size = Style.parseDistance(style.size, context);
+
+        style.extrude = (feature_style.extrude && (feature_style.extrude[feature.properties.kind] || feature_style.extrude.default)) || Style.defaults.extrude;
+        style.extrude = Style.parseDistance(style.extrude, context);
+
+        style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
+        style.min_height = (feature.properties && feature.properties.min_height) || Style.defaults.min_height;
+
+        // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
+        if (style.extrude) {
+            if (typeof style.extrude === 'number') {
+                style.height = style.extrude;
+            }
+            else if (typeof style.extrude === 'object' && style.extrude.length >= 2) {
+                style.min_height = style.extrude[0];
+                style.height = style.extrude[1];
+            }
+        }
+
+        style.z = (feature_style.z && (feature_style.z[feature.properties.kind] || feature_style.z.default)) || Style.defaults.z || 0;
+        style.z = Style.parseDistance(style.z, context);
+
+        // Adjusts feature render order *within* the overall layer
+        // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
+        // but all features on layers below this one will be drawn underneath, all features on layers above this one
+        // will be drawn on top
+        style.order = feature_style.order || Style.defaults.order;
+        if (typeof style.order === 'function') {
+            style.order = style.order(context);
+        }
+        style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
+
+        style.outline = {};
+        feature_style.outline = feature_style.outline || {};
+        style.outline.color = (feature_style.outline.color && (feature_style.outline.color[feature.properties.kind] || feature_style.outline.color.default)) || Style.defaults.outline.color;
+        style.outline.color = Style.parseColor(style.outline.color, context);
+
+        style.outline.width = (feature_style.outline.width && (feature_style.outline.width[feature.properties.kind] || feature_style.outline.width.default)) || Style.defaults.outline.width;
+        style.outline.width = Style.parseDistance(style.outline.width, context);
+
+        style.outline.tile_edges = (feature_style.outline.tile_edges === true) ? true : false;
+
+        // Interactivity (selection map)
+        var interactive = false;
+        if (typeof feature_style.interactive === 'function') {
+            interactive = feature_style.interactive(context);
+        }
+        else {
+            interactive = feature_style.interactive;
+        }
+
+        if (interactive === true) {
+            var selector = Style.generateSelection();
+
+            selector.feature = {
+                id: feature.id,
+                properties: feature.properties
+            };
+            selector.feature.properties.layer = layer_name; // add layer name to properties
+
+            style.selection = {
+                active: true,
+                color: selector.color
+            };
+        }
+        else {
+            style.selection = Style.defaults.selection;
+        }
+
+        // Render mode
+        // if (feature_style.mode != null && feature_style.mode.name != null) {
+        //     style.mode = {};
+        //     for (var m in feature_style.mode) {
+        //         style.mode[m] = feature_style.mode[m];
+        //     }
+        // }
+        // else {
+        //     style.mode = Style.defaults.mode;
+        // }
+
+        return style;
+    },
+
     destroy () {
         if (this.program) {
             this.program.destroy();
@@ -375,6 +480,9 @@ Object.assign(Polygons, {
 
         this.vertex_layout = new GLVertexLayout(attribs);
     },
+
+    // parseFeature (feature, layer_name, feature_style, tile) {
+    // },
 
     /**
      * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.

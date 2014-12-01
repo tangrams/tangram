@@ -95,8 +95,12 @@ export default class Tile {
 
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = tile.layers[layer.name].features[f];
+
+                    // TODO: will be replaced by new style rule parsing
+                    mode = modes[(styles.layers[layer.name].mode && styles.layers[layer.name].mode.name) || Style.defaults.mode];
+
                     try {
-                        style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
+                        style = mode.parseFeature(feature, layer.name, styles.layers[layer.name], tile);
                     }
                     catch(error) {
                         log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
@@ -109,7 +113,7 @@ export default class Tile {
                     }
 
                     // First feature in this render mode?
-                    mode = modes[style.mode.name];
+                    // mode = modes[style.mode.name];
                     if (vertex_data[mode.name] == null) {
                         vertex_data[mode.name] = mode.vertex_layout.createVertexData();
                     }

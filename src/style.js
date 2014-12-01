@@ -240,37 +240,42 @@ Style.parseColor = function(val, context) {
     return val;
 };
 
-Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
-{
-    layer_style = layer_style || {};
-    var style = {};
-
-    var context = {
+// A context object that is passed to style parsing functions to provide a scope of commonly used values
+Style.getFeatureParseContext = function (feature, feature_style, tile) {
+    return {
         feature: feature,
-        properties: Object.assign({}, layer_style.properties||{}), // Object.assign polyfill fails on null object
+        properties: Object.assign({}, feature_style.properties||{}), // Object.assign polyfill fails on null object
         zoom: tile.coords.z,
         meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
         units_per_meter: Geo.units_per_meter[tile.coords.z]
     };
+};
+
+Style.parseStyleForFeature = function (feature, layer_name, feature_style, tile)
+{
+    feature_style = feature_style || {};
+    var style = {};
+
+    var context = Style.getFeatureParseContext(feature, feature_style, tile);
 
     // Test whether features should be rendered at all
-    if (typeof layer_style.filter === 'function') {
-        if (layer_style.filter(context) === false) {
+    if (typeof feature_style.filter === 'function') {
+        if (feature_style.filter(context) === false) {
             return null;
         }
     }
 
     // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
+    style.color = (feature_style.color && (feature_style.color[feature.properties.kind] || feature_style.color.default)) || Style.defaults.color;
     style.color = Style.parseColor(style.color, context);
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
+    style.width = (feature_style.width && (feature_style.width[feature.properties.kind] || feature_style.width.default)) || Style.defaults.width;
     style.width = Style.parseDistance(style.width, context);
 
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
+    style.size = (feature_style.size && (feature_style.size[feature.properties.kind] || feature_style.size.default)) || Style.defaults.size;
     style.size = Style.parseDistance(style.size, context);
 
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
+    style.extrude = (feature_style.extrude && (feature_style.extrude[feature.properties.kind] || feature_style.extrude.default)) || Style.defaults.extrude;
     style.extrude = Style.parseDistance(style.extrude, context);
 
     style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
@@ -287,38 +292,38 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
         }
     }
 
-    style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
+    style.z = (feature_style.z && (feature_style.z[feature.properties.kind] || feature_style.z.default)) || Style.defaults.z || 0;
     style.z = Style.parseDistance(style.z, context);
 
     // Adjusts feature render order *within* the overall layer
     // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
     // but all features on layers below this one will be drawn underneath, all features on layers above this one
     // will be drawn on top
-    style.order = layer_style.order || Style.defaults.order;
+    style.order = feature_style.order || Style.defaults.order;
     if (typeof style.order === 'function') {
         style.order = style.order(context);
     }
     style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
 
     style.outline = {};
-    layer_style.outline = layer_style.outline || {};
-    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
+    feature_style.outline = feature_style.outline || {};
+    style.outline.color = (feature_style.outline.color && (feature_style.outline.color[feature.properties.kind] || feature_style.outline.color.default)) || Style.defaults.outline.color;
     style.outline.color = Style.parseColor(style.outline.color, context);
 
-    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
+    style.outline.width = (feature_style.outline.width && (feature_style.outline.width[feature.properties.kind] || feature_style.outline.width.default)) || Style.defaults.outline.width;
     style.outline.width = Style.parseDistance(style.outline.width, context);
 
-    // style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
+    // style.outline.dash = (feature_style.outline.dash && (feature_style.outline.dash[feature.properties.kind] || feature_style.outline.dash.default)) || Style.defaults.outline.dash;
 
-    style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false;
+    style.outline.tile_edges = (feature_style.outline.tile_edges === true) ? true : false;
 
     // Interactivity (selection map)
     var interactive = false;
-    if (typeof layer_style.interactive === 'function') {
-        interactive = layer_style.interactive(context);
+    if (typeof feature_style.interactive === 'function') {
+        interactive = feature_style.interactive(context);
     }
     else {
-        interactive = layer_style.interactive;
+        interactive = feature_style.interactive;
     }
 
     if (interactive === true) {
@@ -340,10 +345,10 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     }
 
     // Render mode
-    if (layer_style.mode != null && layer_style.mode.name != null) {
+    if (feature_style.mode != null && feature_style.mode.name != null) {
         style.mode = {};
-        for (var m in layer_style.mode) {
-            style.mode[m] = layer_style.mode[m];
+        for (var m in feature_style.mode) {
+            style.mode[m] = feature_style.mode[m];
         }
     }
     else {
