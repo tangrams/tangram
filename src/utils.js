@@ -110,6 +110,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
             obj[p] = Utils.stringsToFunctions(val, wrap);
         }
         // Convert strings back into functions
+        // TODO: make function matching tolerant of whitespace and multilines
         else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {

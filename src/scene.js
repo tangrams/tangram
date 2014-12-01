@@ -86,7 +86,7 @@ Scene.prototype.init = function () {
         this.loadScene().then(() => {
             Promise.all([
                 new Promise((resolve, reject) => {
-                    this.modes = Scene.createModes(this.styles.modes);
+                    this.modes = ModeManager.createModes(this.styles.modes);
                     this.updateActiveModes();
                     resolve();
                 }),
@@ -1012,8 +1012,7 @@ Scene.prototype.loadLayers = function (source) {
 Scene.prototype.loadStyles = function (source) {
     return Utils.loadResource(source).then((styles) => {
         this.styles = styles;
-        Style.expandMacros(this.styles);
-        return Scene.preProcessStyles(this.styles);
+        return ModeManager.preProcessStyles(this.styles);
     }).then(() => {
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     });
@@ -1207,71 +1206,6 @@ Scene.prototype.workerLogMessage = function (event) {
 
 /*** Class methods (stateless) ***/
 
-// Normalize some style settings that may not have been explicitly specified in the stylesheet
-Scene.preProcessStyles = function (styles) {
-    // Post-process styles
-    for (var m in styles.layers) {
-        if (styles.layers[m].visible !== false) {
-            styles.layers[m].visible = true;
-        }
-
-        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
-            styles.layers[m].mode = {};
-            for (var p in Style.defaults.mode) {
-                styles.layers[m].mode[p] = Style.defaults.mode[p];
-            }
-        }
-    }
-
-    styles.camera = styles.camera || {}; // ensure camera object
-    styles.lighting = styles.lighting || {}; // ensure lighting object
-
-    return Scene.preloadModes(styles.modes);
-};
-
-// Preloads network resources in the stylesheet (shaders, textures, etc.)
-Scene.preloadModes = function (modes) {
-    // Preload shaders
-    var queue = [];
-    if (modes) {
-        for (var mode of Utils.values(modes)) {
-            if (mode.shaders && mode.shaders.transforms) {
-                let _transforms = mode.shaders.transforms;
-
-                for (var [key, transform] of Utils.entries(mode.shaders.transforms)) {
-                    let _key = key;
-
-                    // Array of transforms
-                    if (Array.isArray(transform)) {
-                        for (let t=0; t < transform.length; t++) {
-                            if (typeof transform[t] === 'object' && transform[t].url) {
-                                let _index = t;
-                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
-                                    _transforms[_key][_index] = data;
-                                }, (error) => {
-                                    log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
-                                }));
-                            }
-                        }
-                    }
-                    // Single transform
-                    else if (typeof transform === 'object' && transform.url) {
-                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
-                            _transforms[_key] = data;
-                        }, (error) => {
-                            log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, error);
-                        }));
-                    }
-                }
-            }
-        }
-    }
-
-    // TODO: also preload textures
-
-    return Promise.all(queue); // TODO: add error
-};
-
 // Processes the tile response to create layers as defined by the scene
 // Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
 Scene.processLayersForTile = function (layers, tile) {
@@ -1299,29 +1233,6 @@ Scene.processLayersForTile = function (layers, tile) {
     }
     tile.layers = tile_layers;
     return tile_layers;
-};
-
-// Called once on instantiation
-Scene.createModes = function (stylesheet_modes) {
-    var modes = {};
-
-    // Built-in modes
-    var built_ins = require('./gl/gl_modes').Modes;
-    for (var m in built_ins) {
-        modes[m] = built_ins[m];
-    }
-
-    // Stylesheet-defined modes
-    for (m in stylesheet_modes) {
-        modes[m] = ModeManager.updateMode(m, stylesheet_modes[m]);
-    }
-
-    // Initialize all
-    for (m in modes) {
-        modes[m].init();
-    }
-
-    return modes;
 };
 
 // Private/internal

@@ -9,9 +9,30 @@ export var Style = {};
 // Style macros
 
 Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+    // pseudo-random grayscale by geometry id
+    pseudoRandomGrayscale() {
+        return `function() {
+            var c = Math.max((parseInt(feature.id, 16) % 100) / 100, 0.4);
+            return [0.7 * c, 0.7 * c, 0.7 * c];
+        }`;
+    },
+
+    // pseudo-random color by geometry id
+    pseudoRandomColor() {
+        return `function() {
+            return [
+                0.7 * (parseInt(feature.id, 16) / 100 % 1),
+                0.7 * (parseInt(feature.id, 16) / 10000 % 1),
+                0.7 * (parseInt(feature.id, 16) / 1000000 % 1)
+            ];
+        }`;
+        // return `function() { return [0.7 * (parseInt(feature.id, 16) / 100 % 1), 0.7 * (parseInt(feature.id, 16) / 10000 % 1), 0.7 * (parseInt(feature.id, 16) / 1000000 % 1)]; }`;
+    },
+
+    // random color
+    randomColor() {
+        return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()];
+    }
 };
 
 // Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
@@ -19,8 +40,9 @@ Style.color = {
 Style.pixels = function (p) {
     var f;
     /* jshint ignore:start */
-    eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
+    // eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
     /* jshint ignore:end */
+    f = 'function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }';
     return f;
 };
 
@@ -73,6 +95,7 @@ Style.macros = [
 Style.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
+                feature.id = context.feature.id;
                 var zoom = context.zoom;
                 var meters_per_pixel = context.meters_per_pixel;
                 var properties = context.style_properties;

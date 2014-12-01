@@ -3,6 +3,8 @@ import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
+import {Style} from '../style';
+import Utils from '../utils';
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import log from 'loglevel';
 var shader_sources = require('./gl_shaders'); // built-in shaders
@@ -11,7 +13,139 @@ export var Modes = {};
 export var ModeManager = {};
 
 
-// Base
+// Global configuration for all modes
+ModeManager.init = function () {
+    GLProgram.removeTransform('globals');
+
+    // Layer re-ordering function
+    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+
+    // Spherical environment map
+    GLProgram.addTransform('globals', `
+        #if defined(LIGHTING_ENVIRONMENT)
+        ${shaderSources['modules/spherical_environment_map']}
+        #endif
+    `);
+};
+
+// Update built-in mode or create a new one
+ModeManager.updateMode = function (name, settings) {
+    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
+    if (Modes[settings.extends]) {
+        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
+    }
+
+    for (var s in settings) {
+        Modes[name][s] = settings[s];
+    }
+
+    Modes[name].name = name;
+    return Modes[name];
+};
+
+// Destroy all modes for a given GL context
+ModeManager.destroy = function (gl) {
+    Object.keys(Modes).forEach((_name) => {
+        var mode = Modes[_name];
+        if (mode.gl === gl) {
+            log.trace(`destroying render mode ${mode.name}`);
+            mode.destroy();
+        }
+    });
+};
+
+// Normalize some style settings that may not have been explicitly specified in the stylesheet
+ModeManager.preProcessStyles = function (styles) {
+    // Post-process styles
+    for (var m in styles.layers) {
+        if (styles.layers[m].visible !== false) {
+            styles.layers[m].visible = true;
+        }
+
+        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
+            styles.layers[m].mode = {};
+            for (var p in Style.defaults.mode) {
+                styles.layers[m].mode[p] = Style.defaults.mode[p];
+            }
+        }
+    }
+
+    styles.camera = styles.camera || {}; // ensure camera object
+    styles.lighting = styles.lighting || {}; // ensure lighting object
+
+    return ModeManager.preloadModes(styles.modes);
+};
+
+// Preloads network resources in the stylesheet (shaders, textures, etc.)
+ModeManager.preloadModes = function (modes) {
+    // Preload shaders
+    var queue = [];
+    if (modes) {
+        for (var mode of Utils.values(modes)) {
+            if (mode.shaders && mode.shaders.transforms) {
+                let _transforms = mode.shaders.transforms;
+
+                for (var [key, transform] of Utils.entries(mode.shaders.transforms)) {
+                    let _key = key;
+
+                    // Array of transforms
+                    if (Array.isArray(transform)) {
+                        for (let t=0; t < transform.length; t++) {
+                            if (typeof transform[t] === 'object' && transform[t].url) {
+                                let _index = t;
+                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
+                                    _transforms[_key][_index] = data;
+                                }, (error) => {
+                                    log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                }));
+                            }
+                        }
+                    }
+                    // Single transform
+                    else if (typeof transform === 'object' && transform.url) {
+                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
+                            _transforms[_key] = data;
+                        }, (error) => {
+                            log.error(`Scene.preProcessStyles: error loading shader transform`, _transforms, _key, error);
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: also preload textures
+
+    return Promise.all(queue); // TODO: add error
+};
+
+// Called once on instantiation
+ModeManager.createModes = function (stylesheet_modes) {
+    var modes = {};
+    ModeManager.init();
+
+    // Built-in modes
+    // var built_ins = require('./gl/gl_modes').Modes;
+    var built_ins = Modes;
+    for (var m in built_ins) {
+        modes[m] = built_ins[m];
+    }
+
+    // Stylesheet-defined modes
+    for (m in stylesheet_modes) {
+        modes[m] = ModeManager.updateMode(m, stylesheet_modes[m]);
+    }
+
+    // Initialize all
+    for (m in modes) {
+        modes[m].init();
+    }
+
+    return modes;
+};
+
+
+// Base class
 
 var RenderMode = {
     init () {

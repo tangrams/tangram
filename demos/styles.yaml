@@ -430,20 +430,22 @@ layers:
         order: function () { return feature.sort_key * .000025; }
         # order: "function () { return (feature.sort_key * .000025) - (feature.outline ? .0001 : 0); }"
         color:
-            # default: Style.color.randomColor
-            default: [0.4, 0.4, 0.4]
-            highway: [1.0, 1.0, 1.0]
-            # highway: 'red'
-            # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-            # highway: [[13, 'darkorchid'], [17, 'honeydew']]
-            # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
-            major_road: [0.5, 0.5, 0.5]
-            minor_road: [0.65, 0.65, 0.65]
-            path: [0.8, 0.8, 0.8]
-            rail: [0.5, 0.0, 0.0]
-            debug: [1, 0, 0]
+            default: Style.color.pseudoRandomColor()
+            # default: [0.4, 0.4, 0.4]
+            # highway: [1.0, 1.0, 1.0]
+            # # highway: 'red'
+            # # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+            # # highway: [[13, 'darkorchid'], [17, 'honeydew']]
+            # # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
+            # major_road: [0.5, 0.5, 0.5]
+            # minor_road: [0.65, 0.65, 0.65]
+            # path: [0.8, 0.8, 0.8]
+            # rail: [0.5, 0.0, 0.0]
+            # debug: [1, 0, 0]
         width:
             # default: Style.pixels(5)
+            # default: Style.pixels(function() { return 10; })
+            # default: Style.pixels(function() { return feature.id % 10; })
             default: function () { return 2 * Math.log(zoom); }
             highway: function () { return 3 * Math.log(zoom); }
             # highway: [[16, 20], [17, 16], [18, 12], [19, 8], [20, 6]]
@@ -500,9 +502,9 @@ layers:
         interactive: true
         color:
             # default: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
-            # default: Style.color.randomColor
-            # default: Style.color.pseudoRandomColor
-            # default: Style.color.pseudoRandomGrayscale
+            # default: Style.color.randomColor()
+            # default: Style.color.pseudoRandomColor()
+            # default: Style.color.pseudoRandomGrayscale()
             # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.2, 0.2, (feature.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
             default: |
                 function () {
