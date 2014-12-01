@@ -77,28 +77,21 @@ export default class Tile {
         var vertex_data = {};
         var mode_vertex_data;
         var featureStyles = [];
-        var matchedRules = [];
 
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
         // tile.debug.rendering = +new Date();
         // tile.debug.features = 0;
-
         for (var layer_num = 0; layer_num < layers.length; layer_num++) {
 
             layer = layers[layer_num];
 
-            // Skip layers with no styles defined, or layers set to not be visible
-            if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
-                continue;
-            }
-
             if (tile.layers[layer.name] != null) {
                 var num_features = tile.layers[layer.name].features.length;
-
                 for (var f = num_features-1; f >= 0; f--) {
+                    var matchedRules = [];
                     feature = tile.layers[layer.name].features[f];
-                    feature.properties.layer = layer.name;
+                    feature.layer = layer.name;
 
                     // find matching rules
                     Object.keys(rules).forEach((r) => {
@@ -107,14 +100,9 @@ export default class Tile {
                     });
 
                     // collect processed style object
-
                     featureStyles = matchedRules.map((rule) => {
                         return Style.parseStyleForFeature(feature, layer.name, rule, tile);
                     });
-
-
-                    // featureStyles = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
-                    // featureStyles = [featureStyles];
 
                     for (var i = 0; i < featureStyles.length; i += 1) {
                         style = featureStyles[i];

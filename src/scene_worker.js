@@ -4,7 +4,7 @@ import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {Style} from './style';
 import Scene  from './scene';
 import Tile from './tile';
-import {parseLayers} from './rule';
+import {parseRules} from './rule';
 import TileSource from './tile_source.js';
 import {GLBuilders} from './gl/gl_builders';
 
@@ -33,7 +33,7 @@ SceneWorker.updateConfig = function (config) {
     if (!SceneWorker.styles && config.styles) {
         SceneWorker.styles = Utils.deserializeWithFunctions(config.styles, Style.wrapFunction);
         Style.expandMacros(SceneWorker.styles);
-        SceneWorker.rules = parseLayers(SceneWorker.styles.layers);
+        SceneWorker.rules = parseRules(SceneWorker.styles.layers);
         SceneWorker.modes = Scene.createModes(SceneWorker.styles.modes);
     }
 };
