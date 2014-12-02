@@ -11,21 +11,23 @@ export var Style = {};
 Style.color = {
     // pseudo-random grayscale by geometry id
     pseudoRandomGrayscale() {
-        return `function() {
+        var func = `function() {
             var c = Math.max((parseInt(feature.id, 16) % 100) / 100, 0.4);
             return [0.7 * c, 0.7 * c, 0.7 * c];
         }`;
+        return func;
     },
 
     // pseudo-random color by geometry id
     pseudoRandomColor() {
-        return `function() {
+        var func = `function() {
             return [
                 0.7 * (parseInt(feature.id, 16) / 100 % 1),
                 0.7 * (parseInt(feature.id, 16) / 10000 % 1),
                 0.7 * (parseInt(feature.id, 16) / 1000000 % 1)
             ];
         }`;
+        return func;
         // return `function() { return [0.7 * (parseInt(feature.id, 16) / 100 % 1), 0.7 * (parseInt(feature.id, 16) / 10000 % 1), 0.7 * (parseInt(feature.id, 16) / 1000000 % 1)]; }`;
     },
 

@@ -2,7 +2,6 @@
 import {Geo} from './geo';
 import Utils from './utils';
 import WorkerBroker from './worker_broker';
-import {Style} from './style';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
