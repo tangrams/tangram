@@ -9,12 +9,6 @@ camera:
 
     # type: flat
 
-lighting:
-    type: point
-    position: [0, 0, 1000]
-    color: [.2., 2., .2]
-    ambient: 0.5
-    backlight: true
     
 modes:
     # note: consider this syntax as a special case for global mode settings
