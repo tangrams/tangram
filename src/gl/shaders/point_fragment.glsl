@@ -13,7 +13,7 @@ void main (void) {
     if (len > 1.) {
         discard;
     }
-    color *= (1. - smoothstep(.25, 1., len)) + 0.5;
+//    color *= (1. - smoothstep(.25, 1., len)) + 0.5;
 
     #pragma tangram: fragment
 
