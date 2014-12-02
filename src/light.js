@@ -44,8 +44,9 @@ class PointLight extends Light {
         super(scene);
         this.type = 'point';
 
+        this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.position = (options.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
-        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
+        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : .5;
         this.backlight = options.backlight || false;
 
         GLProgram.removeTransform(Light.transform);
@@ -65,6 +66,7 @@ class PointLight extends Light {
             }
 
             uniform vec4 u_point_light_position;
+            uniform vec3 u_point_light_color;
             uniform float u_point_light_ambient;
             uniform bool u_point_light_backlight;
 
@@ -74,7 +76,7 @@ class PointLight extends Light {
                 vec3 color) {
 
                 return pointLight(
-                    position, normal, color,
+                    position, normal, u_point_light_color,
                     u_point_light_position,
                     u_point_light_ambient,
                     u_point_light_backlight
@@ -89,6 +91,7 @@ class PointLight extends Light {
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
+        program.uniform('3f', 'u_point_light_color', this.color[0], this.color[1], this.color[2]);
         program.uniform('1f', 'u_point_light_ambient', this.ambient);
         program.uniform('1i', 'u_point_light_backlight', this.backlight);
     }
@@ -105,6 +108,7 @@ class SpotLight extends Light {
         this.direction = (options.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
         this.inner_angle = parseFloat(options.inner_angle || 20);
         this.outer_angle = parseFloat(options.outer_angle || 25);
+        this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.2;
 
         GLProgram.removeTransform(Light.transform);
@@ -148,6 +152,7 @@ class SpotLight extends Light {
             uniform vec3 u_spotlight_direction;
             uniform float u_spotlight_inner_angle;
             uniform float u_spotlight_outer_angle;
+            uniform vec3 u_spotlight_color;
             uniform float u_spotlight_ambient;
 
             vec3 calculateLighting(
@@ -156,7 +161,7 @@ class SpotLight extends Light {
                 vec3 color) {
 
                 return spotLight(
-                    position, normal, color,
+                    position, normal, u_spotlight_color,
                     u_spotlight_position,
                     u_spotlight_direction,
                     u_spotlight_inner_angle,
@@ -176,6 +181,7 @@ class SpotLight extends Light {
         program.uniform('3fv', 'u_spotlight_direction', this.direction);
         program.uniform('1f', 'u_spotlight_inner_angle', this.inner_angle);
         program.uniform('1f', 'u_spotlight_outer_angle', this.outer_angle);
+        program.uniform('3f', 'u_spotlight_color', this.color[0], this.color[1], this.color[2]);
         program.uniform('1f', 'u_spotlight_ambient', this.ambient);
     }
 
@@ -189,6 +195,7 @@ class DirectionalLight extends Light {
         this.type = 'directional';
 
         this.direction = (options.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
 
         GLProgram.removeTransform(Light.transform);
@@ -206,6 +213,7 @@ class DirectionalLight extends Light {
             }
 
             uniform vec3 u_directional_light_direction;
+            uniform vec3 u_directional_light_color;
             uniform float u_directional_light_ambient;
 
             vec3 calculateLighting(
@@ -214,7 +222,8 @@ class DirectionalLight extends Light {
                 vec3 color) {
 
                 return directionalLight(
-                    normal, color,
+                    normal,
+                    u_directional_light_color,
                     u_directional_light_direction,
                     u_directional_light_ambient
                 );
@@ -224,6 +233,7 @@ class DirectionalLight extends Light {
 
     setupProgram(program) {
         program.uniform('3fv', 'u_directional_light_direction', this.direction);
+        program.uniform('3f', 'u_directional_light_color', this.color[0], this.color[1], this.color[2]);
         program.uniform('1f', 'u_directional_light_ambient', this.ambient);
     }
 
