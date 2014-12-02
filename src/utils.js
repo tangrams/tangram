@@ -177,11 +177,12 @@ Utils.isPowerOf2 = function(value) {
 // TODO: add other interpolation methods besides linear
 //
 Utils.interpolate = function(x, points) {
-    if (!Array.isArray(points)) {
+    // If this doesn't resemble a list of control points, just return the original value
+    if (!Array.isArray(points) || points.some(v => { return !Array.isArray(v); })) {
         return points;
     }
     else if (points.length < 1) {
-        return null;
+        return points;
     }
 
     var x1, x2, d, y;
