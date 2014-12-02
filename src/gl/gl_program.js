@@ -1,10 +1,8 @@
 /* global GLProgram */
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
-import Utils from '../utils';
 import {GL} from './gl';
 import GLTexture from './gl_texture';
-import Queue from 'queue-async';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
@@ -16,9 +14,6 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.gl = gl;
     this.program = null;
     this.compiled = false;
-    this.compiling = false;
-    this.defines = options.defines || {}; // key/values inserted as #defines into shaders at compile-time
-    this.transforms = options.transforms || {}; // key/values for URLs of blocks that can be injected into shaders at compile-time
     this.compiling = false;
     this.defines = Object.assign({}, options.defines||{}); // key/values inserted as #defines into shaders at compile-time
     this.transforms = Object.assign({}, options.transforms||{}); // key/values for URLs of blocks that can be injected into shaders at compile-time
@@ -32,7 +27,7 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     GLProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
 
-    this.compile(options.callback);
+    this.compile();
 }
 
 GLProgram.prototype.destroy = function () {
@@ -73,18 +68,13 @@ GLProgram.removeTransform = function (key) {
     GLProgram.transforms[key] = [];
 };
 
-GLProgram.prototype.compile = function (callback)
-{
-    callback = (typeof callback === 'function') ? callback : function(){};
+GLProgram.prototype.compile = function () {
 
     if (this.compiling) {
-        callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
-        return;
+        throw(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
     }
     this.compiling = true;
     this.compiled = false;
-
-    var queue = Queue();
 
     // Copy sources from pre-modified template
     this.computed_vertex_shader = this.vertex_shader;
@@ -98,25 +88,17 @@ GLProgram.prototype.compile = function (callback)
     // #pragma tangram: [key]
     // e.g. #pragma tangram: globals
 
-    // TODO: flag to avoid re-retrieving transform URLs over network when rebuilding?
     // TODO: support glslify #pragma export names for better compatibility? (e.g. rename main() functions)
     // TODO: auto-insert uniforms referenced in mode definition, but not in shader base or transforms? (problem: don't have access to uniform list/type here)
 
-    // Gather all transform code snippets (can be either inline in the style file, or over the network via URL)
-    // This is an async process, since code may be retrieved remotely
+    // Gather all transform code snippets
     var transforms = this.buildShaderTransformList();
-    var loaded_transforms = {}; // master list of transforms, with an ordered list for each (since we want to guarantee order of transforms)
     var regexp;
 
     for (var key in transforms) {
         var transform = transforms[key];
-        if (transform == null) {
+        if (!transform) {
             continue;
-        }
-
-        // Each code point can be a single item (string or hash object) or a list (array object with non-zero length)
-        if (!(typeof transform === 'object' && transform.length >= 0)) {
-            transform = [transform];
         }
 
         // First find code replace points in shaders
@@ -129,103 +111,57 @@ GLProgram.prototype.compile = function (callback)
             continue;
         }
 
-        // Collect all transforms for this type
-        loaded_transforms[key] = {};
-        loaded_transforms[key].regexp = new RegExp(regexp); // save regexp so we can inject later without having to recreate it
-        loaded_transforms[key].inject_vertex = (inject_vertex != null); // save regexp code point matches so we don't have to do them again
-        loaded_transforms[key].inject_fragment = (inject_fragment != null);
-        loaded_transforms[key].list = [];
+        // Each key can be a single string or array of strings
+        var source = transform;
+        if (Array.isArray(transform)) {
+            // Combine all transforms into one string
+            source = transform.reduce((prev, cur) => `${prev}\n${cur}`);
+        }
 
-        // Get the code (possibly over the network, so needs to be async)
-        for (var u=0; u < transform.length; u++) {
-            queue.defer(GLProgram.loadTransform, loaded_transforms, transform[u], key, u);
+        // Inject
+        if (inject_vertex != null) {
+            this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, source);
+        }
+        if (inject_fragment != null) {
+            this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, source);
         }
 
         // Add a #define for this injection point
         defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
-    // When all transform code snippets are collected, combine and inject them
-    queue.await(error => {
+    // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
+    regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
+    this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, '');
+    this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, '');
+
+    // Build & inject defines
+    // This is done *after* code injection so that we can add defines for which code points were injected
+    var define_str = GLProgram.buildDefineString(defines);
+    this.computed_vertex_shader = define_str + this.computed_vertex_shader;
+    this.computed_fragment_shader = define_str + this.computed_fragment_shader;
+
+    // Include program info useful for debugging
+    var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
+    this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
+    this.computed_fragment_shader = '// Program: ' + info + '\n' + this.computed_fragment_shader;
+
+    // Compile & set uniforms to cached values
+    try {
+        this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
+        this.compiled = true;
         this.compiling = false;
-
-        if (error) {
-            callback(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) errored: ${error.message}`));
-            return;
-        }
-
-        // Do the code injection with the collected sources
-        for (var t in loaded_transforms) {
-            // Concatenate
-            var combined_source = "";
-            for (var s=0; s < loaded_transforms[t].list.length; s++) {
-                combined_source += loaded_transforms[t].list[s] + '\n';
-            }
-
-            // Inject
-            if (loaded_transforms[t].inject_vertex != null) {
-                this.computed_vertex_shader = this.computed_vertex_shader.replace(loaded_transforms[t].regexp, combined_source);
-            }
-            if (loaded_transforms[t].inject_fragment != null) {
-                this.computed_fragment_shader = this.computed_fragment_shader.replace(loaded_transforms[t].regexp, combined_source);
-            }
-        }
-
-        // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
-        var regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
-        this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, '');
-        this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, '');
-
-        // Build & inject defines
-        // This is done *after* code injection so that we can add defines for which code points were injected
-        var define_str = GLProgram.buildDefineString(defines);
-        this.computed_vertex_shader = define_str + this.computed_vertex_shader;
-        this.computed_fragment_shader = define_str + this.computed_fragment_shader;
-
-        // Include program info useful for debugging
-        var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-        this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
-        this.computed_fragment_shader = '// Program: ' + info + '\n' + this.computed_fragment_shader;
-
-        // Compile & set uniforms to cached values
-        try {
-            this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
-            this.compiled = true;
-        }
-        catch (e) {
-            this.program = null;
-            this.compiled = false;
-        }
-
-        this.use();
-        this.refreshUniforms();
-        this.refreshAttributes();
-
-        callback();
-    });
-};
-
-// Retrieve a single transform, for a given injection point, at a certain index (to preserve original order)
-// Can be async, calls 'complete' callback when done
-GLProgram.loadTransform = function (transforms, block, key, index, complete) {
-    // Can be an inline block of GLSL, or a URL to retrieve GLSL block from
-    var source;
-
-    // Inline code
-    if (typeof block === 'string') {
-        transforms[key].list[index] = block;
-        complete();
     }
-    // Remote code
-    else if (typeof block === 'object' && block.url) {
-        Utils.xhr(block.url + '?' + (+new Date()), (error, response, body) => {
-            if (!error) {
-                source = body;
-                transforms[key].list[index] = source;
-            }
-            complete(error);
-        });
+    catch(error) {
+        this.program = null;
+        this.compiled = false;
+        this.compiling = false;
+        throw(new Error(`GLProgram.compile(): program ${this.id} (${this.name}) error:`, error));
     }
+
+    this.use();
+    this.refreshUniforms();
+    this.refreshAttributes();
 };
 
 // Make list of defines (global, then program-specific)

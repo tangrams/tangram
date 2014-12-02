@@ -1,6 +1,8 @@
 import chai from 'chai';
 import xhr  from 'xhr';
 let assert = chai.assert;
+import chaiAsPromised from 'chai-as-promised';
+chai.use(chaiAsPromised);
 
 import {Geo} from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
@@ -11,8 +13,8 @@ import {
     TopoJSONTileSource,
     MapboxFormatTileSource
 } from '../src/tile_source';
-import Utils from '../src/utils';
 
+import Utils from '../src/utils';
 import {MethodNotImplemented} from '../src/errors';
 
 function getMockTile() {
@@ -29,7 +31,9 @@ function getMockTopoResponse() {
 
 function getMockMapboxResponse(cb) {
     return xhr({responseType: 'arraybuffer',
-                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => { cb(body); });
+                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => {
+                    if (error) { throw error; }
+                    cb(body); });
 }
 
 describe('TileSource', () => {
@@ -55,7 +59,7 @@ describe('TileSource', () => {
         });
     });
 
-    describe('.loadTile(tile, cb)', () => {
+    describe('.loadTile(tile)', () => {
         let subject = new TileSource(options);
         describe('when the .loadTile method is not overridden', () => {
             it('throws a MethodNotImplemented error', () => {
@@ -161,31 +165,23 @@ describe('TileSource', () => {
 
     describe('GeoJSONTileSource', () => {
 
-        describe('.loadTile(tile, callback)', () => {
+        describe('.loadTile(tile)', () => {
+
             describe('when there are no http errors', () => {
                 let subject, mockTile;
 
                 beforeEach(() => {
                     mockTile = getMockTile();
-                    sinon.stub(Utils, 'xhr').callsArgWith(1, null, {}, getMockJSONResponse());
+                    sinon.stub(Utils, 'io').returns(Promise.resolve(getMockJSONResponse()));
                     subject = new GeoJSONTileSource(options);
                 });
                 afterEach(() => {
-                    Utils.xhr.restore();
+                    Utils.io.restore();
                     subject = undefined;
                 });
 
-                it('calls back with the tile object', (done) => {
-                    subject.loadTile(mockTile, (error, tile) => {
-                        // require something that looks like a tile
-                        // object
-                        assert.property(tile, 'loading');
-                        assert.property(tile, 'coords');
-                        assert.property(tile, 'debug');
-                        assert.deepProperty(tile, 'layers.buildings');
-                        assert.deepProperty(tile, 'layers.water');
-                        done();
-                    });
+                it('calls back with the tile object', () => {
+                    return assert.isFulfilled(subject.loadTile(mockTile));
                 });
             });
 
@@ -193,15 +189,17 @@ describe('TileSource', () => {
                 let subject, mockTile;
                 beforeEach(() => {
                     mockTile = getMockTile();
-                    sinon.stub(Utils, 'xhr').callsArgWith(1, new Error('message'), {}, '');
+                    sinon.stub(Utils, 'io').returns(Promise.reject(new Error('I am an error')));
                     subject = new GeoJSONTileSource(options);
                 });
 
-                it('calls back with an error object', (done) => {
-                    subject.loadTile(mockTile, (error, tile) => {
-                        assert.instanceOf(error, Error);
-                        done();
-                    });
+                afterEach(() => {
+                    Utils.io.restore();
+                    subject = undefined;
+                });
+
+                it('is rejects the promise', () => {
+                    return assert.isRejected(subject.loadTile(mockTile));
                 });
             });
         });
@@ -264,6 +262,7 @@ describe('TileSource', () => {
                 assert.instanceOf(subject, MapboxFormatTileSource);
             });
         });
+
 
         // this is failing because of an isssue with either the mapbox
         // example tile, or the protobuffer library

@@ -536,16 +536,42 @@
         });
 
         // Lighting
-        var lighting_types = {
-            'None': null,
-            'Diffuse': 'diffuse',
-            'Specular': 'specular',
-            'Flat': 'flat',
-            'Night': 'night'
+        var lighting_presets = {
+            'Point': {
+                type: 'point',
+                position: [0, 0, 200],
+                ambient: 0.5,
+                backlight: true
+            },
+            'Directional': {
+                type: 'directional',
+                direction: [-1, 0, -.5],
+                ambient: 0.5
+            },
+            'Spotlight': {
+                type: 'spotlight',
+                position: [0, 0, 500],
+                direction: [0, 0, -1],
+                inner_angle: 20,
+                outer_angle: 25,
+                ambient: 0.2
+            },
+            'Night': {
+                type: 'point',
+                position: [0, 0, 50],
+                ambient: 0,
+                backlight: false
+            }
         };
-        gui.lighting = layer.scene.styles.lighting.type;
-        gui.add(gui, 'lighting', lighting_types).onChange(function(value) {
-            layer.scene.styles.lighting.type = value;
+        var lighting_options = Object.keys(lighting_presets);
+        for (var k=0; k < lighting_options.length; k++) {
+            if (lighting_presets[lighting_options[k]].type === layer.scene.styles.lighting.type) {
+                gui.lighting = lighting_options[k];
+                break;
+            }
+        }
+        gui.add(gui, 'lighting', lighting_options).onChange(function(value) {
+            layer.scene.styles.lighting = lighting_presets[value];
             layer.scene.updateStyles();
         });
 
@@ -600,40 +626,37 @@
 
             var pixel = { x: event.clientX, y: event.clientY };
 
-            scene.getFeatureAt(
-                pixel,
-                function (selection) {
-                    var feature = selection.feature;
-                    if (feature != null) {
-                        // console.log("selection map: " + JSON.stringify(feature));
+            scene.getFeatureAt(pixel).then(function(selection) {
+                var feature = selection.feature;
+                if (feature != null) {
+                    // console.log("selection map: " + JSON.stringify(feature));
 
-                        var label = '';
-                        if (feature.properties.name != null) {
-                            label = feature.properties.name;
-                        }
+                    var label = '';
+                    if (feature.properties.name != null) {
+                        label = feature.properties.name;
+                    }
 
-                        // if (feature.properties.layer == 'buildings' && feature.properties.height) {
-                        //     if (label != '') {
-                        //         label += '<br>';
-                        //     }
-                        //     label += feature.properties.height + 'm';
-                        // }
+                    // if (feature.properties.layer == 'buildings' && feature.properties.height) {
+                    //     if (label != '') {
+                    //         label += '<br>';
+                    //     }
+                    //     label += feature.properties.height + 'm';
+                    // }
 
-                        if (label != '') {
-                            selection_info.style.left = (pixel.x + 5) + 'px';
-                            selection_info.style.top = (pixel.y + 15) + 'px';
-                            selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-                            scene.container.appendChild(selection_info);
-                        }
-                        else if (selection_info.parentNode != null) {
-                            selection_info.parentNode.removeChild(selection_info);
-                        }
+                    if (label != '') {
+                        selection_info.style.left = (pixel.x + 5) + 'px';
+                        selection_info.style.top = (pixel.y + 15) + 'px';
+                        selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
+                        scene.container.appendChild(selection_info);
                     }
                     else if (selection_info.parentNode != null) {
                         selection_info.parentNode.removeChild(selection_info);
                     }
                 }
-            );
+                else if (selection_info.parentNode != null) {
+                    selection_info.parentNode.removeChild(selection_info);
+                }
+            });
 
             // Don't show labels while panning
             if (scene.panning == true) {

@@ -1,5 +1,7 @@
 import Scene from './scene';
 
+import log from 'loglevel';
+
 export var LeafletLayer = L.GridLayer.extend({
 
     initialize: function (options) {
@@ -9,19 +11,17 @@ export var LeafletLayer = L.GridLayer.extend({
     },
 
     createScene: function () {
-        this.scene = new Scene(
-            this.options.vectorTileSource,
-            this.options.vectorLayers,
-            this.options.vectorStyles,
-            {
-                numWorkers: this.options.numWorkers,
-                preRender: this.options.preRender,
-                postRender: this.options.postRender,
-                logLevel: this.options.logLevel,
-                // advanced option, app will have to manually called scene.render() per frame
-                disableRenderLoop: this.options.disableRenderLoop
-            }
-        );
+        this.scene = Scene.create({
+            tile_source: this.options.vectorTileSource,
+            layers: this.options.vectorLayers,
+            styles: this.options.vectorStyles
+        }, {
+            numWorkers: this.options.numWorkers,
+            preRender: this.options.preRender,
+            postRender: this.options.postRender,
+            // advanced option, app will have to manually called scene.render() per frame
+            disableRenderLoop: this.options.disableRenderLoop
+        });
     },
 
     // Finish initializing scene and setup events when layer is added to map
@@ -53,6 +53,7 @@ export var LeafletLayer = L.GridLayer.extend({
         this.hooks.move = () => {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat);
+            this.scene.immediateRedraw();
         };
         this._map.on('move', this.hooks.move);
 
@@ -84,8 +85,12 @@ export var LeafletLayer = L.GridLayer.extend({
         this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
         // Use leaflet's existing event system as the callback mechanism
-        this.scene.init(() => {
+        this.scene.init().then(() => {
+            log.debug('Scene.init() succeeded');
             this.fire('init');
+        }, (error) => {
+            log.error('Scene.init() failed with error:', error);
+            throw error;
         });
     },
 
@@ -107,9 +112,9 @@ export var LeafletLayer = L.GridLayer.extend({
         }
     },
 
-    createTile: function (coords, done) {
+    createTile: function (coords) {
         var div = document.createElement('div');
-        this.scene.loadTile(coords, div, done);
+        this.scene.loadTile(coords, { debugElement: div });
         return div;
     },
 
