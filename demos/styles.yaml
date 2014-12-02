@@ -13,7 +13,7 @@ lighting:
     type: point
     position: [0, 0, 200]
     color: [1, 1, 1]
-    # ambient: 0.1
+    # ambient: 0.5
     backlight: true
 
     # type: directional
