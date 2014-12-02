@@ -540,9 +540,16 @@ layers:
             # default: function () { return 2 * zoom; }
 
     # places:
-    #     filter: function() { return (zoom >= 13); }
-    #     color: {
-    #         # default: [0.0, 1.0, 1.0]
-    #         default: function() { return feature.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
-    #     size:
-    #         default: Style.pixels(5)
+    #     # filter: function() { return (zoom >= 13); }
+    #     color:
+    #         default: [1, 1, 1]
+    #         # default: function() { return feature.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
+    #     # size:
+    #         # default: Style.pixels(5)
+    #     # width:
+    #     #     default: 100m
+    #     outline:
+    #         color:
+    #             default: [0.0, 1.0, 1.0]
+    #         width:
+    #             default: 10km

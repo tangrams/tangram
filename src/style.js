@@ -178,9 +178,19 @@ Style.getFeatureParseContext = function (feature, feature_style, tile) {
 
 Style.convertUnits = function(val, context) {
     if (typeof val === 'string') {
+        var units = val.match(/(\d+)([a-zA-z]+)/);
+        if (units && units.length === 3) {
+            val = units[1];
+            units = units[2];
+        }
+
         // Convert from pixels
-        if (val.indexOf('px') === val.length - 2) {
-            val = parseFloat(val.substr(0, val.length-2)) * Geo.metersPerPixel(context.zoom);
+        if (units === 'px') {
+            val *= Geo.metersPerPixel(context.zoom);
+        }
+        // Convert from kilometers
+        else if (units === 'km') {
+            val *= 1000;
         }
         // Convert from string
         else {
