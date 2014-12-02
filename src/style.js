@@ -156,7 +156,6 @@ Style.defaults = {
         // dash: null
     },
     selection: {
-        active: false,
         color: [0, 0, 0, 1]
     },
     mode: {

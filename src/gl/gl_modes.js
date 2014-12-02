@@ -231,7 +231,6 @@ var RenderMode = {
             };
 
             style.selection = {
-                active: true,
                 color: selector.color
             };
         }

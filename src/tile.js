@@ -107,6 +107,7 @@ export default class Tile {
                     feature_style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
                     feature_style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
                     feature_style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
+                    feature_style.interactive = layer_style.interactive;
 
                     layer_style.outline = layer_style.outline || {};
                     feature_style.outline = {};
