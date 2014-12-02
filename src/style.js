@@ -46,7 +46,7 @@ Style.generateSelection = function ()
     var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
     Style.selection_map[key] = {
-        color: [r, g, b, a],
+        color: [r, g, b, a]
     };
 
     return Style.selection_map[key];
@@ -239,6 +239,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     }
 
     // Parse styles
+
 
     style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
     style.color = Style.parseColor(style.color, context);
