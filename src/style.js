@@ -43,7 +43,7 @@ Style.generateSelection = function ()
     var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
     Style.selection_map[key] = {
-        color: [r, g, b, a],
+        color: [r, g, b, a]
     };
 
     return Style.selection_map[key];
@@ -169,12 +169,12 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
 
     // Parse styles
 
-    style.color = layer_style.style.color || Style.default.color;
+    style.color = layer_style.style.color || Style.defaults.color;
     if (typeof style.color === 'function') {
         style.color = style.color(feature, tile, Style.helpers);
     }
+    style.width = layer_style.style.width || Style.defaults.width;
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
     if (typeof style.width === 'function') {
         style.width = style.width(feature, tile, Style.helpers);
     }
@@ -184,6 +184,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile) {
     if (typeof style.size === 'function') {
         style.size = style.size(feature, tile, Style.helpers);
     }
+
     style.size *= Geo.units_per_meter[tile.coords.z];
 
     // style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
