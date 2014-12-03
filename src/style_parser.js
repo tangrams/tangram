@@ -4,9 +4,52 @@ import {Geo} from './geo';
 import parseCSSColor from 'csscolorparser';
 import log from 'loglevel';
 
-export var Style = {};
+export var StyleParser = {};
 
 // Style macros
+
+StyleParser.expandMacros = function expandMacros (obj) {
+    for (var p in obj) {
+        var val = obj[p];
+
+        // Loop through object properties
+        if (typeof val === 'object') {
+            obj[p] = expandMacros(val);
+        }
+        // Convert strings back into functions
+        else if (typeof val === 'string') {
+            for (var m in StyleParser.macros) {
+                if (val.match(StyleParser.macros[m])) {
+                    var f;
+                    try {
+                        /*jshint ignore:start */
+                        eval('f = ' + val);
+                        /*jshint ignore:end */
+                        obj[p] = f;
+                        log.trace(`expanded macro ${val} to ${f}`);
+                        break;
+                    }
+                    catch (e) {
+                        // fall-back to original value if parsing failed
+                        obj[p] = val;
+                        log.trace(`failed to expand macro ${val}`);
+                    }
+                }
+            }
+        }
+    }
+
+    return obj;
+};
+
+// List of macros
+StyleParser.macros = [
+    'Style.color.pseudoRandomColor',
+    'Style.color.randomColor',
+    'Style.pixels'
+];
+
+var Style = {};
 
 Style.color = {
     // pseudo-random grayscale by geometry id
@@ -48,53 +91,49 @@ Style.pixels = function (p) {
     return f;
 };
 
+
+// Feature selection
+
 // Create a unique 32-bit color to identify a feature
 // Workers independently create/modify selection colors in their own threads, but we also
 // need the main thread to know where each feature color originated. To accomplish this,
 // we partition the map by setting the 4th component (alpha channel) to the worker's id.
-Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
-Style.selection_map_size = 1; // start at 1 since 1 will be divided by this
-Style.selection_map_prefix = 0; // set by worker to worker id #
-Style.generateSelection = function ()
+StyleParser.selection_map = {}; // this will be unique per module instance (so unique per worker)
+StyleParser.selection_map_size = 1; // start at 1 since 1 will be divided by this
+StyleParser.selection_map_prefix = 0; // set by worker to worker id #
+StyleParser.generateSelection = function ()
 {
     // 32-bit color key
-    Style.selection_map_size++;
-    var ir = Style.selection_map_size & 255;
-    var ig = (Style.selection_map_size >> 8) & 255;
-    var ib = (Style.selection_map_size >> 16) & 255;
-    var ia = Style.selection_map_prefix;
+    StyleParser.selection_map_size++;
+    var ir = StyleParser.selection_map_size & 255;
+    var ig = (StyleParser.selection_map_size >> 8) & 255;
+    var ib = (StyleParser.selection_map_size >> 16) & 255;
+    var ia = StyleParser.selection_map_prefix;
     var r = ir / 255;
     var g = ig / 255;
     var b = ib / 255;
     var a = ia / 255;
     var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
-    Style.selection_map[key] = {
+    StyleParser.selection_map[key] = {
         color: [r, g, b, a],
     };
 
-    return Style.selection_map[key];
+    return StyleParser.selection_map[key];
 };
 
-Style.resetSelectionMap = function ()
+StyleParser.resetSelectionMap = function ()
 {
-    Style.selection_map = {};
-    Style.selection_map_size = 1;
+    StyleParser.selection_map = {};
+    StyleParser.selection_map_size = 1;
 };
-
-// Find and expand style macros
-Style.macros = [
-    'Style.color.pseudoRandomColor',
-    'Style.color.randomColor',
-    'Style.pixels'
-];
 
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - zoom: the current map zoom level
 // - meters_per_pixel: conversion for meters/pixels at current map zoom
 // - properties: user-defined properties on the style-rule object in the stylesheet
-Style.wrapFunction = function (func) {
+StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
                 feature.id = context.feature.id;
@@ -106,45 +145,11 @@ Style.wrapFunction = function (func) {
     return f;
 };
 
-Style.expandMacros = function expandMacros (obj) {
-    for (var p in obj) {
-        var val = obj[p];
-
-        // Loop through object properties
-        if (typeof val === 'object') {
-            obj[p] = expandMacros(val);
-        }
-        // Convert strings back into functions
-        else if (typeof val === 'string') {
-            for (var m in Style.macros) {
-                if (val.match(Style.macros[m])) {
-                    var f;
-                    try {
-                        /*jshint ignore:start */
-                        eval('f = ' + val);
-                        /*jshint ignore:end */
-                        obj[p] = f;
-                        log.trace(`expanded macro ${val} to ${f}`);
-                        break;
-                    }
-                    catch (e) {
-                        // fall-back to original value if parsing failed
-                        obj[p] = val;
-                        log.trace(`failed to expand macro ${val}`);
-                    }
-                }
-            }
-        }
-    }
-
-    return obj;
-};
-
 
 // Style parsing
 
 // Style defaults
-Style.defaults = {
+StyleParser.defaults = {
     color: [1.0, 0, 0],
     width: 1,
     size: 1,
@@ -167,7 +172,7 @@ Style.defaults = {
 
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
-Style.getFeatureParseContext = function (feature, feature_style, tile) {
+StyleParser.getFeatureParseContext = function (feature, feature_style, tile) {
     return {
         feature: feature,
         properties: Object.assign({}, feature_style.properties||{}), // Object.assign polyfill fails on null object
@@ -177,7 +182,7 @@ Style.getFeatureParseContext = function (feature, feature_style, tile) {
     };
 };
 
-Style.convertUnits = function(val, context) {
+StyleParser.convertUnits = function(val, context) {
     if (typeof val === 'string') {
         var units = val.match(/(\d+)([a-zA-z]+)/);
         if (units && units.length === 3) {
@@ -201,21 +206,21 @@ Style.convertUnits = function(val, context) {
     else if (Array.isArray(val)) {
         // Array of arrays, e.g. zoom-interpolated stops
         if (val.every(v => { return Array.isArray(v); })) {
-            return val.map(v => { return [v[0], Style.convertUnits(v[1], context)]; });
+            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context)]; });
         }
         // Array of values
         else {
-            return val.map(v => { return Style.convertUnits(v, context); });
+            return val.map(v => { return StyleParser.convertUnits(v, context); });
         }
     }
     return val;
 };
 
-Style.parseDistance = function(val, context) {
+StyleParser.parseDistance = function(val, context) {
     if (typeof val === 'function') {
         val = val(context);
     }
-    val = Style.convertUnits(val, context);
+    val = StyleParser.convertUnits(val, context);
     val = Utils.interpolate(context.zoom, val);
     if (typeof val === 'number') {
         val *= context.units_per_meter;
@@ -223,7 +228,7 @@ Style.parseDistance = function(val, context) {
     return val;
 };
 
-Style.parseColor = function(val, context) {
+StyleParser.parseColor = function(val, context) {
     if (typeof val === 'function') {
         val = val(context);
     }

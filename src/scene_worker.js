@@ -1,7 +1,7 @@
 /*jshint worker: true*/
 import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
-import {Style} from './style';
+import {StyleParser} from './style_parser';
 import {StyleManager} from './gl/gl_modes';
 import Scene  from './scene';
 import Tile from './tile';
@@ -18,7 +18,7 @@ GLBuilders.setTileScale(Scene.tile_scale);
 // Initialize worker
 SceneWorker.worker.init = function (worker_id) {
     SceneWorker.worker_id = worker_id;
-    Style.selection_map_prefix = SceneWorker.worker_id;
+    StyleParser.selection_map_prefix = SceneWorker.worker_id;
     return worker_id;
 };
 
@@ -30,7 +30,7 @@ SceneWorker.updateConfig = function (config) {
         SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
     }
     if (!SceneWorker.config && config.config) {
-        SceneWorker.config = Utils.stringsToFunctions(Style.expandMacros(JSON.parse(config.config)), Style.wrapFunction);
+        SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config.config)), StyleParser.wrapFunction);
         SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
     }
 };
@@ -82,7 +82,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, config }) 
                 resolve({
                     tile: SceneWorker.sliceTile(tile, keys),
                     worker_id: SceneWorker.worker_id,
-                    selection_map_size: Style.selection_map_size
+                    selection_map_size: StyleParser.selection_map_size
                 });
             }, (error) => {
                 if (error) {
@@ -95,7 +95,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, config }) 
                 resolve({
                     tile: SceneWorker.sliceTile(tile),
                     worker_id: SceneWorker.worker_id,
-                    selection_map_size: Style.selection_map_size
+                    selection_map_size: StyleParser.selection_map_size
                 });
             });
         });
@@ -114,7 +114,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, config }) 
         return {
             tile: SceneWorker.sliceTile(tile, keys),
             worker_id: SceneWorker.worker_id,
-            selection_map_size: Style.selection_map_size
+            selection_map_size: StyleParser.selection_map_size
         };
     }
 };
@@ -138,7 +138,7 @@ SceneWorker.worker.removeTile = function (key) {
 
 // Get a feature from the selection map
 SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
-    var selection = Style.selection_map[key];
+    var selection = StyleParser.selection_map[key];
 
     return {
         id: id,
@@ -152,7 +152,7 @@ SceneWorker.worker.prepareForRebuild = function (config) {
     SceneWorker.config = null;
     SceneWorker.styles = null;
     SceneWorker.updateConfig(config);
-    Style.resetSelectionMap();
+    StyleParser.resetSelectionMap();
 
     SceneWorker.log('debug', `worker updated config for tile rebuild`);
 };

@@ -3,7 +3,7 @@ import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
 import GLGeometry from './gl_geom';
-import {Style} from '../style';
+import {StyleParser} from '../style_parser';
 import Utils from '../utils';
 import {MethodNotImplemented} from '../errors';
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
@@ -65,8 +65,8 @@ StyleManager.preProcessSceneConfig = function (config) {
 
         if ((config.layers[m].style && config.layers[m].style.name) == null) {
             config.layers[m].style = {};
-            for (var p in Style.defaults.style) {
-                config.layers[m].style[p] = Style.defaults.style[p];
+            for (var p in StyleParser.defaults.style) {
+                config.layers[m].style[p] = StyleParser.defaults.style[p];
             }
         }
     }
@@ -192,7 +192,7 @@ var RenderMode = {
 
     parseFeature (feature, feature_style, tile) {
         var style = Object.assign({}, feature_style);
-        var context = Style.getFeatureParseContext(feature, style, tile);
+        var context = StyleParser.getFeatureParseContext(feature, style, tile);
 
         // TODO: will be replaced (outside this function) with new style rule parsing
         // Test whether features should be rendered at all
@@ -206,7 +206,7 @@ var RenderMode = {
         // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
         // but all features on layers below this one will be drawn underneath, all features on layers above this one
         // will be drawn on top
-        style.order = style.order || Style.defaults.order;
+        style.order = style.order || StyleParser.defaults.order;
         if (typeof style.order === 'function') {
             style.order = style.order(context);
         }
@@ -223,7 +223,7 @@ var RenderMode = {
 
         // If style supports feature selection and feature is marked as selectable
         if (this.selection && selectable === true) {
-            var selector = Style.generateSelection();
+            var selector = StyleParser.generateSelection();
 
             selector.feature = {
                 id: feature.id,
@@ -235,7 +235,7 @@ var RenderMode = {
             };
         }
         else {
-            style.selection = Style.defaults.selection;
+            style.selection = StyleParser.defaults.selection;
         }
 
         // Subclass implementation
@@ -436,12 +436,12 @@ Object.assign(Polygons, {
     },
 
     _parseFeature (feature, style, context) {
-        style.color = Style.parseColor(style.color, context);
-        style.width = Style.parseDistance(style.width, context);
-        style.z = Style.parseDistance(style.z, context);
-        style.extrude = Style.parseDistance(style.extrude, context);
-        style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
-        style.min_height = (feature.properties && feature.properties.min_height) || Style.defaults.min_height;
+        style.color = StyleParser.parseColor(style.color, context);
+        style.width = StyleParser.parseDistance(style.width, context);
+        style.z = StyleParser.parseDistance(style.z, context);
+        style.extrude = StyleParser.parseDistance(style.extrude, context);
+        style.height = (feature.properties && feature.properties.height) || StyleParser.defaults.height;
+        style.min_height = (feature.properties && feature.properties.min_height) || StyleParser.defaults.min_height;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         if (style.extrude) {
@@ -455,8 +455,8 @@ Object.assign(Polygons, {
         }
 
         if (style.outline) {
-            style.outline.color = Style.parseColor(style.outline.color, context);
-            style.outline.width = Style.parseDistance(style.outline.width, context);
+            style.outline.color = StyleParser.parseColor(style.outline.color, context);
+            style.outline.width = StyleParser.parseDistance(style.outline.width, context);
             style.outline.tile_edges = (style.outline.tile_edges === true) ? true : false;
         }
 
@@ -637,9 +637,9 @@ Object.assign(Points, {
     },
 
     _parseFeature (feature, style, context) {
-        style.color = Style.parseColor(style.color, context);
-        style.size = Style.parseDistance(style.size, context);
-        style.z = Style.parseDistance(style.z, context);
+        style.color = StyleParser.parseColor(style.color, context);
+        style.size = StyleParser.parseDistance(style.size, context);
+        style.z = StyleParser.parseDistance(style.z, context);
         return style;
     },
 

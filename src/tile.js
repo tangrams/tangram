@@ -1,6 +1,6 @@
 /*global Tile */
 import {Geo} from './geo';
-import {Style} from './style';
+import {StyleParser} from './style_parser';
 import WorkerBroker from './worker_broker';
 
 import log from 'loglevel';
@@ -100,19 +100,19 @@ export default class Tile {
                     var layer_style = layer_styles.layers[layer.name];
                     var feature_style = {};
 
-                    style = styles[(layer_style.style && layer_style.style.name) || Style.defaults.style];
+                    style = styles[(layer_style.style && layer_style.style.name) || StyleParser.defaults.style];
 
-                    feature_style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
-                    feature_style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
-                    feature_style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
-                    feature_style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
-                    feature_style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
+                    feature_style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || StyleParser.defaults.color;
+                    feature_style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || StyleParser.defaults.width;
+                    feature_style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || StyleParser.defaults.size;
+                    feature_style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || StyleParser.defaults.extrude;
+                    feature_style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || StyleParser.defaults.z || 0;
                     feature_style.interactive = layer_style.interactive;
 
                     layer_style.outline = layer_style.outline || {};
                     feature_style.outline = {};
-                    feature_style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
-                    feature_style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
+                    feature_style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || StyleParser.defaults.outline.color;
+                    feature_style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || StyleParser.defaults.outline.width;
                     feature_style.outline.tile_edges = layer_style.outline.tile_edges;
 
                     // *** end code to be replaced by style rule parsing
