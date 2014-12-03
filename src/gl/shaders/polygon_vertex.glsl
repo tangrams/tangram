@@ -50,9 +50,6 @@ varying vec4 v_world_position;
     varying vec3 v_lighting;
 #endif
 
-// Imported functions
-#pragma glslify: reorderLayers = require(./modules/reorder_layers)
-
 #pragma tangram: globals
 #pragma tangram: camera
 #pragma tangram: lighting
