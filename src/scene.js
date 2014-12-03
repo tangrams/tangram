@@ -6,7 +6,7 @@ import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
-import {ModeManager} from './gl/gl_modes';
+import {StyleManager} from './gl/gl_modes';
 import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
@@ -28,8 +28,8 @@ Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
-// Layers & styles: pass an object directly, or a URL as string to load remotely
-export default function Scene(tile_source, layer_source, style_source, options) {
+// Load scene definition: pass an object directly, or a URL as string to load remotely
+export default function Scene(tile_source, layer_source, config_source, options) {
 
     options = options || {};
     this.initialized = false;
@@ -40,9 +40,14 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
 
-    this.layer_source = layer_source;
-    this.style_source = style_source;
+    this.config = null;
+    this.config_source = config_source;
+    this.config_serialized = null;
+
     this.layers = null;
+    this.layer_source = layer_source;
+    this.layers_serialized = null;
+
     this.styles = null;
 
     this.building = null;                           // tracks current scene building state (tiles being built, etc.)
@@ -67,11 +72,11 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.resetTime();
 }
 
-Scene.create = function ({tile_source, layers, styles}, options = {}) {
+Scene.create = function ({tile_source, layers, config}, options = {}) {
     if (!(tile_source instanceof TileSource)) {
         tile_source = TileSource.create(tile_source);
     }
-    return new Scene(tile_source, layers, styles, options);
+    return new Scene(tile_source, layers, config, options);
 };
 
 Scene.prototype.init = function () {
@@ -80,13 +85,13 @@ Scene.prototype.init = function () {
     }
     this.initializing = true;
 
-    // Load scene definition (layers, styles, etc.), then create modes & workers
+    // Load scene definition (layers, styles, etc.), then create styles & workers
     return new Promise((resolve, reject) => {
         this.loadScene().then(() => {
             Promise.all([
                 new Promise((resolve, reject) => {
-                    this.modes = ModeManager.createModes(this.styles.modes);
-                    this.updateActiveModes();
+                    this.styles = StyleManager.createStyles(this.config.styles);
+                    this.updateActiveStyles();
                     resolve();
                 }),
                 this.createWorkers()
@@ -110,11 +115,11 @@ Scene.prototype.init = function () {
                 this.createLighting();
                 this.initSelectionBuffer();
 
-                // Init GL context for modes
-                for (var mode of Utils.values(this.modes)) {
-                    mode.setGL(this.gl);
+                // Init GL context for styles
+                for (var style of Utils.values(this.styles)) {
+                    style.setGL(this.gl);
                 }
-                this.updateModes();
+                this.updateStyles();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -143,8 +148,8 @@ Scene.prototype.destroy = function () {
         this.fbo = null;
 
         GLTexture.destroy(this.gl);
-        ModeManager.destroy(this.gl);
-        this.modes = {};
+        StyleManager.destroy(this.gl);
+        this.styles = {};
 
         this.gl = null;
     }
@@ -513,32 +518,32 @@ Scene.prototype.renderGL = function () {
     }
     this.renderable_tiles_count = renderable_tiles.length;
 
-    // Render main pass - tiles grouped by rendering mode (GL program)
+    // Render main pass - tiles grouped by rendering style (GL program)
     var render_count = 0;
-    for (var mode in this.modes) {
-        // Per-frame mode updates/animations
-        // Called even if the mode isn't rendered by any current tiles, so time-based animations, etc. continue
-        this.modes[mode].update();
+    for (var style in this.styles) {
+        // Per-frame style updates/animations
+        // Called even if the style isn't rendered by any current tiles, so time-based animations, etc. continue
+        this.styles[style].update();
 
-        var program = this.modes[mode].program;
+        var program = this.styles[style].program;
         if (program == null || program.compiled === false) {
             continue;
         }
 
-        var first_for_mode = true;
+        var first_for_style = true;
 
         // Render tile GL geometries
         for (t in renderable_tiles) {
             tile = renderable_tiles[t];
 
-            if (tile.gl_geometry[mode] != null) {
-                // Setup mode if encountering for first time this frame
-                // (lazy init, not all modes will be used in all screen views; some modes might be defined but never used)
-                if (first_for_mode === true) {
-                    first_for_mode = false;
+            if (tile.gl_geometry[style] != null) {
+                // Setup style if encountering for first time this frame
+                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+                if (first_for_style === true) {
+                    first_for_style = false;
 
                     program.use();
-                    this.modes[mode].setUniforms();
+                    this.styles[style].setUniforms();
 
                     // TODO: don't set uniforms when they haven't changed
                     program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
@@ -553,7 +558,7 @@ Scene.prototype.renderGL = function () {
                     this.lighting.setupProgram(program);
                 }
 
-                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-mode)
+                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
 
                 // Tile origin
                 program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
@@ -571,15 +576,15 @@ Scene.prototype.renderGL = function () {
                 program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                 // Render tile
-                tile.gl_geometry[mode].render();
-                render_count += tile.gl_geometry[mode].geometry_count;
+                tile.gl_geometry[style].render();
+                render_count += tile.gl_geometry[style].geometry_count;
             }
         }
     }
 
     // Render selection pass (if needed)
     // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
-    // mode program, for the selection program
+    // style program, for the selection program
     // TODO: reduce duplicated code w/main render pass above
     if (Object.keys(this.selection_requests).length > 0) {
         if (this.panning) {
@@ -591,25 +596,25 @@ Scene.prototype.renderGL = function () {
         gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
         this.resetFrame();
 
-        for (mode in this.modes) {
-            program = this.modes[mode].selection_program;
+        for (style in this.styles) {
+            program = this.styles[style].selection_program;
             if (program == null || program.compiled === false) {
                 continue;
             }
 
-            first_for_mode = true;
+            first_for_style = true;
 
             // Render tile GL geometries
             for (t in renderable_tiles) {
                 tile = renderable_tiles[t];
 
-                if (tile.gl_geometry[mode] != null) {
-                    // Setup mode if encountering for first time this frame
-                    if (first_for_mode === true) {
-                        first_for_mode = false;
+                if (tile.gl_geometry[style] != null) {
+                    // Setup style if encountering for first time this frame
+                    if (first_for_style === true) {
+                        first_for_style = false;
 
                         program.use();
-                        this.modes[mode].setUniforms();
+                        this.styles[style].setUniforms();
 
                         program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
                         program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
@@ -639,7 +644,7 @@ Scene.prototype.renderGL = function () {
                     program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
 
                     // Render tile
-                    tile.gl_geometry[mode].render();
+                    tile.gl_geometry[style].render();
                 }
             }
         }
@@ -812,7 +817,7 @@ Scene.prototype._loadTile = function (coords, options = {}) {
 };
 
 // Rebuild all tiles
-// TODO: also rebuild modes? (detect if changed)
+// TODO: also rebuild styles? (detect if changed)
 Scene.prototype.rebuildGeometry = function () {
     if (!this.initialized) {
         return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
@@ -838,14 +843,14 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Update layers & styles (in case JS objects were manipulated directly)
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+        this.config_serialized = Utils.serializeWithFunctions(this.config);
         this.selection_map = {};
 
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.workers.forEach(worker => {
             WorkerBroker.postMessage(worker, 'prepareForRebuild', {
                 layers: this.layers_serialized,
-                styles: this.styles_serialized
+                config: this.config_serialized
             });
         });
 
@@ -879,7 +884,7 @@ Scene.prototype.rebuildGeometry = function () {
             }
         }
 
-        this.updateActiveModes();
+        this.updateActiveStyles();
         this.resetTime();
 
         // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
@@ -920,7 +925,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
         }
 
         if (!tile.error) {
-            tile.finalizeGeometry(this.modes);
+            tile.finalizeGeometry(this.styles);
             this.dirty = true;
         }
         else {
@@ -997,7 +1002,7 @@ Scene.prototype.removeTile = function (key)
 Scene.prototype.loadScene = function () {
     return Promise.all([
         this.loadLayers(this.layer_source),
-        this.loadStyles(this.style_source)
+        this.loadConfig(this.config_source)
     ]);
 };
 
@@ -1008,12 +1013,12 @@ Scene.prototype.loadLayers = function (source) {
     });
 };
 
-Scene.prototype.loadStyles = function (source) {
-    return Utils.loadResource(source).then((styles) => {
-        this.styles = styles;
-        return ModeManager.preProcessStyles(this.styles);
+Scene.prototype.loadConfig = function (source) {
+    return Utils.loadResource(source).then((config) => {
+        this.config = config;
+        return StyleManager.preProcessSceneConfig(this.config);
     }).then(() => {
-        this.styles_serialized = Utils.serializeWithFunctions(this.styles);
+        this.config_serialized = Utils.serializeWithFunctions(this.config);
     });
 };
 
@@ -1032,27 +1037,27 @@ Scene.prototype.reload = function () {
 
 };
 
-// Called (currently manually) after modes are updated in stylesheet
-Scene.prototype.updateModes = function () {
+// Called (currently manually) after styles are updated in stylesheet
+Scene.prototype.updateStyles = function () {
     if (!this.initialized && !this.initializing) {
-        throw new Error('Scene.updateModes() called before scene was initialized');
+        throw new Error('Scene.updateStyles() called before scene was initialized');
     }
 
-    this.modes = ModeManager.updateModes(this.styles.modes);
+    this.styles = StyleManager.updateStyles(this.config.styles);
     this.dirty = true;
 };
 
-Scene.prototype.updateActiveModes = function () {
-    // Make a set of currently active modes (used in a layer)
-    this.active_modes = {};
-    var animated = false; // is any active mode animated?
-    for (var l in this.styles.layers) {
-        var mode = this.styles.layers[l].mode.name;
-        if (this.styles.layers[l].visible !== false && this.modes[mode]) {
-            this.active_modes[mode] = true;
+Scene.prototype.updateActiveStyles = function () {
+    // Make a set of currently active styles (used in a layer)
+    this.active_styles = {};
+    var animated = false; // is any active style animated?
+    for (var l in this.config.layers) {
+        var style = this.config.layers[l].style.name;
+        if (this.config.layers[l].visible !== false && this.styles[style]) {
+            this.active_styles[style] = true;
 
-            // Check if this mode is animated
-            if (animated === false && this.modes[mode].animated === true) {
+            // Check if this style is animated
+            if (animated === false && this.styles[style].animated === true) {
                 animated = true;
             }
         }
@@ -1062,24 +1067,24 @@ Scene.prototype.updateActiveModes = function () {
 
 // Create camera
 Scene.prototype.createCamera = function () {
-    this.camera = Camera.create(this, this.styles.camera);
+    this.camera = Camera.create(this, this.config.camera);
 };
 
 // Create lighting
 Scene.prototype.createLighting = function () {
-    this.lighting = Lighting.create(this, this.styles.lighting);
+    this.lighting = Lighting.create(this, this.config.lighting);
 };
 
-// Update scene styles
-Scene.prototype.updateStyles = function () {
+// Update scene config
+Scene.prototype.updateConfig = function () {
     this.createCamera();
     this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-    this.updateModes();
+    this.updateStyles();
 };
 
-// Reset internal clock, mostly useful for consistent experience when changing modes/debugging
+// Reset internal clock, mostly useful for consistent experience when changing styles/debugging
 Scene.prototype.resetTime = function () {
     this.start_time = +new Date();
 };

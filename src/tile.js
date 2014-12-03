@@ -64,7 +64,7 @@ export default class Tile {
                 tile: this.buildAsMessage(),
                 tile_source: this.tile_source.buildAsMessage(),
                 layers: scene.layers_serialized,
-                styles: scene.styles_serialized
+                config: scene.config_serialized
             })
         .then(message => {
             scene.buildTileCompleted(message);
@@ -73,10 +73,10 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, styles, modes) {
-        var layer, style, feature, mode;
+    static buildGeometry (tile, layers, layer_styles, styles) {
+        var layer, style_props, feature, style;
         var vertex_data = {};
-        var mode_vertex_data;
+        var style_vertex_data;
 
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
@@ -86,7 +86,7 @@ export default class Tile {
             layer = layers[layer_num];
 
             // Skip layers with no styles defined, or layers set to not be visible
-            if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
+            if (layer_styles.layers[layer.name] == null || layer_styles.layers[layer.name].visible === false) {
                 continue;
             }
 
@@ -97,10 +97,10 @@ export default class Tile {
                     feature = tile.layers[layer.name].features[f];
 
                     // *** TODO: will be replaced by new style rule parsing ***
-                    var layer_style = styles.layers[layer.name];
+                    var layer_style = layer_styles.layers[layer.name];
                     var feature_style = {};
 
-                    mode = modes[(layer_style.mode && layer_style.mode.name) || Style.defaults.mode];
+                    style = styles[(layer_style.style && layer_style.style.name) || Style.defaults.style];
 
                     feature_style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
                     feature_style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
@@ -117,9 +117,9 @@ export default class Tile {
 
                     // *** end code to be replaced by style rule parsing
 
-                    // Mode-specific style parsing
+                    // style-specific style parsing
                     try {
-                        style = mode.parseFeature(feature, feature_style, tile);
+                        style_props = style.parseFeature(feature, feature_style, tile);
                     }
                     catch(error) {
                         log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
@@ -127,40 +127,39 @@ export default class Tile {
                     }
 
                     // Skip feature?
-                    if (style == null) {
+                    if (style_props == null) {
                         continue;
                     }
 
-                    // First feature in this render mode?
-                    // mode = modes[style.mode.name];
-                    if (vertex_data[mode.name] == null) {
-                        vertex_data[mode.name] = mode.vertex_layout.createVertexData();
+                    // First feature in this render style?
+                    if (vertex_data[style.name] == null) {
+                        vertex_data[style.name] = style.vertex_layout.createVertexData();
                     }
-                    mode_vertex_data = vertex_data[mode.name];
+                    style_vertex_data = vertex_data[style.name];
 
                     // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
                     // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
                     //  this one, all features on subsequent layers are drawn on top of this one
-                    style.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
-                    style.layer_num += style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                    style_props.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
+                    style_props.layer_num += style_props.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
 
                     if (feature.geometry.type === 'Polygon') {
-                        mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
+                        style.buildPolygons([feature.geometry.coordinates], style_props, style_vertex_data);
                     }
                     else if (feature.geometry.type === 'MultiPolygon') {
-                        mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
+                        style.buildPolygons(feature.geometry.coordinates, style_props, style_vertex_data);
                     }
                     else if (feature.geometry.type === 'LineString') {
-                        mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
+                        style.buildLines([feature.geometry.coordinates], style_props, style_vertex_data);
                     }
                     else if (feature.geometry.type === 'MultiLineString') {
-                        mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
+                        style.buildLines(feature.geometry.coordinates, style_props, style_vertex_data);
                     }
                     else if (feature.geometry.type === 'Point') {
-                        mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
+                        style.buildPoints([feature.geometry.coordinates], style_props, style_vertex_data);
                     }
                     else if (feature.geometry.type === 'MultiPoint') {
-                        mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                        style.buildPoints(feature.geometry.coordinates, style_props, style_vertex_data);
                     }
 
                     tile.debug.features++;
@@ -168,7 +167,7 @@ export default class Tile {
             }
         }
 
-        // Finalize array buffer for each render mode
+        // Finalize array buffer for each render style
         tile.vertex_data = {};
         for (var m in vertex_data) {
             tile.vertex_data[m] = vertex_data[m].end().buffer;
@@ -186,7 +185,7 @@ export default class Tile {
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    finalizeGeometry(modes) {
+    finalizeGeometry(styles) {
         var vertex_data = this.vertex_data;
         // Cleanup existing GL geometry objects
         this.freeResources();
@@ -194,7 +193,7 @@ export default class Tile {
 
         // Create GL geometry objects
         for (var s in vertex_data) {
-            this.gl_geometry[s] = modes[s].makeGLGeometry(vertex_data[s]);
+            this.gl_geometry[s] = styles[s].makeGLGeometry(vertex_data[s]);
         }
 
         this.debug.geometries = 0;

@@ -160,7 +160,7 @@ Style.defaults = {
     selection: {
         color: [0, 0, 0, 1]
     },
-    mode: {
+    style: {
         name: 'polygons'
     }
 };

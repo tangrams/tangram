@@ -26,12 +26,7 @@ lighting:
     # outer_angle: 25
     # ambient: 0.2
 
-modes:
-    # note: consider this syntax as a special case for global mode settings
-    # all:
-    #     shaders:
-    #         transforms:
-    #             fragment: { url: demos/shaders/spotlight.glsl }
+styles:
 
     water:
         extends: polygons
@@ -407,7 +402,7 @@ layers:
         #         default: 1
 
     water:
-        mode:
+        style:
             name: water
         interactive: true
         color:
@@ -482,7 +477,7 @@ layers:
                     function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
-        mode:
+        style:
             # name: popup
             # name: breathe
             # name: formica
@@ -521,7 +516,7 @@ layers:
             # default: [[14, false], [15, true]]
 
     pois:
-        mode:
+        style:
             name: points
             # name: ghosts
             # name: formica

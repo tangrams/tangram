@@ -1,4 +1,4 @@
-// Rendering modes
+// Rendering styles
 import GLVertexLayout from './gl_vertex_layout';
 import {GLBuilders} from './gl_builders';
 import GLProgram from './gl_program';
@@ -10,12 +10,12 @@ import gl from './gl_constants'; // web workers don't have access to GL context,
 import log from 'loglevel';
 var shader_sources = require('./gl_shaders'); // built-in shaders
 
-export var Modes = {};
-export var ModeManager = {};
+export var Styles = {};
+export var StyleManager = {};
 
 
-// Global configuration for all modes
-ModeManager.init = function () {
+// Global configuration for all styles
+StyleManager.init = function () {
     // GLProgram.removeTransform('globals');
 
     // // Layer re-ordering function
@@ -29,64 +29,64 @@ ModeManager.init = function () {
     // `);
 };
 
-// Update built-in mode or create a new one
-ModeManager.updateMode = function (name, settings) {
-    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
-    if (Modes[settings.extends]) {
-        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
+// Update built-in style or create a new one
+StyleManager.updateStyle = function (name, settings) {
+    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || RenderMode);
+    if (Styles[settings.extends]) {
+        Styles[name].parent = Styles[settings.extends]; // explicit 'super' class access
     }
 
     for (var s in settings) {
-        Modes[name][s] = settings[s];
+        Styles[name][s] = settings[s];
     }
 
-    Modes[name].name = name;
-    return Modes[name];
+    Styles[name].name = name;
+    return Styles[name];
 };
 
-// Destroy all modes for a given GL context
-ModeManager.destroy = function (gl) {
-    Object.keys(Modes).forEach((_name) => {
-        var mode = Modes[_name];
-        if (mode.gl === gl) {
-            log.trace(`destroying render mode ${mode.name}`);
-            mode.destroy();
+// Destroy all styles for a given GL context
+StyleManager.destroy = function (gl) {
+    Object.keys(Styles).forEach((_name) => {
+        var style = Styles[_name];
+        if (style.gl === gl) {
+            log.trace(`destroying render style ${style.name}`);
+            style.destroy();
         }
     });
 };
 
 // Normalize some style settings that may not have been explicitly specified in the stylesheet
-ModeManager.preProcessStyles = function (styles) {
+StyleManager.preProcessSceneConfig = function (config) {
     // Post-process styles
-    for (var m in styles.layers) {
-        if (styles.layers[m].visible !== false) {
-            styles.layers[m].visible = true;
+    for (var m in config.layers) {
+        if (config.layers[m].visible !== false) {
+            config.layers[m].visible = true;
         }
 
-        if ((styles.layers[m].mode && styles.layers[m].mode.name) == null) {
-            styles.layers[m].mode = {};
-            for (var p in Style.defaults.mode) {
-                styles.layers[m].mode[p] = Style.defaults.mode[p];
+        if ((config.layers[m].style && config.layers[m].style.name) == null) {
+            config.layers[m].style = {};
+            for (var p in Style.defaults.style) {
+                config.layers[m].style[p] = Style.defaults.style[p];
             }
         }
     }
 
-    styles.camera = styles.camera || {}; // ensure camera object
-    styles.lighting = styles.lighting || {}; // ensure lighting object
+    config.camera = config.camera || {}; // ensure camera object
+    config.lighting = config.lighting || {}; // ensure lighting object
 
-    return ModeManager.preloadModes(styles.modes);
+    return StyleManager.preloadStyles(config.styles);
 };
 
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
-ModeManager.preloadModes = function (modes) {
+StyleManager.preloadStyles = function (styles) {
     // Preload shaders
     var queue = [];
-    if (modes) {
-        for (var mode of Utils.values(modes)) {
-            if (mode.shaders && mode.shaders.transforms) {
-                let _transforms = mode.shaders.transforms;
+    if (styles) {
+        for (var style of Utils.values(styles)) {
+            if (style.shaders && style.shaders.transforms) {
+                let _transforms = style.shaders.transforms;
 
-                for (var [key, transform] of Utils.entries(mode.shaders.transforms)) {
+                for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
                     let _key = key;
 
                     // Array of transforms
@@ -97,7 +97,7 @@ ModeManager.preloadModes = function (modes) {
                                 queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
                                     _transforms[_key][_index] = data;
                                 }, (error) => {
-                                    log.error(`ModeManager.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                    log.error(`StyleManager.preProcessStyles: error loading shader transform`, _transforms, _key, _index, error);
                                 }));
                             }
                         }
@@ -107,7 +107,7 @@ ModeManager.preloadModes = function (modes) {
                         queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
                             _transforms[_key] = data;
                         }, (error) => {
-                            log.error(`ModeManager.preProcessStyles: error loading shader transform`, _transforms, _key, error);
+                            log.error(`StyleManager.preProcessStyles: error loading shader transform`, _transforms, _key, error);
                         }));
                     }
                 }
@@ -121,42 +121,42 @@ ModeManager.preloadModes = function (modes) {
 };
 
 // Called once on instantiation
-ModeManager.createModes = function (stylesheet_modes) {
-    ModeManager.init();
+StyleManager.createStyles = function (stylesheet_styles) {
+    StyleManager.init();
 
-    // Stylesheet-defined modes
-    for (var name in stylesheet_modes) {
-        Modes[name] = ModeManager.updateMode(name, stylesheet_modes[name]);
+    // Stylesheet-defined styles
+    for (var name in stylesheet_styles) {
+        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
     }
 
     // Initialize all
-    for (name in Modes) {
-        Modes[name].init();
+    for (name in Styles) {
+        Styles[name].init();
     }
 
-    return Modes;
+    return Styles;
 };
 
-// Called when modes are updated in stylesheet
-ModeManager.updateModes = function (stylesheet_modes) {
-    // Copy stylesheet modes
-    for (var name in stylesheet_modes) {
-        Modes[name] = ModeManager.updateMode(name, stylesheet_modes[name]);
+// Called when styles are updated in stylesheet
+StyleManager.updateStyles = function (stylesheet_styles) {
+    // Copy stylesheet styles
+    for (var name in stylesheet_styles) {
+        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
     }
 
-    // Compile all modes
-    for (name in Modes) {
+    // Compile all styles
+    for (name in Styles) {
         try {
-            Modes[name].compile();
-            log.trace(`ModeManager.updateModes(): compiled mode ${name}`);
+            Styles[name].compile();
+            log.trace(`StyleManager.updateStyles(): compiled style ${name}`);
         }
         catch(error) {
-            log.error(`ModeManager.updateModes(): error compiling mode ${name}:`, error);
+            log.error(`StyleManager.updateStyles(): error compiling style ${name}:`, error);
         }
     }
 
-    log.debug(`ModeManager.updateModes(): compiled all modes`);
-    return Modes;
+    log.debug(`StyleManager.updateStyles(): compiled all styles`);
+    return Styles;
 };
 
 
@@ -221,7 +221,7 @@ var RenderMode = {
             selectable = style.interactive;
         }
 
-        // If mode supports feature selection and feature is marked as selectable
+        // If style supports feature selection and feature is marked as selectable
         if (this.selection && selectable === true) {
             var selector = Style.generateSelection();
 
@@ -262,17 +262,17 @@ var RenderMode = {
         this.gl = null;
 
         if (!this.isBuiltIn()) {
-            delete Modes[this.name];
+            delete Styles[this.name];
         }
     },
 
     compile () {
         if (!this.gl) {
-            throw(new Error(`mode.compile(): skipping for ${this.name} because no GL context`));
+            throw(new Error(`style.compile(): skipping for ${this.name} because no GL context`));
         }
 
         if (this.compiling) {
-            throw(new Error(`mode.compile(): skipping for ${this.name} because mode is already compiling`));
+            throw(new Error(`style.compile(): skipping for ${this.name} because style is already compiling`));
         }
         this.compiling = true;
         this.compiled = false;
@@ -319,7 +319,7 @@ var RenderMode = {
         catch(error) {
             this.compiling = false;
             this.compiled = false;
-            throw(new Error(`mode.compile(): mode ${this.name} error:`, error));
+            throw(new Error(`style.compile(): style ${this.name} error:`, error));
         }
 
         this.compiling = false;
@@ -330,8 +330,8 @@ var RenderMode = {
      * (list of define objects that inherit from each other)
      */
     buildDefineList () {
-        // Add any custom defines to built-in mode defines
-        var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other modes
+        // Add any custom defines to built-in style defines
+        var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other styles
         if (this.defines != null) {
             for (var d in this.defines) {
                 defines[d] = this.defines[d];
@@ -347,7 +347,7 @@ var RenderMode = {
     },
 
 
-    // Set mode uniforms on currently bound program
+    // Set style uniforms on currently bound program
     setUniforms () {
         var program = GLProgram.current;
         if (program != null && this.shaders != null && this.shaders.uniforms != null) {
@@ -356,42 +356,42 @@ var RenderMode = {
     },
 
     update () {
-        // Mode-specific animation
+        // Style-specific animation
         // if (typeof this.animation === 'function') {
         //     this.animation();
         // }
     }
 };
 
-// Update built-in mode or create a new one
-ModeManager.updateMode = function (name, settings)
+// Update built-in style or create a new one
+StyleManager.updateStyle = function (name, settings)
 {
-    Modes[name] = Modes[name] || Object.create(Modes[settings.extends] || RenderMode);
-    if (Modes[settings.extends]) {
-        Modes[name].parent = Modes[settings.extends]; // explicit 'super' class access
+    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || RenderMode);
+    if (Styles[settings.extends]) {
+        Styles[name].parent = Styles[settings.extends]; // explicit 'super' class access
     }
 
     for (var s in settings) {
-        Modes[name][s] = settings[s];
+        Styles[name][s] = settings[s];
     }
 
-    Modes[name].name = name;
-    return Modes[name];
+    Styles[name].name = name;
+    return Styles[name];
 };
 
-// Destroy all modes for a given GL context
-ModeManager.destroy = function (gl) {
-    Object.keys(Modes).forEach((_name) => {
-        var mode = Modes[_name];
-        if (mode.gl === gl) {
-            log.trace(`destroying render mode ${mode.name}`);
-            mode.destroy();
+// Destroy all styles for a given GL context
+StyleManager.destroy = function (gl) {
+    Object.keys(Styles).forEach((_name) => {
+        var style = Styles[_name];
+        if (style.gl === gl) {
+            log.trace(`destroying render style ${style.name}`);
+            style.destroy();
         }
     });
 };
 
 
-// Built-in rendering modes
+// Built-in rendering styles
 
 /*** Plain polygons ***/
 
@@ -602,7 +602,7 @@ Object.assign(Polygons, {
 });
 
 //Polygons.name = 'polygons';
-Modes[Polygons.name] = Polygons;
+Styles[Polygons.name] = Polygons;
 
 
 
@@ -679,4 +679,4 @@ Object.assign(Points, {
 
 });
 
-Modes[Points.name] = Points;
+Styles[Points.name] = Points;

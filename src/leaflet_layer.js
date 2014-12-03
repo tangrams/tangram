@@ -14,7 +14,7 @@ export var LeafletLayer = L.GridLayer.extend({
         this.scene = Scene.create({
             tile_source: this.options.vectorTileSource,
             layers: this.options.vectorLayers,
-            styles: this.options.vectorStyles
+            config: this.options.vectorStyles
         }, {
             numWorkers: this.options.numWorkers,
             preRender: this.options.preRender,

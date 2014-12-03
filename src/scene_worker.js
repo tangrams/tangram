@@ -2,7 +2,7 @@
 import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {Style} from './style';
-import {ModeManager} from './gl/gl_modes';
+import {StyleManager} from './gl/gl_modes';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
@@ -12,8 +12,7 @@ export var SceneWorker = {};
 SceneWorker.worker = self;
 SceneWorker.tiles = {}; // tiles processed by this worker
 
-// TODO: sync render mode state between main thread and worker
-// SceneWorker.modes = require('./gl/gl_modes').Modes;
+// TODO: sync render style state between main thread and worker
 GLBuilders.setTileScale(Scene.tile_scale);
 
 // Initialize worker
@@ -30,9 +29,9 @@ SceneWorker.updateConfig = function (config) {
     if (!SceneWorker.layers && config.layers) {
         SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
     }
-    if (!SceneWorker.styles && config.styles) {
-        SceneWorker.styles = Utils.stringsToFunctions(Style.expandMacros(JSON.parse(config.styles)), Style.wrapFunction);
-        SceneWorker.modes = ModeManager.createModes(SceneWorker.styles.modes);
+    if (!SceneWorker.config && config.config) {
+        SceneWorker.config = Utils.stringsToFunctions(Style.expandMacros(JSON.parse(config.config)), Style.wrapFunction);
+        SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
     }
 };
 
@@ -58,7 +57,7 @@ SceneWorker.sliceTile = function (tile, keys) {
 };
 
 // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) {
+SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, config }) {
     // Tile cached?
     if (SceneWorker.tiles[tile.key] != null) {
         // Already loading?
@@ -71,14 +70,14 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
     tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
     // Update config (layers, styles, etc.)
-    SceneWorker.updateConfig({ tile_source, layers, styles });
+    SceneWorker.updateConfig({ tile_source, layers, config });
 
     // First time building the tile
     if (tile.loaded !== true) {
         return new Promise((resolve, reject) => {
             SceneWorker.tile_source.loadTile(tile).then(() => {
                 Scene.processLayersForTile(SceneWorker.layers, tile);
-                var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+                var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.config, SceneWorker.styles);
 
                 resolve({
                     tile: SceneWorker.sliceTile(tile, keys),
@@ -106,7 +105,7 @@ SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, styles }) 
         SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
         // Build geometry
-        var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.styles, SceneWorker.modes);
+        var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.config, SceneWorker.styles);
 
         // TODO: should we rebuild layers here as well?
         // - if so, we need to save the raw un-processed tile data
@@ -150,8 +149,8 @@ SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
 // Make layers/styles update config
 SceneWorker.worker.prepareForRebuild = function (config) {
     SceneWorker.layers = null;
+    SceneWorker.config = null;
     SceneWorker.styles = null;
-    SceneWorker.modes = null;
     SceneWorker.updateConfig(config);
     Style.resetSelectionMap();
 
