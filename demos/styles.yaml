@@ -12,11 +12,13 @@ camera:
 lighting:
     type: point
     position: [0, 0, 200]
-    ambient: 0.5
+    color: [1, 1, 1]
+    # ambient: 0.5
     backlight: true
 
     # type: directional
     # direction: [-1, 0, -.5]
+    # color: [1, 1, 1]
     # ambient: 0.5
 
     # type: spotlight
@@ -24,6 +26,7 @@ lighting:
     # direction: [0, 0, -1]
     # inner_angle: 20
     # outer_angle: 25
+    # color: [1, 1, 1]
     # ambient: 0.2
 
 modes:
