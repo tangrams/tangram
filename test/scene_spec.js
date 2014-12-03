@@ -12,7 +12,7 @@ function makeScene(options) {
     return new Scene(
         TileSource.create(_.clone(sampleScene.tile_source)),
         sampleScene.layers,
-        sampleScene.styles,
+        sampleScene.config,
         options
     );
 }
@@ -144,8 +144,8 @@ describe('Scene', () => {
             assert.equal(subject.layer_source, sampleScene.layers);
         });
 
-        it('correctly sets the value of the styles object', () => {
-            assert.equal(subject.style_source, sampleScene.styles);
+        it('correctly sets the value of the config object', () => {
+            assert.equal(subject.config_source, sampleScene.config);
         });
 
 
@@ -191,9 +191,9 @@ describe('Scene', () => {
                 assert.instanceOf(subject.gl, WebGLRenderingContext);
             });
 
-            it('compiles render modes', () => {
-                assert.isTrue(subject.modes.rainbow.compiled);
-                assert.ok(subject.modes.rainbow.program);
+            it('compiles render styles', () => {
+                assert.isTrue(subject.styles.rainbow.compiled);
+                assert.ok(subject.styles.rainbow.program);
             });
         });
 
@@ -425,7 +425,7 @@ describe('Scene', () => {
 
     });
 
-    describe('.updateModes()', () => {
+    describe('.updateStyles()', () => {
         let subject;
 
         beforeEach((done) => {
@@ -439,7 +439,7 @@ describe('Scene', () => {
         });
 
         it('adds a new mode', () => {
-            subject.styles.modes.elevator = {
+            subject.config.styles.elevator = {
                 "extends": "polygons",
                 "animated": true,
                 "shaders": {
@@ -449,21 +449,21 @@ describe('Scene', () => {
                 }
             };
 
-            subject.updateModes();
-            assert.isTrue(subject.modes.elevator.compiled);
-            assert.ok(subject.modes.elevator.program);
+            subject.updateStyles();
+            assert.isTrue(subject.styles.elevator.compiled);
+            assert.ok(subject.styles.elevator.program);
         });
 
-        it('adds properties to an existing mode', () => {
-            subject.styles.modes.rainbow.shaders.uniforms = { u_test: 10 };
-            subject.styles.modes.rainbow.properties = { test: 20 };
-            subject.updateModes();
+        it('adds properties to an existing style', () => {
+            subject.config.styles.rainbow.shaders.uniforms = { u_test: 10 };
+            subject.config.styles.rainbow.properties = { test: 20 };
+            subject.updateStyles();
 
-            assert.ok(subject.modes.rainbow);
-            assert.isTrue(subject.modes.rainbow.compiled);
-            assert.ok(subject.modes.rainbow.program);
-            assert.deepPropertyVal(subject, 'modes.rainbow.shaders.uniforms.u_test', 10);
-            assert.deepPropertyVal(subject, 'modes.rainbow.properties.test', 20);
+            assert.ok(subject.styles.rainbow);
+            assert.isTrue(subject.styles.rainbow.compiled);
+            assert.ok(subject.styles.rainbow.program);
+            assert.deepPropertyVal(subject, 'styles.rainbow.shaders.uniforms.u_test', 10);
+            assert.deepPropertyVal(subject, 'styles.rainbow.properties.test', 20);
         });
     });
 

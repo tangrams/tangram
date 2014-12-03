@@ -14,7 +14,7 @@ let makeOne = () => {
     return new LeafletLayer({
         vectorTileSource: sampleScene.tile_source,
         vectorLayers: sampleScene.layers,
-        vectorStyles: sampleScene.styles,
+        vectorStyles: sampleScene.config,
         disableRenderLoop: true
     });
 };

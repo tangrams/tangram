@@ -12,7 +12,7 @@ function makeScene(options) {
     return new Scene(
         TileSource.create(_.clone(sampleScene.tile_source)),
         sampleScene.layers,
-        sampleScene.styles,
+        sampleScene.config,
         options
     );
 }

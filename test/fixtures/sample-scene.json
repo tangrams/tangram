@@ -5,7 +5,7 @@
         "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
     },
     "max_zoom": 20,
-    "styles": {
+    "config": {
         "layers": {
             "earth": {
                 "color": {
@@ -36,7 +36,7 @@
                 }
             }
         },
-        "modes": {
+        "styles": {
             "rainbow": {
                 "extends": "polygons",
                 "animated": true,
