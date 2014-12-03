@@ -7,26 +7,29 @@ import {StyleParser} from './style_parser';
 import Utils from './utils';
 import {MethodNotImplemented} from './errors';
 import gl from './gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
+import shaderSources from './gl/shader_sources'; // built-in shaders
+
 import log from 'loglevel';
-var shader_sources = require('./gl/gl_shaders'); // built-in shaders
 
 export var Styles = {};
 export var StyleManager = {};
 
 
+// Manage styles
+
 // Global configuration for all styles
 StyleManager.init = function () {
-    // GLProgram.removeTransform('globals');
+    GLProgram.removeTransform('globals');
 
-    // // Layer re-ordering function
-    // GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+    // Layer re-ordering function
+    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
 
-    // // Spherical environment map
-    // GLProgram.addTransform('globals', `
-    //     #if defined(LIGHTING_ENVIRONMENT)
-    //     ${shaderSources['modules/spherical_environment_map']}
-    //     #endif
-    // `);
+    // Spherical environment map
+    GLProgram.addTransform('globals', `
+        #if defined(LIGHTING_ENVIRONMENT)
+        ${shaderSources['modules/spherical_environment_map']}
+        #endif
+    `);
 };
 
 // Update built-in style or create a new one
@@ -291,8 +294,8 @@ var RenderMode = {
         try {
             this.program = new GLProgram(
                 this.gl,
-                shader_sources[this.vertex_shader_key],
-                shader_sources[this.fragment_shader_key],
+                shaderSources[this.vertex_shader_key],
+                shaderSources[this.fragment_shader_key],
                 {
                     defines: defines,
                     transforms: transforms,
@@ -303,8 +306,8 @@ var RenderMode = {
             if (this.selection) {
                 this.selection_program = new GLProgram(
                     this.gl,
-                    shader_sources[this.vertex_shader_key],
-                    shader_sources['selection_fragment'],
+                    shaderSources[this.vertex_shader_key],
+                    shaderSources['selection_fragment'],
                     {
                         defines: selection_defines,
                         transforms: transforms,

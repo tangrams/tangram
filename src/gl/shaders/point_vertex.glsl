@@ -14,9 +14,6 @@ varying vec2 v_texcoord;
     varying vec4 v_selection_color;
 #endif
 
-// Imported functions
-#pragma glslify: reorderLayers = require(./modules/reorder_layers)
-
 #pragma tangram: globals
 #pragma tangram: camera
 

@@ -156,6 +156,28 @@ Utils.inWorkerThread = function(block) {
     }
 };
 
+// Get URL that the current script was loaded from
+// If currentScript is not available, loops through <script> elements searching for a list of provided paths
+// e.g. Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
+Utils.findCurrentURL = function (...paths) {
+    // Find currently executing script
+    var script = document.currentScript;
+    if (script) {
+        return script.src;
+    }
+    else if (Array.isArray(paths)) {
+        // Fallback on looping through <script> elements if document.currentScript is not supported
+        var scripts = document.getElementsByTagName('script');
+        for (var s=0; s < scripts.length; s++) {
+            for (var path of paths) {
+                if (scripts[s].src.indexOf(path) > -1) {
+                   return scripts[s].src;
+                }
+            }
+        }
+    }
+};
+
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
 Utils.isPowerOf2 = function(value) {

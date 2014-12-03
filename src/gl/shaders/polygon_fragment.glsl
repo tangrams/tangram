@@ -40,9 +40,6 @@ varying vec4 v_world_position;
     varying vec3 v_lighting;
 #endif
 
-// Imported functions
-#pragma glslify: sphericalEnvironmentMap = require(./modules/spherical_environment_map)
-
 #pragma tangram: globals
 #pragma tangram: lighting
 
