@@ -813,8 +813,12 @@ Scene.prototype._loadTile = function (coords, options = {}) {
     return tile;
 };
 
+// TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
+Scene.prototype.rebuild = function () {
+    return this.rebuildGeometry();
+};
+
 // Rebuild all tiles
-// TODO: also rebuild modes? (detect if changed)
 Scene.prototype.rebuildGeometry = function () {
     if (!this.initialized) {
         return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
@@ -1305,6 +1309,7 @@ Scene.processLayersForTile = function (layers, tile) {
 // Called once on instantiation
 Scene.createModes = function (stylesheet_modes) {
     var modes = {};
+    ModeManager.init();
 
     // Built-in modes
     var built_ins = require('./gl/gl_modes').Modes;
