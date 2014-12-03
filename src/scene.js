@@ -812,8 +812,12 @@ Scene.prototype._loadTile = function (coords, options = {}) {
     return tile;
 };
 
+// TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
+Scene.prototype.rebuild = function () {
+    return this.rebuildGeometry();
+};
+
 // Rebuild all tiles
-// TODO: also rebuild modes? (detect if changed)
 Scene.prototype.rebuildGeometry = function () {
     if (!this.initialized) {
         return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
