@@ -6,7 +6,7 @@ import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
-import {StyleManager} from './gl/gl_modes';
+import {StyleManager} from './style';
 import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';

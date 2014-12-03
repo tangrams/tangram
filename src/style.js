@@ -8,7 +8,7 @@ import Utils from './utils';
 import {MethodNotImplemented} from './errors';
 import gl from './gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import log from 'loglevel';
-var shader_sources = require('./gl_shaders'); // built-in shaders
+var shader_sources = require('./gl/gl_shaders'); // built-in shaders
 
 export var Styles = {};
 export var StyleManager = {};

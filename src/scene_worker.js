@@ -2,7 +2,7 @@
 import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
 import {StyleParser} from './style_parser';
-import {StyleManager} from './gl/gl_modes';
+import {StyleManager} from './style';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
