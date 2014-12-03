@@ -34,9 +34,9 @@ StyleManager.init = function () {
 
 // Update built-in style or create a new one
 StyleManager.updateStyle = function (name, settings) {
-    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || RenderMode);
+    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || Style);
     if (Styles[settings.extends]) {
-        Styles[name].parent = Styles[settings.extends]; // explicit 'super' class access
+        Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
     }
 
     for (var s in settings) {
@@ -165,7 +165,7 @@ StyleManager.updateStyles = function (stylesheet_styles) {
 
 // Base class
 
-var RenderMode = {
+var Style = {
     init () {
         this.defines = {};
         this.shaders = {};
@@ -366,44 +366,18 @@ var RenderMode = {
     }
 };
 
-// Update built-in style or create a new one
-StyleManager.updateStyle = function (name, settings)
-{
-    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || RenderMode);
-    if (Styles[settings.extends]) {
-        Styles[name].parent = Styles[settings.extends]; // explicit 'super' class access
-    }
-
-    for (var s in settings) {
-        Styles[name][s] = settings[s];
-    }
-
-    Styles[name].name = name;
-    return Styles[name];
-};
-
-// Destroy all styles for a given GL context
-StyleManager.destroy = function (gl) {
-    Object.keys(Styles).forEach((_name) => {
-        var style = Styles[_name];
-        if (style.gl === gl) {
-            log.trace(`destroying render style ${style.name}`);
-            style.destroy();
-        }
-    });
-};
-
 
 // Built-in rendering styles
 
 /*** Plain polygons ***/
 
-var Polygons = Object.create(RenderMode);
+var Polygons = Object.create(Style);
 
 Object.assign(Polygons, {
     built_in: true,
+
     init() {
-        RenderMode.init.apply(this);
+        Style.init.apply(this);
 
         // Base shaders
         this.vertex_shader_key = 'polygon_vertex';
@@ -611,13 +585,14 @@ Styles[Polygons.name] = Polygons;
 
 /*** Points w/simple distance field rendering ***/
 
-var Points = Object.create(RenderMode);
+var Points = Object.create(Style);
 
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+
     init() {
-        RenderMode.init.apply(this);
+        Style.init.apply(this);
 
         // Base shaders
         this.vertex_shader_key = 'point_vertex';
