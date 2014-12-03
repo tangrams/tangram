@@ -17,18 +17,19 @@ modes: {}
 layers:
 
     earth:
-      filter: property('layer', 'earth')
+      filter: is('layer', 'earth')
       style:
         color: [1, 1, 1]
 
     roads:
-      filter: property('layer', 'roads')
-      style:
-        color: [0, 0, 0]
-        width: 2
-
-    roads2:
-      filter: property('layer', 'roads')
-      style:
-        color: [1, 0, 0]
-        width: 10
+      filter: is('layer', 'roads')
+      highway:
+        filter: is('properties.kind', 'highway')
+        fill:
+          style:
+            color: [0, 0, 0]
+            width: 5
+        outline:
+          style:
+            color: [1, 1, 1]
+            width: 6

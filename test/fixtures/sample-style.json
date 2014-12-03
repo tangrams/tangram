@@ -1,6 +1,6 @@
 {
     "earth": {
-        "filter": "property('layer', 'earth')",
+        "filter": "is('layer', 'earth')",
         "order": 1,
         "style": {
             "color": [255, 255, 255]
@@ -14,7 +14,7 @@
     },
 
     "roads": {
-        "filter": "property('layer', 'roads')",
+        "filter": "is('layer', 'roads')",
         "order": 5,
         "style": {
             "type": "polygon",
@@ -22,15 +22,15 @@
             "width": 5
         },
         "highway": {
-            "filter": "property('kind', 'highway')",
+            "filter": "is('kind', 'highway')",
             "order": 1,
             "fill": {
                 "style": {
-                    "color": [1, 1, 1],
+                    "color": [1, 1, 0],
                     "width": 10
                 },
                 "offramp": {
-                    "filter": "property('offramp', true)",
+                    "filter": "is('offramp', true)",
                     "style": {
                         "color": [1, 0.5, 0]
                     }
@@ -46,7 +46,7 @@
             }
         },
         "bikepath": {
-            "filter": "property('kind', 'cyclepath')",
+            "filter": "is('kind', 'cyclepath')",
             "style": {
                 "order": 2,
                 "color": [0, 1, 1]
@@ -56,16 +56,11 @@
                     "color": [0.5, 1, 1]
                 }
             }
-        },
-        "stuff": {
-            "style": {
-                "color": [1, 0, 1]
-            }
         }
     },
 
     "roads2": {
-        "filter": "property('layer', 'roads')",
+        "filter": "is('layer', 'roads')",
         "order": 1,
         "style": {
             "color": [1, 0, 1]
