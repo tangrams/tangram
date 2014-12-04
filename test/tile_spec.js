@@ -11,7 +11,6 @@ function makeScene(options) {
     options.disableRenderLoop = true;
     return new Scene(
         TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.layers,
         sampleScene.config,
         options
     );

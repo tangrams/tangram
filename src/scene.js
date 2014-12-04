@@ -29,12 +29,12 @@ GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
-export default function Scene(tile_source, config_source, options) {
+export default function Scene(source, config_source, options) {
 
     options = options || {};
     this.initialized = false;
 
-    this.tile_source = tile_source;
+    this.tile_source = source;
     this.tiles = {};
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
@@ -69,11 +69,11 @@ export default function Scene(tile_source, config_source, options) {
     this.resetTime();
 }
 
-Scene.create = function ({tile_source, config}, options = {}) {
-    if (!(tile_source instanceof TileSource)) {
-        tile_source = TileSource.create(tile_source);
+Scene.create = function ({source, config}, options = {}) {
+    if (!(source instanceof TileSource)) {
+        source = TileSource.create(source);
     }
-    return new Scene(tile_source, config, options);
+    return new Scene(source, config, options);
 };
 
 Scene.prototype.init = function () {
@@ -1053,8 +1053,7 @@ Scene.prototype.updateActiveStyles = function () {
     this.active_styles = {};
     var animated = false; // is any active style animated?
 
-    var name, rule;
-    for ([name, rule] of Utils.recurseEntries(this.config.layers)) {
+    for (var rule of Utils.recurseValues(this.config.layers)) {
         if (rule.style && rule.visible !== false) {
             this.active_styles[rule.style.name] = true;
 

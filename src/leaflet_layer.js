@@ -22,7 +22,7 @@ Utils.inMainThread(() => {
 
         createScene: function () {
             this.scene = Scene.create({
-                tile_source: this.options.source,
+                source: this.options.source,
                 config: this.options.scene
             }, {
                 numWorkers: this.options.numWorkers,
