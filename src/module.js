@@ -24,6 +24,7 @@ Utils.inMainThread(() => {
         leafletLayer,
         debug: {
             log,
+            Utils,
             Geo,
             GL,
             GLProgram,
@@ -37,6 +38,7 @@ Utils.inMainThread(() => {
 Utils.inWorkerThread(() => {
     self.Tangram = {
         debug: {
+            Utils,
             SceneWorker,
             WorkerBroker
         }

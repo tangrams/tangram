@@ -266,3 +266,23 @@ Utils.values = function* (obj) {
         yield obj[key];
     }
 };
+
+// Recursive iterators for all properties of an object, no matter how deeply nested
+// TODO: fix for circular structures
+Utils.recurseEntries = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield [key, obj[key]];
+        if (typeof obj[key] === 'object') {
+            yield* Utils.recurseEntries(obj[key]);
+        }
+    }
+};
+
+Utils.recurseValues = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield obj[key];
+        if (typeof obj[key] === 'object') {
+            yield* Utils.recurseValues(obj[key]);
+        }
+    }
+};

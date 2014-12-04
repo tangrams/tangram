@@ -7,6 +7,7 @@ import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {StyleManager} from './style';
+import {StyleParser} from './style_parser';
 import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
@@ -124,7 +125,7 @@ Scene.prototype.init = function () {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
-            }, reject);
+            }).catch(reject);
         });
     });
 };
@@ -989,16 +990,12 @@ Scene.prototype.removeTile = function (key)
    @return {Promise}
 */
 Scene.prototype.loadScene = function () {
-    return this.loadConfig(this.config_source);
-};
-
-Scene.prototype.loadConfig = function (source) {
-    return Utils.loadResource(source).then((config) => {
+    return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
-        return StyleManager.preProcessSceneConfig(this.config);
+        return this.preProcessSceneConfig();
     }).then(() => {
         this.config_serialized = Utils.serializeWithFunctions(this.config);
-    });
+    }).catch((error) => { Promise.reject(error); });
 };
 
 // Reload scene config and rebuild tiles
@@ -1016,6 +1013,30 @@ Scene.prototype.reload = function () {
 
 };
 
+// Normalize some settings that may not have been explicitly specified in the scene definition
+Scene.prototype.preProcessSceneConfig = function () {
+    // Post-process styles
+    for (var m in this.config.layers) {
+        // Styles are visible by default
+        if (this.config.layers[m].visible !== false) {
+            this.config.layers[m].visible = true;
+        }
+
+        // Set default rendering style
+        if ((this.config.layers[m].style && this.config.layers[m].style.name) == null) {
+            this.config.layers[m].style = {};
+            for (var p in StyleParser.defaults.style) {
+                this.config.layers[m].style[p] = StyleParser.defaults.style[p];
+            }
+        }
+    }
+
+    this.config.camera = this.config.camera || {}; // ensure camera object
+    this.config.lighting = this.config.lighting || {}; // ensure lighting object
+
+    return StyleManager.preloadStyles(this.config.styles);
+};
+
 // Called (currently manually) after styles are updated in stylesheet
 Scene.prototype.updateStyles = function () {
     if (!this.initialized && !this.initializing) {
@@ -1027,19 +1048,17 @@ Scene.prototype.updateStyles = function () {
 };
 
 Scene.prototype.updateActiveStyles = function () {
-    // TODO: this would have to walk the whole rule tree collecting all styles to be accurate
-    // Make a set of currently active styles (used in a layer)
+    // Make a set of currently active styles (used in a style rule)
+    // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
     this.active_styles = {};
     var animated = false; // is any active style animated?
 
+    var name, rule;
+    for ([name, rule] of Utils.recurseEntries(this.config.layers)) {
+        if (rule.style && rule.visible !== false) {
+            this.active_styles[rule.style.name] = true;
 
-    for (var l in this.config.layers) {
-        var style = this.config.layers[l].style.name;
-        if (this.config.layers[l].visible !== false && this.styles[style]) {
-            this.active_styles[style] = true;
-
-            // Check if this style is animated
-            if (animated === false && this.styles[style].animated === true) {
+            if (this.styles[rule.style.name].animated) {
                 animated = true;
             }
         }

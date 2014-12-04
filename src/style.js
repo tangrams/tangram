@@ -58,30 +58,6 @@ StyleManager.destroy = function (gl) {
     });
 };
 
-// Normalize some style settings that may not have been explicitly specified in the stylesheet
-StyleManager.preProcessSceneConfig = function (config) {
-    // Post-process styles
-    for (var m in config.layers) {
-        // Styles are visible by default
-        if (config.layers[m].visible !== false) {
-            config.layers[m].visible = true;
-        }
-
-        // Set default rendering style
-        if ((config.layers[m].style && config.layers[m].style.name) == null) {
-            config.layers[m].style = {};
-            for (var p in StyleParser.defaults.style) {
-                config.layers[m].style[p] = StyleParser.defaults.style[p];
-            }
-        }
-    }
-
-    config.camera = config.camera || {}; // ensure camera object
-    config.lighting = config.lighting || {}; // ensure lighting object
-
-    return StyleManager.preloadStyles(config.styles);
-};
-
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
 StyleManager.preloadStyles = function (styles) {
     // Preload shaders
