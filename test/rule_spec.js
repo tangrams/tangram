@@ -51,13 +51,22 @@ describe.only('Rules', () => {
         describe('when there is only one matching filter', () => {
             let feature = { layer: 'roads', kind: 'not-highway'};
 
-            it('', () => {
+            it('returns an array with a single rule', () => {
                 matchFeature(feature, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 1);
             });
         });
 
+        describe('when given a feature that is a road and a bridge', () => {
+            let feature = { layer: 'roads', bridge: true, name: 'Brooklyn', kind: 'highway' };
 
+
+            it('returns an array of three rules', () => {
+                matchFeature(feature, ruleGroups.roads.rules, matchedRules);
+                assert.lengthOf(matchedRules, 3);
+            });
+
+        });
     });
 
 

@@ -36,6 +36,24 @@
                     }
                 }
             },
+
+            "bridge": {
+
+                "filter": "is('bridge', true)",
+                "style": {
+                    "color": [0.5, 0.5, 0.5],
+                    "width": 10
+                },
+
+                "brooklyn": {
+                    "filter": "is('name', 'Brooklyn')",
+                    "style": {
+                        "color": [0, 0, 0],
+                        "width": 20
+                    }
+                }
+            },
+
             "outline": {
                 "order": -1,
                 "style": {

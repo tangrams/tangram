@@ -32,24 +32,6 @@ export function findMacro(value) {
     return false;
 }
 
-
-export function walkAllRules(rules, cb) {
-    if (rules.length === 0) {
-        return;
-    }
-    var first = rules[0];
-
-    cb(first);
-
-    if (first.rules && first.rules.length !== 0) {
-        walkAllRules(first.rules, cb);
-    }
-
-    walkAllRules(rules.slice(1), cb);
-
-}
-
-
 export function matchFeature(feature, rules, collectedRules, stack = []) {
     var current, matched = false, childMatched;
 
