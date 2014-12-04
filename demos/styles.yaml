@@ -393,8 +393,6 @@ modes:
                     color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color == vec3(0.)) discard;
 
-
-
 layers:
     earth:
         color:

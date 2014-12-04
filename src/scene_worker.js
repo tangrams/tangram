@@ -30,7 +30,6 @@ Utils.inWorkerThread(() => {
     SceneWorker.updateConfig = function (config) {
         if (!SceneWorker.tile_source && config.tile_source) {
             SceneWorker.tile_source = TileSource.create(config.tile_source);
-
         }
         if (!SceneWorker.layers && config.layers) {
             SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
@@ -73,6 +72,7 @@ Utils.inWorkerThread(() => {
                 return;
             }
         }
+
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 

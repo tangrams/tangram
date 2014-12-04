@@ -95,9 +95,9 @@ export default class Tile {
                     feature.layer = layer.name;
 
                     // find matching rules
-                    Object.keys(rules).forEach((r) => {
-                        var s = rules[r];
-                        matchedRules = s.matchFeature(feature).concat(matchedRules);
+                    Object.keys(rules).forEach((_name) => {
+                        var rule = rules[_name];
+                        matchedRules = rule.matchFeature(feature).concat(matchedRules);
                     });
 
                     // collect processed style object
