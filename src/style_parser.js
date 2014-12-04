@@ -76,7 +76,10 @@ Style.color = {
 
     // random color
     randomColor() {
-        return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()];
+        var func = `function() {
+            return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()];
+        }`;
+        return func;
     }
 };
 
