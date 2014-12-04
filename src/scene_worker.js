@@ -31,7 +31,17 @@ Utils.inWorkerThread(() => {
             SceneWorker.tile_source = TileSource.create(config.tile_source);
         }
         if (!SceneWorker.config && config.config) {
-            SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config.config)), StyleParser.wrapFunction);
+            var config = JSON.parse(config.config);
+
+            // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
+            // TODO: probably want a cleaner way to exclude these
+            for (var layer in config.layers) {
+                config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
+            }
+
+            // Expand styles
+            // SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config.config)), StyleParser.wrapFunction);
+            SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
             SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
         }
     };
