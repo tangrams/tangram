@@ -578,21 +578,21 @@
         gui.add(gui, 'screenshot');
 
         // Layers
-        // var layer_gui = gui.addFolder('Layers');
-        // var layer_controls = {};
-        // layer.scene.layers.forEach(function(l) {
-        //     if (layer.scene.config.layers[l.name] == null) {
-        //         return;
-        //     }
+        var layer_gui = gui.addFolder('Layers');
+        var layer_controls = {};
+        Object.keys(layer.scene.config.layers).forEach(function(l) {
+            if (layer.scene.config.layers[l] == null) {
+                return;
+            }
 
-        //     layer_controls[l.name] = !(layer.scene.config.layers[l.name].visible == false);
-        //     layer_gui.
-        //         add(layer_controls, l.name).
-        //         onChange(function(value) {
-        //             layer.scene.config.layers[l.name].visible = value;
-        //             layer.scene.rebuildGeometry();
-        //         });
-        // });
+            layer_controls[l] = !(layer.scene.config.layers[l].visible == false);
+            layer_gui.
+                add(layer_controls, l).
+                onChange(function(value) {
+                    layer.scene.config.layers[l].visible = value;
+                    layer.scene.rebuildGeometry();
+                });
+        });
 
         // Styles
         gui.add(gl_style_options, 'effect', gl_style_options.options).
