@@ -77,7 +77,6 @@ export default class Tile {
         var layer, style, feature, mode;
         var vertex_data = {};
         var mode_vertex_data;
-        var featureStyles = [];
 
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
@@ -91,6 +90,7 @@ export default class Tile {
                 var num_features = tile.layers[layer.name].features.length;
                 for (var f = num_features-1; f >= 0; f--) {
                     var matchedRules = [];
+                    var featureStyles;
                     feature = tile.layers[layer.name].features[f];
                     feature.layer = layer.name;
 
@@ -101,6 +101,7 @@ export default class Tile {
                     });
 
                     // collect processed style object
+
                     featureStyles = matchedRules.map((rule) => {
                         try {
                             return Style.parseStyleForFeature(feature, layer.name, rule, tile);
@@ -109,7 +110,6 @@ export default class Tile {
                             log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
                             throw error;
                         }
-
                     });
 
                     for (var i = 0; i < featureStyles.length; i += 1) {

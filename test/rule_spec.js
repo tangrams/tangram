@@ -35,6 +35,7 @@ describe.only('Rules', () => {
             it('returns 3 rule objects', () => {
                 matchFeature(feature, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 2);
+                assert.deepEqual(matchedRules[0], { 'type': 'polygon', 'width': 10, 'color': [1, 1, 0] });
             });
         });
 
@@ -47,23 +48,23 @@ describe.only('Rules', () => {
             });
         });
 
-
         describe('when there is only one matching filter', () => {
-            let feature = { layer: 'roads', kind: 'not-highway'};
+            let feature = { layer: 'roads', kind: 'not-highway' };
 
             it('returns an array with a single rule', () => {
                 matchFeature(feature, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 1);
+                assert.deepEqual(matchedRules[0], { 'type': 'polygon', 'color': [1, 1, 1], 'width': 5 });
             });
         });
 
         describe('when given a feature that is a road and a bridge', () => {
             let feature = { layer: 'roads', bridge: true, name: 'Brooklyn', kind: 'highway' };
 
-
             it('returns an array of three rules', () => {
                 matchFeature(feature, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 3);
+                assert.deepEqual(matchedRules[0], {'type':'polygon', 'color':[1,1,0], 'width':10 });
             });
 
         });

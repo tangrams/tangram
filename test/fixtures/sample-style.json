@@ -36,9 +36,7 @@
                     }
                 }
             },
-
             "bridge": {
-
                 "filter": "is('bridge', true)",
                 "style": {
                     "color": [0.5, 0.5, 0.5],
@@ -53,7 +51,6 @@
                     }
                 }
             },
-
             "outline": {
                 "order": -1,
                 "style": {
