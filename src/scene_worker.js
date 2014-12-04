@@ -30,9 +30,6 @@ Utils.inWorkerThread(() => {
         if (!SceneWorker.tile_source && config.tile_source) {
             SceneWorker.tile_source = TileSource.create(config.tile_source);
         }
-        if (!SceneWorker.layers && config.layers) {
-            SceneWorker.layers = Utils.deserializeWithFunctions(config.layers);
-        }
         if (!SceneWorker.config && config.config) {
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config.config)), StyleParser.wrapFunction);
             SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
@@ -61,7 +58,7 @@ Utils.inWorkerThread(() => {
     };
 
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-    SceneWorker.worker.buildTile = function ({ tile, tile_source, layers, config }) {
+    SceneWorker.worker.buildTile = function ({ tile, tile_source, config }) {
         // Tile cached?
         if (SceneWorker.tiles[tile.key] != null) {
             // Already loading?
@@ -73,24 +70,23 @@ Utils.inWorkerThread(() => {
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
-        // Update config (layers, styles, etc.)
-        SceneWorker.updateConfig({ tile_source, layers, config });
+        // Update config (styles, etc.)
+        SceneWorker.updateConfig({ tile_source, config });
 
         // First time building the tile
         if (tile.loaded !== true) {
             return new Promise((resolve, reject) => {
                 SceneWorker.tile_source.loadTile(tile).then(() => {
-                    Scene.processLayersForTile(SceneWorker.layers, tile);
-                    var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.config, SceneWorker.styles);
+                    var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.styles);
 
                     resolve({
                         tile: SceneWorker.sliceTile(tile, keys),
                         worker_id: SceneWorker.worker_id,
                         selection_map_size: StyleParser.selection_map_size
                     });
-                }, (error) => {
+                }).catch((error) => {
                     if (error) {
-                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.toString()}`);
+                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
                     }
                     else {
                         SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
@@ -109,12 +105,8 @@ Utils.inWorkerThread(() => {
             SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
             // Build geometry
-            var keys = Tile.buildGeometry(tile, SceneWorker.layers, SceneWorker.config, SceneWorker.styles);
+            var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.styles);
 
-            // TODO: should we rebuild layers here as well?
-            // - if so, we need to save the raw un-processed tile data
-            // - benchmark the layer processing time to see if it matters
-            // - benchmark tesselation time for comparison (and could cache tesselation)
             return {
                 tile: SceneWorker.sliceTile(tile, keys),
                 worker_id: SceneWorker.worker_id,
@@ -150,9 +142,8 @@ Utils.inWorkerThread(() => {
         };
     };
 
-    // Make layers/styles update config
+    // Update styles, etc.
     SceneWorker.worker.prepareForRebuild = function (config) {
-        SceneWorker.layers = null;
         SceneWorker.config = null;
         SceneWorker.styles = null;
         SceneWorker.updateConfig(config);

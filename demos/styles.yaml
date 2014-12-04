@@ -390,10 +390,20 @@ styles:
 
 layers:
     earth:
+        geometry:
+            source: osm
+            filter: earth
+            order: 0
+
         color:
             default: [0.175, 0.175, 0.175]
 
     landuse:
+        geometry:
+            source: osm
+            filter: landuse
+            order: 1
+
         interactive: true
         color:
             default: [0.5, 0.875, 0.5]
@@ -405,6 +415,11 @@ layers:
         #         default: 1
 
     water:
+        geometry:
+            source: osm
+            filter: water
+            order: 2
+
         style:
             name: water
         interactive: true
@@ -424,6 +439,11 @@ layers:
                     }
 
     roads:
+        geometry:
+            source: osm
+            filter: roads
+            order: 3
+
         interactive: function () { return (zoom >= 18); }
         order: function () { return feature.sort_key * .000025; }
         # order: "function () { return (feature.sort_key * .000025) - (feature.outline ? .0001 : 0); }"
@@ -480,6 +500,11 @@ layers:
                     function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
+        geometry:
+            source: osm
+            filter: buildings
+            order: 4
+
         style:
             # name: popup
             # name: breathe
@@ -519,6 +544,11 @@ layers:
             # default: [[14, false], [15, true]]
 
     pois:
+        geometry:
+            source: osm
+            filter: pois
+            order: 5
+
         style:
             name: points
             # name: ghosts

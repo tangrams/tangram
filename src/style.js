@@ -62,10 +62,12 @@ StyleManager.destroy = function (gl) {
 StyleManager.preProcessSceneConfig = function (config) {
     // Post-process styles
     for (var m in config.layers) {
+        // Styles are visible by default
         if (config.layers[m].visible !== false) {
             config.layers[m].visible = true;
         }
 
+        // Set default rendering style
         if ((config.layers[m].style && config.layers[m].style.name) == null) {
             config.layers[m].style = {};
             for (var p in StyleParser.defaults.style) {
@@ -194,57 +196,63 @@ var Style = {
     buildPoints () {},
 
     parseFeature (feature, feature_style, tile) {
-        var style = Object.assign({}, feature_style);
-        var context = StyleParser.getFeatureParseContext(feature, style, tile);
+        try {
+            var style = Object.assign({}, feature_style);
+            var context = StyleParser.getFeatureParseContext(feature, style, tile);
 
-        // TODO: will be replaced (outside this function) with new style rule parsing
-        // Test whether features should be rendered at all
-        if (typeof style.filter === 'function') {
-            if (style.filter(context) === false) {
-                return null;
+            // TODO: will be replaced (outside this function) with new style rule parsing
+            // Test whether features should be rendered at all
+            if (typeof style.filter === 'function') {
+                if (style.filter(context) === false) {
+                    return null;
+                }
             }
+
+            // Adjusts feature render order *within* the overall layer
+            // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
+            // but all features on layers below this one will be drawn underneath, all features on layers above this one
+            // will be drawn on top
+            style.order = style.order || StyleParser.defaults.order;
+            if (typeof style.order === 'function') {
+                style.order = style.order(context);
+            }
+            style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
+
+            // Feature selection
+            var selectable = false;
+            if (typeof style.interactive === 'function') {
+                selectable = style.interactive(context);
+            }
+            else {
+                selectable = style.interactive;
+            }
+
+            // If style supports feature selection and feature is marked as selectable
+            if (this.selection && selectable === true) {
+                var selector = StyleParser.generateSelection();
+
+                selector.feature = {
+                    id: feature.id,
+                    properties: feature.properties
+                };
+
+                style.selection = {
+                    color: selector.color
+                };
+            }
+            else {
+                style.selection = StyleParser.defaults.selection;
+            }
+
+            // Subclass implementation
+            this._parseFeature(feature, style, context);
+
+            return style;
         }
-
-        // Adjusts feature render order *within* the overall layer
-        // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
-        // but all features on layers below this one will be drawn underneath, all features on layers above this one
-        // will be drawn on top
-        style.order = style.order || StyleParser.defaults.order;
-        if (typeof style.order === 'function') {
-            style.order = style.order(context);
+        catch(error) {
+            log.error('Style.parseFeature: style parsing error', feature, tile, error);
+            throw error;
         }
-        style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
-
-        // Feature selection
-        var selectable = false;
-        if (typeof style.interactive === 'function') {
-            selectable = style.interactive(context);
-        }
-        else {
-            selectable = style.interactive;
-        }
-
-        // If style supports feature selection and feature is marked as selectable
-        if (this.selection && selectable === true) {
-            var selector = StyleParser.generateSelection();
-
-            selector.feature = {
-                id: feature.id,
-                properties: feature.properties
-            };
-
-            style.selection = {
-                color: selector.color
-            };
-        }
-        else {
-            style.selection = StyleParser.defaults.selection;
-        }
-
-        // Subclass implementation
-        this._parseFeature(feature, style, context);
-
-        return style;
     },
 
     _parseFeature (feature, style, context) {
@@ -457,7 +465,7 @@ Object.assign(Polygons, {
             // selection color
             style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
             // layer number
-            style.layer_num
+            style.layer
         ];
 
         if (this.texcoords) {
@@ -637,7 +645,7 @@ Object.assign(Points, {
             // selection color
             style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
             // layer number
-            style.layer_num
+            style.layer
         ];
     },
 

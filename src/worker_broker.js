@@ -162,7 +162,7 @@ function setupWorkerThread () {
             }, (error) => {
                 self.postMessage({
                     message_id: id,
-                    error: (error instanceof Error ? error.message : error)
+                    error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                 });
             });
         }
@@ -171,7 +171,7 @@ function setupWorkerThread () {
             self.postMessage({
                 message_id: id,
                 message: result,
-                error: (error instanceof Error ? error.message : error)
+                error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
             });
         }
     });

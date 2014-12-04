@@ -63,7 +63,6 @@ export default class Tile {
             {
                 tile: this.buildAsMessage(),
                 tile_source: this.tile_source.buildAsMessage(),
-                layers: scene.layers_serialized,
                 config: scene.config_serialized
             })
         .then(message => {
@@ -73,61 +72,60 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, layer_styles, styles) {
-        var layer, style_props, feature, style;
+    static buildGeometry (tile, layers, styles) {
+        var name, layer, style_props, feature, style;
         var vertex_data = {};
         var style_vertex_data;
 
         // Build raw geometry arrays
-        // Render layers, and features within each layer, in reverse order - aka top to bottom
+        // Render g, and features within each layer, in reverse order - aka top to bottom
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
-        for (var layer_num = 0; layer_num < layers.length; layer_num++) {
-            layer = layers[layer_num];
+
+        // Treat top-level style rules as 'layers'
+        for (name in layers) {
+            layer = layers[name];
 
             // Skip layers with no styles defined, or layers set to not be visible
-            if (layer_styles.layers[layer.name] == null || layer_styles.layers[layer.name].visible === false) {
+            if (!layer.geometry || layer.visible === false) {
                 continue;
             }
 
-            if (tile.layers[layer.name] != null) {
-                var num_features = tile.layers[layer.name].features.length;
+            var geom = Tile.getGeometryForSource(tile, layer.geometry);
+            if (geom) {
+                var num_features = geom.features.length;
 
                 for (var f = num_features-1; f >= 0; f--) {
-                    feature = tile.layers[layer.name].features[f];
+                    feature = geom.features[f];
+
 
                     // *** TODO: will be replaced by new style rule parsing ***
-                    var layer_style = layer_styles.layers[layer.name];
-                    var feature_style = {};
 
-                    style = styles[(layer_style.style && layer_style.style.name) || StyleParser.defaults.style];
+                    // var layer = layer;
+                    var feature_style = Object.assign({}, layer);
 
-                    feature_style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || StyleParser.defaults.color;
-                    feature_style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || StyleParser.defaults.width;
-                    feature_style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || StyleParser.defaults.size;
-                    feature_style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || StyleParser.defaults.extrude;
-                    feature_style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || StyleParser.defaults.z || 0;
-                    feature_style.interactive = layer_style.interactive;
+                    style = styles[(feature_style.style && feature_style.style.name) || StyleParser.defaults.style];
 
-                    layer_style.outline = layer_style.outline || {};
-                    feature_style.outline = {};
-                    feature_style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || StyleParser.defaults.outline.color;
-                    feature_style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || StyleParser.defaults.outline.width;
-                    feature_style.outline.tile_edges = layer_style.outline.tile_edges;
+                    feature_style.color = (feature_style.color && (feature_style.color[feature.properties.kind] || feature_style.color.default)) || StyleParser.defaults.color;
+                    feature_style.width = (feature_style.width && (feature_style.width[feature.properties.kind] || feature_style.width.default)) || StyleParser.defaults.width;
+                    feature_style.size = (feature_style.size && (feature_style.size[feature.properties.kind] || feature_style.size.default)) || StyleParser.defaults.size;
+                    feature_style.extrude = (feature_style.extrude && (feature_style.extrude[feature.properties.kind] || feature_style.extrude.default)) || StyleParser.defaults.extrude;
+                    feature_style.z = (feature_style.z && (feature_style.z[feature.properties.kind] || feature_style.z.default)) || StyleParser.defaults.z || 0;
+                    feature_style.interactive = feature_style.interactive;
+
+                    feature_style.outline = Object.assign({}, feature_style.outline || {});
+                    feature_style.outline.color = (feature_style.outline.color && (feature_style.outline.color[feature.properties.kind] || feature_style.outline.color.default)) || StyleParser.defaults.outline.color;
+                    feature_style.outline.width = (feature_style.outline.width && (feature_style.outline.width[feature.properties.kind] || feature_style.outline.width.default)) || StyleParser.defaults.outline.width;
+                    feature_style.outline.tile_edges = feature_style.outline.tile_edges;
 
                     // *** end code to be replaced by style rule parsing
 
-                    // style-specific style parsing
-                    try {
-                        style_props = style.parseFeature(feature, feature_style, tile);
-                    }
-                    catch(error) {
-                        log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
-                        throw error;
-                    }
+
+                    // Style-specific parsing
+                    style_props = style.parseFeature(feature, feature_style, tile);
 
                     // Skip feature?
-                    if (style_props == null) {
+                    if (!style_props) {
                         continue;
                     }
 
@@ -140,8 +138,8 @@ export default class Tile {
                     // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
                     // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
                     //  this one, all features on subsequent layers are drawn on top of this one
-                    style_props.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
-                    style_props.layer_num += style_props.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                    style_props.layer = layer.geometry.order + 0.5;      // 'center' this layer at 0.5 above the baseline
+                    style_props.layer += style_props.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
 
                     if (feature.geometry.type === 'Polygon') {
                         style.buildPolygons([feature.geometry.coordinates], style_props, style_vertex_data);
@@ -179,6 +177,33 @@ export default class Tile {
         return {
             vertex_data: true
         };
+    }
+
+    /**
+        Retrieves geometry from a tile according to a data source definition
+    */
+    static getGeometryForSource (tile, source) {
+        var geom;
+
+        if (source != null) {
+            // Just pass through data untouched if no data transform function defined
+            // if (!source.filter) {
+            //     geom = tile.layers[source.filter];
+            // }
+            // Pass through data but with different layer name in tile source data
+            /*else*/ if (typeof source.filter === 'string') {
+                geom = tile.layers[source.filter];
+            }
+            // Apply the transform function for post-processing
+            else if (typeof source.filter === 'function') {
+                geom = source.filter(tile.layers);
+            }
+        }
+
+        // Handle cases where no data was found in tile or returned by post-processor
+        geom = geom || { type: 'FeatureCollection', features: [] };
+
+        return geom;
     }
 
     /**

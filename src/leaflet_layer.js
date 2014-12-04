@@ -22,9 +22,8 @@ Utils.inMainThread(() => {
 
         createScene: function () {
             this.scene = Scene.create({
-                tile_source: this.options.vectorTileSource,
-                layers: this.options.vectorLayers,
-                config: this.options.vectorStyles
+                tile_source: this.options.source,
+                config: this.options.scene
             }, {
                 numWorkers: this.options.numWorkers,
                 preRender: this.options.preRender,

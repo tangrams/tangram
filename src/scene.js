@@ -28,7 +28,7 @@ GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
-export default function Scene(tile_source, layer_source, config_source, options) {
+export default function Scene(tile_source, config_source, options) {
 
     options = options || {};
     this.initialized = false;
@@ -43,10 +43,6 @@ export default function Scene(tile_source, layer_source, config_source, options)
     this.config = null;
     this.config_source = config_source;
     this.config_serialized = null;
-
-    this.layers = null;
-    this.layer_source = layer_source;
-    this.layers_serialized = null;
 
     this.styles = null;
 
@@ -72,11 +68,11 @@ export default function Scene(tile_source, layer_source, config_source, options)
     this.resetTime();
 }
 
-Scene.create = function ({tile_source, layers, config}, options = {}) {
+Scene.create = function ({tile_source, config}, options = {}) {
     if (!(tile_source instanceof TileSource)) {
         tile_source = TileSource.create(tile_source);
     }
-    return new Scene(tile_source, layers, config, options);
+    return new Scene(tile_source, config, options);
 };
 
 Scene.prototype.init = function () {
@@ -85,7 +81,7 @@ Scene.prototype.init = function () {
     }
     this.initializing = true;
 
-    // Load scene definition (layers, styles, etc.), then create styles & workers
+    // Load scene definition (sources, styles, etc.), then create styles & workers
     return new Promise((resolve, reject) => {
         this.loadScene().then(() => {
             Promise.all([
@@ -412,16 +408,6 @@ Scene.prototype.immediateRedraw = function () {
     this.render();
 };
 
-// TODO: remove, unnecessary
-// Determine a Z value that will stack features in a "painter's algorithm" style, first by layer, then by draw order within layer
-// Features are assumed to be already sorted in desired draw order by the layer pre-processor
-Scene.calculateZ = function (layer, tile, layer_offset, feature_offset) {
-    // var layer_offset = layer_offset || 0;
-    // var feature_offset = feature_offset || 0;
-    var z = 0; // TODO: made this a no-op until revisiting where it should live - one-time calc here, in vertex layout/shader, etc.
-    return z;
-};
-
 // Setup the render loop
 Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
@@ -552,7 +538,7 @@ Scene.prototype.renderGL = function () {
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     program.uniform('2f', 'u_map_center', center.x, center.y);
-                    program.uniform('1f', 'u_num_layers', this.layers.length);
+                    program.uniform('1f', 'u_num_layers', Object.keys(this.config.layers).length);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                     this.camera.setupProgram(program);
@@ -622,7 +608,7 @@ Scene.prototype.renderGL = function () {
                         program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                         program.uniform('1f', 'u_map_zoom', this.zoom);
                         program.uniform('2f', 'u_map_center', center.x, center.y);
-                        program.uniform('1f', 'u_num_layers', this.layers.length);
+                        program.uniform('1f', 'u_num_layers', Object.keys(this.config.layers).length);
                         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                         this.camera.setupProgram(program);
@@ -846,15 +832,13 @@ Scene.prototype.rebuildGeometry = function () {
         // Track tile build state
         this.building = { resolve, reject, tiles: {} };
 
-        // Update layers & styles (in case JS objects were manipulated directly)
-        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
+        // Update config (in case JS objects were manipulated directly)
         this.config_serialized = Utils.serializeWithFunctions(this.config);
         this.selection_map = {};
 
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.workers.forEach(worker => {
             WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-                layers: this.layers_serialized,
                 config: this.config_serialized
             });
         });
@@ -1005,17 +989,7 @@ Scene.prototype.removeTile = function (key)
    @return {Promise}
 */
 Scene.prototype.loadScene = function () {
-    return Promise.all([
-        this.loadLayers(this.layer_source),
-        this.loadConfig(this.config_source)
-    ]);
-};
-
-Scene.prototype.loadLayers = function (source) {
-    return Utils.loadResource(source).then((data) => {
-        this.layers = data;
-        this.layers_serialized = Utils.serializeWithFunctions(this.layers);
-    });
+    return this.loadConfig(this.config_source);
 };
 
 Scene.prototype.loadConfig = function (source) {
@@ -1053,9 +1027,12 @@ Scene.prototype.updateStyles = function () {
 };
 
 Scene.prototype.updateActiveStyles = function () {
+    // TODO: this would have to walk the whole rule tree collecting all styles to be accurate
     // Make a set of currently active styles (used in a layer)
     this.active_styles = {};
     var animated = false; // is any active style animated?
+
+
     for (var l in this.config.layers) {
         var style = this.config.layers[l].style.name;
         if (this.config.layers[l].visible !== false && this.styles[style]) {
@@ -1194,36 +1171,4 @@ Scene.prototype.workerLogMessage = function (event) {
     else {
         log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
     }
-};
-
-
-/*** Class methods (stateless) ***/
-
-// Processes the tile response to create layers as defined by the scene
-// Can include post-processing to partially filter or re-arrange data, e.g. only including POIs that have names
-Scene.processLayersForTile = function (layers, tile) {
-    var tile_layers = {};
-    for (var t=0; t < layers.length; t++) {
-        layers[t].number = t;
-
-        if (layers[t] != null) {
-            // Just pass through data untouched if no data transform function defined
-            if (layers[t].data == null) {
-                tile_layers[layers[t].name] = tile.layers[layers[t].name];
-            }
-            // Pass through data but with different layer name in tile source data
-            else if (typeof layers[t].data === 'string') {
-                tile_layers[layers[t].name] = tile.layers[layers[t].data];
-            }
-            // Apply the transform function for post-processing
-            else if (typeof layers[t].data === 'function') {
-                tile_layers[layers[t].name] = layers[t].data(tile.layers);
-            }
-        }
-
-        // Handle cases where no data was found in tile or returned by post-processor
-        tile_layers[layers[t].name] = tile_layers[layers[t].name] || { type: 'FeatureCollection', features: [] };
-    }
-    tile.layers = tile_layers;
-    return tile_layers;
 };

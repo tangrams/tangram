@@ -18,48 +18,42 @@
                 type: 'GeoJSONTileSource',
                 url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapzen-dev': {
             source: {
                 type: 'GeoJSONTileSource',
                 url: appendProtocol('//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json')
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapzen-local': {
             source: {
                 type: 'GeoJSONTileSource',
                 url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapzen-mvt': {
             source: {
                 type: 'MapboxFormatTileSource',
                 url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox')
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapzen-topojson': {
             source: {
                 type: 'TopoJSONTileSource',
                 url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'osm': {
             source: {
                 type: 'GeoJSONTileSource',
                 url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
             },
-            layers: 'demos/layers.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapbox': {
             source: {
@@ -67,8 +61,7 @@
                 url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
                 max_zoom: 15
             },
-            layers: 'demos/layers_mvt.yaml',
-            styles: 'demos/styles.yaml'
+            scene: 'demos/styles.yaml'
         }
     };
 
@@ -147,9 +140,8 @@
     });
 
     var layer = Tangram.leafletLayer({
-        vectorTileSource: tile_sources[default_tile_source].source,
-        vectorLayers: tile_sources[default_tile_source].layers,
-        vectorStyles: tile_sources[default_tile_source].styles,
+        source: tile_sources[default_tile_source].source,
+        scene: tile_sources[default_tile_source].scene,
         numWorkers: 2,
         preRender: preRender,
         postRender: postRender,
