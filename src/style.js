@@ -454,6 +454,10 @@ Object.assign(Polygons, {
     },
 
     buildPolygons(polygons, style, vertex_data) {
+        if (!style.color) {
+            return;
+        }
+
         var vertex_template = this.makeVertexTemplate(style);
 
         // Extruded polygons (e.g. 3D buildings)
@@ -505,11 +509,11 @@ Object.assign(Polygons, {
     },
 
     buildLines(lines, style, vertex_data) {
-        var vertex_template = this.makeVertexTemplate(style);
-
-        if (!style.width) {
+        if (!style.color || !style.width) {
             return;
         }
+
+        var vertex_template = this.makeVertexTemplate(style);
 
         // Main lines
         GLBuilders.buildPolylines(
@@ -551,6 +555,10 @@ Object.assign(Polygons, {
     },
 
     buildPoints(points, style, vertex_data) {
+        if (!style.color || !style.size) {
+            return;
+        }
+
         var vertex_template = this.makeVertexTemplate(style);
 
         GLBuilders.buildQuadsForPoints(
@@ -605,7 +613,7 @@ Object.assign(Points, {
     _parseFeature (feature, style, context) {
         style.color = StyleParser.parseColor(style.color, context);
         style.size = StyleParser.parseDistance(style.size, context);
-        style.z = StyleParser.parseDistance(style.z, context);
+        style.z = StyleParser.parseDistance(style.z || 0, context);
         return style;
     },
 
@@ -630,6 +638,10 @@ Object.assign(Points, {
     },
 
     buildPoints(points, style, vertex_data) {
+        if (!style.color || !style.size) {
+            return;
+        }
+
         var vertex_template = this.makeVertexTemplate(style);
 
         GLBuilders.buildQuadsForPoints(

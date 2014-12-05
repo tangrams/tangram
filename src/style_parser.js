@@ -243,6 +243,9 @@ StyleParser.parseColor = function(val, context) {
         if (val && val.length === 4) {
             val = val.slice(0, 3).map(c => { return c / 255; });
         }
+        else {
+            val = null;
+        }
     }
     else if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
