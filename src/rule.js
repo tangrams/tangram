@@ -1,6 +1,6 @@
 import Utils from './utils';
 
-export var whiteList = ['filter', 'order', 'style', 'color', 'width', 'visible', 'mode'];
+export var whiteList = ['filter', 'order', 'style', 'visible', 'geometry'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
@@ -176,7 +176,7 @@ export function parseStyle(name, style, parent) {
             parseStyle(name, property, group);
         }
         else {
-            throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
+            throw new Error(`You provided a property that was not an object and was not expected: ${property}`);
         }
     });
 

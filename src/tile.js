@@ -145,14 +145,11 @@ export default class Tile {
                     for (var rule of matchedRules) {
                         var style_props;
 
-                        // TODO: replace this default/preprocess step
-                        rule.z = rule.z || 0;
-                        rule.outline = {};
-
                         // Parse style
                         try {
-                            style = styles[rule.name || StyleParser.defaults.style.name];
-                            style_props = style.parseFeature(feature, rule, tile);
+                            // debugger;
+                            style = styles[rule.style.name || StyleParser.defaults.style.name];
+                            style_props = style.parseFeature(feature, rule.style, tile);
                         }
                         catch(error) {
                             log.error('Tile.buildGeometry: style parse fail', feature, rule, tile, error);

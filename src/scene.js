@@ -1023,11 +1023,12 @@ Scene.prototype.preProcessSceneConfig = function () {
         }
 
         // Set default rendering style
-        if ((this.config.layers[m].style && this.config.layers[m].style.name) == null) {
-            this.config.layers[m].style = {};
-            for (var p in StyleParser.defaults.style) {
-                this.config.layers[m].style[p] = StyleParser.defaults.style[p];
-            }
+        if (this.config.layers[m].style && !this.config.layers[m].style.name) {
+            this.config.layers[m].style.name = StyleParser.defaults.style.name;
+            // this.config.layers[m].style = {};
+            // for (var p in StyleParser.defaults.style) {
+            //     this.config.layers[m].style[p] = StyleParser.defaults.style[p];
+            // }
         }
     }
 

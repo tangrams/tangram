@@ -1,34 +1,32 @@
 camera:
     type: perspective
-    # focal_length: 1
-    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
-    vanishing_point: [-.25, -.25] # slightly off-center viewing angle, towards lower-left of screen
-
-    # type: isometric
-    # axis: [1, .5]
-
-    # type: flat
 
 lighting:
-    type: diffuse
+    type: point
 
-modes: {}
+styles: {}
 
 layers:
 
     earth:
-      filter: property('layer', 'earth')
+      geometry:
+        source: osm
+        filter: earth
+        order: 0
       style:
         color: [1, 1, 1]
 
     roads:
-      filter: property('layer', 'roads')
-      style:
-        color: [0, 0, 0]
-        width: 2
-
-    roads2:
-      filter: property('layer', 'roads')
+      geometry:
+        source: osm
+        filter: roads
+        order: 1
       style:
         color: [1, 0, 0]
-        width: 10
+        width: 2
+
+    # roads2:
+    #   filter: property('layer', 'roads')
+    #   style:
+    #     color: [1, 0, 0]
+    #     width: 10
