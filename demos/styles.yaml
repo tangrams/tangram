@@ -442,24 +442,49 @@ layers:
         geometry:
             source: osm
             filter: roads
+            # filter: |
+            #     function (json) {
+            #         return {
+            #             type: 'FeatureCollection',
+            #             features: (((json['road']||{}).features)||[]).concat(((json['bridge']||{}).features)||[]).filter(function (feature) {
+            #                 if (['motorway', 'motorway_link'].indexOf(feature.properties.class) > 0) {
+            #                     feature.properties.kind = 'highway';
+            #                     feature.properties.sort_key = 10000;
+            #                 }
+            #                 else if (feature.properties.class == 'main') {
+            #                     feature.properties.kind = 'major_road';
+            #                     feature.properties.sort_key = 1000;
+            #                 }
+            #                 else if (['street', 'street_limited'].indexOf(feature.properties.class) > 0) {
+            #                     feature.properties.kind = 'minor_road';
+            #                     feature.properties.sort_key = 100;
+            #                 }
+            #                 else {
+            #                     feature.properties.kind = feature.properties.type;
+            #                     feature.properties.sort_key = 10;
+            #                 }
+            #                 return feature;
+            #             })
+            #         };
+            #     }
             order: 3
 
         interactive: function () { return (zoom >= 18); }
         order: function () { return feature.sort_key * .000025; }
         # order: "function () { return (feature.sort_key * .000025) - (feature.outline ? .0001 : 0); }"
         color:
-            default: Style.color.pseudoRandomColor()
-            # default: [0.4, 0.4, 0.4]
-            # highway: [1.0, 1.0, 1.0]
-            # # highway: 'red'
-            # # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-            # # highway: [[13, 'darkorchid'], [17, 'honeydew']]
-            # # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
-            # major_road: [0.5, 0.5, 0.5]
-            # minor_road: [0.65, 0.65, 0.65]
-            # path: [0.8, 0.8, 0.8]
-            # rail: [0.5, 0.0, 0.0]
-            # debug: [1, 0, 0]
+            # default: Style.color.pseudoRandomColor()
+            default: [0.4, 0.4, 0.4]
+            highway: [1.0, 1.0, 1.0]
+            # highway: 'red'
+            # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+            # highway: [[13, 'darkorchid'], [17, 'honeydew']]
+            # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
+            major_road: [0.5, 0.5, 0.5]
+            minor_road: [0.65, 0.65, 0.65]
+            path: [0.8, 0.8, 0.8]
+            rail: [0.5, 0.0, 0.0]
+            debug: [1, 0, 0]
         width:
             # default: Style.pixels(5)
             # default: Style.pixels(function() { return 10; })
