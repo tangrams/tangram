@@ -507,6 +507,10 @@ Object.assign(Polygons, {
     buildLines(lines, style, vertex_data) {
         var vertex_template = this.makeVertexTemplate(style);
 
+        if (!style.width) {
+            return;
+        }
+
         // Main lines
         GLBuilders.buildPolylines(
             lines,
