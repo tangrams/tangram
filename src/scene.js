@@ -1017,9 +1017,7 @@ Scene.prototype.loadLayers = function (source) {
 Scene.prototype.loadStyles = function (source) {
     return Utils.loadResource(source).then((styles) => {
         this.styles = styles;
-        Style.expandMacros(this.styles);
-        return Scene.preProcessStyles(this.styles);
-    }).then(() => {
+        Scene.preProcessStyles(this.styles);
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
     });
 };

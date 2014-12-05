@@ -46,7 +46,7 @@ Style.generateSelection = function ()
     var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
     Style.selection_map[key] = {
-        color: [r, g, b, a],
+        color: [r, g, b, a]
     };
 
     return Style.selection_map[key];
@@ -230,24 +230,17 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
         units_per_meter: Geo.units_per_meter[tile.coords.z]
     };
 
-    // Test whether features should be rendered at all
-    if (typeof layer_style.filter === 'function') {
-        if (layer_style.filter(context) === false) {
-            return null;
-        }
-    }
-
     // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
+    style.color = layer_style.color  || Style.defaults.color;
     style.color = Style.parseColor(style.color, context);
 
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
+    style.width = layer_style.width || Style.defaults.width;
     style.width = Style.parseDistance(style.width, context);
 
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
+    style.size = layer_style.size || Style.defaults.size;
     style.size = Style.parseDistance(style.size, context);
 
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
+    style.extrude = layer_style.extrude || Style.defaults.extrude;
     style.extrude = Style.parseDistance(style.extrude, context);
 
     style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
@@ -264,7 +257,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
         }
     }
 
-    style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
+    style.z = layer_style.z || Style.defaults.z || 0;
     style.z = Style.parseDistance(style.z, context);
 
     // Adjusts feature render order *within* the overall layer
@@ -278,7 +271,10 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
     style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
 
     style.outline = {};
-    layer_style.outline = layer_style.outline || {};
+
+
+    /* layer_style.outline = layer_style.outline || {};
+
     style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
     style.outline.color = Style.parseColor(style.outline.color, context);
 
@@ -287,7 +283,7 @@ Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
 
     // style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
 
-    style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false;
+    style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false; */
 
     // Interactivity (selection map)
     var interactive = false;

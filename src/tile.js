@@ -73,74 +73,88 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, styles, modes) {
+    static buildGeometry (tile, layers, styles, modes, rules) {
         var layer, style, feature, mode;
         var vertex_data = {};
         var mode_vertex_data;
 
         // Build raw geometry arrays
         // Render layers, and features within each layer, in reverse order - aka top to bottom
-        tile.debug.rendering = +new Date();
-        tile.debug.features = 0;
+        // tile.debug.rendering = +new Date();
+        // tile.debug.features = 0;
         for (var layer_num = 0; layer_num < layers.length; layer_num++) {
-            layer = layers[layer_num];
 
-            // Skip layers with no styles defined, or layers set to not be visible
-            if (styles.layers[layer.name] == null || styles.layers[layer.name].visible === false) {
-                continue;
-            }
+            layer = layers[layer_num];
 
             if (tile.layers[layer.name] != null) {
                 var num_features = tile.layers[layer.name].features.length;
-
                 for (var f = num_features-1; f >= 0; f--) {
+                    var matchedRules = [];
+                    var featureStyles;
                     feature = tile.layers[layer.name].features[f];
-                    try {
-                        style = Style.parseStyleForFeature(feature, layer.name, styles.layers[layer.name], tile);
-                    }
-                    catch(error) {
-                        log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
-                        throw error;
-                    }
+                    feature.layer = layer.name;
 
-                    // Skip feature?
-                    if (style == null) {
-                        continue;
-                    }
+                    // find matching rules
+                    Object.keys(rules).forEach((_name) => {
+                        var rule = rules[_name];
+                        matchedRules = rule.matchFeature(feature).concat(matchedRules);
+                    });
 
-                    // First feature in this render mode?
-                    mode = modes[style.mode.name];
-                    if (vertex_data[mode.name] == null) {
-                        vertex_data[mode.name] = mode.vertex_layout.createVertexData();
-                    }
-                    mode_vertex_data = vertex_data[mode.name];
+                    // collect processed style object
 
-                    // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
-                    // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
-                    //  this one, all features on subsequent layers are drawn on top of this one
-                    style.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
-                    style.layer_num += style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                    featureStyles = matchedRules.map((rule) => {
+                        try {
+                            return Style.parseStyleForFeature(feature, layer.name, rule, tile);
+                        }
+                        catch(error) {
+                            log.error('Tile.buildGeometry: style parse fail', feature, tile, error);
+                            throw error;
+                        }
+                    });
 
-                    if (feature.geometry.type === 'Polygon') {
-                        mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPolygon') {
-                        mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'LineString') {
-                        mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiLineString') {
-                        mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'Point') {
-                        mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPoint') {
-                        mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                    for (var i = 0; i < featureStyles.length; i += 1) {
+                        style = featureStyles[i];
+                        // Skip feature?
+                        if (style == null) {
+                            continue;
+                        }
+
+                        // First feature in this render mode?
+                        mode = modes[style.mode.name];
+                        if (vertex_data[mode.name] == null) {
+                            vertex_data[mode.name] = mode.vertex_layout.createVertexData();
+                        }
+                        mode_vertex_data = vertex_data[mode.name];
+
+                        // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
+                        // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
+                        //  this one, all features on subsequent layers are drawn on top of this one
+                        style.layer_num = layer_num + 0.5;      // 'center' this layer at 0.5 above the baseline
+                        style.layer_num += style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+
+                        if (feature.geometry.type === 'Polygon') {
+                            mode.buildPolygons([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPolygon') {
+                            mode.buildPolygons(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'LineString') {
+                            mode.buildLines([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiLineString') {
+                            mode.buildLines(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'Point') {
+                            mode.buildPoints([feature.geometry.coordinates], style, mode_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPoint') {
+                            mode.buildPoints(feature.geometry.coordinates, style, mode_vertex_data);
+                        }
+
                     }
 
                     tile.debug.features++;
+
                 }
             }
         }
