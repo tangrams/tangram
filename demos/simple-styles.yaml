@@ -20,13 +20,16 @@ layers:
       geometry:
         source: osm
         filter: roads
+        order: 2
+      style:
+        color: [1, 1, 0]
+        width: 7
+
+    roads-outline:
+      geometry:
+        source: osm
+        filter: roads
         order: 1
       style:
         color: [1, 0, 0]
-        width: 2
-
-    # roads2:
-    #   filter: property('layer', 'roads')
-    #   style:
-    #     color: [1, 0, 0]
-    #     width: 10
+        width: 10

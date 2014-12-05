@@ -45,7 +45,12 @@ Utils.inWorkerThread(() => {
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
             SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
 
-            SceneWorker.rules = parseRules(SceneWorker.config.layers);
+            // Parse each top-level layer as a separate rule tree
+            // TODO: find a more graceful way to incorporate this
+            SceneWorker.rules = {};
+            for (var layer in SceneWorker.config.layers) {
+                SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
+            }
         }
     };
 

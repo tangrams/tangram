@@ -123,8 +123,8 @@ export default class Tile {
 
                     // Find matching rules
                     var matchedRules = [];
-                    Object.keys(rules).forEach((_name) => {
-                        var rule = rules[_name];
+                    Object.keys(rules[name]).forEach((_rule_name) => {
+                        var rule = rules[name][_rule_name];
                         matchedRules = rule.matchFeature(feature).concat(matchedRules);
                     });
 
