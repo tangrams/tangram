@@ -1,5 +1,1 @@
-
-while true; do
-    inotifywait -r -e modify src/ test/ && \
-	make run-tests
-done
+ls src/*.js src/gl/*.js test/*.js | entr -r make run-tests
