@@ -18,7 +18,7 @@
                 type: 'GeoJSONTileSource',
                 url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
             },
-            scene: 'demos/styles.yaml'
+            styles: 'demos/simple-styles.yaml'
         },
         'mapzen-dev': {
             source: {

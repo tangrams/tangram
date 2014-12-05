@@ -6,6 +6,7 @@ import {StyleManager} from './style';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
+import {parseRules} from './rule';
 import {GLBuilders} from './gl/gl_builders';
 
 export var SceneWorker = {};
@@ -43,6 +44,8 @@ Utils.inWorkerThread(() => {
             // SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config)), StyleParser.wrapFunction);
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
             SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
+
+            SceneWorker.rules = parseRules(SceneWorker.config.layers);
         }
     };
 
@@ -87,7 +90,7 @@ Utils.inWorkerThread(() => {
         if (tile.loaded !== true) {
             return new Promise((resolve, reject) => {
                 SceneWorker.tile_source.loadTile(tile).then(() => {
-                    var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.styles);
+                    var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
                     resolve({
                         tile: SceneWorker.sliceTile(tile, keys),
@@ -115,7 +118,7 @@ Utils.inWorkerThread(() => {
             SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
             // Build geometry
-            var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.styles);
+            var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
             return {
                 tile: SceneWorker.sliceTile(tile, keys),

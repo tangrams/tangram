@@ -72,7 +72,7 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, styles) {
+    static buildGeometry (tile, layers, rules, styles) {
         var name, layer, style_props, feature, style;
         var vertex_data = {};
         var style_vertex_data;
@@ -98,66 +98,102 @@ export default class Tile {
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = geom.features[f];
 
-
                     // *** TODO: will be replaced by new style rule parsing ***
 
                     // var layer = layer;
-                    var feature_style = Object.assign({}, layer);
+                    // var feature_style = Object.assign({}, layer);
 
-                    style = styles[(feature_style.style && feature_style.style.name) || StyleParser.defaults.style];
+                    // style = styles[(feature_style.style && feature_style.style.name) || StyleParser.defaults.style];
 
-                    feature_style.color = (feature_style.color && (feature_style.color[feature.properties.kind] || feature_style.color.default)) || StyleParser.defaults.color;
-                    feature_style.width = (feature_style.width && (feature_style.width[feature.properties.kind] || feature_style.width.default)) || StyleParser.defaults.width;
-                    feature_style.size = (feature_style.size && (feature_style.size[feature.properties.kind] || feature_style.size.default)) || StyleParser.defaults.size;
-                    feature_style.extrude = (feature_style.extrude && (feature_style.extrude[feature.properties.kind] || feature_style.extrude.default)) || StyleParser.defaults.extrude;
-                    feature_style.z = (feature_style.z && (feature_style.z[feature.properties.kind] || feature_style.z.default)) || StyleParser.defaults.z || 0;
-                    feature_style.interactive = feature_style.interactive;
+                    // feature_style.color = (feature_style.color && (feature_style.color[feature.properties.kind] || feature_style.color.default)) || StyleParser.defaults.color;
+                    // feature_style.width = (feature_style.width && (feature_style.width[feature.properties.kind] || feature_style.width.default)) || StyleParser.defaults.width;
+                    // feature_style.size = (feature_style.size && (feature_style.size[feature.properties.kind] || feature_style.size.default)) || StyleParser.defaults.size;
+                    // feature_style.extrude = (feature_style.extrude && (feature_style.extrude[feature.properties.kind] || feature_style.extrude.default)) || StyleParser.defaults.extrude;
+                    // feature_style.z = (feature_style.z && (feature_style.z[feature.properties.kind] || feature_style.z.default)) || StyleParser.defaults.z || 0;
+                    // feature_style.interactive = feature_style.interactive;
 
-                    feature_style.outline = Object.assign({}, feature_style.outline || {});
-                    feature_style.outline.color = (feature_style.outline.color && (feature_style.outline.color[feature.properties.kind] || feature_style.outline.color.default)) || StyleParser.defaults.outline.color;
-                    feature_style.outline.width = (feature_style.outline.width && (feature_style.outline.width[feature.properties.kind] || feature_style.outline.width.default)) || StyleParser.defaults.outline.width;
-                    feature_style.outline.tile_edges = feature_style.outline.tile_edges;
+                    // feature_style.outline = Object.assign({}, feature_style.outline || {});
+                    // feature_style.outline.color = (feature_style.outline.color && (feature_style.outline.color[feature.properties.kind] || feature_style.outline.color.default)) || StyleParser.defaults.outline.color;
+                    // feature_style.outline.width = (feature_style.outline.width && (feature_style.outline.width[feature.properties.kind] || feature_style.outline.width.default)) || StyleParser.defaults.outline.width;
+                    // feature_style.outline.tile_edges = feature_style.outline.tile_edges;
 
                     // *** end code to be replaced by style rule parsing
 
+                    feature.layer = name;
 
-                    // Style-specific parsing
-                    style_props = style.parseFeature(feature, feature_style, tile);
+                    // Find matching rules
+                    var matchedRules = [];
+                    Object.keys(rules).forEach((_name) => {
+                        var rule = rules[_name];
+                        matchedRules = rule.matchFeature(feature).concat(matchedRules);
+                    });
 
-                    // Skip feature?
-                    if (!style_props) {
-                        continue;
-                    }
+                    // Collect matching styles
+                    // var featureStyles = matchedRules.map((rule) => {
+                    //     try {
+                    //         // return Style.parseStyleForFeature(feature, layer.name, rule, tile);
+                    //         var style = styles[rule.name || StyleParser.defaults.style.name];
+                    //         style.parseFeature(feature, rule, tile);
+                    //     }
+                    //     catch(error) {
+                    //         log.error('Tile.buildGeometry: style parse fail', feature, rule, tile, error);
+                    //         throw error;
+                    //     }
+                    // });
 
-                    // First feature in this render style?
-                    if (vertex_data[style.name] == null) {
-                        vertex_data[style.name] = style.vertex_layout.createVertexData();
-                    }
-                    style_vertex_data = vertex_data[style.name];
+                    // Render styles
+                    for (var rule of matchedRules) {
+                        var style_props;
 
-                    // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
-                    // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
-                    //  this one, all features on subsequent layers are drawn on top of this one
-                    style_props.layer = layer.geometry.order + 0.5;      // 'center' this layer at 0.5 above the baseline
-                    style_props.layer += style_props.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                        // TODO: replace this default/preprocess step
+                        rule.z = rule.z || 0;
+                        rule.outline = {};
 
-                    if (feature.geometry.type === 'Polygon') {
-                        style.buildPolygons([feature.geometry.coordinates], style_props, style_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPolygon') {
-                        style.buildPolygons(feature.geometry.coordinates, style_props, style_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'LineString') {
-                        style.buildLines([feature.geometry.coordinates], style_props, style_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiLineString') {
-                        style.buildLines(feature.geometry.coordinates, style_props, style_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'Point') {
-                        style.buildPoints([feature.geometry.coordinates], style_props, style_vertex_data);
-                    }
-                    else if (feature.geometry.type === 'MultiPoint') {
-                        style.buildPoints(feature.geometry.coordinates, style_props, style_vertex_data);
+                        // Parse style
+                        try {
+                            style = styles[rule.name || StyleParser.defaults.style.name];
+                            style_props = style.parseFeature(feature, rule, tile);
+                        }
+                        catch(error) {
+                            log.error('Tile.buildGeometry: style parse fail', feature, rule, tile, error);
+                            throw error;
+                        }
+
+                        // Skip feature?
+                        if (!style_props) {
+                            continue;
+                        }
+
+                        // First feature in this render style?
+                        if (vertex_data[style.name] == null) {
+                            vertex_data[style.name] = style.vertex_layout.createVertexData();
+                        }
+                        style_vertex_data = vertex_data[style.name];
+
+                        // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
+                        // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
+                        //  this one, all features on subsequent layers are drawn on top of this one
+                        style_props.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
+                        style_props.layer += style_props.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+
+                        if (feature.geometry.type === 'Polygon') {
+                            style.buildPolygons([feature.geometry.coordinates], style_props, style_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPolygon') {
+                            style.buildPolygons(feature.geometry.coordinates, style_props, style_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'LineString') {
+                            style.buildLines([feature.geometry.coordinates], style_props, style_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiLineString') {
+                            style.buildLines(feature.geometry.coordinates, style_props, style_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'Point') {
+                            style.buildPoints([feature.geometry.coordinates], style_props, style_vertex_data);
+                        }
+                        else if (feature.geometry.type === 'MultiPoint') {
+                            style.buildPoints(feature.geometry.coordinates, style_props, style_vertex_data);
+                        }
                     }
 
                     tile.debug.features++;

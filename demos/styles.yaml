@@ -389,6 +389,7 @@ styles:
                     if (color == vec3(0.)) discard;
 
 layers:
+
     earth:
         geometry:
             source: osm
