@@ -5,15 +5,13 @@ import sampleStyle from './fixtures/sample-style.json';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-describe.only('Rules', () => {
+describe('Rules', () => {
 
     describe('Rule', () => {
 
         it('does something', () => {
 
-
             var ruleGroups = parseRules(sampleStyle);
-            debugger;
             var feature = { layer: 'roads', 'kind': 'highway'};
 
             var matchedStyles = [];
@@ -24,8 +22,6 @@ describe.only('Rules', () => {
             });
 
             console.log(matchedStyles.length);
-
-//            console.log(ruleGroups, rule);
 
         });
 

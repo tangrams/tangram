@@ -32,11 +32,12 @@ Utils.inWorkerThread(() => {
             SceneWorker.tile_source = TileSource.create(tile_source);
         }
         if (!SceneWorker.config && config) {
+            var layer;
             config = JSON.parse(config);
 
             // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
             // TODO: probably want a cleaner way to exclude these
-            for (var layer in config.layers) {
+            for (layer in config.layers) {
                 config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
             }
 
@@ -48,7 +49,7 @@ Utils.inWorkerThread(() => {
             // Parse each top-level layer as a separate rule tree
             // TODO: find a more graceful way to incorporate this
             SceneWorker.rules = {};
-            for (var layer in SceneWorker.config.layers) {
+            for (layer in SceneWorker.config.layers) {
                 SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
             }
         }
