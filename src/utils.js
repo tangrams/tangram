@@ -68,7 +68,8 @@ Utils.parseResource = function (body) {
         try {
             data = yaml.safeLoad(body);
         } catch (e) {
-            log.error('Utils.parseResource: failed to parse', body, e);
+            log.error('Utils.parseResource: failed to parse', e);
+            throw e;
         }
     }
     return data;
