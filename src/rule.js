@@ -149,7 +149,7 @@ export function parseStyle(name, style, parent) {
         properties[key] = style[key];
     });
 
-    leftOvers = Object.keys(style).filter((key) => {return !isWhiteListed(key);});
+    leftOvers = Object.keys(style).filter(key => !isWhiteListed(key));
 
     // if we are a leaf
     if (leftOvers.length === 0) {
@@ -168,7 +168,6 @@ export function parseStyle(name, style, parent) {
     var originalFilter = rule.filter;
     rule.filter = buildFilter(rule);
     rule.originalFilter = originalFilter;
-
 
     leftOvers.forEach((name) => {
         var property = style[name];
