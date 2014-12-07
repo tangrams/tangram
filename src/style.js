@@ -416,6 +416,7 @@ Object.assign(Polygons, {
         }
 
         if (style.outline) {
+            style.outline = Object.assign({}, style.outline);
             style.outline.color = StyleParser.parseColor(style.outline.color, context);
             style.outline.width = StyleParser.parseDistance(style.outline.width, context);
             style.outline.tile_edges = (style.outline.tile_edges === true) ? true : false;
@@ -429,17 +430,21 @@ Object.assign(Polygons, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
+        // Placeholder values
+        var color = style.color || [0, 0, 0];
+        var selection_color = (style.selection && style.selection.color) || [0, 0, 0, 0];
+
         // Basic attributes, others can be added (see texture UVs below)
         var template = [
             // position - x & y coords will be filled in per-vertex below
-            0, 0, style.z,
+            0, 0, style.z || 0,
             // normal
             0, 0, 1,
             // color
             // TODO: automate multiplication for normalized attribs?
-            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+            color[0] * 255, color[1] * 255, color[2] * 255, 255,
             // selection color
-            style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+            selection_color[0] * 255, selection_color[1] * 255, selection_color[2] * 255, selection_color[3] * 255,
             // layer number
             style.layer
         ];
@@ -454,29 +459,28 @@ Object.assign(Polygons, {
     },
 
     buildPolygons(polygons, style, vertex_data) {
-        if (!style.color) {
-            return;
-        }
-
         var vertex_template = this.makeVertexTemplate(style);
 
-        // Extruded polygons (e.g. 3D buildings)
-        if (style.extrude && style.height) {
-            GLBuilders.buildExtrudedPolygons(
-                polygons,
-                style.z, style.height, style.min_height,
-                vertex_data, vertex_template,
-                this.vertex_layout.index.a_normal,
-                { texcoord_index: this.vertex_layout.index.a_texcoord }
-            );
-        }
-        // Regular polygons
-        else {
-            GLBuilders.buildPolygons(
-                polygons,
-                vertex_data, vertex_template,
-                { texcoord_index: this.vertex_layout.index.a_texcoord }
-            );
+        // Polygon fill
+        if (style.color) {
+            // Extruded polygons (e.g. 3D buildings)
+            if (style.extrude && style.height) {
+                GLBuilders.buildExtrudedPolygons(
+                    polygons,
+                    style.z, style.height, style.min_height,
+                    vertex_data, vertex_template,
+                    this.vertex_layout.index.a_normal,
+                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                );
+            }
+            // Regular polygons
+            else {
+                GLBuilders.buildPolygons(
+                    polygons,
+                    vertex_data, vertex_template,
+                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                );
+            }
         }
 
         // Polygon outlines
@@ -509,25 +513,23 @@ Object.assign(Polygons, {
     },
 
     buildLines(lines, style, vertex_data) {
-        if (!style.color || !style.width) {
-            return;
-        }
-
         var vertex_template = this.makeVertexTemplate(style);
 
-        // Main lines
-        GLBuilders.buildPolylines(
-            lines,
-            style.z,
-            style.width,
-            vertex_data,
-            vertex_template,
-            {
-                texcoord_index: this.vertex_layout.index.a_texcoord
-            }
-        );
+        // Main line
+        if (style.color && style.width) {
+            GLBuilders.buildPolylines(
+                lines,
+                style.z,
+                style.width,
+                vertex_data,
+                vertex_template,
+                {
+                    texcoord_index: this.vertex_layout.index.a_texcoord
+                }
+            );
+        }
 
-        // Line outlines
+        // Outline
         if (style.outline && style.outline.color && style.outline.width) {
             // Replace color in vertex template
             var color_index = this.vertex_layout.index.a_color;
