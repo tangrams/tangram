@@ -93,7 +93,35 @@ export function buildFilterFunction(filter) {
 }
 
 export function buildFilterObject(filter) {
-    return false;
+    var func;
+
+    // Match on one or more object properties
+    // TODO: avoid creating a new function for each filter occurence, instead pass filter as context or parent object
+    func = function matchAllObjectProperties(feature) {
+        for (var key in filter) {
+            // If filter key is a boolean, feature property must match the truthiness of the filter
+            if (typeof filter[key] === 'boolean') {
+                if ((filter[key] && !feature.properties[key]) || (!filter[key] && feature.properties[key])) {
+                    return false;
+                }
+            }
+            // If filter key has multiple values, this is an OR: the feature property must match one of the values
+            else if (Array.isArray(filter[key])) {
+                if (filter[key].indexOf(feature.properties[key]) === -1) {
+                    return false;
+                }
+            }
+            // If the filter key has a single value, the feature property must match that value
+            else {
+                if (feature.properties[key] !== filter[key]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    };
+
+    return func;
 }
 
 export function buildFilter(rule) {

@@ -409,11 +409,14 @@ layers:
             interactive: true
             color: [0.5, 0.875, 0.5]
 
-            pitch:
-                filter: is('properties.kind', 'pitch')
-                style:
-                    name: polygons
-                    color: [0.3, 0.675, 0.3]
+        pitch:
+            # filter: is('properties.kind', 'pitch')
+            filter:
+                kind: ['pitch', 'garden', 'playground']
+            order: 1.1
+            style:
+                name: polygons
+                color: [0.3, 0.675, 0.3]
 
     water:
         geometry:
@@ -475,7 +478,8 @@ layers:
             # width: function () { return 2 * Math.log(zoom); }
 
         highway:
-            filter: is('properties.kind', 'highway')
+            # filter: is('properties.kind', 'highway')
+            filter: { kind: highway }
             style:
                 name: polygons
                 color: [1.0, 1.0, 1.0]
@@ -492,7 +496,8 @@ layers:
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
-                filter: is('properties.is_tunnel', 'yes')
+                # filter: is('properties.is_tunnel', 'yes')
+                filter: { is_tunnel: yes }
                 style:
                     name: polygons
                     color: '#333'
@@ -506,7 +511,8 @@ layers:
                         width: function () { return 1 * Math.log(zoom); }
 
         major_road:
-            filter: is('properties.kind', 'major_road')
+            # filter: is('properties.kind', 'major_road')
+            filter: { kind: major_road }
             style:
                 name: polygons
                 color: [0.5, 0.5, 0.5]
@@ -516,7 +522,8 @@ layers:
                     width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
 
         minor_road:
-            filter: is('properties.kind', 'minor_road')
+            # filter: is('properties.kind', 'minor_road')
+            filter: { kind: minor_road }
             style:
                 name: polygons
                 color: [0.65, 0.65, 0.65]
@@ -526,7 +533,9 @@ layers:
                     width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
 
         path:
-            filter: is('properties.kind', 'path')
+            # filter: is('properties.kind', 'path')
+            filter:
+                kind: path
             style:
                 name: polygons
                 color: [0.8, 0.8, 0.8]
@@ -538,7 +547,8 @@ layers:
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
         rail:
-            filter: is('properties.kind', 'rail')
+            # filter: is('properties.kind', 'rail')
+            filter: { kind: rail }
             style:
                 name: polygons
                 color: [0.5, 0.0, 0.0]
@@ -588,6 +598,7 @@ layers:
 
         # visible: false
         # filter: function () { return feature.name != null; }
+        filter: { name: true }
 
         style:
             name: points
