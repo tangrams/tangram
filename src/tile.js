@@ -102,10 +102,10 @@ export default class Tile {
 
                     // Find matching rules
                     var matchedRules = [];
-                    Object.keys(rules[name]).forEach((_rule_name) => {
-                        var rule = rules[name][_rule_name];
-                        matchedRules = rule.matchFeature(feature).concat(matchedRules);
-                    });
+                    var layer_rules = rules[name];
+                    for (var r in layer_rules) {
+                        layer_rules[r].matchFeature(feature, matchedRules);
+                    }
 
                     // Parse & render styles
                     for (var rule of matchedRules) {

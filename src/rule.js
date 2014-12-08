@@ -112,8 +112,7 @@ class RuleGroup {
     }
 
     // TODO, fix me
-    matchFeature(feature) {
-        var rules = [];
+    matchFeature(feature, rules = []) {
         matchFeature(feature, this.rules, rules);
         return rules;
     }
