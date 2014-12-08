@@ -154,8 +154,8 @@ styles:
         #     function (polygons, style, vertex_data) {
         #         // Test overloading the geometry builder
         #         // var c = Geo.polygonCentroidSimple(polygons[0]);
-        #         polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
-        #         this.parent.buildPolygons(polygons, style, vertex_data);
+        #         // polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
+        #         this.super.buildPolygons(polygons, style, vertex_data);
         #     }
 
     envmap:
@@ -396,8 +396,8 @@ layers:
             filter: earth
             order: 0
 
-        color:
-            default: [0.175, 0.175, 0.175]
+        style:
+            color: [0.175, 0.175, 0.175]
 
     landuse:
         geometry:
@@ -405,15 +405,15 @@ layers:
             filter: landuse
             order: 1
 
-        interactive: true
-        color:
-            default: [0.5, 0.875, 0.5]
-            pitch: [0.3, 0.675, 0.3]
-        # outline:
-        #     color:
-        #         default: [1, 1, 1]
-        #     width:
-        #         default: 1
+        style:
+            interactive: true
+            color: [0.5, 0.875, 0.5]
+
+            pitch:
+                filter: property('properties.kind', 'pitch')
+                style:
+                    name: polygons
+                    color: [0.3, 0.675, 0.3]
 
     water:
         geometry:
@@ -423,14 +423,11 @@ layers:
 
         style:
             name: water
-        interactive: true
-        color:
-            default: [0.5, 0.5, 0.875]
-        outline:
-            color:
-                default: [0.6, 0.6, 0.975]
-            width:
-                default:
+            interactive: true
+            color: [0.5, 0.5, 0.875]
+            outline:
+                color: [0.6, 0.6, 0.975]
+                width: |
                     function () {
                         return (
                             zoom >= 16 &&
@@ -470,60 +467,83 @@ layers:
             #     }
             order: 3
 
-        interactive: function () { return (zoom >= 18); }
-        order: function () { return feature.sort_key * .000025; }
-        # order: "function () { return (feature.sort_key * .000025) - (feature.outline ? .0001 : 0); }"
-        color:
-            # default: Style.color.pseudoRandomColor()
-            default: [0.4, 0.4, 0.4]
-            highway: [1.0, 1.0, 1.0]
-            # highway: 'red'
-            # highway: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-            # highway: [[13, 'darkorchid'], [17, 'honeydew']]
-            # highway: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
-            major_road: [0.5, 0.5, 0.5]
-            minor_road: [0.65, 0.65, 0.65]
-            path: [0.8, 0.8, 0.8]
-            rail: [0.5, 0.0, 0.0]
-            debug: [1, 0, 0]
-        width:
-            # default: Style.pixels(5)
-            # default: Style.pixels(function() { return 10; })
-            # default: Style.pixels(function() { return feature.id % 10; })
-            default: function () { return 2 * Math.log(zoom); }
-            highway: function () { return 3 * Math.log(zoom); }
-            # highway: [[16, 20], [17, 16], [18, 12], [19, 8], [20, 6]]
-            # highway: [[13, 3px], [15, 5px], [16, 20px]]
-            # highway: |
-            #     function() {
-            #         if (feature.is_link == 'yes' || feature.is_tunnel == 'yes') {
-            #             return [[13, '0px'], [15, '4px'], [16, '6px'], [18, '10px']];
-            #         }
-            #         return [[10, '2px'], [13, '3px'], [15, '5px'], [16, '8px'], [18, '12px']];
-            #     }
-            major_road: function () { return 2.5 * Math.log(zoom); }
-            minor_road: function () { return 2 * Math.log(zoom); }
-            path: function () { return 1 * Math.log(zoom); }
-            debug: function () { return 5; }
-        # z:
-        #     path: 25
-        outline:
-            color:
-                # default: [0.1, 0.7, 0.7]
-                default: [0.7, 0.7, 0.7]
-            width:
-                default:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                highway:
-                    function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-                major_road:
-                    function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
-                minor_road:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                path:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                debug:
-                    function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+        style:
+            interactive: function () { return (zoom >= 18); }
+            order: function () { return feature.sort_key * .000025; }
+            # color : Style.color.pseudoRandomColor()
+            # color: red #[0.4, 0.4, 0.4]
+            # width: function () { return 2 * Math.log(zoom); }
+
+        highway:
+            filter: property('properties.kind', 'highway')
+            style:
+                name: polygons
+                color: [1.0, 1.0, 1.0]
+                # color: red
+                # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+                # color: [[13, 'darkorchid'], [17, 'honeydew']]
+                # color: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
+                width: function () { return 3 * Math.log(zoom); }
+                # width: [[13, 3px], [15, 5px], [16, 20px]]
+                # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
+                outline:
+                    color: [0.7, 0.7, 0.7]
+                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+            # tunnel:
+            #     # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
+            #     filter: property('properties.is_tunnel', 'yes')
+            #     style:
+            #         name: polygons
+            #         color: '#333'
+            #         width: function () { return 2 * Math.log(zoom); }
+            #         # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
+            #         order: 10
+            #         outline:
+            #             color: white
+            #             # width: [[15, 2px], [18, 6px]]
+            #             # width: 2px
+            #             width: function () { return 1 * Math.log(zoom); }
+
+        major_road:
+            filter: property('properties.kind', 'major_road')
+            style:
+                name: polygons
+                color: [0.5, 0.5, 0.5]
+                width: function () { return 2.5 * Math.log(zoom); }
+                outline:
+                    color: [0.7, 0.7, 0.7]
+                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+        minor_road:
+            filter: property('properties.kind', 'minor_road')
+            style:
+                name: polygons
+                color: [0.65, 0.65, 0.65]
+                width: function () { return 2 * Math.log(zoom); }
+                outline:
+                    color: [0.7, 0.7, 0.7]
+                    width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+
+        path:
+            filter: property('properties.kind', 'path')
+            style:
+                name: polygons
+                color: [0.8, 0.8, 0.8]
+                # color: yellow
+                width: function () { return 1 * Math.log(zoom); }
+                outline:
+                    color: [0.7, 0.7, 0.7]
+                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+
+        rail:
+            filter: property('properties.kind', 'rail')
+            style:
+                name: polygons
+                color: [0.5, 0.0, 0.0]
+                outline:
+                    color: [0.7, 0.7, 0.7]
+                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
         geometry:
@@ -531,31 +551,21 @@ layers:
             filter: buildings
             order: 4
 
-        style:
-            # name: popup
-            # name: breathe
-            # name: formica
-            # name: dots
-            # name: wood
-            # name: rainbow2
-            # name: windows
-            # name: colorhalftone
-            # name: palette
-            # name: envmap
         # properties:
         #     min_height: 50
         # filter: function () { return feature.height >= properties.min_height; }
         # filter: function () { return feature.name != null; }
         # filter: function () { return Math.random() < 0.25; }
         # filter: function () { return true; }
-        interactive: true
-        color:
-            # default: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
-            # default: Style.color.randomColor()
-            # default: Style.color.pseudoRandomColor()
-            # default: Style.color.pseudoRandomGrayscale()
-            # default: function () { if (feature.name || feature.kind) { return [(feature.name && 0.6) || 0.2, 0.2, (feature.kind && 0.6) || 0.2]; } else { return [0.6, 0.6, 0.6] }; }
-            default: |
+
+        style:
+            interactive: true
+
+            # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
+            # color: Style.color.randomColor()
+            # color: Style.color.pseudoRandomColor()
+            # color: Style.color.pseudoRandomGrayscale()
+            color: |
                 function () {
                     var c = [.6, .6, .6];
                     if (feature.name || feature.kind) {
@@ -565,9 +575,9 @@ layers:
                     }
                     return c;
                 }
-        extrude:
-            default: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
-            # default: [[14, false], [15, true]]
+
+            # extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            extrude: [[14, false], [15, true]]
 
     pois:
         geometry:
@@ -575,35 +585,14 @@ layers:
             filter: pois
             order: 5
 
+        # visible: false
+        # filter: function () { return feature.name != null; }
+
         style:
             name: points
             # name: ghosts
-            # name: formica
-        filter: function () { return feature.name != null; }
-        # visible: false
-        interactive: true
-        # z:
-        #     default: 25
-        color:
-            default: [1, 1, 0]
-        size:
-            # default: 5
-            default: 5px
-            # default: Style.pixels(20) # for ghosts
-            # default: Style.pixels(function () { return Math.pow(1.2, zoom); })
-            # default: function () { return 2 * zoom; }
 
-    # places:
-    #     # filter: function() { return (zoom >= 13); }
-    #     color:
-    #         default: [1, 1, 1]
-    #         # default: function() { return feature.kind == 'administrative' ? [1, 0, 1] : [1, 1, 0]; }
-    #     # size:
-    #         # default: Style.pixels(5)
-    #     # width:
-    #     #     default: 100m
-    #     outline:
-    #         color:
-    #             default: [0.0, 1.0, 1.0]
-    #         width:
-    #             default: 10km
+            interactive: true
+            color: [1, 1, 0]
+            size: 5px
+            # size: 20px # for ghosts
