@@ -490,20 +490,20 @@ layers:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
 
-            # tunnel:
-            #     # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
-            #     filter: property('properties.is_tunnel', 'yes')
-            #     style:
-            #         name: polygons
-            #         color: '#333'
-            #         width: function () { return 2 * Math.log(zoom); }
-            #         # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-            #         order: 10
-            #         outline:
-            #             color: white
-            #             # width: [[15, 2px], [18, 6px]]
-            #             # width: 2px
-            #             width: function () { return 1 * Math.log(zoom); }
+            tunnel:
+                # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
+                filter: is('properties.is_tunnel', 'yes')
+                style:
+                    name: polygons
+                    color: '#333'
+                    width: function () { return 2 * Math.log(zoom); }
+                    # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
+                    # order: 10
+                    outline:
+                        color: white
+                        # width: [[15, 2px], [18, 6px]]
+                        # width: 2px
+                        width: function () { return 1 * Math.log(zoom); }
 
         major_road:
             filter: is('properties.kind', 'major_road')
@@ -531,6 +531,7 @@ layers:
                 name: polygons
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
+                # order: 10
                 width: function () { return 1 * Math.log(zoom); }
                 outline:
                     color: [0.7, 0.7, 0.7]
