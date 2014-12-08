@@ -18,7 +18,8 @@
                 type: 'GeoJSONTileSource',
                 url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
             },
-            scene: 'demos/simple-styles.yaml'
+            // scene: 'demos/simple-styles.yaml'
+            scene: 'demos/styles.yaml'
         },
         'mapzen-dev': {
             source: {
@@ -47,22 +48,22 @@
                 url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
             },
             scene: 'demos/styles.yaml'
-        },
-        'osm': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
-            },
-            scene: 'demos/styles.yaml'
-        },
-        'mapbox': {
-            source: {
-                type: 'MapboxFormatTileSource',
-                url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
-                max_zoom: 15
-            },
-            scene: 'demos/styles.yaml'
-        }
+        }//,
+        // 'osm': {
+        //     source: {
+        //         type: 'GeoJSONTileSource',
+        //         url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
+        //     },
+        //     scene: 'demos/styles.yaml'
+        // },
+        // 'mapbox': {
+        //     source: {
+        //         type: 'MapboxFormatTileSource',
+        //         url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+        //         max_zoom: 15
+        //     },
+        //     scene: 'demos/styles.yaml'
+        // }
     };
 
     var locations = {
@@ -124,8 +125,8 @@
             url_options.push('rstats');
         }
 
-        if (gl_style_options && gl_style_options.effect != '') {
-            url_options.push('style=' + gl_style_options.effect);
+        if (style_options && style_options.effect != '') {
+            url_options.push('style=' + style_options.effect);
         }
 
         window.location.hash = url_options.join(',');
@@ -213,7 +214,7 @@
     // For easier debugging access
 
     // GUI options for rendering style/effects
-    var gl_style_options = {
+    var style_options = {
         effect: url_style || '',
         options: {
             'None': '',
@@ -233,8 +234,8 @@
             // Restore initial state
             var layer_styles = scene.config.layers;
             for (var l in layer_styles) {
-                if (this.initial.layers[l] != null) {
-                    layer_styles[l].style = this.initial.layers[l].style;
+                if (this.initial.layers[l]) {
+                    layer_styles[l].style = Object.assign({}, this.initial.layers[l].style);
                     layer_styles[l].visible = this.initial.layers[l].visible;
                 }
             };
@@ -249,8 +250,7 @@
                 for (l in layer_styles) {
                     if (this.initial.layers[l] == null) {
                         this.initial.layers[l] = {
-                            // style: (layer_styles[l].style ? { name: layer_styles[l].style.name } : null),
-                            style: layer_styles[l].style,
+                            style: Object.assign({}, layer_styles[l].style),
                             visible: layer_styles[l].visible
                         };
                     }
@@ -297,7 +297,7 @@
         settings: {
             'colorbleed': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
                     this.state.animated = scene.styles[style].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
                     this.folder.add(this.state, 'animated').onChange(function(value) {
@@ -308,12 +308,12 @@
             },
             'rainbow': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
                 }
             },
             'popup': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
                     this.state.popup_radius = this.uniforms.u_popup_radius;
                     this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
@@ -330,12 +330,12 @@
             },
             'elevator': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
                 }
             },
             'breathe': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
                     this.state.breathe_scale = this.uniforms.u_breathe_scale;
                     this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
@@ -352,17 +352,17 @@
             },
             'dots': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
-                    this.state.background = gl_style_options.scaleColor(this.uniforms.u_dot_background_color, 255);
+                    this.state.background = style_options.scaleColor(this.uniforms.u_dot_background_color, 255);
                     this.folder.addColor(this.state, 'background').onChange(function(value) {
-                        this.uniforms.u_dot_background_color = gl_style_options.scaleColor(value, 1 / 255);
+                        this.uniforms.u_dot_background_color = style_options.scaleColor(value, 1 / 255);
                         scene.requestRedraw();
                     }.bind(this));
 
-                    this.state.dot_color = gl_style_options.scaleColor(this.uniforms.u_dot_color, 255);
+                    this.state.dot_color = style_options.scaleColor(this.uniforms.u_dot_color, 255);
                     this.folder.addColor(this.state, 'dot_color').onChange(function(value) {
-                        this.uniforms.u_dot_color = gl_style_options.scaleColor(value, 1 / 255);
+                        this.uniforms.u_dot_color = style_options.scaleColor(value, 1 / 255);
                         scene.requestRedraw();
                     }.bind(this));
 
@@ -381,17 +381,17 @@
             },
             'wood': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
-                    this.state.wood_color1 = gl_style_options.scaleColor(this.uniforms.u_wood_color1, 255);
+                    this.state.wood_color1 = style_options.scaleColor(this.uniforms.u_wood_color1, 255);
                     this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
-                        this.uniforms.u_wood_color1 = gl_style_options.scaleColor(value, 1 / 255);
+                        this.uniforms.u_wood_color1 = style_options.scaleColor(value, 1 / 255);
                         scene.requestRedraw();
                     }.bind(this));
 
-                    this.state.wood_color2 = gl_style_options.scaleColor(this.uniforms.u_wood_color2, 255);
+                    this.state.wood_color2 = style_options.scaleColor(this.uniforms.u_wood_color2, 255);
                     this.folder.addColor(this.state, 'wood_color2').onChange(function(value) {
-                        this.uniforms.u_wood_color2 = gl_style_options.scaleColor(value, 1 / 255);
+                        this.uniforms.u_wood_color2 = style_options.scaleColor(value, 1 / 255);
                         scene.requestRedraw();
                     }.bind(this));
 
@@ -416,10 +416,10 @@
             },
             'colorhalftone': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
-                    scene.config.layers.water.style = { name: style };
-                    scene.config.layers.landuse.style = { name: style };
-                    scene.config.layers.earth.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.water.style.name = style;
+                    scene.config.layers.landuse.style.name = style;
+                    scene.config.layers.earth.style.name = style;
 
                     scene.config.layers.pois.visible = false;
 
@@ -445,7 +445,7 @@
             'halftone': {
                 setup: function (style) {
                     Object.keys(scene.config.layers).forEach(function(l) {
-                        scene.config.layers[l].style = { name: style };
+                        scene.config.layers[l].style.name = style;
                     });
 
                     scene.config.layers.earth.visible = false;
@@ -455,13 +455,13 @@
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
                     scene.config.layers.pois.visible = false;
                 }
             },
             'envmap': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style = { name: style };
+                    scene.config.layers.buildings.style.name = style;
 
                     var envmaps = {
                         'Chrome': 'demos/images/LitSphere_test_02.jpg',
@@ -595,8 +595,8 @@
         });
 
         // Styles
-        gui.add(gl_style_options, 'effect', gl_style_options.options).
-            onChange(gl_style_options.setup.bind(gl_style_options));
+        gui.add(style_options, 'effect', style_options.options).
+            onChange(style_options.setup.bind(style_options));
     }
 
     // Feature selection
@@ -696,7 +696,7 @@
             addGUI();
 
             if (url_style) {
-                gl_style_options.setup(url_style);
+                style_options.setup(url_style);
             }
             updateURL();
 
