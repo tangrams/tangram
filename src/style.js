@@ -399,6 +399,7 @@ Object.assign(Polygons, {
     _parseFeature (feature, style, context) {
         style.color = StyleParser.parseColor(style.color, context);
         style.width = StyleParser.parseDistance(style.width, context);
+        style.size = StyleParser.parseDistance(style.size, context);
         style.z = StyleParser.parseDistance(style.z || 0, context);
         style.extrude = StyleParser.parseDistance(style.extrude, context);
         style.height = (feature.properties && feature.properties.height) || StyleParser.defaults.height;
