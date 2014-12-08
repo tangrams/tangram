@@ -1,6 +1,6 @@
 import Utils from './utils';
 
-export var whiteList = ['filter', 'order', 'style', 'visible', 'geometry'];
+export var whiteList = ['filter', 'order', 'style', 'color', 'width', 'visible', 'mode', 'geometry'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
@@ -13,7 +13,7 @@ export function wrapMacro(fn, context) {
 }
 
 export var Macros = {
-    property: function (property, value) {
+    is: function (property, value) {
         return function (obj) {
             return Object.is(Utils.getIn(obj, property.split('.')), value);
         };
@@ -33,47 +33,50 @@ export function findMacro(value) {
 }
 
 
-export function walkAllRules(rules, cb) {
+function mergeStyles(styles) {
+    styles = styles.filter(x => { return x != null; });
+    return Object.assign({}, ...styles);
+}
+
+export function matchFeature(feature, rules, collectedRules, stack = []) {
+    var current, matched = false, childMatched;
+
     if (rules.length === 0) {
         return;
     }
-    var first = rules[0];
 
-    cb(first);
+    for (var i = 0; i < rules.length; i += 1) {
+        current = rules[i];
 
-    if (first.rules && first.rules.length !== 0) {
-        walkAllRules(first.rules, cb);
-    }
+        if (current instanceof Rule) {
 
-    walkAllRules(rules.slice(1), cb);
+            if (current.style) {
 
-}
-
-export function matchFeature(feature, rules, collectedStyles = []) {
-    for (var r=0; r < rules.length; r++) {
-        var first = rules[r];
-
-        if (first instanceof Rule) {
-            if (typeof first.filter === 'function') {
-                if (first.filter(feature)) {
-                    collectedStyles.push(first);
+                if ((typeof current.filter === 'function' && current.filter(feature)) || (current.filter === undefined)) {
+                    matched = true;
+                    stack.push(current.style);
+                    collectedRules.push(mergeStyles(stack));
+                    stack.pop();
                 }
-            }
-            else if (first.filter === undefined) {
-                collectedStyles.push(first);
+
+            } else {
+                throw new Error('A rule must have a style object.');
             }
         }
-        else if (first instanceof RuleGroup) {
-            if (typeof first.filter === 'function') {
-                if (first.filter(feature)) {
-                    matchFeature(feature, first.rules, collectedStyles);
+        else if (current instanceof RuleGroup) {
+
+            if ((typeof current.filter === 'function' && current.filter(feature)) || current.filter === undefined) {
+                matched = true;
+                stack.push(current.style);
+                childMatched = matchFeature(feature, current.rules, collectedRules, stack);
+                if (!childMatched && current.style) {
+                    collectedRules.push(mergeStyles(stack));
                 }
-            }
-            else if (first.filter === undefined) {
-                matchFeature(feature, first.rules, collectedStyles);
+                stack.pop();
             }
         }
     }
+    return matched;
 }
 
 export function buildFilterFunction(filter) {
@@ -111,7 +114,6 @@ class RuleGroup {
         this.rules = options.rules || [];
     }
 
-    // TODO, fix me
     matchFeature(feature, rules = []) {
         matchFeature(feature, this.rules, rules);
         return rules;
@@ -137,32 +139,45 @@ class Rule {
     }
 }
 
+export function groupProperties(style) {
+    var properties = {}, leftOvers = [];
+
+    for (var key in style) {
+        if (isWhiteListed(key)) {
+            properties[key] = style[key];
+        }
+        else {
+            leftOvers.push(key);
+        }
+    }
+    return [properties, leftOvers];
+
+}
+
 export function parseStyle(name, style, parent) {
-    var properties = {name, parent}, rule, leftOvers, group, filter;
+    var properties = {name, parent},
+        rule,
+        group,
+        filter, originalFilter;
 
-    Object.keys(style).filter(isWhiteListed).forEach((key) => {
-        properties[key] = style[key];
-    });
+    var [props, leftOvers] = groupProperties(style);
 
-    leftOvers = Object.keys(style).filter(key => !isWhiteListed(key));
+    Object.assign(properties, props);
 
     // if we are a leaf
     if (leftOvers.length === 0) {
         rule = new Rule(properties);
+        originalFilter = rule.filter;
+        rule.filter = buildFilter(rule);
+        rule.originalFilter = originalFilter;
         parent.rules.push(rule);
     }
     else {
-        rule = new Rule(properties);
-        filter = buildFilter(rule);
+        filter = buildFilter(properties);
         group = new RuleGroup({name, filter});
-        group.rules.push(rule);
+        group.style = properties.style;
         parent.rules.push(group);
     }
-
-    // TODO, FIXME
-    var originalFilter = rule.filter;
-    rule.filter = buildFilter(rule);
-    rule.originalFilter = originalFilter;
 
     leftOvers.forEach((name) => {
         var property = style[name];
@@ -170,7 +185,7 @@ export function parseStyle(name, style, parent) {
             parseStyle(name, property, group);
         }
         else {
-            throw new Error(`You provided a property that was not an object and was not expected: ${property}`);
+            throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
         }
     });
 
