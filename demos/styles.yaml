@@ -552,6 +552,7 @@ layers:
             style:
                 name: polygons
                 color: [0.5, 0.0, 0.0]
+                width: function () { return 2 * Math.log(zoom); }
                 outline:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
