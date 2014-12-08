@@ -538,7 +538,7 @@ describe('Scene', () => {
             });
         });
 
-        it('calls the xhr method', (done) => {
+        it('calls the io method', (done) => {
             subject.createWorkers().then(() => {
                 sinon.assert.called(Utils.io);
                 done();
