@@ -50,34 +50,30 @@ export function walkAllRules(rules, cb) {
 }
 
 export function matchFeature(feature, rules, collectedStyles = []) {
+    for (var r=0; r < rules.length; r++) {
+        var first = rules[r];
 
-    if (rules.length === 0) {
-        return;
-    }
-    var first = rules[0];
-
-    if (first instanceof Rule) {
-        if (typeof first.filter === 'function') {
-            if (first.filter(feature)) {
+        if (first instanceof Rule) {
+            if (typeof first.filter === 'function') {
+                if (first.filter(feature)) {
+                    collectedStyles.push(first);
+                }
+            }
+            else if (first.filter === undefined) {
                 collectedStyles.push(first);
             }
         }
-        else if (first.filter === undefined) {
-            collectedStyles.push(first);
-        }
-    }
-    else if (first instanceof RuleGroup) {
-        if (typeof first.filter === 'function') {
-            if (first.filter(feature)) {
+        else if (first instanceof RuleGroup) {
+            if (typeof first.filter === 'function') {
+                if (first.filter(feature)) {
+                    matchFeature(feature, first.rules, collectedStyles);
+                }
+            }
+            else if (first.filter === undefined) {
                 matchFeature(feature, first.rules, collectedStyles);
             }
         }
-        else if (first.filter === undefined) {
-            matchFeature(feature, first.rules, collectedStyles);
-        }
     }
-
-    matchFeature(feature, rules.slice(1), collectedStyles);
 }
 
 export function buildFilterFunction(filter) {
