@@ -213,6 +213,9 @@ var Style = {
                 if (typeof order === 'function') {
                     order = order(context);
                 }
+                else {
+                    order = parseFloat(order);
+                }
                 return sum + order;
             }, 0);
 
