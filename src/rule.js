@@ -19,7 +19,7 @@ function mergeStyles(styles) {
     return style;
 }
 
-export function matchFeature(feature, rules, collectedRules, stack = []) {
+export function matchFeature(feature, rules, collectedRules) {
     var current, matched = false, childMatched;
 
     if (rules.length === 0) {
@@ -31,29 +31,25 @@ export function matchFeature(feature, rules, collectedRules, stack = []) {
 
         if (current instanceof Rule) {
 
-            if (current.style) {
+            if (current.calculatedStyle) {
 
                 if ((typeof current.filter === 'function' && current.filter({feature})) || (current.filter === undefined)) {
                     matched = true;
-                    stack.push(current.style);
-                    collectedRules.push(mergeStyles(stack));
-                    stack.pop();
+                    collectedRules.push(current.calculatedStyle);
                 }
 
             } else {
-                throw new Error('A rule must have a style object.');
+                throw new Error('A rule must have a style object');
             }
         }
         else if (current instanceof RuleGroup) {
 
             if ((typeof current.filter === 'function' && current.filter({feature})) || current.filter === undefined) {
                 matched = true;
-                stack.push(current.style);
-                childMatched = matchFeature(feature, current.rules, collectedRules, stack);
-                if (!childMatched && current.style) {
-                    collectedRules.push(mergeStyles(stack));
+                childMatched = matchFeature(feature, current.rules, collectedRules);
+                if (!childMatched && current.calculatedStyle) {
+                    collectedRules.push(current.calculatedStyle);
                 }
-                stack.pop();
             }
         }
     }
@@ -87,7 +83,6 @@ export function matchAllObjectProperties(filter, {feature}) {
 
 export function buildFilterObject(filter) {
     // Match on one or more object properties
-    // TODO: avoid creating a new function for each filter occurence, instead pass filter as context or parent object
     return matchAllObjectProperties.bind(null, filter);
 }
 
@@ -146,6 +141,17 @@ export function groupProperties(style) {
 
 }
 
+
+export function calculateStyle(rule, styles = []) {
+    if (rule.style) { styles.push(rule.style); }
+
+    if (rule.parent) {
+        return calculateStyle(rule.parent, styles);
+    }
+
+    return styles;
+}
+
 export function parseRule(name, style, parent) {
     var properties = {name, parent},
         rule,
@@ -163,12 +169,14 @@ export function parseRule(name, style, parent) {
         rule.filter = buildFilter(rule);
         rule.originalFilter = originalFilter;
         parent.rules.push(rule);
+        rule.calculatedStyle = mergeStyles(calculateStyle(rule).reverse());
     }
     else {
         filter = buildFilter(properties);
         group = new RuleGroup({name, filter});
         group.style = properties.style;
         parent.rules.push(group);
+        group.calculatedStyle = mergeStyles(calculateStyle(group).reverse());
     }
 
     leftOvers.forEach((name) => {
