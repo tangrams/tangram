@@ -506,6 +506,18 @@ Scene.prototype.renderGL = function () {
     }
     this.renderable_tiles_count = renderable_tiles.length;
 
+    // Find min/max order for current tiles
+    var order = {};
+    for (t of renderable_tiles) {
+        if (!order.min || t.order.min < order.min) {
+            order.min = t.order.min;
+        }
+        if (!order.max || t.order.max > order.max) {
+            order.max = t.order.max;
+        }
+    }
+    order.range = order.max - order.min;
+
     // Render main pass - tiles grouped by rendering style (GL program)
     var render_count = 0;
     for (var style in this.styles) {
@@ -539,7 +551,8 @@ Scene.prototype.renderGL = function () {
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     program.uniform('2f', 'u_map_center', center.x, center.y);
-                    program.uniform('1f', 'u_num_layers', Object.keys(this.config.layers).length);
+                    program.uniform('1f', 'u_order_min', order.min);
+                    program.uniform('1f', 'u_order_range', order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                     this.camera.setupProgram(program);
@@ -609,7 +622,8 @@ Scene.prototype.renderGL = function () {
                         program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                         program.uniform('1f', 'u_map_zoom', this.zoom);
                         program.uniform('2f', 'u_map_center', center.x, center.y);
-                        program.uniform('1f', 'u_num_layers', Object.keys(this.config.layers).length);
+                        program.uniform('1f', 'u_order_min', order.min);
+                        program.uniform('1f', 'u_order_range', order.range);
                         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                         this.camera.setupProgram(program);

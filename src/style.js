@@ -206,23 +206,15 @@ var Style = {
             var style = Object.assign({}, feature_style);
             var context = StyleParser.getFeatureParseContext(feature, style, tile);
 
-            // TODO: will be replaced (outside this function) with new style rule parsing
-            // Test whether features should be rendered at all
-            if (typeof style.filter === 'function') {
-                if (style.filter(context) === false) {
-                    return null;
+            // Order is summed from top to bottom in the style hierarchy:
+            // each child order value is added to the parent order value
+            style.order = style.order.reduce((sum, order) => {
+                order = order || StyleParser.defaults.order;
+                if (typeof order === 'function') {
+                    order = order(context);
                 }
-            }
-
-            // Adjusts feature render order *within* the overall layer
-            // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
-            // but all features on layers below this one will be drawn underneath, all features on layers above this one
-            // will be drawn on top
-            style.order = style.order || StyleParser.defaults.order;
-            if (typeof style.order === 'function') {
-                style.order = style.order(context);
-            }
-            style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
+                return sum + order;
+            }, 0);
 
             // Feature selection
             var selectable = false;

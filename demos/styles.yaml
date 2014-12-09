@@ -192,18 +192,18 @@ layers:
         geometry:
             source: osm
             filter: earth
-            order: 0
 
         style:
+            order: 0
             color: [0.175, 0.175, 0.175]
 
     landuse:
         geometry:
             source: osm
             filter: landuse
-            order: 1
 
         style:
+            order: 1
             interactive: true
             color: [0.5, 0.875, 0.5]
 
@@ -211,18 +211,18 @@ layers:
             # filter: is('properties.kind', 'pitch')
             filter:
                 kind: ['pitch', 'garden', 'playground']
-            order: 1.1
             style:
                 color: [0.3, 0.675, 0.3]
+                order: .1
 
     water:
         geometry:
             source: osm
             filter: water
-            order: 2
 
         style:
             name: water
+            order: 2
             interactive: true
             color: [0.5, 0.5, 0.875]
             outline:
@@ -265,12 +265,13 @@ layers:
             #             })
             #         };
             #     }
-            order: 3
 
         style:
+            order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
+            # order: 3
             interactive: function () { return (zoom >= 18); }
-            order: function () { return feature.sort_key * .000025; }
-            # color : Style.color.pseudoRandomColor()
+            # color: yellow
+            # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
 
@@ -298,7 +299,6 @@ layers:
                     color: '#333'
                     width: function () { return 2 * Math.log(zoom); }
                     # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-                    # order: 10
                     outline:
                         color: white
                         # width: [[15, 2px], [18, 6px]]
@@ -332,7 +332,6 @@ layers:
             style:
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
-                # order: 10
                 width: function () { return 1 * Math.log(zoom); }
                 outline:
                     color: [0.7, 0.7, 0.7]
@@ -352,7 +351,6 @@ layers:
         geometry:
             source: osm
             filter: buildings
-            order: 4
 
         # properties:
         #     min_height: 50
@@ -362,6 +360,7 @@ layers:
         # filter: function () { return true; }
 
         style:
+            order: 4
             interactive: true
 
             # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
@@ -386,7 +385,6 @@ layers:
         geometry:
             source: osm
             filter: pois
-            order: 5
 
         # filter: function () { return feature.name != null; }
         filter: { name: true }
@@ -396,6 +394,7 @@ layers:
             # name: ghosts
 
             # visible: false
+            order: 5
             interactive: true
             color: [1, 1, 0]
             size: 5px

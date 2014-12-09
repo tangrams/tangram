@@ -1,6 +1,6 @@
 import Utils from './utils';
 
-export var whiteList = ['filter', 'order', 'style', 'geometry'];
+export var whiteList = ['filter', 'style', 'geometry'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
@@ -32,10 +32,21 @@ export function findMacro(value) {
     return false;
 }
 
-
+// Merges a chain of parent-to-child styles into a single style object
 function mergeStyles(styles) {
-    styles = styles.filter(x => { return x != null; });
-    return Object.assign({}, ...styles);
+    // Remove rules without styles
+    styles = styles.filter(style => style);
+
+    // Merge styles, properties in children override the same property in parents
+    var style = Object.assign({}, ...styles);
+
+    // Children of invisible parents are also invisible
+    style.visible = !styles.some(style => !style.visible);
+
+    // The full original order chain is preserved, final order is computed when styles are evaluated
+    style.order = styles.map(style => style.order);
+
+    return style;
 }
 
 export function matchFeature(feature, rules, collectedRules, stack = []) {
@@ -155,12 +166,10 @@ class Rule {
         Object.assign(this, options);
     }
 
-
     toJSON() {
         return {
             name:   this.name,
             filter: this.filter,
-            order:  this.order,
             style:  this.style,
             rules:  this.rules
         };

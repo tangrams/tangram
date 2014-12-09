@@ -64,6 +64,7 @@ Utils.inWorkerThread(() => {
         keys.key = true;
         keys.loading = true;
         keys.loaded = true;
+        keys.order = true;
         keys.error = true;
         keys.debug = true;
 

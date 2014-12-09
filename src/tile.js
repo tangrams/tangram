@@ -18,7 +18,8 @@ export default class Tile {
             loading: false,
             loaded: false,
             error: null,
-            worker: null
+            worker: null,
+            order: {}
         }, spec);
     }
 
@@ -44,6 +45,7 @@ export default class Tile {
             coords: this.coords,
             min: this.min,
             max: this.max,
+            order: this.order,
             debug: this.debug
         };
     }
@@ -77,8 +79,6 @@ export default class Tile {
         var vertex_data = {};
         var style_vertex_data;
 
-        // Build raw geometry arrays
-        // Render g, and features within each layer, in reverse order - aka top to bottom
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -96,6 +96,7 @@ export default class Tile {
             if (geom) {
                 var num_features = geom.features.length;
 
+                // Render features within each layer, in reverse order - aka top to bottom
                 for (var f = num_features-1; f >= 0; f--) {
                     feature = geom.features[f];
 
@@ -129,6 +130,14 @@ export default class Tile {
                             continue;
                         }
 
+                        // Track min/max order range
+                        if (!tile.order.min || feature_style.order < tile.order.min) {
+                            tile.order.min = feature_style.order;
+                        }
+                        if (!tile.order.max || feature_style.order > tile.order.max) {
+                            tile.order.max = feature_style.order;
+                        }
+
                         // First feature in this render style?
                         if (vertex_data[style.name] == null) {
                             vertex_data[style.name] = style.vertex_layout.createVertexData();
@@ -138,8 +147,9 @@ export default class Tile {
                         // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
                         // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
                         //  this one, all features on subsequent layers are drawn on top of this one
-                        feature_style.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
-                        feature_style.layer += feature_style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                        // feature_style.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
+                        // feature_style.layer += feature_style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                        feature_style.layer = feature_style.order;
 
                         if (feature.geometry.type === 'Polygon') {
                             style.buildPolygons([feature.geometry.coordinates], feature_style, style_vertex_data);
