@@ -1015,20 +1015,18 @@ Scene.prototype.reload = function () {
 
 // Normalize some settings that may not have been explicitly specified in the scene definition
 Scene.prototype.preProcessSceneConfig = function () {
-    // Post-process styles
-    for (var m in this.config.layers) {
-        // Styles are visible by default
-        if (this.config.layers[m].visible !== false) {
-            this.config.layers[m].visible = true;
-        }
+    // Pre-process styles
+    for (var rule of Utils.recurseValues(this.config.layers)) {
+        if (rule.style) {
+            // Styles are visible by default
+            if (rule.style.visible !== false) {
+                rule.style.visible = true;
+            }
 
-        // Set default rendering style
-        if (this.config.layers[m].style && !this.config.layers[m].style.name) {
-            this.config.layers[m].style.name = StyleParser.defaults.style.name;
-            // this.config.layers[m].style = {};
-            // for (var p in StyleParser.defaults.style) {
-            //     this.config.layers[m].style[p] = StyleParser.defaults.style[p];
-            // }
+            // Set default rendering style
+            if (!rule.style.name) {
+                rule.style.name = StyleParser.defaults.style.name;
+            }
         }
     }
 
@@ -1055,7 +1053,7 @@ Scene.prototype.updateActiveStyles = function () {
     var animated = false; // is any active style animated?
 
     for (var rule of Utils.recurseValues(this.config.layers)) {
-        if (rule.style && rule.visible !== false) {
+        if (rule.style && rule.style.visible !== false) {
             this.active_styles[rule.style.name] = true;
 
             if (this.styles[rule.style.name].animated) {

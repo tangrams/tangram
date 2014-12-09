@@ -1,6 +1,6 @@
 import Utils from './utils';
 
-export var whiteList = ['filter', 'order', 'style','visible', 'geometry'];
+export var whiteList = ['filter', 'order', 'style', 'geometry'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;

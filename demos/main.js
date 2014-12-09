@@ -236,7 +236,6 @@
             for (var l in layer_styles) {
                 if (this.initial.layers[l]) {
                     layer_styles[l].style = Object.assign({}, this.initial.layers[l].style);
-                    layer_styles[l].visible = this.initial.layers[l].visible;
                 }
             };
             gui.camera = scene.config.camera.type = this.initial.camera || scene.config.camera.type;
@@ -250,8 +249,7 @@
                 for (l in layer_styles) {
                     if (this.initial.layers[l] == null) {
                         this.initial.layers[l] = {
-                            style: Object.assign({}, layer_styles[l].style),
-                            visible: layer_styles[l].visible
+                            style: Object.assign({}, layer_styles[l].style)
                         };
                     }
                 }
@@ -421,7 +419,7 @@
                     scene.config.layers.landuse.style.name = style;
                     scene.config.layers.earth.style.name = style;
 
-                    scene.config.layers.pois.visible = false;
+                    scene.config.layers.pois.style.visible = false;
 
                     this.state.dot_frequency = this.uniforms.dot_frequency;
                     this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
@@ -448,15 +446,15 @@
                         scene.config.layers[l].style.name = style;
                     });
 
-                    scene.config.layers.earth.visible = false;
-                    scene.config.layers.pois.visible = false;
+                    scene.config.layers.earth.style.visible = false;
+                    scene.config.layers.pois.style.visible = false;
                 }
             },
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;
-                    scene.config.layers.pois.visible = false;
+                    scene.config.layers.pois.style.visible = false;
                 }
             },
             'envmap': {
@@ -585,11 +583,11 @@
                 return;
             }
 
-            layer_controls[l] = !(layer.scene.config.layers[l].visible == false);
+            layer_controls[l] = !(layer.scene.config.layers[l].style.visible == false);
             layer_gui.
                 add(layer_controls, l).
                 onChange(function(value) {
-                    layer.scene.config.layers[l].visible = value;
+                    layer.scene.config.layers[l].style.visible = value;
                     layer.scene.rebuildGeometry();
                 });
         });

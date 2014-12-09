@@ -86,8 +86,9 @@ export default class Tile {
         for (name in layers) {
             layer = layers[name];
 
-            // Skip layers with no styles defined, or layers set to not be visible
-            if (!layer.geometry || layer.visible === false) {
+            // Skip layers with no geometry defined
+            // TODO: this should be a warning
+            if (!layer.geometry) {
                 continue;
             }
 
@@ -109,6 +110,10 @@ export default class Tile {
 
                     // Parse & render styles
                     for (var rule of matchedRules) {
+                        if (!rule.visible) {
+                            continue;
+                        }
+
                         // Parse style
                         try {
                             style = styles[rule.name || StyleParser.defaults.style.name];

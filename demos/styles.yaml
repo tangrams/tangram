@@ -415,7 +415,6 @@ layers:
                 kind: ['pitch', 'garden', 'playground']
             order: 1.1
             style:
-                name: polygons
                 color: [0.3, 0.675, 0.3]
 
     water:
@@ -481,7 +480,6 @@ layers:
             # filter: is('properties.kind', 'highway')
             filter: { kind: highway }
             style:
-                name: polygons
                 color: [1.0, 1.0, 1.0]
                 # color: red
                 # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
@@ -499,7 +497,6 @@ layers:
                 # filter: is('properties.is_tunnel', 'yes')
                 filter: { is_tunnel: yes }
                 style:
-                    name: polygons
                     color: '#333'
                     width: function () { return 2 * Math.log(zoom); }
                     # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
@@ -514,7 +511,6 @@ layers:
             # filter: is('properties.kind', 'major_road')
             filter: { kind: major_road }
             style:
-                name: polygons
                 color: [0.5, 0.5, 0.5]
                 width: function () { return 2.5 * Math.log(zoom); }
                 outline:
@@ -525,7 +521,6 @@ layers:
             # filter: is('properties.kind', 'minor_road')
             filter: { kind: minor_road }
             style:
-                name: polygons
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
                 outline:
@@ -537,7 +532,6 @@ layers:
             filter:
                 kind: path
             style:
-                name: polygons
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
                 # order: 10
@@ -550,7 +544,6 @@ layers:
             # filter: is('properties.kind', 'rail')
             filter: { kind: rail }
             style:
-                name: polygons
                 color: [0.5, 0.0, 0.0]
                 width: function () { return 2 * Math.log(zoom); }
                 outline:
@@ -597,7 +590,6 @@ layers:
             filter: pois
             order: 5
 
-        # visible: false
         # filter: function () { return feature.name != null; }
         filter: { name: true }
 
@@ -605,6 +597,7 @@ layers:
             name: points
             # name: ghosts
 
+            # visible: false
             interactive: true
             color: [1, 1, 0]
             size: 5px
