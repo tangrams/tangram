@@ -146,7 +146,7 @@ export function groupProperties(style) {
 
 }
 
-export function parseStyle(name, style, parent) {
+export function parseRule(name, style, parent) {
     var properties = {name, parent},
         rule,
         group,
@@ -174,7 +174,7 @@ export function parseStyle(name, style, parent) {
     leftOvers.forEach((name) => {
         var property = style[name];
         if (typeof property === 'object') {
-            parseStyle(name, property, group);
+            parseRule(name, property, group);
         }
         else {
             throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
@@ -188,7 +188,7 @@ export function parseRules(layers) {
     return Object.keys(layers).reduce((c, name) => {
         var layer = layers[name],
             parent  = new RuleGroup({name});
-        c[name] = parseStyle(name, layer, parent);
+        c[name] = parseRule(name, layer, parent);
         return c;
     }, {});
 }
