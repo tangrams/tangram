@@ -46,8 +46,20 @@ StyleParser.expandMacros = function expandMacros (obj) {
 StyleParser.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
-    'Style.pixels'
+    'Style.pixels',
+    'Q.is'
 ];
+
+
+export var Q = {
+    is: function (property, value) {
+        var fun = `function (obj) {
+            return Object.is(Utils.getIn(feature, "${property}".split('.')), "${value}");
+        }`;
+        return fun;
+    }
+};
+
 
 var Style = {};
 
@@ -187,7 +199,7 @@ StyleParser.getFeatureParseContext = function (feature, feature_style, tile) {
 
 StyleParser.convertUnits = function(val, context) {
     if (typeof val === 'string') {
-        var units = val.match(/(\d+)([a-zA-z]+)/);
+        var units = val.match(/([0-9.]+)([a-z]+)/);
         if (units && units.length === 3) {
             val = units[1];
             units = units[2];

@@ -1,44 +1,14 @@
-import Utils from './utils';
-
 export var whiteList = ['filter', 'style', 'geometry'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
 }
 
-export function wrapMacro(fn, context) {
-    return function(...args) {
-        return eval(fn).apply(context, args); // jshint ignore:line
-    }.bind(context);
-}
-
-export var Macros = {
-    is: function (property, value) {
-        return function (obj) {
-            return Object.is(Utils.getIn(obj, property.split('.')), value);
-        };
-    },
-    returns: function (value) {
-        return function () { return value; };
-    }
-};
-
-export function findMacro(value) {
-    for (var key in Macros) {
-        if (value.match(key)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // Merges a chain of parent-to-child styles into a single style object
 function mergeStyles(styles) {
-    // Remove rules without styles
-    styles = styles.filter(style => style);
-
     // Merge styles, properties in children override the same property in parents
-    var style = Object.assign({}, ...styles);
+    // Remove rules without styles
+    var style = Object.assign({}, ...styles.filter(style => style));
 
     // Children of invisible parents are also invisible
     style.visible = !styles.some(style => !style.visible);
@@ -63,7 +33,7 @@ export function matchFeature(feature, rules, collectedRules, stack = []) {
 
             if (current.style) {
 
-                if ((typeof current.filter === 'function' && current.filter(feature)) || (current.filter === undefined)) {
+                if ((typeof current.filter === 'function' && current.filter({feature})) || (current.filter === undefined)) {
                     matched = true;
                     stack.push(current.style);
                     collectedRules.push(mergeStyles(stack));
@@ -76,7 +46,7 @@ export function matchFeature(feature, rules, collectedRules, stack = []) {
         }
         else if (current instanceof RuleGroup) {
 
-            if ((typeof current.filter === 'function' && current.filter(feature)) || current.filter === undefined) {
+            if ((typeof current.filter === 'function' && current.filter({feature})) || current.filter === undefined) {
                 matched = true;
                 stack.push(current.style);
                 childMatched = matchFeature(feature, current.rules, collectedRules, stack);
@@ -90,58 +60,43 @@ export function matchFeature(feature, rules, collectedRules, stack = []) {
     return matched;
 }
 
-export function buildFilterFunction(filter) {
-
-    // allow users to not have to use `this` in their filters
-    if (!filter.startsWith('this.')) {
-        filter = 'this.' + filter;
+export function matchAllObjectProperties(filter, {feature}) {
+    for (var key in filter) {
+        // If filter key is a boolean, feature property must match the truthiness of the filter
+        if (typeof filter[key] === 'boolean') {
+            if ((filter[key] && !feature.properties[key]) || (!filter[key] && feature.properties[key])) {
+                return false;
+            }
+        }
+        // If filter key has multiple values, this is an OR: the feature property must match one of the values
+        else if (Array.isArray(filter[key])) {
+            if (filter[key].indexOf(feature.properties[key]) === -1) {
+                return false;
+            }
+        }
+        // If the filter key has a single value, the feature property must match that value
+        else {
+            if (feature.properties[key] !== filter[key]) {
+                return false;
+            }
+        }
+        return true;
     }
-
-    var macroContext = findMacro(filter);
-    if (macroContext) {
-        return wrapMacro(filter, Macros);
-    }
+    
 }
 
 export function buildFilterObject(filter) {
-    var func;
-
     // Match on one or more object properties
     // TODO: avoid creating a new function for each filter occurence, instead pass filter as context or parent object
-    func = function matchAllObjectProperties(feature) {
-        for (var key in filter) {
-            // If filter key is a boolean, feature property must match the truthiness of the filter
-            if (typeof filter[key] === 'boolean') {
-                if ((filter[key] && !feature.properties[key]) || (!filter[key] && feature.properties[key])) {
-                    return false;
-                }
-            }
-            // If filter key has multiple values, this is an OR: the feature property must match one of the values
-            else if (Array.isArray(filter[key])) {
-                if (filter[key].indexOf(feature.properties[key]) === -1) {
-                    return false;
-                }
-            }
-            // If the filter key has a single value, the feature property must match that value
-            else {
-                if (feature.properties[key] !== filter[key]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    };
-
-    return func;
+    return matchAllObjectProperties.bind(null, filter);
 }
 
 export function buildFilter(rule) {
     if (rule.filter) {
-        if (typeof rule.filter === 'string') {
-            return buildFilterFunction(rule.filter);
-        }
         if (typeof rule.filter === 'object') {
             return buildFilterObject(rule.filter);
+        } else  if (typeof rule.filter === 'function'){
+            return rule.filter;
         }
     }
 }
