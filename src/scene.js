@@ -62,6 +62,7 @@ export default function Scene(tile_source, layer_source, style_source, options) 
     this.panning = false;
     this.logLevel = options.logLevel || 'debug';
     log.setLevel(this.logLevel);
+    this.profile_geometry_build = false;
 
     this.container = options.container;
 
@@ -842,6 +843,12 @@ Scene.prototype.rebuildGeometry = function () {
         // Track tile build state
         this.building = { resolve, reject, tiles: {} };
 
+        // Profiling
+        if (this.profile_geometry_build) {
+            console.profile('main thread: rebuildGeometry');
+            this.workers.forEach(w => WorkerBroker.postMessage(w, 'profile', 'rebuildGeometry'));
+        }
+
         // Update layers & styles (in case JS objects were manipulated directly)
         this.layers_serialized = Utils.serializeWithFunctions(this.layers);
         this.styles_serialized = Utils.serializeWithFunctions(this.styles);
@@ -899,6 +906,12 @@ Scene.prototype.rebuildGeometry = function () {
                 log.debug(`Scene: starting queued rebuildGeometry() request`);
                 this.rebuildGeometry().then(queued.resolve, queued.reject);
             }
+        }
+    }).then(() => {
+        // Profiling
+        if (this.profile_geometry_build) {
+            console.profileEnd('main thread: rebuildGeometry');
+            this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', 'rebuildGeometry'));
         }
     });
 };

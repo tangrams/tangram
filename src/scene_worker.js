@@ -171,4 +171,13 @@ Utils.inWorkerThread(() => {
         });
     };
 
+    // Profiling helpers
+    SceneWorker.worker.profile = function (name) {
+        console.profile(`worker ${SceneWorker.worker_id}: ${name}`);
+    };
+
+    SceneWorker.worker.profileEnd = function (name) {
+        console.profileEnd(`worker ${SceneWorker.worker_id}: ${name}`);
+    };
+
 });
