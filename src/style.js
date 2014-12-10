@@ -60,75 +60,92 @@ StyleManager.destroy = function (gl) {
 
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
 StyleManager.preloadStyles = function (styles) {
-    // Preload styles from external URLs
-    var name, style;
-    var style_queue = [];
+    // First load remote styles, then load shader blocks from remote URLs
+    // TODO: also preload textures
+    return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
+};
+
+// Load style definitions from external URLs
+StyleManager.loadRemoteStyles = function (styles) {
+    // Collect URLs and modes to import from them
+    // This is done as a separate step becuase it is possible to import multiple modes from a single
+    // URL, and we want to avoid duplicate calls for the same file.
+    var urls = {};
     if (styles) {
-        for ([name, style] of Utils.entries(styles)) {
+        for (var name in styles) {
+            var style = styles[name];
             if (style.url) {
-                style.name = style.name || name;
+                if (!urls[style.url]) {
+                    urls[style.url] = [];
+                }
 
-                let _target_name = name,
-                    _source_name = style.name,
-                    _url = style.url;
-
-                style_queue.push(Utils.loadResource(_url).then((data) => {
-                    if (data && data[_source_name]) {
-                        styles[_target_name] = data[_source_name];
-                    }
-                    else {
-                        delete styles[_target_name];
-                        throw new Error(`StyleManager.preloadStyles: error importing style ${_target_name}, could not find source style ${_source_name} in ${_url}`);
-                    }
-                }).catch((error) => {
-                    log.error(`StyleManager.preloadStyles: error importing style ${_target_name} from ${_source_name} in ${_url}`, error);
-                }));
+                // Make a list of the styles to import for this URL
+                urls[style.url].push({
+                    target_name: name,
+                    source_name: style.name || name
+                });
             }
         }
     }
 
-    // First load styles, then...
-    return Promise.all(style_queue).then(() => {
-        // Preload shaders from external URLs
-        var queue = [];
-        if (styles) {
-            for (style of Utils.values(styles)) {
-                if (style.shaders && style.shaders.transforms) {
-                    let _transforms = style.shaders.transforms;
+    // As each URL finishes loading, replace the target style(s)
+    return Promise.all(Object.keys(urls).map(url => {
+        return new Promise((resolve, reject) => {
+            Utils.loadResource(url).then((data) => {
+                for (var target of urls[url]) {
+                    if (data && data[target.source_name]) {
+                        styles[target.target_name] = data[target.source_name];
+                    }
+                    else {
+                        delete styles[target.target_name];
+                        return reject(new Error(`StyleManager.preloadStyles: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
+                    }
+                }
+                resolve();
+            }).catch((error) => {
+                log.error(`StyleManager.preloadStyles: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
+            });
+        });
+    })).then(() => Promise.resolve(styles));
+};
 
-                    for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
-                        let _key = key;
+// Preload shader blocks from external URLs
+StyleManager.loadRemoteShaderTransforms = function (styles) {
+    var queue = [];
+    if (styles) {
+        for (var style of Utils.values(styles)) {
+            if (style.shaders && style.shaders.transforms) {
+                let _transforms = style.shaders.transforms;
 
-                        // Array of transforms
-                        if (Array.isArray(transform)) {
-                            for (let t=0; t < transform.length; t++) {
-                                if (typeof transform[t] === 'object' && transform[t].url) {
-                                    let _index = t;
-                                    queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
-                                        _transforms[_key][_index] = data;
-                                    }).catch((error) => {
-                                        log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, _index, error);
-                                    }));
-                                }
+                for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
+                    let _key = key;
+
+                    // Array of transforms
+                    if (Array.isArray(transform)) {
+                        for (let t=0; t < transform.length; t++) {
+                            if (typeof transform[t] === 'object' && transform[t].url) {
+                                let _index = t;
+                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
+                                    _transforms[_key][_index] = data;
+                                }).catch((error) => {
+                                    log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                }));
                             }
                         }
-                        // Single transform
-                        else if (typeof transform === 'object' && transform.url) {
-                            queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
-                                _transforms[_key] = data;
-                            }).catch((error) => {
-                                log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, error);
-                            }));
-                        }
+                    }
+                    // Single transform
+                    else if (typeof transform === 'object' && transform.url) {
+                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
+                            _transforms[_key] = data;
+                        }).catch((error) => {
+                            log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, error);
+                        }));
                     }
                 }
             }
         }
-
-        // TODO: also preload textures
-
-        return Promise.all(queue); // TODO: add error
-    });
+    }
+    return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
 // Called once on instantiation

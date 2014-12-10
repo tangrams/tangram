@@ -147,7 +147,7 @@ styles:
         url: demos/shaders/halftone.yaml
 
     colorhalftone:
-        url: demos/shaders/colorhalftone.yaml
+        url: demos/shaders/halftone.yaml
 
     windows:
         url: demos/shaders/windows.yaml
@@ -276,8 +276,8 @@ layers:
             # width: function () { return 2 * Math.log(zoom); }
 
         highway:
-            filter: Q.is('kind', 'highway')
-#            filter: { kind: highway }
+            # filter: Q.is('kind', 'highway')
+            filter: { kind: highway }
             style:
                 color: [1.0, 1.0, 1.0]
                 # color: red
