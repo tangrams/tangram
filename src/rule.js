@@ -143,12 +143,10 @@ export function groupProperties(style) {
 
 
 export function calculateStyle(rule, styles = []) {
-    if (rule.style) { styles.push(rule.style); }
-
     if (rule.parent) {
-        return calculateStyle(rule.parent, styles);
+        calculateStyle(rule.parent, styles);
     }
-
+    if (rule.style) { styles.push(rule.style); }
     return styles;
 }
 
@@ -169,25 +167,25 @@ export function parseRule(name, style, parent) {
         rule.filter = buildFilter(rule);
         rule.originalFilter = originalFilter;
         parent.rules.push(rule);
-        rule.calculatedStyle = mergeStyles(calculateStyle(rule).reverse());
+        rule.calculatedStyle = mergeStyles(calculateStyle(rule));
     }
     else {
         filter = buildFilter(properties);
-        group = new RuleGroup({name, filter});
+        group = new RuleGroup({name, filter, parent});
         group.style = properties.style;
         parent.rules.push(group);
-        group.calculatedStyle = mergeStyles(calculateStyle(group).reverse());
+        group.calculatedStyle = mergeStyles(calculateStyle(group));
     }
 
-    leftOvers.forEach((name) => {
-        var property = style[name];
+    for (var _name of leftOvers) {
+        var property = style[_name];
         if (typeof property === 'object') {
-            parseRule(name, property, group);
+            parseRule(_name, property, group);
         }
         else {
             throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
         }
-    });
+    }
 
     return parent;
 }
