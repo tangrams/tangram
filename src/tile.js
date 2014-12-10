@@ -19,7 +19,10 @@ export default class Tile {
             loaded: false,
             error: null,
             worker: null,
-            order: {}
+            order: {
+                min: Infinity,
+                max: -Infinity
+            }
         }, spec);
     }
 
@@ -131,10 +134,10 @@ export default class Tile {
                         }
 
                         // Track min/max order range
-                        if (!tile.order.min || feature_style.order < tile.order.min) {
+                        if (feature_style.order < tile.order.min) {
                             tile.order.min = feature_style.order;
                         }
-                        if (!tile.order.max || feature_style.order > tile.order.max) {
+                        if (feature_style.order > tile.order.max) {
                             tile.order.max = feature_style.order;
                         }
 

@@ -508,12 +508,12 @@ Scene.prototype.renderGL = function () {
     this.renderable_tiles_count = renderable_tiles.length;
 
     // Find min/max order for current tiles
-    var order = {};
+    var order = { min: Infinity, max: -Infinity };
     for (t of renderable_tiles) {
-        if (!order.min || t.order.min < order.min) {
+        if (t.order.min < order.min) {
             order.min = t.order.min;
         }
-        if (!order.max || t.order.max > order.max) {
+        if (t.order.max > order.max) {
             order.max = t.order.max;
         }
     }
