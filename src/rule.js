@@ -4,11 +4,30 @@ function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
 }
 
+
+// TODO Check for circular references
+export function cloneStyle(target, source) {
+
+    for (var arg of source) {
+        for (var key in arg) {
+            var value = arg[key];
+            // In a style object, arrays are consider a scalar value so we don't want to clone them.
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                target[key] = cloneStyle(target[key] || {}, [value]);
+            } else {
+                target[key] = arg[key];
+            }
+        }
+    }
+    return target;
+}
+
+
 // Merges a chain of parent-to-child styles into a single style object
 function mergeStyles(styles) {
     // Merge styles, properties in children override the same property in parents
     // Remove rules without styles
-    var style = Object.assign({}, ...styles.filter(style => style));
+    var style = cloneStyle({}, styles.filter(style => style));
 
     // Children of invisible parents are also invisible
     style.visible = !styles.some(style => !style.visible);
@@ -183,7 +202,9 @@ export function parseRule(name, style, parent) {
             parseRule(_name, property, group);
         }
         else {
-            throw new Error(`You provided an property that was not a object and was not expect; ${property}`);
+            throw new Error(
+                `In rule ${name}, property is not a object and it not whitelisted: ${_name} => ${property}`
+            );
         }
     }
 

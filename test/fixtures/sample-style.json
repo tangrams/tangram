@@ -1,12 +1,10 @@
 {
     "earth": {
-        "filter": "property('layer', 'earth')",
-        "order": 1,
+        "filter": "Q.is('layer', 'earth')",
         "style": {
             "color": [255, 255, 255]
         },
         "fill": {
-            "order": 1,
             "style": {
                 "color": [1, 1, 0]
             }
@@ -14,39 +12,51 @@
     },
 
     "roads": {
-        "filter": "property('layer', 'roads')",
-        "order": 5,
+        "filter": {
+            "layer": "roads"
+        },
         "style": {
             "type": "polygon",
             "color": [1, 1, 1],
-            "width": 5
+            "width": 5,
+            "outline": {
+                "color": [0.7, 0.7, 0.7],
+                "width": 10
+            }
         },
         "highway": {
-            "filter": "property('kind', 'highway')",
-            "order": 1,
+            "filter": {
+                "kind": "highway"
+            },
             "fill": {
                 "style": {
                     "color": [1, 1, 1],
                     "width": 10
                 },
                 "offramp": {
-                    "filter": "property('offramp', true)",
+                    "filter": {
+                        "offramp": true
+                    },
                     "style": {
                         "color": [1, 0.5, 0]
                     }
                 }
             },
-            "outline": {
-                "order": -1,
+            "thing": {
                 "style": {
-                    "type": "line",
+                    "type": "polygon",
                     "color": [1, 1, 0],
-                    "width": 12
+                    "width": 12,
+                    "outline": {
+                        "color": [0.6, 0.6, 0.6]
+                    }
                 }
             }
         },
         "bikepath": {
-            "filter": "property('kind', 'cyclepath')",
+            "filter": {
+                "kind": "bikepath"
+            },
             "style": {
                 "order": 2,
                 "color": [0, 1, 1]
@@ -65,13 +75,11 @@
     },
 
     "roads2": {
-        "filter": "property('layer', 'roads')",
-        "order": 1,
+        "filter": "Q.is('layer', 'roads')",
         "style": {
             "color": [1, 0, 1]
         },
         "more-stuff": {
-            "order": 3.14,
             "style": {
                 "color": [1, 0.5, 1]
             }
@@ -79,5 +87,3 @@
     }
 
 }
-
-

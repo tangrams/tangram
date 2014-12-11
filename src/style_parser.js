@@ -187,10 +187,10 @@ StyleParser.defaults = {
 
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
-StyleParser.getFeatureParseContext = function (feature, feature_style, tile) {
+StyleParser.getFeatureParseContext = function (feature, style, tile) {
     return {
         feature: feature,
-        properties: Object.assign({}, feature_style.properties||{}), // Object.assign polyfill fails on null object
+        properties: Object.assign({}, style.properties||{}), // Object.assign polyfill fails on null object
         zoom: tile.coords.z,
         meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
         units_per_meter: Geo.units_per_meter[tile.coords.z]

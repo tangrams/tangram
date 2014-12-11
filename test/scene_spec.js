@@ -473,7 +473,6 @@ describe('Scene', () => {
         let div = document.createElement('div');
 
         beforeEach((done) => {
-            debugger;
             subject = makeScene({});
             subject.setCenter(...nycLatLng);
             subject.init().then(() => {
