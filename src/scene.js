@@ -517,6 +517,7 @@ Scene.prototype.renderGL = function () {
             order.max = t.order.max;
         }
     }
+    order.max += 1;
     order.range = order.max - order.min;
 
     // Render main pass - tiles grouped by rendering style (GL program)

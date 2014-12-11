@@ -33,7 +33,7 @@ function mergeStyles(styles) {
     style.visible = !styles.some(style => !style.visible);
 
     // The full original order chain is preserved, final order is computed when styles are evaluated
-    style.order = styles.map(style => style.order);
+    style.order = styles.filter(style => style.order).map(style => style.order);
 
     return style;
 }

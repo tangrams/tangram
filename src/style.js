@@ -230,17 +230,15 @@ var Style = {
                 if (typeof order === 'function') {
                     order = order(context);
                 }
-                else if (order == null || isNaN(order)) {
-                    order = tile.order.max;
-                }
                 else {
                     order = parseFloat(order);
                 }
+
+                if (!order || isNaN(order)) {
+                    return sum;
+                }
                 return sum + order;
-            });
-            if (isNaN(style.order) || typeof style.order !== 'number') {
-                style.order = tile.order.max;
-            }
+            }, 0);
 
             // Feature selection
             var selectable = false;
