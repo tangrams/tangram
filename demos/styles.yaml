@@ -208,7 +208,6 @@ layers:
             color: [0.5, 0.875, 0.5]
 
         pitch:
-            # filter: is('properties.kind', 'pitch')
             filter:
                 kind: ['pitch', 'garden', 'playground']
             style:
@@ -276,7 +275,6 @@ layers:
             # width: function () { return 2 * Math.log(zoom); }
 
         highway:
-            # filter: Q.is('kind', 'highway')
             filter: { kind: highway }
             style:
                 color: [1.0, 1.0, 1.0]
@@ -293,8 +291,7 @@ layers:
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
-                filter: Q.is('is_tunnel', 'yes')
-                #filter: { is_tunnel: yes }
+                filter: { is_tunnel: yes }
                 style:
                     color: '#333'
                     width: function () { return 2 * Math.log(zoom); }
@@ -306,8 +303,7 @@ layers:
                         width: function () { return 1 * Math.log(zoom); }
 
         major_road:
-            filter: Q.is('kind', 'major_road')
-            #filter: { kind: major_road }
+            filter: { kind: major_road }
             style:
                 color: [0.5, 0.5, 0.5]
                 width: function () { return 2.5 * Math.log(zoom); }
@@ -316,8 +312,7 @@ layers:
                     width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
 
         minor_road:
-            filter: Q.is('kind', 'minor_road')
-            #filter: { kind: minor_road }
+            filter: { kind: minor_road }
             style:
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
@@ -326,9 +321,8 @@ layers:
                     width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
 
         path:
-            filter: Q.is('kind', 'path')
-            #filter:
-            #    kind: path
+            filter:
+               kind: path
             style:
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
@@ -338,8 +332,7 @@ layers:
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
         rail:
-            filter: Q.is('kind', 'rail')
-            #filter: { kind: rail }
+            filter: { kind: rail }
             style:
                 color: [0.5, 0.0, 0.0]
                 width: function () { return 2 * Math.log(zoom); }
@@ -386,9 +379,7 @@ layers:
             source: osm
             filter: pois
 
-        # filter: function () { return feature.name != null; }
         filter: { name: true }
-
         style:
             name: points
             # name: ghosts
