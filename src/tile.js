@@ -105,11 +105,12 @@ export default class Tile {
 
                     feature.layer = name;
 
+                    var context = StyleParser.getFeatureParseContext(feature, tile);
                     // Find matching rules
                     var matchedRules = [];
                     var layer_rules = rules[name];
                     for (var r in layer_rules) {
-                        layer_rules[r].matchFeature(feature, matchedRules);
+                        layer_rules[r].matchFeature(context, matchedRules);
                     }
 
                     // Parse & render styles
@@ -120,7 +121,7 @@ export default class Tile {
 
                         // Parse style
                         style = styles[rule.name || StyleParser.defaults.style.name];
-                        feature_style = style.parseFeature(feature, rule, tile);
+                        feature_style = style.parseFeature(feature, rule, tile, context);
 
                         // Skip feature?
                         if (!feature_style) {

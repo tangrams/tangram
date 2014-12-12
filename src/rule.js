@@ -38,7 +38,7 @@ function mergeStyles(styles) {
     return style;
 }
 
-export function matchFeature(feature, rules, collectedRules) {
+export function matchFeature(context, rules, collectedRules) {
     var current, matched = false, childMatched;
 
     if (rules.length === 0) {
@@ -52,7 +52,7 @@ export function matchFeature(feature, rules, collectedRules) {
 
             if (current.calculatedStyle) {
 
-                if ((typeof current.filter === 'function' && current.filter({feature})) || (current.filter === undefined)) {
+                if ((typeof current.filter === 'function' && current.filter(context)) || (current.filter === undefined)) {
                     matched = true;
                     collectedRules.push(current.calculatedStyle);
                 }
@@ -63,9 +63,9 @@ export function matchFeature(feature, rules, collectedRules) {
         }
         else if (current instanceof RuleGroup) {
 
-            if ((typeof current.filter === 'function' && current.filter({feature})) || current.filter === undefined) {
+            if ((typeof current.filter === 'function' && current.filter(context)) || current.filter === undefined) {
                 matched = true;
-                childMatched = matchFeature(feature, current.rules, collectedRules);
+                childMatched = matchFeature(context, current.rules, collectedRules);
                 if (!childMatched && current.calculatedStyle) {
                     collectedRules.push(current.calculatedStyle);
                 }
@@ -122,8 +122,8 @@ class RuleGroup {
         this.rules = options.rules || [];
     }
 
-    matchFeature(feature, rules = []) {
-        matchFeature(feature, this.rules, rules);
+    matchFeature(context, rules = []) {
+        matchFeature(context, this.rules, rules);
         return rules;
     }
 

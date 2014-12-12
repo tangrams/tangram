@@ -218,10 +218,9 @@ var Style = {
     buildLines () {},
     buildPoints () {},
 
-    parseFeature (feature, feature_style, tile) {
+    parseFeature (feature, feature_style, tile, context) {
         try {
             var style = Object.assign({}, feature_style);
-            var context = StyleParser.getFeatureParseContext(feature, style, tile);
 
             // Order is summed from top to bottom in the style hierarchy:
             // each child order value is added to the parent order value
