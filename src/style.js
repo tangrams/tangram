@@ -461,10 +461,11 @@ Object.assign(Polygons, {
         }
 
         if (style.outline) {
-            style.outline = Object.assign({}, style.outline);
-            style.outline.color = StyleParser.parseColor(style.outline.color, context);
-            style.outline.width = StyleParser.parseDistance(style.outline.width, context);
-            style.outline.tile_edges = (style.outline.tile_edges === true) ? true : false;
+            style.outline = {
+                color: StyleParser.parseColor(style.outline.color, context),
+                width: StyleParser.parseDistance(style.outline.width, context),
+                tile_edges: ((style.outline.tile_edges === true) ? true : false)
+            };
         }
 
         return style;
