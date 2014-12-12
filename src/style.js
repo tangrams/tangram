@@ -272,7 +272,6 @@ var Style = {
         }
         catch(error) {
             log.error('Style.parseFeature: style parsing error', feature, tile, error);
-            throw error;
         }
     },
 
