@@ -143,13 +143,10 @@
     var layer = Tangram.leafletLayer({
         source: tile_sources[default_tile_source].source,
         scene: tile_sources[default_tile_source].scene,
-        numWorkers: 2,
         preRender: preRender,
         postRender: postRender,
         logLevel: 'debug',
-        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>',
-        unloadInvisibleTiles: false,
-        updateWhenIdle: false
+        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
     });
     window.layer = layer;
 

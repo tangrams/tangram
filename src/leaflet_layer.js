@@ -15,6 +15,10 @@ Utils.inMainThread(() => {
     LeafletLayer = L.GridLayer.extend({
 
         initialize: function (options) {
+            // Defaults
+            options.unloadInvisibleTiles = options.unloadInvisibleTiles || false;
+            options.updateWhenIdle = options.updateWhenIdle || false;
+
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
@@ -30,7 +34,9 @@ Utils.inMainThread(() => {
                 postRender: this.options.postRender,
                 logLevel: this.options.logLevel,
                 // advanced option, app will have to manually called scene.render() per frame
-                disableRenderLoop: this.options.disableRenderLoop
+                disableRenderLoop: this.options.disableRenderLoop,
+                // advanced option, will require library to be served as same host as page
+                allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
             });
         },
 

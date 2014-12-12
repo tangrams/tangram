@@ -53,21 +53,26 @@ export default function Scene(source, config_source, options) {
     this.preRender = options.preRender;             // optional pre-rendering hook
     this.postRender = options.postRender;           // optional post-rendering hook
     this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
-
     this.frame = 0;
+    this.resetTime();
+
     this.zoom = null;
     this.center = null;
     this.device_pixel_ratio = window.devicePixelRatio || 1;
 
     this.zooming = false;
     this.panning = false;
-    this.logLevel = options.logLevel || 'debug';
-    log.setLevel(this.logLevel);
-    this.profile_geometry_build = false;
-
     this.container = options.container;
 
-    this.resetTime();
+    // Debug config
+    this.debug = {
+        profile: {
+            geometry_build: false
+        }
+    };
+
+    this.logLevel = options.logLevel || 'info';
+    log.setLevel(this.logLevel);
 }
 
 Scene.create = function ({source, config}, options = {}) {
@@ -814,7 +819,7 @@ Scene.prototype._loadTile = function (coords, options = {}) {
         this.cacheTile(tile);
         tile.load(this, coords);
         if (options.debugElement) {
-            tile.updateDebugElement(options.debugElement, this.debug);
+            tile.updateDebugElement(options.debugElement, this.debug.showTileElements);
         }
     }
     return tile;
@@ -850,9 +855,8 @@ Scene.prototype.rebuildGeometry = function () {
         this.building = { resolve, reject, tiles: {} };
 
         // Profiling
-        if (this.profile_geometry_build) {
-            console.profile('main thread: rebuildGeometry');
-            this.workers.forEach(w => WorkerBroker.postMessage(w, 'profile', 'rebuildGeometry'));
+        if (this.debug.profile.geometry_build) {
+            this._profile('rebuildGeometry');
         }
 
         // Update config (in case JS objects were manipulated directly)
@@ -913,9 +917,8 @@ Scene.prototype.rebuildGeometry = function () {
         }
     }).then(() => {
         // Profiling
-        if (this.profile_geometry_build) {
-            console.profileEnd('main thread: rebuildGeometry');
-            this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', 'rebuildGeometry'));
+        if (this.debug.profile.geometry_build) {
+            this._profileEnd('rebuildGeometry');
         }
     });
 };
@@ -1216,4 +1219,15 @@ Scene.prototype.workerLogMessage = function (event) {
     else {
         log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
     }
+};
+
+// Profile helpers, issues a profile on main thread & all workers
+Scene.prototype._profile = function (name) {
+    console.profile(`main thread: ${name}`);
+    this.workers.forEach(w => WorkerBroker.postMessage(w, 'profile', name));
+};
+
+Scene.prototype._profileEnd = function (name) {
+    console.profileEnd(`main thread: ${name}`);
+    this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', name));
 };
