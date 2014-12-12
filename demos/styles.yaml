@@ -371,8 +371,8 @@ layers:
                     return c;
                 }
 
-            # extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
-            extrude: [[14, false], [15, true]]
+            extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            # extrude: [[14, false], [15, true]]
 
     pois:
         geometry:
