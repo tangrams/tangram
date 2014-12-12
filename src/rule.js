@@ -75,10 +75,49 @@ export function matchFeature(context, rules, collectedRules) {
     return matched;
 }
 
-export function matchAllObjectProperties(filter, {feature}) {
+export function matchAllObjectProperties(filter, {feature, zoom}) {
     for (var key in filter) {
+        var type = typeof filter[key];
+
+        // Zoom-specific handling
+        // The following syntax forms are accepted:
+        //    filter: { scene.zoom: 14 }                  # zoom >= 14
+        //    filter: { scene.zoom: { max: 18 }           # zoom <= 18
+        //    filter: { scene.zoom: { min: 14, max: 18 }  # 14 <= zoom <= 18
+        //    filter: { scene.zoom: [14, 18] }            # 14 <= zoom <= 18
+        //
+        if (key === 'scene.zoom') {
+            // If a single value is provided, treat it as a zoom minimum
+            if (type === 'number') {
+                if (zoom < filter[key]) {
+                    return false;
+                }
+            }
+            // If an array is provided, treat it as a zoom min and max pair
+            else if (Array.isArray(filter[key])) {
+                if (zoom < filter[key][0]) {
+                    return false;
+                }
+                if (zoom > filter[key][1]) {
+                    return false;
+                }
+            }
+            // If an object is specified, look for min and max properties
+            else if (type === 'object') {
+                if (filter[key].min && zoom < filter[key].min) {
+                    return false;
+                }
+                if (filter[key].max && zoom > filter[key].max) {
+                    return false;
+                }
+            }
+            continue;
+        }
+
+        // Assume filter keys refer to feature properties by default
+
         // If filter key is a boolean, feature property must match the truthiness of the filter
-        if (typeof filter[key] === 'boolean') {
+        if (type === 'boolean') {
             if ((filter[key] && !feature.properties[key]) || (!filter[key] && feature.properties[key])) {
                 return false;
             }
@@ -95,9 +134,8 @@ export function matchAllObjectProperties(filter, {feature}) {
                 return false;
             }
         }
-        return true;
     }
-    
+    return true;
 }
 
 export function buildFilterObject(filter) {
