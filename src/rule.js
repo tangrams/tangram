@@ -127,8 +127,14 @@ export function matchAllObjectProperties(filter, {feature, zoom}) {
 
         // Assume filter keys refer to feature properties by default
 
+        // If the filter key has a single value, the feature property must match that value
+        if (type === 'string' || type === 'number') {
+            if (feature.properties[key] !== filter[key]) {
+                return false;
+            }
+        }
         // If filter key is a boolean, feature property must match the truthiness of the filter
-        if (type === 'boolean') {
+        else if (type === 'boolean') {
             if ((filter[key] && !feature.properties[key]) || (!filter[key] && feature.properties[key])) {
                 return false;
             }
@@ -139,11 +145,9 @@ export function matchAllObjectProperties(filter, {feature, zoom}) {
                 return false;
             }
         }
-        // If the filter key has a single value, the feature property must match that value
+        // Unrecognized filter type
         else {
-            if (feature.properties[key] !== filter[key]) {
-                return false;
-            }
+            return false;
         }
     }
     return true;
