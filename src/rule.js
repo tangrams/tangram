@@ -91,11 +91,12 @@ export function matchAllObjectProperties(filter, {feature, zoom}) {
         var type = typeof filter[key];
 
         // Zoom-specific handling
+        // Minimum thresholds are INCLUSIVE, maximum thresholds are EXCLUSIVE
         // The following syntax forms are accepted:
         //    filter: { scene.zoom: 14 }                  # zoom >= 14
-        //    filter: { scene.zoom: { max: 18 }           # zoom <= 18
-        //    filter: { scene.zoom: { min: 14, max: 18 }  # 14 <= zoom <= 18
-        //    filter: { scene.zoom: [14, 18] }            # 14 <= zoom <= 18
+        //    filter: { scene.zoom: { max: 18 }           # zoom < 18
+        //    filter: { scene.zoom: { min: 14, max: 18 }  # 14 <= zoom < 18
+        //    filter: { scene.zoom: [14, 18] }            # 14 <= zoom < 18
         //
         if (key === 'scene.zoom') {
             // If a single value is provided, treat it as a zoom minimum
@@ -109,7 +110,7 @@ export function matchAllObjectProperties(filter, {feature, zoom}) {
                 if (zoom < filter[key][0]) {
                     return false;
                 }
-                if (zoom > filter[key][1]) {
+                if (zoom >= filter[key][1]) {
                     return false;
                 }
             }
@@ -118,7 +119,7 @@ export function matchAllObjectProperties(filter, {feature, zoom}) {
                 if (filter[key].min && zoom < filter[key].min) {
                     return false;
                 }
-                if (filter[key].max && zoom > filter[key].max) {
+                if (filter[key].max && zoom >= filter[key].max) {
                     return false;
                 }
             }
