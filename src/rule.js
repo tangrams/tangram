@@ -34,8 +34,16 @@ function mergeStyles(styles) {
     // Children of invisible parents are also invisible
     style.visible = !styles.some(style => !style.visible);
 
-    // The full original order chain is preserved, final order is computed when styles are evaluated
-    style.order = styles.filter(style => style.order).map(style => style.order);
+    // The full original order chain is preserved
+    // But, the order inheritance can be 'reset' at any point in the chain
+    var order_start = 0;
+    for (var i = styles.length-1; i >= 0; i--) {
+        if (styles[i].orderReset) {
+            order_start = i;
+            break;
+        }
+    }
+    style.order = styles.slice(order_start).filter(style => style.order).map(style => style.order);
 
     // Order can be cached if it is only a single value...
     if (style.order.length === 1 && typeof style.order[0] === 'number') {
