@@ -222,22 +222,10 @@ var Style = {
         try {
             var style = Object.assign({}, feature_style);
 
-            // Order is summed from top to bottom in the style hierarchy:
-            // each child order value is added to the parent order value
-            style.order = style.order.reduce((sum, order) => {
-                order = order || StyleParser.defaults.order;
-                if (typeof order === 'function') {
-                    order = order(context);
-                }
-                else {
-                    order = parseFloat(order);
-                }
-
-                if (!order || isNaN(order)) {
-                    return sum;
-                }
-                return sum + order;
-            }, 0);
+            // Calculate order if it was not cached
+            if (typeof style.order !== 'number') {
+                style.order = StyleParser.calculateOrder(style.order, context);
+            }
 
             // Feature selection
             var selectable = false;

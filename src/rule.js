@@ -1,3 +1,5 @@
+import {StyleParser} from './style_parser';
+
 export var whiteList = ['filter', 'style', 'geometry'];
 
 function isWhiteListed(key) {
@@ -34,6 +36,15 @@ function mergeStyles(styles) {
 
     // The full original order chain is preserved, final order is computed when styles are evaluated
     style.order = styles.filter(style => style.order).map(style => style.order);
+
+    // Order can be cached if it is only a single value...
+    if (style.order.length === 1 && typeof style.order[0] === 'number') {
+        style.order = style.order[0];
+    }
+    // Or if there are no function dependencies
+    else if (!style.order.some(style => typeof style === 'function')) {
+        style.order = StyleParser.calculateOrder(style.order);
+    }
 
     return style;
 }
