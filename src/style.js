@@ -227,30 +227,23 @@ var Style = {
                 style.order = StyleParser.calculateOrder(style.order, context);
             }
 
-            // Feature selection
+            // Feature selection (only if style supports it)
             var selectable = false;
-            if (typeof style.interactive === 'function') {
-                selectable = style.interactive(context);
+            if (this.selection) {
+                if (typeof style.interactive === 'function') {
+                    selectable = style.interactive(context);
+                }
+                else {
+                    selectable = style.interactive;
+                }
+            }
+
+            // If feature is marked as selectable
+            if (selectable) {
+                style.selection_color = StyleParser.makeSelectionColor(feature);
             }
             else {
-                selectable = style.interactive;
-            }
-
-            // If style supports feature selection and feature is marked as selectable
-            if (this.selection && selectable === true) {
-                var selector = StyleParser.generateSelection();
-
-                selector.feature = {
-                    id: feature.id,
-                    properties: feature.properties
-                };
-
-                style.selection = {
-                    color: selector.color
-                };
-            }
-            else {
-                style.selection = StyleParser.defaults.selection;
+                style.selection_color = StyleParser.defaults.selection_color;
             }
 
             // Subclass implementation
@@ -466,7 +459,6 @@ Object.assign(Polygons, {
     makeVertexTemplate(style) {
         // Placeholder values
         var color = style.color || [0, 0, 0];
-        var selection_color = (style.selection && style.selection.color) || [0, 0, 0, 0];
 
         // Basic attributes, others can be added (see texture UVs below)
         var template = [
@@ -478,7 +470,7 @@ Object.assign(Polygons, {
             // TODO: automate multiplication for normalized attribs?
             color[0] * 255, color[1] * 255, color[2] * 255, 255,
             // selection color
-            selection_color[0] * 255, selection_color[1] * 255, selection_color[2] * 255, selection_color[3] * 255,
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // layer number
             style.layer
         ];
@@ -667,7 +659,7 @@ Object.assign(Points, {
             // TODO: automate multiplication for normalized attribs?
             style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
             // selection color
-            style.selection.color[0] * 255, style.selection.color[1] * 255, style.selection.color[2] * 255, style.selection.color[3] * 255,
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // layer number
             style.layer
         ];

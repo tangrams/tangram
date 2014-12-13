@@ -116,7 +116,7 @@ Style.pixels = function (p) {
 StyleParser.selection_map = {}; // this will be unique per module instance (so unique per worker)
 StyleParser.selection_map_size = 1; // start at 1 since 1 will be divided by this
 StyleParser.selection_map_prefix = 0; // set by worker to worker id #
-StyleParser.generateSelection = function ()
+StyleParser.makeSelectionEntry = function ()
 {
     // 32-bit color key
     StyleParser.selection_map_size++;
@@ -135,6 +135,16 @@ StyleParser.generateSelection = function ()
     };
 
     return StyleParser.selection_map[key];
+};
+
+StyleParser.makeSelectionColor = function (feature) {
+    var selector = StyleParser.makeSelectionEntry();
+    selector.feature = {
+        id: feature.id,
+        properties: feature.properties
+    };
+
+    return selector.color;
 };
 
 StyleParser.resetSelectionMap = function ()
@@ -177,9 +187,7 @@ StyleParser.defaults = {
         // width: 1,
         // dash: null
     },
-    selection: {
-        color: [0, 0, 0, 1]
-    },
+    selection_color: [0, 0, 0, 1],
     style: {
         name: 'polygons'
     }
