@@ -192,13 +192,14 @@ StyleManager.updateStyles = function (stylesheet_styles) {
 
 var Style = {
     init () {
-        this.defines = {};
-        this.shaders = {};
-        this.selection = false;
-        this.compiling = false;
-        this.compiled = false;
-        this.program = null;
-        this.selection_program = null;
+        this.defines = {};              // #defines to be injected into the shaders
+        this.shaders = {};              // shader customization via scene definition (uniforms, defines, blocks, etc.)
+        this.selection = false;         // flag indicating if this style supports feature selection
+        this.compiling = false;         // programs are currently compiling
+        this.compiled = false;          // programs are finished compiling
+        this.program = null;            // GL program reference (for main render pass)
+        this.selection_program = null;  // GL program reference for feature selection render pass
+        this.feature_style = {};        // style for feature currently being parsed, shared to lessen GC/memory thrash
     },
 
     setGL (gl) {
@@ -220,15 +221,17 @@ var Style = {
 
     parseFeature (feature, feature_style, tile, context) {
         try {
-            var style = Object.assign({}, feature_style);
+            var style = this.feature_style;
 
             // Calculate order if it was not cached
+            style.order = feature_style.order;
             if (typeof style.order !== 'number') {
                 style.order = StyleParser.calculateOrder(style.order, context);
             }
 
             // Feature selection (only if style supports it)
             var selectable = false;
+            style.interactive = feature_style.interactive;
             if (this.selection) {
                 if (typeof style.interactive === 'function') {
                     selectable = style.interactive(context);
@@ -247,7 +250,7 @@ var Style = {
             }
 
             // Subclass implementation
-            this._parseFeature(feature, style, context);
+            this._parseFeature(feature, feature_style, context);
 
             return style;
         }
@@ -256,7 +259,7 @@ var Style = {
         }
     },
 
-    _parseFeature (feature, style, context) {
+    _parseFeature (feature, feature_style, context) {
         throw new MethodNotImplemented('_parseFeature');
     },
 
@@ -421,32 +424,42 @@ Object.assign(Polygons, {
         this.vertex_layout = new GLVertexLayout(attribs);
     },
 
-    _parseFeature (feature, style, context) {
-        style.color = StyleParser.parseColor(style.color, context);
-        style.width = StyleParser.parseDistance(style.width, context);
-        style.size = StyleParser.parseDistance(style.size, context);
-        style.z = StyleParser.parseDistance(style.z || 0, context);
-        style.extrude = StyleParser.parseDistance(style.extrude, context);
-        style.height = (feature.properties && feature.properties.height) || StyleParser.defaults.height;
-        style.min_height = (feature.properties && feature.properties.min_height) || StyleParser.defaults.min_height;
+    _parseFeature (feature, feature_style, context) {
+        var style = this.feature_style;
+
+        style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
+        style.width = feature_style.width && StyleParser.parseDistance(feature_style.width, context);
+        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
+        style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
+        style.height = feature.properties.height || StyleParser.defaults.height;
+        style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
+        style.extrude = feature_style.extrude;
         if (style.extrude) {
+            if (typeof style.extrude === 'function') {
+                style.extrude = style.extrude(context);
+            }
+
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
             }
-            else if (typeof style.extrude === 'object' && style.extrude.length >= 2) {
+            else if (Array.isArray(style.extrude)) {
                 style.min_height = style.extrude[0];
                 style.height = style.extrude[1];
             }
         }
 
-        if (style.outline) {
-            style.outline = {
-                color: StyleParser.parseColor(style.outline.color, context),
-                width: StyleParser.parseDistance(style.outline.width, context),
-                tile_edges: ((style.outline.tile_edges === true) ? true : false)
-            };
+        style.outline = style.outline || {};
+        if (feature_style.outline) {
+            style.outline.color = StyleParser.parseColor(feature_style.outline.color, context);
+            style.outline.width = StyleParser.parseDistance(feature_style.outline.width, context)
+            style.outline.tile_edges = feature_style.outline.tile_edges;
+        }
+        else {
+            style.outline.color = null;
+            style.outline.width = null;
+            style.outline.tile_edges = false;
         }
 
         return style;
@@ -638,10 +651,11 @@ Object.assign(Points, {
         ]);
     },
 
-    _parseFeature (feature, style, context) {
-        style.color = StyleParser.parseColor(style.color, context);
-        style.size = StyleParser.parseDistance(style.size, context);
-        style.z = StyleParser.parseDistance(style.z || 0, context);
+    _parseFeature (feature, feature_style, context) {
+        var style = this.feature_style;
+        style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
+        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
+        style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
         return style;
     },
 

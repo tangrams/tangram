@@ -182,11 +182,7 @@ StyleParser.defaults = {
     height: 20,
     min_height: 0,
     order: 0,
-    outline: {
-        // color: [1.0, 0, 0],
-        // width: 1,
-        // dash: null
-    },
+    z: 0,
     selection_color: [0, 0, 0, 1],
     style: {
         name: 'polygons'

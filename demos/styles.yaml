@@ -370,9 +370,31 @@ layers:
                     }
                     return c;
                 }
-
+            # color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
-            # extrude: [[14, false], [15, true]]
+
+        # buildingsOfInterest:
+        #     filter:
+        #         any:
+        #             name: true
+        #             kind: true
+        #     style:
+        #         color: red
+
+        # namedBuildings:
+        #     filter: { name: true }
+        #     style:
+        #         color: [.6, .2, .2]
+
+        #     namedKindBuildings:
+        #         filter: { kind: true }
+        #         style:
+        #             color: [.6, .2, .6]
+
+        # kindBuildings:
+        #     filter: { name: false, kind: true }
+        #     style:
+        #         color: [.2, .2, .6]
 
     pois:
         geometry:
