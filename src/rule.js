@@ -32,7 +32,7 @@ function mergeStyles(styles) {
     var style = cloneStyle({}, styles.filter(style => style));
 
     // Children of invisible parents are also invisible
-    style.visible = !styles.some(style => !style.visible);
+    style.visible = !styles.some(style => style.visible === false);
 
     // The full original order chain is preserved
     // But, the order inheritance can be 'reset' at any point in the chain
