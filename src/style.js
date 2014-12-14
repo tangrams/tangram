@@ -1,332 +1,702 @@
+// Rendering styles
+import GLVertexLayout from './gl/gl_vertex_layout';
+import {GLBuilders} from './gl/gl_builders';
+import GLProgram from './gl/gl_program';
+import GLGeometry from './gl/gl_geom';
+import {StyleParser} from './style_parser';
 import Utils from './utils';
-import {Geo} from './geo';
+import {MethodNotImplemented} from './errors';
+import gl from './gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
+import shaderSources from './gl/shader_sources'; // built-in shaders
 
-import parseCSSColor from 'csscolorparser';
 import log from 'loglevel';
 
-export var Style = {};
+export var Styles = {};
+export var StyleManager = {};
 
-// Style macros
 
-Style.color = {
-    pseudoRandomGrayscale: function (f) { var c = Math.max((parseInt(f.id, 16) % 100) / 100, 0.4); return [0.7 * c, 0.7 * c, 0.7 * c]; }, // pseudo-random grayscale by geometry id
-    pseudoRandomColor: function (f) { return [0.7 * (parseInt(f.id, 16) / 100 % 1), 0.7 * (parseInt(f.id, 16) / 10000 % 1), 0.7 * (parseInt(f.id, 16) / 1000000 % 1)]; }, // pseudo-random color by geometry id
-    randomColor: function (f) { return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()]; } // random color
+// Manage styles
+
+// Global configuration for all styles
+StyleManager.init = function () {
+    GLProgram.removeTransform('globals');
+
+    // Layer re-ordering function
+    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+
+    // Spherical environment map
+    GLProgram.addTransform('globals', `
+        #if defined(LIGHTING_ENVIRONMENT)
+        ${shaderSources['modules/spherical_environment_map']}
+        #endif
+    `);
 };
 
-// Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
-// The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
-Style.pixels = function (p) {
-    var f;
-    /* jshint ignore:start */
-    eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
-    /* jshint ignore:end */
-    return f;
+// Update built-in style or create a new one
+StyleManager.updateStyle = function (name, settings) {
+    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || Style);
+    if (Styles[settings.extends]) {
+        Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
+    }
+
+    for (var s in settings) {
+        Styles[name][s] = settings[s];
+    }
+
+    Styles[name].name = name;
+    return Styles[name];
 };
 
-// Create a unique 32-bit color to identify a feature
-// Workers independently create/modify selection colors in their own threads, but we also
-// need the main thread to know where each feature color originated. To accomplish this,
-// we partition the map by setting the 4th component (alpha channel) to the worker's id.
-Style.selection_map = {}; // this will be unique per module instance (so unique per worker)
-Style.selection_map_size = 1; // start at 1 since 1 will be divided by this
-Style.selection_map_prefix = 0; // set by worker to worker id #
-Style.generateSelection = function ()
-{
-    // 32-bit color key
-    Style.selection_map_size++;
-    var ir = Style.selection_map_size & 255;
-    var ig = (Style.selection_map_size >> 8) & 255;
-    var ib = (Style.selection_map_size >> 16) & 255;
-    var ia = Style.selection_map_prefix;
-    var r = ir / 255;
-    var g = ig / 255;
-    var b = ib / 255;
-    var a = ia / 255;
-    var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
-
-    Style.selection_map[key] = {
-        color: [r, g, b, a],
-    };
-
-    return Style.selection_map[key];
-};
-
-Style.resetSelectionMap = function ()
-{
-    Style.selection_map = {};
-    Style.selection_map_size = 1;
-};
-
-// Find and expand style macros
-Style.macros = [
-    'Style.color.pseudoRandomColor',
-    'Style.color.randomColor',
-    'Style.pixels'
-];
-
-// Wraps style functions and provides a scope of commonly accessible data:
-// - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
-// - zoom: the current map zoom level
-// - meters_per_pixel: conversion for meters/pixels at current map zoom
-// - properties: user-defined properties on the style-rule object in the stylesheet
-Style.wrapFunction = function (func) {
-    var f = `function(context) {
-                var feature = context.feature.properties;
-                var zoom = context.zoom;
-                var meters_per_pixel = context.meters_per_pixel;
-                var properties = context.properties;
-                return (${func}());
-            }`;
-    return f;
-};
-
-Style.expandMacros = function expandMacros (obj) {
-    for (var p in obj) {
-        var val = obj[p];
-
-        // Loop through object properties
-        if (typeof val === 'object') {
-            obj[p] = expandMacros(val);
+// Destroy all styles for a given GL context
+StyleManager.destroy = function (gl) {
+    Object.keys(Styles).forEach((_name) => {
+        var style = Styles[_name];
+        if (style.gl === gl) {
+            log.trace(`destroying render style ${style.name}`);
+            style.destroy();
         }
-        // Convert strings back into functions
-        else if (typeof val === 'string') {
-            for (var m in Style.macros) {
-                if (val.match(Style.macros[m])) {
-                    var f;
-                    try {
-                        /*jshint ignore:start */
-                        eval('f = ' + val);
-                        /*jshint ignore:end */
-                        obj[p] = f;
-                        log.trace(`expanded macro ${val} to ${f}`);
-                        break;
-                    }
-                    catch (e) {
-                        // fall-back to original value if parsing failed
-                        obj[p] = val;
-                        log.trace(`failed to expand macro ${val}`);
-                    }
+    });
+};
+
+// Preloads network resources in the stylesheet (shaders, textures, etc.)
+StyleManager.preloadStyles = function (styles) {
+    // First load remote styles, then load shader blocks from remote URLs
+    // TODO: also preload textures
+    return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
+};
+
+// Load style definitions from external URLs
+StyleManager.loadRemoteStyles = function (styles) {
+    // Collect URLs and modes to import from them
+    // This is done as a separate step becuase it is possible to import multiple modes from a single
+    // URL, and we want to avoid duplicate calls for the same file.
+    var urls = {};
+    if (styles) {
+        for (var name in styles) {
+            var style = styles[name];
+            if (style.url) {
+                if (!urls[style.url]) {
+                    urls[style.url] = [];
                 }
+
+                // Make a list of the styles to import for this URL
+                urls[style.url].push({
+                    target_name: name,
+                    source_name: style.name || name
+                });
             }
         }
     }
 
-    return obj;
-};
-
-
-// Style defaults
-
-// Determine final style properties (color, width, etc.)
-Style.defaults = {
-    color: [1.0, 0, 0],
-    width: 1,
-    size: 1,
-    extrude: false,
-    height: 20,
-    min_height: 0,
-    order: 0,
-    outline: {
-        // color: [1.0, 0, 0],
-        // width: 1,
-        // dash: null
-    },
-    selection: {
-        active: false,
-        color: [0, 0, 0, 1]
-    },
-    mode: {
-        name: 'polygons'
-    }
-};
-
-// Style parsing
-
-Style.interpolate = function(x, val) {
-    if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
-        return Utils.interpolate(x, val);
-    }
-    return val;
-};
-
-Style.convertUnits = function(val, context) {
-    if (typeof val === 'string') {
-        // Convert from pixels
-        if (val.indexOf('px') === val.length - 2) {
-            val = parseFloat(val.substr(0, val.length-2)) * Geo.metersPerPixel(context.zoom);
-        }
-        // Convert from string
-        else {
-            val = parseFloat(val);
-        }
-    }
-    else if (Array.isArray(val)) {
-        // Array of arrays, e.g. zoom-interpolated stops
-        if (val.every(v => { return Array.isArray(v); })) {
-            return val.map(v => { return [v[0], Style.convertUnits(v[1], context)]; });
-        }
-        // Array of values
-        else {
-            return val.map(v => { return Style.convertUnits(v, context); });
-        }
-    }
-    return val;
-};
-
-Style.parseDistance = function(val, context) {
-    if (typeof val === 'function') {
-        val = val(context);
-    }
-    val = Style.convertUnits(val, context);
-    val = Style.interpolate(context.zoom, val);
-    if (typeof val === 'number') {
-        val *= context.units_per_meter;
-    }
-    return val;
-};
-
-Style.parseColor = function(val, context) {
-    if (typeof val === 'function') {
-        val = val(context);
-    }
-
-    // Parse CSS-style colors
-    // TODO: change all colors to use 0-255 range internally to avoid dividing and then re-multiplying in geom builder
-    if (typeof val === 'string') {
-        val = parseCSSColor.parseCSSColor(val);
-        if (val && val.length === 4) {
-            val = val.slice(0, 3).map(c => { return c / 255; });
-        }
-    }
-    else if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
-        // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
-        val = val.map(v => {
-            if (typeof v[1] === 'string') {
-                var vc = parseCSSColor.parseCSSColor(v[1]);
-                if (vc && vc.length === 4) {
-                    vc = vc.slice(0, 3).map(c => { return c / 255; });
+    // As each URL finishes loading, replace the target style(s)
+    return Promise.all(Object.keys(urls).map(url => {
+        return new Promise((resolve, reject) => {
+            Utils.loadResource(url).then((data) => {
+                for (var target of urls[url]) {
+                    if (data && data[target.source_name]) {
+                        styles[target.target_name] = data[target.source_name];
+                    }
+                    else {
+                        delete styles[target.target_name];
+                        return reject(new Error(`StyleManager.preloadStyles: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
+                    }
                 }
-                return [v[0], vc];
-            }
-            return v;
+                resolve();
+            }).catch((error) => {
+                log.error(`StyleManager.preloadStyles: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
+            });
         });
-    }
-
-    val = Style.interpolate(context.zoom, val);
-    return val;
+    })).then(() => Promise.resolve(styles));
 };
 
-Style.parseStyleForFeature = function (feature, layer_name, layer_style, tile)
-{
-    layer_style = layer_style || {};
-    var style = {};
+// Preload shader blocks from external URLs
+StyleManager.loadRemoteShaderTransforms = function (styles) {
+    var queue = [];
+    if (styles) {
+        for (var style of Utils.values(styles)) {
+            if (style.shaders && style.shaders.transforms) {
+                let _transforms = style.shaders.transforms;
 
-    var context = {
-        feature: feature,
-        properties: Object.assign({}, layer_style.properties||{}), // Object.assign polyfill fails on null object
-        zoom: tile.coords.z,
-        meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
-        units_per_meter: Geo.units_per_meter[tile.coords.z]
-    };
+                for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
+                    let _key = key;
 
-    // Test whether features should be rendered at all
-    if (typeof layer_style.filter === 'function') {
-        if (layer_style.filter(context) === false) {
-            return null;
+                    // Array of transforms
+                    if (Array.isArray(transform)) {
+                        for (let t=0; t < transform.length; t++) {
+                            if (typeof transform[t] === 'object' && transform[t].url) {
+                                let _index = t;
+                                queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
+                                    _transforms[_key][_index] = data;
+                                }).catch((error) => {
+                                    log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                }));
+                            }
+                        }
+                    }
+                    // Single transform
+                    else if (typeof transform === 'object' && transform.url) {
+                        queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
+                            _transforms[_key] = data;
+                        }).catch((error) => {
+                            log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, error);
+                        }));
+                    }
+                }
+            }
         }
     }
-
-    // Parse styles
-    style.color = (layer_style.color && (layer_style.color[feature.properties.kind] || layer_style.color.default)) || Style.defaults.color;
-    style.color = Style.parseColor(style.color, context);
-
-    style.width = (layer_style.width && (layer_style.width[feature.properties.kind] || layer_style.width.default)) || Style.defaults.width;
-    style.width = Style.parseDistance(style.width, context);
-
-    style.size = (layer_style.size && (layer_style.size[feature.properties.kind] || layer_style.size.default)) || Style.defaults.size;
-    style.size = Style.parseDistance(style.size, context);
-
-    style.extrude = (layer_style.extrude && (layer_style.extrude[feature.properties.kind] || layer_style.extrude.default)) || Style.defaults.extrude;
-    style.extrude = Style.parseDistance(style.extrude, context);
-
-    style.height = (feature.properties && feature.properties.height) || Style.defaults.height;
-    style.min_height = (feature.properties && feature.properties.min_height) || Style.defaults.min_height;
-
-    // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-    if (style.extrude) {
-        if (typeof style.extrude === 'number') {
-            style.height = style.extrude;
-        }
-        else if (typeof style.extrude === 'object' && style.extrude.length >= 2) {
-            style.min_height = style.extrude[0];
-            style.height = style.extrude[1];
-        }
-    }
-
-    style.z = (layer_style.z && (layer_style.z[feature.properties.kind] || layer_style.z.default)) || Style.defaults.z || 0;
-    style.z = Style.parseDistance(style.z, context);
-
-    // Adjusts feature render order *within* the overall layer
-    // e.g. 'order' causes this feature to be drawn underneath or on top of other features in the same layer,
-    // but all features on layers below this one will be drawn underneath, all features on layers above this one
-    // will be drawn on top
-    style.order = layer_style.order || Style.defaults.order;
-    if (typeof style.order === 'function') {
-        style.order = style.order(context);
-    }
-    style.order = Math.max(Math.min(style.order, 1), -1); // clamp to [-1, 1]
-
-    style.outline = {};
-    layer_style.outline = layer_style.outline || {};
-    style.outline.color = (layer_style.outline.color && (layer_style.outline.color[feature.properties.kind] || layer_style.outline.color.default)) || Style.defaults.outline.color;
-    style.outline.color = Style.parseColor(style.outline.color, context);
-
-    style.outline.width = (layer_style.outline.width && (layer_style.outline.width[feature.properties.kind] || layer_style.outline.width.default)) || Style.defaults.outline.width;
-    style.outline.width = Style.parseDistance(style.outline.width, context);
-
-    // style.outline.dash = (layer_style.outline.dash && (layer_style.outline.dash[feature.properties.kind] || layer_style.outline.dash.default)) || Style.defaults.outline.dash;
-
-    style.outline.tile_edges = (layer_style.outline.tile_edges === true) ? true : false;
-
-    // Interactivity (selection map)
-    var interactive = false;
-    if (typeof layer_style.interactive === 'function') {
-        interactive = layer_style.interactive(context);
-    }
-    else {
-        interactive = layer_style.interactive;
-    }
-
-    if (interactive === true) {
-        var selector = Style.generateSelection();
-
-        selector.feature = {
-            id: feature.id,
-            properties: feature.properties
-        };
-        selector.feature.properties.layer = layer_name; // add layer name to properties
-
-        style.selection = {
-            active: true,
-            color: selector.color
-        };
-    }
-    else {
-        style.selection = Style.defaults.selection;
-    }
-
-    // Render mode
-    if (layer_style.mode != null && layer_style.mode.name != null) {
-        style.mode = {};
-        for (var m in layer_style.mode) {
-            style.mode[m] = layer_style.mode[m];
-        }
-    }
-    else {
-        style.mode = Style.defaults.mode;
-    }
-
-    return style;
+    return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
+// Called once on instantiation
+StyleManager.createStyles = function (stylesheet_styles) {
+    StyleManager.init();
+
+    // Stylesheet-defined styles
+    for (var name in stylesheet_styles) {
+        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
+    }
+
+    // Initialize all
+    for (name in Styles) {
+        Styles[name].init();
+    }
+
+    return Styles;
+};
+
+// Called when styles are updated in stylesheet
+StyleManager.updateStyles = function (stylesheet_styles) {
+    // Copy stylesheet styles
+    for (var name in stylesheet_styles) {
+        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
+    }
+
+    // Compile all styles
+    for (name in Styles) {
+        try {
+            Styles[name].compile();
+            log.trace(`StyleManager.updateStyles(): compiled style ${name}`);
+        }
+        catch(error) {
+            log.error(`StyleManager.updateStyles(): error compiling style ${name}:`, error);
+        }
+    }
+
+    log.debug(`StyleManager.updateStyles(): compiled all styles`);
+    return Styles;
+};
+
+
+// Base class
+
+var Style = {
+    init () {
+        this.defines = {};              // #defines to be injected into the shaders
+        this.shaders = {};              // shader customization via scene definition (uniforms, defines, blocks, etc.)
+        this.selection = false;         // flag indicating if this style supports feature selection
+        this.compiling = false;         // programs are currently compiling
+        this.compiled = false;          // programs are finished compiling
+        this.program = null;            // GL program reference (for main render pass)
+        this.selection_program = null;  // GL program reference for feature selection render pass
+        this.feature_style = {};        // style for feature currently being parsed, shared to lessen GC/memory thrash
+    },
+
+    setGL (gl) {
+        this.gl = gl;
+    },
+
+    makeGLGeometry (vertex_data) {
+        return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+    },
+
+    isBuiltIn () {
+        return this.hasOwnProperty('built_in');
+    },
+
+    // Build functions are no-ops until overriden
+    buildPolygons () {},
+    buildLines () {},
+    buildPoints () {},
+
+    parseFeature (feature, feature_style, tile, context) {
+        try {
+            var style = this.feature_style;
+
+            // Calculate order if it was not cached
+            style.order = feature_style.order;
+            if (typeof style.order !== 'number') {
+                style.order = StyleParser.calculateOrder(style.order, context);
+            }
+
+            // Feature selection (only if style supports it)
+            var selectable = false;
+            style.interactive = feature_style.interactive;
+            if (this.selection) {
+                if (typeof style.interactive === 'function') {
+                    selectable = style.interactive(context);
+                }
+                else {
+                    selectable = style.interactive;
+                }
+            }
+
+            // If feature is marked as selectable
+            if (selectable) {
+                style.selection_color = StyleParser.makeSelectionColor(feature);
+            }
+            else {
+                style.selection_color = StyleParser.defaults.selection_color;
+            }
+
+            // Subclass implementation
+            this._parseFeature(feature, feature_style, context);
+
+            return style;
+        }
+        catch(error) {
+            log.error('Style.parseFeature: style parsing error', feature, tile, error);
+        }
+    },
+
+    _parseFeature (feature, feature_style, context) {
+        throw new MethodNotImplemented('_parseFeature');
+    },
+
+    destroy () {
+        if (this.program) {
+            this.program.destroy();
+            this.program = null;
+        }
+
+        if (this.selection_program) {
+            this.selection_program.destroy();
+            this.selection_program = null;
+        }
+
+        this.gl = null;
+
+        if (!this.isBuiltIn()) {
+            delete Styles[this.name];
+        }
+    },
+
+    compile () {
+        if (!this.gl) {
+            throw(new Error(`style.compile(): skipping for ${this.name} because no GL context`));
+        }
+
+        if (this.compiling) {
+            throw(new Error(`style.compile(): skipping for ${this.name} because style is already compiling`));
+        }
+        this.compiling = true;
+        this.compiled = false;
+
+        // Build defines & for selection (need to create a new object since the first is stored as a reference by the program)
+        var defines = this.buildDefineList();
+        if (this.selection) {
+            var selection_defines = Object.assign({}, defines);
+            selection_defines['FEATURE_SELECTION'] = true;
+        }
+
+        // Get any custom code transforms
+        var transforms = (this.shaders && this.shaders.transforms);
+
+        // Create shaders
+        try {
+            this.program = new GLProgram(
+                this.gl,
+                shaderSources[this.vertex_shader_key],
+                shaderSources[this.fragment_shader_key],
+                {
+                    defines: defines,
+                    transforms: transforms,
+                    name: this.name
+                }
+            );
+
+            if (this.selection) {
+                this.selection_program = new GLProgram(
+                    this.gl,
+                    shaderSources[this.vertex_shader_key],
+                    shaderSources['selection_fragment'],
+                    {
+                        defines: selection_defines,
+                        transforms: transforms,
+                        name: (this.name + ' (selection)')
+                    }
+                );
+            }
+            else {
+                this.selection_program = null;
+            }
+        }
+        catch(error) {
+            this.compiling = false;
+            this.compiled = false;
+            throw(new Error(`style.compile(): style ${this.name} error:`, error));
+        }
+
+        this.compiling = false;
+        this.compiled = true;
+    },
+
+    /** TODO: could probably combine and generalize this with similar method in GLProgram
+     * (list of define objects that inherit from each other)
+     */
+    buildDefineList () {
+        // Add any custom defines to built-in style defines
+        var defines = {}; // create a new object to avoid mutating a prototype value that may be shared with other styles
+        if (this.defines != null) {
+            for (var d in this.defines) {
+                defines[d] = this.defines[d];
+            }
+        }
+        if (this.shaders != null && this.shaders.defines != null) {
+            for (d in this.shaders.defines) {
+                defines[d] = this.shaders.defines[d];
+            }
+        }
+        return defines;
+
+    },
+
+
+    // Set style uniforms on currently bound program
+    setUniforms () {
+        var program = GLProgram.current;
+        if (program != null && this.shaders != null && this.shaders.uniforms != null) {
+            program.setUniforms(this.shaders.uniforms);
+        }
+    },
+
+    update () {
+        // Style-specific animation
+        // if (typeof this.animation === 'function') {
+        //     this.animation();
+        // }
+    }
+};
+
+
+// Built-in rendering styles
+
+/*** Plain polygons ***/
+
+var Polygons = Object.create(Style);
+
+Object.assign(Polygons, {
+    built_in: true,
+
+    init() {
+        Style.init.apply(this);
+
+        // Base shaders
+        this.vertex_shader_key = 'polygon_vertex';
+        this.fragment_shader_key = 'polygon_fragment';
+
+        // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+        this.defines['WORLD_POSITION_WRAP'] = 100000;
+
+        // Turn feature selection on
+        this.selection = true;
+
+        // Basic attributes, others can be added (see texture UVs below)
+        var attribs = [
+            { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
+            // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
+            // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        ];
+
+        // Optional texture UVs
+        if (this.texcoords) {
+            this.defines['TEXTURE_COORDS'] = true;
+
+            // Add vertex attribute for UVs only when needed
+            attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+        }
+
+        this.vertex_layout = new GLVertexLayout(attribs);
+    },
+
+    _parseFeature (feature, feature_style, context) {
+        var style = this.feature_style;
+
+        style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
+        style.width = feature_style.width && StyleParser.parseDistance(feature_style.width, context);
+        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
+        style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
+
+        // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
+        style.height = feature.properties.height || StyleParser.defaults.height;
+        style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
+        style.extrude = feature_style.extrude;
+        if (style.extrude) {
+            if (typeof style.extrude === 'function') {
+                style.extrude = style.extrude(context);
+            }
+
+            if (typeof style.extrude === 'number') {
+                style.height = style.extrude;
+            }
+            else if (Array.isArray(style.extrude)) {
+                style.min_height = style.extrude[0];
+                style.height = style.extrude[1];
+            }
+        }
+
+        style.outline = style.outline || {};
+        if (feature_style.outline) {
+            style.outline.color = StyleParser.parseColor(feature_style.outline.color, context);
+            style.outline.width = StyleParser.parseDistance(feature_style.outline.width, context);
+            style.outline.tile_edges = feature_style.outline.tile_edges;
+        }
+        else {
+            style.outline.color = null;
+            style.outline.width = null;
+            style.outline.tile_edges = false;
+        }
+
+        return style;
+    },
+
+    /**
+     * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+     * A plain JS array matching the order of the vertex layout.
+     */
+    makeVertexTemplate(style) {
+        // Placeholder values
+        var color = style.color || [0, 0, 0];
+
+        // Basic attributes, others can be added (see texture UVs below)
+        var template = [
+            // position - x & y coords will be filled in per-vertex below
+            0, 0, style.z || 0,
+            // normal
+            0, 0, 1,
+            // color
+            // TODO: automate multiplication for normalized attribs?
+            color[0] * 255, color[1] * 255, color[2] * 255, 255,
+            // selection color
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
+            // layer number
+            style.layer
+        ];
+
+        if (this.texcoords) {
+            // Add texture UVs to template only if needed
+            template.push(0, 0);
+        }
+
+        return template;
+
+    },
+
+    buildPolygons(polygons, style, vertex_data) {
+        var vertex_template = this.makeVertexTemplate(style);
+
+        // Polygon fill
+        if (style.color) {
+            // Extruded polygons (e.g. 3D buildings)
+            if (style.extrude && style.height) {
+                GLBuilders.buildExtrudedPolygons(
+                    polygons,
+                    style.z, style.height, style.min_height,
+                    vertex_data, vertex_template,
+                    this.vertex_layout.index.a_normal,
+                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                );
+            }
+            // Regular polygons
+            else {
+                GLBuilders.buildPolygons(
+                    polygons,
+                    vertex_data, vertex_template,
+                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                );
+            }
+        }
+
+        // Polygon outlines
+        if (style.outline && style.outline.color && style.outline.width) {
+            // Replace color in vertex template
+            var color_index = this.vertex_layout.index.a_color;
+            vertex_template[color_index + 0] = style.outline.color[0] * 255;
+            vertex_template[color_index + 1] = style.outline.color[1] * 255;
+            vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
+            // Polygon outlines sit over current layer but underneath the one above
+            // TODO: address inconsistency with line outlines
+            vertex_template[this.vertex_layout.index.a_layer] += 0.0001;
+
+            for (var mpc=0; mpc < polygons.length; mpc++) {
+                GLBuilders.buildPolylines(
+                    polygons[mpc],
+                    style.z,
+                    style.outline.width,
+                    vertex_data,
+                    vertex_template,
+                    {
+                        texcoord_index: this.vertex_layout.index.a_texcoord,
+                        closed_polygon: true,
+                        remove_tile_edges: !style.outline.tile_edges
+                    }
+                );
+            }
+        }
+    },
+
+    buildLines(lines, style, vertex_data) {
+        var vertex_template = this.makeVertexTemplate(style);
+
+        // Main line
+        if (style.color && style.width) {
+            GLBuilders.buildPolylines(
+                lines,
+                style.z,
+                style.width,
+                vertex_data,
+                vertex_template,
+                {
+                    texcoord_index: this.vertex_layout.index.a_texcoord
+                }
+            );
+        }
+
+        // Outline
+        if (style.outline && style.outline.color && style.outline.width) {
+            // Replace color in vertex template
+            var color_index = this.vertex_layout.index.a_color;
+            vertex_template[color_index + 0] = style.outline.color[0] * 255;
+            vertex_template[color_index + 1] = style.outline.color[1] * 255;
+            vertex_template[color_index + 2] = style.outline.color[2] * 255;
+
+            // Line outlines sit underneath current layer but above the one below
+            // TODO: address inconsistency with polygon outlines
+            // TODO: need more fine-grained styling controls for outlines
+            // (see complex road interchanges where casing outlines should be interleaved by road type)
+            vertex_template[this.vertex_layout.index.a_layer] -= 0.0001;
+
+            GLBuilders.buildPolylines(
+                lines,
+                style.z,
+                style.width + 2 * style.outline.width,
+                vertex_data,
+                vertex_template,
+                {
+                    texcoord_index: this.vertex_layout.index.a_texcoord
+                }
+            );
+        }
+    },
+
+    buildPoints(points, style, vertex_data) {
+        if (!style.color || !style.size) {
+            return;
+        }
+
+        var vertex_template = this.makeVertexTemplate(style);
+
+        GLBuilders.buildQuadsForPoints(
+            points,
+            style.size * 2,
+            style.size * 2,
+            vertex_data,
+            vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
+        );
+
+    },
+    name: 'polygons'
+});
+
+//Polygons.name = 'polygons';
+Styles[Polygons.name] = Polygons;
+
+
+
+/*** Points w/simple distance field rendering ***/
+
+var Points = Object.create(Style);
+
+Object.assign(Points, {
+    name: 'points',
+    built_in: true,
+
+    init() {
+        Style.init.apply(this);
+
+        // Base shaders
+        this.vertex_shader_key = 'point_vertex';
+        this.fragment_shader_key = 'point_fragment';
+
+        // TODO: remove this hard-coded special effect
+        this.defines['EFFECT_SCREEN_COLOR'] = true;
+
+        // Turn feature selection on
+        this.selection = true;
+
+        // Vertex attributes
+        this.vertex_layout = new GLVertexLayout([
+            { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
+            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+        ]);
+    },
+
+    _parseFeature (feature, feature_style, context) {
+        var style = this.feature_style;
+        style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
+        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
+        style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
+        return style;
+    },
+
+    /**
+     * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
+     * A plain JS array matching the order of the vertex layout.
+     */
+    makeVertexTemplate(style) {
+        return [
+            // position - x & y coords will be filled in per-vertex below
+            0, 0, style.z,
+            // texture coords
+            0, 0,
+            // color
+            // TODO: automate multiplication for normalized attribs?
+            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+            // selection color
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
+            // layer number
+            style.layer
+        ];
+    },
+
+    buildPoints(points, style, vertex_data) {
+        if (!style.color || !style.size) {
+            return;
+        }
+
+        var vertex_template = this.makeVertexTemplate(style);
+
+        GLBuilders.buildQuadsForPoints(
+            points,
+            style.size * 2,
+            style.size * 2,
+            vertex_data,
+            vertex_template,
+            { texcoord_index: this.vertex_layout.index.a_texcoord }
+        );
+
+    }
+
+});
+
+Styles[Points.name] = Points;

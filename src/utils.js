@@ -7,6 +7,27 @@ import yaml from 'js-yaml';
 var Utils;
 export default Utils = {};
 
+/**
+ * Funtion that is able to return nested objects. Similar to a normal
+ * property based lookup, but accepts an array of properties.
+ *
+ * var obj = {a: {b: {c: 10}}};
+ * getIn(obj, ['a', 'b', 'c']); // 10
+ */
+Utils.getIn = function (obj, key) {
+    function walk(obj, keys) {
+        var key = keys[0];
+        if (keys.length === 0) {
+            return obj;
+        } else if (!obj.hasOwnProperty(key)) {
+            return;
+        }
+        return walk(obj[key], keys.slice(1));
+    }
+    return walk(obj, key);
+};
+
+
 Utils.cacheBusterForUrl = function (url) {
     return url + '?' + (+new Date());
 };
@@ -47,7 +68,8 @@ Utils.parseResource = function (body) {
         try {
             data = yaml.safeLoad(body);
         } catch (e) {
-            log.error('Utils.parseResource: failed to parse', body, e);
+            log.error('Utils.parseResource: failed to parse', e);
+            throw e;
         }
     }
     return data;
@@ -110,6 +132,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
             obj[p] = Utils.stringsToFunctions(val, wrap);
         }
         // Convert strings back into functions
+        // TODO: make function matching tolerant of whitespace and multilines
         else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
             var f;
             try {
@@ -198,11 +221,12 @@ Utils.isPowerOf2 = function(value) {
 // TODO: add other interpolation methods besides linear
 //
 Utils.interpolate = function(x, points) {
-    if (!Array.isArray(points)) {
+    // If this doesn't resemble a list of control points, just return the original value
+    if (!Array.isArray(points) || points.some(v => { return !Array.isArray(v); })) {
         return points;
     }
     else if (points.length < 1) {
-        return null;
+        return points;
     }
 
     var x1, x2, d, y;
@@ -262,5 +286,25 @@ Utils.entries = function* (obj) {
 Utils.values = function* (obj) {
     for (var key of Object.keys(obj)) {
         yield obj[key];
+    }
+};
+
+// Recursive iterators for all properties of an object, no matter how deeply nested
+// TODO: fix for circular structures
+Utils.recurseEntries = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield [key, obj[key]];
+        if (typeof obj[key] === 'object') {
+            yield* Utils.recurseEntries(obj[key]);
+        }
+    }
+};
+
+Utils.recurseValues = function* (obj) {
+    for (var key of Object.keys(obj)) {
+        yield obj[key];
+        if (typeof obj[key] === 'object') {
+            yield* Utils.recurseValues(obj[key]);
+        }
     }
 };

@@ -5,38 +5,71 @@
         "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
     },
     "max_zoom": 20,
-    "styles": {
+    "config": {
         "layers": {
             "earth": {
-                "color": {
-                    "default": [0.175, 0.175, 0.175]
+                "geometry": {
+                    "source": "osm",
+                    "filter": "earth",
+                    "order": 0
+                },
+                "style": {
+                    "color": {
+                        "default": [0.175, 0.175, 0.175]
+                    }
                 }
             },
             "landuse": {
-                "color": {
-                    "default": [0.5, 0.875, 0.5]
+                "geometry": {
+                    "source": "osm",
+                    "filter": "landuse",
+                    "order": 1
+                },
+                "style": {
+                    "color": {
+                        "default": [0.5, 0.875, 0.5]
+                    }
                 }
             },
             "water": {
-                "color": {
-                    "default": [0.5, 0.5, 0.875]
+                "geometry": {
+                    "source": "osm",
+                    "filter": "water",
+                    "order": 2
+                },
+                "style": {
+                    "color": {
+                        "default": [0.5, 0.5, 0.875]
+                    }
                 }
             },
             "roads": {
-                "color": {
-                    "default": [0.4, 0.4, 0.4]
+                "geometry": {
+                    "source": "osm",
+                    "filter": "roads",
+                    "order": 3
+                },
+                "style": {
+                    "color": {
+                        "default": [0.4, 0.4, 0.4]
+                    }
                 }
             },
             "buildings": {
-                "mode": {
-                    "name": "rainbow"
+                "geometry": {
+                    "source": "osm",
+                    "filter": "buildings",
+                    "order": 4
                 },
-                "color": {
-                    "default": [0.6, 0.6, 0.6]
+                "style": {
+                    "name": "rainbow",
+                    "color": {
+                        "default": [0.6, 0.6, 0.6]
+                    }
                 }
             }
         },
-        "modes": {
+        "styles": {
             "rainbow": {
                 "extends": "polygons",
                 "animated": true,
@@ -55,22 +88,4 @@
                 }
             }
         }
-    },
-    "layers": [
-        {
-            "name": "earth"
-        },
-        {
-            "name": "landuse"
-        },
-        {
-            "name": "water"
-        },
-        {
-            "name": "roads"
-        },
-        {
-            "name": "buildings"
-        }
-    ]
-}
+    }}

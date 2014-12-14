@@ -7,7 +7,8 @@ uniform vec2 u_tile_origin;
 uniform mat4 u_tile_world;
 uniform mat4 u_tile_view;
 uniform float u_meters_per_pixel;
-uniform float u_num_layers;
+uniform float u_order_min;
+uniform float u_order_range;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
@@ -99,7 +100,7 @@ void main() {
     cameraProjection(position);
 
     // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    reorderLayers(a_layer, u_num_layers, position);
+    reorderLayers(a_layer + u_order_min, u_order_range, position);
 
     gl_Position = position;
 }

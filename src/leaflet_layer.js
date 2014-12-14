@@ -15,6 +15,10 @@ Utils.inMainThread(() => {
     LeafletLayer = L.GridLayer.extend({
 
         initialize: function (options) {
+            // Defaults
+            options.unloadInvisibleTiles = options.unloadInvisibleTiles || false;
+            options.updateWhenIdle = options.updateWhenIdle || false;
+
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
@@ -22,16 +26,17 @@ Utils.inMainThread(() => {
 
         createScene: function () {
             this.scene = Scene.create({
-                tile_source: this.options.vectorTileSource,
-                layers: this.options.vectorLayers,
-                styles: this.options.vectorStyles
+                source: this.options.source,
+                config: this.options.scene
             }, {
                 numWorkers: this.options.numWorkers,
                 preRender: this.options.preRender,
                 postRender: this.options.postRender,
+                logLevel: this.options.logLevel,
                 // advanced option, app will have to manually called scene.render() per frame
                 disableRenderLoop: this.options.disableRenderLoop,
-                workerUrl: this.options.workerUrl
+                // advanced option, will require library to be served as same host as page
+                allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
             });
         },
 

@@ -308,7 +308,8 @@ shaderSources['polygon_vertex'] =
 "uniform mat4 u_tile_world;\n" +
 "uniform mat4 u_tile_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
-"uniform float u_num_layers;\n" +
+"uniform float u_order_min;\n" +
+"uniform float u_order_range;\n" +
 "\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
@@ -400,7 +401,7 @@ shaderSources['polygon_vertex'] =
 "    cameraProjection(position);\n" +
 "\n" +
 "    // Re-orders depth so that higher numbered layers are \"force\"-drawn over lower ones\n" +
-"    reorderLayers(a_layer, u_num_layers, position);\n" +
+"    reorderLayers(a_layer + u_order_min, u_order_range, position);\n" +
 "\n" +
 "    gl_Position = position;\n" +
 "}\n" +

@@ -1,5 +1,4 @@
 import chai from 'chai';
-import xhr  from 'xhr';
 let assert = chai.assert;
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
@@ -27,13 +26,6 @@ function getMockJSONResponse() {
 
 function getMockTopoResponse() {
     return JSON.stringify(_.clone(require('./fixtures/sample-topojson-response.json')));
-}
-
-function getMockMapboxResponse(cb) {
-    return xhr({responseType: 'arraybuffer',
-                uri: 'base/test/fixtures/sample-mapbox-response.mapbox'}, (error, _, body) => {
-                    if (error) { throw error; }
-                    cb(body); });
 }
 
 describe('TileSource', () => {
@@ -250,8 +242,7 @@ describe('TileSource', () => {
     });
 
     describe('MapboxFormatTileSource', () => {
-        let subject,
-            tile   = getMockTile();
+        let subject;
 
         beforeEach(() => {
             subject = new MapboxFormatTileSource(options);
@@ -263,21 +254,8 @@ describe('TileSource', () => {
             });
         });
 
-
-        // this is failing because of an isssue with either the mapbox
-        // example tile, or the protobuffer library
-        describe.skip('.parseTile(tile, response)', (done) => {
-            it('attaches the response to the tile object', () => {
-
-                getMockMapboxResponse((body) => {
-                    subject.parseTile(tile, body);
-                    assert.property(tile, 'layers');
-                    assert.deepProperty(tile, 'layers.buildings');
-                    assert.deepProperty(tile, 'layers.water');
-                    done();
-                });
-
-            });
+        describe('.parseTile(tile, response)', (done) => {
+            it('attaches the response to the tile object');
         });
     });
 });
