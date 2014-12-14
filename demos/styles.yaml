@@ -360,17 +360,17 @@ layers:
             # color: Style.color.randomColor()
             # color: Style.color.pseudoRandomColor()
             # color: Style.color.pseudoRandomGrayscale()
-            color: |
-                function () {
-                    var c = [.6, .6, .6];
-                    if (feature.name || feature.kind) {
-                        c = [.2, .2, .2];
-                        c[0] = (feature.name && .6) || c[0];
-                        c[2] = (feature.kind && .6) || c[2];
-                    }
-                    return c;
-                }
-            # color: [.6, .6, .6]
+            # color: |
+            #     function () {
+            #         var c = [.6, .6, .6];
+            #         if (feature.name || feature.kind) {
+            #             c = [.2, .2, .2];
+            #             c[0] = (feature.name && .6) || c[0];
+            #             c[2] = (feature.kind && .6) || c[2];
+            #         }
+            #         return c;
+            #     }
+            color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
         # buildingsOfInterest:
@@ -381,20 +381,20 @@ layers:
         #     style:
         #         color: red
 
-        # namedBuildings:
-        #     filter: { name: true }
-        #     style:
-        #         color: [.6, .2, .2]
+        namedBuildings:
+            filter: { name: true }
+            style:
+                color: [.6, .2, .2]
 
-        #     namedKindBuildings:
-        #         filter: { kind: true }
-        #         style:
-        #             color: [.6, .2, .6]
+            namedKindBuildings:
+                filter: { kind: true }
+                style:
+                    color: [.6, .2, .6]
 
-        # kindBuildings:
-        #     filter: { name: false, kind: true }
-        #     style:
-        #         color: [.2, .2, .6]
+        kindBuildings:
+            filter: { name: false, kind: true }
+            style:
+                color: [.2, .2, .6]
 
     pois:
         geometry:
