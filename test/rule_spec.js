@@ -72,36 +72,61 @@ describe('Rules', () => {
 
         describe('when given a features that is a road and a highway', () => {
             let feature = { properties: { layer: 'roads', kind: 'highway' } };
+            let context = { feature };
             it('returns 3 rule objects', () => {
-
-                matchFeature(feature, ruleGroups.roads.rules, matchedRules);
+                matchFeature(context, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 3);
             });
         });
 
-        describe.skip('when given a feature that is not a road', () => {
-            let feature = { layer: 'earth' };
+        describe('when given a feature that is not a road', () => {
+            let feature = { properties: { layer: 'earth' } };
+            let context = { feature };
             it('returns an empty array of rules', () => {
-                matchFeature(feature, ruleGroups.roads.rules, matchedRules);
-                //assert.lengthOf(matchedRules, 0);
+                matchFeature(context, ruleGroups.roads.rules, matchedRules);
+                assert.lengthOf(matchedRules, 0);
             });
         });
 
-        describe.skip('when there is only one matching filter', () => {
-            let feature = { layer: 'roads', kind: 'not-highway' };
+        describe('when there is only one matching filter', () => {
+            let feature = { properties: { layer: 'roads', kind: 'not-highway' } };
+            let context = { feature };
             it('returns an array with a single rule', () => {
-                matchFeature(feature, ruleGroups.roads.rules, matchedRules);
+                matchFeature(context, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 1);
-                //assert.deepEqual(matchedRules[0], { 'type': 'polygon', 'color': [1, 1, 1], 'width': 5 });
+                assert.deepEqual(matchedRules[0], {
+                    'type': 'polygon',
+                    'visible': true,
+                    'order': 0,
+                    'color': [1, 0, 1],
+                    'width': 5,
+                    'outline': {
+                        'color': [0.7, 0.7, 0.7],
+                        'width': 10
+                    }
+                });
             });
         });
 
-        describe.skip('when given a feature that is a road and a bridge', () => {
-            let feature = { layer: 'roads', bridge: true, name: 'Brooklyn', kind: 'highway' };
+        describe('when given a feature that is a road and a bridge', () => {
+            let feature = { properties: { layer: 'roads', bridge: true, name: 'Brooklyn', kind: 'highway' } };
+            let context = { feature };
             it('returns an array of three rules', () => {
-                matchFeature(feature, ruleGroups.roads.rules, matchedRules);
+                matchFeature(context, ruleGroups.roads.rules, matchedRules);
                 assert.lengthOf(matchedRules, 3);
-                //assert.deepEqual(matchedRules[0], {'type':'polygon', 'color':[1,1,0], 'width':10 });
+                // NOTE: don't think it's safe to assume the first matching rule will match the first
+                // one top-to-bottom in the stylesheet - in practice it often is, but order isn't guaranteed
+                assert.deepEqual(matchedRules[0], {
+                    'type': 'polygon',
+                    'visible': true,
+                    'order': 0,
+                    'color': [1, 1, 1],
+                    'width': 10,
+                    'outline': {
+                        'color': [0.7, 0.7, 0.7],
+                        'width': 10
+                    }
+                });
             });
         });
     });

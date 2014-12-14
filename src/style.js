@@ -453,7 +453,7 @@ Object.assign(Polygons, {
         style.outline = style.outline || {};
         if (feature_style.outline) {
             style.outline.color = StyleParser.parseColor(feature_style.outline.color, context);
-            style.outline.width = StyleParser.parseDistance(feature_style.outline.width, context)
+            style.outline.width = StyleParser.parseDistance(feature_style.outline.width, context);
             style.outline.tile_edges = feature_style.outline.tile_edges;
         }
         else {
