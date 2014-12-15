@@ -6,8 +6,8 @@ import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
-import {StyleManager} from './style';
-import {StyleParser} from './style_parser';
+import {StyleManager} from './styles/style_manager';
+import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
@@ -91,14 +91,7 @@ Scene.prototype.init = function () {
     // Load scene definition (sources, styles, etc.), then create styles & workers
     return new Promise((resolve, reject) => {
         this.loadScene().then(() => {
-            Promise.all([
-                new Promise((resolve, reject) => {
-                    this.styles = StyleManager.createStyles(this.config.styles);
-                    this.updateActiveStyles();
-                    resolve();
-                }),
-                this.createWorkers()
-            ]).then(() => {
+            this.createWorkers().then(() => {
                 this.container = this.container || document.body;
                 this.canvas = document.createElement('canvas');
                 this.canvas.style.position = 'absolute';
@@ -118,11 +111,9 @@ Scene.prototype.init = function () {
                 this.createLighting();
                 this.initSelectionBuffer();
 
-                // Init GL context for styles
-                for (var style of Utils.values(this.styles)) {
-                    style.setGL(this.gl);
-                }
-                this.updateStyles();
+                // Loads rendering styles from config, sets GL context and compiles programs
+                this.updateStyles(this.gl);
+                this.updateActiveStyles();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -1064,16 +1055,28 @@ Scene.prototype.preProcessSceneConfig = function () {
     this.config.camera = this.config.camera || {}; // ensure camera object
     this.config.lighting = this.config.lighting || {}; // ensure lighting object
 
-    return StyleManager.preloadStyles(this.config.styles);
+    return StyleManager.preload(this.config.styles);
 };
 
 // Called (currently manually) after styles are updated in stylesheet
-Scene.prototype.updateStyles = function () {
+Scene.prototype.updateStyles = function (gl) {
     if (!this.initialized && !this.initializing) {
         throw new Error('Scene.updateStyles() called before scene was initialized');
     }
 
-    this.styles = StyleManager.updateStyles(this.config.styles);
+    // (Re)build styles from config
+    this.styles = StyleManager.build(this.config.styles);
+
+    // Optionally set GL context (used when initializing or re-initializing GL resources)
+    if (gl) {
+        for (var style of Utils.values(this.styles)) {
+            style.setGL(gl);
+        }
+    }
+
+    // Compile all programs
+    StyleManager.compile();
+
     this.dirty = true;
 };
 

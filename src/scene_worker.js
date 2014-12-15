@@ -1,8 +1,8 @@
 /*jshint worker: true*/
 import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
-import {StyleParser} from './style_parser';
-import {StyleManager} from './style';
+import {StyleParser} from './styles/style_parser';
+import {StyleManager} from './styles/style_manager';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
@@ -44,7 +44,7 @@ Utils.inWorkerThread(() => {
             // Expand styles
             // SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config)), StyleParser.wrapFunction);
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-            SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
+            SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
 
             // Parse each top-level layer as a separate rule tree
             // TODO: find a more graceful way to incorporate this

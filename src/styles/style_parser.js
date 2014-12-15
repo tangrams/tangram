@@ -1,5 +1,5 @@
-import Utils from './utils';
-import {Geo} from './geo';
+import Utils from '../utils';
+import {Geo} from '../geo';
 
 import parseCSSColor from 'csscolorparser';
 import log from 'loglevel';
