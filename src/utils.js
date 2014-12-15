@@ -32,7 +32,7 @@ Utils.cacheBusterForUrl = function (url) {
     return url + '?' + (+new Date());
 };
 
-Utils.io = function (url, timeout = 1000, responseType = 'text', method = 'GET', headers = {}) {
+Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
     var request = new XMLHttpRequest();
     return new Promise((resolve, reject) => {
         request.open(method, url, true);
