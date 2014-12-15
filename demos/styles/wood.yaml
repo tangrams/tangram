@@ -1,0 +1,44 @@
+wood:
+    extends: polygons
+    shaders:
+        uniforms:
+            u_wood_color1: [.9, .5, .5]
+            u_wood_color2: [.5, .3, .1]
+            u_wood_eccentricity: 0.9
+            u_wood_twist: .0001
+            u_wood_scale: 50
+            u_wood_spacing: 1
+        transforms:
+            globals: |
+                uniform vec3 u_wood_color1; // = .1;
+                uniform vec3 u_wood_color2; // = .1;
+                uniform float u_wood_eccentricity; // = .07;
+                uniform float u_wood_twist; // = .07;
+                uniform float u_wood_scale; // = .07;
+                uniform float u_wood_spacing; // = .07;
+
+                vec3 wood( vec3 pos ) {
+
+                    float r = length(pos.xy);
+                    float phi = atan(pos.y, pos.x);
+
+                    phi += u_wood_twist * pos.z;
+                    // phi += u_test * pos.z;
+
+                    r *= 1.0 + u_wood_eccentricity * cos(phi);
+                    // r *= 1.0 + u_test3 * cos(phi);
+
+                    float k = u_wood_spacing / u_wood_scale;
+                    // float k = TAU / u_test2;
+
+                    float density = 1. + sin(k * r);
+
+                    return vec3(mix(
+                        u_wood_color1,
+                        u_wood_color2,
+                        density)
+                    );
+                }
+
+            fragment: |
+                color.rgb = wood(v_world_position.xyz) * lighting;

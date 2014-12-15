@@ -61,9 +61,11 @@ styles:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
-                fragment:
-                    - url: demos/shaders/color_bleed.glsl
-                    # - url: demos/shaders/spotlight.glsl
+                fragment: |
+                    color += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    #if defined(EFFECT_COLOR_BLEED_ANIMATED)
+                        color.r += lighting.r * sin(u_time / 3.0);
+                    #endif
 
     rainbow:
         extends: polygons
@@ -81,57 +83,27 @@ styles:
                     color = hsv2rgb(c);
 
     popup:
-        extends: polygons
-        shaders:
-            uniforms:
-                u_popup_radius: 330 # 225
-                u_popup_height: 3 # 1.1
-            transforms:
-                globals:
-                    - url: ./src/gl/shaders/modules/popup.glsl
-                    -
-                        uniform float u_popup_radius;
-                        uniform float u_popup_height;
-                vertex: |
-                    position.z *= u_popup_height; // boost height for exaggerated visual effect
-                    position = popup(position, vec2(0., 0.), u_popup_radius * u_meters_per_pixel);
-                # vertex: { url: demos/shaders/popup.glsl }
-                # fragment: { url: demos/shaders/color_bleed.glsl }
+        url: demos/styles/popup.yaml
 
     elevator:
         extends: polygons
         animated: true
         shaders:
             transforms:
-                vertex: position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings
-                # vertex: { url: demos/shaders/elevator.glsl }
+                vertex: |
+                    // Elevator buildings
+                    if (position.z > 0.01) {
+                        position.z *= (sin(position.z + u_time) + 1.0);
+                    }
 
     breathe:
-        url: demos/shaders/breathe.yaml
+        url: demos/styles/breathe.yaml
 
     dots:
-        url: demos/shaders/dots.yaml
+        url: demos/styles/dots.yaml
 
     wood:
-        extends: polygons
-        shaders:
-            uniforms:
-                u_wood_color1: [.9, .5, .5]
-                u_wood_color2: [.5, .3, .1]
-                u_wood_eccentricity: 0.9
-                u_wood_twist: .0001
-                u_wood_scale: 50
-                u_wood_spacing: 1
-            transforms:
-                globals: { url: 'demos/shaders/wood.glsl' }
-                fragment: color.rgb = wood(v_world_position.xyz) * lighting;
-        # buildPolygons: |
-        #     function (polygons, style, vertex_data) {
-        #         // Test overloading the geometry builder
-        #         // var c = Geo.polygonCentroidSimple(polygons[0]);
-        #         // polygons = [ [ [ polygons[0][0][0], polygons[0][0][1], polygons[0][0][2], polygons[0][0][0] ] ] ];
-        #         this.super.buildPolygons(polygons, style, vertex_data);
-        #     }
+        url: demos/styles/wood.yaml
 
     envmap:
         extends: polygons
@@ -144,19 +116,18 @@ styles:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
     halftone:
-        url: demos/shaders/halftone.yaml
+        url: demos/styles/halftone.yaml
 
     colorhalftone:
-        url: demos/shaders/halftone.yaml
+        url: demos/styles/halftone.yaml
 
     windows:
-        url: demos/shaders/windows.yaml
+        url: demos/styles/windows.yaml
 
     points:
         shaders:
             transforms:
-                # fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-                fragment: { url: demos/shaders/color_bleed.glsl }
+                fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     # polygons:
     #     texcoords: true
