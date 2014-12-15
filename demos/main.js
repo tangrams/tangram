@@ -136,6 +136,7 @@
 
     var map = L.map('map', {
         maxZoom: 20,
+        trackResize: true,
         inertia: false,
         keyboard: false
     });
@@ -157,17 +158,6 @@
     map.attributionControl.setPrefix('');
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
     map.on('moveend', updateURL);
-
-    // Resize map to window
-    function resizeMap() {
-        document.getElementById('map').style.width = window.innerWidth + 'px';
-        document.getElementById('map').style.height = window.innerHeight + 'px';
-        map.invalidateSize(false);
-    }
-
-    window.addEventListener('resize', resizeMap);
-    resizeMap();
-
 
     // Take a screenshot and save file
     function screenshot() {
