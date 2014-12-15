@@ -44,7 +44,7 @@ Utils.inWorkerThread(() => {
             // Expand styles
             // SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config)), StyleParser.wrapFunction);
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-            SceneWorker.styles = StyleManager.createStyles(SceneWorker.config.styles);
+            SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
 
             // Parse each top-level layer as a separate rule tree
             // TODO: find a more graceful way to incorporate this

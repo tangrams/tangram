@@ -19,6 +19,10 @@ StyleManager.baseStyle = Style;
 
 // Global configuration for all styles
 StyleManager.init = function () {
+    if (StyleManager.initialized) {
+        return;
+    }
+
     GLProgram.removeTransform('globals');
 
     // Layer re-ordering function
@@ -30,6 +34,8 @@ StyleManager.init = function () {
         ${shaderSources['modules/spherical_environment_map']}
         #endif
     `);
+
+    StyleManager.initialized = true;
 };
 
 // Destroy all styles for a given GL context
@@ -37,18 +43,28 @@ StyleManager.destroy = function (gl) {
     Object.keys(Styles).forEach((_name) => {
         var style = Styles[_name];
         if (style.gl === gl) {
-            log.trace(`destroying render style ${style.name}`);
+            log.trace(`StyleManager.destroy: destroying render style ${style.name}`);
 
             if (!style.isBuiltIn()) {
-                StyleManager.removeStyle(style.name);
+                StyleManager.remove(style.name);
             }
             style.destroy();
         }
     });
 };
 
+// Register a style
+StyleManager.register = function (style) {
+    Styles[style.name] = style;
+};
+
+// Remove a style
+StyleManager.remove = function (name) {
+    delete Styles[name];
+};
+
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
-StyleManager.preloadStyles = function (styles) {
+StyleManager.preload = function (styles) {
     // First load remote styles, then load shader blocks from remote URLs
     // TODO: also preload textures
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
@@ -87,12 +103,12 @@ StyleManager.loadRemoteStyles = function (styles) {
                     }
                     else {
                         delete styles[target.target_name];
-                        return reject(new Error(`StyleManager.preloadStyles: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
+                        return reject(new Error(`StyleManager.preload: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
                     }
                 }
                 resolve();
             }).catch((error) => {
-                log.error(`StyleManager.preloadStyles: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
+                log.error(`StyleManager.preload: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
             });
         });
     })).then(() => Promise.resolve(styles));
@@ -117,7 +133,7 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
                                 queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
                                     _transforms[_key][_index] = data;
                                 }).catch((error) => {
-                                    log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, _index, error);
+                                    log.error(`StyleManager.loadRemoteShaderTransforms: error loading shader transform`, _transforms, _key, _index, error);
                                 }));
                             }
                         }
@@ -127,7 +143,7 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
                         queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
                             _transforms[_key] = data;
                         }).catch((error) => {
-                            log.error(`StyleManager.preloadStyles: error loading shader transform`, _transforms, _key, error);
+                            log.error(`StyleManager.loadRemoteShaderTransforms: error loading shader transform`, _transforms, _key, error);
                         }));
                     }
                 }
@@ -138,7 +154,7 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
 };
 
 // Update built-in style or create a new one
-StyleManager.updateStyle = function (name, settings) {
+StyleManager.update = function (name, settings) {
     Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || StyleManager.baseStyle);
     if (Styles[settings.extends]) {
         Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
@@ -152,23 +168,13 @@ StyleManager.updateStyle = function (name, settings) {
     return Styles[name];
 };
 
-// Register a style
-StyleManager.registerStyle = function (style) {
-    Styles[style.name] = style;
-};
-
-// Remove a style
-StyleManager.removeStyle = function (name) {
-    delete Styles[name];
-};
-
-// Called once on instantiation
-StyleManager.createStyles = function (stylesheet_styles) {
+// Called to create or update styles from stylesheet
+StyleManager.build = function (stylesheet_styles) {
     StyleManager.init();
 
     // Stylesheet-defined styles
     for (var name in stylesheet_styles) {
-        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
+        Styles[name] = StyleManager.update(name, stylesheet_styles[name]);
     }
 
     // Initialize all
@@ -179,28 +185,21 @@ StyleManager.createStyles = function (stylesheet_styles) {
     return Styles;
 };
 
-// Called when styles are updated in stylesheet
-StyleManager.updateStyles = function (stylesheet_styles) {
-    // Copy stylesheet styles
-    for (var name in stylesheet_styles) {
-        Styles[name] = StyleManager.updateStyle(name, stylesheet_styles[name]);
-    }
-
-    // Compile all styles
+// Compile all styles
+StyleManager.compile = function () {
     for (name in Styles) {
         try {
             Styles[name].compile();
-            log.trace(`StyleManager.updateStyles(): compiled style ${name}`);
+            log.trace(`StyleManager.compile(): compiled style ${name}`);
         }
         catch(error) {
-            log.error(`StyleManager.updateStyles(): error compiling style ${name}:`, error);
+            log.error(`StyleManager.compile(): error compiling style ${name}:`, error);
         }
     }
 
-    log.debug(`StyleManager.updateStyles(): compiled all styles`);
-    return Styles;
+    log.debug(`StyleManager.compile(): compiled all styles`);
 };
 
 // Add built-in rendering styles
-StyleManager.registerStyle(Polygons);
-StyleManager.registerStyle(Points);
+StyleManager.register(Polygons);
+StyleManager.register(Points);

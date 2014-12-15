@@ -15,6 +15,10 @@ import log from 'loglevel';
 
 export var Style = {
     init () {
+        if (this.initialized) {
+            return;
+        }
+
         this.defines = {};              // #defines to be injected into the shaders
         this.shaders = {};              // shader customization via scene definition (uniforms, defines, blocks, etc.)
         this.selection = false;         // flag indicating if this style supports feature selection
@@ -23,6 +27,7 @@ export var Style = {
         this.program = null;            // GL program reference (for main render pass)
         this.selection_program = null;  // GL program reference for feature selection render pass
         this.feature_style = {};        // style for feature currently being parsed, shared to lessen GC/memory thrash
+        this.initialized = true;
     },
 
     setGL (gl) {
@@ -98,6 +103,7 @@ export var Style = {
         }
 
         this.gl = null;
+        this.initialized = false;
     },
 
     compile () {
