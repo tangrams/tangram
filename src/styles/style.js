@@ -19,14 +19,14 @@ export var Style = {
             return;
         }
 
-        this.defines = {};              // #defines to be injected into the shaders
-        this.shaders = {};              // shader customization via scene definition (uniforms, defines, blocks, etc.)
-        this.selection = false;         // flag indicating if this style supports feature selection
-        this.compiling = false;         // programs are currently compiling
-        this.compiled = false;          // programs are finished compiling
-        this.program = null;            // GL program reference (for main render pass)
-        this.selection_program = null;  // GL program reference for feature selection render pass
-        this.feature_style = {};        // style for feature currently being parsed, shared to lessen GC/memory thrash
+        this.defines = this.defines || {};          // #defines to be injected into the shaders
+        this.shaders = this.shaders || {};          // shader customization via scene definition (uniforms, defines, blocks, etc.)
+        this.selection = this.selection || false;   // flag indicating if this style supports feature selection
+        this.compiling = false;                     // programs are currently compiling
+        this.compiled = false;                      // programs are finished compiling
+        this.program = null;                        // GL program reference (for main render pass)
+        this.selection_program = null;              // GL program reference for feature selection render pass
+        this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.initialized = true;
     },
 

@@ -170,8 +170,6 @@ StyleManager.update = function (name, settings) {
 
 // Called to create or update styles from stylesheet
 StyleManager.build = function (stylesheet_styles) {
-    StyleManager.init();
-
     // Stylesheet-defined styles
     for (var name in stylesheet_styles) {
         Styles[name] = StyleManager.update(name, stylesheet_styles[name]);

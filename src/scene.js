@@ -1063,6 +1063,7 @@ Scene.prototype.updateStyles = function (gl) {
     }
 
     // (Re)build styles from config
+    StyleManager.init();
     this.styles = StyleManager.build(this.config.styles);
 
     // Optionally set GL context (used when initializing or re-initializing GL resources)
