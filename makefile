@@ -23,7 +23,7 @@ build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
-	$(KARMA) start --single-run
+	zuul --local -- dist/tangram.debug.js
 
 clean:
 	rm -f dist/*
@@ -34,10 +34,5 @@ lint:
 	$(JSHINT) src/*.js
 	$(JSHINT) test/*.js
 
-karma-start:
-	$(KARMA) start --no-watch
 
-run-tests: build-testable
-	$(KARMA) run
-
-.PHONY : clean all dev test lint build-testable karma-start run-tests
+.PHONY : clean all dev test lint build-testable
