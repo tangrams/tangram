@@ -223,15 +223,17 @@ GLProgram.buildDefineString = function (defines) {
 };
 
 // Set uniforms from a JS object, with inferred types
-GLProgram.prototype.setUniforms = function (uniforms, prefix)
+GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
 {
     if (!this.compiled) {
         return;
     }
 
     // TODO: only update uniforms when changed
-    // TODO: shouldn't reset for structs
-    var texture_unit = 0;
+
+    // Track active texture unit
+    // A previous value will be passed in when setting GLSL structures, which call setUniforms recursively
+    this.texture_unit = texture_unit;
 
     for (var name in uniforms) {
         var uniform = uniforms[name];
@@ -267,13 +269,15 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix)
                 texture.load(uniform);
             }
 
-            texture.bind(texture_unit);
-            this.uniform('1i', name, texture_unit);
-            texture_unit++;
+            texture.bind(this.texture_unit);
+            this.uniform('1i', name, this.texture_unit);
+            this.texture_unit++;
+            // TODO: track max texture units and log/throw errors
         }
         // Structure
         else if (typeof uniform === 'object') {
-            this.setUniforms(uniform, name);
+            // Set each field in the struct, passing along current texture unit
+            this.setUniforms(uniform, name, this.texture_unit);
         }
 
         // TODO: support other non-float types? (int, etc.)
