@@ -1042,11 +1042,6 @@ Scene.prototype.preProcessSceneConfig = function () {
             if (rule.style.visible !== false) {
                 rule.style.visible = true;
             }
-
-            // Set default rendering style
-            if (!rule.style.name) {
-                rule.style.name = StyleParser.defaults.style.name;
-            }
         }
     }
 
@@ -1089,7 +1084,7 @@ Scene.prototype.updateActiveStyles = function () {
         if (rule.style && rule.style.visible !== false) {
             this.active_styles[rule.style.name] = true;
 
-            if (this.styles[rule.style.name].animated) {
+            if (this.styles[rule.style.name || StyleParser.defaults.style.name].animated) {
                 animated = true;
             }
         }

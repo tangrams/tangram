@@ -120,7 +120,8 @@ export default class Tile {
                         }
 
                         // Parse style
-                        style = styles[rule.name || StyleParser.defaults.style.name];
+                        rule.name = rule.name || StyleParser.defaults.style.name;
+                        style = styles[rule.name];
                         feature_style = style.parseFeature(feature, rule, tile, context);
 
                         // Skip feature?
