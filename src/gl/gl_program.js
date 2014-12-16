@@ -223,37 +223,41 @@ GLProgram.buildDefineString = function (defines) {
 };
 
 // Set uniforms from a JS object, with inferred types
-GLProgram.prototype.setUniforms = function (uniforms)
+GLProgram.prototype.setUniforms = function (uniforms, prefix)
 {
     if (!this.compiled) {
         return;
     }
 
     // TODO: only update uniforms when changed
+    // TODO: shouldn't reset for structs
     var texture_unit = 0;
 
-    for (var u in uniforms) {
-        var uniform = uniforms[u];
+    for (var name in uniforms) {
+        var uniform = uniforms[name];
+        if (prefix) {
+            name = prefix + '.' + name;
+        }
 
         // Single float
         if (typeof uniform === 'number') {
-            this.uniform('1f', u, uniform);
+            this.uniform('1f', name, uniform);
         }
         // Multiple floats - vector or array
-        else if (typeof uniform === 'object') {
+        else if (Array.isArray(uniform)) {
             // float vectors (vec2, vec3, vec4)
             if (uniform.length >= 2 && uniform.length <= 4) {
-                this.uniform(uniform.length + 'fv', u, uniform);
+                this.uniform(uniform.length + 'fv', name, uniform);
             }
             // float array
             else if (uniform.length > 4) {
-                this.uniform('1fv', u + '[0]', uniform);
+                this.uniform('1fv', name + '[0]', uniform);
             }
             // TODO: assume matrix for (typeof == Float32Array && length == 16)?
         }
         // Boolean
         else if (typeof uniform === 'boolean') {
-            this.uniform('1i', u, uniform);
+            this.uniform('1i', name, uniform);
         }
         // Texture
         else if (typeof uniform === 'string') {
@@ -264,9 +268,14 @@ GLProgram.prototype.setUniforms = function (uniforms)
             }
 
             texture.bind(texture_unit);
-            this.uniform('1i', u, texture_unit);
+            this.uniform('1i', name, texture_unit);
             texture_unit++;
         }
+        // Structure
+        else if (typeof uniform === 'object') {
+            this.setUniforms(uniform, name);
+        }
+
         // TODO: support other non-float types? (int, etc.)
     }
 };
