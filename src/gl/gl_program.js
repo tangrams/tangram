@@ -247,15 +247,25 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
         }
         // Multiple floats - vector or array
         else if (Array.isArray(uniform)) {
-            // float vectors (vec2, vec3, vec4)
-            if (uniform.length >= 2 && uniform.length <= 4) {
-                this.uniform(uniform.length + 'fv', name, uniform);
+            // Numeric values
+            if (typeof uniform[0] === 'number') {
+                // float vectors (vec2, vec3, vec4)
+                if (uniform.length >= 2 && uniform.length <= 4) {
+                    this.uniform(uniform.length + 'fv', name, uniform);
+                }
+                // float array
+                else if (uniform.length > 4) {
+                    this.uniform('1fv', name + '[0]', uniform);
+                }
+                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
             }
-            // float array
-            else if (uniform.length > 4) {
-                this.uniform('1fv', name + '[0]', uniform);
+            // Array of structures
+            else if (typeof uniform[0] === 'object') {
+                for (var u=0; u < uniform.length; u++) {
+                    // For each element in the struct array, set each field, passing along current texture unit
+                    this.setUniforms(uniform[u], name + '[' + u + ']', this.texture_unit);
+                }
             }
-            // TODO: assume matrix for (typeof == Float32Array && length == 16)?
         }
         // Boolean
         else if (typeof uniform === 'boolean') {
