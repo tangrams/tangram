@@ -90,7 +90,7 @@ export default class GLVertexLayout {
         }
 
         // Mark attribs as unused
-        for (location in unused_attribs) {
+        for (location of unused_attribs) {
             delete GLVertexLayout.enabled_attribs[location];
         }
     }
