@@ -163,6 +163,7 @@ StyleManager.update = function (name, settings) {
     for (var s in settings) {
         Styles[name][s] = settings[s];
     }
+    Styles[name].initialized = false;
 
     Styles[name].name = name;
     return Styles[name];
