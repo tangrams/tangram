@@ -155,7 +155,8 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
 
 // Update built-in style or create a new one
 StyleManager.update = function (name, settings) {
-    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || StyleManager.baseStyle);
+    var base = Styles[settings.extends] || StyleManager.baseStyle;
+    Styles[name] = Styles[name] || Object.create(base);
     if (Styles[settings.extends]) {
         Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
     }
@@ -163,7 +164,11 @@ StyleManager.update = function (name, settings) {
     for (var s in settings) {
         Styles[name][s] = settings[s];
     }
+
+    // TODO: move these to a Style.clone method?
     Styles[name].initialized = false;
+    Styles[name].defines = (base.define && Object.create(base.define)) || {};
+    Styles[name].shaders = Styles[name].shaders || (base.shaders && Object.create(base.shaders)) || {};
 
     Styles[name].name = name;
     return Styles[name];
