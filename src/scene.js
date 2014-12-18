@@ -539,7 +539,7 @@ Scene.prototype.renderGL = function () {
                     first_for_style = false;
 
                     program.use();
-                    this.styles[style].setUniforms();
+                    this.styles[style].setup();
 
                     // TODO: don't set uniforms when they haven't changed
                     program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
@@ -611,7 +611,7 @@ Scene.prototype.renderGL = function () {
                         first_for_style = false;
 
                         program.use();
-                        this.styles[style].setUniforms();
+                        this.styles[style].setup();
 
                         program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
                         program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);

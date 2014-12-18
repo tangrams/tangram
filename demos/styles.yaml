@@ -136,7 +136,6 @@ styles:
         textures:
             icons:
                 url: demos/images/poi_icons_32.png
-                # url: demos/images/LitSphere_test_02.jpg
                 filtering: nearest
                 # repeat: true
                 width: 32     # TODO: load these dynamically and pass to worker
@@ -147,10 +146,18 @@ styles:
                     tree: [0, 185, 32, 32]
                     sunburst: [0, 629, 32, 32]
                     restaurant: [0, 777, 32, 32]
+            eyeballs:
+                url: demos/images/eyeballs.png
+                filtering: linear
+                width: 792
+                height: 400
+                atlas:
+                    eye: [47, 267, 68, 68]
         shaders:
-            uniforms:
+            # uniforms:
                 # u_texture: demos/images/LitSphere_test_02.jpg
-                u_texture: icons
+                # u_texture: icons
+                # u_texture: eyeballs
             transforms:
                 # globals: |
                 #     // Re-scale UVs from [0, 1] range to a smaller area within the image
@@ -165,10 +172,15 @@ styles:
 
                     //color = texture2D(u_texture, v_texcoord).rgb;
 
-                    vec4 tex = texture2D(u_texture, v_texcoord);
-                    if (tex.rgb == vec3(0.)) {
+                    vec4 tex = texture2D(u_textures[1], v_texcoord);
+                    //vec4 tex = texture2D(texture_eyeballs, v_texcoord);
+
+                    //if (tex.rgb == vec3(0.)) {
+                    if (tex.a == 0.) {
                         discard;
                     }
+                    //color = vec3(tex.a);
+                    //color = vec3(tex.r, 0., 0.);
                     color = tex.rgb;
 
                     //color = texture2D(u_texture, vec2(v_texcoord.x, v_texcoord.y/31. + 30. / 31.)).rgb;
@@ -468,5 +480,9 @@ layers:
         restaurants:
             filter: { kind: restaurant }
             style:
-                sprite: restaurant
+                # sprite: restaurant
+                texture: eyeballs
+                sprite: eye
+                size: 68px
+
 

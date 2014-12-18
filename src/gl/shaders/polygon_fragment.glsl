@@ -10,6 +10,9 @@ uniform sampler2D u_texture; // built-in uniform for texture maps
 varying vec3 v_color;
 varying vec4 v_world_position;
 
+#if defined(NUM_TEXTURES)
+    uniform sampler2D u_textures[NUM_TEXTURES]; // built-in uniform for texture maps
+#endif
 #if defined(TEXTURE_COORDS)
     varying vec2 v_texcoord;
 #endif

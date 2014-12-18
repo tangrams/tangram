@@ -33,20 +33,35 @@ export var Style = {
     },
 
     configureTextures () {
-        // Pre-calc sprite regions in UV [0, 1] space
         if (this.textures) {
-            this.texture_sprites = {};
-            for (var t in this.textures) {
-                var texture = this.textures[t];
+            var tex_id = 0;
 
+            // Provide a built-in uniform array of textures
+            this.num_textures = Object.keys(this.textures).length;
+            this.defines['NUM_TEXTURES'] = this.num_textures.toString(); // force string to avoid auto-conversion to float
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_textures = [];
+
+            this.texture_sprites = {};
+            for (var name in this.textures) {
+                var texture = this.textures[name];
+                texture.id = tex_id++; // give every texture a unique id local to this style
+
+                // Consistently map named textures to the same array index in the texture uniform
+                this.shaders.uniforms.u_textures[texture.id] = name;
+
+                // Provide a #define mapping each texture back to its name in the stylesheet
+                this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
+
+                // If a texture atlas is defined, pre-calc sprite regions in UV [0, 1] space
                 if (texture.atlas) {
-                    this.texture_sprites[t] = {};
+                    this.texture_sprites[name] = {};
 
                     for (var s in texture.atlas) {
                         var sprite = texture.atlas[s];
 
                         // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
-                        this.texture_sprites[t][s] = [
+                        this.texture_sprites[name][s] = [
                             GLBuilders.scaleTexcoordsToSprite(
                                 [0, 0],
                                 [sprite[0], sprite[1]], [sprite[2], sprite[3]],
@@ -237,6 +252,10 @@ export var Style = {
 
     },
 
+    // Setup any GL state for rendering
+    setup () {
+        this.setUniforms();
+    },
 
     // Set style uniforms on currently bound program
     setUniforms () {
