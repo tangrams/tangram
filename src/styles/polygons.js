@@ -5,6 +5,7 @@ import {StyleParser} from './style_parser';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import {GLBuilders} from '../gl/gl_builders';
+import GLTexture from '../gl/gl_texture';
 
 export var Polygons = Object.create(Style);
 
@@ -54,6 +55,9 @@ Object.assign(Polygons, {
         style.width = feature_style.width && StyleParser.parseDistance(feature_style.width, context);
         style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
         style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
+
+        style.texture = feature_style.texture;
+        style.sprite = feature_style.sprite;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.height = feature.properties.height || StyleParser.defaults.height;
@@ -112,8 +116,22 @@ Object.assign(Polygons, {
         ];
 
         if (this.texcoords) {
+            // debugger;
             // Add texture UVs to template only if needed
             template.push(0, 0);
+
+            if (this.textures && this.textures[style.texture] && style.sprite) {
+                // var texture = this.textures[style.texture] && GLTexture.textures[style.texture];
+                var texture = this.textures[style.texture];
+                var sprite = this.textures[style.texture].atlas && this.textures[style.texture].atlas[style.sprite];
+                if (sprite) {
+                    this.texcoord_scale = [];
+                    this.texcoord_scale[0] = GLBuilders.scaleTexcoordsToSprite(
+                        [0, 0], [sprite[0], sprite[1]], [sprite[2], sprite[3]], [texture.width, texture.height]);
+                    this.texcoord_scale[1] = GLBuilders.scaleTexcoordsToSprite(
+                        [1, 1], [sprite[0], sprite[1]], [sprite[2], sprite[3]], [texture.width, texture.height]);
+                }
+            }
         }
 
         return template;
@@ -132,7 +150,7 @@ Object.assign(Polygons, {
                     style.z, style.height, style.min_height,
                     vertex_data, vertex_template,
                     this.vertex_layout.index.a_normal,
-                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                    { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
                 );
             }
             // Regular polygons
@@ -140,7 +158,7 @@ Object.assign(Polygons, {
                 GLBuilders.buildPolygons(
                     polygons,
                     vertex_data, vertex_template,
-                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                    { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
                 );
             }
         }
@@ -166,6 +184,7 @@ Object.assign(Polygons, {
                     vertex_template,
                     {
                         texcoord_index: this.vertex_layout.index.a_texcoord,
+                        texcoord_scale: this.texcoord_scale,
                         closed_polygon: true,
                         remove_tile_edges: !style.outline.tile_edges
                     }

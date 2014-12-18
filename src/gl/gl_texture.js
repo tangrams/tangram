@@ -24,6 +24,8 @@ export default function GLTexture (gl, name, options = {}) {
 
     this.name = name;
     GLTexture.textures[this.name] = this;
+
+    this.atlas = options.atlas;
 }
 
 // Destroy a single texture instance
@@ -64,15 +66,20 @@ GLTexture.prototype.load = function (url, options = {}) {
     if (!this.valid) {
         return;
     }
-    this.image = new Image();
-    this.image.onload = () => {
-        this.width = this.image.width;
-        this.height = this.image.height;
-        this.data = null; // mutually exclusive with direct data buffer textures
-        this.update(options);
-        this.setTextureFiltering(options);
-    };
-    this.image.src = url;
+
+    return new Promise((resolve, reject) => {
+        this.image = new Image();
+        this.image.onload = () => {
+            this.width = this.image.width;
+            this.height = this.image.height;
+            this.data = null; // mutually exclusive with direct data buffer textures
+            this.update(options);
+            this.setTextureFiltering(options);
+            resolve(this);
+        };
+        this.image.src = url;
+        // TODO: error/promise reject
+    });
 };
 
 // Sets texture to a raw image buffer
@@ -121,8 +128,8 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
     // nearest: nearest pixel from original image (no mips, 'blocky' look)
     if (Utils.isPowerOf2(this.width) && Utils.isPowerOf2(this.height)) {
         this.power_of_2 = true;
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'mipmap') {
             log.trace('power-of-2 MIPMAP');

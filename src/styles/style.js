@@ -2,9 +2,9 @@
 
 import {StyleParser} from './style_parser';
 import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
+import GLTexture from '../gl/gl_texture';
 import {MethodNotImplemented} from '../errors';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import shaderSources from '../gl/shader_sources'; // built-in shaders
@@ -32,6 +32,23 @@ export var Style = {
 
     setGL (gl) {
         this.gl = gl;
+
+        // Initialize any configured textures
+        // (textures can also be initialized via uniform setters if they don't require any additional configuration)
+        if (this.textures) {
+            console.log('init ' + this.name);
+            for (var name in this.textures) {
+                var { url, filtering, repeat, atlas } = this.textures[name];
+                var texture = new GLTexture(this.gl, name, { atlas });
+
+                // use name as URL if no URL is provided
+                let _name = name;
+                texture.load(url || name, { filtering, repeat }).then(() => {
+                    this.textures[_name].width = texture.width;
+                    this.textures[_name].height = texture.height;
+                });
+            }
+        }
     },
 
     makeGLGeometry (vertex_data) {

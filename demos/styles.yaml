@@ -130,16 +130,81 @@ styles:
                 fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     # polygons:
+    icons:
+        extends: polygons
+        texcoords: true
+        textures:
+            icons:
+                url: demos/images/poi_icons_32.png
+                # url: demos/images/LitSphere_test_02.jpg
+                filtering: nearest
+                # repeat: true
+                width: 32     # TODO: load these dynamically and pass to worker
+                height: 1142
+                atlas:
+                    plane: [0, 0, 32, 32]
+                    tree: [0, 185, 32, 32]
+        shaders:
+            uniforms:
+                # u_texture: demos/images/LitSphere_test_02.jpg
+                u_texture: icons
+            transforms:
+                # globals: |
+                #     // Re-scale UVs from [0, 1] range to a smaller area within the image
+                #     void textureSubArea (inout vec2 uv, in vec2 areaOrigin, const vec2 areaSize, const vec2 texSize) {
+                #         areaOrigin.y = texSize.y - areaOrigin.y - areaSize.y;
+                #         uv = (uv * areaSize + areaOrigin) / texSize;
+                #     }
+
+                fragment: |
+                    //color = vec3(v_texcoord.xy, 0.);
+                    //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+                    color = texture2D(u_texture, v_texcoord).rgb;
+                    //color = texture2D(u_texture, vec2(v_texcoord.x, v_texcoord.y/31. + 30. / 31.)).rgb;
+
+                    //vec2 uv = mod(v_world_position.xy / 50., 1.);
+                    //vec2 uv = v_texcoord;
+
+                    //textureSubArea(uv, vec2(0., 37. * 0.), vec2(32., 32.), vec2(32., 1142.));
+                    //color = texture2D(u_texture, uv).rgb;
+
+    # polygons:
     #     texcoords: true
     #     shaders:
     #         uniforms:
     #             u_texture: demos/images/LitSphere_test_02.jpg
+    #             # u_offset: { one: .5, two: .5 }
+    #             u_material:
+    #                 - more: 5
+    #                   texture: demos/images/matball01.jpg
+
+    #                 - texture: demos/images/sunset.jpg
+    #                   other: thing
     #         transforms:
+    #             globals:
+    #                 struct Material {
+    #                     sampler2D texture;
+    #                 };
+
+    #                 uniform Material u_material[2];
+
+    #                 varying float v_layer;
+
+    #             vertex:
+    #                 v_layer = a_layer;
+
     #             fragment: |
-    #                 color = vec3(v_texcoord.xy, 0.);
-    #                 //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-    #                 //color = texture2D(u_texture, v_texcoord).rgb;
-    #                 //color = texture2D(u_texture, vec2(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.))).rgb;
+    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two)).rgb;
+    #                 float t = mod(v_layer, 3.);
+    #                 if (t == 0.) {
+    #                     color = texture2D(u_texture, v_texcoord).rgb;
+    #                 }
+    #                 else if (t == 1.) {
+    #                     color = texture2D(u_material[0].texture, v_texcoord).rgb;
+    #                 }
+    #                 else {
+    #                     color = texture2D(u_material[1].texture, v_texcoord).rgb;
+    #                 }
 
     ghosts:
         extends: polygons
@@ -174,6 +239,9 @@ layers:
             filter: landuse
 
         style:
+            name: icons
+            texture: icons
+            sprite: tree
             order: 1
             interactive: true
             color: [0.5, 0.875, 0.5]
