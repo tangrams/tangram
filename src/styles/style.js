@@ -4,6 +4,7 @@ import {StyleParser} from './style_parser';
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
+import {GLBuilders} from '../gl/gl_builders';
 import GLTexture from '../gl/gl_texture';
 import {MethodNotImplemented} from '../errors';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
@@ -28,6 +29,37 @@ export var Style = {
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.initialized = true;
+        this.configureTextures();
+    },
+
+    configureTextures () {
+        // Pre-calc sprite regions in UV [0, 1] space
+        if (this.textures) {
+            this.texture_sprites = {};
+            for (var t in this.textures) {
+                var texture = this.textures[t];
+
+                if (texture.atlas) {
+                    this.texture_sprites[t] = {};
+
+                    for (var s in texture.atlas) {
+                        var sprite = texture.atlas[s];
+
+                        // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
+                        this.texture_sprites[t][s] = [
+                            GLBuilders.scaleTexcoordsToSprite(
+                                [0, 0],
+                                [sprite[0], sprite[1]], [sprite[2], sprite[3]],
+                                [texture.width, texture.height]),
+                            GLBuilders.scaleTexcoordsToSprite(
+                                [1, 1],
+                                [sprite[0], sprite[1]], [sprite[2], sprite[3]],
+                                [texture.width, texture.height])
+                        ];
+                    }
+                }
+            }
+        }
     },
 
     setGL (gl) {
@@ -36,14 +68,16 @@ export var Style = {
         // Initialize any configured textures
         // (textures can also be initialized via uniform setters if they don't require any additional configuration)
         if (this.textures) {
-            console.log('init ' + this.name);
+            // console.log('init ' + this.name);
             for (var name in this.textures) {
                 var { url, filtering, repeat, atlas } = this.textures[name];
                 var texture = new GLTexture(this.gl, name, { atlas });
 
-                // use name as URL if no URL is provided
+                // Use name as URL if no URL is provided
                 let _name = name;
                 texture.load(url || name, { filtering, repeat }).then(() => {
+                    // TODO: these currently won't be guaranteed to load before worker starts
+                    // need to fix, maybe w/promise
                     this.textures[_name].width = texture.width;
                     this.textures[_name].height = texture.height;
                 });

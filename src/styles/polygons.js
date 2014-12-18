@@ -116,21 +116,15 @@ Object.assign(Polygons, {
         ];
 
         if (this.texcoords) {
-            // debugger;
             // Add texture UVs to template only if needed
             template.push(0, 0);
 
-            if (this.textures && this.textures[style.texture] && style.sprite) {
-                // var texture = this.textures[style.texture] && GLTexture.textures[style.texture];
-                var texture = this.textures[style.texture];
-                var sprite = this.textures[style.texture].atlas && this.textures[style.texture].atlas[style.sprite];
-                if (sprite) {
-                    this.texcoord_scale = [];
-                    this.texcoord_scale[0] = GLBuilders.scaleTexcoordsToSprite(
-                        [0, 0], [sprite[0], sprite[1]], [sprite[2], sprite[3]], [texture.width, texture.height]);
-                    this.texcoord_scale[1] = GLBuilders.scaleTexcoordsToSprite(
-                        [1, 1], [sprite[0], sprite[1]], [sprite[2], sprite[3]], [texture.width, texture.height]);
-                }
+            // Get sprite sub-area if necessary
+            if (this.textures && style.sprite) {
+                // Use first texture if no texture specified
+                // TODO: not deterministic, fix
+                var tex = style.texture || Object.keys(this.textures)[0];
+                this.texcoord_scale = this.texture_sprites[tex] && this.texture_sprites[tex][style.sprite];
             }
         }
 
@@ -205,7 +199,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
-                    texcoord_index: this.vertex_layout.index.a_texcoord
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
+                    texcoord_scale: this.texcoord_scale
                 }
             );
         }
@@ -231,7 +226,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
-                    texcoord_index: this.vertex_layout.index.a_texcoord
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
+                    texcoord_scale: this.texcoord_scale
                 }
             );
         }
@@ -250,7 +246,7 @@ Object.assign(Polygons, {
             style.size * 2,
             vertex_data,
             vertex_template,
-            { texcoord_index: this.vertex_layout.index.a_texcoord }
+            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
 
     },

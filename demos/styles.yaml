@@ -142,8 +142,11 @@ styles:
                 width: 32     # TODO: load these dynamically and pass to worker
                 height: 1142
                 atlas:
+                    # each sprite is defined as: [x origin, y origin, width, height]
                     plane: [0, 0, 32, 32]
                     tree: [0, 185, 32, 32]
+                    sunburst: [0, 629, 32, 32]
+                    restaurant: [0, 777, 32, 32]
         shaders:
             uniforms:
                 # u_texture: demos/images/LitSphere_test_02.jpg
@@ -159,7 +162,15 @@ styles:
                 fragment: |
                     //color = vec3(v_texcoord.xy, 0.);
                     //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-                    color = texture2D(u_texture, v_texcoord).rgb;
+
+                    //color = texture2D(u_texture, v_texcoord).rgb;
+
+                    vec4 tex = texture2D(u_texture, v_texcoord);
+                    if (tex.rgb == vec3(0.)) {
+                        discard;
+                    }
+                    color = tex.rgb;
+
                     //color = texture2D(u_texture, vec2(v_texcoord.x, v_texcoord.y/31. + 30. / 31.)).rgb;
 
                     //vec2 uv = mod(v_world_position.xy / 50., 1.);
@@ -239,9 +250,6 @@ layers:
             filter: landuse
 
         style:
-            name: icons
-            texture: icons
-            sprite: tree
             order: 1
             interactive: true
             color: [0.5, 0.875, 0.5]
@@ -442,12 +450,23 @@ layers:
 
         filter: { name: true }
         style:
-            name: points
+            # name: points
             # name: ghosts
+
+            name: icons
+            texture: icons
+            sprite: sunburst
+            size: 16px
 
             # visible: false
             order: 5
             interactive: true
             color: [1, 1, 0]
-            size: 5px
+            # size: 5px
             # size: 20px # for ghosts
+
+        restaurants:
+            filter: { kind: restaurant }
+            style:
+                sprite: restaurant
+
