@@ -62,7 +62,7 @@ styles:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
                 fragment: |
-                    color += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    color .rgb+= lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
                         color.r += lighting.r * sin(u_time / 3.0);
                     #endif
@@ -80,7 +80,7 @@ styles:
                     }
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
-                    color = hsv2rgb(c);
+                    color.rgb = hsv2rgb(c);
 
     popup:
         url: demos/styles/popup.yaml
@@ -127,7 +127,7 @@ styles:
     points:
         shaders:
             transforms:
-                fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
 
     icons:
@@ -144,14 +144,12 @@ styles:
                 tree: [0, 185, 32, 32]
                 sunburst: [0, 629, 32, 32]
                 restaurant: [0, 777, 32, 32]
-        shaders:
-            transforms:
-                fragment: |
-                    vec4 tex = texture2D(u_texture, v_texcoord);
-                    if (tex.a == 0.) {
-                        discard;
-                    }
-                    color = tex.rgb;
+        # shaders:
+        #     transforms:
+        #         fragment: |
+        #             if (color.a == 0.) {
+        #                 discard;
+        #             }
 
     eyeballs:
         extends: polygons
@@ -185,15 +183,12 @@ styles:
         # shaders:
         #     transforms:
         #         fragment: |
-        #             vec4 tex = texture2D(u_texture, v_texcoord);
+        #             //vec4 tex = texture2D(u_texture, v_texcoord);
         #             //vec4 tex = texture2D(u_textures[1], v_texcoord);
         #             //vec4 tex = texture2D(texture_eyeballs, v_texcoord);
-
-        #             //if (tex.rgb == vec3(0.)) {
-        #             if (tex.a == 0.) {
+        #             if (color.a == 0.) {
         #                 discard;
         #             }
-        #             color = tex.rgb;
 
     uv_test:
         extends: polygons
@@ -201,9 +196,9 @@ styles:
         shaders:
             transforms:
                 fragment: |
-                    color = vec3(v_texcoord.xy, 0.);
-                    //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-                    //color = texture2D(u_texture, uv).rgb;
+                    color.rgb = vec3(v_texcoord.xy, 0.);
+                    //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+                    //color.rgb = texture2D(u_texture, uv).rgb;
 
     # polygons:
     #     texcoords: true
@@ -256,8 +251,8 @@ styles:
                     float frames_per_second = 2.;
 
                     float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
-                    if (color == vec3(0.)) discard;
+                    color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
+                    if (color.rgb == vec3(0.)) discard;
 
 layers:
 

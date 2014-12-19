@@ -232,10 +232,16 @@ shaderSources['polygon_fragment'] =
 "uniform float u_map_zoom;\n" +
 "uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
-"uniform sampler2D u_texture; // built-in uniform for texture maps\n" +
 "\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec4 v_world_position;\n" +
+"\n" +
+"// built-in uniforms for texture maps\n" +
+"#if defined(NUM_TEXTURES)\n" +
+"    uniform sampler2D u_textures[NUM_TEXTURES]; // multiple textures\n" +
+"#else\n" +
+"    uniform sampler2D u_texture; // single texture\n" +
+"#endif\n" +
 "\n" +
 "#if defined(TEXTURE_COORDS)\n" +
 "    varying vec2 v_texcoord;\n" +
@@ -271,14 +277,20 @@ shaderSources['polygon_fragment'] =
 "#pragma tangram: lighting\n" +
 "\n" +
 "void main (void) {\n" +
-"    vec3 color = v_color;\n" +
+"    vec4 color;\n" +
+"\n" +
+"    #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)\n" +
+"        color = texture2D(u_texture, v_texcoord);\n" +
+"    #else\n" +
+"        color = v_color;\n" +
+"    #endif\n" +
 "\n" +
 "    #if defined(LIGHTING_ENVIRONMENT)\n" +
 "        // Approximate location of eye (TODO: make this configurable)\n" +
 "        vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);\n" +
 "\n" +
 "        // Replace object color with environment map\n" +
-"        color = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
+"        color.rgb = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;\n" +
 "    #endif\n" +
 "\n" +
 "    #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
@@ -289,12 +301,12 @@ shaderSources['polygon_fragment'] =
 "\n" +
 "    // Apply lighting to color\n" +
 "    // TODO: add transformation points to give more control to style-specific shaders\n" +
-"    color *= lighting;\n" +
+"    color.rgb *= lighting;\n" +
 "\n" +
 "    // Style-specific vertex transformations\n" +
 "    #pragma tangram: fragment\n" +
 "\n" +
-"    gl_FragColor = vec4(color, 1.0);\n" +
+"    gl_FragColor = color;\n" +
 "}\n" +
 "";
 
@@ -313,10 +325,10 @@ shaderSources['polygon_vertex'] =
 "\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
-"attribute vec3 a_color;\n" +
+"attribute vec4 a_color;\n" +
 "attribute float a_layer;\n" +
 "\n" +
-"varying vec3 v_color;\n" +
+"varying vec4 v_color;\n" +
 "varying vec4 v_world_position;\n" +
 "\n" +
 "// Optional texture UVs\n" +
@@ -359,7 +371,7 @@ shaderSources['polygon_vertex'] =
 "void main() {\n" +
 "    // Selection pass-specific rendering\n" +
 "    #if defined(FEATURE_SELECTION)\n" +
-"        if (a_selection_color.xyz == vec3(0.)) {\n" +
+"        if (a_selection_color.rgb == vec3(0.)) {\n" +
 "            // Discard by forcing invalid triangle if we\'re in the feature\n" +
 "            // selection pass but have no selection info\n" +
 "            // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?\n" +

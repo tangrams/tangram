@@ -6,7 +6,7 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 
-varying vec3 v_color;
+varying vec4 v_color;
 varying vec4 v_world_position;
 
 // built-in uniforms for texture maps
@@ -50,10 +50,10 @@ varying vec4 v_world_position;
 #pragma tangram: lighting
 
 void main (void) {
-    vec3 color;
+    vec4 color;
 
     #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
-        color = texture2D(u_texture, v_texcoord).rgb;
+        color = texture2D(u_texture, v_texcoord);
     #else
         color = v_color;
     #endif
@@ -63,7 +63,7 @@ void main (void) {
         vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
 
         // Replace object color with environment map
-        color = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
+        color.rgb = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
@@ -74,10 +74,10 @@ void main (void) {
 
     // Apply lighting to color
     // TODO: add transformation points to give more control to style-specific shaders
-    color *= lighting;
+    color.rgb *= lighting;
 
     // Style-specific vertex transformations
     #pragma tangram: fragment
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = color;
 }

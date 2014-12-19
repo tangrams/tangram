@@ -277,6 +277,12 @@ StyleParser.parseColor = function(val, context) {
     }
 
     val = Utils.interpolate(context.zoom, val);
+
+    // Default alpha
+    if (!val[3]) {
+        val[3] = 1;
+    }
+
     return val;
 };
 

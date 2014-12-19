@@ -12,10 +12,10 @@ uniform float u_order_range;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
-attribute vec3 a_color;
+attribute vec4 a_color;
 attribute float a_layer;
 
-varying vec3 v_color;
+varying vec4 v_color;
 varying vec4 v_world_position;
 
 // Optional texture UVs
@@ -58,7 +58,7 @@ varying vec4 v_world_position;
 void main() {
     // Selection pass-specific rendering
     #if defined(FEATURE_SELECTION)
-        if (a_selection_color.xyz == vec3(0.)) {
+        if (a_selection_color.rgb == vec3(0.)) {
             // Discard by forcing invalid triangle if we're in the feature
             // selection pass but have no selection info
             // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?

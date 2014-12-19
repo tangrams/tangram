@@ -32,6 +32,7 @@ export var Style = {
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
+        this.textures = this.textures || {};
         this.configureTextures();
         this.initialized = true;
     },
@@ -134,7 +135,7 @@ export var Style = {
                 this.shaders.uniforms.u_texture = this.texture.url;
                 this.calculateTextureSprites(this.texture.url, this.texture);
             }
-            else {
+            else if (this.num_textures > 1) {
                 // For multiple textures, provide a built-in uniform array
                 var tex_id = 0;
                 this.defines['NUM_TEXTURES'] = this.num_textures.toString(); // force string to avoid auto-conversion to float
@@ -160,7 +161,6 @@ export var Style = {
     // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
     calculateTextureSprites (name, texture) {
         if (texture.sprites) {
-            // debugger;
             this.texture_sprites = this.texture_sprites || {};
             this.texture_sprites[name] = {};
 
@@ -215,11 +215,12 @@ export var Style = {
                 var texture = new GLTexture(this.gl, name, { sprites });
 
                 let _name = name;
+                let _textures = this.textures;
                 texture.load(url, { filtering, repeat }).then(() => {
                     // TODO: these currently won't be guaranteed to load before worker starts
                     // need to fix, maybe w/promise
-                    this.textures[_name].width = texture.width;
-                    this.textures[_name].height = texture.height;
+                    _textures[_name].width = texture.width;
+                    _textures[_name].height = texture.height;
                 });
             }
         }

@@ -101,7 +101,7 @@ Object.assign(Polygons, {
      */
     makeVertexTemplate(style) {
         // Placeholder values
-        var color = style.color || [0, 0, 0];
+        var color = style.color || [0, 0, 0, 1];
 
         // Basic attributes, others can be added (see texture UVs below)
         var template = [
@@ -111,7 +111,7 @@ Object.assign(Polygons, {
             0, 0, 1,
             // color
             // TODO: automate multiplication for normalized attribs?
-            color[0] * 255, color[1] * 255, color[2] * 255, 255,
+            color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255,
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // layer number
