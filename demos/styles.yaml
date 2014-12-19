@@ -147,9 +147,7 @@ styles:
         # shaders:
         #     transforms:
         #         fragment: |
-        #             if (color.a == 0.) {
-        #                 discard;
-        #             }
+        #             color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     eyeballs:
         extends: polygons
@@ -180,15 +178,6 @@ styles:
             #         tree: [0, 185, 32, 32]
             #         sunburst: [0, 629, 32, 32]
             #         restaurant: [0, 777, 32, 32]
-        # shaders:
-        #     transforms:
-        #         fragment: |
-        #             //vec4 tex = texture2D(u_texture, v_texcoord);
-        #             //vec4 tex = texture2D(u_textures[1], v_texcoord);
-        #             //vec4 tex = texture2D(texture_eyeballs, v_texcoord);
-        #             if (color.a == 0.) {
-        #                 discard;
-        #             }
 
     uv_test:
         extends: polygons
@@ -475,7 +464,7 @@ layers:
             # name: ghosts
 
             name: icons
-            sprite: sunburst
+            sprite: tree
             size: 16px
 
             # visible: false
