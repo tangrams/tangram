@@ -194,30 +194,47 @@ Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 
-// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
-Scene.prototype.createWorkers = function () {
+
+Scene.loadWorkerUrl = function (scene) {
+    var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
+        createObjectURL = scene.createObjectURL();
+
     return new Promise((resolve, reject) => {
-        var worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
         if (!worker_url) {
             reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
             return;
         }
 
-        var createObjectURL = this.createObjectURL();
-        if (createObjectURL && this.allow_cross_domain_workers) {
-            // To allow workers to be loaded cross-domain, first load worker source via XHR, then create a local URL via a blob
+        if (createObjectURL && scene.allow_cross_domain_workers) {
             Utils.io(worker_url).then((body) => {
+
                 if (body.length === 0) {
                     reject(new Error('Web worker loaded with content length zero'));
                 }
-                var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-                this.makeWorkers(worker_local_url).then(resolve, reject);
+
+                resolve(createObjectURL(new Blob(
+                    [body],
+                    { type: 'application/javascript' }
+                )));
             }, reject);
-        } else { // Traditional load from remote URL
-            this.makeWorkers(worker_url).then(resolve, reject);
+        } else {
+            resolve(worker_url);
         }
+
+    });
+
+};
+
+
+// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
+Scene.prototype.createWorkers = function () {
+    return new Promise((resolve, reject) => {
+        Scene.loadWorkerUrl(this).then((worker_url) => {
+            this.makeWorkers(worker_url).then(resolve, reject);
+        });
     });
 };
+
 
 // Instantiate workers from URL, init event handlers
 Scene.prototype.makeWorkers = function (url) {
