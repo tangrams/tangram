@@ -182,7 +182,7 @@ GLProgram.prototype.buildShaderTransformList = function () {
     for (d in GLProgram.transforms) {
         transforms[d] = [];
 
-        if (typeof GLProgram.transforms[d] === 'object' && GLProgram.transforms[d].length >= 0) {
+        if (Array.isArray(GLProgram.transforms[d])) {
             transforms[d].push(...GLProgram.transforms[d]);
         }
         else {
@@ -192,7 +192,7 @@ GLProgram.prototype.buildShaderTransformList = function () {
     for (d in this.transforms) {
         transforms[d] = transforms[d] || [];
 
-        if (typeof this.transforms[d] === 'object' && this.transforms[d].length >= 0) {
+        if (Array.isArray(this.transforms[d])) {
             transforms[d].push(...this.transforms[d]);
         }
         else {
