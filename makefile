@@ -22,8 +22,8 @@ src/gl/shader_sources.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard s
 build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
 
-test: build-testable
-	zuul --local -- dist/tangram.debug.js
+test: dist/tangram.debug.js src/gl/shader_sources.js
+	./node_modules/.bin/zuul  ./test/*.js
 
 clean:
 	rm -f dist/*
