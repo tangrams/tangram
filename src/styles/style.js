@@ -20,6 +20,10 @@ export var Style = {
             return;
         }
 
+        if (!this.isBuiltIn()) {
+            this.built_in = false; // explicitly set to false to avoid any confusion
+        }
+
         this.defines = this.defines || {};          // #defines to be injected into the shaders
         this.shaders = this.shaders || {};          // shader customization via scene definition (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -28,90 +32,30 @@ export var Style = {
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
-        this.initialized = true;
         this.configureTextures();
+        this.initialized = true;
     },
 
-    configureTextures () {
-        if (this.textures) {
-            var tex_id = 0;
-
-            // Provide a built-in uniform array of textures
-            this.num_textures = Object.keys(this.textures).length;
-            this.defines['NUM_TEXTURES'] = this.num_textures.toString(); // force string to avoid auto-conversion to float
-            this.shaders.uniforms = this.shaders.uniforms || {};
-            this.shaders.uniforms.u_textures = [];
-
-            this.texture_sprites = {};
-            for (var name in this.textures) {
-                var texture = this.textures[name];
-                texture.id = tex_id++; // give every texture a unique id local to this style
-
-                // Consistently map named textures to the same array index in the texture uniform
-                this.shaders.uniforms.u_textures[texture.id] = name;
-
-                // Provide a #define mapping each texture back to its name in the stylesheet
-                this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
-
-                // If a texture atlas is defined, pre-calc sprite regions in UV [0, 1] space
-                if (texture.atlas) {
-                    this.texture_sprites[name] = {};
-
-                    for (var s in texture.atlas) {
-                        var sprite = texture.atlas[s];
-
-                        // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
-                        this.texture_sprites[name][s] = [
-                            GLBuilders.scaleTexcoordsToSprite(
-                                [0, 0],
-                                [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                                [texture.width, texture.height]),
-                            GLBuilders.scaleTexcoordsToSprite(
-                                [1, 1],
-                                [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                                [texture.width, texture.height])
-                        ];
-                    }
-                }
-            }
+    destroy () {
+        if (this.program) {
+            this.program.destroy();
+            this.program = null;
         }
-    },
 
-    setGL (gl) {
-        this.gl = gl;
-
-        // Initialize any configured textures
-        // (textures can also be initialized via uniform setters if they don't require any additional configuration)
-        if (this.textures) {
-            // console.log('init ' + this.name);
-            for (var name in this.textures) {
-                var { url, filtering, repeat, atlas } = this.textures[name];
-                var texture = new GLTexture(this.gl, name, { atlas });
-
-                // Use name as URL if no URL is provided
-                let _name = name;
-                texture.load(url || name, { filtering, repeat }).then(() => {
-                    // TODO: these currently won't be guaranteed to load before worker starts
-                    // need to fix, maybe w/promise
-                    this.textures[_name].width = texture.width;
-                    this.textures[_name].height = texture.height;
-                });
-            }
+        if (this.selection_program) {
+            this.selection_program.destroy();
+            this.selection_program = null;
         }
-    },
 
-    makeGLGeometry (vertex_data) {
-        return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+        this.gl = null;
+        this.initialized = false;
     },
 
     isBuiltIn () {
-        return this.hasOwnProperty('built_in');
+        return this.hasOwnProperty('built_in') && this.built_in;
     },
 
-    // Build functions are no-ops until overriden
-    buildPolygons () {},
-    buildLines () {},
-    buildPoints () {},
+    /*** Style parsing and geometry construction ***/
 
     parseFeature (feature, feature_style, tile, context) {
         try {
@@ -157,19 +101,140 @@ export var Style = {
         throw new MethodNotImplemented('_parseFeature');
     },
 
-    destroy () {
-        if (this.program) {
-            this.program.destroy();
-            this.program = null;
+    // Build functions are no-ops until overriden
+    buildPolygons () {},
+    buildLines () {},
+    buildPoints () {},
+
+
+    /*** Texture management ***/
+
+    configureTextures () {
+        // Simpler single texture syntax
+        if (this.texture) {
+            // Default to a single texture, using the URL as the name
+            this.texture.id = 0;
+            this.textures = { [this.texture.url]: this.texture };
+            this.num_textures = 1;
         }
 
-        if (this.selection_program) {
-            this.selection_program.destroy();
-            this.selection_program = null;
-        }
+        // Multi-texture syntax
+        if (this.textures) {
+            this.num_textures = Object.keys(this.textures).length;
 
-        this.gl = null;
-        this.initialized = false;
+            if (this.num_textures === 1) {
+                // Save a texture reference at 'texture' for convenience
+                if (!this.texture) {
+                    this.texture = this.textures[Object.keys(this.textures)[0]];
+                }
+
+                // For single textures, provide a single u_texture uniform
+                this.defines['HAS_DEFAULT_TEXTURE'] = true;
+                this.shaders.uniforms = this.shaders.uniforms || {};
+                this.shaders.uniforms.u_texture = this.texture.url;
+                this.calculateTextureSprites(this.texture.url, this.texture);
+            }
+            else {
+                // For multiple textures, provide a built-in uniform array
+                var tex_id = 0;
+                this.defines['NUM_TEXTURES'] = this.num_textures.toString(); // force string to avoid auto-conversion to float
+                this.shaders.uniforms = this.shaders.uniforms || {};
+                this.shaders.uniforms.u_textures = [];
+
+                for (var name in this.textures) {
+                    var texture = this.textures[name];
+                    texture.id = tex_id++; // give every texture a unique id local to this style
+
+                    // Consistently map named textures to the same array index in the texture uniform
+                    this.shaders.uniforms.u_textures[texture.id] = name;
+
+                    // Provide a #define mapping each texture back to its name in the stylesheet
+                    this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
+
+                    this.calculateTextureSprites(name, texture);
+                }
+            }
+        }
+    },
+
+    // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
+    calculateTextureSprites (name, texture) {
+        if (texture.sprites) {
+            // debugger;
+            this.texture_sprites = this.texture_sprites || {};
+            this.texture_sprites[name] = {};
+
+            for (var s in texture.sprites) {
+                var sprite = texture.sprites[s];
+
+                // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
+                this.texture_sprites[name][s] = [
+                    GLBuilders.scaleTexcoordsToSprite(
+                        [0, 0],
+                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
+                        [texture.width, texture.height]),
+                    GLBuilders.scaleTexcoordsToSprite(
+                        [1, 1],
+                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
+                        [texture.width, texture.height])
+                ];
+            }
+        }
+    },
+
+    // Set optional scale to use for texture coordinates (default is [0, 1])
+    setTexcoordScale (style) {
+        // Get sprite sub-area if necessary
+        if (this.textures && style.sprite) {
+            var tex;
+            // If style only has one texture, use it
+            if (this.num_textures === 1) {
+                tex = this.texture && this.texture.url;
+            }
+            // If style has more than one texture, texture to use must be specified
+            else {
+                tex = style.texture;
+            }
+
+            if (!tex) {
+                log.error(`Style: in style '${this.name}', must specify texture to use for sprite '${style.sprite}', must be one of [${Object.keys(this.textures).join(', ')}]`);
+            }
+            else {
+                this.texcoord_scale = this.texture_sprites[tex] && this.texture_sprites[tex][style.sprite];
+            }
+        }
+    },
+
+    // Preload any textures with explicit configuration (in the 'texture'/'textures' fields)
+    // (textures can also be initialized on the fly via uniform setters if they don't require any additional configuration)
+    // NOTE: this is only run in the main thread, since workers don't use any GL resources
+    preloadTextures () {
+        if (this.textures) {
+            for (var name in this.textures) {
+                var { url, filtering, repeat, sprites } = this.textures[name];
+                var texture = new GLTexture(this.gl, name, { sprites });
+
+                let _name = name;
+                texture.load(url, { filtering, repeat }).then(() => {
+                    // TODO: these currently won't be guaranteed to load before worker starts
+                    // need to fix, maybe w/promise
+                    this.textures[_name].width = texture.width;
+                    this.textures[_name].height = texture.height;
+                });
+            }
+        }
+    },
+
+
+    /*** GL state and rendering ***/
+
+    setGL (gl) {
+        this.gl = gl;
+        this.preloadTextures();
+    },
+
+    makeGLGeometry (vertex_data) {
+        return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
     },
 
     compile () {

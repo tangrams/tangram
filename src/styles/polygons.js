@@ -7,9 +7,12 @@ import GLVertexLayout from '../gl/gl_vertex_layout';
 import {GLBuilders} from '../gl/gl_builders';
 import GLTexture from '../gl/gl_texture';
 
+import log from 'loglevel';
+
 export var Polygons = Object.create(Style);
 
 Object.assign(Polygons, {
+    name: 'polygons',
     built_in: true,
 
     init() {
@@ -116,16 +119,8 @@ Object.assign(Polygons, {
         ];
 
         if (this.texcoords) {
-            // Add texture UVs to template only if needed
-            template.push(0, 0);
-
-            // Get sprite sub-area if necessary
-            if (this.textures && style.sprite) {
-                // Use first texture if no texture specified
-                // TODO: not deterministic, fix
-                var tex = style.texture || Object.keys(this.textures)[0];
-                this.texcoord_scale = this.texture_sprites[tex] && this.texture_sprites[tex][style.sprite];
-            }
+            template.push(0, 0);            // Add texture UVs to template only if needed
+            this.setTexcoordScale(style);   // Sets texcoord scale if needed (e.g. for sprite sub-area)
         }
 
         return template;
@@ -249,6 +244,6 @@ Object.assign(Polygons, {
             { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
 
-    },
-    name: 'polygons'
+    }
+
 });

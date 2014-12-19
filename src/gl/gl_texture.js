@@ -25,7 +25,7 @@ export default function GLTexture (gl, name, options = {}) {
     this.name = name;
     GLTexture.textures[this.name] = this;
 
-    this.atlas = options.atlas;
+    this.sprites = options.sprites;
 }
 
 // Destroy a single texture instance

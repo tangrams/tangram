@@ -5,14 +5,17 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
-uniform sampler2D u_texture; // built-in uniform for texture maps
 
 varying vec3 v_color;
 varying vec4 v_world_position;
 
+// built-in uniforms for texture maps
 #if defined(NUM_TEXTURES)
-    uniform sampler2D u_textures[NUM_TEXTURES]; // built-in uniform for texture maps
+    uniform sampler2D u_textures[NUM_TEXTURES]; // multiple textures
+#else
+    uniform sampler2D u_texture; // single texture
 #endif
+
 #if defined(TEXTURE_COORDS)
     varying vec2 v_texcoord;
 #endif
@@ -47,7 +50,13 @@ varying vec4 v_world_position;
 #pragma tangram: lighting
 
 void main (void) {
-    vec3 color = v_color;
+    vec3 color;
+
+    #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
+        color = texture2D(u_texture, v_texcoord).rgb;
+    #else
+        color = v_color;
+    #endif
 
     #if defined(LIGHTING_ENVIRONMENT)
         // Approximate location of eye (TODO: make this configurable)

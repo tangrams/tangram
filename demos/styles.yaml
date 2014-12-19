@@ -129,66 +129,80 @@ styles:
             transforms:
                 fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
-    # polygons:
+
     icons:
         extends: polygons
         texcoords: true
+        texture:
+            url: demos/images/poi_icons_32.png
+            filtering: nearest
+            width: 32     # TODO: load these dynamically and pass to worker
+            height: 1142
+            sprites:
+                # each sprite is defined as: [x origin, y origin, width, height]
+                plane: [0, 0, 32, 32]
+                tree: [0, 185, 32, 32]
+                sunburst: [0, 629, 32, 32]
+                restaurant: [0, 777, 32, 32]
+        shaders:
+            transforms:
+                fragment: |
+                    vec4 tex = texture2D(u_texture, v_texcoord);
+                    if (tex.a == 0.) {
+                        discard;
+                    }
+                    color = tex.rgb;
+
+    eyeballs:
+        extends: polygons
+        texcoords: true
+        # texture:
+        #     url: demos/images/eyeballs.png
+        #     filtering: linear
+        #     width: 792
+        #     height: 400
+        #     sprites:
+        #         eye: [47, 267, 68, 68]
         textures:
-            icons:
-                url: demos/images/poi_icons_32.png
-                filtering: nearest
-                # repeat: true
-                width: 32     # TODO: load these dynamically and pass to worker
-                height: 1142
-                atlas:
-                    # each sprite is defined as: [x origin, y origin, width, height]
-                    plane: [0, 0, 32, 32]
-                    tree: [0, 185, 32, 32]
-                    sunburst: [0, 629, 32, 32]
-                    restaurant: [0, 777, 32, 32]
             eyeballs:
                 url: demos/images/eyeballs.png
                 filtering: linear
                 width: 792
                 height: 400
-                atlas:
+                sprites:
                     eye: [47, 267, 68, 68]
+            # pois:
+            #     url: demos/images/poi_icons_32.png
+            #     filtering: nearest
+            #     width: 32     # TODO: load these dynamically and pass to worker
+            #     height: 1142
+            #     sprites:
+            #         # each sprite is defined as: [x origin, y origin, width, height]
+            #         plane: [0, 0, 32, 32]
+            #         tree: [0, 185, 32, 32]
+            #         sunburst: [0, 629, 32, 32]
+            #         restaurant: [0, 777, 32, 32]
+        # shaders:
+        #     transforms:
+        #         fragment: |
+        #             vec4 tex = texture2D(u_texture, v_texcoord);
+        #             //vec4 tex = texture2D(u_textures[1], v_texcoord);
+        #             //vec4 tex = texture2D(texture_eyeballs, v_texcoord);
+
+        #             //if (tex.rgb == vec3(0.)) {
+        #             if (tex.a == 0.) {
+        #                 discard;
+        #             }
+        #             color = tex.rgb;
+
+    uv_test:
+        extends: polygons
+        texcoords: true
         shaders:
-            # uniforms:
-                # u_texture: demos/images/LitSphere_test_02.jpg
-                # u_texture: icons
-                # u_texture: eyeballs
             transforms:
-                # globals: |
-                #     // Re-scale UVs from [0, 1] range to a smaller area within the image
-                #     void textureSubArea (inout vec2 uv, in vec2 areaOrigin, const vec2 areaSize, const vec2 texSize) {
-                #         areaOrigin.y = texSize.y - areaOrigin.y - areaSize.y;
-                #         uv = (uv * areaSize + areaOrigin) / texSize;
-                #     }
-
                 fragment: |
-                    //color = vec3(v_texcoord.xy, 0.);
+                    color = vec3(v_texcoord.xy, 0.);
                     //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-
-                    //color = texture2D(u_texture, v_texcoord).rgb;
-
-                    vec4 tex = texture2D(u_textures[1], v_texcoord);
-                    //vec4 tex = texture2D(texture_eyeballs, v_texcoord);
-
-                    //if (tex.rgb == vec3(0.)) {
-                    if (tex.a == 0.) {
-                        discard;
-                    }
-                    //color = vec3(tex.a);
-                    //color = vec3(tex.r, 0., 0.);
-                    color = tex.rgb;
-
-                    //color = texture2D(u_texture, vec2(v_texcoord.x, v_texcoord.y/31. + 30. / 31.)).rgb;
-
-                    //vec2 uv = mod(v_world_position.xy / 50., 1.);
-                    //vec2 uv = v_texcoord;
-
-                    //textureSubArea(uv, vec2(0., 37. * 0.), vec2(32., 32.), vec2(32., 1142.));
                     //color = texture2D(u_texture, uv).rgb;
 
     # polygons:
@@ -466,7 +480,6 @@ layers:
             # name: ghosts
 
             name: icons
-            texture: icons
             sprite: sunburst
             size: 16px
 
@@ -480,8 +493,7 @@ layers:
         restaurants:
             filter: { kind: restaurant }
             style:
-                # sprite: restaurant
-                texture: eyeballs
+                name: eyeballs
                 sprite: eye
                 size: 68px
 
