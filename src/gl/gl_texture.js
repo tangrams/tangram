@@ -101,6 +101,7 @@ GLTexture.prototype.update = function (options = {}) {
 
     this.bind(0);
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+    this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
     // Image element
     if (this.image && this.image.complete) {

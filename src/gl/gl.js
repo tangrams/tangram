@@ -5,7 +5,7 @@ export var GL = {};
 
 // Setup a WebGL context
 // If no canvas element is provided, one is created and added to the document body
-GL.getContext = function getContext (canvas)
+GL.getContext = function getContext (canvas, options)
 {
 
     var fullscreen = false;
@@ -19,7 +19,7 @@ GL.getContext = function getContext (canvas)
         fullscreen = true;
     }
 
-    var gl = canvas.getContext('experimental-webgl');
+    var gl = canvas.getContext('experimental-webgl', options);
     if (!gl) {
         alert("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
         throw "Couldn't create WebGL context";

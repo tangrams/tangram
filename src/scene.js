@@ -100,7 +100,7 @@ Scene.prototype.init = function () {
                 this.canvas.style.zIndex = -1;
                 this.container.appendChild(this.canvas);
 
-                this.gl = GL.getContext(this.canvas);
+                this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
                 // this.zoom_step = 0.02; // for fractional zoom user adjustment
