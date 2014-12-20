@@ -144,12 +144,13 @@ styles:
                 tree: [0, 185, 32, 32]
                 sunburst: [0, 629, 32, 32]
                 restaurant: [0, 777, 32, 32]
-        # shaders:
-        #     transforms:
-        #         vertex: |
-        #             position.y += sin(position.y + u_time*3.) * 10.;
-        #         fragment: |
-        #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+        shaders:
+            transforms:
+                vertex: |
+                    // Bouncy icons
+                    position.y += sin(v_world_position.y + u_time*3.) * 10.;
+                fragment: |
+                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     eyeballs:
         extends: polygons
@@ -468,7 +469,8 @@ layers:
 
             name: icons
             sprite: tree
-            size: 32px
+            # size: 32px
+            size: [[13, 16px], [14, 24px], [15, 32px]]
 
             # visible: false
             order: 5

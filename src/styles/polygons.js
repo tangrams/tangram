@@ -63,7 +63,7 @@ Object.assign(Polygons, {
 
         style.size = null;
         if (feature_style.size) {
-            if (typeof feature_style.size === 'object') {
+            if (typeof feature_style.size === 'object' && !Array.isArray(feature_style.size)) {
                 style.size = {
                     width: StyleParser.parseDistance(feature_style.size.width, context),
                     height: StyleParser.parseDistance(feature_style.size.height, context)
