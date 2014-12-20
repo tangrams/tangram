@@ -491,6 +491,63 @@ Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = 
     }
 };
 
+Scene.prototype.renderStyle = function (style, program) {
+    var first_for_style = true;
+    var render_count = 0;
+
+    // Render tile GL geometries
+    for (var t in this.renderable_tiles) {
+        var tile = this.renderable_tiles[t];
+
+        if (tile.gl_geometry[style] != null) {
+            // Setup style if encountering for first time this frame
+            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+            if (first_for_style === true) {
+                first_for_style = false;
+
+                program.use();
+                this.styles[style].setup();
+
+                // TODO: don't set uniforms when they haven't changed
+                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
+                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                program.uniform('1f', 'u_order_min', this.order.min);
+                program.uniform('1f', 'u_order_range', this.order.range);
+                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                this.camera.setupProgram(program);
+                this.lighting.setupProgram(program);
+            }
+
+            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+
+            // Tile origin
+            program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+
+            // Tile view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.identity(this.tile_view_mat);
+            mat4.translate(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.min.x - this.center_meters.x, tile.min.y - this.center_meters.y, 0)); // adjust for tile origin & map center
+            mat4.scale(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            program.uniform('Matrix4fv', 'u_tile_view', false, this.tile_view_mat);
+
+            // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.tile_world_mat);
+            mat4.translate(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            program.uniform('Matrix4fv', 'u_tile_world', false, this.tile_world_mat);
+
+            // Render tile
+            tile.gl_geometry[style].render();
+            render_count += tile.gl_geometry[style].geometry_count;
+        }
+    }
+
+    return render_count;
+};
+
 Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
@@ -498,107 +555,54 @@ Scene.prototype.renderGL = function () {
     this.resetFrame({ alpha_blend: true });
 
     // Map transforms
-    if (!this.center) {
+    if (!this.center_meters) {
         return;
     }
 
-    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-    var center = {x, y};
-
     // Model-view matrices
-    var tile_view_mat = mat4.create();
-    var tile_world_mat = mat4.create();
+    this.tile_view_mat = mat4.create();
+    this.tile_world_mat = mat4.create();
 
     // Update camera & lights
     this.camera.update();
     this.lighting.update();
 
     // Renderable tile list
-    var renderable_tiles = [];
+    this.renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
         if (tile.loaded === true && tile.visible === true) {
-            renderable_tiles.push(tile);
+            this.renderable_tiles.push(tile);
         }
     }
-    this.renderable_tiles_count = renderable_tiles.length;
+    this.renderable_tiles_count = this.renderable_tiles.length;
 
     // Find min/max order for current tiles
-    var order = { min: Infinity, max: -Infinity };
-    for (t of renderable_tiles) {
-        if (t.order.min < order.min) {
-            order.min = t.order.min;
+    this.order = { min: Infinity, max: -Infinity };
+    for (t of this.renderable_tiles) {
+        if (t.order.min < this.order.min) {
+            this.order.min = t.order.min;
         }
-        if (t.order.max > order.max) {
-            order.max = t.order.max;
+        if (t.order.max > this.order.max) {
+            this.order.max = t.order.max;
         }
     }
-    order.max += 1;
-    order.range = order.max - order.min;
+    this.order.max += 1;
+    this.order.range = this.order.max - this.order.min;
 
     // Render main pass - tiles grouped by rendering style (GL program)
-    var render_count = 0;
+    this.render_count = 0;
     for (var style in this.styles) {
         // Per-frame style updates/animations
         // Called even if the style isn't rendered by any current tiles, so time-based animations, etc. continue
         this.styles[style].update();
 
         var program = this.styles[style].program;
-        if (program == null || program.compiled === false) {
+        if (!program || !program.compiled) {
             continue;
         }
 
-        var first_for_style = true;
-
-        // Render tile GL geometries
-        for (t in renderable_tiles) {
-            tile = renderable_tiles[t];
-
-            if (tile.gl_geometry[style] != null) {
-                // Setup style if encountering for first time this frame
-                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                if (first_for_style === true) {
-                    first_for_style = false;
-
-                    program.use();
-                    this.styles[style].setup();
-
-                    // TODO: don't set uniforms when they haven't changed
-                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
-                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('2f', 'u_map_center', center.x, center.y);
-                    program.uniform('1f', 'u_order_min', order.min);
-                    program.uniform('1f', 'u_order_range', order.range);
-                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-
-                    this.camera.setupProgram(program);
-                    this.lighting.setupProgram(program);
-                }
-
-                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-                // Tile origin
-                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
-
-                // Tile view matrix - transform tile space into view space (meters, relative to camera)
-                mat4.identity(tile_view_mat);
-                mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
-
-                // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-                mat4.identity(tile_world_mat);
-                mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
-
-                // Render tile
-                tile.gl_geometry[style].render();
-                render_count += tile.gl_geometry[style].geometry_count;
-            }
-        }
+        this.render_count += this.renderStyle(style, program);
     }
 
     // Render selection pass (if needed)
@@ -617,56 +621,11 @@ Scene.prototype.renderGL = function () {
 
         for (style in this.styles) {
             program = this.styles[style].selection_program;
-            if (program == null || program.compiled === false) {
+            if (!program || !program.compiled) {
                 continue;
             }
 
-            first_for_style = true;
-
-            // Render tile GL geometries
-            for (t in renderable_tiles) {
-                tile = renderable_tiles[t];
-
-                if (tile.gl_geometry[style] != null) {
-                    // Setup style if encountering for first time this frame
-                    if (first_for_style === true) {
-                        first_for_style = false;
-
-                        program.use();
-                        this.styles[style].setup();
-
-                        program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
-                        program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                        program.uniform('1f', 'u_map_zoom', this.zoom);
-                        program.uniform('2f', 'u_map_center', center.x, center.y);
-                        program.uniform('1f', 'u_order_min', order.min);
-                        program.uniform('1f', 'u_order_range', order.range);
-                        program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-
-                        this.camera.setupProgram(program);
-                        this.lighting.setupProgram(program);
-                    }
-
-                    // Tile origin
-                    program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
-
-                    // Tile view matrix - transform tile space into view space (meters, relative to camera)
-                    mat4.identity(tile_view_mat);
-                    mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
-
-                    // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-                    mat4.identity(tile_world_mat);
-                    mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
-
-                    // Render tile
-                    tile.gl_geometry[style].render();
-                }
-            }
+            this.renderStyle(style, program);
         }
 
         // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
@@ -685,10 +644,10 @@ Scene.prototype.renderGL = function () {
         gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    if (render_count !== this.last_render_count) {
-        log.info(`Scene: rendered ${render_count} primitives`);
+    if (this.render_count !== this.last_render_count) {
+        log.info(`Scene: rendered ${this.render_count} primitives`);
     }
-    this.last_render_count = render_count;
+    this.last_render_count = this.render_count;
 
     return true;
 };
