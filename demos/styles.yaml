@@ -146,8 +146,10 @@ styles:
                 restaurant: [0, 777, 32, 32]
         # shaders:
         #     transforms:
+        #         vertex: |
+        #             position.y += sin(position.y + u_time*3.) * 10.;
         #         fragment: |
-        #             color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+        #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     eyeballs:
         extends: polygons
@@ -167,6 +169,7 @@ styles:
                 height: 400
                 sprites:
                     eye: [47, 267, 68, 68]
+                    gplus: [300, 50, 200, 200]
             # pois:
             #     url: demos/images/poi_icons_32.png
             #     filtering: nearest
@@ -465,7 +468,7 @@ layers:
 
             name: icons
             sprite: tree
-            size: 16px
+            size: 32px
 
             # visible: false
             order: 5
@@ -477,7 +480,6 @@ layers:
             filter: { kind: restaurant }
             style:
                 name: eyeballs
-                sprite: eye
-                size: 68px
-
-
+                sprite: gplus
+                # size: 136px
+                size: 64px

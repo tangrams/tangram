@@ -56,11 +56,23 @@ Object.assign(Polygons, {
 
         style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
         style.width = feature_style.width && StyleParser.parseDistance(feature_style.width, context);
-        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
         style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
 
         style.texture = feature_style.texture;
         style.sprite = feature_style.sprite;
+
+        style.size = null;
+        if (feature_style.size) {
+            if (typeof feature_style.size === 'object') {
+                style.size = {
+                    width: StyleParser.parseDistance(feature_style.size.width, context),
+                    height: StyleParser.parseDistance(feature_style.size.height, context)
+                };
+            }
+            else {
+                style.size = StyleParser.parseDistance(feature_style.size, context);
+            }
+        }
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.height = feature.properties.height || StyleParser.defaults.height;
@@ -237,8 +249,8 @@ Object.assign(Polygons, {
 
         GLBuilders.buildQuadsForPoints(
             points,
-            style.size * 2,
-            style.size * 2,
+            style.size.width || style.size,
+            style.size.height || style.size,
             vertex_data,
             vertex_template,
             { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
