@@ -22,8 +22,8 @@ src/gl/shader_sources.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard s
 build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
 
-test: dist/tangram.debug.js src/gl/shader_sources.js
-	./node_modules/.bin/zuul  ./test/*.js
+test: build-testable
+	$(KARMA) start --single-run
 
 clean:
 	rm -f dist/*
@@ -33,6 +33,12 @@ lint:
 	$(JSHINT) src/gl/*.js
 	$(JSHINT) src/*.js
 	$(JSHINT) test/*.js
+
+karma-start:
+	$(KARMA) start --no-watch
+
+run-tests: build-testable
+	$(KARMA) run
 
 
 .PHONY : clean all dev test lint build-testable
