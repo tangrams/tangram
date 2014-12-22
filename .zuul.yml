@@ -15,6 +15,7 @@ browsers:
     firefox_profile:
       webgl.force-enabled: true
       webgl.disabled: false
+      webgl.msaa-force: true
 
 browserify:
   - transform: es6ify

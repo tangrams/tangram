@@ -2,7 +2,7 @@ import Scene from '../src/scene';
 import TileSource from '../src/tile_source';
 import sampleScene from './fixtures/sample-scene';
 
-let worker_url = '/dist/tangram.debug.js';
+let worker_url = '/tangram.debug.js';
 
 function loadWorkerContent(url) {
     let xhr = new XMLHttpRequest(), response;
