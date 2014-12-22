@@ -17,7 +17,7 @@ module.exports = function (config) {
     };
 
     var browserList = Object.keys(customLaunchers);
-    browserList.push('Chrome');
+//    browserList.push('Chrome');
 //    var browserList = ['Chrome'];
 
     config.set({
