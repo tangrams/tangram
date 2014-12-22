@@ -181,7 +181,7 @@ GLBuilders.buildPolylines = function (
         
                 rightNorm = normPrevCurr + normCurrNext;
                 rightNorm = Vector.normalize(rightNorm);
-                float scale = Math.sqrt(2. / (1. + Vector.dot(normPrevCurr,normCurrNext) ));
+                var scale = Math.sqrt(2. / (1. + Vector.dot(normPrevCurr,normCurrNext)));
                 rightNorm *= scale;
 
                 if (scaling_index) {
