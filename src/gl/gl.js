@@ -124,12 +124,7 @@ GL.tesselator = (function initTesselator() {
 
     // Called for each vertex of tesselator output
     function vertexCallback(data, polyVertArray) {
-        if (tesselator.z != null) {
-            polyVertArray.push([data[0], data[1], tesselator.z]);
-        }
-        else {
-            polyVertArray.push([data[0], data[1]]);
-        }
+        polyVertArray.push([data[0], data[1]]);
     }
 
     // Called when segments intersect and must be split
@@ -161,10 +156,9 @@ GL.tesselator = (function initTesselator() {
     return tesselator;
 })();
 
-GL.triangulatePolygon = function GLTriangulate (contours, z)
+GL.triangulatePolygon = function GLTriangulate (contours)
 {
     var triangleVerts = [];
-    GL.tesselator.z = z;
     GL.tesselator.gluTessBeginPolygon(triangleVerts);
 
     for (var i = 0; i < contours.length; i++) {
