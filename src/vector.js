@@ -53,6 +53,18 @@ Vector.cross  = function (v1, v2)
     ];
 };
 
+// Dot product of two vectors
+Vector.dot = function (v1, v2) {
+
+    // 3D >  
+    var n = 0, lim = Math.min(a.length,b.length);
+    for (var i = 0; i < lim; i++) n += v1[i] * v2[i];
+    return n;
+
+    // 2D 
+    // return v1[0] * v2[0] + v1[1] * v2[1];
+};
+
 // Find the intersection of two lines specified as segments from points (p1, p2) and (p3, p4)
 // http://en.wikipedia.org/wiki/Line-line_intersection
 // http://en.wikipedia.org/wiki/Cramer's_rule
