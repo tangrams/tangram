@@ -50,7 +50,7 @@
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
     "karma-chrome-launcher": "~0.1.4",
-    "karma-sauce-launcher": "git+ssh://git@github.com:iwillig/karma-sauce-launcher.git",
+    "karma-sauce-launcher": "iwillig/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "~1.0.4"
   }
 }
