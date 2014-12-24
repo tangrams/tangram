@@ -147,6 +147,8 @@ GLBuilders.buildPolylines = function (
         halfWidth = width/2,
         num_lines = lines.length;
 
+    var vertexData_Offset = vertex_data.length;
+
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     for (var ln = 0; ln < num_lines; ln++) {
@@ -155,14 +157,18 @@ GLBuilders.buildPolylines = function (
 
         if (line.length > 2) {
 
-            var normPrevCurr; // Right normal to segment between previous and current m_points
-            var normCurrNext; // Right normal to segment between current and next m_points
-            var rightNorm; // Right "normal" at current point, scaled for miter joint
+            var normPrevCurr = [0.0,0.0,0.0];  // Right normal to segment between previous and current m_points
+            var normCurrNext = [0.0,0.0,0.0];  // Right normal to segment between current and next m_points
+            var rightNorm = [0.0,0.0,0.0];     // Right "normal" at current point, scaled for miter joint
     
-            var prevCoord; // Previous point coordinates
-            var currCoord = lines[0]; // Current point coordinates
-            var nextCoord = lines[1]; // Next point coordinates
+            var prevCoord = []; // Previous point coordinates
+            var currCoord = []; // Current point coordinates
+            var nextCoord = []; // Next point coordinates
+
+            currCoord = Vector.set( lines[0] ); 
+            nextCoord = Vector.set( lines[1] ); 
     
+            // Get perpendicular of the vector between first and second dot
             normCurrNext[0] = nextCoord[1] - currCoord[1];
             normCurrNext[1] = currCoord[0] - nextCoord[0];
             normCurrNext = Vector.normalize(normCurrNext);
@@ -180,9 +186,10 @@ GLBuilders.buildPolylines = function (
                 normCurrNext[1] = currCoord[0] - nextCoord[0];
         
                 rightNorm = normPrevCurr + normCurrNext;
+
                 rightNorm = Vector.normalize(rightNorm);
                 var scale = Math.sqrt(2. / (1. + Vector.dot(normPrevCurr,normCurrNext)));
-                rightNorm *= scale;
+                rightNorm = Vector.mult(rightNorm,scale);
 
                 if (scaling_index) {
                     vertices.push(currCoord);
@@ -190,8 +197,12 @@ GLBuilders.buildPolylines = function (
                     scalingVecs.push(rightNorm);
                     scalingVecs.push(-rightNorm);
                 } else {
-                    vertices.push([ currCoord[0] + rightNorm[0] * halfWidth, currCoord[1] + rightNorm[1] * halfWidth, z ]);
-                    vertices.push([ currCoord[0] - rightNorm[0] * halfWidth, currCoord[1] - rightNorm[1] * halfWidth, z ]);
+                    vertices.push([ currCoord[0] + rightNorm[0] * halfWidth, 
+                                    currCoord[1] + rightNorm[1] * halfWidth, 
+                                    z ]);
+                    vertices.push([ currCoord[0] - rightNorm[0] * halfWidth, 
+                                    currCoord[1] - rightNorm[1] * halfWidth, 
+                                    z ]);
                 }
 
                 // Add UVs
@@ -210,8 +221,13 @@ GLBuilders.buildPolylines = function (
                 scalingVecs.push(rightNorm);
                 scalingVecs.push(-rightNorm);
             } else {
-                vertices.push([currCoord[0] + rightNorm[0] * halfWidth, currCoord[1] + rightNorm[1] * halfWidth, z]);
-                vertices.push([currCoord[0] - rightNorm[0] * halfWidth, currCoord[1] - rightNorm[1] * halfWidth, z]);
+                vertices.push([ currCoord[0] + rightNorm[0] * halfWidth, 
+                                currCoord[1] + rightNorm[1] * halfWidth, 
+                                z]);
+
+                vertices.push([ currCoord[0] - rightNorm[0] * halfWidth, 
+                                currCoord[1] - rightNorm[1] * halfWidth, 
+                                z]);
             }
 
             if (texcoord_index) {
@@ -221,26 +237,55 @@ GLBuilders.buildPolylines = function (
         }
     }
 
-    // Add vertices to buffer
-    for (var v=0; v < vertices.length; v++) {
-        vertex_template[0] = vertices[v][0];
-        vertex_template[1] = vertices[v][1];
+    // Build triangles for a single line segment, extruded by the provided width
+    function addVertex (index) {
+        vertex_template[0] = vertices[index][0];
+        vertex_template[1] = vertices[index][1];
+        // vertex_template[2] = vertices[v][2]; // What happend with Z ??
 
         // Add UVs
         if (texcoord_index) {
-            vertex_template[texcoord_index + 0] = texcoords[v][0];
-            vertex_template[texcoord_index + 1] = texcoords[v][1];
+            vertex_template[texcoord_index + 0] = texcoords[index][0];
+            vertex_template[texcoord_index + 1] = texcoords[index][1];
         }
 
         // Add Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
         if (scaling_index) {
-            vertex_template[scaling_index + 0] = scalingVecs[v][0];
-            vertex_template[scaling_index + 1] = scalingVecs[v][1];
+            vertex_template[scaling_index + 0] = scalingVecs[index][0];
+            vertex_template[scaling_index + 1] = scalingVecs[index][1];
             vertex_template[scaling_index + 2] = halfWidth;
         }
 
         vertex_data.addVertex(vertex_template);
     }
+
+    // Add vertices to buffer
+    for (var i = 0; i < lineSize - 1; i++) {
+        addVertex(2*i+2);
+        addVertex(2*i+1);
+        addVertex(2*i+0);
+
+        addVertex(2*i+2);
+        addVertex(2*i+3);
+        addVertex(2*i+1);
+    }
+
+    // // Add vertices to buffer
+    // for (var i = 0; i < vertices.length; i++) {
+    //     addVertex(i);
+    // }
+
+    // // Add triangles indices
+    // for (var i = 0; i < lineSize - 1; i++) {
+    //     indices_data.push(vertexData_Offset + 2*i+2);
+    //     indices_data.push(vertexData_Offset + 2*i+1);
+    //     indices_data.push(vertexData_Offset + 2*i);
+    //     indices_data.push(vertexData_Offset + 2*i+2);
+    //     indices_data.push(vertexData_Offset + 2*i+3);
+    //     indices_data.push(vertexData_Offset + 2*i+1);
+    // }
+
+
 };
 
 // Build a quad centered on a point

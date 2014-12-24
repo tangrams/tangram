@@ -2,6 +2,68 @@
 
 export var Vector = {};
 
+Vector.set = function (v){
+    var V = [];
+    var lim = v.length;
+    for (var i = 0; i < lim; i++) 
+        V[i] = v[i];
+    return V;
+}
+
+// Addition of two vectors
+Vector.sum = function (v1, v2)
+{
+    var v = [];
+    var lim = Math.min(v1.length,v2.length);
+    for (var i = 0; i < lim; i++) 
+        v[i] = v1[i] + v2[i];
+    return v;
+}
+
+// Substraction of two vectors
+Vector.sub = function (v1, v2)
+{
+    var v = [];
+    var lim = Math.min(v1.length,v2.length);
+    for (var i = 0; i < lim; i++) 
+        v[i] = v1[i] - v2[i];
+    return v;
+}
+
+// Multiplication of two vectors
+Vector.mult = function (v1, v2)
+{
+    var v = [];
+    var lim = Math.min(v1.length,v2.length);
+    if(lim === 1){
+        if(v1.length === 1){
+            for (var i = 0; i < v2.length; i++) 
+                v[i] = v1 * v2[i];
+        } else {
+            for (var i = 0; i < v1.length; i++) 
+                v[i] = v1[i] * v2;
+        }
+    } else {
+        for (var i = 0; i < lim; i++) 
+            v[i] = v1[i] * v2[i];
+    }
+    return v;
+}
+
+// Division of two vectors
+Vector.div = function (v1, v2)
+{
+    var v = [];
+    if(v2.length === 1){
+        for (var i = 0; i < v1.length; i++) 
+                v[i] = v1[i] / v2;
+    } else {
+        for (var i = 0; i < v1.length; i++) 
+            v[i] = v1[i] / v2[i];
+    }
+    return v;
+}
+
 // Vector length squared
 Vector.lengthSq = function (v)
 {
@@ -54,15 +116,13 @@ Vector.cross  = function (v1, v2)
 };
 
 // Dot product of two vectors
-Vector.dot = function (v1, v2) {
-
-    // 3D >  
-    var n = 0, lim = Math.min(a.length,b.length);
-    for (var i = 0; i < lim; i++) n += v1[i] * v2[i];
+Vector.dot = function (v1, v2) 
+{
+    var n = 0.0;
+    var lim = Math.min(v1.length, v2.length);
+    for (var i = 0; i < lim; i++) 
+        n += v1[i] * v2[i];
     return n;
-
-    // 2D 
-    // return v1[0] * v2[0] + v1[1] * v2[1];
 };
 
 // Find the intersection of two lines specified as segments from points (p1, p2) and (p3, p4)
