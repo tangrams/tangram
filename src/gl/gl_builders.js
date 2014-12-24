@@ -235,6 +235,7 @@ GLBuilders.buildPolylines = function (
 
     // Build triangles for a single line segment, extruded by the provided width
     function addVertex (index) {
+        
         vertex_template[0] = vertices[index][0];
         vertex_template[1] = vertices[index][1];
         // vertex_template[2] = vertices[v][2]; // What happend with Z ??
