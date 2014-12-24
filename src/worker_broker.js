@@ -58,23 +58,25 @@
 //
 //         -> prints 'error! error in worker'
 //
+// TODO: add documentation for invoking main thread methods from a worker (basically same API, but in reverse)
 
 var WorkerBroker;
 export default WorkerBroker = {};
 
 // Global list of all worker messages
-// Uniquely tracks every call made from the main thread to a worker
+// Uniquely tracks every call made between main thread and a worker
 var message_id = 0;
 var messages = {};
 
 // Main thread:
-// Send messages to workers, and optionally receive an async response that is then returned in a promise
+// - Send messages to workers, and optionally receive an async response as a promise
+// - Receive messages from workers, and optionally send an async response back as a promise
 function setupMainThread () {
 
-    // Send a message to the worker, and optionally get an async response
+    // Send a message to a worker, and optionally get an async response
     // Arguments:
     //   - worker: the web worker instance
-    //   - method: on the worker side, the method with this name will be invoked
+    //   - method: the method with this name will be invoked in the worker
     //   - message: will be passed to the method call in the worker
     // Returns:
     //   - a promise that will be fulfilled if the worker method returns a value (could be immediately, or async)
@@ -86,7 +88,7 @@ function setupMainThread () {
         });
 
         worker.postMessage({
-            worker_broker: true,    // mark message as sent from broker
+            type: 'main_send',      // mark message as method invocation from main thread
             message_id,             // unique id for this message, for life of program
             method,                 // will dispatch to a function of this name within the worker
             message                 // message payload
@@ -96,9 +98,24 @@ function setupMainThread () {
         return promise;
     };
 
-    // Listen for messages coming back from the worker, and fulfill that message's promise
+    // Add a worker to communicate with - each worker must be registered from the main thread
+    var worker_id = 0;
+    var workers = {};
+
     WorkerBroker.addWorker = function (worker) {
+
+        // Keep track of all registered workers
+        // TODO: adding a property directly to the worker, would be better to track non-instrusively,
+        // maybe with an ES6 Map
+        worker._worker_broker_id = worker_id++;
+        workers[worker._worker_broker_id] = worker;
+
+        // Listen for messages coming back from the worker, and fulfill that message's promise
         worker.addEventListener('message', (event) => {
+            if (event.data.type !== 'worker_reply') {
+                return;
+            }
+
             // Pass the result to the promise
             var id = event.data.message_id;
             if (messages[id]) {
@@ -111,6 +128,71 @@ function setupMainThread () {
                 delete messages[id];
             }
         });
+
+        // Listen for messages initiating a call from the worker, dispatch them,
+        // and send any return value back to the worker
+        worker.addEventListener('message', (event) => {
+            // Unique id for this message & return call to main thread
+            var id = event.data.message_id;
+            var worker_id = worker._worker_broker_id;
+            if (event.data.type !== 'worker_send' || id == null) {
+                return;
+            }
+
+            // Call the requested method and save the return value
+            var target = targets[event.data.target];
+            if (!target) {
+                throw Error(`Worker broker could not dispatch message type ${event.data.method} on target ${event.data.target} because no object with that name is registered on main thread`);
+            }
+
+            var method = (typeof target[event.data.method] === 'function') && target[event.data.method];
+            if (!method) {
+                throw Error(`Worker broker could not dispatch message type ${event.data.method} on target ${event.data.target} because object has no method with that name`);
+            }
+
+            var result, error;
+            try {
+                result = method.apply(target, event.data.message);
+            }
+            catch(e) {
+                // Thrown errors will be passed back (in string form) to worker
+                error = e;
+            }
+
+            // Send return value to worker
+            // Async result
+            if (result instanceof Promise) {
+                result.then((value) => {
+                    worker.postMessage({
+                        type: 'main_reply',
+                        message_id: id,
+                        message: value
+                    });
+                }, (error) => {
+                    worker.postMessage({
+                        type: 'main_reply',
+                        message_id: id,
+                        error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
+                    });
+                });
+            }
+            // Immediate result
+            else {
+                worker.postMessage({
+                    type: 'main_reply',
+                    message_id: id,
+                    message: result,
+                    error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
+                });
+            }
+        });
+
+    };
+
+    // Register an object to receive calls from the worker
+    var targets = {};
+    WorkerBroker.addTarget = function (name, target) {
+        targets[name] = target;
     };
 
     // Expose for debugging
@@ -125,14 +207,60 @@ function setupMainThread () {
 }
 
 // Worker threads:
-// Listen for messages initiating a call from the main thread, dispatch them,
-// and send any return value back to the main thread
+// - Receive messages from main thread, and optionally send an async response back as a promise
+// - Send messages to main thread, and optionally receive an async response as a promise
 function setupWorkerThread () {
 
+    // Send a message to the main thread, and optionally get an async response as a promise
+    // Arguments:
+    //   - target: the name of the object in the main thread to be called
+    //   - method: the method with this name will be invoked on the main thread target object
+    //   - message: will be passed to the method call in the main thread
+    // Returns:
+    //   - a promise that will be fulfilled if the main thread method returns a value (could be immediately, or async)
+    //
+    WorkerBroker.postMessage = function (target, method, ...message) {
+        // Track state of this message
+        var promise = new Promise((resolve, reject) => {
+            messages[message_id] = { target, method, message, resolve, reject };
+        });
+
+        self.postMessage({
+            type: 'worker_send',    // mark message as method invocation from worker
+            message_id,             // unique id for this message, for life of program
+            target,                 // name of the object to be called on main thread
+            method,                 // will dispatch to a method of this name on the main thread
+            message                 // message payload
+        });
+
+        message_id++;
+        return promise;
+    };
+
+    // Listen for messages coming back from the main thread, and fulfill that message's promise
+    self.addEventListener('message', (event) => {
+        if (event.data.type !== 'main_reply') {
+            return;
+        }
+
+        // Pass the result to the promise
+        var id = event.data.message_id;
+        if (messages[id]) {
+            if (event.data.error) {
+                messages[id].reject(event.data.error);
+            }
+            else {
+                messages[id].resolve(event.data.message);
+            }
+            delete messages[id];
+        }
+    });
+
+    // Receive messages from main thread, dispatch them, and send back a reply
     self.addEventListener('message', (event) => {
         // Unique id for this message & return call to main thread
         var id = event.data.message_id;
-        if (!event.data.worker_broker || id == null) {
+        if (event.data.type !== 'main_send' || id == null) {
             return;
         }
 
@@ -156,11 +284,13 @@ function setupWorkerThread () {
         if (result instanceof Promise) {
             result.then((value) => {
                 self.postMessage({
+                    type: 'worker_reply',
                     message_id: id,
                     message: value
                 });
             }, (error) => {
                 self.postMessage({
+                    type: 'worker_reply',
                     message_id: id,
                     error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                 });
@@ -169,6 +299,7 @@ function setupWorkerThread () {
         // Immediate result
         else {
             self.postMessage({
+                type: 'worker_reply',
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
