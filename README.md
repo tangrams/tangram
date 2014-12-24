@@ -1,7 +1,7 @@
 Tangram: WebGL for OpenStreetMap
 ===
 
-[![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram)
+<!-- [![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram) -->
 
 
 Tangram is a library for rendering 2D & 3D maps with WebGL, using GeoJSON/TopoJSON or binary vector tiles.
@@ -29,10 +29,10 @@ The library will be minified in `dist/`, and `index.html` provides an example fo
 
 ## Examples
 
-- [**NYC / Lower Manhattan**](http://vector.io/vector-map/#mapzen,40.70479834544056,-74.0057945251465,15)
-- [**NYC / Central Park**](http://vector.io/vector-map/#mapzen,40.78004586258099,-73.96652698516847,16)
-- [**Berlin**](http://vector.io/vector-map/#mapzen,52.52177659937554,13.373343944549562,16)
-- [**Colosseum & Roman ruins**](http://vector.io/vector-map/#mapzen,41.889367479706124,12.488912343978884,17)
+- [**NYC / Lower Manhattan**](https://mapzen.com/tangram/#mapzen,40.70479834544056,-74.0057945251465,15)
+- [**NYC / Central Park**](https://mapzen.com/tangram/#mapzen,40.78004586258099,-73.96652698516847,16)
+- [**Berlin**](https://mapzen.com/tangram/#mapzen,52.52177659937554,13.373343944549562,16)
+- [**Colosseum & Roman ruins**](https://mapzen.com/tangram/#mapzen,41.889367479706124,12.488912343978884,17)
 
 
 

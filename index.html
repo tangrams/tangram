@@ -33,4 +33,9 @@
     <script src="demos/main.js"></script>
 
   </body>
+
+    <!-- Adding a script block to post message to the parent container (think iframed demos) -->
+    <script type="text/javascript">
+        window.addEventListener("hashchange",function(){parent.postMessage(window.location.hash, "*")});
+    </script>
 </html>

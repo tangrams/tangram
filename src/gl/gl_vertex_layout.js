@@ -2,6 +2,8 @@
 
 import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
 
+import log from 'loglevel';
+
 // Describes a vertex layout that can be used with many different GL programs.
 export default class GLVertexLayout {
     // Attribs are an array, in layout order, of: name, size, type, normalized
@@ -57,37 +59,6 @@ export default class GLVertexLayout {
             // Provide an index into the vertex data buffer for each attribute component
             this.index[attrib.name] = count;
             count += attrib.size;
-
-            // TODO: this was an experiment adding per-component indices (e.g. position.x), currently unused but interesting for debugging, may be removed
-            // if (attrib.size >= 3) {
-            //     this.index[attrib.name] = {};
-
-            //     this.index[attrib.name].x = count++;
-            //     this.index[attrib.name].y = count++;
-            //     this.index[attrib.name].z = count++;
-
-            //     this.index[attrib.name].r = this.index[attrib.name].x;
-            //     this.index[attrib.name].g = this.index[attrib.name].y;
-            //     this.index[attrib.name].b = this.index[attrib.name].z;
-            //     this.index[attrib.name].a = this.index[attrib.name].w;
-
-            //     if (attrib.size >= 4) {
-            //         this.index[attrib.name].w = count++;
-            //         this.index[attrib.name].a = this.index[attrib.name].w;
-            //     }
-            // }
-            // else if (attrib.size === 2) {
-            //     this.index[attrib.name] = {};
-
-            //     this.index[attrib.name].x = count++;
-            //     this.index[attrib.name].y = count++;
-
-            //     this.index[attrib.name].s = this.index[attrib.name].x;
-            //     this.index[attrib.name].t = this.index[attrib.name].y;
-            // }
-            // else {
-            //     this.index[attrib.name] = count++;
-            // }
         }
     }
 
@@ -119,7 +90,7 @@ export default class GLVertexLayout {
         }
 
         // Mark attribs as unused
-        for (location in unused_attribs) {
+        for (location of unused_attribs) {
             delete GLVertexLayout.enabled_attribs[location];
         }
     }
@@ -184,8 +155,7 @@ export class GLVertexData {
 
             this.buffer = new_block;
             this.setBufferViews();
-
-            console.log(`expanded vertex block to ${this.block_size * this.block_num} vertices`);
+            log.info(`GLVertexData: expanded vertex block to ${this.block_size * this.block_num} vertices`);
         }
     }
 
@@ -210,33 +180,6 @@ export class GLVertexData {
         this.buffer_offset += this.vertex_layout.stride;
         this.vertex_count++;
     }
-
-    // Add a vertex by passing an object with properties for each vertex attribute. Works, but significantly
-    // slower than the "flat array" method above.
-    // addVertexByKeys (vertex) {
-    //     this.checkBufferSize();
-
-    //     for (var attrib of this.vertex_layout.attribs) {
-    //         var vertex_attrib = vertex[attrib.name];
-
-    //         if (vertex_attrib) {
-    //             var array_type = this.array_types[attrib.type];
-    //             var view = this.buffer_views[attrib.type];
-    //             var offset = (this.buffer_offset + attrib.offset) / array_type.BYTES_PER_ELEMENT;
-
-    //             if (attrib.size > 1) {
-    //                 for (var e=0; e < Math.min(attrib.size, vertex_attrib.length); e++) {
-    //                     view[offset++] = vertex_attrib[e];
-    //                 }
-    //             }
-    //             else {
-    //                 view[offset++] = vertex_attrib;
-    //             }
-    //         }
-    //     }
-    //     this.buffer_offset += this.vertex_layout.stride;
-    //     this.vertex_count++;
-    // }
 
     // Finalize vertex buffer for use in constructing a mesh
     end () {

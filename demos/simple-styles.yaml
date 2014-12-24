@@ -1,0 +1,35 @@
+camera:
+    type: perspective
+
+lighting:
+    type: point
+
+styles: {}
+
+layers:
+
+    earth:
+      geometry:
+        source: osm
+        filter: earth
+        order: 0
+      style:
+        color: [1, 1, 1]
+
+    roads:
+      geometry:
+        source: osm
+        filter: roads
+        order: 2
+      style:
+        color: [1, 1, 0]
+        width: 7
+
+    roads-outline:
+      geometry:
+        source: osm
+        filter: roads
+        order: 1
+      style:
+        color: [1, 0, 0]
+        width: 10

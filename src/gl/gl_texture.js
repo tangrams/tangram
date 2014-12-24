@@ -1,7 +1,7 @@
 /*global GLTexture */
 // Texture management
 import Utils from '../utils';
-
+import log from 'loglevel';
 
 // Global set of textures, by name
 GLTexture.textures = {};
@@ -45,7 +45,7 @@ GLTexture.destroy = function (gl) {
     for (var t of textures) {
         var texture = GLTexture.textures[t];
         if (texture.gl === gl) {
-            // console.log(`destroying GLTexture ${texture.name}`);
+            log.trace(`destroying GLTexture ${texture.name}`);
             texture.destroy();
         }
     }
@@ -125,20 +125,20 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'mipmap') {
-            // console.log("power-of-2 MIPMAP");
+            log.trace('power-of-2 MIPMAP');
             this.filtering = 'mipmap';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
         else if (options.filtering === 'linear') {
-            // console.log("power-of-2 LINEAR");
+            log.trace('power-of-2 LINEAR');
             this.filtering = 'linear';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
         else if (options.filtering === 'nearest') {
-            // console.log("power-of-2 NEAREST");
+            log.trace('power-of-2 NEAREST');
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -152,13 +152,13 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'nearest') {
-            // console.log("power-of-2 NEAREST");
+            log.trace('power-of-2 NEAREST');
             this.filtering = 'nearest';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         }
         else { // default to linear for non-power-of-2 textures
-            // console.log("power-of-2 LINEAR");
+            log.trace('power-of-2 LINEAR');
             this.filtering = 'linear';
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);

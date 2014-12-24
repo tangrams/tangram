@@ -1,15 +1,39 @@
 /*jshint worker: true */
 /*globals TileSource, topojson */
 import {Geo}   from './geo';
-import Point from './point';
 import {MethodNotImplemented} from './errors';
 import Utils from './utils';
+import log from 'loglevel';
 
 export default class TileSource {
 
     constructor (source) {
         this.url_template = source.url;
-        this.max_zoom = source.max_zoom || Geo.max_zoom; // overzoom will apply for zooms higher than this
+        // overzoom will apply for zooms higher than this
+        this.max_zoom = source.max_zoom || Geo.max_zoom;
+    }
+
+    // TODO fix the z adjustment for continuous zoom
+    calculateOverZoom(coordinate) {
+        var zgap,
+            {x, y, z} = coordinate;
+
+        if (z > this.max_zoom) {
+            zgap = z - this.max_zoom;
+            x = ~~(x / Math.pow(2, zgap));
+            y = ~~(y / Math.pow(2, zgap));
+            z -= zgap;
+        }
+
+        return {x, y, z};
+    }
+
+    buildAsMessage() {
+        return {
+            type: this.type,
+            url: this.url_template,
+            max_zoom: this.max_zoom
+        };
     }
 
     // Create a tile source by type, factory-style
@@ -33,10 +57,7 @@ export default class TileSource {
             var num_features = tile.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = tile.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    var m = Geo.latLngToMeters(Point(coordinates[0], coordinates[1]));
-                    return [m.x, m.y];
-                });
+                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
             }
         }
 
@@ -58,7 +79,8 @@ export default class TileSource {
                 var feature = tile.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
-                    coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z]; // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
+                    // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
+                    coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z];
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                     return coordinates;
                 });
@@ -67,7 +89,7 @@ export default class TileSource {
         return tile;
     }
 
-    loadTile(tile, callback) { throw new MethodNotImplemented('loadTile'); }
+    loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
 }
 
 
@@ -89,48 +111,44 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    loadTile (tile, callback) {
-
+    loadTile (tile) {
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
-
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
-
         tile.url = url;
         tile.debug.network = +new Date();
+        return new Promise((resolve, reject) => {
+            tile.loading = true;
+            tile.loaded = false;
+            tile.error = null;
 
-        Utils.xhr({
-            uri: url,
-            timeout: 60 * 1000,
-            responseType: this.response_type
-        }, (err, resp, body) => {
-            // Tile load errored
-            if (err) {
+            // For testing network errors
+            // var promise = Utils.io(url, 60 * 100, this.response_type);
+            // if (Math.random() < .7) {
+            //     promise = Promise.reject(Error('fake tile error'));
+            // }
+            // promise.then((body) => {
+            Utils.io(url, 60 * 1000, this.response_type).then((body) => {
+                if (tile.loading !== true) {
+                    reject();
+                    return;
+                }
+                tile.debug.response_size = body.length || body.byteLength;
+                tile.debug.network = +new Date() - tile.debug.network;
+                tile.debug.parsing = +new Date();
+                this.parseTile(tile, body);
+                tile.debug.parsing = +new Date() - tile.debug.parsing;
+                tile.loading = false;
+                tile.loaded = true;
+                resolve(tile);
+            }, (error) => {
                 tile.loaded = false;
                 tile.loading = false;
-                tile.error = err.toString();
-                return callback(err);
-            }
-            // We already canceled the tile load, so just throw away the result
-            else if (tile.loading === false) {
-                return;
-            }
-
-            tile.debug.response_size = body.length || body.byteLength;
-            tile.debug.network = +new Date() - tile.debug.network;
-
-            tile.debug.parsing = +new Date();
-            this.parseTile(tile, body);
-            tile.debug.parsing = +new Date() - tile.debug.parsing;
-
-            tile.loading = false;
-            tile.loaded = true;
-
-            if (callback) {
-                callback(null, tile);
-            }
+                tile.error = error.toString();
+                reject(error);
+            });
         });
     }
 
@@ -149,6 +167,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'GeoJSONTileSource';
     }
 
     parseTile (tile, response) {
@@ -166,16 +185,17 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'TopoJSONTileSource';
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
         if (typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
-                console.log("loaded TopoJSON library");
+                log.info('TopoJSONTileSource: loaded topojson library');
             }
             catch (e) {
-                console.error("failed to load TopoJSON library!", e);
+                log.error('TopoJSONTileSource: failed to load TopoJSON library!');
             }
         }
     }
@@ -214,6 +234,7 @@ export class MapboxFormatTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
+        this.type = 'MapboxFormatTileSource';
         this.response_type = "arraybuffer"; // binary data
         this.Protobuf = require('pbf');
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output

@@ -1,26 +1,91 @@
 {
-    "tileSource": {
+    "tile_source": {
+        "max_zoom": 20,
         "type": "GeoJSONTileSource",
         "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
     },
-    "styles": {
+    "max_zoom": 20,
+    "config": {
         "layers": {
-            "water": {
-                "color": {
-                    "default": [0.5, 0.5, 0.875]
+            "earth": {
+                "geometry": {
+                    "source": "osm",
+                    "filter": "earth",
+                    "order": 0
+                },
+                "style": {
+                    "color": {
+                        "default": [0.175, 0.175, 0.175]
+                    }
                 }
             },
-            "outline": {
-                "color": {
-                    "default": [0.6, 0.6, 0.975]
+            "landuse": {
+                "geometry": {
+                    "source": "osm",
+                    "filter": "landuse",
+                    "order": 1
+                },
+                "style": {
+                    "color": {
+                        "default": [0.5, 0.875, 0.5]
+                    }
+                }
+            },
+            "water": {
+                "geometry": {
+                    "source": "osm",
+                    "filter": "water",
+                    "order": 2
+                },
+                "style": {
+                    "color": {
+                        "default": [0.5, 0.5, 0.875]
+                    }
+                }
+            },
+            "roads": {
+                "geometry": {
+                    "source": "osm",
+                    "filter": "roads",
+                    "order": 3
+                },
+                "style": {
+                    "color": {
+                        "default": [0.4, 0.4, 0.4]
+                    }
+                }
+            },
+            "buildings": {
+                "geometry": {
+                    "source": "osm",
+                    "filter": "buildings",
+                    "order": 4
+                },
+                "style": {
+                    "name": "rainbow",
+                    "color": {
+                        "default": [0.6, 0.6, 0.6]
+                    }
+                }
+            }
+        },
+        "styles": {
+            "rainbow": {
+                "extends": "polygons",
+                "animated": true,
+                "shaders": {
+                    "transforms": {
+                        "globals":
+                            "vec3 hsv2rgb(vec3 c) { \n\
+                                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); \n\
+                                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www); \n\
+                                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y); \n\
+                            }",
+                        "fragment":
+                            "vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0); \n\
+                            color = hsv2rgb(c);"
+                    }
                 }
             }
         }
-    },
-    "layers": [
-        {
-            "name": "water",
-            "data": "water"
-        }
-    ]
-}
+    }}

@@ -12,9 +12,10 @@ map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it wil
 
 let makeOne = () => {
     return new LeafletLayer({
-        vectorTileSource: sampleScene.tileSource,
-        vectorLayers: sampleScene.layers,
-        vectorStyles: sampleScene.styles
+        source: sampleScene.tile_source,
+        scene: sampleScene.config,
+        disableRenderLoop: true,
+        workerUrl: '/base/dist/tangram.debug.js'
     });
 };
 
@@ -43,14 +44,18 @@ describe('Leaflet plugin', () => {
     describe('.addTo(map)', () => {
         let subject;
 
-        beforeEach((done) => {
+        beforeEach(function (done) {
             subject = makeOne();
             sinon.spy(map, 'getContainer');
-            subject.on('init', function() {
+            sinon.spy(subject.scene, 'init');
+
+            subject.on('init', () => {
                 done();
             });
+
             subject.addTo(map);
         });
+
 
         afterEach(() => {
             subject.remove();
@@ -62,7 +67,7 @@ describe('Leaflet plugin', () => {
         });
 
         it('initializes the scene', () => {
-            assert.isTrue(subject.scene.initialized);
+            sinon.assert.called(subject.scene.init);
         });
 
     });
@@ -73,14 +78,13 @@ describe('Leaflet plugin', () => {
         beforeEach((done) => {
             subject = makeOne();
             scene = subject.scene;
-
             sinon.spy(L.GridLayer.prototype, 'onRemove');
             sinon.spy(scene, 'destroy');
+
 
             subject.on('init', () => {
                 subject.remove();
             });
-
             subject.on('remove', () => {
                 done();
             });
@@ -93,27 +97,36 @@ describe('Leaflet plugin', () => {
         });
 
         it('calls the .super', () => {
-            assert.isTrue(L.GridLayer.prototype.onRemove.called);
+            sinon.assert.called(L.GridLayer.prototype.onRemove);
         });
 
         it('destroys the scene', () => {
-            assert.isTrue(scene.destroy.called);
+            sinon.assert.called(scene.destroy);
             assert.isNull(subject.scene);
         });
     });
 
     describe('removing and then re-adding to a map', () => {
-        let subject = makeOne();
-        let scene = subject.scene;
+        let subject, scene;
 
-        sinon.spy(subject.scene, 'destroy');
-
-        subject.addTo(map);
-        subject.remove();
-        subject.addTo(map);
+        beforeEach((done) => {
+            var counter = 0;
+            subject = makeOne();
+            scene  = subject.scene;
+            sinon.spy(subject.scene, 'destroy');
+            subject.on('init', () => {
+                counter += 1;
+                if (counter === 2) {
+                    done();
+                }
+            });
+            subject.addTo(map);
+            subject.remove();
+            subject.addTo(map);
+        });
 
         it('destroys the initial scene', () => {
-            assert.isTrue(scene.destroy.called);
+            sinon.assert.called(scene.destroy);
         });
 
         it('re-initializes a new scene', () => {
