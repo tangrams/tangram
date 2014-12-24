@@ -198,11 +198,9 @@ GLBuilders.buildPolylines = function (
                     scalingVecs.push(-rightNorm);
                 } else {
                     vertices.push([ currCoord[0] + rightNorm[0] * halfWidth, 
-                                    currCoord[1] + rightNorm[1] * halfWidth, 
-                                    z ]);
+                                    currCoord[1] + rightNorm[1] * halfWidth ]);
                     vertices.push([ currCoord[0] - rightNorm[0] * halfWidth, 
-                                    currCoord[1] - rightNorm[1] * halfWidth, 
-                                    z ]);
+                                    currCoord[1] - rightNorm[1] * halfWidth ]);
                 }
 
                 // Add UVs
@@ -222,12 +220,10 @@ GLBuilders.buildPolylines = function (
                 scalingVecs.push(-rightNorm);
             } else {
                 vertices.push([ currCoord[0] + rightNorm[0] * halfWidth, 
-                                currCoord[1] + rightNorm[1] * halfWidth, 
-                                z]);
+                                currCoord[1] + rightNorm[1] * halfWidth ]);
 
                 vertices.push([ currCoord[0] - rightNorm[0] * halfWidth, 
-                                currCoord[1] - rightNorm[1] * halfWidth, 
-                                z]);
+                                currCoord[1] - rightNorm[1] * halfWidth ]);
             }
 
             if (texcoord_index) {
