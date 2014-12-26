@@ -19,6 +19,9 @@ import WorkerBroker from './worker_broker';
 
 // Window can only be set in main thread
 Utils.inMainThread(() => {
+    // Main thread objects that can be called from workers
+    WorkerBroker.addTarget('GLTexture', GLTexture);
+
     window.Tangram = module.exports = {
         LeafletLayer,
         leafletLayer,

@@ -8,6 +8,7 @@ import Tile from './tile';
 import TileSource from './tile_source.js';
 import {parseRules} from './rule';
 import {GLBuilders} from './gl/gl_builders';
+import GLTexture from './gl/gl_texture';
 
 export var SceneWorker = {};
 
@@ -28,9 +29,15 @@ Utils.inWorkerThread(() => {
     };
 
     SceneWorker.updateConfig = function ({ tile_source, config }) {
+        // Already configuring? Return promise
+        if (SceneWorker.configuring) {
+            return SceneWorker.configuring;
+        }
+
         if (!SceneWorker.tile_source && tile_source) {
             SceneWorker.tile_source = TileSource.create(tile_source);
         }
+
         if (!SceneWorker.config && config) {
             var layer;
             config = JSON.parse(config);
@@ -42,7 +49,6 @@ Utils.inWorkerThread(() => {
             }
 
             // Expand styles
-            // SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(JSON.parse(config)), StyleParser.wrapFunction);
             SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
             SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
 
@@ -53,6 +59,11 @@ Utils.inWorkerThread(() => {
                 SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
             }
         }
+
+        // Sync tetxure info from main thread
+        SceneWorker.configuring = SceneWorker.syncTextures();
+
+        return SceneWorker.configuring;
     };
 
     // Slice a subset of keys out of a tile
@@ -90,49 +101,49 @@ Utils.inWorkerThread(() => {
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
-        // Update config (styles, etc.)
-        SceneWorker.updateConfig({ tile_source, config });
+        // Update config (styles, etc.), then build tile
+        return SceneWorker.updateConfig({ tile_source, config }).then(() => {
+            // First time building the tile
+            if (tile.loaded !== true) {
+                return new Promise((resolve, reject) => {
+                    SceneWorker.tile_source.loadTile(tile).then(() => {
+                        var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
-        // First time building the tile
-        if (tile.loaded !== true) {
-            return new Promise((resolve, reject) => {
-                SceneWorker.tile_source.loadTile(tile).then(() => {
-                    var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                        resolve({
+                            tile: SceneWorker.sliceTile(tile, keys),
+                            worker_id: SceneWorker.worker_id,
+                            selection_map_size: StyleParser.selection_map_size
+                        });
+                    }).catch((error) => {
+                        if (error) {
+                            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        }
+                        else {
+                            SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
+                        }
 
-                    resolve({
-                        tile: SceneWorker.sliceTile(tile, keys),
-                        worker_id: SceneWorker.worker_id,
-                        selection_map_size: StyleParser.selection_map_size
-                    });
-                }).catch((error) => {
-                    if (error) {
-                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
-                    }
-                    else {
-                        SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
-                    }
-
-                    resolve({
-                        tile: SceneWorker.sliceTile(tile),
-                        worker_id: SceneWorker.worker_id,
-                        selection_map_size: StyleParser.selection_map_size
+                        resolve({
+                            tile: SceneWorker.sliceTile(tile),
+                            worker_id: SceneWorker.worker_id,
+                            selection_map_size: StyleParser.selection_map_size
+                        });
                     });
                 });
-            });
-        }
-        // Tile already loaded, just rebuild
-        else {
-            SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
+            }
+            // Tile already loaded, just rebuild
+            else {
+                SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
-            // Build geometry
-            var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                // Build geometry
+                var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
-            return {
-                tile: SceneWorker.sliceTile(tile, keys),
-                worker_id: SceneWorker.worker_id,
-                selection_map_size: StyleParser.selection_map_size
-            };
-        }
+                return {
+                    tile: SceneWorker.sliceTile(tile, keys),
+                    worker_id: SceneWorker.worker_id,
+                    selection_map_size: StyleParser.selection_map_size
+                };
+            }
+        });
     };
 
     // Remove tile
@@ -164,12 +175,36 @@ Utils.inWorkerThread(() => {
 
     // Update styles, etc.
     SceneWorker.worker.prepareForRebuild = function (config) {
+        SceneWorker.configuring = null;
         SceneWorker.config = null;
         SceneWorker.styles = null;
         SceneWorker.updateConfig(config);
         StyleParser.resetSelectionMap();
 
         SceneWorker.log('debug', `worker updated config for tile rebuild`);
+    };
+
+    // Texture info needs to be synced from main thread
+    SceneWorker.syncTextures = function () {
+        // We're only syncing the textures that have sprites defined, since these are (currently) the only ones we
+        // need info about for geometry construction (we need width/height, which we only know after the texture loads)
+        // This is an async process, so it returns a promise
+        var textures = [];
+        for (var style of Utils.values(SceneWorker.styles)) {
+            if (style.textures) {
+                for (var t in style.textures) {
+                    if (style.textures[t].sprites) {
+                        textures.push(t);
+                    }
+                }
+            }
+        }
+
+        SceneWorker.log('trace', 'sync textures to worker:', textures);
+        if (textures.length > 0) {
+            return GLTexture.syncTexturesToWorker(textures);
+        }
+        return Promise.resolve();
     };
 
     // Log wrapper, sends message to main thread for display, and includes worker id #
