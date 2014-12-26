@@ -33,7 +33,6 @@ export var Style = {
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
-        this.configureTextures();
         this.initialized = true;
     },
 
@@ -110,35 +109,19 @@ export var Style = {
 
     /*** Texture management ***/
 
-    configureTextures () {
-        // Simpler single texture syntax
-        if (this.texture) {
-            // Default to a single texture, using the URL as the name
-            this.texture.id = 0;
-            this.textures = { [this.texture.url]: this.texture };
-            this.num_textures = 1;
-        }
-
-        // Multi-texture syntax
+    setupTextureUniforms () {
         if (this.textures) {
-            this.num_textures = Object.keys(this.textures).length;
-
-            if (this.num_textures === 1) {
-                // Save a texture reference at 'texture' for convenience
-                if (!this.texture) {
-                    this.texture = this.textures[Object.keys(this.textures)[0]];
-                }
-
+            var num_textures = Object.keys(this.textures).length;
+            if (num_textures === 1) {
                 // For single textures, provide a single u_texture uniform
                 this.defines['HAS_DEFAULT_TEXTURE'] = true;
                 this.shaders.uniforms = this.shaders.uniforms || {};
                 this.shaders.uniforms.u_texture = this.texture.url;
-                this.calculateTextureSprites(this.texture.url, this.texture);
             }
-            else if (this.num_textures > 1) {
+            else if (num_textures > 1) {
                 // For multiple textures, provide a built-in uniform array
                 var tex_id = 0;
-                this.defines['NUM_TEXTURES'] = this.num_textures.toString(); // force string to avoid auto-conversion to float
+                this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
                 this.shaders.uniforms = this.shaders.uniforms || {};
                 this.shaders.uniforms.u_textures = [];
 
@@ -151,15 +134,30 @@ export var Style = {
 
                     // Provide a #define mapping each texture back to its name in the stylesheet
                     this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
-
-                    this.calculateTextureSprites(name, texture);
                 }
             }
         }
     },
 
+    // Preload any textures with explicit configuration in the 'textures' field
+    // (textures can also be initialized on the fly via uniform setters if they don't require any additional configuration)
+    // NOTE: this is only run in the main thread, since workers don't use any GL resources
+    preloadTextures () {
+        if (this.textures) {
+            for (var name in this.textures) {
+                var { url, filtering, repeat, sprites } = this.textures[name];
+                var texture = new GLTexture(this.gl, name, { sprites });
+
+                let _name = name;
+                let _textures = this.textures;
+                texture.load(url, { filtering, repeat });
+            }
+        }
+    },
+
     // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
-    calculateTextureSprites (name, texture) {
+    calculateTextureSprites (name) {
+        var texture = GLTexture.textures[name];
         if (texture.sprites) {
             this.texture_sprites = this.texture_sprites || {};
             this.texture_sprites[name] = {};
@@ -188,8 +186,8 @@ export var Style = {
         if (this.textures && style.sprite) {
             var tex;
             // If style only has one texture, use it
-            if (this.num_textures === 1) {
-                tex = this.texture && this.texture.url;
+            if (Object.keys(this.textures).length === 1) {
+                tex = Object.keys(this.textures)[0];
             }
             // If style has more than one texture, texture to use must be specified
             else {
@@ -200,28 +198,11 @@ export var Style = {
                 log.error(`Style: in style '${this.name}', must specify texture to use for sprite '${style.sprite}', must be one of [${Object.keys(this.textures).join(', ')}]`);
             }
             else {
+                // Lazily calculate sprite UVs the first time they are encountered
+                if (!this.texture_sprites || !this.texture_sprites[tex]) {
+                    this.calculateTextureSprites(tex);
+                }
                 this.texcoord_scale = this.texture_sprites[tex] && this.texture_sprites[tex][style.sprite];
-            }
-        }
-    },
-
-    // Preload any textures with explicit configuration (in the 'texture'/'textures' fields)
-    // (textures can also be initialized on the fly via uniform setters if they don't require any additional configuration)
-    // NOTE: this is only run in the main thread, since workers don't use any GL resources
-    preloadTextures () {
-        if (this.textures) {
-            for (var name in this.textures) {
-                var { url, filtering, repeat, sprites } = this.textures[name];
-                var texture = new GLTexture(this.gl, name, { sprites });
-
-                let _name = name;
-                let _textures = this.textures;
-                texture.load(url, { filtering, repeat }).then(() => {
-                    // TODO: these currently won't be guaranteed to load before worker starts
-                    // need to fix, maybe w/promise
-                    _textures[_name].width = texture.width;
-                    _textures[_name].height = texture.height;
-                });
             }
         }
     },
@@ -231,6 +212,7 @@ export var Style = {
 
     setGL (gl) {
         this.gl = gl;
+        this.setupTextureUniforms();
         this.preloadTextures();
     },
 
