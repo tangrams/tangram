@@ -1006,7 +1006,7 @@ Scene.prototype.reload = function () {
     }
 
     this.loadScene().then(() => {
-        this.updateStyles();
+        this.updateStyles(this.gl);
         return this.rebuildGeometry();
     }, (error) => {
         throw error;
@@ -1089,7 +1089,7 @@ Scene.prototype.updateConfig = function () {
     this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-    this.updateStyles();
+    this.updateStyles(this.gl);
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
