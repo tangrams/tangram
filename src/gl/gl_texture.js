@@ -25,6 +25,12 @@ export default function GLTexture (gl, name, options = {}) {
     // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
 
     this.name = name;
+
+    // Destroy previous texture if present
+    if (GLTexture.textures[this.name]) {
+        GLTexture.textures[this.name].destroy();
+    }
+
     GLTexture.textures[this.name] = this;
 
     this.sprites = options.sprites;
