@@ -69,8 +69,8 @@ Object.assign(Points, {
 
         GLBuilders.buildQuadsForPoints(
             points,
-            style.size * 2,
-            style.size * 2,
+            style.size[0] || style.size,
+            style.size[1] || style.size,
             vertex_data,
             vertex_template,
             { texcoord_index: this.vertex_layout.index.a_texcoord }
