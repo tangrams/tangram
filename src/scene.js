@@ -780,7 +780,7 @@ Scene.prototype.forgetTile = function (key) {
 
 // Load a single tile
 Scene.prototype._loadTile = function (coords, options = {}) {
-    var tile = Tile.create({coords: coords, tile_source: this.tile_source});
+    var tile = Tile.create({ coords: coords, tile_source: this.tile_source, worker: this.nextWorker() });
     if (!this.hasTile(tile.key)) {
         this.cacheTile(tile);
         tile.load(this, coords);
