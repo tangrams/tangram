@@ -28,42 +28,50 @@ Utils.inWorkerThread(() => {
         return worker_id;
     };
 
-    SceneWorker.updateConfig = function ({ tile_source, config }) {
-        // Already configuring? Return promise
-        if (SceneWorker.configuring) {
-            return SceneWorker.configuring;
+    // A proimse that will be resolved when config is done
+    SceneWorker.resetConfigPromise = function () {
+        var p = {};
+        SceneWorker.configuring = {};
+        SceneWorker.configuring.promise = new Promise((resolve, reject) => p = { resolve, reject });
+        SceneWorker.configuring.resolve = p.resolve;
+        SceneWorker.configuring.reject = p.reject;
+    };
+    SceneWorker.resetConfigPromise();
+
+    SceneWorker.worker.updateConfig = function ({ tile_source, config }) {
+        SceneWorker.resetConfigPromise();
+
+        SceneWorker.config = null;
+        SceneWorker.styles = null;
+        StyleParser.resetSelectionMap();
+
+        SceneWorker.tile_source = TileSource.create(tile_source);
+
+        var layer;
+        config = JSON.parse(config);
+
+        // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
+        // TODO: probably want a cleaner way to exclude these
+        for (layer in config.layers) {
+            config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
         }
 
-        if (!SceneWorker.tile_source && tile_source) {
-            SceneWorker.tile_source = TileSource.create(tile_source);
-        }
+        // Expand styles
+        SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
+        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
 
-        if (!SceneWorker.config && config) {
-            var layer;
-            config = JSON.parse(config);
-
-            // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
-            // TODO: probably want a cleaner way to exclude these
-            for (layer in config.layers) {
-                config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
-            }
-
-            // Expand styles
-            SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-            SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
-
-            // Parse each top-level layer as a separate rule tree
-            // TODO: find a more graceful way to incorporate this
-            SceneWorker.rules = {};
-            for (layer in SceneWorker.config.layers) {
-                SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
-            }
+        // Parse each top-level layer as a separate rule tree
+        // TODO: find a more graceful way to incorporate this
+        SceneWorker.rules = {};
+        for (layer in SceneWorker.config.layers) {
+            SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
         }
 
         // Sync tetxure info from main thread
-        SceneWorker.configuring = SceneWorker.syncTextures();
-
-        return SceneWorker.configuring;
+        SceneWorker.syncing_textures = SceneWorker.syncTextures().then(() => {
+            SceneWorker.configuring.resolve(SceneWorker.config);
+            SceneWorker.log('debug', `updated config`);
+        });
     };
 
     // Slice a subset of keys out of a tile
@@ -89,7 +97,7 @@ Utils.inWorkerThread(() => {
     };
 
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
-    SceneWorker.worker.buildTile = function ({ tile, tile_source, config }) {
+    SceneWorker.worker.buildTile = function ({ tile }) {
         // Tile cached?
         if (SceneWorker.tiles[tile.key] != null) {
             // Already loading?
@@ -102,7 +110,7 @@ Utils.inWorkerThread(() => {
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
         // Update config (styles, etc.), then build tile
-        return SceneWorker.updateConfig({ tile_source, config }).then(() => {
+        return SceneWorker.configuring.promise.then(() => {
             // First time building the tile
             if (tile.loaded !== true) {
                 return new Promise((resolve, reject) => {
@@ -171,17 +179,6 @@ Utils.inWorkerThread(() => {
             id: id,
             feature: (selection && selection.feature)
         };
-    };
-
-    // Update styles, etc.
-    SceneWorker.worker.prepareForRebuild = function (config) {
-        SceneWorker.configuring = null;
-        SceneWorker.config = null;
-        SceneWorker.styles = null;
-        SceneWorker.updateConfig(config);
-        StyleParser.resetSelectionMap();
-
-        SceneWorker.log('debug', `worker updated config for tile rebuild`);
     };
 
     // Texture info needs to be synced from main thread

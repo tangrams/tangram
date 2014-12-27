@@ -53,6 +53,7 @@ export default class Tile {
         };
     }
 
+    // TODO: remove scene dependency
     workerMessage (scene, ...message) {
         if (this.worker == null) {
             this.worker = scene.nextWorker();
@@ -65,11 +66,7 @@ export default class Tile {
         this.workerMessage(
             scene,
             'buildTile',
-            {
-                tile: this.buildAsMessage(),
-                tile_source: this.tile_source.buildAsMessage(),
-                config: scene.config_serialized
-            })
+            { tile: this.buildAsMessage() })
         .then(message => {
             scene.buildTileCompleted(message);
         });

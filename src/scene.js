@@ -103,17 +103,13 @@ Scene.prototype.init = function () {
                 this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
 
+                // Loads rendering styles from config, sets GL context and compiles programs
+                this.updateConfig();
+                this.initSelectionBuffer();
+
                 // this.zoom_step = 0.02; // for fractional zoom user adjustment
                 this.last_render_count = null;
                 this.initInputHandlers();
-
-                this.createCamera();
-                this.createLighting();
-                this.initSelectionBuffer();
-
-                // Loads rendering styles from config, sets GL context and compiles programs
-                this.updateStyles(this.gl);
-                this.updateActiveStyles();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -830,15 +826,7 @@ Scene.prototype.rebuildGeometry = function () {
         }
 
         // Update config (in case JS objects were manipulated directly)
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
-        this.selection_map = {};
-
-        // Tell workers we're about to rebuild (so they can update styles, etc.)
-        this.workers.forEach(worker => {
-            WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-                config: this.config_serialized
-            });
-        });
+        this.syncConfigToWorker();
 
         // Rebuild visible tiles first, from center out
         var tile, visible = [], invisible = [];
@@ -994,8 +982,6 @@ Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
         return this.preProcessSceneConfig();
-    }).then(() => {
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
     }).catch((error) => { Promise.reject(error); });
 };
 
@@ -1007,6 +993,7 @@ Scene.prototype.reload = function () {
 
     this.loadScene().then(() => {
         this.updateStyles(this.gl);
+        this.syncConfigToWorker();
         return this.rebuildGeometry();
     }, (error) => {
         throw error;
@@ -1052,6 +1039,7 @@ Scene.prototype.updateStyles = function (gl) {
     // Compile all programs
     StyleManager.compile();
 
+    this.updateActiveStyles();
     this.dirty = true;
 };
 
@@ -1090,6 +1078,21 @@ Scene.prototype.updateConfig = function () {
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
+    this.syncConfigToWorker();
+};
+
+// Serialize config and send to worker
+Scene.prototype.syncConfigToWorker = function () {
+    this.config_serialized = Utils.serializeWithFunctions(this.config);
+    this.selection_map = {};
+
+    // Tell workers we're about to rebuild (so they can update styles, etc.)
+    this.workers.forEach(worker => {
+        WorkerBroker.postMessage(worker, 'updateConfig', {
+            config: this.config_serialized,
+            tile_source: this.tile_source.buildAsMessage() // TODO: move tile source(s) into config
+        });
+    });
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
