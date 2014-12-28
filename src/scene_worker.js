@@ -28,19 +28,8 @@ Utils.inWorkerThread(() => {
         return worker_id;
     };
 
-    // A proimse that will be resolved when config is done
-    SceneWorker.resetConfigPromise = function () {
-        var p = {};
-        SceneWorker.configuring = {};
-        SceneWorker.configuring.promise = new Promise((resolve, reject) => p = { resolve, reject });
-        SceneWorker.configuring.resolve = p.resolve;
-        SceneWorker.configuring.reject = p.reject;
-    };
-    SceneWorker.resetConfigPromise();
-
+    // Starts a config refresh
     SceneWorker.worker.updateConfig = function ({ tile_source, config }) {
-        SceneWorker.resetConfigPromise();
-
         SceneWorker.config = null;
         SceneWorker.styles = null;
         StyleParser.resetSelectionMap();
@@ -68,10 +57,17 @@ Utils.inWorkerThread(() => {
         }
 
         // Sync tetxure info from main thread
-        SceneWorker.syncing_textures = SceneWorker.syncTextures().then(() => {
-            SceneWorker.configuring.resolve(SceneWorker.config);
+        SceneWorker.syncing_textures = SceneWorker.syncTextures();
+
+        // Return promise for when config refresh finishes
+        SceneWorker.configuring = SceneWorker.syncing_textures.then(() => {
             SceneWorker.log('debug', `updated config`);
         });
+    };
+
+    // Returns a promise that fulfills when config refresh is finished
+    SceneWorker.awaitConfiguration = function () {
+        return SceneWorker.configuring;
     };
 
     // Slice a subset of keys out of a tile
@@ -110,7 +106,7 @@ Utils.inWorkerThread(() => {
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
         // Update config (styles, etc.), then build tile
-        return SceneWorker.configuring.promise.then(() => {
+        return SceneWorker.awaitConfiguration().then(() => {
             // First time building the tile
             if (tile.loaded !== true) {
                 return new Promise((resolve, reject) => {
