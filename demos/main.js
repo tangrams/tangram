@@ -215,7 +215,8 @@
             'Windows': 'windows',
             'Environment Map': 'envmap',
             'Color Bleed': 'colorbleed',
-            'Rainbow': 'rainbow'
+            'Rainbow': 'rainbow',
+            'Icons': 'icons'
         },
         setup: function (style) {
             // Restore initial state
@@ -458,6 +459,19 @@
                     this.state.u_env_map = this.uniforms.u_env_map;
                     this.folder.add(this.state, 'u_env_map', envmaps).onChange(function(value) {
                         this.uniforms.u_env_map = value;
+                        scene.requestRedraw();
+                    }.bind(this));
+                }
+            },
+            'icons': {
+                setup: function (style) {
+                    scene.config.layers.pois.style.name = 'icons';
+                    scene.config.layers.pois.style.sprite = 'tree';
+                    scene.config.layers.pois.style.size = [[13, '16px'], [14, '24px'], [15, '32px']];
+
+                    this.state.bouncy = this.uniforms.bouncy;
+                    this.folder.add(this.state, 'bouncy').onChange(function(value) {
+                        this.uniforms.bouncy = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }

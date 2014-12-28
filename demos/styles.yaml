@@ -136,52 +136,27 @@ styles:
         texture:
             url: demos/images/poi_icons_32.png
             filtering: nearest
-            width: 32     # TODO: load these dynamically and pass to worker
-            height: 1142
             sprites:
                 # each sprite is defined as: [x origin, y origin, width, height]
                 plane: [0, 0, 32, 32]
                 tree: [0, 185, 32, 32]
                 sunburst: [0, 629, 32, 32]
                 restaurant: [0, 777, 32, 32]
+                cafe: [0, 814, 32, 32]
+                museum: [0, 518, 32, 32]
         shaders:
+            uniforms:
+                bouncy: true
             transforms:
+                globals:
+                    uniform bool bouncy;
                 vertex: |
                     // Bouncy icons
-                    position.y += sin(v_world_position.y + u_time*3.) * 10.;
+                    if (bouncy) {
+                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
+                    }
                 fragment: |
                     //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
-
-    eyeballs:
-        extends: polygons
-        texcoords: true
-        # texture:
-        #     url: demos/images/eyeballs.png
-        #     filtering: linear
-        #     width: 792
-        #     height: 400
-        #     sprites:
-        #         eye: [47, 267, 68, 68]
-        textures:
-            eyeballs:
-                url: demos/images/eyeballs.png
-                filtering: linear
-                width: 792
-                height: 400
-                sprites:
-                    eye: [47, 267, 68, 68]
-                    gplus: [300, 50, 200, 200]
-            # pois:
-            #     url: demos/images/poi_icons_32.png
-            #     filtering: nearest
-            #     width: 32     # TODO: load these dynamically and pass to worker
-            #     height: 1142
-            #     sprites:
-            #         # each sprite is defined as: [x origin, y origin, width, height]
-            #         plane: [0, 0, 32, 32]
-            #         tree: [0, 185, 32, 32]
-            #         sunburst: [0, 629, 32, 32]
-            #         restaurant: [0, 777, 32, 32]
 
     uv_test:
         extends: polygons
@@ -464,24 +439,30 @@ layers:
 
         filter: { name: true }
         style:
-            # name: points
-            # name: ghosts
+            name: points
+            size: 10px
 
-            name: icons
-            sprite: tree
-            # size: 32px
-            size: [[13, 16px], [14, 24px], [15, 32px]]
+            # name: icons
+            # sprite: tree
+            # size: [[13, 16px], [14, 24px], [15, 32px]]
 
             # visible: false
             order: 5
             interactive: true
             color: [1, 1, 0]
-            # size: 5px
 
-        restaurants:
+        # examples of different icons mapped to faeture properties
+        restaurant:
             filter: { kind: restaurant }
             style:
-                name: eyeballs
-                sprite: gplus
-                # size: 136px
-                size: 64px
+                sprite: restaurant
+
+        cafe:
+            filter: { kind: cafe }
+            style:
+                sprite: cafe
+
+        culture:
+            filter: { kind: [museum, library] }
+            style:
+                sprite: museum
