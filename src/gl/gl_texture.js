@@ -225,9 +225,10 @@ GLTexture.getInfo = function (name) {
 };
 
 // Sync texture info to worker
-// Called from worker, gets all texture info from main thread via remote call, then stores it locally in worker
-GLTexture.syncTexturesToWorker = function () {
-    return WorkerBroker.postMessage('GLTexture', 'getInfo').
+// Called from worker, gets info on one or more textures info from main thread via remote call, then stores it
+// locally in worker. 'textures' can be an array of texture names to sync, or if null, all textures are synced.
+GLTexture.syncTexturesToWorker = function (names) {
+    return WorkerBroker.postMessage('GLTexture', 'getInfo', names).
         then(textures => {
             for (var tex of textures) {
                 GLTexture.textures[tex.name] = tex;
