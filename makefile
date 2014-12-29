@@ -25,6 +25,9 @@ build-testable: lint dist/tangram.debug.js
 test: build-testable
 	$(KARMA) start --single-run
 
+test-ci: build-testable
+	$(KARMA) start  --browsers SL_Firefox --single-run
+
 clean:
 	rm -f dist/*
 	rm -f src/gl/shader_sources.js
@@ -35,9 +38,9 @@ lint:
 	$(JSHINT) test/*.js
 
 karma-start:
-	$(KARMA) start --no-watch
+	$(KARMA) start --browsers Chrome --no-watch
 
 run-tests: build-testable
-	$(KARMA) run
+	$(KARMA) run --browsers Chrome
 
 .PHONY : clean all dev test lint build-testable karma-start run-tests
