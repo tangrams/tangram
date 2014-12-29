@@ -16,7 +16,7 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "make test"
+    "test": "make test-ci"
   },
   "author": {
     "name": "Brett Camper",

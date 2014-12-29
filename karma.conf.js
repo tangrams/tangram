@@ -17,8 +17,7 @@ module.exports = function (config) {
     };
 
     var browserList = Object.keys(customLaunchers);
-//    browserList.push('Chrome');
-//    var browserList = ['Chrome'];
+    browserList.push('Chrome');
 
     config.set({
         basePath: '',
@@ -39,13 +38,13 @@ module.exports = function (config) {
 
         exclude: [  ],
         preprocessors: {  },
-        reporters: ['progress', /*'saucelabs' */],
+        reporters: ['progress'],
         port: 9876,
         colors: true,
 
 
         sauceLabs: {
-            testName: 'Karma and Sauce Labs demo',
+            testName: 'Tangram test Suite',
             recordScreenshots: true,
             connectOptions: {
                 port: 5757,
