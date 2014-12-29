@@ -132,6 +132,7 @@ styles:
 
     icons:
         extends: polygons
+        animated: true # only needed for bouncy effect
         texcoords: true
         texture:
             url: demos/images/poi_icons_32.png
