@@ -40,5 +40,4 @@ karma-start:
 run-tests: build-testable
 	$(KARMA) run
 
-
-.PHONY : clean all dev test lint build-testable
+.PHONY : clean all dev test lint build-testable karma-start run-tests
