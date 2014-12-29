@@ -256,7 +256,7 @@ layers:
             filter: water
 
         style:
-            name: water
+            # name: water
             order: 2
             interactive: true
             color: [0.5, 0.5, 0.875]

@@ -205,6 +205,7 @@
         effect: url_style || '',
         options: {
             'None': '',
+            'Water animation': 'water',
             'Elevator': 'elevator',
             'Breathe': 'breathe',
             'Pop-up': 'popup',
@@ -281,6 +282,11 @@
             }
         },
         settings: {
+            'water': {
+                setup: function (style) {
+                    scene.config.layers.water.style.name = style;
+                }
+            },
             'colorbleed': {
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;

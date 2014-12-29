@@ -37,6 +37,17 @@ Geo.metersForTile = function (tile) {
 };
 
 /**
+   Given a point in mercator meters and a zoom level, return the tile X/Y/Z that the point lies in
+*/
+Geo.tileForMeters = function ([x, y], zoom) {
+    return {
+        x: Math.floor((x + Geo.half_circumference_meters) / (Geo.half_circumference_meters * 2 / Math.pow(2, zoom))),
+        y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.half_circumference_meters * 2 / Math.pow(2, zoom))),
+        z: zoom
+    };
+};
+
+/**
    Convert mercator meters to lat-lng
 */
 Geo.metersToLatLng = function ([x, y]) {
