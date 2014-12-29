@@ -134,7 +134,6 @@ function setupMainThread () {
         worker.addEventListener('message', (event) => {
             // Unique id for this message & return call to main thread
             var id = event.data.message_id;
-            var worker_id = worker._worker_broker_id;
             if (event.data.type !== 'worker_send' || id == null) {
                 return;
             }

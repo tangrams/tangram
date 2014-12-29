@@ -26,7 +26,7 @@ describe('Tile', () => {
         scene = makeScene({});
         scene.setCenter(...nycLatLng);
         scene.init().then(() => {
-            subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }});
+            subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
             done();
         });
     });
@@ -50,7 +50,7 @@ describe('Tile', () => {
         });
     });
 
-    describe('.build(scene, key)', () => {
+    describe('.build(scene)', () => {
         beforeEach(() => {
             sinon.spy(subject, 'workerMessage');
         });

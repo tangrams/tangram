@@ -1,6 +1,5 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Utils from '../src/utils';
 import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
@@ -9,7 +8,7 @@ import sampleScene from './fixtures/sample-scene';
 function makeScene(options) {
     options = options || {};
     options.disableRenderLoop = true;
-    options.workerUrl = '/base/dist/tangram.debug.js';
+    options.workerUrl = 'http://localhost:9876/tangram.debug.js';
 
     return new Scene(
         TileSource.create(_.clone(sampleScene.tile_source)),
@@ -521,14 +520,11 @@ describe('Scene', () => {
         beforeEach(() => {
             subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
-            sinon.spy(subject, 'createObjectURL');
-            sinon.spy(Utils, 'io');
         });
 
         afterEach(() => {
             subject.destroy();
             subject = null;
-            Utils.io.restore();
         });
 
         it('calls the makeWorkers method', (done) => {
@@ -538,19 +534,6 @@ describe('Scene', () => {
             });
         });
 
-        it('calls the io method', (done) => {
-            subject.createWorkers().then(() => {
-                sinon.assert.called(Utils.io);
-                done();
-            });
-        });
-
-        it('calls the createObjectUrl', (done) => {
-            subject.createWorkers().then(() => {
-                sinon.assert.called(subject.createObjectURL);
-                done();
-            });
-        });
     });
 
     describe('.makeWorkers(url)', () => {
