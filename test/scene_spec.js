@@ -1,10 +1,21 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Utils from '../src/utils';
 import Scene from '../src/scene';
 import Tile from '../src/tile';
 import TileSource from '../src/tile_source';
 import sampleScene from './fixtures/sample-scene';
+
+function makeScene(options) {
+    options = options || {};
+    options.disableRenderLoop = true;
+    options.workerUrl = 'http://localhost:9876/tangram.debug.js';
+
+    return new Scene(
+        TileSource.create(_.clone(sampleScene.tile_source)),
+        sampleScene.config,
+        options
+    );
+}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
@@ -24,7 +35,7 @@ describe('Scene', function () {
         describe('when given sensible defaults', () => {
             let scene;
             afterEach(() => {
-                scene.destroy();                
+                scene.destroy();
             });
 
             it('returns a instance', () => {
@@ -519,14 +530,11 @@ describe('Scene', function () {
         beforeEach(() => {
             subject = makeScene({num_workers: 2});
             sinon.spy(subject, 'makeWorkers');
-            sinon.spy(subject, 'createObjectURL');
-            sinon.spy(Utils, 'io');
         });
 
         afterEach(() => {
             subject.destroy();
             subject = null;
-            Utils.io.restore();
         });
 
         it('calls the makeWorkers method', (done) => {
@@ -536,19 +544,6 @@ describe('Scene', function () {
             });
         });
 
-        it('calls the io method', (done) => {
-            subject.createWorkers().then(() => {
-                sinon.assert.called(Utils.io);
-                done();
-            });
-        });
-
-        it('calls the createObjectUrl', (done) => {
-            subject.createWorkers().then(() => {
-                sinon.assert.called(subject.createObjectURL);
-                done();
-            });
-        });
     });
 
     describe.skip('.makeWorkers(url)', () => {

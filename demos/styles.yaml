@@ -62,7 +62,7 @@ styles:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
                 fragment: |
-                    color += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    color .rgb+= lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
                         color.r += lighting.r * sin(u_time / 3.0);
                     #endif
@@ -80,7 +80,7 @@ styles:
                     }
                 fragment: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
-                    color = hsv2rgb(c);
+                    color.rgb = hsv2rgb(c);
 
     popup:
         url: demos/styles/popup.yaml
@@ -127,19 +127,85 @@ styles:
     points:
         shaders:
             transforms:
-                fragment: color += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+
+
+    icons:
+        extends: polygons
+        animated: true # only needed for bouncy effect
+        texcoords: true
+        texture:
+            url: demos/images/poi_icons_32.png
+            filtering: nearest
+            sprites:
+                # each sprite is defined as: [x origin, y origin, width, height]
+                plane: [0, 0, 32, 32]
+                tree: [0, 185, 32, 32]
+                sunburst: [0, 629, 32, 32]
+                restaurant: [0, 777, 32, 32]
+                cafe: [0, 814, 32, 32]
+                museum: [0, 518, 32, 32]
+        shaders:
+            uniforms:
+                bouncy: true
+            transforms:
+                globals:
+                    uniform bool bouncy;
+                vertex: |
+                    // Bouncy icons
+                    if (bouncy) {
+                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
+                    }
+                fragment: |
+                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+
+    uv_test:
+        extends: polygons
+        texcoords: true
+        shaders:
+            transforms:
+                fragment: |
+                    color.rgb = vec3(v_texcoord.xy, 0.);
+                    //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+                    //color.rgb = texture2D(u_texture, uv).rgb;
 
     # polygons:
     #     texcoords: true
     #     shaders:
     #         uniforms:
     #             u_texture: demos/images/LitSphere_test_02.jpg
+    #             # u_offset: { one: .5, two: .5 }
+    #             u_material:
+    #                 - more: 5
+    #                   texture: demos/images/matball01.jpg
+
+    #                 - texture: demos/images/sunset.jpg
+    #                   other: thing
     #         transforms:
+    #             globals:
+    #                 struct Material {
+    #                     sampler2D texture;
+    #                 };
+
+    #                 uniform Material u_material[2];
+
+    #                 varying float v_layer;
+
+    #             vertex:
+    #                 v_layer = a_layer;
+
     #             fragment: |
-    #                 color = vec3(v_texcoord.xy, 0.);
-    #                 //color = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-    #                 //color = texture2D(u_texture, v_texcoord).rgb;
-    #                 //color = texture2D(u_texture, vec2(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.))).rgb;
+    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two)).rgb;
+    #                 float t = mod(v_layer, 3.);
+    #                 if (t == 0.) {
+    #                     color = texture2D(u_texture, v_texcoord).rgb;
+    #                 }
+    #                 else if (t == 1.) {
+    #                     color = texture2D(u_material[0].texture, v_texcoord).rgb;
+    #                 }
+    #                 else {
+    #                     color = texture2D(u_material[1].texture, v_texcoord).rgb;
+    #                 }
 
     ghosts:
         extends: polygons
@@ -154,8 +220,8 @@ styles:
                     float frames_per_second = 2.;
 
                     float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
-                    if (color == vec3(0.)) discard;
+                    color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
+                    if (color.rgb == vec3(0.)) discard;
 
 layers:
 
@@ -375,11 +441,29 @@ layers:
         filter: { name: true }
         style:
             name: points
-            # name: ghosts
+            size: 10px
+
+            # name: icons
+            # sprite: tree
+            # size: [[13, 16px], [14, 24px], [15, 32px]]
 
             # visible: false
             order: 5
             interactive: true
             color: [1, 1, 0]
-            size: 5px
-            # size: 20px # for ghosts
+
+        # examples of different icons mapped to faeture properties
+        restaurant:
+            filter: { kind: restaurant }
+            style:
+                sprite: restaurant
+
+        cafe:
+            filter: { kind: cafe }
+            style:
+                sprite: cafe
+
+        culture:
+            filter: { kind: [museum, library] }
+            style:
+                sprite: museum

@@ -243,6 +243,9 @@ StyleParser.parseDistance = function(val, context) {
     if (typeof val === 'number') {
         val *= context.units_per_meter;
     }
+    else if (Array.isArray(val)) {
+        val.forEach((v, i) => val[i] *= context.units_per_meter);
+    }
     return val;
 };
 
@@ -277,6 +280,12 @@ StyleParser.parseColor = function(val, context) {
     }
 
     val = Utils.interpolate(context.zoom, val);
+
+    // Default alpha
+    if (!val[3]) {
+        val[3] = 1;
+    }
+
     return val;
 };
 

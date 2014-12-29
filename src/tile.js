@@ -53,23 +53,16 @@ export default class Tile {
         };
     }
 
-    workerMessage (scene, ...message) {
-        if (this.worker == null) {
-            this.worker = scene.nextWorker();
-        }
+    workerMessage (...message) {
         return WorkerBroker.postMessage(this.worker, ...message);
     }
 
+    // TODO: remove scene dependency
     build(scene) {
         scene.trackTileBuildStart(this.key);
         this.workerMessage(
-            scene,
             'buildTile',
-            {
-                tile: this.buildAsMessage(),
-                tile_source: this.tile_source.buildAsMessage(),
-                config: scene.config_serialized
-            })
+            { tile: this.buildAsMessage() })
         .then(message => {
             scene.buildTileCompleted(message);
         });
@@ -242,8 +235,8 @@ export default class Tile {
         delete this.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
     }
 
-    remove(scene) {
-        this.workerMessage(scene, 'removeTile', this.key);
+    remove() {
+        this.workerMessage('removeTile', this.key);
     }
 
     showDebug(div) {
