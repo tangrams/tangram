@@ -5,18 +5,19 @@ export default class FeatureSelection {
 
     constructor(gl, workers) {
         this.gl = gl;
-        this.workers = workers;
+        this.workers = workers; // pool of workers to request feature look-ups from, keyed by id
         this.init();
     }
 
     init() {
         // Selection state tracking
+        this.requests = {}; // pending selection requests
+        this.feature = null; // currently selected feature
+        this.read_delay = 5; // delay time from selection render to framebuffer sample, to avoid CPU/GPU sync lock
+        this.read_delay_timer = null; // current timer (setTimeout) for delayed selection reads
+
         this.pixel = new Uint8Array(4);
         this.pixel32 = new Float32Array(this.pixel.buffer);
-        this.selection_requests = {};
-        this.selected_feature = null;
-        this.selection_delay_timer = null;
-        this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
 
         // Frame buffer for selection
         // TODO: initiate lazily in case we don't need to do any selection
@@ -51,7 +52,7 @@ export default class FeatureSelection {
         return new Promise((resolve, reject) => {
             // Queue requests for feature selection, and they will be picked up by the render loop
             this.selection_request_id = (this.selection_request_id + 1) || 0;
-            this.selection_requests[this.selection_request_id] = {
+            this.requests[this.selection_request_id] = {
                 type: 'point',
                 id: this.selection_request_id,
                 point,
@@ -62,7 +63,7 @@ export default class FeatureSelection {
 
     // Any pending selection requests
     pendingRequests() {
-        return this.selection_requests;
+        return this.requests;
     }
 
     // Read pending results from the selection buffer. Called after rendering to selection buffer.
@@ -70,16 +71,16 @@ export default class FeatureSelection {
         // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
         // Calling readPixels synchronously caused a massive performance hit, presumably since it
         // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
-        if (this.selection_delay_timer != null) {
-            clearTimeout(this.selection_delay_timer);
+        if (this.read_delay_timer != null) {
+            clearTimeout(this.read_delay_timer);
         }
-        this.selection_delay_timer = setTimeout(() => {
+        this.read_delay_timer = setTimeout(() => {
             var gl = this.gl;
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
-            for (var r in this.selection_requests) {
-                var request = this.selection_requests[r];
+            for (var r in this.requests) {
+                var request = this.requests[r];
 
                 // This request was already sent to the worker, we're just awaiting its reply
                 if (request.sent) {
@@ -107,13 +108,13 @@ export default class FeatureSelection {
                             'getFeatureSelection',
                             { id: request.id, key: feature_key })
                         .then(message => {
-                            this.workerGetFeatureSelection(message);
+                            this.finishRead(message);
                         });
                     }
                 }
                 // No feature found, but still need to resolve promise
                 else {
-                    this.workerGetFeatureSelection({ id: request.id, feature: null });
+                    this.finishRead({ id: request.id, feature: null });
                 }
 
                 request.sent = true;
@@ -121,29 +122,82 @@ export default class FeatureSelection {
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        }, this.selection_frame_delay);
+        }, this.read_delay);
     }
 
     // Called on main thread when a web worker finds a feature in the selection buffer
-    workerGetFeatureSelection (message) {
-        var request = this.selection_requests[message.id];
+    finishRead (message) {
+        var request = this.requests[message.id];
         if (!request) {
-            throw new Error("Scene.workerGetFeatureSelection() called without any message");
+            throw new Error("FeatureSelection.finishRead() called without any message");
         }
 
         var feature = message.feature;
         var changed = false;
-        if ((feature != null && this.selected_feature == null) ||
-            (feature == null && this.selected_feature != null) ||
-            (feature != null && this.selected_feature != null && feature.id !== this.selected_feature.id)) {
+        if ((feature != null && this.feature == null) ||
+            (feature == null && this.feature != null) ||
+            (feature != null && this.feature != null && feature.id !== this.feature.id)) {
             changed = true;
         }
 
-        this.selected_feature = feature; // store the most recently selected feature
+        this.feature = feature; // store the most recently selected feature
 
         // Resolve the request
         request.resolve({ feature, changed, request });
-        delete this.selection_requests[message.id]; // done processing this request
+        delete this.requests[message.id]; // done processing this request
+    }
+
+
+    // Selection map generation
+    // Each worker will create its own independent, 'local' selection map
+
+    // Create a unique 32-bit color to identify a feature
+    // Workers independently create/modify selection colors in their own threads, but we also
+    // need the main thread to know where each feature color originated. To accomplish this,
+    // we partition the map by setting the 4th component (alpha channel) to the worker's id.
+    static makeEntry() {
+        // 32-bit color key
+        FeatureSelection.map_size++;
+        var ir = FeatureSelection.map_size & 255;
+        var ig = (FeatureSelection.map_size >> 8) & 255;
+        var ib = (FeatureSelection.map_size >> 16) & 255;
+        var ia = FeatureSelection.map_prefix;
+        var r = ir / 255;
+        var g = ig / 255;
+        var b = ib / 255;
+        var a = ia / 255;
+        var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
+
+        FeatureSelection.map[key] = {
+            color: [r, g, b, a],
+        };
+
+        return FeatureSelection.map[key];
+    }
+
+    static makeColor(feature) {
+        var selector = FeatureSelection.makeEntry();
+        selector.feature = {
+            id: feature.id,
+            properties: feature.properties
+        };
+
+        return selector.color;
+    }
+
+    static reset() {
+        FeatureSelection.map = {};
+        FeatureSelection.map_size = 1;
+    }
+
+    static setPrefix(prefix) {
+        FeatureSelection.map_prefix = prefix;
     }
 
 }
+
+// Static properties
+FeatureSelection.map = {}; // this will be unique per module instance (so unique per worker)
+FeatureSelection.map_size = 1; // start at 1 since 1 will be divided by this
+FeatureSelection.map_prefix = 0; // set by worker to worker id #
+FeatureSelection.defaultColor = [0, 0, 0, 1];

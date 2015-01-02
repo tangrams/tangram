@@ -106,53 +106,6 @@ Style.pixels = function (p) {
     return f;
 };
 
-
-// Feature selection
-
-// Create a unique 32-bit color to identify a feature
-// Workers independently create/modify selection colors in their own threads, but we also
-// need the main thread to know where each feature color originated. To accomplish this,
-// we partition the map by setting the 4th component (alpha channel) to the worker's id.
-StyleParser.selection_map = {}; // this will be unique per module instance (so unique per worker)
-StyleParser.selection_map_size = 1; // start at 1 since 1 will be divided by this
-StyleParser.selection_map_prefix = 0; // set by worker to worker id #
-StyleParser.makeSelectionEntry = function ()
-{
-    // 32-bit color key
-    StyleParser.selection_map_size++;
-    var ir = StyleParser.selection_map_size & 255;
-    var ig = (StyleParser.selection_map_size >> 8) & 255;
-    var ib = (StyleParser.selection_map_size >> 16) & 255;
-    var ia = StyleParser.selection_map_prefix;
-    var r = ir / 255;
-    var g = ig / 255;
-    var b = ib / 255;
-    var a = ia / 255;
-    var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
-
-    StyleParser.selection_map[key] = {
-        color: [r, g, b, a],
-    };
-
-    return StyleParser.selection_map[key];
-};
-
-StyleParser.makeSelectionColor = function (feature) {
-    var selector = StyleParser.makeSelectionEntry();
-    selector.feature = {
-        id: feature.id,
-        properties: feature.properties
-    };
-
-    return selector.color;
-};
-
-StyleParser.resetSelectionMap = function ()
-{
-    StyleParser.selection_map = {};
-    StyleParser.selection_map_size = 1;
-};
-
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - zoom: the current map zoom level
@@ -183,7 +136,6 @@ StyleParser.defaults = {
     min_height: 0,
     order: 0,
     z: 0,
-    selection_color: [0, 0, 0, 1],
     style: {
         name: 'polygons'
     }
