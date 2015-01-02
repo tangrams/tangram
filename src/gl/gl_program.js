@@ -267,6 +267,17 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
                     this.setTextureUniform(name + '[' + u + ']', uniform[u]);
                 }
             }
+            // Array of arrays - but only arrays of vectors are allowed in this case
+            else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
+                // float vectors (vec2, vec3, vec4)
+                if (uniform[0].length >= 2 && uniform[0].length <= 4) {
+                    // Set each vector in the array
+                    for (u=0; u < uniform.length; u++) {
+                        this.uniform(uniform[u].length + 'fv', name + '[' + u + ']', uniform[u]);
+                    }
+                }
+                // else error?
+            }
             // Array of structures
             else if (typeof uniform[0] === 'object') {
                 for (u=0; u < uniform.length; u++) {
