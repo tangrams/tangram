@@ -392,3 +392,20 @@ GLProgram.prototype.attribute = function (name)
 
     return attrib;
 };
+
+// Check for a uniform definition of 'name' in the provided GLSL source
+// Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
+GLProgram.uniformDefined = function (name, source) {
+    // Match, in order:
+    // - the keyword 'uniform'
+    // - at least one character that is anything except a semicolon, ;
+    // - optionally, anything enclosed in curly braces, { ... } (an inline structure definition can go here)
+    // - optionally, any # of characters that is not a semicolon, ;
+    // - the name of the uniform
+
+    var re = new RegExp('uniform[^;]+(?:\{[\s\S]*\})?[^;]*' + name, 'g');
+    if (source.match(re)) {
+        return true;
+    }
+    return false;
+};
