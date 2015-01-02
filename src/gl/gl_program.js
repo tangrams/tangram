@@ -222,6 +222,95 @@ GLProgram.buildDefineString = function (defines) {
     return define_str;
 };
 
+// Generate a GLSL uniform definition for a JS object value
+GLProgram.defineUniformForValue = function (name, uniform) {
+    return 'uniform ' + GLProgram.defineVariableForValue(name, uniform);
+};
+
+// Generate a GLSL variable definition for a JS object value
+GLProgram.defineVariableForValue = function (name, uniform) {
+    var type, array, field, struct;
+
+    // Single float
+    if (typeof uniform === 'number') {
+        type = 'float';
+    }
+    // Multiple floats - vector or array
+    else if (Array.isArray(uniform)) {
+        // Numeric values
+        if (typeof uniform[0] === 'number') {
+            // float vectors (vec2, vec3, vec4)
+            if (uniform.length >= 2 && uniform.length <= 4) {
+                type = 'vec' + uniform.length;
+            }
+            // float array
+            else { //if (uniform.length > 4) {
+                type = 'float';
+                array = uniform.length;
+            }
+            // TODO: assume matrix for (typeof == Float32Array && length == 16)?
+        }
+        // Array of textures
+        else if (typeof uniform[0] === 'string') {
+            type = 'sampler2D';
+            array = uniform.length;
+        }
+        // Array of arrays - but only arrays of vectors are allowed in this case
+        else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
+            // float vectors (vec2, vec3, vec4)
+            if (uniform[0].length >= 2 && uniform[0].length <= 4) {
+                type = 'vec' + uniform[0].length;
+            }
+            // else error?
+            array = uniform[0].length;
+        }
+        // Array of structures
+        else if (typeof uniform[0] === 'object') {
+            // Build definitions for each field in struct
+            type = '_type_' + name;
+            struct = `struct ${type} {\n`;
+            for (field in uniform[0]) {
+                struct += '    ' + GLProgram.defineVariableForValue(field, uniform[0][field]);
+            }
+            struct += '}'; //;\n';
+            type = struct;
+            array = uniform.length;
+        }
+    }
+    // Boolean
+    else if (typeof uniform === 'boolean') {
+        type = 'bool';
+    }
+    // Texture
+    else if (typeof uniform === 'string') {
+        type = 'sampler2D';
+    }
+    // Structure
+    else if (typeof uniform === 'object') {
+        // Build definitions for each field in struct
+        type = '_type_' + name;
+        struct = `struct ${type} {\n`;
+        for (field in uniform) {
+            struct += '    ' + GLProgram.defineVariableForValue(field, uniform[field]);
+        }
+        struct += '}'; //;\n';
+        type = struct;
+    }
+
+    // Construct final definition
+    var def = '';
+    // if (struct) {
+    //     def += struct;
+    // }
+    // def += `uniform ${type} ${name}`;
+    def += `${type} ${name}`;
+    if (array) {
+        def += `[${array}]`;
+    }
+    def += ';\n';
+    return def;
+};
+
 // Set uniforms from a JS object, with inferred types
 GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
 {
