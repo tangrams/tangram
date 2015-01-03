@@ -238,8 +238,9 @@ export var Style = {
             selection_defines['FEATURE_SELECTION'] = true;
         }
 
-        // Get any custom code transforms
+        // Get any custom code transforms, uniform dependencies, etc.
         var transforms = (this.shaders && this.shaders.transforms);
+        var uniforms = (this.shaders && this.shaders.uniforms);
 
         // Create shaders
         try {
@@ -248,9 +249,10 @@ export var Style = {
                 shaderSources[this.vertex_shader_key],
                 shaderSources[this.fragment_shader_key],
                 {
-                    defines: defines,
-                    transforms: transforms,
-                    name: this.name
+                    name: this.name,
+                    defines,
+                    uniforms,
+                    transforms
                 }
             );
 
@@ -260,9 +262,10 @@ export var Style = {
                     shaderSources[this.vertex_shader_key],
                     shaderSources['selection_fragment'],
                     {
+                        name: (this.name + ' (selection)'),
                         defines: selection_defines,
-                        transforms: transforms,
-                        name: (this.name + ' (selection)')
+                        uniforms,
+                        transforms
                     }
                 );
             }

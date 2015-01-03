@@ -4,6 +4,9 @@
 import {GL} from './gl';
 import GLTexture from './gl_texture';
 
+import log from 'loglevel';
+import strip from 'strip-comments';
+
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
 
@@ -15,10 +18,20 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.program = null;
     this.compiled = false;
     this.compiling = false;
-    this.defines = Object.assign({}, options.defines||{}); // key/values inserted as #defines into shaders at compile-time
-    this.transforms = Object.assign({}, options.transforms||{}); // key/values for URLs of blocks that can be injected into shaders at compile-time
-    this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
-    this.attribs = {}; // program locations of vertex attributes
+
+    // key/values inserted as #defines into shaders at compile-time
+    this.defines = Object.assign({}, options.defines||{});
+
+    // key/values for blocks that can be injected into shaders at compile-time
+    this.transforms = Object.assign({}, options.transforms||{});
+
+    // JS-object uniforms that are expected by this program
+    // If they are not found in the existing shader source, their types will be inferred and definitions
+    // for each will be injected.
+    this.dependent_uniforms = options.uniforms;
+
+    this.uniforms = {}; // program locations of uniforms, lazily added as each uniform is set
+    this.attribs = {}; // program locations of vertex attributes, lazily added as each attribute is accessed
 
     this.vertex_shader = vertex_shader;
     this.fragment_shader = fragment_shader;
@@ -141,6 +154,9 @@ GLProgram.prototype.compile = function () {
     this.computed_vertex_shader = define_str + this.computed_vertex_shader;
     this.computed_fragment_shader = define_str + this.computed_fragment_shader;
 
+    // Detect uniform definitions, inject any missing ones
+    this.ensureUniforms(this.dependent_uniforms);
+
     // Include program info useful for debugging
     var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
     this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
@@ -220,6 +236,51 @@ GLProgram.buildDefineString = function (defines) {
         }
     }
     return define_str;
+};
+
+// Detect uniform definitions, inject any missing ones
+GLProgram.prototype.ensureUniforms = function (uniforms) {
+    if (!uniforms) {
+        return;
+    }
+
+    var vs = strip(this.computed_vertex_shader);
+    var fs = strip(this.computed_fragment_shader);
+    var inject, vs_injections = [], fs_injections = [];
+
+    // Check for missing uniform definitions
+    for (var name in uniforms) {
+        inject = null;
+
+        // Check vertex shader
+        if (!GLProgram.uniformDefined(name, vs) && GLProgram.symbolReferenced(name, vs)) {
+            if (!inject) {
+                inject = GLProgram.defineUniformForValue(name, uniforms[name]);
+            }
+            log.trace(`Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
+            vs_injections.push(inject);
+
+        }
+        // Check fragment shader
+        if (!GLProgram.uniformDefined(name, fs) && GLProgram.symbolReferenced(name, fs)) {
+            if (!inject) {
+                inject = GLProgram.defineUniformForValue(name, uniforms[name]);
+            }
+            log.trace(`Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
+            fs_injections.push(inject);
+        }
+    }
+
+    // Inject missing uniforms
+    // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
+    // this could cause some issues with certain #pragmas, or other functions that might expect #defines
+    if (vs_injections.length > 0) {
+        this.computed_vertex_shader = vs_injections.join('\n') + this.computed_vertex_shader;
+    }
+
+    if (fs_injections.length > 0) {
+        this.computed_fragment_shader = fs_injections.join('\n') + this.computed_fragment_shader;
+    }
 };
 
 // Generate a GLSL uniform definition for a JS object value
@@ -484,6 +545,7 @@ GLProgram.prototype.attribute = function (name)
 
 // Check for a uniform definition of 'name' in the provided GLSL source
 // Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
+// NOTE: assumes comments have been stripped from source
 GLProgram.uniformDefined = function (name, source) {
     // Match, in order:
     // - the keyword 'uniform'
@@ -492,8 +554,18 @@ GLProgram.uniformDefined = function (name, source) {
     // - optionally, any # of characters that is not a semicolon, ;
     // - the name of the uniform
 
-    var re = new RegExp('uniform[^;]+(?:\{[\s\S]*\})?[^;]*' + name, 'g');
+    var re = new RegExp('uniform[^;]+(?:\{[\\s\\S]*\})?[^;]*\\b' + name + '\\b', 'g');
     if (source.match(re)) {
+        return true;
+    }
+    return false;
+};
+
+// Check that a symbol is referenced in the GLSL source
+// NOTE: assumes comments have been stripped from source
+GLProgram.symbolReferenced = function (name, source) {
+    var re = new RegExp('\\b' + name + '\\b', 'g');
+    if (source.search(re) >= 0) {
         return true;
     }
     return false;
