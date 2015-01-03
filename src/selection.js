@@ -1,7 +1,7 @@
 import GLTexture from './gl/gl_texture';
 import WorkerBroker from './worker_broker';
 
-export default class FeatureSelection {
+class FeatureSelection {
 
     constructor(gl, workers) {
         this.gl = gl;
@@ -157,26 +157,26 @@ export default class FeatureSelection {
     // we partition the map by setting the 4th component (alpha channel) to the worker's id.
     static makeEntry() {
         // 32-bit color key
-        FeatureSelection.map_size++;
-        var ir = FeatureSelection.map_size & 255;
-        var ig = (FeatureSelection.map_size >> 8) & 255;
-        var ib = (FeatureSelection.map_size >> 16) & 255;
-        var ia = FeatureSelection.map_prefix;
+        this.map_size++;
+        var ir = this.map_size & 255;
+        var ig = (this.map_size >> 8) & 255;
+        var ib = (this.map_size >> 16) & 255;
+        var ia = this.map_prefix;
         var r = ir / 255;
         var g = ig / 255;
         var b = ib / 255;
         var a = ia / 255;
         var key = (ir + (ig << 8) + (ib << 16) + (ia << 24)) >>> 0; // need unsigned right shift to convert to positive #
 
-        FeatureSelection.map[key] = {
+        this.map[key] = {
             color: [r, g, b, a],
         };
 
-        return FeatureSelection.map[key];
+        return this.map[key];
     }
 
     static makeColor(feature) {
-        var selector = FeatureSelection.makeEntry();
+        var selector = this.makeEntry();
         selector.feature = {
             id: feature.id,
             properties: feature.properties
@@ -186,15 +186,19 @@ export default class FeatureSelection {
     }
 
     static reset() {
-        FeatureSelection.map = {};
-        FeatureSelection.map_size = 1;
+        this.map = {};
+        this.map_size = 1;
     }
 
     static setPrefix(prefix) {
-        FeatureSelection.map_prefix = prefix;
+        this.map_prefix = prefix;
     }
 
 }
+
+// js hint requires export statement below class definition in order to recognize
+// class name when setting static properties below (sigh)
+export default FeatureSelection;
 
 // Static properties
 FeatureSelection.map = {}; // this will be unique per module instance (so unique per worker)
