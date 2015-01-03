@@ -554,7 +554,7 @@ GLProgram.uniformDefined = function (name, source) {
     // - optionally, any # of characters that is not a semicolon, ;
     // - the name of the uniform
 
-    var re = new RegExp('uniform[^;]+(?:\{[\\s\\S]*\})?[^;]*\\b' + name + '\\b', 'g');
+    var re = new RegExp('uniform[^;]+(?:{[\\s\\S]*})?[^;]*\\b' + name + '\\b', 'g');
     if (source.match(re)) {
         return true;
     }
