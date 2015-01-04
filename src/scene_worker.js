@@ -6,6 +6,7 @@ import {StyleManager} from './styles/style_manager';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
+import FeatureSelection from './selection';
 import {parseRules} from './rule';
 import {GLBuilders} from './gl/gl_builders';
 import GLTexture from './gl/gl_texture';
@@ -24,7 +25,7 @@ Utils.inWorkerThread(() => {
     // Initialize worker
     SceneWorker.worker.init = function (worker_id) {
         SceneWorker.worker_id = worker_id;
-        StyleParser.selection_map_prefix = SceneWorker.worker_id;
+        FeatureSelection.setPrefix(SceneWorker.worker_id);
         return worker_id;
     };
 
@@ -32,7 +33,7 @@ Utils.inWorkerThread(() => {
     SceneWorker.worker.updateConfig = function ({ tile_source, config }) {
         SceneWorker.config = null;
         SceneWorker.styles = null;
-        StyleParser.resetSelectionMap();
+        FeatureSelection.reset();
 
         SceneWorker.tile_source = TileSource.create(tile_source);
 
@@ -116,7 +117,7 @@ Utils.inWorkerThread(() => {
                         resolve({
                             tile: SceneWorker.sliceTile(tile, keys),
                             worker_id: SceneWorker.worker_id,
-                            selection_map_size: StyleParser.selection_map_size
+                            selection_map_size: FeatureSelection.map_size
                         });
                     }).catch((error) => {
                         if (error) {
@@ -129,7 +130,7 @@ Utils.inWorkerThread(() => {
                         resolve({
                             tile: SceneWorker.sliceTile(tile),
                             worker_id: SceneWorker.worker_id,
-                            selection_map_size: StyleParser.selection_map_size
+                            selection_map_size: FeatureSelection.map_size
                         });
                     });
                 });
@@ -144,7 +145,7 @@ Utils.inWorkerThread(() => {
                 return {
                     tile: SceneWorker.sliceTile(tile, keys),
                     worker_id: SceneWorker.worker_id,
-                    selection_map_size: StyleParser.selection_map_size
+                    selection_map_size: FeatureSelection.map_size
                 };
             }
         });
@@ -169,7 +170,7 @@ Utils.inWorkerThread(() => {
 
     // Get a feature from the selection map
     SceneWorker.worker.getFeatureSelection = function ({ id, key } = {}) {
-        var selection = StyleParser.selection_map[key];
+        var selection = FeatureSelection.map[key];
 
         return {
             id: id,

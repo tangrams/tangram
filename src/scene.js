@@ -12,6 +12,7 @@ import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
+import FeatureSelection from './selection';
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
@@ -102,10 +103,10 @@ Scene.prototype.init = function () {
 
                 this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.selection = new FeatureSelection(this.gl, this.workers);
 
                 // Loads rendering styles from config, sets GL context and compiles programs
                 this.updateConfig();
-                this.initSelectionBuffer();
 
                 // this.zoom_step = 0.02; // for fractional zoom user adjustment
                 this.last_render_count = null;
@@ -154,38 +155,6 @@ Scene.prototype.destroy = function () {
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
-Scene.prototype.initSelectionBuffer = function () {
-    // Selection state tracking
-    this.pixel = new Uint8Array(4);
-    this.pixel32 = new Float32Array(this.pixel.buffer);
-    this.selection_requests = {};
-    this.selected_feature = null;
-    this.selection_delay_timer = null;
-    this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
-
-    // Frame buffer for selection
-    // TODO: initiate lazily in case we don't need to do any selection
-    this.fbo = this.gl.createFramebuffer();
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
-    this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
-    this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
-    this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
-
-    // Texture for the FBO color attachment
-    var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
-    fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
-
-    // Renderbuffer for the FBO depth attachment
-    var fbo_depth_rb = this.gl.createRenderbuffer();
-    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, fbo_depth_rb);
-    this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
-    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, fbo_depth_rb);
-
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-};
-
 Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
@@ -203,7 +172,7 @@ Scene.loadWorkerUrl = function (scene) {
 
         if (createObjectURL && scene.allow_cross_domain_workers) {
             var body = `importScripts('${worker_url}');`;
-            var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' })); 
+            var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
             resolve(worker_local_url);
         } else {
             resolve(worker_url);
@@ -613,17 +582,13 @@ Scene.prototype.renderGL = function () {
     }
 
     // Render selection pass (if needed)
-    // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
-    // style program, for the selection program
-    // TODO: reduce duplicated code w/main render pass above
-    if (Object.keys(this.selection_requests).length > 0) {
+    if (this.selection.pendingRequests()) {
         if (this.panning) {
             return;
         }
 
         // Switch to FBO
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-        gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
+        this.selection.bind();
         this.resetFrame({ alpha_blend: false });
 
         for (style in this.styles) {
@@ -635,16 +600,8 @@ Scene.prototype.renderGL = function () {
             this.renderStyle(style, program);
         }
 
-        // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
-        // Calling readPixels synchronously caused a massive performance hit, presumably since it
-        // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
-        if (this.selection_delay_timer != null) {
-            clearTimeout(this.selection_delay_timer);
-        }
-        this.selection_delay_timer = setTimeout(
-            () => this.doFeatureSelectionRequests(),
-            this.selection_frame_delay
-        );
+        // Read results from selection buffer
+        this.selection.read();
 
         // Reset to screen buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -659,98 +616,20 @@ Scene.prototype.renderGL = function () {
     return true;
 };
 
-// Request feature selection
-// Runs asynchronously, schedules selection buffer to be updated
+// Request feature selection at given pixel. Runs async and returns results via a promise.
 Scene.prototype.getFeatureAt = function (pixel) {
-    return new Promise((resolve, reject) => {
-        if (!this.initialized) {
-            reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
-            return;
-        }
-
-        // Queue requests for feature selection, and they will be picked up by the render loop
-        this.selection_request_id = (this.selection_request_id + 1) || 0;
-        this.selection_requests[this.selection_request_id] = {
-            type: 'point',
-            id: this.selection_request_id,
-            point: {
-                // TODO: move this pixel calc to a GL wrapper
-                x: pixel.x * this.device_pixel_ratio,
-                y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
-            },
-            resolve
-        };
-        this.dirty = true; // need to make sure the scene re-renders for these to be processed
-    });
-};
-
-Scene.prototype.doFeatureSelectionRequests = function () {
-    var gl = this.gl;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-
-    for (var request of Utils.values(this.selection_requests)) {
-        // This request was already sent to the worker, we're just awaiting its reply
-        if (request.sent) {
-            continue;
-        }
-
-        // TODO: support other selection types, such as features within a box
-        if (request.type !== 'point') {
-            continue;
-        }
-
-        // Check selection map against FBO
-        gl.readPixels(
-            Math.floor(request.point.x * this.fbo_size.width / this.device_size.width),
-            Math.floor(request.point.y * this.fbo_size.height / this.device_size.height),
-            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-        var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
-
-        // If feature found, ask appropriate web worker to lookup feature
-        var worker_id = this.pixel[3];
-        if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
-            if (this.workers[worker_id] != null) {
-                WorkerBroker.postMessage(
-                    this.workers[worker_id],
-                    'getFeatureSelection',
-                    { id: request.id, key: feature_key })
-                .then(message => {
-                    this.workerGetFeatureSelection(message);
-                });
-            }
-        }
-        // No feature found, but still need to resolve promise
-        else {
-            this.workerGetFeatureSelection({ id: request.id, feature: null });
-        }
-
-        request.sent = true;
+    if (!this.initialized) {
+        return Promise.reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-};
+    // Point scaled to [0..1] range
+    var point = {
+        x: pixel.x * this.device_pixel_ratio / this.device_size.width,
+        y: pixel.y * this.device_pixel_ratio / this.device_size.height
+    };
 
-// Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (message) {
-    var request = this.selection_requests[message.id];
-    if (!request) {
-        throw new Error("Scene.workerGetFeatureSelection() called without any message");
-    }
-
-    var feature = message.feature;
-    var changed = false;
-    if ((feature != null && this.selected_feature == null) ||
-        (feature == null && this.selected_feature != null) ||
-        (feature != null && this.selected_feature != null && feature.id !== this.selected_feature.id)) {
-        changed = true;
-    }
-
-    this.selected_feature = feature; // store the most recently selected feature
-
-    // Resolve the request
-    request.resolve({ feature, changed, request });
-    delete this.selection_requests[message.id]; // done processing this request
+    this.dirty = true; // need to make sure the scene re-renders for these to be processed
+    return this.selection.getFeatureAt(point);
 };
 
 // Queue a tile for load
@@ -1095,7 +974,7 @@ Scene.prototype.updateConfig = function () {
 // Serialize config and send to worker
 Scene.prototype.syncConfigToWorker = function () {
     this.config_serialized = Utils.serializeWithFunctions(this.config);
-    this.selection_map = {};
+    this.selection_map_worker_size = {};
 
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
