@@ -1,6 +1,7 @@
 // Rendering styles
 
 import {StyleParser} from './style_parser';
+import FeatureSelection from '../selection';
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
@@ -81,10 +82,10 @@ export var Style = {
 
             // If feature is marked as selectable
             if (selectable) {
-                style.selection_color = StyleParser.makeSelectionColor(feature);
+                style.selection_color = FeatureSelection.makeColor(feature);
             }
             else {
-                style.selection_color = StyleParser.defaults.selection_color;
+                style.selection_color = FeatureSelection.defaultColor;
             }
 
             // Subclass implementation
