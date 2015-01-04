@@ -2,6 +2,7 @@
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
 import {GL} from './gl';
+import GLSL from './glsl';
 import GLTexture from './gl_texture';
 
 import log from 'loglevel';
@@ -253,18 +254,18 @@ GLProgram.prototype.ensureUniforms = function (uniforms) {
         inject = null;
 
         // Check vertex shader
-        if (!GLProgram.uniformDefined(name, vs) && GLProgram.symbolReferenced(name, vs)) {
+        if (!GLSL.uniformDefined(name, vs) && GLSL.symbolReferenced(name, vs)) {
             if (!inject) {
-                inject = GLProgram.defineUniformForValue(name, uniforms[name]);
+                inject = GLSL.defineUniformForValue(name, uniforms[name]);
             }
             log.trace(`Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
             vs_injections.push(inject);
 
         }
         // Check fragment shader
-        if (!GLProgram.uniformDefined(name, fs) && GLProgram.symbolReferenced(name, fs)) {
+        if (!GLSL.uniformDefined(name, fs) && GLSL.symbolReferenced(name, fs)) {
             if (!inject) {
-                inject = GLProgram.defineUniformForValue(name, uniforms[name]);
+                inject = GLSL.defineUniformForValue(name, uniforms[name]);
             }
             log.trace(`Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
             fs_injections.push(inject);
@@ -283,174 +284,37 @@ GLProgram.prototype.ensureUniforms = function (uniforms) {
     }
 };
 
-// Generate a GLSL uniform definition for a JS object value
-GLProgram.defineUniformForValue = function (name, uniform) {
-    return 'uniform ' + GLProgram.defineVariableForValue(name, uniform);
-};
-
-// Generate a GLSL variable definition for a JS object value
-GLProgram.defineVariableForValue = function (name, uniform) {
-    var type, array, field, struct;
-
-    // Single float
-    if (typeof uniform === 'number') {
-        type = 'float';
-    }
-    // Multiple floats - vector or array
-    else if (Array.isArray(uniform)) {
-        // Numeric values
-        if (typeof uniform[0] === 'number') {
-            // float vectors (vec2, vec3, vec4)
-            if (uniform.length >= 2 && uniform.length <= 4) {
-                type = 'vec' + uniform.length;
-            }
-            // float array
-            else { //if (uniform.length > 4) {
-                type = 'float';
-                array = uniform.length;
-            }
-            // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-        }
-        // Array of textures
-        else if (typeof uniform[0] === 'string') {
-            type = 'sampler2D';
-            array = uniform.length;
-        }
-        // Array of arrays - but only arrays of vectors are allowed in this case
-        else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
-            // float vectors (vec2, vec3, vec4)
-            if (uniform[0].length >= 2 && uniform[0].length <= 4) {
-                type = 'vec' + uniform[0].length;
-            }
-            // else error?
-            array = uniform[0].length;
-        }
-        // Array of structures
-        else if (typeof uniform[0] === 'object') {
-            // Build definitions for each field in struct
-            type = '_type_' + name;
-            struct = `struct ${type} {\n`;
-            for (field in uniform[0]) {
-                struct += '    ' + GLProgram.defineVariableForValue(field, uniform[0][field]);
-            }
-            struct += '}'; //;\n';
-            type = struct;
-            array = uniform.length;
-        }
-    }
-    // Boolean
-    else if (typeof uniform === 'boolean') {
-        type = 'bool';
-    }
-    // Texture
-    else if (typeof uniform === 'string') {
-        type = 'sampler2D';
-    }
-    // Structure
-    else if (typeof uniform === 'object') {
-        // Build definitions for each field in struct
-        type = '_type_' + name;
-        struct = `struct ${type} {\n`;
-        for (field in uniform) {
-            struct += '    ' + GLProgram.defineVariableForValue(field, uniform[field]);
-        }
-        struct += '}'; //;\n';
-        type = struct;
-    }
-
-    // Construct final definition
-    var def = '';
-    // if (struct) {
-    //     def += struct;
-    // }
-    // def += `uniform ${type} ${name}`;
-    def += `${type} ${name}`;
-    if (array) {
-        def += `[${array}]`;
-    }
-    def += ';\n';
-    return def;
-};
-
 // Set uniforms from a JS object, with inferred types
-GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
-{
+GLProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
     if (!this.compiled) {
         return;
     }
 
     // TODO: only update uniforms when changed
 
-    // Track active texture unit
-    // A previous value will be passed in when setting GLSL structures, which call setUniforms recursively
-    this.texture_unit = texture_unit;
+    // Texture units must be tracked and incremented each time a texture sampler uniform is set.
+    // By default, the texture unit is reset to 0 each time setUniforms is called, but an explicit
+    // texture unit # can also be passed in, for cases where multiple calls to setUniforms are
+    // needed, and/or if other code may be setting uniform values directly.
+    if (typeof texture_unit === 'number') {
+        this.texture_unit = texture_unit;
+    }
+    else {
+        this.texture_unit = 0;
+    }
 
-    for (var name in uniforms) {
-        var uniform = uniforms[name];
-        var u;
+    // Parse uniform types and values from the JS object
+    var parsed = GLSL.parseUniforms(uniforms);
 
-        if (prefix) {
-            name = prefix + '.' + name;
+    // Set each uniform
+    for (var uniform of parsed) {
+        if (uniform.type === 'sampler2D') {
+            // For textures, we need to track texture units, so we have a special setter
+            this.setTextureUniform(uniform.name, uniform.value);
         }
-
-        // Single float
-        if (typeof uniform === 'number') {
-            this.uniform('1f', name, uniform);
+        else {
+            this.uniform(uniform.method, uniform.name, uniform.value);
         }
-        // Array: vector, array of floats, array of textures, or array of structs
-        else if (Array.isArray(uniform)) {
-            // Numeric values
-            if (typeof uniform[0] === 'number') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform.length >= 2 && uniform.length <= 4) {
-                    this.uniform(uniform.length + 'fv', name, uniform);
-                }
-                // float array
-                else if (uniform.length > 4) {
-                    this.uniform('1fv', name + '[0]', uniform);
-                }
-                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-            }
-            // Array of textures
-            else if (typeof uniform[0] === 'string') {
-                for (u=0; u < uniform.length; u++) {
-                    this.setTextureUniform(name + '[' + u + ']', uniform[u]);
-                }
-            }
-            // Array of arrays - but only arrays of vectors are allowed in this case
-            else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform[0].length >= 2 && uniform[0].length <= 4) {
-                    // Set each vector in the array
-                    for (u=0; u < uniform.length; u++) {
-                        this.uniform(uniform[u].length + 'fv', name + '[' + u + ']', uniform[u]);
-                    }
-                }
-                // else error?
-            }
-            // Array of structures
-            else if (typeof uniform[0] === 'object') {
-                for (u=0; u < uniform.length; u++) {
-                    // For each element in the struct array, set each field, passing along current texture unit
-                    this.setUniforms(uniform[u], name + '[' + u + ']', this.texture_unit);
-                }
-            }
-        }
-        // Boolean
-        else if (typeof uniform === 'boolean') {
-            this.uniform('1i', name, uniform);
-        }
-        // Texture
-        else if (typeof uniform === 'string') {
-            this.setTextureUniform(name, uniform);
-        }
-        // Structure
-        else if (typeof uniform === 'object') {
-            // Set each field in the struct, passing along current texture unit
-            this.setUniforms(uniform, name, this.texture_unit);
-        }
-
-        // TODO: support other non-float types? (int, etc.)
     }
 };
 
@@ -541,32 +405,4 @@ GLProgram.prototype.attribute = function (name)
     // attrib.size = info.size;
 
     return attrib;
-};
-
-// Check for a uniform definition of 'name' in the provided GLSL source
-// Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
-// NOTE: assumes comments have been stripped from source
-GLProgram.uniformDefined = function (name, source) {
-    // Match, in order:
-    // - the keyword 'uniform'
-    // - at least one character that is anything except a semicolon, ;
-    // - optionally, anything enclosed in curly braces, { ... } (an inline structure definition can go here)
-    // - optionally, any # of characters that is not a semicolon, ;
-    // - the name of the uniform
-
-    var re = new RegExp('uniform[^;]+(?:{[\\s\\S]*})?[^;]*\\b' + name + '\\b', 'g');
-    if (source.match(re)) {
-        return true;
-    }
-    return false;
-};
-
-// Check that a symbol is referenced in the GLSL source
-// NOTE: assumes comments have been stripped from source
-GLProgram.symbolReferenced = function (name, source) {
-    var re = new RegExp('\\b' + name + '\\b', 'g');
-    if (source.search(re) >= 0) {
-        return true;
-    }
-    return false;
 };
