@@ -225,52 +225,52 @@ styles:
 
 layers:
 
-    # earth:
-    #     geometry:
-    #         source: osm
-    #         filter: earth
+    earth:
+        geometry:
+            source: osm
+            filter: earth
 
-    #     style:
-    #         order: 0
-    #         color: [0.175, 0.175, 0.175]
+        style:
+            order: 0
+            color: [0.175, 0.175, 0.175]
 
-    # landuse:
-    #     geometry:
-    #         source: osm
-    #         filter: landuse
+    landuse:
+        geometry:
+            source: osm
+            filter: landuse
 
-    #     style:
-    #         order: 1
-    #         interactive: true
-    #         color: [0.5, 0.875, 0.5]
+        style:
+            order: 1
+            interactive: true
+            color: [0.5, 0.875, 0.5]
 
-    #     pitch:
-    #         filter:
-    #             kind: ['pitch', 'garden', 'playground']
-    #         style:
-    #             color: [0.3, 0.675, 0.3]
-    #             order: .1
+        pitch:
+            filter:
+                kind: ['pitch', 'garden', 'playground']
+            style:
+                color: [0.3, 0.675, 0.3]
+                order: .1
 
-    # water:
-    #     geometry:
-    #         source: osm
-    #         filter: water
+    water:
+        geometry:
+            source: osm
+            filter: water
 
-    #     style:
-    #         name: water
-    #         order: 2
-    #         interactive: true
-    #         color: [0.5, 0.5, 0.875]
-    #         outline:
-    #             color: [0.6, 0.6, 0.975]
-    #             width: |
-    #                 function () {
-    #                     return (
-    #                         zoom >= 16 &&
-    #                         (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
-    #                         (2.5 * Math.log(zoom))
-    #                     );
-    #                 }
+        style:
+            name: water
+            order: 2
+            interactive: true
+            color: [0.5, 0.5, 0.875]
+            outline:
+                color: [0.6, 0.6, 0.975]
+                width: |
+                    function () {
+                        return (
+                            zoom >= 16 &&
+                            (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
+                            (2.5 * Math.log(zoom))
+                        );
+                    }
 
     roads:
         geometry:
@@ -377,93 +377,93 @@ layers:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
-    # buildings:
-    #     geometry:
-    #         source: osm
-    #         filter: buildings
+    buildings:
+        geometry:
+            source: osm
+            filter: buildings
 
-    #     # properties:
-    #     #     min_height: 50
-    #     # filter: function () { return feature.height >= properties.min_height; }
-    #     # filter: function () { return feature.name != null; }
-    #     # filter: function () { return Math.random() < 0.25; }
-    #     # filter: function () { return true; }
+        # properties:
+        #     min_height: 50
+        # filter: function () { return feature.height >= properties.min_height; }
+        # filter: function () { return feature.name != null; }
+        # filter: function () { return Math.random() < 0.25; }
+        # filter: function () { return true; }
 
-    #     style:
-    #         order: 4
-    #         interactive: true
+        style:
+            order: 4
+            interactive: true
 
-    #         # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
-    #         # color: Style.color.randomColor()
-    #         # color: Style.color.pseudoRandomColor()
-    #         # color: Style.color.pseudoRandomGrayscale()
-    #         # color: |
-    #         #     function () {
-    #         #         var c = [.6, .6, .6];
-    #         #         if (feature.name || feature.kind) {
-    #         #             c = [.2, .2, .2];
-    #         #             c[0] = (feature.name && .6) || c[0];
-    #         #             c[2] = (feature.kind && .6) || c[2];
-    #         #         }
-    #         #         return c;
-    #         #     }
-    #         color: [.6, .6, .6]
-    #         extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
+            # color: Style.color.randomColor()
+            # color: Style.color.pseudoRandomColor()
+            # color: Style.color.pseudoRandomGrayscale()
+            # color: |
+            #     function () {
+            #         var c = [.6, .6, .6];
+            #         if (feature.name || feature.kind) {
+            #             c = [.2, .2, .2];
+            #             c[0] = (feature.name && .6) || c[0];
+            #             c[2] = (feature.kind && .6) || c[2];
+            #         }
+            #         return c;
+            #     }
+            color: [.6, .6, .6]
+            extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
-    #     # buildingsOfInterest:
-    #     #     filter:
-    #     #         any:
-    #     #             name: true
-    #     #             kind: true
-    #     #     style:
-    #     #         color: red
+        # buildingsOfInterest:
+        #     filter:
+        #         any:
+        #             name: true
+        #             kind: true
+        #     style:
+        #         color: red
 
-    #     namedBuildings:
-    #         filter: { name: true }
-    #         style:
-    #             color: [.6, .2, .2]
+        namedBuildings:
+            filter: { name: true }
+            style:
+                color: [.6, .2, .2]
 
-    #         namedKindBuildings:
-    #             filter: { kind: true }
-    #             style:
-    #                 color: [.6, .2, .6]
+            namedKindBuildings:
+                filter: { kind: true }
+                style:
+                    color: [.6, .2, .6]
 
-    #     kindBuildings:
-    #         filter: { name: false, kind: true }
-    #         style:
-    #             color: [.2, .2, .6]
+        kindBuildings:
+            filter: { name: false, kind: true }
+            style:
+                color: [.2, .2, .6]
 
-    # pois:
-    #     geometry:
-    #         source: osm
-    #         filter: pois
+    pois:
+        geometry:
+            source: osm
+            filter: pois
 
-    #     filter: { name: true }
-    #     style:
-    #         name: points
-    #         size: 10px
+        filter: { name: true }
+        style:
+            name: points
+            size: 10px
 
-    #         # name: icons
-    #         # sprite: tree
-    #         # size: [[13, 16px], [14, 24px], [15, 32px]]
+            # name: icons
+            # sprite: tree
+            # size: [[13, 16px], [14, 24px], [15, 32px]]
 
-    #         # visible: false
-    #         order: 5
-    #         interactive: true
-    #         color: [1, 1, 0]
+            # visible: false
+            order: 5
+            interactive: true
+            color: [1, 1, 0]
 
-    #     # examples of different icons mapped to faeture properties
-    #     restaurant:
-    #         filter: { kind: restaurant }
-    #         style:
-    #             sprite: restaurant
+        # examples of different icons mapped to faeture properties
+        restaurant:
+            filter: { kind: restaurant }
+            style:
+                sprite: restaurant
 
-    #     cafe:
-    #         filter: { kind: cafe }
-    #         style:
-    #             sprite: cafe
+        cafe:
+            filter: { kind: cafe }
+            style:
+                sprite: cafe
 
-    #     culture:
-    #         filter: { kind: [museum, library] }
-    #         style:
-    #             sprite: museum
+        culture:
+            filter: { kind: [museum, library] }
+            style:
+                sprite: museum

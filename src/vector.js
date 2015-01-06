@@ -2,7 +2,8 @@
 
 export var Vector = {};
 
-Vector.set = function (v){
+Vector.set = function (v)
+{
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++)
@@ -10,7 +11,8 @@ Vector.set = function (v){
     return V;
 };
 
-Vector.neg = function(v){
+Vector.neg = function (v)
+{
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++)
@@ -19,7 +21,7 @@ Vector.neg = function(v){
 };
 
 // Addition of two vectors
-Vector.sum = function (v1, v2)
+Vector.add = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
@@ -33,28 +35,31 @@ Vector.sub = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
-    for (var i = 0; i < lim; i++)
+    
+    for (var i = 0; i < lim; i++) {
         v[i] = v1[i] - v2[i];
+    }
     return v;
 };
 
 // Multiplication of two vectors
 Vector.mult = function (v1, v2)
 {
-    var v = [];
-    var len = v1.length;
-    var i;
-
-    // Multiply two vectors
-    if (len === v2.length) {
-        for (i = 0; i < len; i++) {
-            v[i] = v1[i] * v2[i];
-        }
-    }
-    // Mulitply by scalar
-    else {
+    var v = [],
+        len = v1.length,
+        i;
+    
+    if (typeof v2 === 'number') {
+        // Mulitply by scalar
         for (i = 0; i < len; i++) {
             v[i] = v1[i] * v2;
+        }
+    }
+    else {
+        // Multiply two vectors
+        len = Math.min(v1.length,v2.length);
+        for (i = 0; i < len; i++) {
+            v[i] = v1[i] * v2[i];
         }
     }
     return v;
@@ -63,16 +68,29 @@ Vector.mult = function (v1, v2)
 // Division of two vectors
 Vector.div = function (v1, v2)
 {
-    var v = [];
-    if(v2.length === 1){
-        for (var i = 0; i < v1.length; i++)
-                v[i] = v1[i] / v2;
+    var v = [], 
+        i;
+    if(typeof v2 === 'number'){
+        // Divide by scalar
+        for (i = 0; i < v1.length; i++){
+            v[i] = v1[i] / v2;
+        }
     } else {
-        for (var i = 0; i < v1.length; i++)
+        // Devide to vectors
+        len = Math.min(v1.length,v2.length);
+        for (i = 0; i < len; i++) {
             v[i] = v1[i] / v2[i];
+        }
     }
     return v;
 };
+
+// Get 2D perpendicular
+Vector.perp = function (v1, v2) 
+{
+    return [ v2[1] - v1[1], 
+             v1[0] - v2[0] ];
+}
 
 // Vector length squared
 Vector.lengthSq = function (v)

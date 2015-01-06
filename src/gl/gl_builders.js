@@ -149,56 +149,82 @@ GLBuilders.buildPolylines = function (
         scaling_index
     }) {
 
-    //debugger;
-
-    // Build triangles
+    // Build variables
     var vertices = [],
         scalingVecs = [],   //  vertices directions for then (on GLSL vertex shader) extrude
         texcoords = [],
         halfWidth = width/2,
-        num_lines = lines.length;
-
+        num_lines = lines.length,
+        i = 0;
     var vertexData_Offset = vertex_data.length;
-
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
 
-        // console.log("line: " + ln + "/" + num_lines + " = " + lineSize + " vertices");
+        if (lineSize < 2) {
+            continue;
+        }
 
-        if (lineSize >= 2) {
+        //  Initialize variables
+        var normPrevCurr = [0.0,0.0,0.0],  // Right normal to segment between previous and current m_points
+            normCurrNext = [0.0,0.0,0.0],  // Right normal to segment between current and next m_points
+            rightNorm = [0.0,0.0,0.0];     // Right "normal" at current point, scaled for miter joint
 
-            //  Initialize variables
-            var normPrevCurr = [0.0,0.0,0.0];  // Right normal to segment between previous and current m_points
-            var normCurrNext = [0.0,0.0,0.0];  // Right normal to segment between current and next m_points
-            var rightNorm = [0.0,0.0,0.0];     // Right "normal" at current point, scaled for miter joint
+        var prevCoord = [], // Previous point coordinates
+            currCoord = [], // Current point coordinates
+            nextCoord = []; // Next point coordinates
 
-            var prevCoord = []; // Previous point coordinates
-            var currCoord = []; // Current point coordinates
-            var nextCoord = []; // Next point coordinates
+        //  Compute first pair of vertexes based on the second point of the line
+        currCoord = Vector.set( line[0] );
+        nextCoord = Vector.set( line[1] );
 
-            //  Compute first pair of vertexes based on the second point of the line
-            currCoord = Vector.set( line[0] );
-            nextCoord = Vector.set( line[1] );
+        //  a) Get perpendicular of the vector between first and second point
+        normCurrNext = Vector.normalize( Vector.perp( currCoord, nextCoord ) );
+        rightNorm = normCurrNext;
 
-            //  a) Get perpendicular of the vector between first and second point
-            normCurrNext[0] = nextCoord[1] - currCoord[1];
-            normCurrNext[1] = currCoord[0] - nextCoord[0];
-            normCurrNext = Vector.normalize(normCurrNext);
+        //  b) add the pair vertex into the vertex buffer
+        if (scaling_index) {
+            //  b.a If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+            vertices.push(currCoord);
+            vertices.push(currCoord);
+            scalingVecs.push( rightNorm );
+            scalingVecs.push( Vector.neg(rightNorm) );
+        } else {
+            //  b.b Add the extruded vertexes
+            vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
+                            currCoord[1] + rightNorm[1] * halfWidth ]);
+            vertices.push([ currCoord[0] - rightNorm[0] * halfWidth,
+                            currCoord[1] - rightNorm[1] * halfWidth ]);
+        }
 
-            rightNorm = normCurrNext;
+        // c) Add uv's if they are enable
+        if (texcoord_index) {
+            texcoords.push( [max_u, min_v], [min_u, min_v] );
+        }
 
-            //  b) add the pair vertex into the vertex buffer
+        // Do this with the rest (except the last one)
+        for(i = 1; i < lineSize - 1 ; i++){
+            prevCoord = currCoord;
+            currCoord = nextCoord;
+            nextCoord = line[i+1];
+
+            //  a) Store prev normal and compute the next one
+            normPrevCurr = normCurrNext;
+            normCurrNext = Vector.normalize( Vector.perp( currCoord, nextCoord ) );
+            rightNorm = Vector.normalize( Vector.add(normPrevCurr, normCurrNext) );
+
+            var scale = Math.sqrt(2 / (1 + Vector.dot(normPrevCurr,normCurrNext)));
+            rightNorm = Vector.mult(rightNorm,scale);
+
+            //  b) add the current pair vertex into the vertex buffer
             if (scaling_index) {
-                //  b.a If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
                 vertices.push(currCoord);
                 vertices.push(currCoord);
                 scalingVecs.push( rightNorm );
                 scalingVecs.push( Vector.neg(rightNorm) );
             } else {
-                //  b.b Add the extruded vertexes
                 vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
                                 currCoord[1] + rightNorm[1] * halfWidth ]);
                 vertices.push([ currCoord[0] - rightNorm[0] * halfWidth,
@@ -207,124 +233,94 @@ GLBuilders.buildPolylines = function (
 
             // c) Add uv's if they are enable
             if (texcoord_index) {
-                texcoords.push( [max_u, min_v], [min_u, min_v] );
-            }
-
-            // Do this with the rest (except the last one)
-            for(var i = 1; i < lineSize - 1 ; i++){
-                prevCoord = currCoord;
-                currCoord = nextCoord;
-                nextCoord = line[i+1];
-
-                normPrevCurr = normCurrNext;
-
-                //  a) Get perpendicular of the vector between first and second point
-                normCurrNext[0] = nextCoord[1] - currCoord[1];
-                normCurrNext[1] = currCoord[0] - nextCoord[0];
-
-                rightNorm = Vector.sum(normPrevCurr, normCurrNext);
-                rightNorm = Vector.normalize(rightNorm);
-                var scale = Math.sqrt(2. / (1. + Vector.dot(normPrevCurr,normCurrNext)));
-                rightNorm = Vector.mult(rightNorm,scale);
-
-                //  b) add the current pair vertex into the vertex buffer
-                if (scaling_index) {
-                    vertices.push(currCoord);
-                    vertices.push(currCoord);
-                    scalingVecs.push( rightNorm );
-                    scalingVecs.push( Vector.neg(rightNorm) );
-                } else {
-                    vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
-                                    currCoord[1] + rightNorm[1] * halfWidth ]);
-                    vertices.push([ currCoord[0] - rightNorm[0] * halfWidth,
-                                    currCoord[1] - rightNorm[1] * halfWidth ]);
-                }
-
-                // c) Add uv's if they are enable
-                if (texcoord_index) {
-                    var frac = i/lineSize;
-                    texcoords.push( [max_u, min_v+frac*max_v],
-                                    [min_u, min_v+frac*max_v] );
-                }
-            }
-
-            normCurrNext = Vector.normalize(normCurrNext);
-
-            //  b) add the current pair vertex into the vertex buffer
-            if (scaling_index) {
-                vertices.push(nextCoord);
-                vertices.push(nextCoord);
-                scalingVecs.push(rightNorm);
-                scalingVecs.push( Vector.neg(rightNorm) );
-            } else {
-                vertices.push([ nextCoord[0] + rightNorm[0] * halfWidth,
-                                nextCoord[1] + rightNorm[1] * halfWidth ]);
-                vertices.push([ nextCoord[0] - rightNorm[0] * halfWidth,
-                                nextCoord[1] - rightNorm[1] * halfWidth ]);
-            }
-
-            // c) Add uv's if they are enable
-            if (texcoord_index) {
-                texcoords.push( [max_u, max_v],
-                                [min_u, max_v] );
+                var frac = i/lineSize;
+                texcoords.push( [max_u, min_v+frac*max_v],
+                                [min_u, min_v+frac*max_v] );
             }
         }
-    }
 
-    // Build triangles for a single line segment, extruded by the provided width
-    function addVertex (index) {
+        rightNorm = Vector.normalize( normCurrNext );
 
-        // console.log("Adding Vertex index = " + index + "/" + vertices.length);
-
-        // Prevent access to undefined vertices
-        if (index >= vertices.length || vertices.length == 0) {
-            return;
-        }
-
-        // set vertex position
-        vertex_template[0] = vertices[index][0];
-        vertex_template[1] = vertices[index][1];
-        // vertex_template[2] = vertices[v][2]; // What happend with Z ??
-
-        // set UVs
-        if (texcoord_index) {
-            vertex_template[texcoord_index + 0] = texcoords[index][0];
-            vertex_template[texcoord_index + 1] = texcoords[index][1];
-        }
-
-        // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+        //  b) add the current pair vertex into the vertex buffer
         if (scaling_index) {
-            vertex_template[scaling_index + 0] = scalingVecs[index][0];
-            vertex_template[scaling_index + 1] = scalingVecs[index][1];
-            vertex_template[scaling_index + 2] = halfWidth;
+            vertices.push( nextCoord );
+            vertices.push( nextCoord );
+            scalingVecs.push(rightNorm);
+            scalingVecs.push( Vector.neg(rightNorm) );
+        } else {
+            vertices.push([ nextCoord[0] + rightNorm[0] * halfWidth,
+                            nextCoord[1] + rightNorm[1] * halfWidth ]);
+            vertices.push([ nextCoord[0] - rightNorm[0] * halfWidth,
+                            nextCoord[1] - rightNorm[1] * halfWidth ]);
         }
 
-        //  Add vertex to VBO
-        vertex_data.addVertex(vertex_template);
-    }
+        // c) Add uv's if they are enable
+        if (texcoord_index) {
+            texcoords.push( [max_u, max_v],
+                            [min_u, max_v] );
+        }
 
-    // Add vertices to buffer
-    if (lineSize >= 2) {
-        for (var i = 0; i < lineSize - 1; i++) {
-            addVertex(2*i+2);
-            addVertex(2*i+1);
-            addVertex(2*i+0);
+        // Build triangles for a single line segment, extruded by the provided width
+        function addVertex (index) {
+            // Prevent access to undefined vertices
+            if (index >= vertices.length) {
+                return;
+            }
 
-            addVertex(2*i+2);
-            addVertex(2*i+3);
-            addVertex(2*i+1);
+            // set vertex position
+            vertex_template[0] = vertices[index][0];
+            vertex_template[1] = vertices[index][1];
+            // vertex_template[2] = vertices[v][2]; // What happend with Z ??
+
+            // set UVs
+            if (texcoord_index) {
+                vertex_template[texcoord_index + 0] = texcoords[index][0];
+                vertex_template[texcoord_index + 1] = texcoords[index][1];
+            }
+
+            // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+            if (scaling_index) {
+                vertex_template[scaling_index + 0] = scalingVecs[index][0];
+                vertex_template[scaling_index + 1] = scalingVecs[index][1];
+                vertex_template[scaling_index + 2] = halfWidth;
+            }
+
+            //  Add vertex to VBO
+            vertex_data.addVertex(vertex_template);
+        }
+
+        // Add vertices to buffer
+        if (lineSize >= 2) {
+            for (i = 0; i < lineSize - 1; i++) {
+                addVertex(2*i+2);
+                addVertex(2*i+1);
+                addVertex(2*i+0);
+
+                addVertex(2*i+2);
+                addVertex(2*i+3);
+                addVertex(2*i+1);
+            }
+        }
+
+        // // Add triangles indices
+        // for (var i = 0; i < lineSize - 1; i++) {
+        //     indices_data.push(vertexData_Offset + 2*i+2);
+        //     indices_data.push(vertexData_Offset + 2*i+1);
+        //     indices_data.push(vertexData_Offset + 2*i);
+        //     indices_data.push(vertexData_Offset + 2*i+2);
+        //     indices_data.push(vertexData_Offset + 2*i+3);
+        //     indices_data.push(vertexData_Offset + 2*i+1);
+        // }
+
+        // Clean all
+        vertices = [];
+        if (scaling_index) {
+            scalingVecs = [];
+        }
+        if (texcoord_index) {
+            texcoords = [];
         }
     }
-
-    // // Add triangles indices
-    // for (var i = 0; i < lineSize - 1; i++) {
-    //     indices_data.push(vertexData_Offset + 2*i+2);
-    //     indices_data.push(vertexData_Offset + 2*i+1);
-    //     indices_data.push(vertexData_Offset + 2*i);
-    //     indices_data.push(vertexData_Offset + 2*i+2);
-    //     indices_data.push(vertexData_Offset + 2*i+3);
-    //     indices_data.push(vertexData_Offset + 2*i+1);
-    // }
 };
 
 // Build a quad centered on a point
