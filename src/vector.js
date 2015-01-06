@@ -10,6 +10,14 @@ Vector.set = function (v){
     return V;
 };
 
+Vector.neg = function(v){
+    var V = [];
+    var lim = v.length;
+    for (var i = 0; i < lim; i++)
+        V[i] = v[i] * -1;
+    return V;
+};
+
 // Addition of two vectors
 Vector.sum = function (v1, v2)
 {

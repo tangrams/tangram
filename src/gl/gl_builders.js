@@ -149,6 +149,8 @@ GLBuilders.buildPolylines = function (
         scaling_index
     }) {
 
+    //debugger;
+
     // Build triangles
     var vertices = [],
         scalingVecs = [],   //  vertices directions for then (on GLSL vertex shader) extrude
@@ -164,8 +166,11 @@ GLBuilders.buildPolylines = function (
         var line = lines[ln];
         var lineSize = line.length;
 
-        if (lineSize > 2) {
+        // console.log("line: " + ln + "/" + num_lines + " = " + lineSize + " vertices");
 
+        if (lineSize >= 2) {
+
+            //  Initialize variables
             var normPrevCurr = [0.0,0.0,0.0];  // Right normal to segment between previous and current m_points
             var normCurrNext = [0.0,0.0,0.0];  // Right normal to segment between current and next m_points
             var rightNorm = [0.0,0.0,0.0];     // Right "normal" at current point, scaled for miter joint
@@ -174,16 +179,38 @@ GLBuilders.buildPolylines = function (
             var currCoord = []; // Current point coordinates
             var nextCoord = []; // Next point coordinates
 
+            //  Compute first pair of vertexes based on the second point of the line
             currCoord = Vector.set( line[0] );
             nextCoord = Vector.set( line[1] );
 
-            // Get perpendicular of the vector between first and second dot
+            //  a) Get perpendicular of the vector between first and second point
             normCurrNext[0] = nextCoord[1] - currCoord[1];
             normCurrNext[1] = currCoord[0] - nextCoord[0];
             normCurrNext = Vector.normalize(normCurrNext);
 
             rightNorm = normCurrNext;
 
+            //  b) add the pair vertex into the vertex buffer
+            if (scaling_index) {
+                //  b.a If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+                vertices.push(currCoord);
+                vertices.push(currCoord);
+                scalingVecs.push( rightNorm );
+                scalingVecs.push( Vector.neg(rightNorm) );
+            } else {
+                //  b.b Add the extruded vertexes
+                vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
+                                currCoord[1] + rightNorm[1] * halfWidth ]);
+                vertices.push([ currCoord[0] - rightNorm[0] * halfWidth,
+                                currCoord[1] - rightNorm[1] * halfWidth ]);
+            }
+
+            // c) Add uv's if they are enable
+            if (texcoord_index) {
+                texcoords.push( [max_u, min_v], [min_u, min_v] );
+            }
+
+            // Do this with the rest (except the last one)
             for(var i = 1; i < lineSize - 1 ; i++){
                 prevCoord = currCoord;
                 currCoord = nextCoord;
@@ -191,19 +218,21 @@ GLBuilders.buildPolylines = function (
 
                 normPrevCurr = normCurrNext;
 
+                //  a) Get perpendicular of the vector between first and second point
                 normCurrNext[0] = nextCoord[1] - currCoord[1];
                 normCurrNext[1] = currCoord[0] - nextCoord[0];
-                rightNorm = Vector.sum(normPrevCurr, normCurrNext);
 
+                rightNorm = Vector.sum(normPrevCurr, normCurrNext);
                 rightNorm = Vector.normalize(rightNorm);
                 var scale = Math.sqrt(2. / (1. + Vector.dot(normPrevCurr,normCurrNext)));
                 rightNorm = Vector.mult(rightNorm,scale);
 
+                //  b) add the current pair vertex into the vertex buffer
                 if (scaling_index) {
                     vertices.push(currCoord);
                     vertices.push(currCoord);
-                    scalingVecs.push(rightNorm);
-                    scalingVecs.push(-rightNorm); // TODO: fix
+                    scalingVecs.push( rightNorm );
+                    scalingVecs.push( Vector.neg(rightNorm) );
                 } else {
                     vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
                                     currCoord[1] + rightNorm[1] * halfWidth ]);
@@ -211,7 +240,7 @@ GLBuilders.buildPolylines = function (
                                     currCoord[1] - rightNorm[1] * halfWidth ]);
                 }
 
-                // Add UVs
+                // c) Add uv's if they are enable
                 if (texcoord_index) {
                     var frac = i/lineSize;
                     texcoords.push( [max_u, min_v+frac*max_v],
@@ -221,19 +250,20 @@ GLBuilders.buildPolylines = function (
 
             normCurrNext = Vector.normalize(normCurrNext);
 
+            //  b) add the current pair vertex into the vertex buffer
             if (scaling_index) {
                 vertices.push(nextCoord);
                 vertices.push(nextCoord);
                 scalingVecs.push(rightNorm);
-                scalingVecs.push(-rightNorm); // TODO: fix
+                scalingVecs.push( Vector.neg(rightNorm) );
             } else {
-                vertices.push([ currCoord[0] + rightNorm[0] * halfWidth,
-                                currCoord[1] + rightNorm[1] * halfWidth ]);
-
-                vertices.push([ currCoord[0] - rightNorm[0] * halfWidth,
-                                currCoord[1] - rightNorm[1] * halfWidth ]);
+                vertices.push([ nextCoord[0] + rightNorm[0] * halfWidth,
+                                nextCoord[1] + rightNorm[1] * halfWidth ]);
+                vertices.push([ nextCoord[0] - rightNorm[0] * halfWidth,
+                                nextCoord[1] - rightNorm[1] * halfWidth ]);
             }
 
+            // c) Add uv's if they are enable
             if (texcoord_index) {
                 texcoords.push( [max_u, max_v],
                                 [min_u, max_v] );
@@ -244,65 +274,47 @@ GLBuilders.buildPolylines = function (
     // Build triangles for a single line segment, extruded by the provided width
     function addVertex (index) {
 
-        // TODO: fix
-        if (index >= vertices.length) {
-            // debugger;
+        // console.log("Adding Vertex index = " + index + "/" + vertices.length);
+
+        // Prevent access to undefined vertices
+        if (index >= vertices.length || vertices.length == 0) {
             return;
         }
 
+        // set vertex position
         vertex_template[0] = vertices[index][0];
         vertex_template[1] = vertices[index][1];
         // vertex_template[2] = vertices[v][2]; // What happend with Z ??
 
-        // Add UVs
+        // set UVs
         if (texcoord_index) {
             vertex_template[texcoord_index + 0] = texcoords[index][0];
             vertex_template[texcoord_index + 1] = texcoords[index][1];
         }
 
-        // Add Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+        // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
         if (scaling_index) {
             vertex_template[scaling_index + 0] = scalingVecs[index][0];
             vertex_template[scaling_index + 1] = scalingVecs[index][1];
             vertex_template[scaling_index + 2] = halfWidth;
         }
 
+        //  Add vertex to VBO
         vertex_data.addVertex(vertex_template);
     }
 
     // Add vertices to buffer
-    // if (lineSize > 2) {
-        // for (var i = 0; i < lineSize - 1; i++) {
-        //     addVertex(2*i+2);
-        //     addVertex(2*i+1);
-        //     addVertex(2*i+0);
+    if (lineSize >= 2) {
+        for (var i = 0; i < lineSize - 1; i++) {
+            addVertex(2*i+2);
+            addVertex(2*i+1);
+            addVertex(2*i+0);
 
-        //     addVertex(2*i+2);
-        //     addVertex(2*i+3);
-        //     addVertex(2*i+1);
-        // }
-    // }
-
-    // addVertex(0);
-    // addVertex(2);
-    // addVertex(1);
-
-    vertex_template[0] = 0;
-    vertex_template[1] = 0;
-    vertex_data.addVertex(vertex_template);
-
-    vertex_template[0] = 4096;
-    vertex_template[1] = 0;
-    vertex_data.addVertex(vertex_template);
-
-    vertex_template[0] = 4096;
-    vertex_template[1] = -4096;
-    vertex_data.addVertex(vertex_template);
-
-    // // Add vertices to buffer
-    // for (var i = 0; i < vertices.length; i++) {
-    //     addVertex(i);
-    // }
+            addVertex(2*i+2);
+            addVertex(2*i+3);
+            addVertex(2*i+1);
+        }
+    }
 
     // // Add triangles indices
     // for (var i = 0; i < lineSize - 1; i++) {
@@ -313,8 +325,6 @@ GLBuilders.buildPolylines = function (
     //     indices_data.push(vertexData_Offset + 2*i+3);
     //     indices_data.push(vertexData_Offset + 2*i+1);
     // }
-
-    // debugger;
 };
 
 // Build a quad centered on a point
