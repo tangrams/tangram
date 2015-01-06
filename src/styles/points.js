@@ -52,7 +52,7 @@ Object.assign(Points, {
             0, 0,
             // color
             // TODO: automate multiplication for normalized attribs?
-            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, 255,
+            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // layer number
@@ -69,8 +69,8 @@ Object.assign(Points, {
 
         GLBuilders.buildQuadsForPoints(
             points,
-            style.size * 2,
-            style.size * 2,
+            style.size[0] || style.size,
+            style.size[1] || style.size,
             vertex_data,
             vertex_template,
             { texcoord_index: this.vertex_layout.index.a_texcoord }

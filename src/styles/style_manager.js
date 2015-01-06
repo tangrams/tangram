@@ -67,7 +67,32 @@ StyleManager.remove = function (name) {
 StyleManager.preload = function (styles) {
     // First load remote styles, then load shader blocks from remote URLs
     // TODO: also preload textures
+    StyleManager.normalizeTextures(styles);
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
+};
+
+// Handle single or multi-texture syntax, for stylesheet convenience
+StyleManager.normalizeTextures = function (styles) {
+    for (var style of Utils.values(styles)) {
+        // Simpler single texture syntax
+        if (style.texture) {
+            // Default to a single texture, using the URL as the name
+            style.textures = { [style.texture.url]: style.texture };
+        }
+
+        // Multi-texture syntax
+        if (style.textures) {
+            var num_textures = Object.keys(style.textures).length;
+
+            if (num_textures === 1) {
+                // Save a texture reference at 'texture' for convenience
+                if (!style.texture) {
+                    style.texture = style.textures[Object.keys(style.textures)[0]];
+                }
+            }
+        }
+    }
+    return styles;
 };
 
 // Load style definitions from external URLs
@@ -155,7 +180,8 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
 
 // Update built-in style or create a new one
 StyleManager.update = function (name, settings) {
-    Styles[name] = Styles[name] || Object.create(Styles[settings.extends] || StyleManager.baseStyle);
+    var base = Styles[settings.extends] || StyleManager.baseStyle;
+    Styles[name] = Styles[name] || Object.create(base);
     if (Styles[settings.extends]) {
         Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
     }
@@ -163,6 +189,11 @@ StyleManager.update = function (name, settings) {
     for (var s in settings) {
         Styles[name][s] = settings[s];
     }
+
+    // TODO: move these to a Style.clone method?
+    Styles[name].initialized = false;
+    Styles[name].defines = (base.define && Object.create(base.define)) || {};
+    Styles[name].shaders = Styles[name].shaders || (base.shaders && Object.create(base.shaders)) || {};
 
     Styles[name].name = name;
     return Styles[name];

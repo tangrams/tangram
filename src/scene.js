@@ -12,6 +12,7 @@ import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
+import FeatureSelection from './selection';
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
@@ -100,20 +101,16 @@ Scene.prototype.init = function () {
                 this.canvas.style.zIndex = -1;
                 this.container.appendChild(this.canvas);
 
-                this.gl = GL.getContext(this.canvas);
+                this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.selection = new FeatureSelection(this.gl, this.workers);
+
+                // Loads rendering styles from config, sets GL context and compiles programs
+                this.updateConfig();
 
                 // this.zoom_step = 0.02; // for fractional zoom user adjustment
                 this.last_render_count = null;
                 this.initInputHandlers();
-
-                this.createCamera();
-                this.createLighting();
-                this.initSelectionBuffer();
-
-                // Loads rendering styles from config, sets GL context and compiles programs
-                this.updateStyles(this.gl);
-                this.updateActiveStyles();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -158,64 +155,43 @@ Scene.prototype.destroy = function () {
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
-Scene.prototype.initSelectionBuffer = function () {
-    // Selection state tracking
-    this.pixel = new Uint8Array(4);
-    this.pixel32 = new Float32Array(this.pixel.buffer);
-    this.selection_requests = {};
-    this.selected_feature = null;
-    this.selection_delay_timer = null;
-    this.selection_frame_delay = 5; // delay from selection render to framebuffer sample, to avoid CPU/GPU sync lock
-
-    // Frame buffer for selection
-    // TODO: initiate lazily in case we don't need to do any selection
-    this.fbo = this.gl.createFramebuffer();
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);
-    this.fbo_size = { width: 256, height: 256 }; // TODO: make configurable / adaptive based on canvas size
-    this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
-    this.gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
-
-    // Texture for the FBO color attachment
-    var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
-    fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
-
-    // Renderbuffer for the FBO depth attachment
-    var fbo_depth_rb = this.gl.createRenderbuffer();
-    this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, fbo_depth_rb);
-    this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.fbo_size.width, this.fbo_size.height);
-    this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, fbo_depth_rb);
-
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-};
-
 Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
 
-// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
-Scene.prototype.createWorkers = function () {
+
+Scene.loadWorkerUrl = function (scene) {
+    var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
+        createObjectURL = scene.createObjectURL();
+
     return new Promise((resolve, reject) => {
-        var worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
         if (!worker_url) {
             reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
             return;
         }
 
-        var createObjectURL = this.createObjectURL();
-        if (createObjectURL && this.allow_cross_domain_workers) {
-            // Worker loads itself to increase likelihood of cross-domain loading working
-            // (inconsistent support across browser/platforms)
+        if (createObjectURL && scene.allow_cross_domain_workers) {
             var body = `importScripts('${worker_url}');`;
             var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-            this.makeWorkers(worker_local_url).then(resolve, reject);
-
-        } else { // Traditional load from remote URL
-            this.makeWorkers(worker_url).then(resolve, reject);
+            resolve(worker_local_url);
+        } else {
+            resolve(worker_url);
         }
+
+    });
+
+};
+
+
+// Web workers handle heavy duty tile construction: networking, geometry processing, etc.
+Scene.prototype.createWorkers = function () {
+    return new Promise((resolve, reject) => {
+        Scene.loadWorkerUrl(this).then((worker_url) => {
+            this.makeWorkers(worker_url).then(resolve, reject);
+        });
     });
 };
+
 
 // Instantiate workers from URL, init event handlers
 Scene.prototype.makeWorkers = function (url) {
@@ -450,7 +426,7 @@ Scene.prototype.render = function () {
     return true;
 };
 
-Scene.prototype.resetFrame = function () {
+Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = {}) {
     if (!this.initialized) {
         return;
     }
@@ -460,309 +436,200 @@ Scene.prototype.resetFrame = function () {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // TODO: unnecessary repeat?
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LESS);
-    // gl.enable(gl.CULL_FACE);
-    // gl.cullFace(gl.BACK);
-    // gl.enable(gl.BLEND);
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    // Defaults
+    // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
+    depth_test = (depth_test === false) ? false : true;
+    cull_face = (cull_face === false) ? false : true;
+    alpha_blend = (alpha_blend !== true) ? false : true;
+
+    if (depth_test !== false) {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+    }
+    else {
+        gl.disable(gl.DEPTH_TEST);
+    }
+
+    if (cull_face !== false) {
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
+    }
+    else {
+        gl.disable(gl.CULL_FACE);
+    }
+
+    if (alpha_blend !== false) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+    else {
+        gl.disable(gl.BLEND);
+    }
+};
+
+Scene.prototype.renderStyle = function (style, program) {
+    var first_for_style = true;
+    var render_count = 0;
+
+    // Render tile GL geometries
+    for (var t in this.renderable_tiles) {
+        var tile = this.renderable_tiles[t];
+
+        if (tile.gl_geometry[style] != null) {
+            // Setup style if encountering for first time this frame
+            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+            if (first_for_style === true) {
+                first_for_style = false;
+
+                program.use();
+                this.styles[style].setup();
+
+                // TODO: don't set uniforms when they haven't changed
+                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
+                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                program.uniform('1f', 'u_order_min', this.order.min);
+                program.uniform('1f', 'u_order_range', this.order.range);
+                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                this.camera.setupProgram(program);
+                this.lighting.setupProgram(program);
+            }
+
+            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+
+            // Tile origin
+            program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+
+            // Tile view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.identity(this.tile_view_mat);
+            mat4.translate(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.min.x - this.center_meters.x, tile.min.y - this.center_meters.y, 0)); // adjust for tile origin & map center
+            mat4.scale(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            program.uniform('Matrix4fv', 'u_tile_view', false, this.tile_view_mat);
+
+            // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.tile_world_mat);
+            mat4.translate(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            program.uniform('Matrix4fv', 'u_tile_world', false, this.tile_world_mat);
+
+            // Render tile
+            tile.gl_geometry[style].render();
+            render_count += tile.gl_geometry[style].geometry_count;
+        }
+    }
+
+    return render_count;
 };
 
 Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
     this.input();
-    this.resetFrame();
+    this.resetFrame({ alpha_blend: true });
 
     // Map transforms
-    if (!this.center) {
+    if (!this.center_meters) {
         return;
     }
 
-    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-    var center = {x, y};
-
     // Model-view matrices
-    var tile_view_mat = mat4.create();
-    var tile_world_mat = mat4.create();
+    this.tile_view_mat = mat4.create();
+    this.tile_world_mat = mat4.create();
 
     // Update camera & lights
     this.camera.update();
     this.lighting.update();
 
     // Renderable tile list
-    var renderable_tiles = [];
+    this.renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
         if (tile.loaded === true && tile.visible === true) {
-            renderable_tiles.push(tile);
+            this.renderable_tiles.push(tile);
         }
     }
-    this.renderable_tiles_count = renderable_tiles.length;
+    this.renderable_tiles_count = this.renderable_tiles.length;
 
     // Find min/max order for current tiles
-    var order = { min: Infinity, max: -Infinity };
-    for (t of renderable_tiles) {
-        if (t.order.min < order.min) {
-            order.min = t.order.min;
+    this.order = { min: Infinity, max: -Infinity };
+    for (t of this.renderable_tiles) {
+        if (t.order.min < this.order.min) {
+            this.order.min = t.order.min;
         }
-        if (t.order.max > order.max) {
-            order.max = t.order.max;
+        if (t.order.max > this.order.max) {
+            this.order.max = t.order.max;
         }
     }
-    order.max += 1;
-    order.range = order.max - order.min;
+    this.order.max += 1;
+    this.order.range = this.order.max - this.order.min;
 
     // Render main pass - tiles grouped by rendering style (GL program)
-    var render_count = 0;
+    this.render_count = 0;
     for (var style in this.styles) {
         // Per-frame style updates/animations
         // Called even if the style isn't rendered by any current tiles, so time-based animations, etc. continue
         this.styles[style].update();
 
         var program = this.styles[style].program;
-        if (program == null || program.compiled === false) {
+        if (!program || !program.compiled) {
             continue;
         }
 
-        var first_for_style = true;
-
-        // Render tile GL geometries
-        for (t in renderable_tiles) {
-            tile = renderable_tiles[t];
-
-            if (tile.gl_geometry[style] != null) {
-                // Setup style if encountering for first time this frame
-                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                if (first_for_style === true) {
-                    first_for_style = false;
-
-                    program.use();
-                    this.styles[style].setUniforms();
-
-                    // TODO: don't set uniforms when they haven't changed
-                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
-                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('2f', 'u_map_center', center.x, center.y);
-                    program.uniform('1f', 'u_order_min', order.min);
-                    program.uniform('1f', 'u_order_range', order.range);
-                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-
-                    this.camera.setupProgram(program);
-                    this.lighting.setupProgram(program);
-                }
-
-                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-                // Tile origin
-                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
-
-                // Tile view matrix - transform tile space into view space (meters, relative to camera)
-                mat4.identity(tile_view_mat);
-                mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
-
-                // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-                mat4.identity(tile_world_mat);
-                mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
-
-                // Render tile
-                tile.gl_geometry[style].render();
-                render_count += tile.gl_geometry[style].geometry_count;
-            }
-        }
+        this.render_count += this.renderStyle(style, program);
     }
 
     // Render selection pass (if needed)
-    // Slight variations on render pass code above - mostly because we're reusing uniforms from the main
-    // style program, for the selection program
-    // TODO: reduce duplicated code w/main render pass above
-    if (Object.keys(this.selection_requests).length > 0) {
+    if (this.selection.pendingRequests()) {
         if (this.panning) {
             return;
         }
 
         // Switch to FBO
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-        gl.viewport(0, 0, this.fbo_size.width, this.fbo_size.height);
-        this.resetFrame();
+        this.selection.bind();
+        this.resetFrame({ alpha_blend: false });
 
         for (style in this.styles) {
             program = this.styles[style].selection_program;
-            if (program == null || program.compiled === false) {
+            if (!program || !program.compiled) {
                 continue;
             }
 
-            first_for_style = true;
-
-            // Render tile GL geometries
-            for (t in renderable_tiles) {
-                tile = renderable_tiles[t];
-
-                if (tile.gl_geometry[style] != null) {
-                    // Setup style if encountering for first time this frame
-                    if (first_for_style === true) {
-                        first_for_style = false;
-
-                        program.use();
-                        this.styles[style].setUniforms();
-
-                        program.uniform('2f', 'u_resolution', this.fbo_size.width, this.fbo_size.height);
-                        program.uniform('2f', 'u_aspect', this.fbo_size.aspect, 1.0);
-                        program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                        program.uniform('1f', 'u_map_zoom', this.zoom);
-                        program.uniform('2f', 'u_map_center', center.x, center.y);
-                        program.uniform('1f', 'u_order_min', order.min);
-                        program.uniform('1f', 'u_order_range', order.range);
-                        program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-
-                        this.camera.setupProgram(program);
-                        this.lighting.setupProgram(program);
-                    }
-
-                    // Tile origin
-                    program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
-
-                    // Tile view matrix - transform tile space into view space (meters, relative to camera)
-                    mat4.identity(tile_view_mat);
-                    mat4.translate(tile_view_mat, tile_view_mat, vec3.fromValues(tile.min.x - center.x, tile.min.y - center.y, 0)); // adjust for tile origin & map center
-                    mat4.scale(tile_view_mat, tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    program.uniform('Matrix4fv', 'u_tile_view', false, tile_view_mat);
-
-                    // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-                    mat4.identity(tile_world_mat);
-                    mat4.translate(tile_world_mat, tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                    mat4.scale(tile_world_mat, tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-                    program.uniform('Matrix4fv', 'u_tile_world', false, tile_world_mat);
-
-                    // Render tile
-                    tile.gl_geometry[style].render();
-                }
-            }
+            this.renderStyle(style, program);
         }
 
-        // Delay reading the pixel result from the selection buffer to avoid CPU/GPU sync lock.
-        // Calling readPixels synchronously caused a massive performance hit, presumably since it
-        // forced this function to wait for the GPU to finish rendering and retrieve the texture contents.
-        if (this.selection_delay_timer != null) {
-            clearTimeout(this.selection_delay_timer);
-        }
-        this.selection_delay_timer = setTimeout(
-            () => this.doFeatureSelectionRequests(),
-            this.selection_frame_delay
-        );
+        // Read results from selection buffer
+        this.selection.read();
 
         // Reset to screen buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    if (render_count !== this.last_render_count) {
-        log.info(`Scene: rendered ${render_count} primitives`);
+    if (this.render_count !== this.last_render_count) {
+        log.info(`Scene: rendered ${this.render_count} primitives`);
     }
-    this.last_render_count = render_count;
+    this.last_render_count = this.render_count;
 
     return true;
 };
 
-// Request feature selection
-// Runs asynchronously, schedules selection buffer to be updated
+// Request feature selection at given pixel. Runs async and returns results via a promise.
 Scene.prototype.getFeatureAt = function (pixel) {
-    return new Promise((resolve, reject) => {
-        if (!this.initialized) {
-            reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
-            return;
-        }
-
-        // Queue requests for feature selection, and they will be picked up by the render loop
-        this.selection_request_id = (this.selection_request_id + 1) || 0;
-        this.selection_requests[this.selection_request_id] = {
-            type: 'point',
-            id: this.selection_request_id,
-            point: {
-                // TODO: move this pixel calc to a GL wrapper
-                x: pixel.x * this.device_pixel_ratio,
-                y: this.device_size.height - (pixel.y * this.device_pixel_ratio)
-            },
-            resolve
-        };
-        this.dirty = true; // need to make sure the scene re-renders for these to be processed
-    });
-};
-
-Scene.prototype.doFeatureSelectionRequests = function () {
-    var gl = this.gl;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-
-    for (var request of Utils.values(this.selection_requests)) {
-        // This request was already sent to the worker, we're just awaiting its reply
-        if (request.sent) {
-            continue;
-        }
-
-        // TODO: support other selection types, such as features within a box
-        if (request.type !== 'point') {
-            continue;
-        }
-
-        // Check selection map against FBO
-        gl.readPixels(
-            Math.floor(request.point.x * this.fbo_size.width / this.device_size.width),
-            Math.floor(request.point.y * this.fbo_size.height / this.device_size.height),
-            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
-        var feature_key = (this.pixel[0] + (this.pixel[1] << 8) + (this.pixel[2] << 16) + (this.pixel[3] << 24)) >>> 0;
-
-        // If feature found, ask appropriate web worker to lookup feature
-        var worker_id = this.pixel[3];
-        if (worker_id !== 255) { // 255 indicates an empty selection buffer pixel
-            if (this.workers[worker_id] != null) {
-                WorkerBroker.postMessage(
-                    this.workers[worker_id],
-                    'getFeatureSelection',
-                    { id: request.id, key: feature_key })
-                .then(message => {
-                    this.workerGetFeatureSelection(message);
-                });
-            }
-        }
-        // No feature found, but still need to resolve promise
-        else {
-            this.workerGetFeatureSelection({ id: request.id, feature: null });
-        }
-
-        request.sent = true;
+    if (!this.initialized) {
+        return Promise.reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-};
+    // Point scaled to [0..1] range
+    var point = {
+        x: pixel.x * this.device_pixel_ratio / this.device_size.width,
+        y: pixel.y * this.device_pixel_ratio / this.device_size.height
+    };
 
-// Called on main thread when a web worker finds a feature in the selection buffer
-Scene.prototype.workerGetFeatureSelection = function (message) {
-    var request = this.selection_requests[message.id];
-    if (!request) {
-        throw new Error("Scene.workerGetFeatureSelection() called without any message");
-    }
-
-    var feature = message.feature;
-    var changed = false;
-    if ((feature != null && this.selected_feature == null) ||
-        (feature == null && this.selected_feature != null) ||
-        (feature != null && this.selected_feature != null && feature.id !== this.selected_feature.id)) {
-        changed = true;
-    }
-
-    this.selected_feature = feature; // store the most recently selected feature
-
-    // Resolve the request
-    request.resolve({ feature, changed, request });
-    delete this.selection_requests[message.id]; // done processing this request
+    this.dirty = true; // need to make sure the scene re-renders for these to be processed
+    return this.selection.getFeatureAt(point);
 };
 
 // Queue a tile for load
@@ -803,7 +670,7 @@ Scene.prototype.forgetTile = function (key) {
 
 // Load a single tile
 Scene.prototype._loadTile = function (coords, options = {}) {
-    var tile = Tile.create({coords: coords, tile_source: this.tile_source});
+    var tile = Tile.create({ coords: coords, tile_source: this.tile_source, worker: this.nextWorker() });
     if (!this.hasTile(tile.key)) {
         this.cacheTile(tile);
         tile.load(this, coords);
@@ -849,15 +716,7 @@ Scene.prototype.rebuildGeometry = function () {
         }
 
         // Update config (in case JS objects were manipulated directly)
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
-        this.selection_map = {};
-
-        // Tell workers we're about to rebuild (so they can update styles, etc.)
-        this.workers.forEach(worker => {
-            WorkerBroker.postMessage(worker, 'prepareForRebuild', {
-                config: this.config_serialized
-            });
-        });
+        this.syncConfigToWorker();
 
         // Rebuild visible tiles first, from center out
         var tile, visible = [], invisible = [];
@@ -1013,8 +872,6 @@ Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
         return this.preProcessSceneConfig();
-    }).then(() => {
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
     }).catch((error) => { Promise.reject(error); });
 };
 
@@ -1025,7 +882,8 @@ Scene.prototype.reload = function () {
     }
 
     this.loadScene().then(() => {
-        this.updateStyles();
+        this.updateStyles(this.gl);
+        this.syncConfigToWorker();
         return this.rebuildGeometry();
     }, (error) => {
         throw error;
@@ -1071,6 +929,7 @@ Scene.prototype.updateStyles = function (gl) {
     // Compile all programs
     StyleManager.compile();
 
+    this.updateActiveStyles();
     this.dirty = true;
 };
 
@@ -1108,7 +967,22 @@ Scene.prototype.updateConfig = function () {
     this.createLighting();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-    this.updateStyles();
+    this.updateStyles(this.gl);
+    this.syncConfigToWorker();
+};
+
+// Serialize config and send to worker
+Scene.prototype.syncConfigToWorker = function () {
+    this.config_serialized = Utils.serializeWithFunctions(this.config);
+    this.selection_map_worker_size = {};
+
+    // Tell workers we're about to rebuild (so they can update styles, etc.)
+    this.workers.forEach(worker => {
+        WorkerBroker.postMessage(worker, 'updateConfig', {
+            config: this.config_serialized,
+            tile_source: this.tile_source.buildAsMessage() // TODO: move tile source(s) into config
+        });
+    });
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
