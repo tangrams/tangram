@@ -5,64 +5,66 @@ export var Vector = {};
 Vector.set = function (v){
     var V = [];
     var lim = v.length;
-    for (var i = 0; i < lim; i++) 
+    for (var i = 0; i < lim; i++)
         V[i] = v[i];
     return V;
-}
+};
 
 // Addition of two vectors
 Vector.sum = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
-    for (var i = 0; i < lim; i++) 
+    for (var i = 0; i < lim; i++)
         v[i] = v1[i] + v2[i];
     return v;
-}
+};
 
 // Substraction of two vectors
 Vector.sub = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
-    for (var i = 0; i < lim; i++) 
+    for (var i = 0; i < lim; i++)
         v[i] = v1[i] - v2[i];
     return v;
-}
+};
 
 // Multiplication of two vectors
 Vector.mult = function (v1, v2)
 {
     var v = [];
-    var lim = Math.min(v1.length,v2.length);
-    if(lim === 1){
-        if(v1.length === 1){
-            for (var i = 0; i < v2.length; i++) 
-                v[i] = v1 * v2[i];
-        } else {
-            for (var i = 0; i < v1.length; i++) 
-                v[i] = v1[i] * v2;
-        }
-    } else {
-        for (var i = 0; i < lim; i++) 
+    var len = v1.length;
+    var i;
+
+    // Multiply two vectors
+    if (len === v2.length) {
+        for (i = 0; i < len; i++) {
             v[i] = v1[i] * v2[i];
+        }
+    }
+    // Mulitply by scalar
+    else {
+        for (i = 0; i < len; i++) {
+            v[i] = v1[i] * v2;
+        }
     }
     return v;
-}
+};
 
 // Division of two vectors
 Vector.div = function (v1, v2)
 {
     var v = [];
     if(v2.length === 1){
-        for (var i = 0; i < v1.length; i++) 
+        for (var i = 0; i < v1.length; i++)
                 v[i] = v1[i] / v2;
     } else {
-        for (var i = 0; i < v1.length; i++) 
+        for (var i = 0; i < v1.length; i++)
             v[i] = v1[i] / v2[i];
     }
     return v;
-}
+};
 
 // Vector length squared
 Vector.lengthSq = function (v)
@@ -116,11 +118,11 @@ Vector.cross  = function (v1, v2)
 };
 
 // Dot product of two vectors
-Vector.dot = function (v1, v2) 
+Vector.dot = function (v1, v2)
 {
     var n = 0.0;
     var lim = Math.min(v1.length, v2.length);
-    for (var i = 0; i < lim; i++) 
+    for (var i = 0; i < lim; i++)
         n += v1[i] * v2[i];
     return n;
 };

@@ -463,8 +463,8 @@ Scene.prototype.resetFrame = function () {
     // TODO: unnecessary repeat?
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
+    // gl.enable(gl.CULL_FACE);
+    // gl.cullFace(gl.BACK);
     // gl.enable(gl.BLEND);
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 };
