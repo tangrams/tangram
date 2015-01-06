@@ -156,8 +156,37 @@ GLBuilders.buildPolylines = function (
         halfWidth = width/2,
         num_lines = lines.length,
         i = 0;
-    var vertexData_Offset = vertex_data.length;
+    // var vertexData_Offset = vertex_data.length;
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+
+    // Build triangles for a single line segment, extruded by the provided width
+    function addVertex (index) {
+        // Prevent access to undefined vertices
+        if (index >= vertices.length) {
+            return;
+        }
+
+        // set vertex position
+        vertex_template[0] = vertices[index][0];
+        vertex_template[1] = vertices[index][1];
+        // vertex_template[2] = vertices[v][2]; // What happend with Z ??
+
+        // set UVs
+        if (texcoord_index) {
+            vertex_template[texcoord_index + 0] = texcoords[index][0];
+            vertex_template[texcoord_index + 1] = texcoords[index][1];
+        }
+
+        // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+        if (scaling_index) {
+            vertex_template[scaling_index + 0] = scalingVecs[index][0];
+            vertex_template[scaling_index + 1] = scalingVecs[index][1];
+            vertex_template[scaling_index + 2] = halfWidth;
+        }
+
+        //  Add vertex to VBO
+        vertex_data.addVertex(vertex_template);
+    }
 
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
@@ -260,35 +289,6 @@ GLBuilders.buildPolylines = function (
                             [min_u, max_v] );
         }
 
-        // Build triangles for a single line segment, extruded by the provided width
-        function addVertex (index) {
-            // Prevent access to undefined vertices
-            if (index >= vertices.length) {
-                return;
-            }
-
-            // set vertex position
-            vertex_template[0] = vertices[index][0];
-            vertex_template[1] = vertices[index][1];
-            // vertex_template[2] = vertices[v][2]; // What happend with Z ??
-
-            // set UVs
-            if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[index][0];
-                vertex_template[texcoord_index + 1] = texcoords[index][1];
-            }
-
-            // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
-            if (scaling_index) {
-                vertex_template[scaling_index + 0] = scalingVecs[index][0];
-                vertex_template[scaling_index + 1] = scalingVecs[index][1];
-                vertex_template[scaling_index + 2] = halfWidth;
-            }
-
-            //  Add vertex to VBO
-            vertex_data.addVertex(vertex_template);
-        }
-
         // Add vertices to buffer
         if (lineSize >= 2) {
             for (i = 0; i < lineSize - 1; i++) {
@@ -313,12 +313,12 @@ GLBuilders.buildPolylines = function (
         // }
 
         // Clean all
-        vertices = [];
+        vertices.length = 0;
         if (scaling_index) {
-            scalingVecs = [];
+            scalingVecs.length = 0;
         }
         if (texcoord_index) {
-            texcoords = [];
+            texcoords.length = 0;
         }
     }
 };

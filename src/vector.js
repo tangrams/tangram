@@ -6,8 +6,9 @@ Vector.set = function (v)
 {
     var V = [];
     var lim = v.length;
-    for (var i = 0; i < lim; i++)
+    for (var i = 0; i < lim; i++) {
         V[i] = v[i];
+    }
     return V;
 };
 
@@ -15,8 +16,9 @@ Vector.neg = function (v)
 {
     var V = [];
     var lim = v.length;
-    for (var i = 0; i < lim; i++)
+    for (var i = 0; i < lim; i++) {
         V[i] = v[i] * -1;
+    }
     return V;
 };
 
@@ -25,8 +27,9 @@ Vector.add = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
-    for (var i = 0; i < lim; i++)
+    for (var i = 0; i < lim; i++) {
         v[i] = v1[i] + v2[i];
+    }
     return v;
 };
 
@@ -35,7 +38,7 @@ Vector.sub = function (v1, v2)
 {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
-    
+
     for (var i = 0; i < lim; i++) {
         v[i] = v1[i] - v2[i];
     }
@@ -76,8 +79,8 @@ Vector.div = function (v1, v2)
             v[i] = v1[i] / v2;
         }
     } else {
-        // Devide to vectors
-        len = Math.min(v1.length,v2.length);
+        // Divide to vectors
+        var len = Math.min(v1.length,v2.length);
         for (i = 0; i < len; i++) {
             v[i] = v1[i] / v2[i];
         }
@@ -90,7 +93,7 @@ Vector.perp = function (v1, v2)
 {
     return [ v2[1] - v1[1], 
              v1[0] - v2[0] ];
-}
+};
 
 // Vector length squared
 Vector.lengthSq = function (v)
@@ -148,8 +151,9 @@ Vector.dot = function (v1, v2)
 {
     var n = 0.0;
     var lim = Math.min(v1.length, v2.length);
-    for (var i = 0; i < lim; i++)
+    for (var i = 0; i < lim; i++) {
         n += v1[i] * v2[i];
+    }
     return n;
 };
 
