@@ -290,19 +290,17 @@ GLBuilders.buildPolylines = function (
         }
 
         // Add vertices to buffer
-        if (lineSize >= 2) {
-            for (i = 0; i < lineSize - 1; i++) {
-                addVertex(2*i+2);
-                addVertex(2*i+1);
-                addVertex(2*i+0);
+        for (i = 0; i < lineSize - 1; i++) {
+            addVertex(2*i+2);
+            addVertex(2*i+1);
+            addVertex(2*i+0);
 
-                addVertex(2*i+2);
-                addVertex(2*i+3);
-                addVertex(2*i+1);
-            }
+            addVertex(2*i+2);
+            addVertex(2*i+3);
+            addVertex(2*i+1);
         }
 
-        // // Add triangles indices
+        // // Add triangles indices 
         // for (var i = 0; i < lineSize - 1; i++) {
         //     indices_data.push(vertexData_Offset + 2*i+2);
         //     indices_data.push(vertexData_Offset + 2*i+1);
