@@ -8,28 +8,15 @@ import log from 'loglevel';
 export default class TileSource {
 
     constructor (source) {
+        this.name = source.name;
         this.url_template = source.url;
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
     }
 
-    // TODO fix the z adjustment for continuous zoom
-    calculateOverZoom(coordinate) {
-        var zgap,
-            {x, y, z} = coordinate;
-
-        if (z > this.max_zoom) {
-            zgap = z - this.max_zoom;
-            x = ~~(x / Math.pow(2, zgap));
-            y = ~~(y / Math.pow(2, zgap));
-            z -= zgap;
-        }
-
-        return {x, y, z};
-    }
-
     buildAsMessage() {
         return {
+            name: this.name,
             type: this.type,
             url: this.url_template,
             max_zoom: this.max_zoom

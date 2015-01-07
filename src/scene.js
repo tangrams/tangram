@@ -31,13 +31,13 @@ GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
-export default function Scene(source, config_source, options) {
-
+export default function Scene(config_source, options) {
     options = options || {};
     subscribeMixin(this);
 
     this.initialized = false;
-    this.tile_source = source;
+    this.sources = new Map();
+
     this.tiles = {};
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
@@ -78,11 +78,8 @@ export default function Scene(source, config_source, options) {
     log.setLevel(this.logLevel);
 }
 
-Scene.create = function ({source, config}, options = {}) {
-    if (!(source instanceof TileSource)) {
-        source = TileSource.create(source);
-    }
-    return new Scene(source, config, options);
+Scene.create = function ({config}, options = {}) {
+    return new Scene(config, options);
 };
 
 Scene.prototype.init = function () {
@@ -94,6 +91,7 @@ Scene.prototype.init = function () {
     // Load scene definition (sources, styles, etc.), then create styles & workers
     return new Promise((resolve, reject) => {
         this.loadScene().then(() => {
+
             this.createWorkers().then(() => {
                 this.container = this.container || document.body;
                 this.canvas = document.createElement('canvas');
@@ -270,9 +268,13 @@ Scene.prototype.setZoom = function (zoom) {
         this.removeTilesOutsideZoomRange(below, above);
     }
 
+
     this.last_zoom = this.zoom;
     this.zoom = zoom;
-    this.capped_zoom = Math.min(Math.round(this.zoom), this.tile_source.max_zoom || Math.round(this.zoom));
+
+    this.capped_zoom = Math.min(Math.round(this.zoom), this.findMaxZoom() || Math.round(this.zoom));
+    this.zooming = false;
+
     this.updateBounds();
 
     this.dirty = true;
@@ -338,8 +340,8 @@ Scene.prototype.updateBounds = function () {
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
-    below = Math.min(Math.round(below), this.tile_source.max_zoom || below);
-    above = Math.min(Math.round(above), this.tile_source.max_zoom || above);
+    below = Math.min(Math.round(below), this.findMaxZoom() || below);
+    above = Math.min(Math.round(above), this.findMaxZoom() || above);
 
     var remove_tiles = [];
     for (var t in this.tiles) {
@@ -677,9 +679,28 @@ Scene.prototype.forgetTile = function (key) {
 };
 
 
+Scene.prototype.findMaxZoom = function () {
+    var max_zoom = Geo.max_zoom;
+
+    for (var source of this.sources.values()) {
+        if (source.max_zoom > max_zoom) {
+            max_zoom = source.max_zoom;
+        }
+    }
+    return max_zoom;
+};
+
+
+
 // Load a single tile
 Scene.prototype._loadTile = function (coords, options = {}) {
-    var tile = Tile.create({ coords: coords, tile_source: this.tile_source, worker: this.nextWorker() });
+    var tile = Tile.create({
+        coords: coords,
+        max_zoom: this.findMaxZoom(),
+        worker: this.nextWorker()
+    });
+
+
     if (!this.hasTile(tile.key)) {
         this.cacheTile(tile);
         tile.load(this);
@@ -899,6 +920,16 @@ Scene.prototype.reload = function () {
 
 };
 
+Scene.prototype.loadDataSources = function () {
+
+    for (var name in this.config.sources) {
+        var source = this.config.sources[name];
+        this.sources.set(name,
+            TileSource.create(Object.assign({}, source, {name}))
+        );
+    }
+};
+
 // Normalize some settings that may not have been explicitly specified in the scene definition
 Scene.prototype.preProcessSceneConfig = function () {
     // Pre-process styles
@@ -910,6 +941,9 @@ Scene.prototype.preProcessSceneConfig = function () {
             }
         }
     }
+
+    // TODO, find a home for this
+    this.loadDataSources();
 
     this.config.camera = this.config.camera || {}; // ensure camera object
     this.config.lighting = this.config.lighting || {}; // ensure lighting object
@@ -983,12 +1017,11 @@ Scene.prototype.updateConfig = function () {
 Scene.prototype.syncConfigToWorker = function () {
     this.config_serialized = Utils.serializeWithFunctions(this.config);
     this.selection_map_worker_size = {};
-
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
         WorkerBroker.postMessage(worker, 'updateConfig', {
             config: this.config_serialized,
-            tile_source: this.tile_source.buildAsMessage() // TODO: move tile source(s) into config
+            sources: Array.from(this.sources).map( ([name, source]) => { return source.buildAsMessage(); })
         });
     });
 };

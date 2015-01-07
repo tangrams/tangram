@@ -75,6 +75,8 @@ export default class Tile {
             { tile: this.buildAsMessage() })
         .then(message => {
             scene.buildTileCompleted(message);
+        }).catch(error => {
+            throw error;
         });
     }
 
@@ -282,14 +284,35 @@ export default class Tile {
     // TODO: pass bounds only, rest of scene isn't needed
     updateVisibility(scene) {
         var visible = this.visible;
-        this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
+        this.visible = this.isInZoom(scene.capped_zoom) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
         return (visible !== this.visible);
     }
 
     // TODO: pass zoom only?
-    isInZoom(scene) {
-        return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
+    isInZoom(zoom) {
+        return (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom;
+    }
+
+    get key () {
+        var {x, y, z} = this.calculateOverZoom();
+        this.coords = {x, y, z};
+        return [x, y, z].join('/');
+    }
+
+    // TODO fix the z adjustment for continuous zoom
+    calculateOverZoom() {
+        var zgap,
+            {x, y, z} = this.coords;
+
+        if (z > this.max_zoom) {
+            zgap = z - this.max_zoom;
+            x = ~~(x / Math.pow(2, zgap));
+            y = ~~(y / Math.pow(2, zgap));
+            z -= zgap;
+        }
+
+        return {x, y, z};
     }
 
     load(scene) {

@@ -14,13 +14,9 @@
 
     var tile_sources = {
         'mapzen': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
-            },
-            // scene: 'demos/simple-styles.yaml'
-            scene: 'demos/styles.yaml'
+            scene: 'demos/simple-styles.yaml'
         },
+
         'mapzen-dev': {
             source: {
                 type: 'GeoJSONTileSource',
@@ -48,22 +44,7 @@
                 url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
             },
             scene: 'demos/styles.yaml'
-        }//,
-        // 'osm': {
-        //     source: {
-        //         type: 'GeoJSONTileSource',
-        //         url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
-        //     },
-        //     scene: 'demos/styles.yaml'
-        // },
-        // 'mapbox': {
-        //     source: {
-        //         type: 'MapboxFormatTileSource',
-        //         url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
-        //         max_zoom: 15
-        //     },
-        //     scene: 'demos/styles.yaml'
-        // }
+        }
     };
 
     var locations = {
