@@ -160,9 +160,9 @@ GLBuilders.buildPolylines = function (
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Build triangles for a single line segment, extruded by the provided width
-    function addVertex (index) {
+    function addVertex ( _index) {
         // Prevent access to undefined vertices
-        if (index >= vertices.length) {
+        if (_index >= vertices.length) {
             return;
         }
 

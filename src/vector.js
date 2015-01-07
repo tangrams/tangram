@@ -2,8 +2,7 @@
 
 export var Vector = {};
 
-Vector.set = function (v)
-{
+Vector.set = function (v) {
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++) {
@@ -12,8 +11,7 @@ Vector.set = function (v)
     return V;
 };
 
-Vector.neg = function (v)
-{
+Vector.neg = function (v) {
     var V = [];
     var lim = v.length;
     for (var i = 0; i < lim; i++) {
@@ -23,8 +21,7 @@ Vector.neg = function (v)
 };
 
 // Addition of two vectors
-Vector.add = function (v1, v2)
-{
+Vector.add = function (v1, v2) {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
     for (var i = 0; i < lim; i++) {
@@ -34,8 +31,7 @@ Vector.add = function (v1, v2)
 };
 
 // Substraction of two vectors
-Vector.sub = function (v1, v2)
-{
+Vector.sub = function (v1, v2) {
     var v = [];
     var lim = Math.min(v1.length,v2.length);
 
@@ -46,8 +42,7 @@ Vector.sub = function (v1, v2)
 };
 
 // Multiplication of two vectors
-Vector.mult = function (v1, v2)
-{
+Vector.mult = function (v1, v2) {
     var v = [],
         len = v1.length,
         i;
@@ -69,8 +64,7 @@ Vector.mult = function (v1, v2)
 };
 
 // Division of two vectors
-Vector.div = function (v1, v2)
-{
+Vector.div = function (v1, v2) {
     var v = [], 
         i;
     if(typeof v2 === 'number'){
@@ -87,13 +81,27 @@ Vector.div = function (v1, v2)
     }
     return v;
 };
-
-// Get 2D perpendicular
-Vector.perp = function (v1, v2) 
-{
+ 
+// Get 2D perpendicular FAST
+Vector.perp = function (v1, v2) {
     return [ v2[1] - v1[1], 
              v1[0] - v2[0] ];
 };
+
+// Get 2D vector rotated 
+Vector.rot = function (v, a) {
+    var V = v;
+    var vr = Vector.length(v);
+    var va = Vector.angle(v);
+    V[0] = vr * Math.cos(va+a);
+    V[1] = vr * Math.sin(va+a);
+    return V;
+};
+
+// Get 2D heading angle
+Vector.angle = function (v) {
+    return Math.atan2(v[1],v[0]);
+}
 
 // Vector length squared
 Vector.lengthSq = function (v)
