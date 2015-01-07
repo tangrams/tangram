@@ -254,18 +254,18 @@ GLProgram.prototype.ensureUniforms = function (uniforms) {
         inject = null;
 
         // Check vertex shader
-        if (!GLSL.uniformDefined(name, vs) && GLSL.symbolReferenced(name, vs)) {
+        if (!GLSL.isUniformDefined(name, vs) && GLSL.isSymbolReferenced(name, vs)) {
             if (!inject) {
-                inject = GLSL.defineUniformForValue(name, uniforms[name]);
+                inject = GLSL.defineUniform(name, uniforms[name]);
             }
             log.trace(`Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
             vs_injections.push(inject);
 
         }
         // Check fragment shader
-        if (!GLSL.uniformDefined(name, fs) && GLSL.symbolReferenced(name, fs)) {
+        if (!GLSL.isUniformDefined(name, fs) && GLSL.isSymbolReferenced(name, fs)) {
             if (!inject) {
-                inject = GLSL.defineUniformForValue(name, uniforms[name]);
+                inject = GLSL.defineUniform(name, uniforms[name]);
             }
             log.trace(`Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
             fs_injections.push(inject);

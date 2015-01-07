@@ -5,9 +5,10 @@ export default GLSL;
     Parse uniforms from a JS object, infers types and returns an array of objects with the
     necessary information to set uniform values on a GL program. Each object in the returned
     array has the form:
-    { type, name, value }
+    { type, method, name, value }
 
-    type: the GL uniform type, such as '1f', '3fv', etc.
+    type: the GL uniform type, such as 'vec3', 'float', etc.
+    method: the GL uniform setter method to use, such as '1f', '3fv', etc.
     name: the fully qualified name of the GL uniform location, e.g. 'array[0].field', etc.
     value: the value to be passed to the GL uniform setter for that type, e.g. [1, 2, 3] for a vec3
 
@@ -125,99 +126,111 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
     return parsed;
 };
 
-// Generate a GLSL uniform definition for a JS object value
-GLSL.defineUniformForValue = function (name, uniform) {
-    return 'uniform ' + GLSL.defineVariableForValue(name, uniform);
-};
-
-// Generate a GLSL variable definition for a JS object value
-GLSL.defineVariableForValue = function (name, uniform) {
-    var type, array, field, struct;
+/**
+    Generate a GLSL variable definition from a JS object
+*/
+GLSL.defineVariable = function (name, value, prefix = null) {
+    var type, array;
+    var structs = '';
+    prefix = prefix ? prefix + '_' + name : name;
 
     // Single float
-    if (typeof uniform === 'number') {
+    if (typeof value === 'number') {
         type = 'float';
     }
     // Multiple floats - vector or array
-    else if (Array.isArray(uniform)) {
+    else if (Array.isArray(value)) {
         // Numeric values
-        if (typeof uniform[0] === 'number') {
+        if (typeof value[0] === 'number') {
             // float vectors (vec2, vec3, vec4)
-            if (uniform.length >= 2 && uniform.length <= 4) {
-                type = 'vec' + uniform.length;
+            if (value.length >= 2 && value.length <= 4) {
+                type = 'vec' + value.length;
             }
             // float array
-            else { //if (uniform.length > 4) {
+            else { //if (value.length > 4) {
                 type = 'float';
-                array = uniform.length;
+                array = value.length;
             }
             // TODO: assume matrix for (typeof == Float32Array && length == 16)?
         }
         // Array of textures
-        else if (typeof uniform[0] === 'string') {
+        else if (typeof value[0] === 'string') {
             type = 'sampler2D';
-            array = uniform.length;
+            array = value.length;
         }
         // Array of arrays - but only arrays of vectors are allowed in this case
-        else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
+        else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
             // float vectors (vec2, vec3, vec4)
-            if (uniform[0].length >= 2 && uniform[0].length <= 4) {
-                type = 'vec' + uniform[0].length;
+            if (value[0].length >= 2 && value[0].length <= 4) {
+                type = 'vec' + value[0].length;
             }
             // else error?
-            array = uniform[0].length;
+            array = value[0].length;
         }
         // Array of structures
-        else if (typeof uniform[0] === 'object') {
-            // Build definitions for each field in struct
-            type = '_type_' + name;
-            struct = `struct ${type} {\n`;
-            for (field in uniform[0]) {
-                struct += '    ' + GLSL.defineVariableForValue(field, uniform[0][field]);
-            }
-            struct += '}'; //;\n';
-            type = struct;
-            array = uniform.length;
+        else if (typeof value[0] === 'object') {
+            type = '_type_' + prefix; // custom struct name
+            array = value.length;
+            structs += GLSL.defineStruct(type, value[0], prefix) + '\n'; // build & add to list of dependent structs
         }
     }
     // Boolean
-    else if (typeof uniform === 'boolean') {
+    else if (typeof value === 'boolean') {
         type = 'bool';
     }
     // Texture
-    else if (typeof uniform === 'string') {
+    else if (typeof value === 'string') {
         type = 'sampler2D';
     }
     // Structure
-    else if (typeof uniform === 'object') {
-        // Build definitions for each field in struct
-        type = '_type_' + name;
-        struct = `struct ${type} {\n`;
-        for (field in uniform) {
-            struct += '    ' + GLSL.defineVariableForValue(field, uniform[field]);
-        }
-        struct += '}'; //;\n';
-        type = struct;
+    else if (typeof value === 'object') {
+        type = '_type_' + prefix; // custom struct name
+        structs += GLSL.defineStruct(type, value, prefix) + '\n'; // build & add to list of dependent structs
     }
 
-    // Construct final definition
-    var def = '';
-    // if (struct) {
-    //     def += struct;
-    // }
-    // def += `uniform ${type} ${name}`;
-    def += `${type} ${name}`;
+    // Construct variable definition
+    var variable = '';
+    variable += `${type} ${name}`;
     if (array) {
-        def += `[${array}]`;
+        variable += `[${array}]`;
     }
-    def += ';\n';
+    variable += ';\n';
+
+    // Return the variable definition itself, and any dependent struct definitions
+    return { variable, structs };
+};
+
+/**
+    Generate a GLSL structure definition from a JS object
+*/
+GLSL.defineStruct = function (type, value, prefix = null) {
+    var struct = `struct ${type} {\n`;
+    var dependents = '';
+    for (var field in value) {
+        var subvar = GLSL.defineVariable(field, value[field], prefix);
+        struct += '    ' + subvar.variable;
+        dependents += subvar.structs;
+    }
+    struct += '};\n';
+    struct = dependents + struct;
+    return struct;
+};
+
+/**
+    Generate a GLSL uniform definition from a JS object
+*/
+GLSL.defineUniform = function (name, value) {
+    var def = GLSL.defineVariable(name, value);
+    def = def.structs + 'uniform ' + def.variable;
     return def;
 };
 
-// Check for a uniform definition of 'name' in the provided GLSL source
-// Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
-// NOTE: assumes comments have been stripped from source
-GLSL.uniformDefined = function (name, source) {
+/**
+    Check for a uniform definition of 'name' in the provided GLSL source
+    Simple regex check for 'uniform' keyword and var name, does not attempt to parse/extract GLSL
+    NOTE: assumes comments have been stripped from source
+*/
+GLSL.isUniformDefined = function (name, source) {
     // Match, in order:
     // - the keyword 'uniform'
     // - at least one character that is anything except a semicolon, ;
@@ -232,9 +245,11 @@ GLSL.uniformDefined = function (name, source) {
     return false;
 };
 
-// Check that a symbol is referenced in the GLSL source
-// NOTE: assumes comments have been stripped from source
-GLSL.symbolReferenced = function (name, source) {
+/**
+    Check that a symbol is referenced in the GLSL source
+    NOTE: assumes comments have been stripped from source
+*/
+GLSL.isSymbolReferenced = function (name, source) {
     var re = new RegExp('\\b' + name + '\\b', 'g');
     if (source.search(re) >= 0) {
         return true;
