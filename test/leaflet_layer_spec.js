@@ -15,7 +15,7 @@ let makeOne = () => {
         source: sampleScene.tile_source,
         scene: sampleScene.config,
         disableRenderLoop: true,
-        workerUrl: '/base/dist/tangram.debug.js'
+        workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
 };
 

@@ -3,10 +3,10 @@ uniform float u_num_layers;
 
 attribute vec3 a_position;
 attribute vec2 a_texcoord;
-attribute vec3 a_color;
+attribute vec4 a_color;
 attribute float a_layer;
 
-varying vec3 v_color;
+varying vec4 v_color;
 varying vec2 v_texcoord;
 
 #if defined(FEATURE_SELECTION)
@@ -19,7 +19,7 @@ varying vec2 v_texcoord;
 
 void main() {
     #if defined(FEATURE_SELECTION)
-        if (a_selection_color.xyz == vec3(0.)) {
+        if (a_selection_color.rgb == vec3(0.)) {
             // Discard by forcing invalid triangle if we're in the feature
             // selection pass but have no selection info
             // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?

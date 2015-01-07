@@ -1,12 +1,13 @@
 /*global GLTexture */
 // Texture management
 import Utils from '../utils';
+import WorkerBroker from '../worker_broker';
 import log from 'loglevel';
 
 // Global set of textures, by name
 GLTexture.textures = {};
 
-// GL texture wrapper object for keeping track of a global set of textures, keyed by an arbitrary name
+// GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
 export default function GLTexture (gl, name, options = {}) {
     this.gl = gl;
     this.texture = gl.createTexture();
@@ -14,7 +15,8 @@ export default function GLTexture (gl, name, options = {}) {
         this.valid = true;
     }
     this.bind(0);
-    this.image = null;
+    this.image = null;      // an Image object/element that is the source for this texture
+    this.loading = null;    // a Promise object to track the loading state of this texture
 
     // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
     // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
@@ -23,7 +25,15 @@ export default function GLTexture (gl, name, options = {}) {
     // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
 
     this.name = name;
+
+    // Destroy previous texture if present
+    if (GLTexture.textures[this.name]) {
+        GLTexture.textures[this.name].destroy();
+    }
+
     GLTexture.textures[this.name] = this;
+
+    this.sprites = options.sprites;
 }
 
 // Destroy a single texture instance
@@ -64,15 +74,21 @@ GLTexture.prototype.load = function (url, options = {}) {
     if (!this.valid) {
         return;
     }
-    this.image = new Image();
-    this.image.onload = () => {
-        this.width = this.image.width;
-        this.height = this.image.height;
-        this.data = null; // mutually exclusive with direct data buffer textures
-        this.update(options);
-        this.setTextureFiltering(options);
-    };
-    this.image.src = url;
+
+    this.loading = new Promise((resolve, reject) => {
+        this.image = new Image();
+        this.image.onload = () => {
+            this.width = this.image.width;
+            this.height = this.image.height;
+            this.data = null; // mutually exclusive with direct data buffer textures
+            this.update(options);
+            this.setTextureFiltering(options);
+            resolve(this);
+        };
+        this.image.src = url;
+        // TODO: error/promise reject
+    });
+    return this.loading;
 };
 
 // Sets texture to a raw image buffer
@@ -94,6 +110,7 @@ GLTexture.prototype.update = function (options = {}) {
 
     this.bind(0);
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
+    this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
     // Image element
     if (this.image && this.image.complete) {
@@ -121,8 +138,8 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
     // nearest: nearest pixel from original image (no mips, 'blocky' look)
     if (Utils.isPowerOf2(this.width) && Utils.isPowerOf2(this.height)) {
         this.power_of_2 = true;
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
 
         if (options.filtering === 'mipmap') {
             log.trace('power-of-2 MIPMAP');
@@ -164,4 +181,58 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
     }
+};
+
+// Static/class methods
+
+// Get metadata for a texture by name
+// Returns via promise, in case texture is still loading
+// Can be called on main thread from worker, to sync texture info to worker
+GLTexture.getInfo = function (name) {
+    // Get info for all textures by default
+    if (!name) {
+        name = Object.keys(GLTexture.textures);
+    }
+
+    // Get multiple textures
+    if (Array.isArray(name)) {
+        return Promise.all(name.map(n => GLTexture.getInfo(n)));
+    }
+
+    // Get single texture
+    var tex = GLTexture.textures[name];
+    if (tex) {
+        // Wait for this texture to finish loading, or return immediately
+        var loading = tex.loading || Promise.resolve(tex);
+        return loading.then(() => {
+            // Return a subset of texture info
+            // (compatible w/structured cloning, suitable for passing to a worker)
+            return {
+                name: tex.name,
+                width: tex.width,
+                height: tex.height,
+                sprites: tex.sprites,
+                filtering: tex.filtering,
+                power_of_2: tex.power_of_2,
+                valid: tex.valid
+            };
+        });
+    }
+    else {
+        // No texture found
+        return Promise.resolve(null);
+    }
+};
+
+// Sync texture info to worker
+// Called from worker, gets info on one or more textures info from main thread via remote call, then stores it
+// locally in worker. 'textures' can be an array of texture names to sync, or if null, all textures are synced.
+GLTexture.syncTexturesToWorker = function (names) {
+    return WorkerBroker.postMessage('GLTexture', 'getInfo', names).
+        then(textures => {
+            for (var tex of textures) {
+                GLTexture.textures[tex.name] = tex;
+            }
+            return GLTexture.textures;
+        });
 };

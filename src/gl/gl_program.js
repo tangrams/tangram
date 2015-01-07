@@ -182,7 +182,7 @@ GLProgram.prototype.buildShaderTransformList = function () {
     for (d in GLProgram.transforms) {
         transforms[d] = [];
 
-        if (typeof GLProgram.transforms[d] === 'object' && GLProgram.transforms[d].length >= 0) {
+        if (Array.isArray(GLProgram.transforms[d])) {
             transforms[d].push(...GLProgram.transforms[d]);
         }
         else {
@@ -192,7 +192,7 @@ GLProgram.prototype.buildShaderTransformList = function () {
     for (d in this.transforms) {
         transforms[d] = transforms[d] || [];
 
-        if (typeof this.transforms[d] === 'object' && this.transforms[d].length >= 0) {
+        if (Array.isArray(this.transforms[d])) {
             transforms[d].push(...this.transforms[d]);
         }
         else {
@@ -237,6 +237,8 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
 
     for (var name in uniforms) {
         var uniform = uniforms[name];
+        var u;
+
         if (prefix) {
             name = prefix + '.' + name;
         }
@@ -245,7 +247,7 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
         if (typeof uniform === 'number') {
             this.uniform('1f', name, uniform);
         }
-        // Multiple floats - vector or array
+        // Array: vector, array of floats, array of textures, or array of structs
         else if (Array.isArray(uniform)) {
             // Numeric values
             if (typeof uniform[0] === 'number') {
@@ -259,9 +261,15 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
                 }
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
             }
+            // Array of textures
+            else if (typeof uniform[0] === 'string') {
+                for (u=0; u < uniform.length; u++) {
+                    this.setTextureUniform(name + '[' + u + ']', uniform[u]);
+                }
+            }
             // Array of structures
             else if (typeof uniform[0] === 'object') {
-                for (var u=0; u < uniform.length; u++) {
+                for (u=0; u < uniform.length; u++) {
                     // For each element in the struct array, set each field, passing along current texture unit
                     this.setUniforms(uniform[u], name + '[' + u + ']', this.texture_unit);
                 }
@@ -273,16 +281,7 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
         }
         // Texture
         else if (typeof uniform === 'string') {
-            var texture = GLTexture.textures[uniform];
-            if (texture == null) {
-                texture = new GLTexture(this.gl, uniform);
-                texture.load(uniform);
-            }
-
-            texture.bind(this.texture_unit);
-            this.uniform('1i', name, this.texture_unit);
-            this.texture_unit++;
-            // TODO: track max texture units and log/throw errors
+            this.setTextureUniform(name, uniform);
         }
         // Structure
         else if (typeof uniform === 'object') {
@@ -292,6 +291,19 @@ GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
 
         // TODO: support other non-float types? (int, etc.)
     }
+};
+
+// Set a texture uniform, finds texture by name or creates a new one
+GLProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
+    var texture = GLTexture.textures[texture_name];
+    if (texture == null) {
+        texture = new GLTexture(this.gl, texture_name);
+        texture.load(texture_name);
+    }
+
+    texture.bind(this.texture_unit);
+    this.uniform('1i', uniform_name, this.texture_unit);
+    this.texture_unit++; // TODO: track max texture units and log/throw errors
 };
 
 // ex: program.uniform('3f', 'position', x, y, z);

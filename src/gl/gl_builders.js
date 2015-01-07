@@ -5,6 +5,15 @@ export var GLBuilders = {};
 
 GLBuilders.debug = false;
 
+// Re-scale UVs from [0, 1] range to a smaller area within the image
+GLBuilders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_size) {
+    var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
+    var suv = [];
+    suv[0] = (uv[0] * area_size[0] + area_origin[0]) / tex_size[0];
+    suv[1] = (uv[1] * area_size[1] + area_origin_y) / tex_size[1];
+    return suv;
+};
+
 // Tesselate a flat 2D polygon
 // x & y coordinates will be set as first two elements of provided vertex_template
 GLBuilders.buildPolygons = function (

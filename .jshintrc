@@ -1,10 +1,4 @@
 {
-    // inspirational flags, things that break now
-    // "latedef": true,
-    // "maxlen": 120,
-    // "maxparams": 4,
-    // "newcap": true,
-    // "maxdepth": 4,
 
     "node": true,
     "indent": 4,
@@ -33,12 +27,17 @@
     "globals": {
         "libtess": true,
         "L": true,
+
         "describe": true,
         "it": true,
         "sinon": true,
         "_": true,
+        "before": true,
         "beforeEach": true,
         "afterEach": true,
-        "WebGLRenderingContext": true
+        "WebGLRenderingContext": true,
+        "makeScene": true
+
     }
+
 }

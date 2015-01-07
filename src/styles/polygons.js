@@ -5,10 +5,14 @@ import {StyleParser} from './style_parser';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import {GLBuilders} from '../gl/gl_builders';
+import GLTexture from '../gl/gl_texture';
+
+import log from 'loglevel';
 
 export var Polygons = Object.create(Style);
 
 Object.assign(Polygons, {
+    name: 'polygons',
     built_in: true,
 
     init() {
@@ -52,8 +56,11 @@ Object.assign(Polygons, {
 
         style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
         style.width = feature_style.width && StyleParser.parseDistance(feature_style.width, context);
-        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
         style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
+
+        style.texture = feature_style.texture;
+        style.sprite = feature_style.sprite;
+        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.height = feature.properties.height || StyleParser.defaults.height;
@@ -94,7 +101,7 @@ Object.assign(Polygons, {
      */
     makeVertexTemplate(style) {
         // Placeholder values
-        var color = style.color || [0, 0, 0];
+        var color = style.color || [0, 0, 0, 1];
 
         // Basic attributes, others can be added (see texture UVs below)
         var template = [
@@ -104,7 +111,7 @@ Object.assign(Polygons, {
             0, 0, 1,
             // color
             // TODO: automate multiplication for normalized attribs?
-            color[0] * 255, color[1] * 255, color[2] * 255, 255,
+            color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255,
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // layer number
@@ -112,8 +119,8 @@ Object.assign(Polygons, {
         ];
 
         if (this.texcoords) {
-            // Add texture UVs to template only if needed
-            template.push(0, 0);
+            template.push(0, 0);            // Add texture UVs to template only if needed
+            this.setTexcoordScale(style);   // Sets texcoord scale if needed (e.g. for sprite sub-area)
         }
 
         return template;
@@ -132,7 +139,7 @@ Object.assign(Polygons, {
                     style.z, style.height, style.min_height,
                     vertex_data, vertex_template,
                     this.vertex_layout.index.a_normal,
-                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                    { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
                 );
             }
             // Regular polygons
@@ -140,7 +147,7 @@ Object.assign(Polygons, {
                 GLBuilders.buildPolygons(
                     polygons,
                     vertex_data, vertex_template,
-                    { texcoord_index: this.vertex_layout.index.a_texcoord }
+                    { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
                 );
             }
         }
@@ -166,6 +173,7 @@ Object.assign(Polygons, {
                     vertex_template,
                     {
                         texcoord_index: this.vertex_layout.index.a_texcoord,
+                        texcoord_scale: this.texcoord_scale,
                         closed_polygon: true,
                         remove_tile_edges: !style.outline.tile_edges
                     }
@@ -186,7 +194,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
-                    texcoord_index: this.vertex_layout.index.a_texcoord
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
+                    texcoord_scale: this.texcoord_scale
                 }
             );
         }
@@ -212,7 +221,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
-                    texcoord_index: this.vertex_layout.index.a_texcoord
+                    texcoord_index: this.vertex_layout.index.a_texcoord,
+                    texcoord_scale: this.texcoord_scale
                 }
             );
         }
@@ -227,13 +237,13 @@ Object.assign(Polygons, {
 
         GLBuilders.buildQuadsForPoints(
             points,
-            style.size * 2,
-            style.size * 2,
+            style.size[0] || style.size,
+            style.size[1] || style.size,
             vertex_data,
             vertex_template,
-            { texcoord_index: this.vertex_layout.index.a_texcoord }
+            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
 
-    },
-    name: 'polygons'
+    }
+
 });

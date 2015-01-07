@@ -83,7 +83,7 @@
                             }",
                         "fragment":
                             "vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0); \n\
-                            color = hsv2rgb(c);"
+                            color.rgb = hsv2rgb(c);"
                     }
                 }
             }
