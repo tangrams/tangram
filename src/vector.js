@@ -82,7 +82,7 @@ Vector.div = function (v1, v2) {
     return v;
 };
  
-// Get 2D perpendicular FAST
+// Get 2D perpendicular
 Vector.perp = function (v1, v2) {
     return [ v2[1] - v1[1], 
              v1[0] - v2[0] ];
@@ -90,18 +90,16 @@ Vector.perp = function (v1, v2) {
 
 // Get 2D vector rotated 
 Vector.rot = function (v, a) {
-    var V = v;
     var vr = Vector.length(v);
     var va = Vector.angle(v);
-    V[0] = vr * Math.cos(va+a);
-    V[1] = vr * Math.sin(va+a);
-    return V;
+    return [vr * Math.cos(va+a),
+            vr * Math.sin(va+a)];
 };
 
 // Get 2D heading angle
-Vector.angle = function (v) {
-    return Math.atan2(v[1],v[0]);
-}
+Vector.angle = function ([x, y]) {
+    return Math.atan2(y,x);
+};
 
 // Vector length squared
 Vector.lengthSq = function (v)
@@ -157,7 +155,7 @@ Vector.cross  = function (v1, v2)
 // Dot product of two vectors
 Vector.dot = function (v1, v2)
 {
-    var n = 0.0;
+    var n = 0;
     var lim = Math.min(v1.length, v2.length);
     for (var i = 0; i < lim; i++) {
         n += v1[i] * v2[i];
