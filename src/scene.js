@@ -1021,7 +1021,7 @@ Scene.prototype.syncConfigToWorker = function () {
     this.workers.forEach(worker => {
         WorkerBroker.postMessage(worker, 'updateConfig', {
             config: this.config_serialized,
-            sources: Array.from(this.sources).map( ([name, source]) => { return source.buildAsMessage(); })
+            sources: Array.from(this.sources, ([name, source]) => { return source.buildAsMessage(); })
         });
     });
 };
