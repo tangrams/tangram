@@ -160,7 +160,7 @@ GLBuilders.buildPolylines = function (
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Add to equidistant pairs of vertices
-    function addVertexPair ( coord, normal, v_pct ) {
+    function addVertexPair (coord, normal, v_pct) {
         if (scaling_index) {
             //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
             vertices.push(coord);
@@ -183,7 +183,7 @@ GLBuilders.buildPolylines = function (
     }
 
     // Add a vertex based on the index position into the VBO 
-    function addIndex ( index ) {
+    function addIndex (index) {
         // Prevent access to undefined vertices
         if (index >= vertices.length) {
             return;
@@ -239,7 +239,7 @@ GLBuilders.buildPolylines = function (
         addVertexPair(currCoord, rightNorm, 0);
 
         // Do this with the rest (except the last one)
-        for(i = 1; i < lineSize - 1 ; i++){
+        for(i = 1; i < lineSize - 1 ; i++) {
             prevCoord = currCoord;
             currCoord = nextCoord;
             nextCoord = line[i+1];
