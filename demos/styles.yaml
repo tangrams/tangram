@@ -149,8 +149,6 @@ styles:
             uniforms:
                 bouncy: true
             transforms:
-                globals:
-                    uniform bool bouncy;
                 vertex: |
                     // Bouncy icons
                     if (bouncy) {
@@ -169,42 +167,62 @@ styles:
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
 
+    # dynamic uniform tests
     # polygons:
     #     texcoords: true
     #     shaders:
     #         uniforms:
-    #             u_texture: demos/images/LitSphere_test_02.jpg
+    #             # u_texture: demos/images/LitSphere_test_02.jpg
     #             # u_offset: { one: .5, two: .5 }
+
     #             u_material:
-    #                 - more: 5
-    #                   texture: demos/images/matball01.jpg
+    #                 - texture: demos/images/matball01.jpg
+    #                   field: 1
 
     #                 - texture: demos/images/sunset.jpg
-    #                   other: thing
-    #         transforms:
-    #             globals:
-    #                 struct Material {
-    #                     sampler2D texture;
-    #                 };
+    #                   field: 2
 
-    #                 uniform Material u_material[2];
+    #             u_mtex:
+    #                 - demos/images/matball01.jpg
+    #                 - demos/images/sunset.jpg
+
+    #             u_vecs: [[1,2,3],[4,5,6],[7,8,9]]
+
+    #             u_nested:
+    #                 one: 1
+    #                 child:
+    #                     two: 2
+
+    #         transforms:
+    #             globals: |
+    #                 /*struct Material {
+    #                     sampler2D texture;
+    #                     float field;
+    #                 };*/
+    #                 //uniform Material u_material[2];
+
+    #                 //uniform sampler2D u_mtex[2];
+    #                 //uniform vec3 u_vecs[3];
 
     #                 varying float v_layer;
 
-    #             vertex:
+    #             vertex: |
     #                 v_layer = a_layer;
 
     #             fragment: |
-    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two)).rgb;
-    #                 float t = mod(v_layer, 3.);
+    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two));
+    #                 //float t = mod(v_layer + u_vecs[0].y, 3.);
+    #                 float t = mod(v_layer + u_nested.one, 3.);
     #                 if (t == 0.) {
-    #                     color = texture2D(u_texture, v_texcoord).rgb;
+    #                     color = texture2D(u_texture, v_texcoord);
     #                 }
     #                 else if (t == 1.) {
-    #                     color = texture2D(u_material[0].texture, v_texcoord).rgb;
+    #                     color = texture2D(u_material[0].texture, v_texcoord);
+    #                     //color = texture2D(u_mtex[0], v_texcoord);
     #                 }
     #                 else {
-    #                     color = texture2D(u_material[1].texture, v_texcoord).rgb;
+    #                     color = texture2D(u_material[1].texture, v_texcoord);
+    #                     //color = texture2D(u_mtex[1], v_texcoord);
     #                 }
 
     ghosts:
