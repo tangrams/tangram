@@ -134,58 +134,6 @@ GLBuilders.buildExtrudedPolygons = function (
     }
 };
 
-// Add to equidistant pairs of vertices
-function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs, texcoords, min_u, min_v, max_u, max_v }) {
-    if (scalingVecs) {
-        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
-        vertices.push(coord);
-        vertices.push(coord);
-        scalingVecs.push(normal);
-        scalingVecs.push(Vector.neg(normal));
-    } else {
-        //  b. Add the extruded vertexes
-        vertices.push([ coord[0] + normal[0] * halfWidth,
-                        coord[1] + normal[1] * halfWidth ]);
-        vertices.push([ coord[0] - normal[0] * halfWidth,
-                        coord[1] - normal[1] * halfWidth ]);
-    }
-
-    // c) Add uv's if they are enable
-    if (texcoords) {
-        texcoords.push( [ max_u, (1-v_pct)*min_v + v_pct*max_v ],
-                        [ min_u, (1-v_pct)*min_v + v_pct*max_v ]);
-    }
-}
-
-// Add a vertex based on the index position into the VBO 
-    function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
-        // Prevent access to undefined vertices
-        if (index >= vertices.length) {
-            return;
-        }
-
-        // set vertex position
-        vertex_template[0] = vertices[index][0];
-        vertex_template[1] = vertices[index][1];
-        // vertex_template[2] = vertices[v][2]; // What happend with Z ??
-
-        // set UVs
-        if (texcoord_index) {
-            vertex_template[texcoord_index + 0] = texcoords[index][0];
-            vertex_template[texcoord_index + 1] = texcoords[index][1];
-        }
-
-        // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
-        if (scaling_index) {
-            vertex_template[scaling_index + 0] = scalingVecs[index][0];
-            vertex_template[scaling_index + 1] = scalingVecs[index][1];
-            vertex_template[scaling_index + 2] = halfWidth;
-        }
-
-        //  Add vertex to VBO
-        vertex_data.addVertex(vertex_template);
-    }
-
 // Build tessellated triangles for a polyline
 GLBuilders.buildPolylines = function (
     lines,
@@ -291,6 +239,58 @@ GLBuilders.buildPolylines = function (
         }
     }
 };
+
+// Add to equidistant pairs of vertices ( INTERNAL methods for POLYLINE builder )
+function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs, texcoords, min_u, min_v, max_u, max_v }) {
+    if (scalingVecs) {
+        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+        vertices.push(coord);
+        vertices.push(coord);
+        scalingVecs.push(normal);
+        scalingVecs.push(Vector.neg(normal));
+    } else {
+        //  b. Add the extruded vertexes
+        vertices.push([ coord[0] + normal[0] * halfWidth,
+                        coord[1] + normal[1] * halfWidth ]);
+        vertices.push([ coord[0] - normal[0] * halfWidth,
+                        coord[1] - normal[1] * halfWidth ]);
+    }
+
+    // c) Add uv's if they are enable
+    if (texcoords) {
+        texcoords.push( [ max_u, (1-v_pct)*min_v + v_pct*max_v ],
+                        [ min_u, (1-v_pct)*min_v + v_pct*max_v ]);
+    }
+}
+
+// Add a vertex based on the index position into the VBO ( INTERNAL methods for POLYLINE builder )
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
+    // Prevent access to undefined vertices
+    if (index >= vertices.length) {
+        return;
+    }
+
+    // set vertex position
+    vertex_template[0] = vertices[index][0];
+    vertex_template[1] = vertices[index][1];
+    // vertex_template[2] = vertices[v][2]; // What happend with Z ??
+
+    // set UVs
+    if (texcoord_index) {
+        vertex_template[texcoord_index + 0] = texcoords[index][0];
+        vertex_template[texcoord_index + 1] = texcoords[index][1];
+    }
+
+    // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+    if (scaling_index) {
+        vertex_template[scaling_index + 0] = scalingVecs[index][0];
+        vertex_template[scaling_index + 1] = scalingVecs[index][1];
+        vertex_template[scaling_index + 2] = halfWidth;
+    }
+
+    //  Add vertex to VBO
+    vertex_data.addVertex(vertex_template);
+}
 
 // Build a quad centered on a point
 GLBuilders.buildQuadsForPoints = function (
