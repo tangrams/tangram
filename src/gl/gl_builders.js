@@ -135,7 +135,7 @@ GLBuilders.buildExtrudedPolygons = function (
 };
 
 // Add to equidistant pairs of vertices
-function addVertexPair (coord, normal, v_pct, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v }) {
+function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs, texcoords, min_u, min_v, max_u, max_v }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
         vertices.push(coord);
@@ -158,7 +158,7 @@ function addVertexPair (coord, normal, v_pct, { vertex_data, vertex_template, ha
 }
 
 // Add a vertex based on the index position into the VBO 
-    function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v }) {
+    function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
         // Prevent access to undefined vertices
         if (index >= vertices.length) {
             return;
