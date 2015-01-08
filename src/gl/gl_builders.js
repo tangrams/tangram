@@ -137,7 +137,7 @@ GLBuilders.buildExtrudedPolygons = function (
 // Build tessellated triangles for a polyline
 GLBuilders.buildPolylines = function (
     lines,
-    z, width,
+    width,
     vertex_data, vertex_template,
     {
         closed_polygon,
@@ -156,6 +156,7 @@ GLBuilders.buildPolylines = function (
         
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
+    // Values that are constant for each line and are passed to helper functions
     var constants = { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v };
 
     for (var ln = 0; ln < num_lines; ln++) {
@@ -219,15 +220,6 @@ GLBuilders.buildPolylines = function (
             addIndex(2*i+3, constants);
             addIndex(2*i+1, constants);
         }
-
-        // for (var i = 0; i < lineSize - 1; i++) {
-        //     indices_data.push(vertexData_Offset + 2*i+2);
-        //     indices_data.push(vertexData_Offset + 2*i+1);
-        //     indices_data.push(vertexData_Offset + 2*i);
-        //     indices_data.push(vertexData_Offset + 2*i+2);
-        //     indices_data.push(vertexData_Offset + 2*i+3);
-        //     indices_data.push(vertexData_Offset + 2*i+1);
-        // }
 
         // Clean all
         constants.vertices = vertices = [];
