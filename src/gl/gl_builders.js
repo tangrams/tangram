@@ -134,56 +134,31 @@ GLBuilders.buildExtrudedPolygons = function (
     }
 };
 
-// Build tessellated triangles for a polyline
-// Basically following the method described here for miter joints:
-// http://artgrammer.blogspot.co.uk/2011/07/drawing-polylines-by-tessellation.html
-GLBuilders.buildPolylines = function (
-    lines,
-    z, width,
-    vertex_data, vertex_template,
-    {
-        closed_polygon,
-        remove_tile_edges,
-        texcoord_index,
-        texcoord_scale,
-        scaling_index
-    }) {
-
-    // Build variables
-    var vertices = [],
-        scalingVecs = [],   //  vertices directions for then (on GLSL vertex shader) extrude
-        texcoords = [],
-        halfWidth = width/2,
-        num_lines = lines.length,
-        i = 0;
-    // var vertexData_Offset = vertex_data.length;
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
-
-    // Add to equidistant pairs of vertices
-    function addVertexPair (coord, normal, v_pct) {
-        if (scaling_index) {
-            //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
-            vertices.push(coord);
-            vertices.push(coord);
-            scalingVecs.push(normal);
-            scalingVecs.push(Vector.neg(normal));
-        } else {
-            //  b. Add the extruded vertexes
-            vertices.push([ coord[0] + normal[0] * halfWidth,
-                            coord[1] + normal[1] * halfWidth ]);
-            vertices.push([ coord[0] - normal[0] * halfWidth,
-                            coord[1] - normal[1] * halfWidth ]);
-        }
-
-        // c) Add uv's if they are enable
-        if (texcoord_index) {
-            texcoords.push( [ max_u, (1-v_pct)*min_v + v_pct*max_v ],
-                            [ min_u, (1-v_pct)*min_v + v_pct*max_v ]);
-        }
+// Add to equidistant pairs of vertices
+function addVertexPair (coord, normal, v_pct, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v }) {
+    if (scalingVecs) {
+        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+        vertices.push(coord);
+        vertices.push(coord);
+        scalingVecs.push(normal);
+        scalingVecs.push(Vector.neg(normal));
+    } else {
+        //  b. Add the extruded vertexes
+        vertices.push([ coord[0] + normal[0] * halfWidth,
+                        coord[1] + normal[1] * halfWidth ]);
+        vertices.push([ coord[0] - normal[0] * halfWidth,
+                        coord[1] - normal[1] * halfWidth ]);
     }
 
-    // Add a vertex based on the index position into the VBO 
-    function addIndex (index) {
+    // c) Add uv's if they are enable
+    if (texcoords) {
+        texcoords.push( [ max_u, (1-v_pct)*min_v + v_pct*max_v ],
+                        [ min_u, (1-v_pct)*min_v + v_pct*max_v ]);
+    }
+}
+
+// Add a vertex based on the index position into the VBO 
+    function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v }) {
         // Prevent access to undefined vertices
         if (index >= vertices.length) {
             return;
@@ -211,6 +186,30 @@ GLBuilders.buildPolylines = function (
         vertex_data.addVertex(vertex_template);
     }
 
+// Build tessellated triangles for a polyline
+GLBuilders.buildPolylines = function (
+    lines,
+    z, width,
+    vertex_data, vertex_template,
+    {
+        closed_polygon,
+        remove_tile_edges,
+        texcoord_index,
+        texcoord_scale,
+        scaling_index
+    }) {
+
+    // Build variables
+    var vertices = [],
+        scalingVecs = scaling_index && [],   //  vertices directions for then (on GLSL vertex shader) extrude
+        texcoords = texcoord_index && [],
+        halfWidth = width/2,
+        num_lines = lines.length;
+        
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+
+    var constants = { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v };
+
     for (var ln = 0; ln < num_lines; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
@@ -236,10 +235,11 @@ GLBuilders.buildPolylines = function (
         normCurrNext = Vector.normalize( Vector.perp( currCoord, nextCoord ) );
         rightNorm = normCurrNext;
 
-        addVertexPair(currCoord, rightNorm, 0);
+        // addVertexPair(currCoord, rightNorm, 0);
+        addVertexPair(currCoord, rightNorm, 0, constants);
 
         // Do this with the rest (except the last one)
-        for(i = 1; i < lineSize - 1 ; i++) {
+        for(let i = 1; i < lineSize - 1 ; i++) {
             prevCoord = currCoord;
             currCoord = nextCoord;
             nextCoord = line[i+1];
@@ -255,21 +255,21 @@ GLBuilders.buildPolylines = function (
             //          - compare to the miterlimit
             //          - if bigger 
 
-            addVertexPair(currCoord, rightNorm, i/lineSize );
+            addVertexPair(currCoord, rightNorm, i/lineSize, constants);
         }
 
         rightNorm = Vector.normalize( normCurrNext );
-        addVertexPair(nextCoord, rightNorm, 1 );
+        addVertexPair(nextCoord, rightNorm, 1, constants);
 
         // Add vertices to buffer acording their index
-        for (i = 0; i < lineSize - 1; i++) {
-            addIndex(2*i+2);
-            addIndex(2*i+1);
-            addIndex(2*i+0);
+        for (let i = 0; i < lineSize - 1; i++) {
+            addIndex(2*i+2, constants);
+            addIndex(2*i+1, constants);
+            addIndex(2*i+0, constants);
 
-            addIndex(2*i+2);
-            addIndex(2*i+3);
-            addIndex(2*i+1);
+            addIndex(2*i+2, constants);
+            addIndex(2*i+3, constants);
+            addIndex(2*i+1, constants);
         }
 
         // for (var i = 0; i < lineSize - 1; i++) {
@@ -282,12 +282,12 @@ GLBuilders.buildPolylines = function (
         // }
 
         // Clean all
-        vertices = [];
+        constants.vertices = vertices = [];
         if (scaling_index) {
-            scalingVecs = [];
+            constants.scalingVecs = scalingVecs = [];
         }
         if (texcoord_index) {
-            texcoords = [];
+            constants.texcoords = texcoords = [];
         }
     }
 };
