@@ -14,7 +14,8 @@ import GLTexture from './gl/gl_texture';
 export var SceneWorker = {};
 
 // Worker functionality will only be defined in worker thread
-Utils.inWorkerThread(() => {
+
+if (Utils.isWorkerThread) {
 
     SceneWorker.worker = self;
     SceneWorker.tiles = {}; // tiles processed by this worker
@@ -220,4 +221,4 @@ Utils.inWorkerThread(() => {
         console.profileEnd(`worker ${SceneWorker.worker_id}: ${name}`);
     };
 
-});
+}
