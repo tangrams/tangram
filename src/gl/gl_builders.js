@@ -148,18 +148,22 @@ GLBuilders.buildPolylines = function (
     }) {
 
     // Build variables
-    var vertices = [],
-        scalingVecs = scaling_index && [],   //  vertices directions for then (on GLSL vertex shader) extrude
-        texcoords = texcoord_index && [],
-        halfWidth = width/2,
-        num_lines = lines.length;
-        
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Values that are constant for each line and are passed to helper functions
-    var constants = { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, min_u, min_v, max_u, max_v };
+    var constants = { 
+        vertex_data, 
+        vertex_template, 
+        halfWidth: width/2, 
+        vertices: [],
+        scaling_index, 
+        scalingVecs: scaling_index && [], 
+        texcoord_index, 
+        texcoords: texcoord_index && [], 
+        min_u, min_v, max_u, max_v 
+    };
 
-    for (var ln = 0; ln < num_lines; ln++) {
+    for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
 
@@ -168,67 +172,93 @@ GLBuilders.buildPolylines = function (
         }
 
         //  Initialize variables
-        var normPrevCurr = [0,0,0],  // Right normal to segment between previous and current m_points
-            normCurrNext = [0,0,0],  // Right normal to segment between current and next m_points
-            rightNorm = [0,0,0];     // Right "normal" at current point, scaled for miter joint
+        var coordPrev = [0,0,0],// Previous point coordinates
+            coordCurr = [0,0,0],// Current point coordinates
+            coordNext = [0,0,0];// Next point coordinates
 
-        var prevCoord = [], // Previous point coordinates
-            currCoord = [], // Current point coordinates
-            nextCoord = []; // Next point coordinates
+        var normPrev = [0,0,0], // Right normal to segment between previous and current m_points
+            normCurr = [0,0,0], // Right normal at current point, scaled for miter joint
+            normNext = [0,0,0]; // Right normal to segment between current and next m_points
 
-        //  Compute first pair of vertexes based on the second point of the line
-        currCoord = Vector.set(line[0]);
-        nextCoord = Vector.set(line[1]);
+        var isPrev = false,
+            isNext = true;
 
-        //  a) Get perpendicular of the vector between first and second point
-        normCurrNext = Vector.normalize( Vector.perp( currCoord, nextCoord ) );
-        rightNorm = normCurrNext;
-
-        // addVertexPair(currCoord, rightNorm, 0);
-        addVertexPair(currCoord, rightNorm, 0, constants);
+        var nSegment = 0;
 
         // Do this with the rest (except the last one)
-        for(let i = 1; i < lineSize - 1 ; i++) {
-            prevCoord = currCoord;
-            currCoord = nextCoord;
-            nextCoord = line[i+1];
+        for(let i = 0; i < lineSize ; i++) {
+            // There is a next one?
+            isNext = i+1 < lineSize;
 
-            //  a) Store prev normal and compute the next one
-            normPrevCurr = normCurrNext;
-            normCurrNext = Vector.normalize( Vector.perp( currCoord, nextCoord ) );
-            rightNorm = Vector.normalize( Vector.add(normPrevCurr, normCurrNext) );
+            if(isPrev){
+                // If there is a previus one, copy the current (previus) values on *Prev
+                coordPrev = coordCurr;
+                normPrev = normCurr;
+            }
+            // Assign current coordinate
+            coordCurr = line[i];
 
-            var scale = Math.sqrt(2 / (1 + Vector.dot(normPrevCurr,normCurrNext)));
-            rightNorm = Vector.mult(rightNorm,scale);
-            //  TODO:
-            //          - compare to the miterlimit
-            //          - if bigger 
+            if(isNext){
+                // If is not the last one get next coordinates and calculate the right normal
+                coordNext = line[i+1];
+                normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
 
-            addVertexPair(currCoord, rightNorm, i/lineSize, constants);
+                if (remove_tile_edges) {
+                    if( GLBuilders.isOnTileEdge(line[i], line[i+1])){
+                        normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr ) );
+                        if(isPrev){
+                            addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+                            nSegment++;
+
+                            // Add vertices to buffer acording their index
+                            indexPairs(nSegment, constants);
+                        }
+                        isPrev = false;
+                        continue;
+                    }
+                }
+            }
+
+            //  Compute current normal
+            if(isPrev){
+                //  If there is a PREVIUS ... 
+                if(isNext){
+                    // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev) 
+                    normCurr = Vector.normalize( Vector.add(normPrev, normNext) );
+                    var scale = Math.sqrt(2 / (1 + Vector.dot(normPrev,normCurr)));
+                    normCurr = Vector.mult(normCurr,scale);
+                    //  TODO:
+                    // - compare to the miterlimit
+                    // - if bigger 
+
+                } else {
+                    // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
+                    // normCurr = Vector.normalize( normCurr );
+                    normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr ) );
+                }
+            } else {
+                // If is NOT a PREVIUS ...
+                if(isNext){
+                    // ... and a NEXT ONE, 
+                    normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
+                    normCurr = normNext;
+                } else {
+                    // ... and NOT a NEXT ONE, nothing to do (whitout prev or next one this is just a point)
+                    continue;
+                }
+            }
+
+            if(isPrev || isNext){
+                addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+                if(isNext){
+                   nSegment++; 
+                }
+                isPrev = true;
+            }
         }
-
-        rightNorm = Vector.normalize( normCurrNext );
-        addVertexPair(nextCoord, rightNorm, 1, constants);
 
         // Add vertices to buffer acording their index
-        for (let i = 0; i < lineSize - 1; i++) {
-            addIndex(2*i+2, constants);
-            addIndex(2*i+1, constants);
-            addIndex(2*i+0, constants);
-
-            addIndex(2*i+2, constants);
-            addIndex(2*i+3, constants);
-            addIndex(2*i+1, constants);
-        }
-
-        // Clean all
-        constants.vertices = vertices = [];
-        if (scaling_index) {
-            constants.scalingVecs = scalingVecs = [];
-        }
-        if (texcoord_index) {
-            constants.texcoords = texcoords = [];
-        }
+        indexPairs(nSegment, constants);
     }
 };
 
@@ -282,6 +312,29 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 
     //  Add vertex to VBO
     vertex_data.addVertex(vertex_template);
+}
+
+// Add the index vertex to the VBO and clean the buffers
+function indexPairs(nPairs, constants){
+    // Add vertices to buffer acording their index
+    for (var i = 0; i < nPairs; i++) {
+        addIndex(2*i+2, constants);
+        addIndex(2*i+1, constants);
+        addIndex(2*i+0, constants);
+
+        addIndex(2*i+2, constants);
+        addIndex(2*i+3, constants);
+        addIndex(2*i+1, constants);
+    }
+
+    // Clean the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
 }
 
 // Build a quad centered on a point
