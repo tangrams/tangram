@@ -172,19 +172,18 @@ GLBuilders.buildPolylines = function (
         }
 
         //  Initialize variables
-        var coordPrev = [0,0,0],// Previous point coordinates
-            coordCurr = [0,0,0],// Current point coordinates
-            coordNext = [0,0,0];// Next point coordinates
+        var coordPrev = [0,0],// Previous point coordinates
+            coordCurr = [0,0],// Current point coordinates
+            coordNext = [0,0];// Next point coordinates
 
-        var normPrev = [0,0,0], // Right normal to segment between previous and current m_points
-            normCurr = [0,0,0], // Right normal at current point, scaled for miter joint
-            normNext = [0,0,0]; // Right normal to segment between current and next m_points
+        var normPrev = [0,0], // Right normal to segment between previous and current m_points
+            normCurr = [0,0], // Right normal at current point, scaled for miter joint
+            normNext = [0,0]; // Right normal to segment between current and next m_points
 
         var isPrev = false,
             isNext = true;
 
         var nSegment = 0;
-
         // Do this with the rest (except the last one)
         for(let i = 0; i < lineSize ; i++) {
             // There is a next one?
@@ -193,18 +192,31 @@ GLBuilders.buildPolylines = function (
             if(isPrev){
                 // If there is a previus one, copy the current (previus) values on *Prev
                 coordPrev = coordCurr;
-                normPrev = normCurr;
+                normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
+                // normPrev = Vector.normalize(normCurr);
+            } else if (i === 0 && closed_polygon === true){
+                // If is the first point and is a close polygon
+                coordPrev = line[lineSize-2];
+                normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
+                isPrev = true;
             }
             // Assign current coordinate
             coordCurr = line[i];
 
             if(isNext){
-                // If is not the last one get next coordinates and calculate the right normal
                 coordNext = line[i+1];
+            } else if (closed_polygon === true) {
+                // If is the las point a close polygon
+                coordNext = line[1];
+                isNext = true;
+            }
+                
+            if(isNext){
+                // If is not the last one get next coordinates and calculate the right normal
+                
                 normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
-
                 if (remove_tile_edges) {
-                    if( GLBuilders.isOnTileEdge(line[i], line[i+1])){
+                    if( GLBuilders.isOnTileEdge(coordCurr, coordNext)){
                         normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr ) );
                         if(isPrev){
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -233,7 +245,8 @@ GLBuilders.buildPolylines = function (
 
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
-                    normCurr = Vector.normalize( normNext );
+                    // normCurr = Vector.normalize( normNext );
+                    normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr) );
                 }
             } else {
                 // If is NOT a PREVIUS ...

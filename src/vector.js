@@ -130,8 +130,7 @@ Vector.normalize = function (v)
             return [v[0] / d, v[1] / d];
         }
         return [0, 0];
-    }
-    else {
+    } else {
         d = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
         d = Math.sqrt(d);
 
