@@ -117,19 +117,24 @@
     }
 
     // Put current state on URL
+    var update_url_throttle = 500;
+    var update_url_timeout = null;
     function updateURL() {
-        var map_latlng = map.getCenter(),
-            url_options = [default_tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
+        clearTimeout(update_url_timeout);
+        update_url_timeout = setTimeout(() => {
+            var map_latlng = map.getCenter(),
+                url_options = [default_tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
 
-        if (rS) {
-            url_options.push('rstats');
-        }
+            if (rS) {
+                url_options.push('rstats');
+            }
 
-        if (style_options && style_options.effect != '') {
-            url_options.push('style=' + style_options.effect);
-        }
+            if (style_options && style_options.effect != '') {
+                url_options.push('style=' + style_options.effect);
+            }
 
-        window.location.hash = url_options.join(',');
+            window.location.hash = url_options.join(',');
+        }, update_url_throttle);
     }
 
     /*** Map ***/

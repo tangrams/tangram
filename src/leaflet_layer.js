@@ -22,6 +22,9 @@ Utils.inMainThread(() => {
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
+
+            // Force leaflet zoom animations off
+            this._zoomAnimated = false;
         },
 
         createScene: function () {
@@ -68,8 +71,10 @@ Utils.inMainThread(() => {
 
             this.hooks.move = () => {
                 var center = this._map.getCenter();
-                this.scene.setCenter(center.lng, center.lat);
-                this.scene.immediateRedraw();
+                var changed = this.scene.setCenter(center.lng, center.lat);
+                if (changed) {
+                    this.scene.immediateRedraw();
+                }
             };
             this._map.on('move', this.hooks.move);
 
@@ -92,6 +97,9 @@ Utils.inMainThread(() => {
                 this.scene.panning = false;
             };
             this._map.on('dragend', this.hooks.dragend);
+
+            // Force leaflet zoom animations off
+            this._map._zoomAnimated = false;
 
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer

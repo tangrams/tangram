@@ -232,12 +232,20 @@ Scene.prototype.nextWorker = function () {
     return worker;
 };
 
-Scene.prototype.setCenter = function (lng, lat, zoom) {
+/**
+    Set the center of the map (as [longitude, latitude] pair), and optionally set the zoom level as well.
+*/
+Scene.prototype.setCenter = function (lng, lat, zoom = null) {
+    var changed = !this.center || lng != this.center.lng || lat != this.center.lat;
     this.center = { lng, lat };
     if (zoom) {
+        changed = changed || zoom != this.zoom;
         this.setZoom(zoom);
     }
-    this.updateBounds();
+    if (changed) {
+        this.updateBounds();
+    }
+    return changed;
 };
 
 Scene.prototype.startZoom = function () {
@@ -268,6 +276,7 @@ Scene.prototype.setZoom = function (zoom) {
     this.zooming = false;
     this.updateBounds();
 
+    // TODO: saving all tiles for better continuous zoom testing, need to replace with proxy tile implementation
     // this.removeTilesOutsideZoomRange(below, above);
     this.dirty = true;
 };
@@ -397,6 +406,7 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
 
 Scene.prototype.render = function () {
     this.loadQueuedTiles();
+    this.input();
 
     // Render on demand
     if (this.dirty === false || this.initialized === false || this.viewReady() === false) {
@@ -528,7 +538,6 @@ Scene.prototype.renderStyle = function (style, program) {
 Scene.prototype.renderGL = function () {
     var gl = this.gl;
 
-    this.input();
     this.resetFrame({ alpha_blend: true });
 
     // Map transforms
@@ -1010,10 +1019,6 @@ Scene.prototype.initInputHandlers = function () {
         else if (event.keyCode == 40) {
             this.key = 'down';
         }
-        else if (event.keyCode == 83) { // s
-            this.refreshModes();
-            this.rebuildTiles(() => { this.dirty = true; });
-        }
     });
 
     document.addEventListener('keyup', event => {
@@ -1024,11 +1029,9 @@ Scene.prototype.initInputHandlers = function () {
 Scene.prototype.input = function () {
     // Fractional zoom scaling
     if (this.key == 'up') {
-        // this.setZoom(this.zoom + this.zoom_step);
         window.layer._map.setZoom(this.zoom + this.zoom_step);
     }
     else if (this.key == 'down') {
-        // this.setZoom(this.zoom - this.zoom_step);
         window.layer._map.setZoom(this.zoom - this.zoom_step);
     }
 };
