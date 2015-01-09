@@ -2,20 +2,8 @@ import chai from 'chai';
 let assert = chai.assert;
 import Scene from '../src/scene';
 import Tile from '../src/tile';
-import TileSource from '../src/tile_source';
 import sampleScene from './fixtures/sample-scene';
 
-function makeScene(options) {
-    options = options || {};
-    options.disableRenderLoop = true;
-    options.workerUrl = 'http://localhost:9876/tangram.debug.js';
-
-    return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.config,
-        options
-    );
-}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
@@ -146,10 +134,6 @@ describe('Scene', function () {
             assert.instanceOf(subject, Scene);
         });
 
-        it('correctly sets the value of the tile source', () => {
-            assert.instanceOf(subject.tile_source, TileSource);
-        });
-
         it('correctly sets the value of the layers object', () => {
             assert.equal(subject.layer_source, sampleScene.layers);
         });
@@ -177,12 +161,11 @@ describe('Scene', function () {
             });
 
             it('correctly sets the value of the tile source', () => {
-                assert.deepPropertyVal(subject, 'tile_source.max_zoom', 20);
-                assert.deepPropertyVal(
-                    subject,
-                    'tile_source.url_template',
-                    'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
-                );
+
+                let source = subject.sources.get('osm');
+
+                assert.propertyVal(source, 'max_zoom', 20);
+                assert.propertyVal(source, 'url_template', 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
             });
 
             it('sets the initialized property', () => {

@@ -2,19 +2,6 @@ import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
 import samples from './fixtures/samples';
-import TileSource  from '../src/tile_source';
-import Scene       from '../src/scene';
-import sampleScene from './fixtures/sample-scene';
-
-function makeScene(options) {
-    options = options || {};
-    options.disableRenderLoop = true;
-    return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.config,
-        options
-    );
-}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
@@ -105,9 +92,4 @@ describe('Tile', () => {
         });
 
     });
-
-    describe('.isInZoom(scene, zoom)', () => {});
-
-    describe('.updateVisibility(scene)', () => {});
-
 });

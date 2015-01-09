@@ -1,11 +1,15 @@
 {
-    "tile_source": {
-        "max_zoom": 20,
-        "type": "GeoJSONTileSource",
-        "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
-    },
-    "max_zoom": 20,
+
     "config": {
+
+        "sources": {
+            "osm": {
+                "max_zoom": 20,
+                "type": "GeoJSONTileSource",
+                "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
+            }
+        },
+
         "layers": {
             "earth": {
                 "geometry": {
