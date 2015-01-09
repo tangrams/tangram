@@ -233,8 +233,7 @@ GLBuilders.buildPolylines = function (
 
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
-                    // normCurr = Vector.normalize( normCurr );
-                    normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr ) );
+                    normCurr = Vector.normalize( normNext );
                 }
             } else {
                 // If is NOT a PREVIUS ...
