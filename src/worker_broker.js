@@ -59,7 +59,7 @@
 //         -> prints 'error! error in worker'
 //
 // TODO: add documentation for invoking main thread methods from a worker (basically same API, but in reverse)
-
+import Utils from './utils';
 var WorkerBroker;
 export default WorkerBroker = {};
 
@@ -309,13 +309,10 @@ function setupWorkerThread () {
 }
 
 // Setup this thread as appropriate
-try {
-    if (window !== undefined) {
-        setupMainThread();
-    }
+if (Utils.isMainThread) {
+    setupMainThread();
 }
-catch (e) {
-    if (self !== undefined) {
-        setupWorkerThread();
-    }
+
+if (Utils.isWorkerThread) {
+    setupWorkerThread();
 }

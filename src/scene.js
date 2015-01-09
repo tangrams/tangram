@@ -20,10 +20,10 @@ var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
 // Global setup
-Utils.inMainThread(() => {
+if (Utils.isMainThread) {
     // On main thread only (skip in web worker)
     Utils.requestAnimationFramePolyfill();
- });
+}
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
