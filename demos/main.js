@@ -117,7 +117,7 @@
     }
 
     // Put current state on URL
-    var update_url_throttle = 500;
+    var update_url_throttle = 100;
     var update_url_timeout = null;
     function updateURL() {
         clearTimeout(update_url_timeout);
@@ -145,12 +145,13 @@
         inertia: false,
         keyboard: false
     });
+    window.map = map;
 
     var layer = Tangram.leafletLayer({
         source: tile_sources[default_tile_source].source,
         scene: tile_sources[default_tile_source].scene,
-        preRender: preRender,
-        postRender: postRender,
+        preUpdate: preUpdate,
+        postUpdate: postUpdate,
         logLevel: 'debug',
         attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
     });
@@ -670,8 +671,18 @@
     }
 
     // Pre-render hook
-    function preRender () {
-        if (rS != null) { // rstats
+    var zoom_step = 0.03;
+    function preUpdate (will_render) {
+        // Input
+        if (key.isPressed('up')) {
+            map.setZoom(map.getZoom() + zoom_step);
+        }
+        else if (key.isPressed('down')) {
+            map.setZoom(map.getZoom() - zoom_step);
+        }
+
+        // Profiling
+        if (will_render && rS) {
             rS('frame').start();
             // rS('raf').tick();
             rS('fps').frame();
@@ -683,7 +694,7 @@
     }
 
     // Post-render hook
-    function postRender () {
+    function postUpdate () {
         if (rS != null) { // rstats
             rS('frame').end();
             rS('rendertiles').set(scene.renderable_tiles_count);

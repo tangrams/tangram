@@ -51,8 +51,8 @@ export default function Scene(source, config_source, options) {
     this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
     this.animated = false;                          // request redraw every frame
-    this.preRender = options.preRender;             // optional pre-rendering hook
-    this.postRender = options.postRender;           // optional post-rendering hook
+    this.preUpdate = options.preUpdate;             // optional pre-render loop hook
+    this.postUpdate = options.postUpdate;           // optional post-render loop hook
     this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
     this.frame = 0;
     this.resetTime();
@@ -107,10 +107,6 @@ Scene.prototype.init = function () {
 
                 // Loads rendering styles from config, sets GL context and compiles programs
                 this.updateConfig();
-
-                this.zoom_step = 0.02; // for fractional zoom user adjustment
-                this.last_render_count = null;
-                this.initInputHandlers();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -236,10 +232,10 @@ Scene.prototype.nextWorker = function () {
     Set the center of the map (as [longitude, latitude] pair), and optionally set the zoom level as well.
 */
 Scene.prototype.setCenter = function (lng, lat, zoom = null) {
-    var changed = !this.center || lng != this.center.lng || lat != this.center.lat;
+    var changed = !this.center || lng !== this.center.lng || lat !== this.center.lat;
     this.center = { lng, lat };
     if (zoom) {
-        changed = changed || zoom != this.zoom;
+        changed = changed || zoom !== this.zoom;
         this.setZoom(zoom);
     }
     if (changed) {
@@ -255,29 +251,28 @@ Scene.prototype.startZoom = function () {
 
 Scene.prototype.preserve_tiles_within_zoom = 2;
 Scene.prototype.setZoom = function (zoom) {
-    // Schedule GL tiles for removal on zoom
-    var below = zoom;
-    var above = zoom;
-    if (this.last_zoom != null) {
+    this.zooming = false;
+
+    // Schedule tiles for removal on integer zoom level change
+    if (this.last_zoom && Math.round(zoom) !== Math.round(this.last_zoom)) {
+        var below = Math.round(zoom);
+        var above = Math.round(zoom);
+
         log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
-            if (zoom > this.last_zoom) {
-                below = zoom - this.preserve_tiles_within_zoom;
-            }
-            else {
-                above = zoom + this.preserve_tiles_within_zoom;
-            }
+            below -= this.preserve_tiles_within_zoom;
+            above += this.preserve_tiles_within_zoom;
         }
+
+        log.debug(`removing tiles outside range [${below}, ${above}]`);
+        this.removeTilesOutsideZoomRange(below, above);
     }
 
     this.last_zoom = this.zoom;
     this.zoom = zoom;
     this.capped_zoom = Math.min(Math.round(this.zoom), this.tile_source.max_zoom || Math.round(this.zoom));
-    this.zooming = false;
     this.updateBounds();
 
-    // TODO: saving all tiles for better continuous zoom testing, need to replace with proxy tile implementation
-    // this.removeTilesOutsideZoomRange(below, above);
     this.dirty = true;
 };
 
@@ -395,7 +390,7 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
         if (this.initialized) {
             // Render the scene
-            this.render();
+            this.update();
         }
 
         // Request the next frame
@@ -404,27 +399,29 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
 };
 
-Scene.prototype.render = function () {
+Scene.prototype.update = function () {
     this.loadQueuedTiles();
-    this.input();
 
     // Render on demand
-    if (this.dirty === false || this.initialized === false || this.viewReady() === false) {
+    var will_render = !(this.dirty === false || this.initialized === false || this.viewReady() === false);
+
+    // Pre-render loop hook
+    if (typeof this.preUpdate === 'function') {
+        this.preUpdate(will_render);
+    }
+
+    // Bail if no need to render
+    if (!will_render) {
         return false;
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
 
-    // Pre-render hook
-    if (typeof this.preRender === 'function') {
-        this.preRender();
-    }
-
     // Render the scene
-    this.renderGL();
+    this.render();
 
-    // Post-render hook
-    if (typeof this.postRender === 'function') {
-        this.postRender();
+    // Post-render loop hook
+    if (typeof this.postUpdate === 'function') {
+        this.postUpdate(will_render);
     }
 
     // Redraw every frame if animating
@@ -535,7 +532,7 @@ Scene.prototype.renderStyle = function (style, program) {
     return render_count;
 };
 
-Scene.prototype.renderGL = function () {
+Scene.prototype.render = function () {
     var gl = this.gl;
 
     this.resetFrame({ alpha_blend: true });
@@ -852,8 +849,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
     }
 };
 
-Scene.prototype.removeTile = function (key)
-{
+Scene.prototype.removeTile = function (key) {
     if (!this.initialized) {
         return;
     }
@@ -998,42 +994,6 @@ Scene.prototype.syncConfigToWorker = function () {
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
 Scene.prototype.resetTime = function () {
     this.start_time = +new Date();
-};
-
-// User input
-// TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
-
-Scene.prototype.initInputHandlers = function () {
-    this.key = null;
-
-    document.addEventListener('keydown', event => {
-        if (event.keyCode == 37) {
-            this.key = 'left';
-        }
-        else if (event.keyCode == 39) {
-            this.key = 'right';
-        }
-        else if (event.keyCode == 38) {
-            this.key = 'up';
-        }
-        else if (event.keyCode == 40) {
-            this.key = 'down';
-        }
-    });
-
-    document.addEventListener('keyup', event => {
-        this.key = null;
-    });
-};
-
-Scene.prototype.input = function () {
-    // Fractional zoom scaling
-    if (this.key == 'up') {
-        window.layer._map.setZoom(this.zoom + this.zoom_step);
-    }
-    else if (this.key == 'down') {
-        window.layer._map.setZoom(this.zoom - this.zoom_step);
-    }
 };
 
 

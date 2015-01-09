@@ -33,10 +33,10 @@ Utils.inMainThread(() => {
                 config: this.options.scene
             }, {
                 numWorkers: this.options.numWorkers,
-                preRender: this.options.preRender,
-                postRender: this.options.postRender,
+                preUpdate: this.options.preUpdate,
+                postUpdate: this.options.postUpdate,
                 logLevel: this.options.logLevel,
-                // advanced option, app will have to manually called scene.render() per frame
+                // advanced option, app will have to manually called scene.update() per frame
                 disableRenderLoop: this.options.disableRenderLoop,
                 // advanced option, will require library to be served as same host as page
                 allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
@@ -146,7 +146,7 @@ Utils.inMainThread(() => {
             if (!this.scene) {
                 return;
             }
-            this.scene.render();
+            this.scene.update();
         }
 
     });
