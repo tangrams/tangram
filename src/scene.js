@@ -254,7 +254,7 @@ Scene.prototype.setZoom = function (zoom) {
     this.zooming = false;
 
     // Schedule tiles for removal on integer zoom level change
-    if (this.last_zoom && Math.round(zoom) !== Math.round(this.last_zoom)) {
+    if (Math.round(zoom) !== Math.round(this.last_zoom)) {
         var below = Math.round(zoom);
         var above = Math.round(zoom);
 
