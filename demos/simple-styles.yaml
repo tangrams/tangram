@@ -11,6 +11,10 @@ sources:
     type: 'GeoJSONTileSource'
     url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
 
+  test:
+    type: 'GeoJSONTileSource'
+    url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+
 layers:
 
     earth:

@@ -38,32 +38,33 @@ export default class TileSource {
     }
 
     // Mercator projection
-    static projectTile (tile) {
+    static projectTile (tile, source) {
         var timer = +new Date();
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
+        for (var t in source.layers) {
+            var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
+                var feature = source.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
             }
         }
 
-        if (tile.debug !== undefined) {
-            tile.debug.projection = +new Date() - timer;
+        if (source.debug !== undefined) {
+            source.debug.projection = +new Date() - timer;
         }
-        return tile;
     }
 
-    // Re-scale geometries within each tile to the range [0, scale]
-    // TODO: clip vertices at edges? right now vertices can have
-    // values outside [0, scale] (over or under bounds); this would
-    // pose a problem if we wanted to binary encode the vertices in
-    // fewer bits (e.g. 12 bits each for scale of 4096)
-    static scaleTile (tile) {
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
+    /**
+     Re-scale geometries within each tile to the range [0, scale]
+     TODO: clip vertices at edges? right now vertices can have
+     values outside [0, scale] (over or under bounds); this would
+     pose a problem if we wanted to binary encode the vertices in
+     fewer bits (e.g. 12 bits each for scale of 4096)
+    */
+    static scaleTile (tile, source) {
+        for (var t in source.layers) {
+            var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
+                var feature = source.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
                     coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
                     // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
@@ -73,7 +74,6 @@ export default class TileSource {
                 });
             }
         }
-        return tile;
     }
 
     loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
@@ -98,18 +98,32 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    loadTile (tile) {
+    formatTileUrl(tile) {
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
-        tile.url = url;
-        tile.debug.network = +new Date();
+        return url;
+    }
+    
+    loadTile (tile) {
+        var url = this.formatTileUrl(tile);
+        if (tile.sources == null) {
+            tile.sources = {};
+        }
+
+        var source = tile.sources[this.name] = {};
+
+        source.url = url;
+        source.debug = {};
+        source.debug.network = +new Date();
+
         return new Promise((resolve, reject) => {
-            tile.loading = true;
-            tile.loaded = false;
-            tile.error = null;
+            source.loading = true;
+            source.loaded = false;
+            source.error = null;
 
             // For testing network errors
             // var promise = Utils.io(url, 60 * 100, this.response_type);
@@ -118,29 +132,30 @@ export class NetworkTileSource extends TileSource {
             // }
             // promise.then((body) => {
             Utils.io(url, 60 * 1000, this.response_type).then((body) => {
-                if (tile.loading !== true) {
+                if (source.loading !== true) {
                     reject();
                     return;
                 }
-                tile.debug.response_size = body.length || body.byteLength;
-                tile.debug.network = +new Date() - tile.debug.network;
-                tile.debug.parsing = +new Date();
-                this.parseTile(tile, body);
-                tile.debug.parsing = +new Date() - tile.debug.parsing;
-                tile.loading = false;
-                tile.loaded = true;
+
+                source.debug.response_size = body.length || body.byteLength;
+                source.debug.network = +new Date() - source.debug.network;
+                source.debug.parsing = +new Date();
+                this.parseTile(tile, source, body);
+                source.debug.parsing = +new Date() - source.debug.parsing;
+                source.loading = false;
+                source.loaded = true;
                 resolve(tile);
             }, (error) => {
-                tile.loaded = false;
-                tile.loading = false;
-                tile.error = error.toString();
+                source.loaded = false;
+                source.loading = false;
+                source.error = error.toString();
                 reject(error);
             });
         });
     }
 
     // Sub-classes must implement this method:
-    parseTile (tile) {
+    parseTile (tile, source) {
         throw new MethodNotImplemented('parseTile');
     }
 }
@@ -157,11 +172,12 @@ export class GeoJSONTileSource extends NetworkTileSource {
         this.type = 'GeoJSONTileSource';
     }
 
-    parseTile (tile, response) {
-        tile.layers = JSON.parse(response);
+    parseTile (tile, source, response) {
 
-        TileSource.projectTile(tile); // mercator projection
-        TileSource.scaleTile(tile); // re-scale from meters to local tile coords
+        source.layers = JSON.parse(response);
+
+        TileSource.projectTile(tile, source); // mercator projection
+        TileSource.scaleTile(tile, source); // re-scale from meters to local tile coords
     }
 }
 

@@ -24,7 +24,6 @@ export var SceneWorker = {
 if (Utils.isWorkerThread) {
 
     SceneWorker.worker = self;
-    SceneWorker.tiles = {}; // tiles processed by this worker
 
     // TODO: sync render style state between main thread and worker
     GLBuilders.setTileScale(Scene.tile_scale);
@@ -47,9 +46,6 @@ if (Utils.isWorkerThread) {
         for (var source of sources) {
            SceneWorker.sources.set(source.name, TileSource.create(source));
         }
-
-        SceneWorker.tile_source = SceneWorker.sources.get('osm');
-
 
         // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
@@ -105,13 +101,20 @@ if (Utils.isWorkerThread) {
 
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     SceneWorker.worker.buildTile = function ({ tile }) {
-        // Tile cached?
-        if (SceneWorker.tiles[tile.key] != null) {
-            // Already loading?
-            if (SceneWorker.tiles[tile.key].loading === true) {
-                return;
-            }
-        }
+
+        // FIXME This no longer has any meaning, we need to figure out a
+        // better way of checking if a tile is in the cache and not
+        // already loading
+
+        // // Tile cached?
+        // if (SceneWorker.tiles[tile.key] != null) {
+        //     // Already loading?
+
+        //     if (SceneWorker.tiles[tile.key].sources === true) {
+        //         return;
+        //     }
+
+        // }
 
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
@@ -121,31 +124,32 @@ if (Utils.isWorkerThread) {
             // First time building the tile
             if (tile.loaded !== true) {
                 return new Promise((resolve, reject) => {
-                    for (var source of SceneWorker.sources.values()) {
 
-                        source.loadTile(tile).then(() => {
-                            var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                    Promise.all(Array.from(SceneWorker.sources.values(), x => x.loadTile(tile))).then(() => {
 
-                            resolve({
-                                tile: SceneWorker.sliceTile(tile, keys),
-                                worker_id: SceneWorker.worker_id,
-                                selection_map_size: FeatureSelection.map_size
-                            });
-                        }).catch((error) => {
-                            if (error) {
-                                SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
-                            }
-                            else {
-                                SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
-                            }
+                        var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
-                            resolve({
-                                tile: SceneWorker.sliceTile(tile),
-                                worker_id: SceneWorker.worker_id,
-                                selection_map_size: FeatureSelection.map_size
-                            });
+                        resolve({
+                            tile: SceneWorker.sliceTile(tile, keys),
+                            worker_id: SceneWorker.worker_id,
+                            selection_map_size: FeatureSelection.map_size
                         });
-                    }});
+                        
+                    }).catch((error) => {
+                        if (error) {
+                            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        }
+                        else {
+                            SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
+                        }
+
+                        resolve({
+                            tile: SceneWorker.sliceTile(tile),
+                            worker_id: SceneWorker.worker_id,
+                            selection_map_size: FeatureSelection.map_size
+                        });
+                    });
+                });
             }
             // Tile already loaded, just rebuild
             else {

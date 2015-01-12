@@ -87,106 +87,112 @@ export default class Tile {
         var vertex_data = {};
         var style_vertex_data;
 
-        tile.debug.rendering = +new Date();
-        tile.debug.features = 0;
 
-        // Treat top-level style rules as 'layers'
-        for (name in layers) {
-            layer = layers[name];
+        for (var name in tile.sources) {
+            var source = tile.sources[name];
 
-            // Skip layers with no geometry defined
-            // TODO: this should be a warning
-            if (!layer.geometry) {
-                continue;
-            }
+            source.debug.rendering = +new Date();
+            source.debug.features = 0;
 
-            var geom = Tile.getGeometryForSource(tile, layer.geometry);
-            if (geom) {
-                var num_features = geom.features.length;
+            // Treat top-level style rules as 'layers'
+            for (name in layers) {
+                layer = layers[name];
+                // Skip layers with no geometry defined
+                // TODO: this should be a warning
+                if (!layer.geometry) {
+                    log.warn(`Layer ${layer} was defined without an geometry configuration and will not be rendered.`);
+                    continue;
+                }
 
-                // Render features within each layer, in reverse order - aka top to bottom
-                for (var f = num_features-1; f >= 0; f--) {
-                    feature = geom.features[f];
+                var geom = Tile.getGeometryForSource(source, layer.geometry);
+                if (geom) {
+                    var num_features = geom.features.length;
 
-                    feature.layer = name;
+                    // Render features within each layer, in reverse order - aka top to bottom
+                    for (var f = num_features-1; f >= 0; f--) {
+                        feature = geom.features[f];
 
-                    var context = StyleParser.getFeatureParseContext(feature, tile);
-                    // Find matching rules
-                    var matchedRules = [];
-                    var layer_rules = rules[name];
-                    for (var r in layer_rules) {
-                        layer_rules[r].matchFeature(context, matchedRules);
+                        feature.layer = name;
+
+                        var context = StyleParser.getFeatureParseContext(feature, tile);
+                        // Find matching rules
+                        var matchedRules = [];
+                        var layer_rules = rules[name];
+                        for (var r in layer_rules) {
+                            layer_rules[r].matchFeature(context, matchedRules);
+                        }
+
+                        // Parse & render styles
+                        for (var rule of matchedRules) {
+                            if (!rule.visible) {
+                                continue;
+                            }
+
+                            // Parse style
+                            rule.name = rule.name || StyleParser.defaults.style.name;
+                            style = styles[rule.name];
+                            feature_style = style.parseFeature(feature, rule, source, context);
+
+                            // Skip feature?
+                            if (!feature_style) {
+                                console.log('i was skipped!');
+                                continue;
+                            }
+
+                            // Track min/max order range
+                            if (feature_style.order < tile.order.min) {
+                                tile.order.min = feature_style.order;
+                            }
+                            if (feature_style.order > tile.order.max) {
+                                tile.order.max = feature_style.order;
+                            }
+
+                            // First feature in this render style?
+                            if (vertex_data[style.name] == null) {
+                                vertex_data[style.name] = style.vertex_layout.createVertexData();
+                            }
+                            style_vertex_data = vertex_data[style.name];
+
+                            // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
+                            // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
+                            //  this one, all features on subsequent layers are drawn on top of this one
+                            // feature_style.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
+                            // feature_style.layer += feature_style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
+                            feature_style.layer = feature_style.order;
+
+                            if (feature.geometry.type === 'Polygon') {
+                                style.buildPolygons([feature.geometry.coordinates], feature_style, style_vertex_data);
+                            }
+                            else if (feature.geometry.type === 'MultiPolygon') {
+                                style.buildPolygons(feature.geometry.coordinates, feature_style, style_vertex_data);
+                            }
+                            else if (feature.geometry.type === 'LineString') {
+                                style.buildLines([feature.geometry.coordinates], feature_style, style_vertex_data);
+                            }
+                            else if (feature.geometry.type === 'MultiLineString') {
+                                style.buildLines(feature.geometry.coordinates, feature_style, style_vertex_data);
+                            }
+                            else if (feature.geometry.type === 'Point') {
+                                style.buildPoints([feature.geometry.coordinates], feature_style, style_vertex_data);
+                            }
+                            else if (feature.geometry.type === 'MultiPoint') {
+                                style.buildPoints(feature.geometry.coordinates, feature_style, style_vertex_data);
+                            }
+                        }
+
+                        tile.debug.features++;
                     }
-
-                    // Parse & render styles
-                    for (var rule of matchedRules) {
-                        if (!rule.visible) {
-                            continue;
-                        }
-
-                        // Parse style
-                        rule.name = rule.name || StyleParser.defaults.style.name;
-                        style = styles[rule.name];
-                        feature_style = style.parseFeature(feature, rule, tile, context);
-
-                        // Skip feature?
-                        if (!feature_style) {
-                            continue;
-                        }
-
-                        // Track min/max order range
-                        if (feature_style.order < tile.order.min) {
-                            tile.order.min = feature_style.order;
-                        }
-                        if (feature_style.order > tile.order.max) {
-                            tile.order.max = feature_style.order;
-                        }
-
-                        // First feature in this render style?
-                        if (vertex_data[style.name] == null) {
-                            vertex_data[style.name] = style.vertex_layout.createVertexData();
-                        }
-                        style_vertex_data = vertex_data[style.name];
-
-                        // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
-                        // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
-                        //  this one, all features on subsequent layers are drawn on top of this one
-                        // feature_style.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
-                        // feature_style.layer += feature_style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
-                        feature_style.layer = feature_style.order;
-
-                        if (feature.geometry.type === 'Polygon') {
-                            style.buildPolygons([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiPolygon') {
-                            style.buildPolygons(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'LineString') {
-                            style.buildLines([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiLineString') {
-                            style.buildLines(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'Point') {
-                            style.buildPoints([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiPoint') {
-                            style.buildPoints(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
-                    }
-
-                    tile.debug.features++;
                 }
             }
-        }
 
-        // Finalize array buffer for each render style
-        tile.vertex_data = {};
-        for (var m in vertex_data) {
-            tile.vertex_data[m] = vertex_data[m].end().buffer;
-        }
+            // Finalize array buffer for each render style
+            tile.vertex_data = {};
+            for (var m in vertex_data) {
+                tile.vertex_data[m] = vertex_data[m].end().buffer;
+            }
 
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
+            tile.debug.rendering = +new Date() - tile.debug.rendering;
+        }
 
         // Return keys to be transfered to main thread
         return {
@@ -197,21 +203,21 @@ export default class Tile {
     /**
         Retrieves geometry from a tile according to a data source definition
     */
-    static getGeometryForSource (tile, source) {
+    static getGeometryForSource (source, sourceConfig) {
         var geom;
 
-        if (source != null) {
+        if (sourceConfig != null) {
             // Just pass through data untouched if no data transform function defined
             // if (!source.filter) {
             //     geom = tile.layers[source.filter];
             // }
             // Pass through data but with different layer name in tile source data
-            /*else*/ if (typeof source.filter === 'string') {
-                geom = tile.layers[source.filter];
+            /*else*/ if (typeof sourceConfig.filter === 'string') {
+                geom = source.layers[sourceConfig.filter];
             }
             // Apply the transform function for post-processing
-            else if (typeof source.filter === 'function') {
-                geom = source.filter(tile.layers);
+            else if (typeof sourceConfig.filter === 'function') {
+                geom = sourceConfig.filter(source.layers);
             }
         }
 
