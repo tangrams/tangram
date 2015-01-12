@@ -121,7 +121,7 @@
     var update_url_timeout = null;
     function updateURL() {
         clearTimeout(update_url_timeout);
-        update_url_timeout = setTimeout(() => {
+        update_url_timeout = setTimeout(function() {
             var map_latlng = map.getCenter(),
                 url_options = [default_tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
 
