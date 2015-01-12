@@ -111,31 +111,29 @@ export var Style = {
     /*** Texture management ***/
 
     setupTextureUniforms () {
-        if (this.textures) {
-            var num_textures = Object.keys(this.textures).length;
-            if (num_textures === 1) {
-                // For single textures, provide a single u_texture uniform
-                this.defines['HAS_DEFAULT_TEXTURE'] = true;
-                this.shaders.uniforms = this.shaders.uniforms || {};
-                this.shaders.uniforms.u_texture = this.texture.url;
-            }
-            else if (num_textures > 1) {
-                // For multiple textures, provide a built-in uniform array
-                var tex_id = 0;
-                this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
-                this.shaders.uniforms = this.shaders.uniforms || {};
-                this.shaders.uniforms.u_textures = [];
+        var num_textures = Object.keys(this.textures).length;
 
-                for (var name in this.textures) {
-                    var texture = this.textures[name];
-                    texture.id = tex_id++; // give every texture a unique id local to this style
+        // Set a default texture flag
+        if (this.textures.default) {
+            this.defines['HAS_DEFAULT_TEXTURE'] = true;
+        }
 
-                    // Consistently map named textures to the same array index in the texture uniform
-                    this.shaders.uniforms.u_textures[texture.id] = name;
+        // Provide a built-in uniform array of textures
+        if (num_textures > 0) {
+            var tex_id = 0;
+            this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_textures = [];
 
-                    // Provide a #define mapping each texture back to its name in the stylesheet
-                    this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
-                }
+            for (var name in this.textures) {
+                var texture = this.textures[name];
+                texture.id = tex_id++; // give every texture a unique id local to this style
+
+                // Consistently map named textures to the same array index in the texture uniform
+                this.shaders.uniforms.u_textures[texture.id] = name;
+
+                // Provide a #define mapping each texture back to its name in the stylesheet
+                this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
             }
         }
     },
@@ -185,12 +183,11 @@ export var Style = {
     setTexcoordScale (style) {
         // Get sprite sub-area if necessary
         if (this.textures && style.sprite) {
+            // Use default texture if available, otherwise texture must be specified
             var tex;
-            // If style only has one texture, use it
-            if (Object.keys(this.textures).length === 1) {
-                tex = Object.keys(this.textures)[0];
+            if (this.textures.default) {
+                tex = 'default';
             }
-            // If style has more than one texture, texture to use must be specified
             else {
                 tex = style.texture;
             }

@@ -74,22 +74,11 @@ StyleManager.preload = function (styles) {
 // Handle single or multi-texture syntax, for stylesheet convenience
 StyleManager.normalizeTextures = function (styles) {
     for (var style of Utils.values(styles)) {
-        // Simpler single texture syntax
+        style.textures = style.textures || {};
+
+        // Support simpler single texture syntax
         if (style.texture) {
-            // Default to a single texture, using the URL as the name
-            style.textures = { [style.texture.url]: style.texture };
-        }
-
-        // Multi-texture syntax
-        if (style.textures) {
-            var num_textures = Object.keys(style.textures).length;
-
-            if (num_textures === 1) {
-                // Save a texture reference at 'texture' for convenience
-                if (!style.texture) {
-                    style.texture = style.textures[Object.keys(style.textures)[0]];
-                }
-            }
+            style.textures.default = style.texture; // alias single texture to 'default'
         }
     }
     return styles;
