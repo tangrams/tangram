@@ -7,7 +7,14 @@ import log from 'loglevel';
 
 export default class Tile {
 
-    constructor(spec = {}) {
+    /**
+        Tile
+        @constructor
+        Required properties:
+        spec.coords: object with {x, y, z} properties identifying tile coordinate location
+        spec.tile_source: TileSource from which tile will be loaded
+    */
+    constructor(spec) {
         Object.assign(this, {
             coords: {
                 x: null,
