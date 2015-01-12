@@ -2,7 +2,11 @@
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
 import {GL} from './gl';
+import GLSL from './glsl';
 import GLTexture from './gl_texture';
+
+import log from 'loglevel';
+import strip from 'strip-comments';
 
 GLProgram.id = 0; // assign each program a unique id
 GLProgram.programs = {}; // programs, by id
@@ -15,10 +19,20 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.program = null;
     this.compiled = false;
     this.compiling = false;
-    this.defines = Object.assign({}, options.defines||{}); // key/values inserted as #defines into shaders at compile-time
-    this.transforms = Object.assign({}, options.transforms||{}); // key/values for URLs of blocks that can be injected into shaders at compile-time
-    this.uniforms = {}; // program locations of uniforms, set/updated at compile-time
-    this.attribs = {}; // program locations of vertex attributes
+
+    // key/values inserted as #defines into shaders at compile-time
+    this.defines = Object.assign({}, options.defines||{});
+
+    // key/values for blocks that can be injected into shaders at compile-time
+    this.transforms = Object.assign({}, options.transforms||{});
+
+    // JS-object uniforms that are expected by this program
+    // If they are not found in the existing shader source, their types will be inferred and definitions
+    // for each will be injected.
+    this.dependent_uniforms = options.uniforms;
+
+    this.uniforms = {}; // program locations of uniforms, lazily added as each uniform is set
+    this.attribs = {}; // program locations of vertex attributes, lazily added as each attribute is accessed
 
     this.vertex_shader = vertex_shader;
     this.fragment_shader = fragment_shader;
@@ -141,6 +155,9 @@ GLProgram.prototype.compile = function () {
     this.computed_vertex_shader = define_str + this.computed_vertex_shader;
     this.computed_fragment_shader = define_str + this.computed_fragment_shader;
 
+    // Detect uniform definitions, inject any missing ones
+    this.ensureUniforms(this.dependent_uniforms);
+
     // Include program info useful for debugging
     var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
     this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
@@ -222,74 +239,82 @@ GLProgram.buildDefineString = function (defines) {
     return define_str;
 };
 
+// Detect uniform definitions, inject any missing ones
+GLProgram.prototype.ensureUniforms = function (uniforms) {
+    if (!uniforms) {
+        return;
+    }
+
+    var vs = strip(this.computed_vertex_shader);
+    var fs = strip(this.computed_fragment_shader);
+    var inject, vs_injections = [], fs_injections = [];
+
+    // Check for missing uniform definitions
+    for (var name in uniforms) {
+        inject = null;
+
+        // Check vertex shader
+        if (!GLSL.isUniformDefined(name, vs) && GLSL.isSymbolReferenced(name, vs)) {
+            if (!inject) {
+                inject = GLSL.defineUniform(name, uniforms[name]);
+            }
+            log.trace(`Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
+            vs_injections.push(inject);
+
+        }
+        // Check fragment shader
+        if (!GLSL.isUniformDefined(name, fs) && GLSL.isSymbolReferenced(name, fs)) {
+            if (!inject) {
+                inject = GLSL.defineUniform(name, uniforms[name]);
+            }
+            log.trace(`Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
+            fs_injections.push(inject);
+        }
+    }
+
+    // Inject missing uniforms
+    // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
+    // this could cause some issues with certain #pragmas, or other functions that might expect #defines
+    if (vs_injections.length > 0) {
+        this.computed_vertex_shader = vs_injections.join('\n') + this.computed_vertex_shader;
+    }
+
+    if (fs_injections.length > 0) {
+        this.computed_fragment_shader = fs_injections.join('\n') + this.computed_fragment_shader;
+    }
+};
+
 // Set uniforms from a JS object, with inferred types
-GLProgram.prototype.setUniforms = function (uniforms, prefix, texture_unit = 0)
-{
+GLProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
     if (!this.compiled) {
         return;
     }
 
     // TODO: only update uniforms when changed
 
-    // Track active texture unit
-    // A previous value will be passed in when setting GLSL structures, which call setUniforms recursively
-    this.texture_unit = texture_unit;
+    // Texture units must be tracked and incremented each time a texture sampler uniform is set.
+    // By default, the texture unit is reset to 0 each time setUniforms is called, but an explicit
+    // texture unit # can also be passed in, for cases where multiple calls to setUniforms are
+    // needed, and/or if other code may be setting uniform values directly.
+    if (typeof texture_unit === 'number') {
+        this.texture_unit = texture_unit;
+    }
+    else {
+        this.texture_unit = 0;
+    }
 
-    for (var name in uniforms) {
-        var uniform = uniforms[name];
-        var u;
+    // Parse uniform types and values from the JS object
+    var parsed = GLSL.parseUniforms(uniforms);
 
-        if (prefix) {
-            name = prefix + '.' + name;
+    // Set each uniform
+    for (var uniform of parsed) {
+        if (uniform.type === 'sampler2D') {
+            // For textures, we need to track texture units, so we have a special setter
+            this.setTextureUniform(uniform.name, uniform.value);
         }
-
-        // Single float
-        if (typeof uniform === 'number') {
-            this.uniform('1f', name, uniform);
+        else {
+            this.uniform(uniform.method, uniform.name, uniform.value);
         }
-        // Array: vector, array of floats, array of textures, or array of structs
-        else if (Array.isArray(uniform)) {
-            // Numeric values
-            if (typeof uniform[0] === 'number') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform.length >= 2 && uniform.length <= 4) {
-                    this.uniform(uniform.length + 'fv', name, uniform);
-                }
-                // float array
-                else if (uniform.length > 4) {
-                    this.uniform('1fv', name + '[0]', uniform);
-                }
-                // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-            }
-            // Array of textures
-            else if (typeof uniform[0] === 'string') {
-                for (u=0; u < uniform.length; u++) {
-                    this.setTextureUniform(name + '[' + u + ']', uniform[u]);
-                }
-            }
-            // Array of structures
-            else if (typeof uniform[0] === 'object') {
-                for (u=0; u < uniform.length; u++) {
-                    // For each element in the struct array, set each field, passing along current texture unit
-                    this.setUniforms(uniform[u], name + '[' + u + ']', this.texture_unit);
-                }
-            }
-        }
-        // Boolean
-        else if (typeof uniform === 'boolean') {
-            this.uniform('1i', name, uniform);
-        }
-        // Texture
-        else if (typeof uniform === 'string') {
-            this.setTextureUniform(name, uniform);
-        }
-        // Structure
-        else if (typeof uniform === 'object') {
-            // Set each field in the struct, passing along current texture unit
-            this.setUniforms(uniform, name, this.texture_unit);
-        }
-
-        // TODO: support other non-float types? (int, etc.)
     }
 };
 
