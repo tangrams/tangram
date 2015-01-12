@@ -24,6 +24,9 @@ export default class Tile {
                 max: -Infinity
             }
         }, spec);
+
+        this.coords = this.tile_source.calculateOverZoom(this.coords);
+        this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
     }
 
     static create(spec) { return new Tile(spec); }
@@ -282,23 +285,15 @@ export default class Tile {
         return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
     }
 
-    get key () {
-        var {x, y, z} = this.tile_source.calculateOverZoom(this.coords);
-        this.coords = {x, y, z};
-        return [x, y, z].join('/');
-    }
-
-    load(scene, coords) {
+    load(scene) {
         scene.trackTileSetLoadStart();
-        Object.assign(this, {
-            coords: coords,
-            min: Geo.metersForTile(coords),
-            max: Geo.metersForTile({x: coords.x + 1, y: coords.y + 1, z: coords.z }),
-            loading: true
-        });
 
+        this.min = Geo.metersForTile(this.coords);
+        this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+        this.loading = true;
+
         this.build(scene);
         this.updateVisibility(scene);
     }
