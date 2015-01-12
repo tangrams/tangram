@@ -101,6 +101,17 @@ Vector.angle = function ([x, y]) {
     return Math.atan2(y,x);
 };
 
+// Compare two points
+Vector.isEqual = function (v1, v2) {
+    var len = v1.length;
+    for (var i = 0; i < len; i++) {
+        if (v1[i] != v2[i]){
+            return false;
+        }
+    }
+    return true;
+};
+
 // Vector length squared
 Vector.lengthSq = function (v)
 {

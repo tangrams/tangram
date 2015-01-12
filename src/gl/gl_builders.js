@@ -167,6 +167,7 @@ GLBuilders.buildPolylines = function (
         var line = lines[ln];
         var lineSize = line.length;
 
+        // Ignore non-lines
         if (lineSize < 2) {
             continue;
         }
@@ -184,8 +185,10 @@ GLBuilders.buildPolylines = function (
             isNext = true;
 
         var nSegment = 0;
+
         // Do this with the rest (except the last one)
         for(let i = 0; i < lineSize ; i++) {
+
             // There is a next one?
             isNext = i+1 < lineSize;
 
@@ -193,13 +196,23 @@ GLBuilders.buildPolylines = function (
                 // If there is a previus one, copy the current (previus) values on *Prev
                 coordPrev = coordCurr;
                 normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
-                // normPrev = Vector.normalize(normCurr);
             } else if (i === 0 && closed_polygon === true){
                 // If is the first point and is a close polygon
-                coordPrev = line[lineSize-2];
-                normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
-                isPrev = true;
-            }
+
+                var needToClose = true;
+                if (remove_tile_edges) {
+                    if( GLBuilders.isOnTileEdge(line[i], line[lineSize-2])){
+                        needToClose = false;
+                    }
+                }
+
+                if( needToClose ){
+                    coordPrev = line[lineSize-2];
+                    normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
+                    isPrev = true;
+                }
+            } 
+
             // Assign current coordinate
             coordCurr = line[i];
 
@@ -217,7 +230,7 @@ GLBuilders.buildPolylines = function (
                 normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
                 if (remove_tile_edges) {
                     if( GLBuilders.isOnTileEdge(coordCurr, coordNext)){
-                        normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr ) );
+                        normCurr = Vector.normalize( Vector.perp(coordPrev,coordCurr ) );
                         if(isPrev){
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
                             nSegment++;
@@ -237,15 +250,14 @@ GLBuilders.buildPolylines = function (
                 if(isNext){
                     // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev) 
                     normCurr = Vector.normalize( Vector.add(normPrev, normNext) );
-                    var scale = Math.sqrt(2 / (1 + Vector.dot(normPrev,normCurr)));
-                    normCurr = Vector.mult(normCurr,scale);
+                    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev,normCurr)) );
+                    normCurr = Vector.mult(normCurr,scale*scale);
                     //  TODO:
                     // - compare to the miterlimit
                     // - if bigger 
 
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
-                    // normCurr = Vector.normalize( normNext );
                     normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr) );
                 }
             } else {
