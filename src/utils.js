@@ -178,6 +178,16 @@ Utils.inWorkerThread = function(block) {
     }
 };
 
+Utils.inWorkerThread(() => {
+    Utils.isWorkerThread = true;
+    Utils.isMainThread   = false;
+});
+
+Utils.inMainThread(() => {
+    Utils.isMainThread   = true;
+    Utils.isWorkerThread = false;
+});
+
 // Get URL that the current script was loaded from
 // If currentScript is not available, loops through <script> elements searching for a list of provided paths
 // e.g. Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');

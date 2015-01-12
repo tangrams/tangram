@@ -10,7 +10,8 @@ export function leafletLayer(options) {
 }
 
 // Leaflet layer functionality is only defined in main thread
-Utils.inMainThread(() => {
+
+if (Utils.isMainThread) {
 
     LeafletLayer = L.GridLayer.extend({
 
@@ -150,5 +151,4 @@ Utils.inMainThread(() => {
         }
 
     });
-
-});
+}

@@ -30,7 +30,7 @@ var debug = {
 };
 
 // Window can only be set in main thread
-Utils.inMainThread(() => {
+if (Utils.isMainThread) {
     // Main thread objects that can be called from workers
     WorkerBroker.addTarget('GLTexture', GLTexture);
 
@@ -39,10 +39,11 @@ Utils.inMainThread(() => {
         leafletLayer,
         debug
     };
-});
 
-Utils.inWorkerThread(() => {
+}
+
+if (Utils.isWorkerThread) {
     self.Tangram = {
         debug
     };
-});
+}
