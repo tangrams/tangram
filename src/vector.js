@@ -105,7 +105,7 @@ Vector.angle = function ([x, y]) {
 Vector.isEqual = function (v1, v2) {
     var len = v1.length;
     for (var i = 0; i < len; i++) {
-        if (v1[i] != v2[i]){
+        if (v1[i] !== v2[i]){
             return false;
         }
     }
