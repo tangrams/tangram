@@ -10,7 +10,8 @@ export function leafletLayer(options) {
 }
 
 // Leaflet layer functionality is only defined in main thread
-Utils.inMainThread(() => {
+
+if (Utils.isMainThread) {
 
     LeafletLayer = L.GridLayer.extend({
 
@@ -22,6 +23,9 @@ Utils.inMainThread(() => {
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
+
+            // Force leaflet zoom animations off
+            this._zoomAnimated = false;
         },
 
         createScene: function () {
@@ -30,10 +34,10 @@ Utils.inMainThread(() => {
                 config: this.options.scene
             }, {
                 numWorkers: this.options.numWorkers,
-                preRender: this.options.preRender,
-                postRender: this.options.postRender,
+                preUpdate: this.options.preUpdate,
+                postUpdate: this.options.postUpdate,
                 logLevel: this.options.logLevel,
-                // advanced option, app will have to manually called scene.render() per frame
+                // advanced option, app will have to manually called scene.update() per frame
                 disableRenderLoop: this.options.disableRenderLoop,
                 // advanced option, will require library to be served as same host as page
                 allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
@@ -68,8 +72,10 @@ Utils.inMainThread(() => {
 
             this.hooks.move = () => {
                 var center = this._map.getCenter();
-                this.scene.setCenter(center.lng, center.lat);
-                this.scene.immediateRedraw();
+                var changed = this.scene.setCenter(center.lng, center.lat);
+                if (changed) {
+                    this.scene.immediateRedraw();
+                }
             };
             this._map.on('move', this.hooks.move);
 
@@ -92,6 +98,9 @@ Utils.inMainThread(() => {
                 this.scene.panning = false;
             };
             this._map.on('dragend', this.hooks.dragend);
+
+            // Force leaflet zoom animations off
+            this._map._zoomAnimated = false;
 
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
@@ -138,9 +147,8 @@ Utils.inMainThread(() => {
             if (!this.scene) {
                 return;
             }
-            this.scene.render();
+            this.scene.update();
         }
 
     });
-
-});
+}

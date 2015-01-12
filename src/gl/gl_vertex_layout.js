@@ -68,10 +68,12 @@ export default class GLVertexLayout {
     // to read those attribs that it does recognize, using the attrib offsets to skip others.
     enable (gl, program)
     {
+        var attrib, location;
+
         // Enable all attributes for this layout
         for (var a=0; a < this.attribs.length; a++) {
-            var attrib = this.attribs[a];
-            var location = program.attribute(attrib.name).location;
+            attrib = this.attribs[a];
+            location = program.attribute(attrib.name).location;
 
             if (location !== -1) {
                 gl.enableVertexAttribArray(location);
@@ -81,16 +83,16 @@ export default class GLVertexLayout {
         }
 
         // Disable any previously bound attributes that aren't for this layout
-        var unused_attribs = [];
         for (location in GLVertexLayout.enabled_attribs) {
-            if (GLVertexLayout.enabled_attribs[location] !== program) {
-                gl.disableVertexAttribArray(location);
-                unused_attribs.push(location);
-            }
+            this.disableUnusedAttribute(gl, location, program);
         }
+    }
 
-        // Mark attribs as unused
-        for (location of unused_attribs) {
+    // Disable an attribute if it was not enabled for the specified program
+    // NOTE: this was moved out of the inner loop in enable() to assist w/VM optimization
+    disableUnusedAttribute (gl, location, program) {
+        if (GLVertexLayout.enabled_attribs[location] !== program) {
+            gl.disableVertexAttribArray(location);
             delete GLVertexLayout.enabled_attribs[location];
         }
     }
