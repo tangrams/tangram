@@ -122,8 +122,14 @@
     function updateURL() {
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
-            var map_latlng = map.getCenter(),
-                url_options = [default_tile_source, map_latlng.lat, map_latlng.lng, map.getZoom()];
+            var center = map.getCenter();
+
+            // TODO: this looks like a leaflet bug? sometimes returning a LatLng object, sometimes an array
+            if (Array.isArray(center)) {
+                center = { lat: center[0], lng: center[1] };
+            }
+
+            var url_options = [default_tile_source, center.lat, center.lng, map.getZoom()];
 
             if (rS) {
                 url_options.push('rstats');

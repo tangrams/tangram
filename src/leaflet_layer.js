@@ -72,6 +72,12 @@ if (Utils.isMainThread) {
 
             this.hooks.move = () => {
                 var center = this._map.getCenter();
+
+                // TODO: this looks like a leaflet bug? sometimes returning a LatLng object, sometimes an array
+                if (Array.isArray(center)) {
+                    center = { lat: center[0], lng: center[1] };
+                }
+
                 var changed = this.scene.setCenter(center.lng, center.lat);
                 if (changed) {
                     this.scene.immediateRedraw();
