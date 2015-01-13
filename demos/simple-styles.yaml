@@ -11,9 +11,10 @@ sources:
     type: 'GeoJSONTileSource'
     url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
 
-  test:
-    type: 'GeoJSONTileSource'
-    url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+  # test:
+  #   type: 'GeoJSONTileSource'
+  #   url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+
 
 layers:
 
@@ -21,16 +22,16 @@ layers:
       geometry:
         source: osm
         filter: earth
-        order: 0
       style:
+        order: 0
         color: [1, 1, 1]
 
     roads:
       geometry:
         source: osm
         filter: roads
-        order: 2
       style:
+        order: 2
         color: [1, 1, 0]
         width: 7
 
@@ -38,7 +39,7 @@ layers:
       geometry:
         source: osm
         filter: roads
-        order: 1
       style:
+        order: 1
         color: [1, 0, 0]
         width: 10

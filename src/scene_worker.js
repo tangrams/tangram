@@ -13,6 +13,7 @@ import GLTexture from './gl/gl_texture';
 
 export var SceneWorker = {
     sources: new Map(),
+    styles: {},
     rules: {},
     layers: {},
     tiles: {},
@@ -36,15 +37,14 @@ if (Utils.isWorkerThread) {
     };
 
     // Starts a config refresh
-    SceneWorker.worker.updateConfig = function ({ config, sources }) {
-        SceneWorker.config = null;
-        SceneWorker.styles = null;
+    SceneWorker.worker.updateConfig = function ({ config }) {
+
         FeatureSelection.reset();
         config = JSON.parse(config);
 
-
-        for (var source of sources) {
-           SceneWorker.sources.set(source.name, TileSource.create(source));
+        for (let sourceName in config.sources) {
+            let source = config.sources[sourceName];
+            SceneWorker.sources.set(sourceName, TileSource.create(source));
         }
 
         // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
@@ -102,19 +102,14 @@ if (Utils.isWorkerThread) {
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     SceneWorker.worker.buildTile = function ({ tile }) {
 
-        // FIXME This no longer has any meaning, we need to figure out a
-        // better way of checking if a tile is in the cache and not
-        // already loading
+        // Tile cached?
+        if (SceneWorker.tiles[tile.key] != null) {
+            // Already loading?
+            if (SceneWorker.tiles[tile.key].loading === true) {
+                return;
+            }
+        }
 
-        // // Tile cached?
-        // if (SceneWorker.tiles[tile.key] != null) {
-        //     // Already loading?
-
-        //     if (SceneWorker.tiles[tile.key].sources === true) {
-        //         return;
-        //     }
-
-        // }
 
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
@@ -122,11 +117,18 @@ if (Utils.isWorkerThread) {
         // Update config (styles, etc.), then build tile
         return SceneWorker.awaitConfiguration().then(() => {
             // First time building the tile
+
             if (tile.loaded !== true) {
+
                 return new Promise((resolve, reject) => {
 
-                    Promise.all(Array.from(SceneWorker.sources.values(), x => x.loadTile(tile))).then(() => {
+                    tile.loading = true;
+                    tile.loaded = false;
+                    tile.error = null;
 
+                    Promise.all(Array.from(SceneWorker.sources.values(), x => x.loadTile(tile))).then(() => {
+                        tile.loading = false;
+                        tile.loaded = true;
                         var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
                         resolve({
@@ -136,6 +138,10 @@ if (Utils.isWorkerThread) {
                         });
                         
                     }).catch((error) => {
+                        tile.loading = false;
+                        tile.loaded = false;
+                        tile.error = error.toString();
+
                         if (error) {
                             SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
                         }

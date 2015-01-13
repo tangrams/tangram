@@ -28,11 +28,13 @@ function getMockTopoResponse() {
     return JSON.stringify(_.clone(require('./fixtures/sample-topojson-response.json')));
 }
 
+
 describe('TileSource', () => {
 
-    let url = 'http://localhost:8080/stuff';
+    let url      = 'http://localhost:8080/stuff';
     let max_zoom = 12;
-    let options = {url, max_zoom};
+    let name     = 'test-source';
+    let options  = {url, max_zoom, name};
 
     describe('.constructor(options)', () => {
         let subject;
@@ -87,12 +89,12 @@ describe('TileSource', () => {
         });
     });
 
-    describe('TileSource.projectTile(tile)', () => {
+    describe('TileSource.projectData(tile)', () => {
         let subject;
         beforeEach(() => {
             sinon.spy(Geo, 'transformGeometry');
             sinon.spy(Geo, 'latLngToMeters');
-            subject = TileSource.projectTile(sampleTile);
+            subject = TileSource.projectData(sampleTile);
         });
 
         afterEach(() => {
@@ -111,7 +113,7 @@ describe('TileSource', () => {
 
     });
 
-    describe('TileSource.scaleTile(tile)', () => {
+    describe('TileSource.scaleData(tile)', () => {
 
         beforeEach(() => {
             sinon.spy(Geo, 'transformGeometry');
@@ -122,13 +124,14 @@ describe('TileSource', () => {
         });
 
         it('calls the .transformGeometry() method', () => {
-            TileSource.scaleTile(sampleTile);
+
+            TileSource.scaleData(sampleTile, sampleTile);
             assert.strictEqual(Geo.transformGeometry.callCount, 3);
         });
 
         // This test seems flaky
         it.skip('scales the coordinates', () => {
-            let subject = TileSource.scaleTile(sampleTile);
+            let subject = TileSource.scaleData(sampleTile, sampleTile.layers);
             let firstFeature = subject.layers.water.features[0];
 
             assert.deepEqual(firstFeature.geometry.coordinates, [-0.006075396068253094,-0.006075396068253094]);
@@ -137,7 +140,7 @@ describe('TileSource', () => {
 
     describe('NetworkTileSource', () => {
 
-        describe('.parseTile(tile)', () => {
+        describe('.parseSource(tile)', () => {
             let subject;
             beforeEach(() => {
                 subject = new NetworkTileSource(options);
@@ -146,7 +149,7 @@ describe('TileSource', () => {
             describe('when not overriden by a subclass', () => {
                 it('throws an error', () => {
                     assert.throws(
-                        () => { subject.parseTile({}); },
+                        () => { subject.parseSource({}); },
                         MethodNotImplemented,
                         'Method parseTile must be implemented in subclass'
                     );
@@ -199,6 +202,7 @@ describe('TileSource', () => {
 
     describe('TopoJSONTileSource', () => {
         let subject;
+
         beforeEach(() => {
             subject = new TopoJSONTileSource(options);
         });
@@ -209,34 +213,36 @@ describe('TileSource', () => {
             });
         });
 
-        describe('.parseTile(tile, response)', () => {
+        describe('.parseSource(tile, response)', () => {
 
             beforeEach(() => {
-                sinon.spy(TileSource, 'projectTile');
-                sinon.spy(TileSource, 'scaleTile');
+                sinon.spy(TileSource, 'projectData');
+                sinon.spy(TileSource, 'scaleData');
             });
 
             afterEach(() => {
-                TileSource.projectTile.restore();
-                TileSource.scaleTile.restore();
+                TileSource.projectData.restore();
+                TileSource.scaleData.restore();
             });
 
             it('calls .projectTile()', () => {
-                subject.parseTile(getMockTile(), getMockTopoResponse());
-                sinon.assert.called(TileSource.projectTile);
+                subject.parseSource(getMockTile(), {}, getMockTopoResponse());
+                sinon.assert.called(TileSource.projectData);
             });
 
             it('calls .scaleTile()', () => {
-                subject.parseTile(getMockTile(), getMockTopoResponse());
-                sinon.assert.called(TileSource.scaleTile);
+                subject.parseSource(getMockTile(), {},getMockTopoResponse());
+                sinon.assert.called(TileSource.scaleData);
             });
 
             it('attaches the response to the tile object', () => {
                 let tile = getMockTile();
-                subject.parseTile(tile, getMockTopoResponse());
-                assert.property(tile, 'layers');
-                assert.deepProperty(tile, 'layers.buildings');
-                assert.deepProperty(tile, 'layers.water');
+                let source = {};
+
+                subject.parseSource(tile, source, getMockTopoResponse());
+                assert.property(source, 'layers');
+                assert.deepProperty(source, 'layers.buildings');
+                assert.deepProperty(source, 'layers.water');
             });
         });
     });

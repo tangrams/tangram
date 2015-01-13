@@ -34,6 +34,7 @@ clean:
 
 lint:
 	$(JSHINT) src/gl/*.js
+	$(JSHINT) src/styles/*.js
 	$(JSHINT) src/*.js
 	$(JSHINT) test/*.js
 

@@ -9,6 +9,27 @@ camera:
 
     # type: flat
 
+sources:
+  osm:
+    type: GeoJSONTileSource
+    url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+
+  # mapzen-dev:
+  #   type: GeoJSONTileSource
+  #   url: http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json
+
+  # mapzen-local:
+  #   type: GeoJSONTileSource
+  #   url: http://localhost:8080/all/{z}/{x}/{y}.json
+
+  # mapzen-mvt:
+  #   type: MapboxFormatTileSource
+  #   url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox
+
+  # mapzen-topojson:
+  #   type: TopoJSONTileSource
+  #   url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
+
 lighting:
     type: point
     position: [0, 0, 200]
@@ -247,7 +268,6 @@ layers:
         geometry:
             source: osm
             filter: earth
-
         style:
             order: 0
             color: [0.175, 0.175, 0.175]
@@ -256,7 +276,6 @@ layers:
         geometry:
             source: osm
             filter: landuse
-
         style:
             order: 1
             interactive: true
@@ -273,7 +292,6 @@ layers:
         geometry:
             source: osm
             filter: water
-
         style:
             # name: water
             order: 2

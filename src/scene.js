@@ -1018,10 +1018,10 @@ Scene.prototype.syncConfigToWorker = function () {
     this.config_serialized = Utils.serializeWithFunctions(this.config);
     this.selection_map_worker_size = {};
     // Tell workers we're about to rebuild (so they can update styles, etc.)
+
     this.workers.forEach(worker => {
         WorkerBroker.postMessage(worker, 'updateConfig', {
-            config: this.config_serialized,
-            sources: Array.from(this.sources, ([name, source]) => { return source.buildAsMessage(); })
+            config: this.config_serialized
         });
     });
 };

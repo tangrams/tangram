@@ -14,35 +14,6 @@
 
     var tile_sources = {
         'mapzen': {
-            scene: 'demos/simple-styles.yaml'
-        },
-
-        'mapzen-dev': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url: appendProtocol('//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json')
-            },
-            scene: 'demos/styles.yaml'
-        },
-        'mapzen-local': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
-            },
-            scene: 'demos/styles.yaml'
-        },
-        'mapzen-mvt': {
-            source: {
-                type: 'MapboxFormatTileSource',
-                url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox')
-            },
-            scene: 'demos/styles.yaml'
-        },
-        'mapzen-topojson': {
-            source: {
-                type: 'TopoJSONTileSource',
-                url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
-            },
             scene: 'demos/styles.yaml'
         }
     };
@@ -135,7 +106,6 @@
     window.map = map;
 
     var layer = Tangram.leafletLayer({
-        source: tile_sources[default_tile_source].source,
         scene: tile_sources[default_tile_source].scene,
         preUpdate: preUpdate,
         postUpdate: postUpdate,
