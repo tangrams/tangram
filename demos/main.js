@@ -239,7 +239,11 @@
                     layer_styles[l].style = Object.assign({}, this.initial.layers[l].style);
                 }
             };
-            gui.camera = scene.config.camera.type = this.initial.camera || scene.config.camera.type;
+
+            if (this.initial.camera) {
+                scene.setActiveCamera(this.initial.camera);
+            }
+            gui.camera = scene.getActiveCamera();
 
             // Remove existing style-specific controls
             gui.removeFolder(this.folder);
@@ -254,7 +258,7 @@
                         };
                     }
                 }
-                this.initial.camera = this.initial.camera || scene.config.camera.type;
+                this.initial.camera = this.initial.camera || scene.getActiveCamera();
 
                 // Remove existing style-specific controls
                 gui.removeFolder(this.folder);
@@ -263,7 +267,13 @@
                     var settings = this.settings[style] || {};
 
                     // Change projection if specified
-                    gui.camera = scene.config.camera.type = settings.camera || this.initial.camera;
+                    if (settings.camera) {
+                        scene.setActiveCamera(settings.camera);
+                    }
+                    else if (this.initial.camera) {
+                        scene.setActiveCamera(this.initial.camera);
+                    }
+                    gui.camera = this.initial.camera = scene.getActiveCamera();
 
                     // Style-specific setup function
                     if (settings.setup) {
@@ -538,10 +548,10 @@
             'Perspective': 'perspective',
             'Isometric': 'isometric'
         };
-        gui.camera = layer.scene.config.camera.type;
+        gui.camera = scene.getActiveCamera();
         gui.add(gui, 'camera', camera_types).onChange(function(value) {
-            layer.scene.config.camera.type = value;
-            layer.scene.updateConfig();
+            scene.setActiveCamera(value);
+            scene.updateConfig();
         });
 
         // Lighting

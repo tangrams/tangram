@@ -10,21 +10,21 @@ var vec3 = glMatrix.vec3;
 // Abstract base class
 export default class Camera {
 
-    constructor(scene) {
+    constructor(name, scene) {
         this.scene = scene;
     }
 
     // Create a camera by type name, factory-style
-    static create(scene, config) {
+    static create(name, scene, config) {
         switch (config.type) {
             case 'isometric':
-                return new IsometricCamera(scene, config);
+                return new IsometricCamera(name, scene, config);
             case 'perspective':
-                return new PerspectiveCamera(scene, config);
+                return new PerspectiveCamera(name, scene, config);
             case 'flat':
             /* falls through */
             default:
-                return new FlatCamera(scene, config);
+                return new FlatCamera(name, scene, config);
         }
     }
 
@@ -50,8 +50,8 @@ export default class Camera {
 // [1, 0] = looking at center-right side of screen
 class PerspectiveCamera extends Camera {
 
-    constructor(scene, options = {}) {
-        super(scene);
+    constructor(name, scene, options = {}) {
+        super(name, scene);
         this.type = 'perspective';
 
         // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
@@ -129,8 +129,8 @@ class PerspectiveCamera extends Camera {
 // straight upwards on screen at their true height, [0, .5] would draw them up at half-height, [1, 0] would be sideways, etc.
 class IsometricCamera extends Camera {
 
-    constructor(scene, options = {}) {
-        super(scene);
+    constructor(name, scene, options = {}) {
+        super(name, scene);
         this.type = 'isometric';
         this.axis = options.axis || { x: 0, y: 1 };
         if (this.axis.length === 2) {
@@ -172,8 +172,8 @@ class IsometricCamera extends Camera {
 // Flat projection (e.g. just top-down, no perspective) - a degenerate isometric camera
 class FlatCamera extends IsometricCamera {
 
-    constructor(scene, options = {}) {
-        super(scene, options);
+    constructor(name, scene, options = {}) {
+        super(name, scene, options);
         this.type = 'flat';
     }
 

@@ -115,8 +115,8 @@ Scene.prototype.init = function () {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
-            }).catch(reject);
-        });
+            }).catch(e => { throw e; });
+        }).catch(e => { reject(e); });
     });
 };
 
@@ -878,7 +878,7 @@ Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
         return this.preProcessSceneConfig();
-    }).catch((error) => { Promise.reject(error); });
+        }).catch(e => { throw e; })
 };
 
 // Reload scene config and rebuild tiles
@@ -894,7 +894,6 @@ Scene.prototype.reload = function () {
     }, (error) => {
         throw error;
     });
-
 };
 
 // Normalize some settings that may not have been explicitly specified in the scene definition
@@ -909,7 +908,22 @@ Scene.prototype.preProcessSceneConfig = function () {
         }
     }
 
-    this.config.camera = this.config.camera || {}; // ensure camera object
+    // If only one camera specified, set it as default
+    this.config.cameras = this.config.cameras || {};
+    if (this.config.camera) {
+        this.config.cameras.default = this.config.camera;
+    }
+    var camera_names = Object.keys(this.config.cameras);
+    if (camera_names.length === 0) {
+        // return Promise.reject(new Error('Scene must define at least one camera'));
+        this.config.cameras.default = { type: 'perspective', active: true };
+
+    }
+    else if (!this._active_camera) {
+        // If no camera set as active, use first one
+        this.config.cameras[camera_names[0]].active = true;
+    }
+
     this.config.lighting = this.config.lighting || {}; // ensure lighting object
 
     return StyleManager.preload(this.config.styles);
@@ -959,8 +973,47 @@ Scene.prototype.updateActiveStyles = function () {
 
 // Create camera
 Scene.prototype.createCamera = function () {
-    this.camera = Camera.create(this, this.config.camera);
+    this.camera = Camera.create(this._active_camera, this, this.config.cameras[this._active_camera]);
 };
+
+// Get active camera - for public API
+Scene.prototype.getActiveCamera = function () {
+    return this._active_camera;
+};
+
+// Set active camera and recompile - for public API
+Scene.prototype.setActiveCamera = function (name) {
+    this._active_camera = name;
+    this.updateConfig();
+    return this._active_camera;
+};
+
+// Internal management of active camera
+Object.defineProperty(Scene.prototype, '_active_camera', {
+
+    get: function() {
+        for (var name in this.config.cameras) {
+            if (this.config.cameras[name].active) {
+                return name;
+            }
+        }
+    },
+
+    set: function(name) {
+        var prev = this._active_camera;
+
+        // Set new active camera
+        if (this.config.cameras[name]) {
+            this.config.cameras[name].active = true;
+
+            // Clear previously active camera
+            if (prev && prev !== name && this.config.cameras[prev]) {
+                delete this.config.cameras[prev].active;
+            }
+        }
+    }
+
+});
 
 // Create lighting
 Scene.prototype.createLighting = function () {
