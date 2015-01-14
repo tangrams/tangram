@@ -9,11 +9,11 @@ camera:
 
     # type: flat
 
-sources: {}
+sources:
 
-  # osm:
-  #   type: GeoJSONTileSource
-  #   url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+  osm:
+    type: GeoJSONTileSource
+    url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
 
 
   # mapzen-local:

@@ -36,9 +36,9 @@
             'Seattle': [47.609722, -122.333056, 15]
         }, rS, url_hash, map_start_location, url_ui, url_style;
 
-    
-    Tangram.debug.log.disableAll();
-    getVaulesFromUrl();    
+
+
+    getVaulesFromUrl();
 
     // default source, can be overriden by URL
     var 
@@ -50,26 +50,20 @@
         }),
 
         layer = Tangram.leafletLayer({
-            lazy: true,
             scene: scene_url,
-            afterSceneCreate: afterSceneCreate,
-            preRender: preRender,
-            postRender: postRender,
+            preUpdate: preUpdate,
+            postUpdate: postUpdate,
             logLevel: 'debug',
             attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
         });
 
-    layer.createScene();
+    layer.scene.subscribe({
+        loadScene: function (config) {
+            config.sources['osm'] = tile_sources[default_tile_source];
+        }
+    });
 
-    function swapSource(scene, new_default) {
-        scene.sources['osm'] = tile_sources[default_tile_source];
-    }
 
-    function afterSceneCreate() {
-        swapSource(layer.scene, default_tile_source);
-    }
-
-    
     /***** GUI/debug controls *****/
 
     /*** URL parsing ***/

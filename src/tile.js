@@ -12,7 +12,6 @@ export default class Tile {
         @constructor
         Required properties:
         spec.coords: object with {x, y, z} properties identifying tile coordinate location
-        spec.tile_source: TileSource from which tile will be loaded
     */
     constructor(spec) {
         Object.assign(this, {
@@ -32,7 +31,7 @@ export default class Tile {
             }
         }, spec);
 
-        this.coords = this.tile_source.calculateOverZoom(this.coords);
+        this.coords = this.calculateOverZoom();
         this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
     }
 
@@ -296,12 +295,6 @@ export default class Tile {
     // TODO: pass zoom only?
     isInZoom(zoom) {
         return (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom;
-    }
-
-    get key () {
-        var {x, y, z} = this.calculateOverZoom();
-        this.coords = {x, y, z};
-        return [x, y, z].join('/');
     }
 
     // TODO fix the z adjustment for continuous zoom
