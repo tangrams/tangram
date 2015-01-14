@@ -24,7 +24,9 @@ var vec3 = glMatrix.vec3;
 if (Utils.isMainThread) {
     // On main thread only (skip in web worker)
     Utils.requestAnimationFramePolyfill();
+
 }
+
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
@@ -147,7 +149,7 @@ Scene.prototype.destroy = function () {
         });
         this.workers = null;
     }
-
+    this.sources.clear();
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 

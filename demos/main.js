@@ -4,27 +4,72 @@
 (function () {
     'use strict';
 
-    function appendProtocol(url) {
-        return window.location.protocol + url;
-    }
+    var
+        tile_sources = {
+            mapzen: {
+                type: 'GeoJSONTileSource',
+                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            },
+            'mapzen-dev': {
+                type: 'GeoJSONTileSource',
+                url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            },
+            'mapzen-local': {
+                type: 'GeoJSONTileSource',
+                url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
+            },
+            'mapzen-mvt': {
+                type: 'MapboxFormatTileSource',
+                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+            },
+            'mapzen-topojson': {
+                type: 'TopoJSONTileSource',
+                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+            }
+
+    }, default_tile_source = 'mapzen',
+        scene_url = 'demos/styles.yaml',
+        osm_debug = false,        
+        locations = {
+            'London': [51.508, -0.105, 15],
+            'New York': [40.70531887544228, -74.00976419448853, 16],
+            'Seattle': [47.609722, -122.333056, 15]
+        }, rS, url_hash, map_start_location, url_ui, url_style;
+
+    
+    Tangram.debug.log.disableAll();
+    getVaulesFromUrl();    
 
     // default source, can be overriden by URL
-    var default_tile_source = 'mapzen',
-        rS;
+    var 
+        map = L.map('map', {
+            maxZoom: 20,
+            trackResize: true,
+            inertia: false,
+            keyboard: false
+        }),
 
-    var tile_sources = {
-        'mapzen': {
-            scene: 'demos/styles.yaml'
-        }
-    };
+        layer = Tangram.leafletLayer({
+            lazy: true,
+            scene: scene_url,
+            afterSceneCreate: afterSceneCreate,
+            preRender: preRender,
+            postRender: postRender,
+            logLevel: 'debug',
+            attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
+        });
 
-    var locations = {
-        'London': [51.508, -0.105, 15],
-        'New York': [40.70531887544228, -74.00976419448853, 16],
-        'Seattle': [47.609722, -122.333056, 15]
-    };
-    var osm_debug = false;
+    layer.createScene();
 
+    function swapSource(scene, new_default) {
+        scene.sources['osm'] = tile_sources[default_tile_source];
+    }
+
+    function afterSceneCreate() {
+        swapSource(layer.scene, default_tile_source);
+    }
+
+    
     /***** GUI/debug controls *****/
 
     /*** URL parsing ***/
@@ -34,38 +79,42 @@
     // #[lat],[lng],[zoom]
     // #[source],[lat],[lng],[zoom]
     // #[source],[location name]
-    var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+    function getVaulesFromUrl() {
 
-    // Get tile source from URL
-    if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
-        default_tile_source = url_hash[0];
-    }
+        url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
-    // Get location from URL
-    var map_start_location = locations['New York'];
-
-    if (url_hash.length == 3) {
-        map_start_location = url_hash.slice(0, 3);
-    }
-    if (url_hash.length > 3) {
-        map_start_location = url_hash.slice(1, 4);
-    }
-    else if (url_hash.length == 2) {
-        map_start_location = locations[url_hash[1]];
-    }
-
-    if (url_hash.length > 4) {
-        var url_ui = url_hash.slice(4);
-
-        // Style on URL?
-        var url_style;
-        if (url_ui) {
-            var re = new RegExp(/(?:style|mode)=(\w+)/);
-            url_ui.forEach(function(u) {
-                var match = u.match(re);
-                url_style = (match && match.length > 1 && match[1]);
-            });
+        // Get tile source from URL
+        if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
+            default_tile_source = url_hash[0];
         }
+
+        // Get location from URL
+        map_start_location = locations['New York'];
+
+        if (url_hash.length === 3) {
+            map_start_location = url_hash.slice(0, 3);
+        }
+        if (url_hash.length > 3) {
+            map_start_location = url_hash.slice(1, 4);
+        }
+        else if (url_hash.length === 2) {
+            map_start_location = locations[url_hash[1]];
+        }
+
+        if (url_hash.length > 4) {
+            url_ui = url_hash.slice(4);
+
+            // Style on URL?
+            url_style;
+            if (url_ui) {
+                var re = new RegExp(/(?:style|mode)=(\w+)/);
+                url_ui.forEach(function(u) {
+                    var match = u.match(re);
+                    url_style = (match && match.length > 1 && match[1]);
+                });
+            }
+        }
+        
     }
 
     // Put current state on URL
@@ -97,23 +146,8 @@
 
     /*** Map ***/
 
-    var map = L.map('map', {
-        maxZoom: 20,
-        trackResize: true,
-        inertia: false,
-        keyboard: false
-    });
-    window.map = map;
-
-    var layer = Tangram.leafletLayer({
-        scene: tile_sources[default_tile_source].scene,
-        preUpdate: preUpdate,
-        postUpdate: postUpdate,
-        logLevel: 'debug',
-        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
-    });
     window.layer = layer;
-
+    window.map = map;
     var scene = layer.scene;
     window.scene = scene;
 
@@ -227,7 +261,7 @@
 
                         settings.setup(style);
 
-                        if (settings.folder.__controllers.length == 0) {
+                        if (settings.folder.__controllers.length === 0) {
                             gui.removeFolder(this.folder);
                         }
                     }

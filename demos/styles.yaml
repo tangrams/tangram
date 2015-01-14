@@ -9,27 +9,18 @@ camera:
 
     # type: flat
 
-sources:
-  osm:
-    type: GeoJSONTileSource
-    url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+sources: {}
 
-  # mapzen-dev:
+  # osm:
   #   type: GeoJSONTileSource
-  #   url: http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json
+  #   url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+
 
   # mapzen-local:
   #   type: GeoJSONTileSource
   #   url: http://localhost:8080/all/{z}/{x}/{y}.json
 
-  # mapzen-mvt:
-  #   type: MapboxFormatTileSource
-  #   url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox
-
-  # mapzen-topojson:
-  #   type: TopoJSONTileSource
-  #   url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
-
+  
 lighting:
     type: point
     position: [0, 0, 200]
@@ -415,7 +406,7 @@ layers:
 
     buildings:
         geometry:
-            source: osm
+            source: default
             filter: buildings
 
         # properties:
@@ -471,7 +462,7 @@ layers:
 
     pois:
         geometry:
-            source: osm
+            source: default
             filter: pois
 
         filter: { name: true }
