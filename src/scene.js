@@ -879,7 +879,7 @@ Scene.prototype.removeTile = function (key) {
 Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
-        return this.preProcessSceneConfig();
+        return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
     }).catch((error) => { Promise.reject(error); });
 };
 
