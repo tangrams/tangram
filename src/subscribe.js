@@ -11,7 +11,9 @@ export default function subscribeMixin (target) {
         unsubscribe(listener) {
             listeners.delete(listener);
         },
-
+        unsubscribeAll() {
+            listeners.clear();
+        },
         trigger(event, ...data) {
             for (var listener of listeners) {
                 if (typeof listener[event] === 'function') {
