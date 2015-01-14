@@ -2,6 +2,7 @@
 import {Geo} from './geo';
 import Utils from './utils';
 import WorkerBroker from './worker_broker';
+import subscribeMixin from './subscribe';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
@@ -33,8 +34,9 @@ GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 export default function Scene(source, config_source, options) {
 
     options = options || {};
-    this.initialized = false;
+    subscribeMixin(this);
 
+    this.initialized = false;
     this.tile_source = source;
     this.tiles = {};
     this.queued_tiles = [];
@@ -877,8 +879,8 @@ Scene.prototype.removeTile = function (key) {
 Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
-        return this.preProcessSceneConfig();
-        }).catch(e => { throw e; })
+        return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
+    }).catch(e => { throw e; })
 };
 
 // Reload scene config and rebuild tiles
