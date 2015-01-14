@@ -126,6 +126,8 @@ Scene.prototype.destroy = function () {
     this.initialized = false;
     this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
+    this.unsubscribeAll(); // clear all event listeners
+
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
         this.canvas = null;
