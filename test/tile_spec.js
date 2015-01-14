@@ -13,7 +13,7 @@ describe('Tile', () => {
         scene = makeScene({});
         scene.setCenter(...nycLatLng);
         scene.init().then(() => {
-            subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
+            subject = Tile.create({coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
             done();
         });
     });
@@ -31,15 +31,12 @@ describe('Tile', () => {
         });
 
         it('overzooms a coordinate above the tile source max zoom', () => {
-            let overzoom_source = TileSource.create(_.clone(sampleScene.tile_source));
-            overzoom_source.max_zoom = 15;
-
             let unzoomed_coords = { x: 77202, y: 98506, z: 18 };
             let overzoomed_coords = { x: 9650, y: 12313, z: 15 };
 
-            let overzoom_tile = new Tile ({
-                coords: unzoomed_coords,
-                tile_source: overzoom_source
+            let overzoom_tile = new Tile({
+                max_zoom: 15,
+                coords: unzoomed_coords
             });
 
             assert.deepEqual(overzoom_tile.coords, overzoomed_coords);
