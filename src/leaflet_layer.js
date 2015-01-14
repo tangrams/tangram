@@ -115,6 +115,14 @@ if (Utils.isMainThread) {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
+            // Subscribe to tangram events
+            this.scene.subscribe({
+                // Add one or more event hooks as:
+                // event: function() { ... }
+                // e.g.:
+                // move: () => { console.log('tangram scene moved'); }
+            });
+
             // Use leaflet's existing event system as the callback mechanism
             this.scene.init().then(() => {
                 log.debug('Scene.init() succeeded');
