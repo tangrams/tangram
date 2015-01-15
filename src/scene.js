@@ -233,15 +233,23 @@ Scene.prototype.nextWorker = function () {
 };
 
 /**
-    Set the center of the map (as [longitude, latitude] pair), and optionally set the zoom level as well.
+    Set the map view, can be passed an object with lat/lng and/or zoom
 */
-Scene.prototype.setCenter = function (lng, lat, zoom = null) {
-    var changed = !this.center || lng !== this.center.lng || lat !== this.center.lat;
-    this.center = { lng, lat };
+Scene.prototype.setView = function ({ lng, lat, zoom } = {}) {
+    var changed = false;
+
+    // Set center
+    if (lng && lat) {
+        changed = changed || !this.center || lng !== this.center.lng || lat !== this.center.lat;
+        this.center = { lng, lat };
+    }
+
+    // Set zoom
     if (zoom) {
         changed = changed || zoom !== this.zoom;
         this.setZoom(zoom);
     }
+
     if (changed) {
         this.updateBounds();
     }
@@ -336,6 +344,7 @@ Scene.prototype.updateBounds = function () {
         tile.updateVisibility(this);
     }
 
+    this.trigger('move');
     this.dirty = true;
 };
 
@@ -919,8 +928,7 @@ Scene.prototype.preProcessSceneConfig = function () {
     }
     var camera_names = Object.keys(this.config.cameras);
     if (camera_names.length === 0) {
-        // return Promise.reject(new Error('Scene must define at least one camera'));
-        this.config.cameras.default = { type: 'perspective', active: true };
+        this.config.cameras.default = { active: true };
 
     }
     else if (!this._active_camera) {
@@ -978,6 +986,9 @@ Scene.prototype.updateActiveStyles = function () {
 // Create camera
 Scene.prototype.createCamera = function () {
     this.camera = Camera.create(this._active_camera, this, this.config.cameras[this._active_camera]);
+
+    // TODO: replace this and move all position info to camera
+    this.camera.updateScene();
 };
 
 // Get active camera - for public API

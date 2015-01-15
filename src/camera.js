@@ -10,8 +10,11 @@ var vec3 = glMatrix.vec3;
 // Abstract base class
 export default class Camera {
 
-    constructor(name, scene) {
+    constructor(name, scene, options = {}) {
         this.scene = scene;
+        this.position = options.position;
+        this.zoom = options.zoom;
+        // this.updateScene();
     }
 
     // Create a camera by type name, factory-style
@@ -30,10 +33,26 @@ export default class Camera {
 
     // Update method called once per frame
     update() {
+        // this.updateScene();
     }
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
     setupProgram(program) {
+    }
+
+    // Sync camera position and/or zoom to scene
+    updateScene () {
+        if (this.position || this.zoom) {
+            var view = {};
+            if (this.position) {
+                view.lng = this.position[0];
+                view.lat = this.position[1];
+            }
+            if (this.zoom) {
+                view.zoom = this.zoom;
+            }
+            this.scene.setView(view);
+        }
     }
 
 }
@@ -51,7 +70,7 @@ export default class Camera {
 class PerspectiveCamera extends Camera {
 
     constructor(name, scene, options = {}) {
-        super(name, scene);
+        super(name, scene, options);
         this.type = 'perspective';
 
         // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
@@ -76,6 +95,8 @@ class PerspectiveCamera extends Camera {
     }
 
     update() {
+        super.update();
+
         // TODO: only re-calculate these vars when necessary
 
         // Height of the viewport in meters at current zoom
@@ -130,7 +151,7 @@ class PerspectiveCamera extends Camera {
 class IsometricCamera extends Camera {
 
     constructor(name, scene, options = {}) {
-        super(name, scene);
+        super(name, scene, options);
         this.type = 'isometric';
         this.axis = options.axis || { x: 0, y: 1 };
         if (this.axis.length === 2) {
@@ -157,6 +178,8 @@ class IsometricCamera extends Camera {
     }
 
     update() {
+        super.update();
+
         // Convert mercator meters to screen space
         mat4.identity(this.meter_view_mat);
         mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));

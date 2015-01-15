@@ -10,12 +10,14 @@ cameras:
         type: isometric
         # axis: [1, .5]
 
-    isometric-upside-down:
-        type: isometric
-        axis: [0, -1]
-
     flat:
         type: flat
+
+    # testing camera with a location
+    centralPark:
+        position: [-73.97297501564027, 40.76434821445407]
+        # position: { lng: -74.01041865348817, lat: 40.71203660068803 }
+        zoom: 17
 
 lighting:
     type: point
