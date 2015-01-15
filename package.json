@@ -25,8 +25,8 @@
   "license": "MIT",
   "dependencies": {
     "libtess": "1.2.0",
-    "pbf": "0.0.1",
-    "vector-tile": "git://github.com/mapzen/vector-tile-js.git#geojson",
+    "pbf": "1.2.0",
+    "vector-tile": "1.0.0",
     "glsl-noise": "0.0.0",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
