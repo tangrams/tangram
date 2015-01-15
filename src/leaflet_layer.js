@@ -74,6 +74,10 @@ if (Utils.isMainThread) {
             this._map.on('resize', this.hooks.resize);
 
             this.hooks.move = () => {
+                if (this._updating_tangram) {
+                    return;
+                }
+
                 this._updating_tangram = true;
                 var view = this._map.getCenter();
                 view.zoom = this._map.getZoom();
@@ -87,6 +91,10 @@ if (Utils.isMainThread) {
             this._map.on('move', this.hooks.move);
 
             this.hooks.zoomstart = () => {
+                if (this._updating_tangram) {
+                    return;
+                }
+
                 this._updating_tangram = true;
                 this.scene.startZoom();
                 this._updating_tangram = false;
@@ -118,14 +126,6 @@ if (Utils.isMainThread) {
             // Subscribe to tangram events
             this.scene.subscribe({
                 move: this.onTangramViewUpdate.bind(this)
-            });
-
-            // Subscribe to tangram events
-            this.scene.subscribe({
-                // Add one or more event hooks as:
-                // event: function() { ... }
-                // e.g.:
-                // move: () => { console.log('tangram scene moved'); }
             });
 
             // Use leaflet's existing event system as the callback mechanism
@@ -162,11 +162,10 @@ if (Utils.isMainThread) {
         },
 
         onTangramViewUpdate: function () {
-            if (!this._map || !this.scene.initialized || this._updating_tangram) {
+            if (!this._map || this._updating_tangram) {
                 return;
             }
             this._updating_tangram = true;
-
             this._map.setView([this.scene.center.lat, this.scene.center.lng], this.scene.zoom, { animate: false });
             this._updating_tangram = false;
         },
