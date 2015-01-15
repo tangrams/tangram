@@ -19,12 +19,12 @@ export default class Camera {
         switch (config.type) {
             case 'isometric':
                 return new IsometricCamera(name, scene, config);
-            case 'perspective':
-                return new PerspectiveCamera(name, scene, config);
             case 'flat':
+                return new FlatCamera(name, scene, config);
+            case 'perspective':
             /* falls through */
             default:
-                return new FlatCamera(name, scene, config);
+                return new PerspectiveCamera(name, scene, config);
         }
     }
 
