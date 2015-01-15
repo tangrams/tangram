@@ -162,7 +162,7 @@ if (Utils.isMainThread) {
         },
 
         onTangramViewUpdate: function () {
-            if (!this._map || this._updating_tangram) {
+            if (!this._map || !this.scene.initialized || this._updating_tangram) {
                 return;
             }
             this._updating_tangram = true;
