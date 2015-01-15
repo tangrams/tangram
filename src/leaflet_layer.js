@@ -167,10 +167,7 @@ if (Utils.isMainThread) {
             }
             this._updating_tangram = true;
 
-            var zoom = this._map.getZoom();
-            var center = this._map.getCenter();
-
-            this._map.setView([scene.center.lat, scene.center.lng], scene.zoom, { animate: false });
+            this._map.setView([this.scene.center.lat, this.scene.center.lng], this.scene.zoom, { animate: false });
             this._updating_tangram = false;
         },
 

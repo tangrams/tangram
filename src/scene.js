@@ -891,7 +891,7 @@ Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
         return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
-    }).catch(e => { throw e; })
+    }).catch(e => { throw e; });
 };
 
 // Reload scene config and rebuild tiles
