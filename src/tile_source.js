@@ -107,7 +107,7 @@ export class NetworkTileSource extends TileSource {
         }
         return url;
     }
-    
+
     loadTile (tile) {
         var url = this.formatTileUrl(tile);
 
@@ -237,8 +237,8 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         var data = new Uint8Array(response);
         var buffer = new this.Protobuf(data);
         source.data = new this.VectorTile(buffer);
-        source.layers = tile.data.toGeoJSON();
-        delete tile.data;
+        source.layers = source.data.toGeoJSON();
+        delete source.data;
 
         // Post-processing: flip tile y and copy OSM id
         for (var t in source.layers) {
