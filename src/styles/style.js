@@ -57,7 +57,7 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    parseFeature (feature, feature_style, tile, context) {
+    parseFeature (feature, feature_style, context) {
         try {
             var style = this.feature_style;
 
@@ -93,7 +93,7 @@ export var Style = {
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, tile, error);
+            log.error('Style.parseFeature: style parsing error', feature, error);
         }
     },
 

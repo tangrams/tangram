@@ -33,9 +33,7 @@ clean:
 	rm -f src/gl/shader_sources.js
 
 lint:
-	$(JSHINT) src/gl/*.js
-	$(JSHINT) src/styles/*.js
-	$(JSHINT) src/*.js
+	$(JSHINT) src/**/*.js
 	$(JSHINT) test/*.js
 
 karma-start:

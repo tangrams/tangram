@@ -24,7 +24,6 @@ var vec3 = glMatrix.vec3;
 if (Utils.isMainThread) {
     // On main thread only (skip in web worker)
     Utils.requestAnimationFramePolyfill();
-
 }
 
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
@@ -38,7 +37,7 @@ export default function Scene(config_source, options) {
     subscribeMixin(this);
 
     this.initialized = false;
-    this.sources = new Map();
+    this.sources = {};
 
     this.tiles = {};
     this.queued_tiles = [];
@@ -80,7 +79,7 @@ export default function Scene(config_source, options) {
     log.setLevel(this.logLevel);
 }
 
-Scene.create = function ({config}, options = {}) {
+Scene.create = function (config, options = {}) {
     return new Scene(config, options);
 };
 
@@ -149,7 +148,7 @@ Scene.prototype.destroy = function () {
         });
         this.workers = null;
     }
-    this.sources.clear();
+    this.sources = {};
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
@@ -275,8 +274,6 @@ Scene.prototype.setZoom = function (zoom) {
     this.zoom = zoom;
 
     this.capped_zoom = Math.min(Math.round(this.zoom), this.findMaxZoom() || Math.round(this.zoom));
-    this.zooming = false;
-
     this.updateBounds();
 
     this.dirty = true;
@@ -684,7 +681,8 @@ Scene.prototype.forgetTile = function (key) {
 Scene.prototype.findMaxZoom = function () {
     var max_zoom = Geo.max_zoom;
 
-    for (var source of this.sources.values()) {
+    for (var name in this.sources) {
+        let source = this.sources[name];
         if (source.max_zoom > max_zoom) {
             max_zoom = source.max_zoom;
         }
@@ -925,10 +923,8 @@ Scene.prototype.reload = function () {
 Scene.prototype.loadDataSources = function () {
 
     for (var name in this.config.sources) {
-        var source = this.config.sources[name];
-        this.sources.set(name,
-            TileSource.create(Object.assign({}, source, {name}))
-        );
+        let source = this.config.sources[name];
+        this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
     }
 };
 
@@ -943,9 +939,6 @@ Scene.prototype.preProcessSceneConfig = function () {
             }
         }
     }
-
-    // TODO, find a home for this
-    this.loadDataSources();
 
     this.config.camera = this.config.camera || {}; // ensure camera object
     this.config.lighting = this.config.lighting || {}; // ensure lighting object
@@ -1009,6 +1002,7 @@ Scene.prototype.createLighting = function () {
 Scene.prototype.updateConfig = function () {
     this.createCamera();
     this.createLighting();
+    this.loadDataSources();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
@@ -1020,7 +1014,6 @@ Scene.prototype.syncConfigToWorker = function () {
     this.config_serialized = Utils.serializeWithFunctions(this.config);
     this.selection_map_worker_size = {};
     // Tell workers we're about to rebuild (so they can update styles, etc.)
-
     this.workers.forEach(worker => {
         WorkerBroker.postMessage(worker, 'updateConfig', {
             config: this.config_serialized

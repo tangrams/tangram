@@ -8,23 +8,23 @@
         tile_sources = {
             mapzen: {
                 type: 'GeoJSONTileSource',
-                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+                url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
             },
             'mapzen-dev': {
                 type: 'GeoJSONTileSource',
-                url: 'http://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
+                url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
             },
             'mapzen-local': {
                 type: 'GeoJSONTileSource',
-                url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
+                url: window.location.protocol + '//localhost:8080/all/{z}/{x}/{y}.json'
             },
             'mapzen-mvt': {
                 type: 'MapboxFormatTileSource',
-                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+                url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
             },
             'mapzen-topojson': {
                 type: 'TopoJSONTileSource',
-                url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+                url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
             }
 
     }, default_tile_source = 'mapzen',

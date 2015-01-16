@@ -12,7 +12,7 @@ import {GLBuilders} from './gl/gl_builders';
 import GLTexture from './gl/gl_texture';
 
 export var SceneWorker = {
-    sources: new Map(),
+    sources: {},
     styles: {},
     rules: {},
     layers: {},
@@ -38,13 +38,14 @@ if (Utils.isWorkerThread) {
 
     // Starts a config refresh
     SceneWorker.worker.updateConfig = function ({ config }) {
-
+        SceneWorker.config = null;
+        SceneWorker.styles = null;
         FeatureSelection.reset();
         config = JSON.parse(config);
 
-        for (let sourceName in config.sources) {
-            let source = config.sources[sourceName];
-            SceneWorker.sources.set(sourceName, TileSource.create(source));
+        for (var name in config.sources) {
+            let source = config.sources[name];
+            SceneWorker.sources[name] = TileSource.create(Object.assign(source, {name}));
         }
 
         // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
@@ -101,7 +102,6 @@ if (Utils.isWorkerThread) {
 
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     SceneWorker.worker.buildTile = function ({ tile }) {
-
         // Tile cached?
         if (SceneWorker.tiles[tile.key] != null) {
             // Already loading?
@@ -110,14 +110,12 @@ if (Utils.isWorkerThread) {
             }
         }
 
-
         // Update tile cache
         tile = SceneWorker.tiles[tile.key] = Object.assign(SceneWorker.tiles[tile.key] || {}, tile);
 
         // Update config (styles, etc.), then build tile
         return SceneWorker.awaitConfiguration().then(() => {
             // First time building the tile
-
             if (tile.loaded !== true) {
 
                 return new Promise((resolve, reject) => {
@@ -126,7 +124,7 @@ if (Utils.isWorkerThread) {
                     tile.loaded = false;
                     tile.error = null;
 
-                    Promise.all(Array.from(SceneWorker.sources.values(), x => x.loadTile(tile))).then(() => {
+                    Promise.all(Array.from(Utils.values(SceneWorker.sources), x => x.loadTile(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
                         var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
@@ -135,8 +133,7 @@ if (Utils.isWorkerThread) {
                             tile: SceneWorker.sliceTile(tile, keys),
                             worker_id: SceneWorker.worker_id,
                             selection_map_size: FeatureSelection.map_size
-                        });
-                        
+                        });                        
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;

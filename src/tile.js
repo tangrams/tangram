@@ -86,6 +86,10 @@ export default class Tile {
         var vertex_data = {};
         var style_vertex_data;
 
+        tile.debug.rendering = +new Date();
+        tile.debug.features = 0;
+
+
         for (let sourceName in tile.sources) {
             let source = tile.sources[sourceName];
             // TODO fix the debug
@@ -132,7 +136,7 @@ export default class Tile {
                         // Parse style
                         rule.name = rule.name || StyleParser.defaults.style.name;
                         style = styles[rule.name];
-                        feature_style = style.parseFeature(feature, rule, source, context);
+                        feature_style = style.parseFeature(feature, rule, context);
 
                         // Skip feature?
                         if (!feature_style) {
@@ -185,13 +189,19 @@ export default class Tile {
 
             }
 
-            // Finalize array buffer for each render style
-            tile.vertex_data = {};
-            for (var m in vertex_data) {
-                tile.vertex_data[m] = vertex_data[m].end().buffer;
-            }
 
-            source.debug.rendering = +new Date() - tile.debug.rendering;
+            source.debug.rendering = +new Date() - source.debug.rendering;
+        }
+
+        // Finalize array buffer for each render style
+        tile.vertex_data = {};
+        for (var m in vertex_data) {
+            tile.vertex_data[m] = vertex_data[m].end().buffer;
+        }
+
+        for (let i in tile.sources) {
+            tile.debug.rendering += tile.sources[i].debug.rendering;
+            tile.debug.features  += tile.sources[i].debug.features;
         }
 
         // Return keys to be transfered to main thread
@@ -203,7 +213,7 @@ export default class Tile {
     /**
         Retrieves geometry from a tile according to a data source definition
     */
-    static getGeometryForSource (source, sourceConfig) {
+    static getGeometryForSource (sourceData, sourceConfig) {
         var geom;
 
         if (sourceConfig != null) {
@@ -213,11 +223,11 @@ export default class Tile {
             // }
             // Pass through data but with different layer name in tile source data
             /*else*/ if (typeof sourceConfig.filter === 'string') {
-                geom = source.layers[sourceConfig.filter];
+                geom = sourceData.layers[sourceConfig.filter];
             }
             // Apply the transform function for post-processing
             else if (typeof sourceConfig.filter === 'function') {
-                geom = sourceConfig.filter(source.layers);
+                geom = sourceConfig.filter(sourceData.layers);
             }
         }
 
@@ -292,7 +302,6 @@ export default class Tile {
         return (visible !== this.visible);
     }
 
-    // TODO: pass zoom only?
     isInZoom(zoom) {
         return (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom;
     }

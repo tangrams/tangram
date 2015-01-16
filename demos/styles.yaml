@@ -8,18 +8,6 @@ camera:
     # axis: [1, .5]
 
     # type: flat
-
-sources:
-
-  osm:
-    type: GeoJSONTileSource
-    url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
-
-
-  # mapzen-local:
-  #   type: GeoJSONTileSource
-  #   url: http://localhost:8080/all/{z}/{x}/{y}.json
-
   
 lighting:
     type: point
@@ -253,6 +241,16 @@ styles:
                     color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
                     if (color.rgb == vec3(0.)) discard;
 
+
+sources:
+  osm:
+    type: GeoJSONTileSource
+    url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+
+  # mapzen-local:
+  #   type: GeoJSONTileSource
+  #   url: http://localhost:8080/all/{z}/{x}/{y}.json
+
 layers:
 
     earth:
@@ -406,7 +404,7 @@ layers:
 
     buildings:
         geometry:
-            source: default
+            source: osm
             filter: buildings
 
         # properties:
@@ -462,7 +460,7 @@ layers:
 
     pois:
         geometry:
-            source: default
+            source: osm
             filter: pois
 
         filter: { name: true }

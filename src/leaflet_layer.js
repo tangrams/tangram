@@ -29,18 +29,18 @@ if (Utils.isMainThread) {
         },
 
         createScene: function () {
-            this.scene = Scene.create({
-                config: this.options.scene
-            }, {
-                numWorkers: this.options.numWorkers,
-                preUpdate: this.options.preUpdate,
-                postUpdate: this.options.postUpdate,
-                logLevel: this.options.logLevel,
-                // advanced option, app will have to manually called scene.update() per frame
-                disableRenderLoop: this.options.disableRenderLoop,
-                // advanced option, will require library to be served as same host as page
-                allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
-            });
+            this.scene = Scene.create(
+                this.options.scene,
+                {
+                    numWorkers: this.options.numWorkers,
+                    preUpdate: this.options.preUpdate,
+                    postUpdate: this.options.postUpdate,
+                    logLevel: this.options.logLevel,
+                    // advanced option, app will have to manually called scene.update() per frame
+                    disableRenderLoop: this.options.disableRenderLoop,
+                    // advanced option, will require library to be served as same host as page
+                    allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
+                });
         },
 
         // Finish initializing scene and setup events when layer is added to map
@@ -123,7 +123,7 @@ if (Utils.isMainThread) {
             });
 
             // Use leaflet's existing event system as the callback mechanism
-           this.scene.init().then(() => {
+            this.scene.init().then(() => {
                 var center = this._map.getCenter();
                 this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
                 this.fire('init');
