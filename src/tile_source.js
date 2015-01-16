@@ -54,7 +54,7 @@ export default class TileSource {
     }
 
     /**
-     Re-scale geometries within each tile to the range [0, scale]
+     Re-scale geometries within each source to the range [0, scale]
      TODO: clip vertices at edges? right now vertices can have
      values outside [0, scale] (over or under bounds); this would
      pose a problem if we wanted to binary encode the vertices in
@@ -133,7 +133,7 @@ export class NetworkTileSource extends TileSource {
                 source.debug.response_size = body.length || body.byteLength;
                 source.debug.network = +new Date() - source.debug.network;
                 source.debug.parsing = +new Date();
-                this.parseSource(tile, source, body);
+                this.parseSourceData(tile, source, body);
                 source.debug.parsing = +new Date() - source.debug.parsing;
                 resolve(tile);
             }).catch((error) => {
@@ -144,7 +144,7 @@ export class NetworkTileSource extends TileSource {
     }
 
     // Sub-classes must implement this method:
-    parseSource (tile, source, reponse) {
+    parseSourceData (tile, source, reponse) {
         throw new MethodNotImplemented('parseTile');
     }
 }
@@ -161,7 +161,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
         this.type = 'GeoJSONTileSource';
     }
 
-    parseSource (tile, source, response) {
+    parseSourceData (tile, source, response) {
 
         source.layers = JSON.parse(response);
 
@@ -172,7 +172,6 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
-
 export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
@@ -192,7 +191,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
         }
     }
 
-    parseSource (tile, source, response) {
+    parseSourceData (tile, source, response) {
         if (typeof topojson === 'undefined') {
             tile.layers = {};
             return;
@@ -232,7 +231,7 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output
     }
 
-    parseSource (tile, source, response) {
+    parseSourceData (tile, source, response) {
         // Convert Mapbox vector tile to GeoJSON
         var data = new Uint8Array(response);
         var buffer = new this.Protobuf(data);

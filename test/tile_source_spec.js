@@ -140,7 +140,7 @@ describe('TileSource', () => {
 
     describe('NetworkTileSource', () => {
 
-        describe('.parseSource(tile)', () => {
+        describe('.parseSourceData(tile)', () => {
             let subject;
             beforeEach(() => {
                 subject = new NetworkTileSource(options);
@@ -149,7 +149,7 @@ describe('TileSource', () => {
             describe('when not overriden by a subclass', () => {
                 it('throws an error', () => {
                     assert.throws(
-                        () => { subject.parseSource({}); },
+                        () => { subject.parseSourceData({}); },
                         MethodNotImplemented,
                         'Method parseTile must be implemented in subclass'
                     );
@@ -213,7 +213,7 @@ describe('TileSource', () => {
             });
         });
 
-        describe('.parseSource(tile, response)', () => {
+        describe('.parseSourceData(tile, response)', () => {
 
             beforeEach(() => {
                 sinon.spy(TileSource, 'projectData');
@@ -226,12 +226,12 @@ describe('TileSource', () => {
             });
 
             it('calls .projectTile()', () => {
-                subject.parseSource(getMockTile(), {}, getMockTopoResponse());
+                subject.parseSourceData(getMockTile(), {}, getMockTopoResponse());
                 sinon.assert.called(TileSource.projectData);
             });
 
             it('calls .scaleTile()', () => {
-                subject.parseSource(getMockTile(), {},getMockTopoResponse());
+                subject.parseSourceData(getMockTile(), {},getMockTopoResponse());
                 sinon.assert.called(TileSource.scaleData);
             });
 
@@ -239,7 +239,7 @@ describe('TileSource', () => {
                 let tile = getMockTile();
                 let source = {};
 
-                subject.parseSource(tile, source, getMockTopoResponse());
+                subject.parseSourceData(tile, source, getMockTopoResponse());
                 assert.property(source, 'layers');
                 assert.deepProperty(source, 'layers.buildings');
                 assert.deepProperty(source, 'layers.water');

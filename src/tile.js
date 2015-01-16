@@ -87,8 +87,6 @@ export default class Tile {
         var style_vertex_data;
 
         tile.debug.rendering = +new Date();
-        tile.debug.features = 0;
-
 
         for (let sourceName in tile.sources) {
             let source = tile.sources[sourceName];
@@ -199,9 +197,17 @@ export default class Tile {
             tile.vertex_data[m] = vertex_data[m].end().buffer;
         }
 
+        tile.debug.rendering = +new Date() - tile.debug.rendering;
+        tile.debug.projection = 0;
+        tile.debug.features = 0;
+        tile.debug.network = 0;
+        tile.debug.parsing = 0;
+
         for (let i in tile.sources) {
-            tile.debug.rendering += tile.sources[i].debug.rendering;
             tile.debug.features  += tile.sources[i].debug.features;
+            tile.debug.projection += tile.sources[i].debug.projection;
+            tile.debug.network += tile.sources[i].debug.network;
+            tile.debug.parsing += tile.sources[i].debug.parsing;
         }
 
         // Return keys to be transfered to main thread

@@ -683,7 +683,7 @@ Scene.prototype.findMaxZoom = function () {
 
     for (var name in this.sources) {
         let source = this.sources[name];
-        if (source.max_zoom > max_zoom) {
+        if (source.max_zoom < max_zoom) {
             max_zoom = source.max_zoom;
         }
     }
