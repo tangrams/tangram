@@ -42,7 +42,7 @@
         osm_debug = false,        
         locations = {
             'London': [51.508, -0.105, 15],
-            'New York': [40.70531887544228, -74.00976419448853, 16]
+            'New York': [40.70531887544228, -74.00976419448853, 16],
             'Seattle': [47.609722, -122.333056, 15]
         }, rS, url_hash, map_start_location, url_ui, url_style;
 

@@ -677,20 +677,20 @@ Scene.prototype.forgetTile = function (key) {
     delete this.tiles[key];
 };
 
+Scene.prototype.findMaxZoom = function (override = false) {
+    var max_zoom = this.max_zoom || Geo.max_zoom;
 
-Scene.prototype.findMaxZoom = function () {
-    var max_zoom = Geo.max_zoom;
+    if (this.max_zoom == null || override) {
 
-    for (var name in this.sources) {
-        let source = this.sources[name];
-        if (source.max_zoom < max_zoom) {
-            max_zoom = source.max_zoom;
+        for (var name in this.sources) {
+            let source = this.sources[name];
+            if (source.max_zoom < max_zoom) {
+                this.max_zoom = source.max_zoom;
+            }
         }
     }
-    return max_zoom;
+    return this.max_zoom;
 };
-
-
 
 // Load a single tile
 Scene.prototype._loadTile = function (coords, options = {}) {
@@ -921,11 +921,20 @@ Scene.prototype.reload = function () {
 };
 
 Scene.prototype.loadDataSources = function () {
-
     for (var name in this.config.sources) {
         let source = this.config.sources[name];
         this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
     }
+};
+
+Scene.prototype.setSourceMax = function () {
+    let max_zoom = this.findMaxZoom();
+
+    for (var name in this.sources) {
+        let source = this.sources[name];
+        source.max_zoom = max_zoom;
+    }
+    return max_zoom;
 };
 
 // Normalize some settings that may not have been explicitly specified in the scene definition
@@ -1003,6 +1012,7 @@ Scene.prototype.updateConfig = function () {
     this.createCamera();
     this.createLighting();
     this.loadDataSources();
+    this.setSourceMax();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
