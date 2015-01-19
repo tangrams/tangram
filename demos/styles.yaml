@@ -8,7 +8,7 @@ camera:
     # axis: [1, .5]
 
     # type: flat
-  
+
 lighting:
     type: point
     position: [0, 0, 200]
@@ -243,13 +243,10 @@ styles:
 
 
 sources:
-  osm:
-    type: GeoJSONTileSource
-    url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
-
-  # mapzen-local:
-  #   type: GeoJSONTileSource
-  #   url: http://localhost:8080/all/{z}/{x}/{y}.json
+    # When commented, demo main.js will set source based on URL - uncomment for testing
+    # osm:
+    #     type: GeoJSONTileSource
+    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
 
 layers:
 

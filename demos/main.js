@@ -21,6 +21,10 @@
             type: 'MapboxFormatTileSource',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
+        'mapzen-dev-mvt': {
+            type: 'MapboxFormatTileSource',
+            url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+        },
         'mapzen-topojson': {
             type: 'TopoJSONTileSource',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
@@ -39,7 +43,7 @@
     },
         default_tile_source = 'mapzen',
         scene_url = 'demos/styles.yaml',
-        osm_debug = false,        
+        osm_debug = false,
         locations = {
             'London': [51.508, -0.105, 15],
             'New York': [40.70531887544228, -74.00976419448853, 16],
@@ -51,7 +55,7 @@
     getVaulesFromUrl();
 
     // default source, can be overriden by URL
-    var 
+    var
         map = L.map('map', {
             maxZoom: 20,
             trackResize: true,
@@ -69,7 +73,11 @@
 
     layer.scene.subscribe({
         loadScene: function (config) {
-            config.sources['osm'] = tile_sources[default_tile_source];
+            // If no source was set in scene definition, set one based on the URL
+            if (!config.sources || !config.sources['osm']) {
+                config.sources = config.sources || {};
+                config.sources['osm'] = tile_sources[default_tile_source];
+            }
         }
     });
 
@@ -118,7 +126,7 @@
                 });
             }
         }
-        
+
     }
 
     // Put current state on URL
