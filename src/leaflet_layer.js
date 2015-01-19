@@ -129,11 +129,8 @@ if (Utils.isMainThread) {
 
             // Use leaflet's existing event system as the callback mechanism
             this.scene.init().then(() => {
-                var center = this._map.getCenter();
-                this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
-                this.fire('init');
-
                 log.debug('Scene.init() succeeded');
+                this.fire('init');
             }, (error) => {
                 log.error('Scene.init() failed with error:', error);
                 throw error;
