@@ -3,6 +3,7 @@ cameras:
         type: perspective
         # focal_length: 1
         focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+        # fov: 60
         vanishing_point: [-250, -250] # relative to center of screen, in pixels
         active: true
 

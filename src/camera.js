@@ -57,16 +57,21 @@ export default class Camera {
 
 }
 
-// Classic perspective matrix projection
-// This is a specialized perspective camera that, given a desired camera focal length (which can also vary by zoom level),
-// constrains the camera height above the ground plane such that the displayed ground area of the map matches that of
-// a traditional web mercator map. This means you can set the camera location by [lat, lng, zoom] as you would a typical
-// web mercator map, then adjust the focal length as needed.
-// Vanishing point can also be adjusted to achieve different "viewing angles", e.g. instead of looking straight down into
-// the center of the viewport, the camera appears to be tilted at an angle. For example:
-// [0, 0] = looking towards center of screen
-// [-1, -1] = looking at lower-left corner of screen
-// [1, 0] = looking at center-right side of screen
+/**
+    Perspective matrix projection
+
+    This is a specialized perspective camera that, given a desired camera focal length (which can also vary by zoom level),
+    constrains the camera height above the ground plane such that the displayed ground area of the map matches that of
+    a traditional web mercator map. This means you can set the camera location by [lat, lng, zoom] as you would a typical
+    web mercator map, then adjust the focal length as needed.
+
+    Vanishing point can also be adjusted to achieve different "viewing angles", e.g. instead of looking straight down into
+    the center of the viewport, the camera appears to be tilted at an angle. For example:
+
+    [0, 0] = looking towards center of viewport
+    [-250, -250] = looking 250 pixels from the viewport center to the lower-left corner
+    [400, 0] = looking 400 pixels to the right of the viewport center
+*/
 class PerspectiveCamera extends Camera {
 
     constructor(name, scene, options = {}) {
@@ -74,14 +79,18 @@ class PerspectiveCamera extends Camera {
         this.type = 'perspective';
 
         // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
-        this.focal_length = options.focal_length || [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]];
+        this.focal_length = options.focal_length;
+        this.fov = options.fov;
+        if (!this.focal_length && !this.fov) {
+            // Default focal length ranges by zoom
+            this.focal_length = [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]];
+        }
 
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
         this._vanishing_point = [];
 
         this.height = null;
-        this.computed_focal_length = null;
-        this.perspective_mat = mat4.create();
+        this.perspective_matrix = mat4.create();
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
         GLProgram.removeTransform('camera');
@@ -94,51 +103,74 @@ class PerspectiveCamera extends Camera {
         );
     }
 
+    // Constrains the camera so that the viewable area matches given the viewport height
+    // (in world space, e.g. meters), given either a camera focal length or field-of-view
+    // (focal length is used if both are passed).
+    constrainCamera({ view_height, height, focal_length, fov }) {
+        // Solve for camera height
+        if (!height) {
+            // We have focal length, calculate FOV
+            if (focal_length) {
+                fov = Math.atan(1 / focal_length) * 2;
+            }
+            // We have FOV, calculate focal length
+            else if (fov) {
+                fov = fov * Math.PI / 180; // convert FOV degrees to radians
+                focal_length = 1 / Math.tan(fov / 2);
+            }
+
+            // Distance that camera should be from ground such that it fits the field of view expected
+            // for a conventional web mercator map at the current zoom level and camera focal length
+            height = view_height / 2 * focal_length;
+        }
+        // Solve for camera focal length / field-of-view
+        else {
+            focal_length = 2 * height / view_height;
+            fov = Math.atan(1 / focal_length) * 2;
+        }
+
+        return { view_height, height, focal_length, fov };
+    }
+
     update() {
         super.update();
 
         // TODO: only re-calculate these vars when necessary
 
         // Height of the viewport in meters at current zoom
-        var meter_zoom_y = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
+        var view_height_meters = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
 
-        // Determine focal length, which can be a constant value, or interpolated across zoom levels
-        this.computed_focal_length = Utils.interpolate(this.scene.zoom, this.focal_length);
+        // Compute camera properties to fit desired view
+        var { height, fov } = this.constrainCamera({
+            view_height: view_height_meters,
+            focal_length: Utils.interpolate(this.scene.zoom, this.focal_length),
+            fov: Utils.interpolate(this.scene.zoom, this.fov)
+         });
+        this.height = height;
 
-        // Distance that camera should be from ground such that it fits the field of view expected
-        // for a conventional web mercator map at the current zoom level and camera focal length
-        this.height = meter_zoom_y / 2 * this.computed_focal_length;
-
-        // Perspective matrix params
-        // Adjusment of focal length (arctangent) is because perspective matrix builder expects field-of-view in radians, but we are
-        // passing the final value expected to be in the perspective matrix, so we need to reverse-calculate the original FOV here.
-        var fov = Math.atan(1 / this.computed_focal_length) * 2;
-        var aspect = this.scene.view_aspect;
-        var znear = 1;
-        var zfar = (this.height + 1);
-
-        mat4.perspective(this.perspective_mat, fov, aspect, znear, zfar);
+        // Perspective matrix
+        mat4.perspective(this.perspective_matrix, fov, this.scene.view_aspect, 1, this.height + 1);
 
         // Convert vanishing point from pixels to viewport space
         this._vanishing_point[0] = this.vanishing_point[0] / this.scene.css_size.width;
         this._vanishing_point[1] = this.vanishing_point[1] / this.scene.css_size.height;
 
         // Adjust perspective matrix to include vanishing point skew
-        this.perspective_mat[8] = -this._vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate skews x coordinate
-        this.perspective_mat[9] = -this._vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate skews y coordinate
+        this.perspective_matrix[8] = -this._vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate skews x coordinate
+        this.perspective_matrix[9] = -this._vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate skews y coordinate
 
         // Translate geometry into the distance so that camera is appropriate height above ground
         // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed ground
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
-        mat4.translate(this.perspective_mat, this.perspective_mat, vec3.fromValues(
-            meter_zoom_y/2 * aspect * -this._vanishing_point[0],
-            meter_zoom_y/2 * -this._vanishing_point[1],
+        mat4.translate(this.perspective_matrix, this.perspective_matrix, vec3.fromValues(
+            view_height_meters/2 * this.scene.view_aspect * -this._vanishing_point[0],
+            view_height_meters/2 * -this._vanishing_point[1],
             -this.height)
         );
     }
 
     setupProgram(program) {
-        program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_mat);
+        program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_matrix);
     }
 
 }
