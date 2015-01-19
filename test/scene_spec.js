@@ -122,7 +122,6 @@ describe('Scene', function () {
 
         beforeEach(() => {
             subject = makeScene({});
-
         });
 
         afterEach( () => {
@@ -149,10 +148,10 @@ describe('Scene', function () {
 
         describe('when the scene is not initialized', () => {
             let subject;
-            beforeEach((done) => {
-                subject = makeScene({});
-                subject.init().then(done);
 
+            beforeEach(() => {
+                subject = makeScene({});
+                return subject.init();
             });
 
             afterEach(() => {
@@ -161,9 +160,7 @@ describe('Scene', function () {
             });
 
             it('correctly sets the value of the tile source', () => {
-
                 let source = subject.sources['osm'];
-
                 assert.propertyVal(source, 'max_zoom', 20);
                 assert.propertyVal(source, 'url_template', 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
             });
