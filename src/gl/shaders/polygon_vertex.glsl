@@ -4,11 +4,12 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
-uniform mat4 u_tile_world;
-uniform mat4 u_tile_view;
 uniform float u_meters_per_pixel;
 uniform float u_order_min;
 uniform float u_order_range;
+
+uniform mat4 u_model;
+uniform mat4 u_modelView;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
@@ -69,7 +70,7 @@ void main() {
     #endif
 
     // Position
-    vec4 position = u_tile_view * vec4(a_position, 1.);
+    vec4 position = u_modelView * vec4(a_position, 1.);
 
     // Texture UVs
     #if defined(TEXTURE_COORDS)
@@ -77,7 +78,7 @@ void main() {
     #endif
 
     // World coordinates for 3d procedural textures
-    v_world_position = u_tile_world * vec4(a_position, 1.);
+    v_world_position = u_model * vec4(a_position, 1.);
     #if defined(WORLD_POSITION_WRAP)
         v_world_position.xy -= world_position_anchor;
     #endif

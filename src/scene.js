@@ -67,6 +67,14 @@ export default function Scene(source, config_source, options) {
     this.panning = false;
     this.container = options.container;
 
+    // Model-view matrices
+    // 64-bit versions are for CPU calcuations
+    // 32-bit versions are downsampled and sent to GPU
+    this.modelMatrix = new Float64Array(16);
+    this.modelMatrix32 = new Float32Array(16);
+    this.modelViewMatrix = new Float64Array(16);
+    this.modelViewMatrix32 = new Float32Array(16);
+
     // Debug config
     this.debug = {
         profile: {
@@ -524,17 +532,16 @@ Scene.prototype.renderStyle = function (style, program) {
             // Tile origin
             program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
-            // Tile view matrix - transform tile space into view space (meters, relative to camera)
-            mat4.identity(this.tile_view_mat);
-            mat4.translate(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.min.x - this.center_meters.x, tile.min.y - this.center_meters.y, 0)); // adjust for tile origin & map center
-            mat4.scale(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-            program.uniform('Matrix4fv', 'u_tile_view', false, this.tile_view_mat);
+            // Model matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.modelMatrix);
+            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            mat4.copy(this.modelMatrix32, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
 
-            // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-            mat4.identity(this.tile_world_mat);
-            mat4.translate(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-            mat4.scale(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-            program.uniform('Matrix4fv', 'u_tile_world', false, this.tile_world_mat);
+            // Model view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
             // Render tile
             tile.gl_geometry[style].render();
@@ -554,10 +561,6 @@ Scene.prototype.render = function () {
     if (!this.center_meters) {
         return;
     }
-
-    // Model-view matrices
-    this.tile_view_mat = mat4.create();
-    this.tile_world_mat = mat4.create();
 
     // Update camera & lights
     this.camera.update();

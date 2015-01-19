@@ -18,6 +18,11 @@ import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import WorkerBroker from './worker_broker';
 
+import glMatrix from 'gl-matrix';
+
+// Default to 64-bit because we need the extra precision when multiplying matrices w/mercator projected values
+glMatrix.glMatrix.setMatrixArrayType(Float64Array);
+
 // Make some modules accessible for debugging
 var debug = {
     log,

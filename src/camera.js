@@ -87,18 +87,18 @@ class PerspectiveCamera extends Camera {
         }
 
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
-        this._vanishing_point = [];
 
         this.height = null;
-        this.perspective_matrix = mat4.create();
+        this.viewMatrix = new Float64Array(16);
+        this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
         GLProgram.removeTransform('camera');
         GLProgram.addTransform('camera', `
-            uniform mat4 u_perspective;
+            uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
-                position = u_perspective * position;
+                position = u_projection * position;
             }`
         );
     }
@@ -132,9 +132,7 @@ class PerspectiveCamera extends Camera {
         return { view_height, height, focal_length, fov };
     }
 
-    update() {
-        super.update();
-
+    updateMatrices() {
         // TODO: only re-calculate these vars when necessary
 
         // Height of the viewport in meters at current zoom
@@ -146,31 +144,43 @@ class PerspectiveCamera extends Camera {
             focal_length: Utils.interpolate(this.scene.zoom, this.focal_length),
             fov: Utils.interpolate(this.scene.zoom, this.fov)
          });
-        this.height = height;
 
-        // Perspective matrix
-        mat4.perspective(this.perspective_matrix, fov, this.scene.view_aspect, 1, this.height + 1);
+        // View matrix
+        var position = [this.scene.center_meters.x, this.scene.center_meters.y, height];
+        mat4.lookAt(this.viewMatrix, vec3.fromValues(...position), vec3.fromValues(position[0], position[1], height - 1), vec3.fromValues(0, 1, 0));
+
+        // Projection matrix
+        mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 1);
 
         // Convert vanishing point from pixels to viewport space
-        this._vanishing_point[0] = this.vanishing_point[0] / this.scene.css_size.width;
-        this._vanishing_point[1] = this.vanishing_point[1] / this.scene.css_size.height;
+        var vanishing_point = [
+            this.vanishing_point[0] / this.scene.css_size.width,
+            this.vanishing_point[1] / this.scene.css_size.height
+        ];
 
-        // Adjust perspective matrix to include vanishing point skew
-        this.perspective_matrix[8] = -this._vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate skews x coordinate
-        this.perspective_matrix[9] = -this._vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate skews y coordinate
+        // Adjust projection matrix to include vanishing point skew
+        this.projectionMatrix[8] = -vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate s
+        this.projectionMatrix[9] = -vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate s
 
         // Translate geometry into the distance so that camera is appropriate height above ground
-        // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed ground
+        // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed g
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
-        mat4.translate(this.perspective_matrix, this.perspective_matrix, vec3.fromValues(
-            view_height_meters/2 * this.scene.view_aspect * -this._vanishing_point[0],
-            view_height_meters/2 * -this._vanishing_point[1],
-            -this.height)
+        mat4.translate(this.projectionMatrix, this.projectionMatrix,
+            vec3.fromValues(
+                view_height_meters/2 * this.scene.view_aspect * -vanishing_point[0],
+                view_height_meters/2 * -vanishing_point[1],
+                0
+            )
         );
     }
 
+    update() {
+        super.update();
+        this.updateMatrices();
+    }
+
     setupProgram(program) {
-        program.uniform('Matrix4fv', 'u_perspective', false, this.perspective_matrix);
+        program.uniform('Matrix4fv', 'u_projection', false, this.projectionMatrix);
     }
 
 }

@@ -1,4 +1,4 @@
-uniform mat4 u_tile_view;
+uniform mat4 u_modelView;
 uniform float u_num_layers;
 
 attribute vec3 a_position;
@@ -29,8 +29,7 @@ void main() {
         v_selection_color = a_selection_color;
     #endif
 
-    // vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);
-    vec4 position = u_tile_view * vec4(a_position, 1.);
+    vec4 position = u_modelView * vec4(a_position, 1.);
 
     #pragma tangram: vertex
 
