@@ -5,9 +5,7 @@ import {StyleParser} from './style_parser';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import {GLBuilders} from '../gl/gl_builders';
-import GLTexture from '../gl/gl_texture';
 
-import log from 'loglevel';
 
 export var Polygons = Object.create(Style);
 

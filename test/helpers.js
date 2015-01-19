@@ -1,5 +1,4 @@
 import Scene from '../src/scene';
-import TileSource from '../src/tile_source';
 import sampleScene from './fixtures/sample-scene';
 
 let worker_url = '/tangram.debug.js';
@@ -36,7 +35,6 @@ window.makeScene = function (options) {
     options.worker_timeout = 1000;
 
     return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
         sampleScene.config,
         options
     );

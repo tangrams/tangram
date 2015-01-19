@@ -8,28 +8,15 @@ import log from 'loglevel';
 export default class TileSource {
 
     constructor (source) {
+        this.name = source.name;
         this.url_template = source.url;
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
     }
 
-    // TODO fix the z adjustment for continuous zoom
-    calculateOverZoom(coordinate) {
-        var zgap,
-            {x, y, z} = coordinate;
-
-        if (z > this.max_zoom) {
-            zgap = z - this.max_zoom;
-            x = ~~(x / Math.pow(2, zgap));
-            y = ~~(y / Math.pow(2, zgap));
-            z -= zgap;
-        }
-
-        return {x, y, z};
-    }
-
     buildAsMessage() {
         return {
+            name: this.name,
             type: this.type,
             url: this.url_template,
             max_zoom: this.max_zoom
@@ -51,42 +38,42 @@ export default class TileSource {
     }
 
     // Mercator projection
-    static projectTile (tile) {
+    static projectData (source) {
         var timer = +new Date();
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
+        for (var t in source.layers) {
+            var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
+                var feature = source.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
             }
         }
 
-        if (tile.debug !== undefined) {
-            tile.debug.projection = +new Date() - timer;
+        if (source.debug !== undefined) {
+            source.debug.projection = +new Date() - timer;
         }
-        return tile;
     }
 
-    // Re-scale geometries within each tile to the range [0, scale]
-    // TODO: clip vertices at edges? right now vertices can have
-    // values outside [0, scale] (over or under bounds); this would
-    // pose a problem if we wanted to binary encode the vertices in
-    // fewer bits (e.g. 12 bits each for scale of 4096)
-    static scaleTile (tile) {
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
+    /**
+     Re-scale geometries within each source to the range [0, scale]
+     TODO: clip vertices at edges? right now vertices can have
+     values outside [0, scale] (over or under bounds); this would
+     pose a problem if we wanted to binary encode the vertices in
+     fewer bits (e.g. 12 bits each for scale of 4096)
+    */
+    static scaleData (source, {coords: {z}, min}) {
+        for (var t in source.layers) {
+            var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
+                var feature = source.layers[t].features[f];
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    coordinates[0] = (coordinates[0] - tile.min.x) * Geo.units_per_meter[tile.coords.z];
+                    coordinates[0] = (coordinates[0] - min.x) * Geo.units_per_meter[z];
                     // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
-                    coordinates[1] = (coordinates[1] - tile.min.y) * Geo.units_per_meter[tile.coords.z];
+                    coordinates[1] = (coordinates[1] - min.y) * Geo.units_per_meter[z];
                     // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                     return coordinates;
                 });
             }
         }
-        return tile;
     }
 
     loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
@@ -111,19 +98,31 @@ export class NetworkTileSource extends TileSource {
         }
     }
 
-    loadTile (tile) {
+    formatTileUrl(tile) {
         var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
             this.next_host = (this.next_host + 1) % this.url_hosts.length;
         }
-        tile.url = url;
-        tile.debug.network = +new Date();
-        return new Promise((resolve, reject) => {
-            tile.loading = true;
-            tile.loaded = false;
-            tile.error = null;
+        return url;
+    }
 
+    loadTile (tile) {
+        var url = this.formatTileUrl(tile);
+
+        if (tile.sources == null) {
+            tile.sources = {};
+        }
+
+        var source = tile.sources[this.name] = {};
+
+        source.url = url;
+        source.debug = {};
+        source.debug.network = +new Date();
+
+        return new Promise((resolve, reject) => {
+            source.error = null;
             // For testing network errors
             // var promise = Utils.io(url, 60 * 100, this.response_type);
             // if (Math.random() < .7) {
@@ -131,29 +130,21 @@ export class NetworkTileSource extends TileSource {
             // }
             // promise.then((body) => {
             Utils.io(url, 60 * 1000, this.response_type).then((body) => {
-                if (tile.loading !== true) {
-                    reject();
-                    return;
-                }
-                tile.debug.response_size = body.length || body.byteLength;
-                tile.debug.network = +new Date() - tile.debug.network;
-                tile.debug.parsing = +new Date();
-                this.parseTile(tile, body);
-                tile.debug.parsing = +new Date() - tile.debug.parsing;
-                tile.loading = false;
-                tile.loaded = true;
+                source.debug.response_size = body.length || body.byteLength;
+                source.debug.network = +new Date() - source.debug.network;
+                source.debug.parsing = +new Date();
+                this.parseSourceData(tile, source, body);
+                source.debug.parsing = +new Date() - source.debug.parsing;
                 resolve(tile);
-            }, (error) => {
-                tile.loaded = false;
-                tile.loading = false;
-                tile.error = error.toString();
+            }).catch((error) => {
+                source.error = error.toString();
                 reject(error);
             });
         });
     }
 
     // Sub-classes must implement this method:
-    parseTile (tile) {
+    parseSourceData (tile, source, reponse) {
         throw new MethodNotImplemented('parseTile');
     }
 }
@@ -170,17 +161,17 @@ export class GeoJSONTileSource extends NetworkTileSource {
         this.type = 'GeoJSONTileSource';
     }
 
-    parseTile (tile, response) {
-        tile.layers = JSON.parse(response);
+    parseSourceData (tile, source, response) {
 
-        TileSource.projectTile(tile); // mercator projection
-        TileSource.scaleTile(tile); // re-scale from meters to local tile coords
+        source.layers = JSON.parse(response);
+
+        TileSource.projectData(source); // mercator projection
+        TileSource.scaleData(source, tile); // re-scale from meters to local tile coords
     }
 }
 
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
-
 export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
@@ -200,29 +191,29 @@ export class TopoJSONTileSource extends NetworkTileSource {
         }
     }
 
-    parseTile (tile, response) {
+    parseSourceData (tile, source, response) {
         if (typeof topojson === 'undefined') {
             tile.layers = {};
             return;
         }
 
-        tile.layers = JSON.parse(response);
+        source.layers = JSON.parse(response);
 
         // Single layer
-        if (tile.layers.objects.vectiles != null) {
-            tile.layers = topojson.feature(tile.layers, tile.layers.objects.vectiles);
+        if (source.layers.objects.vectiles != null) {
+            source.layers = topojson.feature(source.layers, source.layers.objects.vectiles);
         }
         // Multiple layers
         else {
             var layers = {};
-            for (var t in tile.layers.objects) {
-                layers[t] = topojson.feature(tile.layers, tile.layers.objects[t]);
+            for (var t in source.layers.objects) {
+                layers[t] = topojson.feature(source.layers, source.layers.objects[t]);
             }
-            tile.layers = layers;
+            source.layers = layers;
         }
 
-        TileSource.projectTile(tile); // mercator projection
-        TileSource.scaleTile(tile); // re-scale from meters to local tile coords
+        TileSource.projectData(source); // mercator projection
+        TileSource.scaleData(source, tile); // re-scale from meters to local tile coords
     }
 
 }
@@ -240,19 +231,19 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib, forked to add GeoJSON output
     }
 
-    parseTile (tile, response) {
+    parseSourceData (tile, source, response) {
         // Convert Mapbox vector tile to GeoJSON
         var data = new Uint8Array(response);
         var buffer = new this.Protobuf(data);
-        tile.data = new this.VectorTile(buffer);
-        tile.layers = tile.data.toGeoJSON();
-        delete tile.data;
+        source.data = new this.VectorTile(buffer);
+        source.layers = source.data.toGeoJSON();
+        delete source.data;
 
         // Post-processing: flip tile y and copy OSM id
-        for (var t in tile.layers) {
-            var num_features = tile.layers[t].features.length;
+        for (var t in source.layers) {
+            var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
-                var feature = tile.layers[t].features[f];
+                var feature = source.layers[t].features[f];
 
                 feature.properties.id = feature.properties.osm_id;
                 feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {

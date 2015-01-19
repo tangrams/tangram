@@ -205,7 +205,7 @@ StyleManager.build = function (stylesheet_styles) {
 
 // Compile all styles
 StyleManager.compile = function () {
-    for (name in Styles) {
+    for (var name in Styles) {
         try {
             Styles[name].compile();
             log.trace(`StyleManager.compile(): compiled style ${name}`);

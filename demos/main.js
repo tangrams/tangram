@@ -4,74 +4,83 @@
 (function () {
     'use strict';
 
-    function appendProtocol(url) {
-        return window.location.protocol + url;
-    }
-
-    // default source, can be overriden by URL
-    var default_tile_source = 'mapzen',
-        rS;
-
     var tile_sources = {
-        'mapzen': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url:  appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.json')
-            },
-            // scene: 'demos/simple-styles.yaml'
-            scene: 'demos/styles.yaml'
+        mapzen: {
+            type: 'GeoJSONTileSource',
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-dev': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url: appendProtocol('//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json')
-            },
-            scene: 'demos/styles.yaml'
+            type: 'GeoJSONTileSource',
+            url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-local': {
-            source: {
-                type: 'GeoJSONTileSource',
-                url: 'http://localhost:8080/all/{z}/{x}/{y}.json'
-            },
-            scene: 'demos/styles.yaml'
+            type: 'GeoJSONTileSource',
+            url: window.location.protocol + '//localhost:8080/all/{z}/{x}/{y}.json'
         },
         'mapzen-mvt': {
-            source: {
-                type: 'MapboxFormatTileSource',
-                url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox')
-            },
-            scene: 'demos/styles.yaml'
+            type: 'MapboxFormatTileSource',
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+        },
+        'mapzen-dev-mvt': {
+            type: 'MapboxFormatTileSource',
+            url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
         'mapzen-topojson': {
-            source: {
-                type: 'TopoJSONTileSource',
-                url: appendProtocol('//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson')
-            },
-            scene: 'demos/styles.yaml'
-        }//,
+            type: 'TopoJSONTileSource',
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+        },
+
         // 'osm': {
-        //     source: {
-        //         type: 'GeoJSONTileSource',
-        //         url: 'http://tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
-        //     },
-        //     scene: 'demos/styles.yaml'
+        //     type: 'GeoJSONTileSource',
+        //     url: window.location.protocol + '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         // },
         // 'mapbox': {
-        //     source: {
-        //         type: 'MapboxFormatTileSource',
-        //         url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
-        //         max_zoom: 15
-        //     },
-        //     scene: 'demos/styles.yaml'
+        //     type: 'MapboxFormatTileSource',
+        //     url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+        //     max_zoom: 15
         // }
-    };
 
-    var locations = {
-        'London': [51.508, -0.105, 15],
-        'New York': [40.70531887544228, -74.00976419448853, 16],
-        'Seattle': [47.609722, -122.333056, 15]
-    };
-    var osm_debug = false;
+    },
+        default_tile_source = 'mapzen',
+        scene_url = 'demos/styles.yaml',
+        osm_debug = false,
+        locations = {
+            'London': [51.508, -0.105, 15],
+            'New York': [40.70531887544228, -74.00976419448853, 16],
+            'Seattle': [47.609722, -122.333056, 15]
+        }, rS, url_hash, map_start_location, url_ui, url_style;
+
+
+
+    getVaulesFromUrl();
+
+    // default source, can be overriden by URL
+    var
+        map = L.map('map', {
+            maxZoom: 20,
+            trackResize: true,
+            inertia: false,
+            keyboard: false
+        }),
+
+        layer = Tangram.leafletLayer({
+            scene: scene_url,
+            preUpdate: preUpdate,
+            postUpdate: postUpdate,
+            logLevel: 'debug',
+            attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
+        });
+
+    layer.scene.subscribe({
+        loadScene: function (config) {
+            // If no source was set in scene definition, set one based on the URL
+            if (!config.sources || !config.sources['osm']) {
+                config.sources = config.sources || {};
+                config.sources['osm'] = tile_sources[default_tile_source];
+            }
+        }
+    });
+
 
     /***** GUI/debug controls *****/
 
@@ -82,38 +91,42 @@
     // #[lat],[lng],[zoom]
     // #[source],[lat],[lng],[zoom]
     // #[source],[location name]
-    var url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+    function getVaulesFromUrl() {
 
-    // Get tile source from URL
-    if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
-        default_tile_source = url_hash[0];
-    }
+        url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
-    // Get location from URL
-    var map_start_location = locations['New York'];
-
-    if (url_hash.length == 3) {
-        map_start_location = url_hash.slice(0, 3);
-    }
-    if (url_hash.length > 3) {
-        map_start_location = url_hash.slice(1, 4);
-    }
-    else if (url_hash.length == 2) {
-        map_start_location = locations[url_hash[1]];
-    }
-
-    if (url_hash.length > 4) {
-        var url_ui = url_hash.slice(4);
-
-        // Style on URL?
-        var url_style;
-        if (url_ui) {
-            var re = new RegExp(/(?:style|mode)=(\w+)/);
-            url_ui.forEach(function(u) {
-                var match = u.match(re);
-                url_style = (match && match.length > 1 && match[1]);
-            });
+        // Get tile source from URL
+        if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
+            default_tile_source = url_hash[0];
         }
+
+        // Get location from URL
+        map_start_location = locations['New York'];
+
+        if (url_hash.length === 3) {
+            map_start_location = url_hash.slice(0, 3);
+        }
+        if (url_hash.length > 3) {
+            map_start_location = url_hash.slice(1, 4);
+        }
+        else if (url_hash.length === 2) {
+            map_start_location = locations[url_hash[1]];
+        }
+
+        if (url_hash.length > 4) {
+            url_ui = url_hash.slice(4);
+
+            // Style on URL?
+            url_style;
+            if (url_ui) {
+                var re = new RegExp(/(?:style|mode)=(\w+)/);
+                url_ui.forEach(function(u) {
+                    var match = u.match(re);
+                    url_style = (match && match.length > 1 && match[1]);
+                });
+            }
+        }
+
     }
 
     // Put current state on URL
@@ -145,24 +158,8 @@
 
     /*** Map ***/
 
-    var map = L.map('map', {
-        maxZoom: 20,
-        trackResize: true,
-        inertia: false,
-        keyboard: false
-    });
-    window.map = map;
-
-    var layer = Tangram.leafletLayer({
-        source: tile_sources[default_tile_source].source,
-        scene: tile_sources[default_tile_source].scene,
-        preUpdate: preUpdate,
-        postUpdate: postUpdate,
-        logLevel: 'debug',
-        attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
-    });
     window.layer = layer;
-
+    window.map = map;
     var scene = layer.scene;
     window.scene = scene;
 
@@ -276,7 +273,7 @@
 
                         settings.setup(style);
 
-                        if (settings.folder.__controllers.length == 0) {
+                        if (settings.folder.__controllers.length === 0) {
                             gui.removeFolder(this.folder);
                         }
                     }
