@@ -147,7 +147,15 @@ class PerspectiveCamera extends Camera {
 
         // View matrix
         var position = [this.scene.center_meters.x, this.scene.center_meters.y, height];
-        mat4.lookAt(this.viewMatrix, vec3.fromValues(...position), vec3.fromValues(position[0], position[1], height - 1), vec3.fromValues(0, 1, 0));
+        // mat4.lookAt(this.viewMatrix,
+        //     vec3.fromValues(...position),
+        //     vec3.fromValues(position[0], position[1], height - 1),
+        //     vec3.fromValues(0, 1, 0));
+        // Exclude camera height from view matrix
+        mat4.lookAt(this.viewMatrix,
+            vec3.fromValues(position[0], position[1], 0),
+            vec3.fromValues(position[0], position[1], -1),
+            vec3.fromValues(0, 1, 0));
 
         // Projection matrix
         mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 1);
@@ -172,6 +180,9 @@ class PerspectiveCamera extends Camera {
                 0
             )
         );
+
+        // Include camera height in projection matrix
+        mat4.translate(this.projectionMatrix, this.projectionMatrix, vec3.fromValues(0, 0, -height));
     }
 
     update() {
