@@ -3,7 +3,7 @@ let assert = chai.assert;
 import Tile from '../src/tile';
 import samples from './fixtures/samples';
 
-let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
+let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
 describe('Tile', () => {
     let subject,
@@ -11,7 +11,7 @@ describe('Tile', () => {
 
     beforeEach((done) => {
         scene = makeScene({});
-        scene.setCenter(...nycLatLng);
+        scene.setView(nycLatLng);
         scene.init().then(() => {
             subject = Tile.create({coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
             done();
