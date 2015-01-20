@@ -547,6 +547,9 @@
 
         // Lighting
         var lighting_presets = {
+            'None': {
+                type: null
+            },
             'Point': {
                 type: 'point',
                 position: [0, 0, 200],
