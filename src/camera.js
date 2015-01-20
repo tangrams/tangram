@@ -167,8 +167,8 @@ class PerspectiveCamera extends Camera {
         ];
 
         // Adjust projection matrix to include vanishing point skew
-        this.projectionMatrix[8] = -vanishing_point[0]; // z column of x row, e.g. factor by which z coordinate s
-        this.projectionMatrix[9] = -vanishing_point[1]; // z column of y row, e.g. factor by which z coordinate s
+        this.projectionMatrix[8] = -vanishing_point[0]; // z column of x row, e.g. amount z skews x
+        this.projectionMatrix[9] = -vanishing_point[1]; // z column of y row, e.g. amount z skews y
 
         // Translate geometry into the distance so that camera is appropriate height above ground
         // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed g
@@ -211,21 +211,22 @@ class IsometricCamera extends Camera {
             this.axis = { x: this.axis[0], y: this.axis[1] }; // allow axis to also be passed as 2-elem array
         }
 
-        this.meter_view_mat = mat4.create();
+        this.viewMatrix = new Float64Array(16);
+        this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
         GLProgram.removeTransform('camera');
         GLProgram.addTransform('camera', `
-            uniform mat4 u_meter_view;
-            uniform vec2 u_isometric_axis;
+            uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
-                position = u_meter_view * position;
-                position.xy += position.z * u_isometric_axis;
+                position = u_projection * position;
+                // position.xy += position.z * u_isometric_axis;
 
                 // Reverse z for depth buffer so up is negative,
                 // and scale down values so objects higher than one screen height will not get clipped
-                position.z = -position.z / 100. + 1. - 0.001; // pull forward slightly to avoid going past far clipping plane
+                // pull forward slightly to avoid going past far clipping plane
+                position.z = -position.z / 100. + 1. - 0.001;
             }`
         );
     }
@@ -233,14 +234,30 @@ class IsometricCamera extends Camera {
     update() {
         super.update();
 
-        // Convert mercator meters to screen space
-        mat4.identity(this.meter_view_mat);
-        mat4.scale(this.meter_view_mat, this.meter_view_mat, vec3.fromValues(1 / this.scene.meter_zoom.x, 1 / this.scene.meter_zoom.y, 1 / this.scene.meter_zoom.y));
+        // View
+        var position = [this.scene.center_meters.x, this.scene.center_meters.y];
+        mat4.identity(this.viewMatrix);
+        mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(-position[0], -position[1], 0));
+
+        // Projection
+        mat4.identity(this.projectionMatrix);
+
+        // apply isometric skew
+        this.projectionMatrix[8] = this.axis.x / this.scene.view_aspect;    // z column of x row, e.g. amount z skews x
+        this.projectionMatrix[9] = this.axis.y;                             // z column of x row, e.g. amount z skews y
+
+        // convert meters to viewport
+        mat4.scale(this.projectionMatrix, this.projectionMatrix,
+            vec3.fromValues(
+                1 / this.scene.meter_zoom.x,
+                1 / this.scene.meter_zoom.y,
+                1 / this.scene.meter_zoom.y
+            )
+        );
     }
 
     setupProgram(program) {
-        program.uniform('2f', 'u_isometric_axis', this.axis.x / this.scene.view_aspect, this.axis.y);
-        program.uniform('Matrix4fv', 'u_meter_view', false, this.meter_view_mat);
+        program.uniform('Matrix4fv', 'u_projection', false, this.projectionMatrix);
     }
 
 }
