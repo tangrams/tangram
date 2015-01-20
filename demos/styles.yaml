@@ -16,9 +16,8 @@ cameras:
         type: flat
 
     # testing camera with a location
-    centralPark:
-        position: [-73.97297501564027, 40.76434821445407]
-        # position: { lng: -74.01041865348817, lat: 40.71203660068803 }
+    central_park:
+        position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
 lighting:

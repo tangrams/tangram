@@ -45,8 +45,7 @@ export default class Camera {
         if (this.position || this.zoom) {
             var view = {};
             if (this.position) {
-                view.lng = this.position[0];
-                view.lat = this.position[1];
+                view = this.position;
             }
             if (this.zoom) {
                 view.zoom = this.zoom;
