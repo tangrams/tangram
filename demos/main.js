@@ -53,7 +53,7 @@
 
 
 
-    getVaulesFromUrl();
+    getValuesFromUrl();
 
     // default source, can be overriden by URL
     var
@@ -92,7 +92,7 @@
     // #[lat],[lng],[zoom]
     // #[source],[lat],[lng],[zoom]
     // #[source],[location name]
-    function getVaulesFromUrl() {
+    function getValuesFromUrl() {
 
         url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
