@@ -686,9 +686,7 @@ Scene.prototype.findMaxZoom = function () {
             max_zoom = source.max_zoom;
         }
     }
-
-    this.max_zoom = max_zoom;
-    return this.max_zoom;
+    return max_zoom;
 };
 
 // Load a single tile
