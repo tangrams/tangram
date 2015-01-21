@@ -12,7 +12,6 @@ export default class Tile {
         @constructor
         Required properties:
         spec.coords: object with {x, y, z} properties identifying tile coordinate location
-        spec.tile_source: TileSource from which tile will be loaded
     */
     constructor(spec) {
         Object.assign(this, {
@@ -32,7 +31,7 @@ export default class Tile {
             }
         }, spec);
 
-        this.coords = this.tile_source.calculateOverZoom(this.coords);
+        this.coords = this.calculateOverZoom();
         this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
     }
 
@@ -75,31 +74,41 @@ export default class Tile {
             { tile: this.buildAsMessage() })
         .then(message => {
             scene.buildTileCompleted(message);
+        }).catch(error => {
+            throw error;
         });
     }
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
     static buildGeometry (tile, layers, rules, styles) {
-        var name, layer, feature, style, feature_style;
+        var feature, style, feature_style;
         var vertex_data = {};
         var style_vertex_data;
 
         tile.debug.rendering = +new Date();
-        tile.debug.features = 0;
 
-        // Treat top-level style rules as 'layers'
-        for (name in layers) {
-            layer = layers[name];
+        for (let sourceName in tile.sources) {
+            let source = tile.sources[sourceName];
+            // TODO fix the debug
+            source.debug.rendering = +new Date();
+            source.debug.features = 0;
 
-            // Skip layers with no geometry defined
-            // TODO: this should be a warning
-            if (!layer.geometry) {
-                continue;
-            }
+            // Treat top-level style rules as 'layers'
+            for (var name in layers) {
+                let layer = layers[name];
+                // Skip layers with no geometry defined
+                if (!layer.geometry) {
+                    log.warn(`Layer ${layer} was defined without an geometry configuration and will not be rendered.`);
+                    continue;
+                }
 
-            var geom = Tile.getGeometryForSource(tile, layer.geometry);
-            if (geom) {
+                var geom = Tile.getGeometryForSource(source, layer.geometry);
+
+                if (!geom) {
+                    continue;
+                }
+
                 var num_features = geom.features.length;
 
                 // Render features within each layer, in reverse order - aka top to bottom
@@ -125,7 +134,7 @@ export default class Tile {
                         // Parse style
                         rule.name = rule.name || StyleParser.defaults.style.name;
                         style = styles[rule.name];
-                        feature_style = style.parseFeature(feature, rule, tile, context);
+                        feature_style = style.parseFeature(feature, rule, context);
 
                         // Skip feature?
                         if (!feature_style) {
@@ -173,9 +182,13 @@ export default class Tile {
                         }
                     }
 
-                    tile.debug.features++;
+                    source.debug.features++;
                 }
+
             }
+
+
+            source.debug.rendering = +new Date() - source.debug.rendering;
         }
 
         // Finalize array buffer for each render style
@@ -185,6 +198,17 @@ export default class Tile {
         }
 
         tile.debug.rendering = +new Date() - tile.debug.rendering;
+        tile.debug.projection = 0;
+        tile.debug.features = 0;
+        tile.debug.network = 0;
+        tile.debug.parsing = 0;
+
+        for (let i in tile.sources) {
+            tile.debug.features  += tile.sources[i].debug.features;
+            tile.debug.projection += tile.sources[i].debug.projection;
+            tile.debug.network += tile.sources[i].debug.network;
+            tile.debug.parsing += tile.sources[i].debug.parsing;
+        }
 
         // Return keys to be transfered to main thread
         return {
@@ -195,26 +219,23 @@ export default class Tile {
     /**
         Retrieves geometry from a tile according to a data source definition
     */
-    static getGeometryForSource (tile, source) {
+    static getGeometryForSource (sourceData, sourceConfig) {
         var geom;
 
-        if (source != null) {
+        if (sourceConfig != null) {
             // Just pass through data untouched if no data transform function defined
             // if (!source.filter) {
             //     geom = tile.layers[source.filter];
             // }
             // Pass through data but with different layer name in tile source data
-            /*else*/ if (typeof source.filter === 'string') {
-                geom = tile.layers[source.filter];
+            /*else*/ if (typeof sourceConfig.filter === 'string') {
+                geom = sourceData.layers[sourceConfig.filter];
             }
             // Apply the transform function for post-processing
-            else if (typeof source.filter === 'function') {
-                geom = source.filter(tile.layers);
+            else if (typeof sourceConfig.filter === 'function') {
+                geom = sourceConfig.filter(sourceData.layers);
             }
         }
-
-        // Handle cases where no data was found in tile or returned by post-processor
-        geom = geom || { type: 'FeatureCollection', features: [] };
 
         return geom;
     }
@@ -282,14 +303,28 @@ export default class Tile {
     // TODO: pass bounds only, rest of scene isn't needed
     updateVisibility(scene) {
         var visible = this.visible;
-        this.visible = this.isInZoom(scene) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
+        this.visible = this.isInZoom(scene.capped_zoom) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
         return (visible !== this.visible);
     }
 
-    // TODO: pass zoom only?
-    isInZoom(scene) {
-        return (Math.min(this.coords.z, this.tile_source.max_zoom || this.coords.z)) === scene.capped_zoom;
+    isInZoom(zoom) {
+        return (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom;
+    }
+
+    // TODO fix the z adjustment for continuous zoom
+    calculateOverZoom() {
+        var zgap,
+            {x, y, z} = this.coords;
+
+        if (z > this.max_zoom) {
+            zgap = z - this.max_zoom;
+            x = ~~(x / Math.pow(2, zgap));
+            y = ~~(y / Math.pow(2, zgap));
+            z -= zgap;
+        }
+
+        return {x, y, z};
     }
 
     load(scene) {

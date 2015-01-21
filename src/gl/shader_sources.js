@@ -62,7 +62,6 @@ shaderSources['modules/reorder_layers'] =
 "void reorderLayers (float layer, float num_layers, inout vec4 position) {\n" +
 "    float layer_order = ((layer + 1.) / (num_layers + 1.)) + 1.;\n" +
 "    position.z /= layer_order;\n" +
-"    position.xyw *= layer_order;\n" +
 "}\n" +
 "\n" +
 "#pragma glslify: export(reorderLayers)\n" +

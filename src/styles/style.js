@@ -2,13 +2,12 @@
 
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
-import GLVertexLayout from '../gl/gl_vertex_layout';
+
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
 import {GLBuilders} from '../gl/gl_builders';
 import GLTexture from '../gl/gl_texture';
 import {MethodNotImplemented} from '../errors';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import log from 'loglevel';
@@ -58,7 +57,7 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    parseFeature (feature, feature_style, tile, context) {
+    parseFeature (feature, feature_style, context) {
         try {
             var style = this.feature_style;
 
@@ -94,7 +93,7 @@ export var Style = {
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, tile, error);
+            log.error('Style.parseFeature: style parsing error', feature, error);
         }
     },
 
@@ -147,8 +146,6 @@ export var Style = {
                 var { url, filtering, repeat, sprites } = this.textures[name];
                 var texture = new GLTexture(this.gl, name, { sprites });
 
-                let _name = name;
-                let _textures = this.textures;
                 texture.load(url, { filtering, repeat });
             }
         }
