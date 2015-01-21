@@ -13,7 +13,7 @@ import sampleStyle from './fixtures/sample-style.json';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-describe.only('Rules', () => {
+describe('Rules', () => {
 
     describe('groupProperties({})', () => {
         let style = { filter: 'is()', style: {}, fill: {}, outline: {} };
