@@ -930,6 +930,7 @@ Scene.prototype.reload = function () {
 Scene.prototype.loadDataSources = function () {
     for (var name in this.config.sources) {
         let source = this.config.sources[name];
+        source.url = Utils.addBaseURL(source.url);
         this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
     }
 };
