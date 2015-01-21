@@ -1,11 +1,20 @@
 import chai from 'chai';
 let assert = chai.assert;
-import {parseRules, matchFeature, groupProperties, cloneStyle} from '../src/rule';
+import {
+    parseRules,
+    matchFeature,
+    groupProperties,
+    mergeStyles,
+    calculateStyle,
+    cloneStyle
+} from '../src/rule';
+
 import sampleStyle from './fixtures/sample-style.json';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-describe('Rules', () => {
+describe.only('Rules', () => {
+
     describe('groupProperties({})', () => {
         let style = { filter: 'is()', style: {}, fill: {}, outline: {} };
         describe('given a object of white listed and none white listed values', () => {
@@ -16,7 +25,6 @@ describe('Rules', () => {
             });
         });
     });
-
 
     describe('.cloneStyle()', () => {
         let target = {};
@@ -60,6 +68,33 @@ describe('Rules', () => {
 
     });
 
+    describe('.mergeStyles()', () => {});
+
+    describe('.calculateStyle(rule, styles = [])', () => {
+        let a = {
+            style: {'a': 1, 'b': 2, 'c': 3},
+            properties: {'1': 'a', '3': 'z'}
+        };
+
+        let b = {
+            parent: a,
+            style: {'a': 4, 'b': 5, 'c': 6},
+            properties: {'2': 'c', '1': 'b'}
+        };
+
+        let c = {
+            parent: b,
+            style: {'a': 7, 'b': 8, 'c': 9},
+            properties: {'1': 'd', '2': 'e'}
+        };
+
+        it('blows up', () => {
+            let subject = calculateStyle(c);
+            let finalRule = mergeStyles(subject);
+            assert.ok(finalRule);
+        });
+
+    });
 
     describe('.matchFeature(feature)', () => {
         let matchedRules = [];

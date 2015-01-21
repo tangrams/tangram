@@ -134,7 +134,10 @@ export default class Tile {
                         // Parse style
                         rule.name = rule.name || StyleParser.defaults.style.name;
                         style = styles[rule.name];
+
+                        context.properties = rule.properties;
                         feature_style = style.parseFeature(feature, rule, context);
+                        delete context.properties;
 
                         // Skip feature?
                         if (!feature_style) {

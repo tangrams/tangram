@@ -1,6 +1,6 @@
 import {StyleParser} from './styles/style_parser';
 
-export var whiteList = ['filter', 'style', 'geometry'];
+export var whiteList = ['filter', 'style', 'geometry', 'properties'];
 
 function isWhiteListed(key) {
     return whiteList.indexOf(key) > -1;
@@ -24,9 +24,8 @@ export function cloneStyle(target, source) {
     return target;
 }
 
-
 // Merges a chain of parent-to-child styles into a single style object
-function mergeStyles(styles) {
+export function mergeStyles(styles) {
     // Merge styles, properties in children override the same property in parents
     // Remove rules without styles
     var style = cloneStyle({}, styles.filter(style => style));
@@ -57,6 +56,12 @@ function mergeStyles(styles) {
     return style;
 }
 
+export function withProperties(context, properties, cb) {
+    context.properties = properties;
+    cb();
+    delete context.properties;
+}
+
 export function matchFeature(context, rules, collectedRules) {
     var current, matched = false, childMatched;
 
@@ -70,17 +75,23 @@ export function matchFeature(context, rules, collectedRules) {
         if (current instanceof Rule) {
 
             if (current.calculatedStyle) {
+                context.properties = current.calculatedStyle.properties || {};
 
                 if ((typeof current.filter === 'function' && current.filter(context)) || (current.filter === undefined)) {
                     matched = true;
                     collectedRules.push(current.calculatedStyle);
                 }
 
+                delete context.properties;
+
             } else {
                 throw new Error('A rule must have a style object');
             }
         }
         else if (current instanceof RuleGroup) {
+            if (current.calculatedStyle == null) {
+                context.properties = current.calculatedStyle.properties;
+            }
 
             if ((typeof current.filter === 'function' && current.filter(context)) || current.filter === undefined) {
                 matched = true;
@@ -89,6 +100,7 @@ export function matchFeature(context, rules, collectedRules) {
                     collectedRules.push(current.calculatedStyle);
                 }
             }
+            delete context.properties;
         }
     }
     return matched;
@@ -227,7 +239,14 @@ export function calculateStyle(rule, styles = []) {
     if (rule.parent) {
         calculateStyle(rule.parent, styles);
     }
-    if (rule.style) { styles.push(rule.style); }
+
+    if (rule.style) {
+        if (rule.properties) {
+            rule.style.properties = rule.properties;
+        }
+
+        styles.push(rule.style);
+    }
     return styles;
 }
 
