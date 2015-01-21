@@ -1,4 +1,5 @@
 import {StyleParser} from './styles/style_parser';
+import Utils from './utils';
 
 export var whiteList = ['filter', 'style', 'geometry', 'properties'];
 
@@ -73,34 +74,28 @@ export function matchFeature(context, rules, collectedRules) {
         current = rules[i];
 
         if (current instanceof Rule) {
-
             if (current.calculatedStyle) {
-                context.properties = current.calculatedStyle.properties || {};
-
-                if ((typeof current.filter === 'function' && current.filter(context)) || (current.filter === undefined)) {
-                    matched = true;
-                    collectedRules.push(current.calculatedStyle);
-                }
-
-                delete context.properties;
-
+                withProperties(context, Utils.getIn(current, ['calculatedStyle', 'properties']), () => {
+                    if ((typeof current.filter === 'function' && current.filter(context)) || (current.filter === undefined)) {
+                        matched = true;
+                        collectedRules.push(current.calculatedStyle);
+                    }
+                });
             } else {
                 throw new Error('A rule must have a style object');
             }
         }
         else if (current instanceof RuleGroup) {
-            if (current.calculatedStyle == null) {
-                context.properties = current.calculatedStyle.properties;
-            }
 
-            if ((typeof current.filter === 'function' && current.filter(context)) || current.filter === undefined) {
-                matched = true;
-                childMatched = matchFeature(context, current.rules, collectedRules);
-                if (!childMatched && current.calculatedStyle) {
-                    collectedRules.push(current.calculatedStyle);
+            withProperties(context, Utils.getIn(current, ['calculatedStyle', 'properties']), () => {
+                if ((typeof current.filter === 'function' && current.filter(context)) || current.filter === undefined) {
+                    matched = true;
+                    childMatched = matchFeature(context, current.rules, collectedRules);
+                    if (!childMatched && current.calculatedStyle) {
+                        collectedRules.push(current.calculatedStyle);
+                    }
                 }
-            }
-            delete context.properties;
+            });
         }
     }
     return matched;
@@ -273,6 +268,7 @@ export function parseRule(name, style, parent) {
         filter = buildFilter(properties);
         group = new RuleGroup({name, filter, parent});
         group.style = properties.style;
+        group.properties = properties.properties;
         parent.rules.push(group);
         group.calculatedStyle = mergeStyles(calculateStyle(group));
     }
