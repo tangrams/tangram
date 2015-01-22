@@ -29,7 +29,9 @@ export function cloneStyle(target, source) {
 export function mergeStyles(styles) {
     // Merge styles, properties in children override the same property in parents
     // Remove rules without styles
-    var style = cloneStyle({}, styles.filter(style => style));
+    styles = styles.filter(style => style);
+
+    var style = cloneStyle({}, styles);
 
     // Children of invisible parents are also invisible
     style.visible = !styles.some(style => style.visible === false);
@@ -239,7 +241,9 @@ export function calculateStyle(rule, styles = []) {
         if (rule.properties) {
             rule.style.properties = rule.properties;
         }
-
+        if (rule.name) {
+            rule.style.name = rule.name;
+        }
         styles.push(rule.style);
     }
     return styles;

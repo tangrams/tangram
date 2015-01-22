@@ -73,7 +73,7 @@
                 }
             }
         },
-        "stuff": {
+        "more-roads": {
             "style": {
                 "color": [1, 0, 1]
             }
@@ -85,7 +85,7 @@
         "style": {
             "color": [1, 0, 1]
         },
-        "more-stuff": {
+        "another-road-style": {
             "style": {
                 "color": [1, 0.5, 1]
             }
