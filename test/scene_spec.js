@@ -5,7 +5,7 @@ import Tile from '../src/tile';
 import sampleScene from './fixtures/sample-scene';
 
 
-let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
+let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 let midtownTile = { x: 38603, y: 49255, z: 17 };
 let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
@@ -45,7 +45,7 @@ describe('Scene', function () {
 
             sinon.spy(subject, '_loadTile');
 
-            subject.setCenter(...nycLatLng);
+            subject.setView(nycLatLng);
             subject.init().then(() => {
                 subject.loadTile(coords);
                 subject.loadQueuedTiles();
@@ -72,7 +72,7 @@ describe('Scene', function () {
 
         beforeEach((done) => {
             subject = makeScene({});
-            subject.setCenter(...nycLatLng);
+            subject.setView(nycLatLng);
             subject.init().then(done);
         });
 
@@ -273,13 +273,13 @@ describe('Scene', function () {
 
     });
 
-    describe('.setCenter(lng, lat)', () => {
+    describe('.setView(lng, lat)', () => {
         let subject;
-        let [lng, lat] = nycLatLng;
+        let {lng, lat} = nycLatLng;
 
         beforeEach(() => {
             subject = makeScene({});
-            subject.setCenter(...nycLatLng);
+            subject.setView(nycLatLng);
         });
 
         afterEach(() => {
@@ -367,7 +367,7 @@ describe('Scene', function () {
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'render');
 
-            subject.setCenter(...nycLatLng);
+            subject.setView(nycLatLng);
             subject.init().then(done);
         });
 
@@ -463,7 +463,7 @@ describe('Scene', function () {
 
         beforeEach((done) => {
             subject = makeScene({});
-            subject.setCenter(...nycLatLng);
+            subject.setView(nycLatLng);
             subject.init().then(() => {
                 subject.loadTile(midtownTile, div);
                 subject.loadQueuedTiles();

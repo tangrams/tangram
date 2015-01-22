@@ -68,6 +68,14 @@ export default function Scene(config_source, options) {
     this.panning = false;
     this.container = options.container;
 
+    // Model-view matrices
+    // 64-bit versions are for CPU calcuations
+    // 32-bit versions are downsampled and sent to GPU
+    this.modelMatrix = new Float64Array(16);
+    this.modelMatrix32 = new Float32Array(16);
+    this.modelViewMatrix = new Float64Array(16);
+    this.modelViewMatrix32 = new Float32Array(16);
+
     // Debug config
     this.debug = {
         profile: {
@@ -116,14 +124,16 @@ Scene.prototype.init = function () {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
-            }).catch(reject);
-        });
+            }).catch(e => { throw e; });
+        }).catch(e => { reject(e); });
     });
 };
 
 Scene.prototype.destroy = function () {
     this.initialized = false;
     this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
+
+    this.unsubscribeAll(); // clear all event listeners
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
@@ -230,15 +240,23 @@ Scene.prototype.nextWorker = function () {
 };
 
 /**
-    Set the center of the map (as [longitude, latitude] pair), and optionally set the zoom level as well.
+    Set the map view, can be passed an object with lat/lng and/or zoom
 */
-Scene.prototype.setCenter = function (lng, lat, zoom = null) {
-    var changed = !this.center || lng !== this.center.lng || lat !== this.center.lat;
-    this.center = { lng, lat };
+Scene.prototype.setView = function ({ lng, lat, zoom } = {}) {
+    var changed = false;
+
+    // Set center
+    if (lng && lat) {
+        changed = changed || !this.center || lng !== this.center.lng || lat !== this.center.lat;
+        this.center = { lng, lat };
+    }
+
+    // Set zoom
     if (zoom) {
         changed = changed || zoom !== this.zoom;
         this.setZoom(zoom);
     }
+
     if (changed) {
         this.updateBounds();
     }
@@ -335,6 +353,7 @@ Scene.prototype.updateBounds = function () {
         tile.updateVisibility(this);
     }
 
+    this.trigger('move');
     this.dirty = true;
 };
 
@@ -514,17 +533,16 @@ Scene.prototype.renderStyle = function (style, program) {
             // Tile origin
             program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
 
-            // Tile view matrix - transform tile space into view space (meters, relative to camera)
-            mat4.identity(this.tile_view_mat);
-            mat4.translate(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.min.x - this.center_meters.x, tile.min.y - this.center_meters.y, 0)); // adjust for tile origin & map center
-            mat4.scale(this.tile_view_mat, this.tile_view_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-            program.uniform('Matrix4fv', 'u_tile_view', false, this.tile_view_mat);
+            // Model matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.modelMatrix);
+            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            mat4.copy(this.modelMatrix32, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
 
-            // Tile world matrix - transform tile space into world space (meters, absolute mercator position)
-            mat4.identity(this.tile_world_mat);
-            mat4.translate(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.min.x, tile.min.y, 0));
-            mat4.scale(this.tile_world_mat, this.tile_world_mat, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-            program.uniform('Matrix4fv', 'u_tile_world', false, this.tile_world_mat);
+            // Model view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
             // Render tile
             tile.gl_geometry[style].render();
@@ -544,10 +562,6 @@ Scene.prototype.render = function () {
     if (!this.center_meters) {
         return;
     }
-
-    // Model-view matrices
-    this.tile_view_mat = mat4.create();
-    this.tile_world_mat = mat4.create();
 
     // Update camera & lights
     this.camera.update();
@@ -899,7 +913,7 @@ Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
         return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
-    }).catch((error) => { Promise.reject(error); });
+    }).catch(e => { throw e; });
 };
 
 // Reload scene config and rebuild tiles
@@ -915,7 +929,6 @@ Scene.prototype.reload = function () {
     }, (error) => {
         throw error;
     });
-
 };
 
 Scene.prototype.loadDataSources = function () {
@@ -947,7 +960,21 @@ Scene.prototype.preProcessSceneConfig = function () {
         }
     }
 
-    this.config.camera = this.config.camera || {}; // ensure camera object
+    // If only one camera specified, set it as default
+    this.config.cameras = this.config.cameras || {};
+    if (this.config.camera) {
+        this.config.cameras.default = this.config.camera;
+    }
+    var camera_names = Object.keys(this.config.cameras);
+    if (camera_names.length === 0) {
+        this.config.cameras.default = { active: true };
+
+    }
+    else if (!this._active_camera) {
+        // If no camera set as active, use first one
+        this.config.cameras[camera_names[0]].active = true;
+    }
+
     this.config.lighting = this.config.lighting || {}; // ensure lighting object
 
     return StyleManager.preload(this.config.styles);
@@ -997,8 +1024,50 @@ Scene.prototype.updateActiveStyles = function () {
 
 // Create camera
 Scene.prototype.createCamera = function () {
-    this.camera = Camera.create(this, this.config.camera);
+    this.camera = Camera.create(this._active_camera, this, this.config.cameras[this._active_camera]);
+
+    // TODO: replace this and move all position info to camera
+    this.camera.updateScene();
 };
+
+// Get active camera - for public API
+Scene.prototype.getActiveCamera = function () {
+    return this._active_camera;
+};
+
+// Set active camera and recompile - for public API
+Scene.prototype.setActiveCamera = function (name) {
+    this._active_camera = name;
+    this.updateConfig();
+    return this._active_camera;
+};
+
+// Internal management of active camera
+Object.defineProperty(Scene.prototype, '_active_camera', {
+
+    get: function() {
+        for (var name in this.config.cameras) {
+            if (this.config.cameras[name].active) {
+                return name;
+            }
+        }
+    },
+
+    set: function(name) {
+        var prev = this._active_camera;
+
+        // Set new active camera
+        if (this.config.cameras[name]) {
+            this.config.cameras[name].active = true;
+
+            // Clear previously active camera
+            if (prev && prev !== name && this.config.cameras[prev]) {
+                delete this.config.cameras[prev].active;
+            }
+        }
+    }
+
+});
 
 // Create lighting
 Scene.prototype.createLighting = function () {

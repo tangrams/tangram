@@ -175,7 +175,7 @@ shaderSources['point_fragment'] =
 "";
 
 shaderSources['point_vertex'] =
-"uniform mat4 u_tile_view;\n" +
+"uniform mat4 u_modelView;\n" +
 "uniform float u_num_layers;\n" +
 "\n" +
 "attribute vec3 a_position;\n" +
@@ -206,8 +206,7 @@ shaderSources['point_vertex'] =
 "        v_selection_color = a_selection_color;\n" +
 "    #endif\n" +
 "\n" +
-"    // vec4 position = u_perspective * u_tile_view * vec4(a_position, 1.);\n" +
-"    vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"    vec4 position = u_modelView * vec4(a_position, 1.);\n" +
 "\n" +
 "    #pragma tangram: vertex\n" +
 "\n" +
@@ -314,11 +313,12 @@ shaderSources['polygon_vertex'] =
 "uniform float u_map_zoom;\n" +
 "uniform vec2 u_map_center;\n" +
 "uniform vec2 u_tile_origin;\n" +
-"uniform mat4 u_tile_world;\n" +
-"uniform mat4 u_tile_view;\n" +
 "uniform float u_meters_per_pixel;\n" +
 "uniform float u_order_min;\n" +
 "uniform float u_order_range;\n" +
+"\n" +
+"uniform mat4 u_model;\n" +
+"uniform mat4 u_modelView;\n" +
 "\n" +
 "attribute vec3 a_position;\n" +
 "attribute vec3 a_normal;\n" +
@@ -379,7 +379,7 @@ shaderSources['polygon_vertex'] =
 "    #endif\n" +
 "\n" +
 "    // Position\n" +
-"    vec4 position = u_tile_view * vec4(a_position, 1.);\n" +
+"    vec4 position = u_modelView * vec4(a_position, 1.);\n" +
 "\n" +
 "    // Texture UVs\n" +
 "    #if defined(TEXTURE_COORDS)\n" +
@@ -387,7 +387,7 @@ shaderSources['polygon_vertex'] =
 "    #endif\n" +
 "\n" +
 "    // World coordinates for 3d procedural textures\n" +
-"    v_world_position = u_tile_world * vec4(a_position, 1.);\n" +
+"    v_world_position = u_model * vec4(a_position, 1.);\n" +
 "    #if defined(WORLD_POSITION_WRAP)\n" +
 "        v_world_position.xy -= world_position_anchor;\n" +
 "    #endif\n" +

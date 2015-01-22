@@ -12,7 +12,7 @@ import Light from '../src/light';
 import sampleScene from './fixtures/sample-scene';
 
 // These create global shader blocks required by all rendering styles
-Camera.create(null, { type: 'flat' });
+Camera.create('default', null, { type: 'flat' });
 Light.create(null, {});
 
 var canvas, gl;

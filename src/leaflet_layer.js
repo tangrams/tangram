@@ -23,6 +23,7 @@ if (Utils.isMainThread) {
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
+            this._updating_tangram = false;
 
             // Force leaflet zoom animations off
             this._zoomAnimated = false;
@@ -64,35 +65,40 @@ if (Utils.isMainThread) {
             this.on('tileunload', this.hooks.tileunload);
 
             this.hooks.resize = () => {
+                this._updating_tangram = true;
                 var size = this._map.getSize();
                 this.scene.resizeMap(size.x, size.y);
+                this._updating_tangram = false;
             };
             this._map.on('resize', this.hooks.resize);
 
             this.hooks.move = () => {
-                var center = this._map.getCenter();
-
-                // TODO: this looks like a leaflet bug? sometimes returning a LatLng object, sometimes an array
-                if (Array.isArray(center)) {
-                    center = { lat: center[0], lng: center[1] };
+                if (this._updating_tangram) {
+                    return;
                 }
 
-                var changed = this.scene.setCenter(center.lng, center.lat);
+                this._updating_tangram = true;
+                var view = this._map.getCenter();
+                view.zoom = this._map.getZoom();
+
+                var changed = this.scene.setView(view);
                 if (changed) {
                     this.scene.immediateRedraw();
                 }
+                this._updating_tangram = false;
             };
             this._map.on('move', this.hooks.move);
 
             this.hooks.zoomstart = () => {
+                if (this._updating_tangram) {
+                    return;
+                }
+
+                this._updating_tangram = true;
                 this.scene.startZoom();
+                this._updating_tangram = false;
             };
             this._map.on('zoomstart', this.hooks.zoomstart);
-
-            this.hooks.zoomend = () => {
-                this.scene.setZoom(this._map.getZoom());
-            };
-            this._map.on('zoomend', this.hooks.zoomend);
 
             this.hooks.dragstart = () => {
                 this.scene.panning = true;
@@ -111,24 +117,20 @@ if (Utils.isMainThread) {
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
             this.scene.container = this._map.getContainer();
 
-            var center = this._map.getCenter();
-            this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
+            // Initial view
+            var view = this._map.getCenter();
+            view.zoom = this._map.getZoom();
+            this.scene.setView(view);
 
             // Subscribe to tangram events
             this.scene.subscribe({
-                // Add one or more event hooks as:
-                // event: function() { ... }
-                // e.g.:
-                // move: () => { console.log('tangram scene moved'); }
+                move: this.onTangramViewUpdate.bind(this)
             });
 
             // Use leaflet's existing event system as the callback mechanism
             this.scene.init().then(() => {
-                var center = this._map.getCenter();
-                this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
-                this.fire('init');
-
                 log.debug('Scene.init() succeeded');
+                this.fire('init');
             }, (error) => {
                 log.error('Scene.init() failed with error:', error);
                 throw error;
@@ -142,7 +144,6 @@ if (Utils.isMainThread) {
             this._map.off('resize', this.hooks.resize);
             this._map.off('move', this.hooks.move);
             this._map.off('zoomstart', this.hooks.zoomstart);
-            this._map.off('zoomend', this.hooks.zoomend);
             this._map.off('dragstart', this.hooks.dragstart);
             this._map.off('dragend', this.hooks.dragend);
             this.hooks = {};
@@ -157,6 +158,15 @@ if (Utils.isMainThread) {
             var div = document.createElement('div');
             this.scene.loadTile(coords, { debugElement: div });
             return div;
+        },
+
+        onTangramViewUpdate: function () {
+            if (!this._map || this._updating_tangram) {
+                return;
+            }
+            this._updating_tangram = true;
+            this._map.setView([this.scene.center.lat, this.scene.center.lng], this.scene.zoom, { animate: false });
+            this._updating_tangram = false;
         },
 
         render: function () {

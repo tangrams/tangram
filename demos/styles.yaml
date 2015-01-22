@@ -1,13 +1,24 @@
-camera:
-    type: perspective
-    # focal_length: 1
-    focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
-    vanishing_point: [-250, -250] # relative to center of screen, in pixels
+cameras:
+    perspective:
+        type: perspective
+        # focal_length: 1
+        focal_length: [[16, 2], [17, 2.5], [18, 3], [19, 4], [20, 6]] # pairs of [zoom, focal len]
+        # fov: 60
+        # fov: [[16, 60], [20, 15]]
+        vanishing_point: [-250, -250] # relative to center of screen, in pixels
+        active: true
 
-    # type: isometric
-    # axis: [1, .5]
+    isometric:
+        type: isometric
+        # axis: [1, .5]
 
-    # type: flat
+    flat:
+        type: flat
+
+    # testing camera with a location
+    central_park:
+        position: { lng: -73.97297501564027, lat: 40.76434821445407 }
+        zoom: 17
 
 lighting:
     type: point
