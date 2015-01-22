@@ -165,7 +165,6 @@ Object.assign(Polygons, {
             for (var mpc=0; mpc < polygons.length; mpc++) {
                 GLBuilders.buildPolylines(
                     polygons[mpc],
-                    style.z,
                     style.outline.width,
                     vertex_data,
                     vertex_template,
@@ -187,7 +186,6 @@ Object.assign(Polygons, {
         if (style.color && style.width) {
             GLBuilders.buildPolylines(
                 lines,
-                style.z,
                 style.width,
                 vertex_data,
                 vertex_template,
@@ -214,7 +212,6 @@ Object.assign(Polygons, {
 
             GLBuilders.buildPolylines(
                 lines,
-                style.z,
                 style.width + 2 * style.outline.width,
                 vertex_data,
                 vertex_template,

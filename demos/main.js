@@ -34,11 +34,12 @@
         //     type: 'GeoJSONTileSource',
         //     url: window.location.protocol + '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         // },
-        // 'mapbox': {
-        //     type: 'MapboxFormatTileSource',
-        //     url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
-        //     max_zoom: 15
-        // }
+
+        'mapbox': {
+            type: 'MapboxFormatTileSource',
+            url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+            max_zoom: 15
+        }
 
     },
         default_tile_source = 'mapzen',
@@ -52,7 +53,7 @@
 
 
 
-    getVaulesFromUrl();
+    getValuesFromUrl();
 
     // default source, can be overriden by URL
     var
@@ -91,7 +92,7 @@
     // #[lat],[lng],[zoom]
     // #[source],[lat],[lng],[zoom]
     // #[source],[location name]
-    function getVaulesFromUrl() {
+    function getValuesFromUrl() {
 
         url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
