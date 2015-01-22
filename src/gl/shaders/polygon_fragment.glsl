@@ -11,9 +11,7 @@ varying vec4 v_world_position;
 
 // built-in uniforms for texture maps
 #if defined(NUM_TEXTURES)
-    uniform sampler2D u_textures[NUM_TEXTURES]; // multiple textures
-#else
-    uniform sampler2D u_texture; // single texture
+    uniform sampler2D u_textures[NUM_TEXTURES];
 #endif
 
 #if defined(TEXTURE_COORDS)
@@ -53,7 +51,7 @@ void main (void) {
     vec4 color;
 
     #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
-        color = texture2D(u_texture, v_texcoord);
+        color = texture2D(texture_default, v_texcoord);
     #else
         color = v_color;
     #endif

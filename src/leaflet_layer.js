@@ -10,7 +10,8 @@ export function leafletLayer(options) {
 }
 
 // Leaflet layer functionality is only defined in main thread
-Utils.inMainThread(() => {
+
+if (Utils.isMainThread) {
 
     LeafletLayer = L.GridLayer.extend({
 
@@ -22,22 +23,24 @@ Utils.inMainThread(() => {
             L.setOptions(this, options);
             this.createScene();
             this.hooks = {};
+
+            // Force leaflet zoom animations off
+            this._zoomAnimated = false;
         },
 
         createScene: function () {
-            this.scene = Scene.create({
-                source: this.options.source,
-                config: this.options.scene
-            }, {
-                numWorkers: this.options.numWorkers,
-                preRender: this.options.preRender,
-                postRender: this.options.postRender,
-                logLevel: this.options.logLevel,
-                // advanced option, app will have to manually called scene.render() per frame
-                disableRenderLoop: this.options.disableRenderLoop,
-                // advanced option, will require library to be served as same host as page
-                allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
-            });
+            this.scene = Scene.create(
+                this.options.scene,
+                {
+                    numWorkers: this.options.numWorkers,
+                    preUpdate: this.options.preUpdate,
+                    postUpdate: this.options.postUpdate,
+                    logLevel: this.options.logLevel,
+                    // advanced option, app will have to manually called scene.update() per frame
+                    disableRenderLoop: this.options.disableRenderLoop,
+                    // advanced option, will require library to be served as same host as page
+                    allowCrossDomainWorkers: this.options.allowCrossDomainWorkers
+                });
         },
 
         // Finish initializing scene and setup events when layer is added to map
@@ -68,8 +71,16 @@ Utils.inMainThread(() => {
 
             this.hooks.move = () => {
                 var center = this._map.getCenter();
-                this.scene.setCenter(center.lng, center.lat);
-                this.scene.immediateRedraw();
+
+                // TODO: this looks like a leaflet bug? sometimes returning a LatLng object, sometimes an array
+                if (Array.isArray(center)) {
+                    center = { lat: center[0], lng: center[1] };
+                }
+
+                var changed = this.scene.setCenter(center.lng, center.lat);
+                if (changed) {
+                    this.scene.immediateRedraw();
+                }
             };
             this._map.on('move', this.hooks.move);
 
@@ -93,6 +104,9 @@ Utils.inMainThread(() => {
             };
             this._map.on('dragend', this.hooks.dragend);
 
+            // Force leaflet zoom animations off
+            this._map._zoomAnimated = false;
+
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
             this.scene.container = this._map.getContainer();
@@ -100,10 +114,21 @@ Utils.inMainThread(() => {
             var center = this._map.getCenter();
             this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
 
+            // Subscribe to tangram events
+            this.scene.subscribe({
+                // Add one or more event hooks as:
+                // event: function() { ... }
+                // e.g.:
+                // move: () => { console.log('tangram scene moved'); }
+            });
+
             // Use leaflet's existing event system as the callback mechanism
             this.scene.init().then(() => {
-                log.debug('Scene.init() succeeded');
+                var center = this._map.getCenter();
+                this.scene.setCenter(center.lng, center.lat, this._map.getZoom());
                 this.fire('init');
+
+                log.debug('Scene.init() succeeded');
             }, (error) => {
                 log.error('Scene.init() failed with error:', error);
                 throw error;
@@ -138,9 +163,8 @@ Utils.inMainThread(() => {
             if (!this.scene) {
                 return;
             }
-            this.scene.render();
+            this.scene.update();
         }
 
     });
-
-});
+}

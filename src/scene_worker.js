@@ -11,13 +11,20 @@ import {parseRules} from './rule';
 import {GLBuilders} from './gl/gl_builders';
 import GLTexture from './gl/gl_texture';
 
-export var SceneWorker = {};
+export var SceneWorker = {
+    sources: {},
+    styles: {},
+    rules: {},
+    layers: {},
+    tiles: {},
+    config: {}
+};
 
 // Worker functionality will only be defined in worker thread
-Utils.inWorkerThread(() => {
+
+if (Utils.isWorkerThread) {
 
     SceneWorker.worker = self;
-    SceneWorker.tiles = {}; // tiles processed by this worker
 
     // TODO: sync render style state between main thread and worker
     GLBuilders.setTileScale(Scene.tile_scale);
@@ -30,19 +37,20 @@ Utils.inWorkerThread(() => {
     };
 
     // Starts a config refresh
-    SceneWorker.worker.updateConfig = function ({ tile_source, config }) {
+    SceneWorker.worker.updateConfig = function ({ config }) {
         SceneWorker.config = null;
         SceneWorker.styles = null;
         FeatureSelection.reset();
-
-        SceneWorker.tile_source = TileSource.create(tile_source);
-
-        var layer;
         config = JSON.parse(config);
+
+        for (var name in config.sources) {
+            let source = config.sources[name];
+            SceneWorker.sources[name] = TileSource.create(Object.assign(source, {name}));
+        }
 
         // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
-        for (layer in config.layers) {
+        for (var layer in config.layers) {
             config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
         }
 
@@ -52,7 +60,6 @@ Utils.inWorkerThread(() => {
 
         // Parse each top-level layer as a separate rule tree
         // TODO: find a more graceful way to incorporate this
-        SceneWorker.rules = {};
         for (layer in SceneWorker.config.layers) {
             SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
         }
@@ -110,16 +117,28 @@ Utils.inWorkerThread(() => {
         return SceneWorker.awaitConfiguration().then(() => {
             // First time building the tile
             if (tile.loaded !== true) {
+
                 return new Promise((resolve, reject) => {
-                    SceneWorker.tile_source.loadTile(tile).then(() => {
+
+                    tile.loading = true;
+                    tile.loaded = false;
+                    tile.error = null;
+
+                    Promise.all(Array.from(Utils.values(SceneWorker.sources), x => x.loadTile(tile))).then(() => {
+                        tile.loading = false;
+                        tile.loaded = true;
                         var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
 
                         resolve({
                             tile: SceneWorker.sliceTile(tile, keys),
                             worker_id: SceneWorker.worker_id,
                             selection_map_size: FeatureSelection.map_size
-                        });
+                        });                        
                     }).catch((error) => {
+                        tile.loading = false;
+                        tile.loaded = false;
+                        tile.error = error.toString();
+
                         if (error) {
                             SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
                         }
@@ -220,4 +239,4 @@ Utils.inWorkerThread(() => {
         console.profileEnd(`worker ${SceneWorker.worker_id}: ${name}`);
     };
 
-});
+}

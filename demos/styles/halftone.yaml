@@ -2,12 +2,8 @@
 halftone:
     extends: polygons
     shaders:
-        uniforms:
-            # halftone_colored: false # boolean to flip colored dots on and off
         transforms:
             globals: |
-                // uniform bool halftone_colored;
-
                 const float dot_frequency = 100.4748637184972;
 
                 // Antialiasing

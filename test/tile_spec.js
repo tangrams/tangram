@@ -2,19 +2,6 @@ import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
 import samples from './fixtures/samples';
-import TileSource  from '../src/tile_source';
-import Scene       from '../src/scene';
-import sampleScene from './fixtures/sample-scene';
-
-function makeScene(options) {
-    options = options || {};
-    options.disableRenderLoop = true;
-    return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.config,
-        options
-    );
-}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 
@@ -26,7 +13,7 @@ describe('Tile', () => {
         scene = makeScene({});
         scene.setCenter(...nycLatLng);
         scene.init().then(() => {
-            subject = Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
+            subject = Tile.create({coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
             done();
         });
     });
@@ -42,11 +29,24 @@ describe('Tile', () => {
         it('returns a new instance', () => {
             assert.instanceOf(subject, Tile);
         });
+
+        it('overzooms a coordinate above the tile source max zoom', () => {
+            let unzoomed_coords = { x: 77202, y: 98506, z: 18 };
+            let overzoomed_coords = { x: 9650, y: 12313, z: 15 };
+
+            let overzoom_tile = new Tile({
+                max_zoom: 15,
+                coords: unzoomed_coords
+            });
+
+            assert.deepEqual(overzoom_tile.coords, overzoomed_coords);
+        });
+
     });
 
     describe('.create(spec)', () => {
         it('returns a new instance', () => {
-            assert.instanceOf(Tile.create({}), Tile);
+            assert.instanceOf(Tile.create({tile_source: scene.tile_source, coords: { x: 10, y: 10, z: 10 }}), Tile);
         });
     });
 
@@ -65,12 +65,15 @@ describe('Tile', () => {
         });
     });
 
-    describe('.load(scene, coords)', () => {
+    describe('.load(scene)', () => {
 
         beforeEach(() => {
+            subject = Tile.create({tile_source: scene.tile_source, coords: _.clone(samples.nyc_coords), worker: scene.nextWorker()});
+
             sinon.stub(subject, 'build');
             sinon.spy(subject,  'updateVisibility');
-            subject.load(scene, _.clone(samples.nyc_coords));
+
+            subject.load(scene);
         });
 
         afterEach(() => {
@@ -86,9 +89,4 @@ describe('Tile', () => {
         });
 
     });
-
-    describe('.isInZoom(scene, zoom)', () => {});
-
-    describe('.updateVisibility(scene)', () => {});
-
 });

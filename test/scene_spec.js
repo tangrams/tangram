@@ -2,20 +2,8 @@ import chai from 'chai';
 let assert = chai.assert;
 import Scene from '../src/scene';
 import Tile from '../src/tile';
-import TileSource from '../src/tile_source';
 import sampleScene from './fixtures/sample-scene';
 
-function makeScene(options) {
-    options = options || {};
-    options.disableRenderLoop = true;
-    options.workerUrl = 'http://localhost:9876/tangram.debug.js';
-
-    return new Scene(
-        TileSource.create(_.clone(sampleScene.tile_source)),
-        sampleScene.config,
-        options
-    );
-}
 
 let nycLatLng = [-73.97229909896852, 40.76456761707639, 17];
 let midtownTile = { x: 38603, y: 49255, z: 17 };
@@ -134,7 +122,6 @@ describe('Scene', function () {
 
         beforeEach(() => {
             subject = makeScene({});
-
         });
 
         afterEach( () => {
@@ -144,10 +131,6 @@ describe('Scene', function () {
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, Scene);
-        });
-
-        it('correctly sets the value of the tile source', () => {
-            assert.instanceOf(subject.tile_source, TileSource);
         });
 
         it('correctly sets the value of the layers object', () => {
@@ -165,10 +148,10 @@ describe('Scene', function () {
 
         describe('when the scene is not initialized', () => {
             let subject;
-            beforeEach((done) => {
-                subject = makeScene({});
-                subject.init().then(done);
 
+            beforeEach(() => {
+                subject = makeScene({});
+                return subject.init();
             });
 
             afterEach(() => {
@@ -177,12 +160,9 @@ describe('Scene', function () {
             });
 
             it('correctly sets the value of the tile source', () => {
-                assert.deepPropertyVal(subject, 'tile_source.max_zoom', 20);
-                assert.deepPropertyVal(
-                    subject,
-                    'tile_source.url_template',
-                    'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
-                );
+                let source = subject.sources['osm'];
+                assert.propertyVal(source, 'max_zoom', 20);
+                assert.propertyVal(source, 'url_template', 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
             });
 
             it('sets the initialized property', () => {
@@ -379,13 +359,13 @@ describe('Scene', function () {
 
     });
 
-    describe('.render()', () => {
+    describe('.update()', () => {
         let subject;
 
         beforeEach((done) => {
             subject = makeScene({});
             sinon.spy(subject, 'loadQueuedTiles');
-            sinon.spy(subject, 'renderGL');
+            sinon.spy(subject, 'render');
 
             subject.setCenter(...nycLatLng);
             subject.init().then(done);
@@ -397,40 +377,40 @@ describe('Scene', function () {
         });
 
         it('calls the loadQueuedTiles method', () => {
-            subject.render();
+            subject.update();
             assert.isTrue(subject.loadQueuedTiles.called);
         });
 
         describe('when the scene is not dirty', () => {
             it('returns false', () => {
                 subject.dirty = false;
-                assert.isFalse(subject.render());
+                assert.isFalse(subject.update());
             });
         });
 
         describe('when the scene is not initialized', () => {
             it('returns false', () => {
                 subject.initialized = false;
-                assert.isFalse(subject.render());
+                assert.isFalse(subject.update());
             });
         });
 
         describe('when the scene is dirty', () => {
             beforeEach(() => { subject.dirty = true; });
-            it('calls the renderGL method', () => {
-                subject.render();
-                assert.isTrue(subject.renderGL.called);
+            it('calls the render method', () => {
+                subject.update();
+                assert.isTrue(subject.render.called);
             });
         });
 
         it('increments the frame property', () => {
             let old = subject.frame;
-            subject.render();
+            subject.update();
             assert.operator(subject.frame, '>', old);
         });
 
         it('returns true', () => {
-            assert.isTrue(subject.render());
+            assert.isTrue(subject.update());
         });
 
     });

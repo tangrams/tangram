@@ -31,7 +31,8 @@
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
     "csscolorparser": "^1.0.2",
-    "loglevel": "~1.2.0"
+    "loglevel": "~1.2.0",
+    "strip-comments": "^0.3.2"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",

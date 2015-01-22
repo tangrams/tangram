@@ -2,13 +2,12 @@
 
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
-import GLVertexLayout from '../gl/gl_vertex_layout';
+
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
 import {GLBuilders} from '../gl/gl_builders';
 import GLTexture from '../gl/gl_texture';
 import {MethodNotImplemented} from '../errors';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import log from 'loglevel';
@@ -58,7 +57,7 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    parseFeature (feature, feature_style, tile, context) {
+    parseFeature (feature, feature_style, context) {
         try {
             var style = this.feature_style;
 
@@ -94,7 +93,7 @@ export var Style = {
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, tile, error);
+            log.error('Style.parseFeature: style parsing error', feature, error);
         }
     },
 
@@ -111,31 +110,29 @@ export var Style = {
     /*** Texture management ***/
 
     setupTextureUniforms () {
-        if (this.textures) {
-            var num_textures = Object.keys(this.textures).length;
-            if (num_textures === 1) {
-                // For single textures, provide a single u_texture uniform
-                this.defines['HAS_DEFAULT_TEXTURE'] = true;
-                this.shaders.uniforms = this.shaders.uniforms || {};
-                this.shaders.uniforms.u_texture = this.texture.url;
-            }
-            else if (num_textures > 1) {
-                // For multiple textures, provide a built-in uniform array
-                var tex_id = 0;
-                this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
-                this.shaders.uniforms = this.shaders.uniforms || {};
-                this.shaders.uniforms.u_textures = [];
+        var num_textures = Object.keys(this.textures).length;
 
-                for (var name in this.textures) {
-                    var texture = this.textures[name];
-                    texture.id = tex_id++; // give every texture a unique id local to this style
+        // Set a default texture flag
+        if (this.textures.default) {
+            this.defines['HAS_DEFAULT_TEXTURE'] = true;
+        }
 
-                    // Consistently map named textures to the same array index in the texture uniform
-                    this.shaders.uniforms.u_textures[texture.id] = name;
+        // Provide a built-in uniform array of textures
+        if (num_textures > 0) {
+            var tex_id = 0;
+            this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_textures = [];
 
-                    // Provide a #define mapping each texture back to its name in the stylesheet
-                    this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
-                }
+            for (var name in this.textures) {
+                var texture = this.textures[name];
+                texture.id = tex_id++; // give every texture a unique id local to this style
+
+                // Consistently map named textures to the same array index in the texture uniform
+                this.shaders.uniforms.u_textures[texture.id] = name;
+
+                // Provide a #define mapping each texture back to its name in the stylesheet
+                this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
             }
         }
     },
@@ -149,8 +146,6 @@ export var Style = {
                 var { url, filtering, repeat, sprites } = this.textures[name];
                 var texture = new GLTexture(this.gl, name, { sprites });
 
-                let _name = name;
-                let _textures = this.textures;
                 texture.load(url, { filtering, repeat });
             }
         }
@@ -185,12 +180,11 @@ export var Style = {
     setTexcoordScale (style) {
         // Get sprite sub-area if necessary
         if (this.textures && style.sprite) {
+            // Use default texture if available, otherwise texture must be specified
             var tex;
-            // If style only has one texture, use it
-            if (Object.keys(this.textures).length === 1) {
-                tex = Object.keys(this.textures)[0];
+            if (this.textures.default) {
+                tex = 'default';
             }
-            // If style has more than one texture, texture to use must be specified
             else {
                 tex = style.texture;
             }
@@ -239,8 +233,9 @@ export var Style = {
             selection_defines['FEATURE_SELECTION'] = true;
         }
 
-        // Get any custom code transforms
+        // Get any custom code transforms, uniform dependencies, etc.
         var transforms = (this.shaders && this.shaders.transforms);
+        var uniforms = (this.shaders && this.shaders.uniforms);
 
         // Create shaders
         try {
@@ -249,9 +244,10 @@ export var Style = {
                 shaderSources[this.vertex_shader_key],
                 shaderSources[this.fragment_shader_key],
                 {
-                    defines: defines,
-                    transforms: transforms,
-                    name: this.name
+                    name: this.name,
+                    defines,
+                    uniforms,
+                    transforms
                 }
             );
 
@@ -261,9 +257,10 @@ export var Style = {
                     shaderSources[this.vertex_shader_key],
                     shaderSources['selection_fragment'],
                     {
+                        name: (this.name + ' (selection)'),
                         defines: selection_defines,
-                        transforms: transforms,
-                        name: (this.name + ' (selection)')
+                        uniforms,
+                        transforms
                     }
                 );
             }

@@ -13,6 +13,7 @@ import {SceneWorker} from '../src/scene_worker';
 import log from 'loglevel';
 import {Geo} from './geo';
 import GL from './gl/gl';
+import GLSL from './gl/glsl';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import WorkerBroker from './worker_broker';
@@ -23,6 +24,7 @@ var debug = {
     Utils,
     Geo,
     GL,
+    GLSL,
     GLProgram,
     GLTexture,
     SceneWorker,
@@ -30,7 +32,7 @@ var debug = {
 };
 
 // Window can only be set in main thread
-Utils.inMainThread(() => {
+if (Utils.isMainThread) {
     // Main thread objects that can be called from workers
     WorkerBroker.addTarget('GLTexture', GLTexture);
 
@@ -39,10 +41,11 @@ Utils.inMainThread(() => {
         leafletLayer,
         debug
     };
-});
 
-Utils.inWorkerThread(() => {
+}
+
+if (Utils.isWorkerThread) {
     self.Tangram = {
         debug
     };
-});
+}

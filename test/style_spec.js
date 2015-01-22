@@ -1,122 +1,117 @@
 import chai from 'chai';
 let assert = chai.assert;
-//import {parseLayers, walkRuleTree} from '../src/rules';
-//import sampleStyle from './fixtures/sample-style.json';
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
+// import chaiAsPromised from 'chai-as-promised';
+// chai.use(chaiAsPromised);
 
-let sampleFeature = {
-    "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-            [
-                [
-                    4095.848539021153,
-                    -2063.2531953755924
-                ],
-                [
-                    1679.1837809756014,
-                    -2370.160638078569
-                ],
-                [
-                    1648.239138129794,
-                    -2344.0932907504034
-                ],
-                [
-                    1605.3640305757322,
-                    -1985.5422007100378
-                ],
-                [
-                    1566.2171932410502,
-                    -1954.5561197685702
-                ],
-                [
-                    -0.02912711201490421,
-                    -2251.627815992822
-                ],
-                [
-                    -0.02912711201490421,
-                    0.0854450579987468
-                ],
-                [
-                    4095.848539021153,
-                    0.0854450579987468
-                ],
-                [
-                    4095.848539021153,
-                    -2063.2531953755924
-                ]
-            ]
-        ]
-    },
-    "type": "Feature",
-    "id": "484306",
-    "clipped": true,
-    "properties": {
-        "land": "base"
-    }
-};
+import {Styles, StyleManager} from '../src/styles/style_manager';
+import {Style} from '../src/styles/style';
+import {GL} from '../src/gl/gl';
+import Camera from '../src/camera';
+import Light from '../src/light';
 
-let sampleLayerStyle = {
-    "color": {
-        "default": [
-            0.175,
-            0.175,
-            0.175
-        ]
-    },
-    "visible": true,
-    "mode": {
-        "name": "polygons"
-    },
-    "outline": {}
-};
+import sampleScene from './fixtures/sample-scene';
 
+// These create global shader blocks required by all rendering styles
+Camera.create(null, { type: 'flat' });
+Light.create(null, {});
 
+var canvas, gl;
 
-let outStyle = {
-    "color": [
-        0.175,
-        0.175,
-        0.175
-    ],
-    "width": 3.3491621239499065,
-    "size": 3.3491621239499065,
-    "extrude": false,
-    "height": 20,
-    "min_height": 0,
-    "z": 0,
-    "order": 0,
-    "outline": {
-        "width": null,
-        "tile_edges": false
-    },
-    "selection": {
-        "active": false,
-        "color": [
-            0,
-            0,
-            0,
-            1
-        ]
-    },
-    "mode": {
-        "name": "polygons"
-    }
-};
+describe('Styles:', () => {
 
-let layerName = 'earth';
+    describe('StyleManager:', () => {
 
+        beforeEach(() => {
+            canvas = document.createElement('canvas');
+            gl = GL.getContext(canvas, { alpha: false });
+            StyleManager.init();
+        });
 
-describe('Style', () => {
+        afterEach(() => {
+            StyleManager.destroy();
+            canvas = null;
+            gl = null;
+        });
 
-    describe('Style.parseStyleForFeatures', () => {
+        it('initializes built-in styles', () => {
+            assert.equal(Styles.polygons.constructor, Style.constructor);
+            assert.equal(Styles.points.constructor, Style.constructor);
+        });
 
-        it('do someting', () => {
-            assert.isObject(sampleFeature);
-            assert.isObject(outStyle);
-            assert.isObject(sampleLayerStyle);
-            assert.isString(layerName);
+        it('creates a custom style', () => {
+            StyleManager.update('rainbow', sampleScene.config.styles.rainbow);
+            assert.equal(Styles.rainbow.constructor, Style.constructor);
+            assert.equal(Styles.rainbow.extends, 'polygons');
+        });
+
+        it('builds & compiles custom styles from stylesheet', () => {
+            // debugger;
+            StyleManager.build(sampleScene.config.styles);
+            Styles.rainbow.setGL(gl);
+            Styles.rainbow.compile();
+            assert.equal(Styles.rainbow.constructor, Style.constructor);
+            assert.equal(Styles.rainbow.extends, 'polygons');
+            assert.ok(Styles.rainbow.compiled);
+            assert.ok(Styles.rainbow.program.compiled);
+        });
+
+        it('loads a remote style from a URL', (done) => {
+            let styles = { windows: { url: 'http://localhost:9876/base/test/fixtures/sample-remote-style.yaml' } };
+            StyleManager.preload(styles).then(() => {
+                StyleManager.build(styles);
+                Styles.windows.setGL(gl);
+                Styles.windows.compile();
+                assert.ok(Styles.windows.compiled);
+                assert.ok(Styles.windows.program.compiled);
+                done();
+            });
+        });
+
+        it('loads a remote style from a URL, with a different local name', (done) => {
+            let styles = { localName: {
+                name: 'windows',
+                url: 'http://localhost:9876/base/test/fixtures/sample-remote-style.yaml'
+            } };
+            StyleManager.preload(styles).then(() => {
+                StyleManager.build(styles);
+                Styles.localName.setGL(gl);
+                Styles.localName.compile();
+                assert.ok(Styles.localName.compiled);
+                assert.ok(Styles.localName.program.compiled);
+                done();
+            });
+        });
+
+    });
+
+    describe('Style:', () => {
+
+        beforeEach(() => {
+            canvas = document.createElement('canvas');
+            gl = GL.getContext(canvas, { alpha: false });
+            StyleManager.init();
+        });
+
+        afterEach(() => {
+            StyleManager.destroy();
+            canvas = null;
+            gl = null;
+        });
+
+        it('compiles a program', () => {
+            Styles.polygons.init();
+            Styles.polygons.setGL(gl);
+            Styles.polygons.compile();
+            assert.ok(Styles.polygons.compiled);
+        });
+
+        it('injects a dependent uniform in a custom style', () => {
+            StyleManager.update('scale', sampleScene.config.styles.scale);
+            Styles.scale.init();
+            Styles.scale.setGL(gl);
+            Styles.scale.compile();
+            assert.ok(Styles.scale.compiled);
+            assert.ok(Styles.scale.program.compiled);
         });
 
     });

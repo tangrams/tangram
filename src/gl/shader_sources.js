@@ -62,7 +62,6 @@ shaderSources['modules/reorder_layers'] =
 "void reorderLayers (float layer, float num_layers, inout vec4 position) {\n" +
 "    float layer_order = ((layer + 1.) / (num_layers + 1.)) + 1.;\n" +
 "    position.z /= layer_order;\n" +
-"    position.xyw *= layer_order;\n" +
 "}\n" +
 "\n" +
 "#pragma glslify: export(reorderLayers)\n" +
@@ -238,9 +237,7 @@ shaderSources['polygon_fragment'] =
 "\n" +
 "// built-in uniforms for texture maps\n" +
 "#if defined(NUM_TEXTURES)\n" +
-"    uniform sampler2D u_textures[NUM_TEXTURES]; // multiple textures\n" +
-"#else\n" +
-"    uniform sampler2D u_texture; // single texture\n" +
+"    uniform sampler2D u_textures[NUM_TEXTURES];\n" +
 "#endif\n" +
 "\n" +
 "#if defined(TEXTURE_COORDS)\n" +
@@ -280,7 +277,7 @@ shaderSources['polygon_fragment'] =
 "    vec4 color;\n" +
 "\n" +
 "    #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)\n" +
-"        color = texture2D(u_texture, v_texcoord);\n" +
+"        color = texture2D(texture_default, v_texcoord);\n" +
 "    #else\n" +
 "        color = v_color;\n" +
 "    #endif\n" +

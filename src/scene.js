@@ -2,6 +2,7 @@
 import {Geo} from './geo';
 import Utils from './utils';
 import WorkerBroker from './worker_broker';
+import subscribeMixin from './subscribe';
 import {GL} from './gl/gl';
 import {GLBuilders} from './gl/gl_builders';
 import GLProgram from './gl/gl_program';
@@ -20,22 +21,24 @@ var mat4 = glMatrix.mat4;
 var vec3 = glMatrix.vec3;
 
 // Global setup
-Utils.inMainThread(() => {
+if (Utils.isMainThread) {
     // On main thread only (skip in web worker)
     Utils.requestAnimationFramePolyfill();
- });
+}
+
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
 GLBuilders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
-export default function Scene(source, config_source, options) {
-
+export default function Scene(config_source, options) {
     options = options || {};
-    this.initialized = false;
+    subscribeMixin(this);
 
-    this.tile_source = source;
+    this.initialized = false;
+    this.sources = {};
+
     this.tiles = {};
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
@@ -51,8 +54,8 @@ export default function Scene(source, config_source, options) {
     this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
     this.animated = false;                          // request redraw every frame
-    this.preRender = options.preRender;             // optional pre-rendering hook
-    this.postRender = options.postRender;           // optional post-rendering hook
+    this.preUpdate = options.preUpdate;             // optional pre-render loop hook
+    this.postUpdate = options.postUpdate;           // optional post-render loop hook
     this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
     this.frame = 0;
     this.resetTime();
@@ -76,11 +79,8 @@ export default function Scene(source, config_source, options) {
     log.setLevel(this.logLevel);
 }
 
-Scene.create = function ({source, config}, options = {}) {
-    if (!(source instanceof TileSource)) {
-        source = TileSource.create(source);
-    }
-    return new Scene(source, config, options);
+Scene.create = function (config, options = {}) {
+    return new Scene(config, options);
 };
 
 Scene.prototype.init = function () {
@@ -92,6 +92,7 @@ Scene.prototype.init = function () {
     // Load scene definition (sources, styles, etc.), then create styles & workers
     return new Promise((resolve, reject) => {
         this.loadScene().then(() => {
+
             this.createWorkers().then(() => {
                 this.container = this.container || document.body;
                 this.canvas = document.createElement('canvas');
@@ -107,10 +108,6 @@ Scene.prototype.init = function () {
 
                 // Loads rendering styles from config, sets GL context and compiles programs
                 this.updateConfig();
-
-                // this.zoom_step = 0.02; // for fractional zoom user adjustment
-                this.last_render_count = null;
-                this.initInputHandlers();
 
                 this.initializing = false;
                 this.initialized = true;
@@ -151,7 +148,7 @@ Scene.prototype.destroy = function () {
         });
         this.workers = null;
     }
-
+    this.sources = {};
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
@@ -232,12 +229,20 @@ Scene.prototype.nextWorker = function () {
     return worker;
 };
 
-Scene.prototype.setCenter = function (lng, lat, zoom) {
+/**
+    Set the center of the map (as [longitude, latitude] pair), and optionally set the zoom level as well.
+*/
+Scene.prototype.setCenter = function (lng, lat, zoom = null) {
+    var changed = !this.center || lng !== this.center.lng || lat !== this.center.lat;
     this.center = { lng, lat };
     if (zoom) {
+        changed = changed || zoom !== this.zoom;
         this.setZoom(zoom);
     }
-    this.updateBounds();
+    if (changed) {
+        this.updateBounds();
+    }
+    return changed;
 };
 
 Scene.prototype.startZoom = function () {
@@ -247,28 +252,31 @@ Scene.prototype.startZoom = function () {
 
 Scene.prototype.preserve_tiles_within_zoom = 2;
 Scene.prototype.setZoom = function (zoom) {
-    // Schedule GL tiles for removal on zoom
-    var below = zoom;
-    var above = zoom;
-    if (this.last_zoom != null) {
+    this.zooming = false;
+
+    // Schedule tiles for removal on integer zoom level change
+    if (Math.round(zoom) !== Math.round(this.last_zoom)) {
+        var below = Math.round(zoom);
+        var above = Math.round(zoom);
+
         log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
-            if (zoom > this.last_zoom) {
-                below = zoom - this.preserve_tiles_within_zoom;
-            }
-            else {
-                above = zoom + this.preserve_tiles_within_zoom;
-            }
+            below -= this.preserve_tiles_within_zoom;
+            above += this.preserve_tiles_within_zoom;
         }
+
+        log.debug(`removing tiles outside range [${below}, ${above}]`);
+        this.removeTilesOutsideZoomRange(below, above);
     }
+
 
     this.last_zoom = this.zoom;
     this.zoom = zoom;
-    this.capped_zoom = Math.min(~~this.zoom, this.tile_source.max_zoom || ~~this.zoom);
-    this.zooming = false;
+
+    this.capped_zoom = Math.min(Math.round(this.zoom), this.findMaxZoom() || Math.round(this.zoom));
     this.updateBounds();
 
-    this.removeTilesOutsideZoomRange(below, above);
+    this.dirty = true;
 };
 
 Scene.prototype.viewReady = function () {
@@ -331,8 +339,8 @@ Scene.prototype.updateBounds = function () {
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
-    below = Math.min(below, this.tile_source.max_zoom || below);
-    above = Math.min(above, this.tile_source.max_zoom || above);
+    below = Math.min(Math.round(below), this.findMaxZoom() || below);
+    above = Math.min(Math.round(above), this.findMaxZoom() || above);
 
     var remove_tiles = [];
     for (var t in this.tiles) {
@@ -385,7 +393,7 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     this.renderLoop = () => {
         if (this.initialized) {
             // Render the scene
-            this.render();
+            this.update();
         }
 
         // Request the next frame
@@ -394,26 +402,29 @@ Scene.prototype.setupRenderLoop = function ({ pre_render, post_render } = {}) {
     setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
 };
 
-Scene.prototype.render = function () {
+Scene.prototype.update = function () {
     this.loadQueuedTiles();
 
     // Render on demand
-    if (this.dirty === false || this.initialized === false || this.viewReady() === false) {
+    var will_render = !(this.dirty === false || this.initialized === false || this.viewReady() === false);
+
+    // Pre-render loop hook
+    if (typeof this.preUpdate === 'function') {
+        this.preUpdate(will_render);
+    }
+
+    // Bail if no need to render
+    if (!will_render) {
         return false;
     }
     this.dirty = false; // subclasses can set this back to true when animation is needed
 
-    // Pre-render hook
-    if (typeof this.preRender === 'function') {
-        this.preRender();
-    }
-
     // Render the scene
-    this.renderGL();
+    this.render();
 
-    // Post-render hook
-    if (typeof this.postRender === 'function') {
-        this.postRender();
+    // Post-render loop hook
+    if (typeof this.postUpdate === 'function') {
+        this.postUpdate(will_render);
     }
 
     // Redraw every frame if animating
@@ -524,10 +535,9 @@ Scene.prototype.renderStyle = function (style, program) {
     return render_count;
 };
 
-Scene.prototype.renderGL = function () {
+Scene.prototype.render = function () {
     var gl = this.gl;
 
-    this.input();
     this.resetFrame({ alpha_blend: true });
 
     // Map transforms
@@ -667,13 +677,30 @@ Scene.prototype.forgetTile = function (key) {
     delete this.tiles[key];
 };
 
+Scene.prototype.findMaxZoom = function () {
+    var max_zoom = this.max_zoom || Geo.max_zoom;
+
+    for (var name in this.sources) {
+        let source = this.sources[name];
+        if (source.max_zoom < max_zoom) {
+            max_zoom = source.max_zoom;
+        }
+    }
+    return max_zoom;
+};
 
 // Load a single tile
 Scene.prototype._loadTile = function (coords, options = {}) {
-    var tile = Tile.create({ coords: coords, tile_source: this.tile_source, worker: this.nextWorker() });
+    var tile = Tile.create({
+        coords: coords,
+        max_zoom: this.findMaxZoom(),
+        worker: this.nextWorker()
+    });
+
+
     if (!this.hasTile(tile.key)) {
         this.cacheTile(tile);
-        tile.load(this, coords);
+        tile.load(this);
         if (options.debugElement) {
             tile.updateDebugElement(options.debugElement, this.debug.showTileElements);
         }
@@ -842,8 +869,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
     }
 };
 
-Scene.prototype.removeTile = function (key)
-{
+Scene.prototype.removeTile = function (key) {
     if (!this.initialized) {
         return;
     }
@@ -871,7 +897,7 @@ Scene.prototype.removeTile = function (key)
 Scene.prototype.loadScene = function () {
     return Utils.loadResource(this.config_source).then((config) => {
         this.config = config;
-        return this.preProcessSceneConfig();
+        return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
     }).catch((error) => { Promise.reject(error); });
 };
 
@@ -889,6 +915,23 @@ Scene.prototype.reload = function () {
         throw error;
     });
 
+};
+
+Scene.prototype.loadDataSources = function () {
+    for (var name in this.config.sources) {
+        let source = this.config.sources[name];
+        this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
+    }
+};
+
+Scene.prototype.setSourceMax = function () {
+    let max_zoom = this.findMaxZoom();
+
+    for (var name in this.sources) {
+        let source = this.sources[name];
+        source.max_zoom = max_zoom;
+    }
+    return max_zoom;
 };
 
 // Normalize some settings that may not have been explicitly specified in the scene definition
@@ -965,6 +1008,8 @@ Scene.prototype.createLighting = function () {
 Scene.prototype.updateConfig = function () {
     this.createCamera();
     this.createLighting();
+    this.loadDataSources();
+    this.setSourceMax();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
@@ -975,12 +1020,10 @@ Scene.prototype.updateConfig = function () {
 Scene.prototype.syncConfigToWorker = function () {
     this.config_serialized = Utils.serializeWithFunctions(this.config);
     this.selection_map_worker_size = {};
-
     // Tell workers we're about to rebuild (so they can update styles, etc.)
     this.workers.forEach(worker => {
         WorkerBroker.postMessage(worker, 'updateConfig', {
-            config: this.config_serialized,
-            tile_source: this.tile_source.buildAsMessage() // TODO: move tile source(s) into config
+            config: this.config_serialized
         });
     });
 };
@@ -988,44 +1031,6 @@ Scene.prototype.syncConfigToWorker = function () {
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
 Scene.prototype.resetTime = function () {
     this.start_time = +new Date();
-};
-
-// User input
-// TODO: restore fractional zoom support once leaflet animation refactor pull request is merged
-
-Scene.prototype.initInputHandlers = function () {
-    // this.key = null;
-
-    // document.addEventListener('keydown', function (event) {
-    //     if (event.keyCode == 37) {
-    //         this.key = 'left';
-    //     }
-    //     else if (event.keyCode == 39) {
-    //         this.key = 'right';
-    //     }
-    //     else if (event.keyCode == 38) {
-    //         this.key = 'up';
-    //     }
-    //     else if (event.keyCode == 40) {
-    //         this.key = 'down';
-    //     }
-    //     else if (event.keyCode == 83) { // s
-    //     }
-    // }.bind(this));
-
-    // document.addEventListener('keyup', function (event) {
-    //     this.key = null;
-    // }.bind(this));
-};
-
-Scene.prototype.input = function () {
-    // // Fractional zoom scaling
-    // if (this.key == 'up') {
-    //     this.setZoom(this.zoom + this.zoom_step);
-    // }
-    // else if (this.key == 'down') {
-    //     this.setZoom(this.zoom - this.zoom_step);
-    // }
 };
 
 
