@@ -124,7 +124,7 @@ if (Utils.isWorkerThread) {
                     tile.loaded = false;
                     tile.error = null;
 
-                    Promise.all(Array.from(Utils.values(SceneWorker.sources), x => x.loadTile(tile))).then(() => {
+                    Promise.all(Object.keys(SceneWorker.sources).map(x => SceneWorker.sources[x].loadTile(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
                         var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
@@ -133,7 +133,7 @@ if (Utils.isWorkerThread) {
                             tile: SceneWorker.sliceTile(tile, keys),
                             worker_id: SceneWorker.worker_id,
                             selection_map_size: FeatureSelection.map_size
-                        });                        
+                        });
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
