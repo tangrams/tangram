@@ -22,6 +22,7 @@ layers:
       geometry:
         source: osm
         filter: earth
+
       style:
         order: 0
         color: [1, 1, 1]
@@ -30,6 +31,11 @@ layers:
       geometry:
         source: osm
         filter: roads
+
+      properties:
+        high: 10
+
+      filter: function () { return properties.high === 10; }
       style:
         order: 2
         color: [1, 1, 0]

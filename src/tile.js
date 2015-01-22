@@ -1,6 +1,7 @@
 /*global Tile */
 import {Geo} from './geo';
 import {StyleParser} from './styles/style_parser';
+import {withProperties} from './rule';
 import WorkerBroker from './worker_broker';
 
 import log from 'loglevel';
@@ -134,7 +135,10 @@ export default class Tile {
                         // Parse style
                         rule.name = rule.name || StyleParser.defaults.style.name;
                         style = styles[rule.name];
-                        feature_style = style.parseFeature(feature, rule, context);
+
+                        withProperties(context, rule.properties, () => {
+                            feature_style = style.parseFeature(feature, rule, context);
+                        });
 
                         // Skip feature?
                         if (!feature_style) {

@@ -117,7 +117,7 @@ StyleParser.wrapFunction = function (func) {
                 feature.id = context.feature.id;
                 var zoom = context.zoom;
                 var meters_per_pixel = context.meters_per_pixel;
-                var properties = context.style_properties;
+                var properties = context.properties;
                 return (${func}());
             }`;
     return f;

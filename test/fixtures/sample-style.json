@@ -15,6 +15,9 @@
         "filter": {
             "layer": "roads"
         },
+        "properties": {
+            "key": "value1"
+        },
         "style": {
             "type": "polygon",
             "color": [1, 1, 1],
@@ -43,6 +46,9 @@
                 }
             },
             "thing": {
+                "properties": {
+                    "key": "value2"
+                },
                 "style": {
                     "type": "polygon",
                     "color": [1, 1, 0],
@@ -67,7 +73,7 @@
                 }
             }
         },
-        "stuff": {
+        "more-roads": {
             "style": {
                 "color": [1, 0, 1]
             }
@@ -79,7 +85,7 @@
         "style": {
             "color": [1, 0, 1]
         },
-        "more-stuff": {
+        "another-road-style": {
             "style": {
                 "color": [1, 0.5, 1]
             }

@@ -1,11 +1,20 @@
 import chai from 'chai';
 let assert = chai.assert;
-import {parseRules, matchFeature, groupProperties, cloneStyle} from '../src/rule';
+import {
+    parseRules,
+    matchFeature,
+    groupProperties,
+    mergeStyles,
+    calculateStyle,
+    cloneStyle
+} from '../src/rule';
+
 import sampleStyle from './fixtures/sample-style.json';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
 describe('Rules', () => {
+
     describe('groupProperties({})', () => {
         let style = { filter: 'is()', style: {}, fill: {}, outline: {} };
         describe('given a object of white listed and none white listed values', () => {
@@ -17,10 +26,8 @@ describe('Rules', () => {
         });
     });
 
-
     describe('.cloneStyle()', () => {
-        let target = {};
-        let sample = [
+        let styles = [
             {
                 'key': { 'thing': 'value3' }
             },
@@ -45,7 +52,7 @@ describe('Rules', () => {
 
         it('when given an object with nested properties', () => {
             assert.deepEqual(
-                cloneStyle(target, sample),
+                cloneStyle({}, styles),
                 {
                     'key': {
                         'thing': 'value3',
@@ -60,6 +67,88 @@ describe('Rules', () => {
 
     });
 
+    describe('.mergeStyles()', () => {
+
+        let subject;
+
+        beforeEach(() => {
+            subject = mergeStyles([
+                {
+                    order: 1,
+                    color: 'red'
+                },
+                undefined,
+                {
+                    order: 2,
+                    color: 'blue'
+                },
+                null,
+                false,
+                '',
+                {
+                    order: 3,
+                    width: 10
+                }
+            ]);
+        });
+
+        afterEach(() => {
+            subject = undefined;
+        });
+
+        describe('when given a array of rules', () => {
+            it('filters styles that are falsely', () => {
+                assert.deepEqual(subject, {
+                    order: 6,
+                    width: 10,
+                    visible: true,
+                    color: 'blue'
+                });
+            });
+        });
+    });
+
+    describe('.calculateStyle(rule, styles = [])', () => {
+        let subject;
+        let a = {
+            name: 'a',
+            style: {'a': 1, 'b': 2, 'c': 3},
+            properties: {'1': 'a', '3': 'z'}
+        };
+
+        let b = {
+            parent: a,
+            name: 'b',
+            style: {'a': 4, 'b': 5, 'c': 6},
+            properties: {'2': 'c', '1': 'b'}
+        };
+
+        let c = {
+            parent: b,
+            name: 'c',
+            style: {'a': 7, 'b': 8, 'c': 9},
+            properties: {'1': 'd', '2': 'e'}
+        };
+
+        beforeEach(() => {
+            subject = calculateStyle(c);
+        });
+        afterEach(() => {
+            subject = undefined;
+        });
+
+        it('returns an array with a length of 3', () => {
+            assert.lengthOf(subject, 3);
+        });
+
+        it('returns the first rule, which is a', () => {
+            assert.propertyVal(subject[0], 'name', 'a');
+        });
+
+        it('returns the last rule, which is c', () => {
+            assert.propertyVal(subject[2], 'name', 'c');
+        });
+    });
 
     describe('.matchFeature(feature)', () => {
         let matchedRules = [];
@@ -92,19 +181,16 @@ describe('Rules', () => {
             let feature = { properties: { layer: 'roads', kind: 'not-highway' } };
             let context = { feature };
             it('returns an array with a single rule', () => {
+                let rule;
                 matchFeature(context, ruleGroups.roads.rules, matchedRules);
+                rule = matchedRules[0];
                 assert.lengthOf(matchedRules, 1);
-                assert.deepEqual(matchedRules[0], {
-                    'type': 'polygon',
-                    'visible': true,
-                    'order': 0,
-                    'color': [1, 0, 1],
-                    'width': 5,
-                    'outline': {
-                        'color': [0.7, 0.7, 0.7],
-                        'width': 10
-                    }
-                });
+                assert.propertyVal(rule, 'name', 'more-roads');
+                assert.propertyVal(rule, 'type', 'polygon');
+                assert.propertyVal(rule, 'visible', true);
+                assert.propertyVal(rule, 'order', 0);
+                assert.propertyVal(rule, 'width', 5);
+
             });
         });
 
@@ -113,20 +199,15 @@ describe('Rules', () => {
             let context = { feature };
             it('returns an array of three rules', () => {
                 matchFeature(context, ruleGroups.roads.rules, matchedRules);
+                let first = matchedRules[0];
                 assert.lengthOf(matchedRules, 3);
-                // NOTE: don't think it's safe to assume the first matching rule will match the first
-                // one top-to-bottom in the stylesheet - in practice it often is, but order isn't guaranteed
-                assert.deepEqual(matchedRules[0], {
-                    'type': 'polygon',
-                    'visible': true,
-                    'order': 0,
-                    'color': [1, 1, 1],
-                    'width': 10,
-                    'outline': {
-                        'color': [0.7, 0.7, 0.7],
-                        'width': 10
-                    }
-                });
+                assert.propertyVal(first, 'name', 'fill');
+                assert.propertyVal(first, 'type', 'polygon');
+                assert.propertyVal(first, 'width', 10);
+
+                let last = matchedRules[2];
+                assert.propertyVal(last, 'type', 'polygon');
+                assert.propertyVal(last, 'name', 'more-roads');
             });
         });
     });
