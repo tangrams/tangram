@@ -46,7 +46,6 @@
     "yargs": "~1.3.2",
     "glob": "~4.0.6",
     "chai-as-promised": "~4.1.1",
-    "zuul": "~1.16.0",
     "es6ify": "~1.6.0",
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
