@@ -9,7 +9,7 @@ all: \
 	dist/tangram.debug.js
 
 # browserify --debug adds source maps
-dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify src/module.js)
+dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify src/module.js) .npm
 	node build.js --debug=true --require './src/module.js' > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
@@ -32,14 +32,18 @@ clean:
 	rm -f dist/*
 	rm -f src/gl/shader_sources.js
 
-lint:
+lint: .npm
 	$(JSHINT) src/**/*.js
 	$(JSHINT) test/*.js
 
-karma-start:
+karma-start: .npm
 	$(KARMA) start --browsers Chrome --no-watch
 
 run-tests: build-testable
 	$(KARMA) run --browsers Chrome
 
-.PHONY : clean all dev test lint build-testable karma-start run-tests
+.npm: package.json
+	npm install
+	touch .npm
+
+.PHONY : clean all test lint build-testable karma-start run-tests
