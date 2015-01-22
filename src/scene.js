@@ -725,7 +725,8 @@ Scene.prototype.rebuildGeometry = function () {
             // Queue up to one rebuild call at a time, only save last request
             if (this.building.queued && this.building.queued.reject) {
                 // notify previous request that it did not complete
-                this.building.queued.reject(new Error('Scene.rebuildGeometry: request superceded by a newer call'));
+                log.debug('Scene.rebuildGeometry: request superceded by a newer call');
+                this.building.queued.resolve(false); // false flag indicates rebuild request was superceded
             }
 
             // Save queued request
@@ -780,7 +781,7 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
         if (this.building && Object.keys(this.building.tiles).length === 0) {
-            resolve();
+            resolve(false);
 
             // Another rebuild queued?
             var queued = this.building.queued;
@@ -855,7 +856,7 @@ Scene.prototype.trackTileBuildStop = function (key) {
             log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
 
             if (this.building.resolve) {
-                this.building.resolve();
+                this.building.resolve(true);
             }
 
             // Another rebuild queued?
