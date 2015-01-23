@@ -27,6 +27,23 @@ Utils.getIn = function (obj, key) {
     return walk(obj, key);
 };
 
+// Add the current base URL for schemeless or protocol-less URLs
+// Maybe use https://github.com/medialize/URI.js if more robust functionality is needed
+Utils.addBaseURL = function (url) {
+    if (!url) {
+        return;
+    }
+
+    // Schemeless, add protocol
+    if (url.substr(0, 2) === '//') {
+        url = window.location.protocol + url;
+    }
+    // No http(s) or data, add base
+    else if (url.search(/(http|https|data):\/\//) < 0) {
+        url = window.location.origin + window.location.pathname + url;
+    }
+    return url;
+};
 
 Utils.cacheBusterForUrl = function (url) {
     return url + '?' + (+new Date());
