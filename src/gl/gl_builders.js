@@ -142,6 +142,7 @@ GLBuilders.buildPolylines = function (
     {
         closed_polygon,
         remove_tile_edges,
+        tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
         scaling_index
@@ -416,7 +417,8 @@ GLBuilders.isOnTileEdge = function (pa, pb, options)
     options = options || {};
 
     var tolerance_function = options.tolerance_function || GLBuilders.valuesWithinTolerance;
-    var tolerance = options.tolerance || 1; // tweak this adjust if catching too few/many line segments near tile edges
+    var tolerance = options.tolerance || 3; // tweak this adjust if catching too few/many line segments near tile edges
+                                            // TODO: make tolerance configurable by source if necessary
     var tile_min = GLBuilders.tile_bounds[0];
     var tile_max = GLBuilders.tile_bounds[1];
     var edge = null;

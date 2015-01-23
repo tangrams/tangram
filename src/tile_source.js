@@ -44,7 +44,11 @@ export default class TileSource {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, Geo.latLngToMeters);
+                Geo.transformGeometry(feature.geometry, coord => {
+                    var [x, y] = Geo.latLngToMeters(coord);
+                    coord[0] = x;
+                    coord[1] = y;
+                });
             }
         }
 
@@ -65,12 +69,11 @@ export default class TileSource {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    coordinates[0] = (coordinates[0] - min.x) * Geo.units_per_meter[z];
+                Geo.transformGeometry(feature.geometry, coord => {
+                    coord[0] = (coord[0] - min.x) * Geo.units_per_meter[z];
                     // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
-                    coordinates[1] = (coordinates[1] - min.y) * Geo.units_per_meter[z];
-                    // coordinates[1] = (coordinates[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
-                    return coordinates;
+                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z];
+                    // coord[1] = (coord[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
                 });
             }
         }
@@ -230,6 +233,8 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         this.Protobuf = require('pbf');
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib
         this.VectorTileFeature = require('vector-tile').VectorTileFeature;
+
+        this.pad_scale = source.pad_scale || 0.001; // scale tile up by this factor (0.1%) to cover seams
     }
 
     parseSourceData (tile, source, response) {
@@ -240,16 +245,21 @@ export class MapboxFormatTileSource extends NetworkTileSource {
         source.layers = this.toGeoJSON(source.data);
         delete source.data; // comment out to save raw data for debugging
 
-        // Post-processing: flip tile y and copy OSM id
+        // Post-processing
         for (var t in source.layers) {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
 
+                // Copy OSM id
                 feature.properties.id = feature.properties.osm_id;
-                feature.geometry.coordinates = Geo.transformGeometry(feature.geometry, (coordinates) => {
-                    coordinates[1] = -coordinates[1];
-                    return coordinates;
+                Geo.transformGeometry(feature.geometry, coord => {
+                    // Slightly scale up tile to cover seams
+                    coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
+                    coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
+
+                    // Flip Y coord
+                    coord[1] = -coord[1];
                 });
             }
         }
