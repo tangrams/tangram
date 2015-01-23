@@ -152,16 +152,16 @@ GLBuilders.buildPolylines = function (
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Values that are constant for each line and are passed to helper functions
-    var constants = { 
-        vertex_data, 
-        vertex_template, 
-        halfWidth: width/2, 
+    var constants = {
+        vertex_data,
+        vertex_template,
+        halfWidth: width/2,
         vertices: [],
-        scaling_index, 
-        scalingVecs: scaling_index && [], 
-        texcoord_index, 
-        texcoords: texcoord_index && [], 
-        min_u, min_v, max_u, max_v 
+        scaling_index,
+        scalingVecs: scaling_index && [],
+        texcoord_index,
+        texcoords: texcoord_index && [],
+        min_u, min_v, max_u, max_v
     };
 
     for (var ln = 0; ln < lines.length; ln++) {
@@ -174,13 +174,13 @@ GLBuilders.buildPolylines = function (
         }
 
         //  Initialize variables
-        var coordPrev = [0,0],// Previous point coordinates
-            coordCurr = [0,0],// Current point coordinates
-            coordNext = [0,0];// Next point coordinates
+        var coordPrev = [0, 0], // Previous point coordinates
+            coordCurr = [0, 0], // Current point coordinates
+            coordNext = [0, 0]; // Next point coordinates
 
-        var normPrev = [0,0], // Right normal to segment between previous and current m_points
-            normCurr = [0,0], // Right normal at current point, scaled for miter joint
-            normNext = [0,0]; // Right normal to segment between current and next m_points
+        var normPrev = [0, 0],  // Right normal to segment between previous and current m_points
+            normCurr = [0, 0],  // Right normal at current point, scaled for miter joint
+            normNext = [0, 0];  // Right normal to segment between current and next m_points
 
         var isPrev = false,
             isNext = true;
@@ -188,51 +188,51 @@ GLBuilders.buildPolylines = function (
         var nSegment = 0;
 
         // Do this with the rest (except the last one)
-        for(let i = 0; i < lineSize ; i++) {
+        for (let i = 0; i < lineSize ; i++) {
 
             // There is a next one?
             isNext = i+1 < lineSize;
 
-            if(isPrev){
-                // If there is a previus one, copy the current (previus) values on *Prev
+            if (isPrev) {
+                // If there is a previus one, copy the current (previous) values on *Prev
                 coordPrev = coordCurr;
-                normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
-            } else if (i === 0 && closed_polygon === true){
+                normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
+            } else if (i === 0 && closed_polygon === true) {
                 // If is the first point and is a close polygon
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if( GLBuilders.isOnTileEdge(line[i], line[lineSize-2])){
+                    if(GLBuilders.isOnTileEdge(line[i], line[lineSize-2], { tile_edge_tolerance })) {
                         needToClose = false;
                     }
                 }
 
-                if( needToClose ){
+                if (needToClose) {
                     coordPrev = line[lineSize-2];
-                    normPrev = Vector.normalize( Vector.perp(coordPrev, line[i]) );
+                    normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
                     isPrev = true;
                 }
-            } 
+            }
 
             // Assign current coordinate
             coordCurr = line[i];
 
-            if(isNext){
+            if (isNext) {
                 coordNext = line[i+1];
             } else if (closed_polygon === true) {
                 // If is the las point a close polygon
                 coordNext = line[1];
                 isNext = true;
             }
-                
-            if(isNext){
+
+            if (isNext) {
                 // If is not the last one get next coordinates and calculate the right normal
-                
-                normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
+
+                normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if( GLBuilders.isOnTileEdge(coordCurr, coordNext)){
-                        normCurr = Vector.normalize( Vector.perp(coordPrev,coordCurr ) );
-                        if(isPrev){
+                    if (GLBuilders.isOnTileEdge(coordCurr, coordNext, { tile_edge_tolerance })) {
+                        normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
+                        if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
                             nSegment++;
 
@@ -246,37 +246,33 @@ GLBuilders.buildPolylines = function (
             }
 
             //  Compute current normal
-            if(isPrev){
-                //  If there is a PREVIUS ... 
-                if(isNext){
-                    // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev) 
-                    normCurr = Vector.normalize( Vector.add(normPrev, normNext) );
-                    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev,normCurr)) );
-                    normCurr = Vector.mult(normCurr,scale*scale);
-                    //  TODO:
-                    // - compare to the miterlimit
-                    // - if bigger 
-
+            if (isPrev) {
+                //  If there is a PREVIUS ...
+                if (isNext) {
+                    // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev)
+                    normCurr = Vector.normalize(Vector.add(normPrev, normNext));
+                    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
+                    normCurr = Vector.mult(normCurr, scale*scale);
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
-                    normCurr = Vector.normalize( Vector.perp( coordPrev, coordCurr) );
+                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                 }
             } else {
                 // If is NOT a PREVIUS ...
-                if(isNext){
-                    // ... and a NEXT ONE, 
-                    normNext = Vector.normalize( Vector.perp( coordCurr, coordNext ) );
+                if (isNext) {
+                    // ... and a NEXT ONE,
+                    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                     normCurr = normNext;
                 } else {
-                    // ... and NOT a NEXT ONE, nothing to do (whitout prev or next one this is just a point)
+                    // ... and NOT a NEXT ONE, nothing to do (without prev or next one this is just a point)
                     continue;
                 }
             }
 
-            if(isPrev || isNext){
+            if (isPrev || isNext) {
                 addVertexPair(coordCurr, normCurr, i/lineSize, constants);
-                if(isNext){
-                   nSegment++; 
+                if (isNext) {
+                   nSegment++;
                 }
                 isPrev = true;
             }
@@ -287,7 +283,7 @@ GLBuilders.buildPolylines = function (
     }
 };
 
-// Add to equidistant pairs of vertices ( INTERNAL methods for POLYLINE builder )
+// Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs, texcoords, min_u, min_v, max_u, max_v }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
@@ -297,20 +293,20 @@ function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs
         scalingVecs.push(Vector.neg(normal));
     } else {
         //  b. Add the extruded vertexes
-        vertices.push([ coord[0] + normal[0] * halfWidth,
-                        coord[1] + normal[1] * halfWidth ]);
-        vertices.push([ coord[0] - normal[0] * halfWidth,
-                        coord[1] - normal[1] * halfWidth ]);
+        vertices.push([coord[0] + normal[0] * halfWidth,
+                       coord[1] + normal[1] * halfWidth]);
+        vertices.push([coord[0] - normal[0] * halfWidth,
+                       coord[1] - normal[1] * halfWidth]);
     }
 
     // c) Add uv's if they are enable
     if (texcoords) {
-        texcoords.push( [ max_u, (1-v_pct)*min_v + v_pct*max_v ],
-                        [ min_u, (1-v_pct)*min_v + v_pct*max_v ]);
+        texcoords.push([max_u, (1-v_pct)*min_v + v_pct*max_v],
+                       [min_u, (1-v_pct)*min_v + v_pct*max_v]);
     }
 }
 
-// Add a vertex based on the index position into the VBO ( INTERNAL methods for POLYLINE builder )
+// Add a vertex based on the index position into the VBO (internal method for polyline builder)
 function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
@@ -320,7 +316,6 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
-    // vertex_template[2] = vertices[v][2]; // What happend with Z ??
 
     // set UVs
     if (texcoord_index) {
@@ -328,7 +323,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
         vertex_template[texcoord_index + 1] = texcoords[index][1];
     }
 
-    // set Scaling vertex ( X,Y normal direction + Z haltwidth as attribute )
+    // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
     if (scaling_index) {
         vertex_template[scaling_index + 0] = scalingVecs[index][0];
         vertex_template[scaling_index + 1] = scalingVecs[index][1];
@@ -340,7 +335,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 }
 
 // Add the index vertex to the VBO and clean the buffers
-function indexPairs(nPairs, constants){
+function indexPairs(nPairs, constants) {
     // Add vertices to buffer acording their index
     for (var i = 0; i < nPairs; i++) {
         addIndex(2*i+2, constants);
