@@ -303,12 +303,30 @@ export default class Tile {
     // TODO: pass bounds only, rest of scene isn't needed
     updateVisibility(scene) {
         var visible = this.visible;
-        this.visible = this.isInZoom(scene.capped_zoom) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
+        console.log('updateVisibility');
+        // console.log(this, this.visible);
+        console.log("scene.capped_zoom:", scene.capped_zoom);
+        var capped = 0;
+        for (var name in this.sources) {
+            var source = this.sources[name];
+        }
+        Object.keys(this.sources).forEach(function(style) {
+            if (style.hasOwnProperty("max_zoom")) {
+                if (style.max_zoom > capped) {
+                    capped = style.max_zoom;
+                }
+            }
+        });
+        // console.log("this.isInZoom(scene.capped_zoom):", this.isInZoom(scene.capped_zoom));
+        // console.log("Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered):", Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered));
+        this.visible = this.isInZoom(Math.max(scene.capped_zoom, capped)) && Geo.boxIntersect(this.bounds, scene.bounds_meters_buffered);
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
         return (visible !== this.visible);
     }
 
     isInZoom(zoom) {
+        console.log("isInZoom(zoom):", zoom, "this.coords.z", this.coords.z, "this.max_zoom:", this.max_zoom, "this.coords.z", this.coords.z)
+        console.log("(Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom:", (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom);
         return (Math.min(this.coords.z, this.max_zoom || this.coords.z)) === zoom;
     }
 
