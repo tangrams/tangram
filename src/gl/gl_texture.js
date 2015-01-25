@@ -16,6 +16,7 @@ export default function GLTexture (gl, name, options = {}) {
     }
     this.bind(0);
     this.image = null;      // an Image object/element that is the source for this texture
+    this.canvas = null;     // a Canvas object/element that is the source for this texture
     this.loading = null;    // a Promise object to track the loading state of this texture
 
     // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
@@ -80,9 +81,12 @@ GLTexture.prototype.load = function (url, options = {}) {
         this.image.onload = () => {
             this.width = this.image.width;
             this.height = this.image.height;
-            this.data = null; // mutually exclusive with direct data buffer textures
             this.update(options);
             this.setTextureFiltering(options);
+
+            this.canvas = null; // mutually exclusive with other types
+            this.data = null;
+
             resolve(this);
         };
         this.image.src = url;
@@ -96,10 +100,24 @@ GLTexture.prototype.setData = function (width, height, data, options = {}) {
     this.width = width;
     this.height = height;
     this.data = data;
-    this.image = null; // mutually exclusive with image element-based textures
+
+    this.image = null; // mutually exclusive with other types
+    this.canvas = null;
 
     this.update(options);
     this.setTextureFiltering(options);
+};
+
+// Sets the texture to track a canvas element
+GLTexture.prototype.setCanvas = function (canvas, options) {
+    this.canvas = canvas;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
+    this.update(options);
+    this.setTextureFiltering(options);
+
+    this.image = null; // mutually exclusive with other types
+    this.data = null;
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
@@ -115,6 +133,10 @@ GLTexture.prototype.update = function (options = {}) {
     // Image element
     if (this.image && this.image.complete) {
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+    }
+    // Canvas element
+    else if (this.canvas) {
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.canvas);
     }
     // Raw image buffer
     else if (this.width && this.height) { // NOTE: this.data can be null, to zero out texture
