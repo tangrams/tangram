@@ -34,6 +34,7 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
         this.initialized = true;
+        this.reset();
     },
 
     destroy () {
@@ -57,19 +58,71 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    parseFeature (feature, feature_style, context) {
+    // Resets state in preparation to add features to this style for a given tile
+    reset () {
+        this.vertex_data = null;
+        this.order = { min: Infinity, max: -Infinity }; // reset to track order range within tile
+    },
+
+    // Called when finishing add features to this style for a given tile
+    end () {
+        return this.vertex_data && this.vertex_data.end().buffer;
+    },
+
+    addFeature (feature, rule, context) {
+        let style = this.parseFeature(feature, rule, context);
+
+        // Skip feature?
+        if (!style) {
+            return;
+        }
+
+        // Track min/max order range
+        if (style.order < this.order.min) {
+            this.order.min = style.order;
+        }
+        if (style.order > this.order.max) {
+            this.order.max = style.order;
+        }
+
+        // First feature in this render style?
+        if (!this.vertex_data) {
+            this.vertex_data = this.vertex_layout.createVertexData();
+        }
+
+        if (feature.geometry.type === 'Polygon') {
+            this.buildPolygons([feature.geometry.coordinates], style, this.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiPolygon') {
+            this.buildPolygons(feature.geometry.coordinates, style, this.vertex_data);
+        }
+        else if (feature.geometry.type === 'LineString') {
+            this.buildLines([feature.geometry.coordinates], style, this.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiLineString') {
+            this.buildLines(feature.geometry.coordinates, style, this.vertex_data);
+        }
+        else if (feature.geometry.type === 'Point') {
+            this.buildPoints([feature.geometry.coordinates], style, this.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiPoint') {
+            this.buildPoints(feature.geometry.coordinates, style, this.vertex_data);
+        }
+    },
+
+    parseFeature (feature, rule_style, context) {
         try {
             var style = this.feature_style;
 
             // Calculate order if it was not cached
-            style.order = feature_style.order;
+            style.order = rule_style.order;
             if (typeof style.order !== 'number') {
                 style.order = StyleParser.calculateOrder(style.order, context);
             }
 
             // Feature selection (only if style supports it)
             var selectable = false;
-            style.interactive = feature_style.interactive;
+            style.interactive = rule_style.interactive;
             if (this.selection) {
                 if (typeof style.interactive === 'function') {
                     selectable = style.interactive(context);
@@ -88,7 +141,7 @@ export var Style = {
             }
 
             // Subclass implementation
-            this._parseFeature(feature, feature_style, context);
+            this._parseFeature(feature, rule_style, context);
 
             return style;
         }
@@ -97,7 +150,7 @@ export var Style = {
         }
     },
 
-    _parseFeature (feature, feature_style, context) {
+    _parseFeature (feature, rule_style, context) {
         throw new MethodNotImplemented('_parseFeature');
     },
 
