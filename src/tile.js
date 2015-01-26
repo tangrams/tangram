@@ -32,6 +32,9 @@ export default class Tile {
             }
         });
 
+        this.worker = worker;
+        this.max_zoom = max_zoom;
+
         this.coords = coords;
         this.coords = this.calculateOverZoom();
         this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
@@ -39,9 +42,6 @@ export default class Tile {
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
-
-        this.worker = worker;
-        this.max_zoom = max_zoom;
     }
 
     static create(spec) { return new Tile(spec); }
