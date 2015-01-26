@@ -148,6 +148,8 @@ GLBuilders.buildPolylines = function (
         scaling_index
     }) {
 
+    var cornersOnCap = 1;
+
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
@@ -272,22 +274,22 @@ GLBuilders.buildPolylines = function (
             if (isPrev || isNext) {
                 if (i === 0 && !isPrev){
                     // If is the first put a BEGIN CAP
-                    addCap(coordCurr, Vector.neg(normCurr),0,true,constants);
+                    addCap(coordCurr, Vector.neg(normCurr), cornersOnCap, true, constants);
                 }
                 addVertexPair(coordCurr, normCurr, i/lineSize, constants);
 
                 if (isNext) {
                    nSegment++;
-                } else if ( i === lineSize-1){
-                    // If there is NO next put an END CAP
-                    // addCap(coordCurr,normCurr,3,false,constants);
                 }
+
                 isPrev = true;
             }
         }
-
         // Add vertices to buffer acording their index
         indexPairs(nSegment, constants);
+
+         // If there is NO next put an END CAP
+        addCap(coordCurr, normCurr, cornersOnCap ,false, constants);
     }
 };
 
