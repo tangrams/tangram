@@ -311,7 +311,7 @@ export default class Tile {
                 max_zoom = Math.min(max_zoom, source.max_zoom);
             }
             // if (source.hasOwnProperty("min_zoom")) {
-            //     min_zoom = Math.min(min_zoom, source.max_zoom);
+            //     min_zoom = Math.max(min_zoom, source.min_zoom);
             // }
         }
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
