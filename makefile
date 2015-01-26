@@ -20,7 +20,7 @@ src/gl/shader_sources.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard s
 	bash ./build_shaders.sh > src/gl/shader_sources.js
 
 build-testable: lint dist/tangram.debug.js
-	node build.js --debug=true --includeLet --all './test/*.js' > dist/tangram.test.js
+	node build.js --debug=true --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
 	$(KARMA) start --single-run
