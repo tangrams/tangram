@@ -18,8 +18,7 @@ Geo.metersPerPixel = function (zoom) {
 
 // Conversion functions based on an defined tile scale
 Geo.units_per_meter = [];
-Geo.setTileScale = function(scale)
-{
+Geo.setTileScale = function(scale) {
     Geo.tile_scale = scale;
     Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
 
@@ -78,33 +77,26 @@ Geo.latLngToMeters = function([x, y]) {
     return [x, y];
 };
 
-// Run a transform function on each cooordinate in a GeoJSON geometry
-Geo.transformGeometry = function (geometry, transform)
-{
+// Run an in-place transform function on each cooordinate in a GeoJSON geometry
+Geo.transformGeometry = function (geometry, transform) {
     if (geometry.type === 'Point') {
-        return transform(geometry.coordinates);
+        transform(geometry.coordinates);
     }
     else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
-        return geometry.coordinates.map(transform);
+        geometry.coordinates.forEach(transform);
     }
     else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-        return geometry.coordinates.map(function (coordinates) {
-            return coordinates.map(transform);
-        });
+        geometry.coordinates.forEach(coordinates => coordinates.forEach(transform));
     }
     else if (geometry.type === 'MultiPolygon') {
-        return geometry.coordinates.map(function (polygon) {
-            return polygon.map(function (coordinates) {
-                return coordinates.map(transform);
-            });
+        geometry.coordinates.forEach(polygon => {
+            polygon.forEach(coordinates => coordinates.forEach(transform));
         });
     }
     // TODO: support GeometryCollection
-    return {};
 };
 
-Geo.boxIntersect = function (b1, b2)
-{
+Geo.boxIntersect = function (b1, b2) {
     return !(
         b2.sw.x > b1.ne.x ||
         b2.ne.x < b1.sw.x ||

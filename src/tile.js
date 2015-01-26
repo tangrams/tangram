@@ -95,7 +95,7 @@ export default class Tile {
 
         for (let sourceName in tile.sources) {
             let source = tile.sources[sourceName];
-            // TODO fix the debug
+
             source.debug.rendering = +new Date();
             source.debug.features = 0;
 

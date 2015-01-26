@@ -4,7 +4,9 @@
 .jshintrc
 
 node_modules
-.npm # a make target for npm install
+
+# a make target for npm install
+.npm
 
 # OS misc
 .DS_Store
