@@ -291,7 +291,6 @@ Scene.prototype.setZoom = function (zoom) {
     this.last_zoom = this.zoom;
     this.zoom = zoom;
 
-    this.capped_zoom = Math.min(Math.round(this.zoom), this.findMaxZoom() || Math.round(this.zoom));
     this.updateBounds();
 
     this.dirty = true;
@@ -350,7 +349,7 @@ Scene.prototype.updateBounds = function () {
 
     // Mark tiles as visible/invisible
     for (var tile of Utils.values(this.tiles)) {
-        tile.updateVisibility(this);
+        tile.update(this);
     }
 
     this.trigger('move');

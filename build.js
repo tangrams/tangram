@@ -12,10 +12,6 @@ var args = yargs.usage('Usage: $0 --debug --require --all').demand([]).argv;
 
 function main() {
 
-    if (args.includeLet) {
-        es6ify.traceurOverrides = { blockBinding: true };
-    }
-
     var bundle = browserify({ debug: true}).
         add(es6ify.runtime).
         transform(es6ify.configure(/^(?!.*node_modules)+.+\.js$/));
