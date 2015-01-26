@@ -9,7 +9,7 @@ all: \
 	dist/tangram.debug.js
 
 # browserify --debug adds source maps
-dist/tangram.debug.js: $(shell $(BROWSERIFY) --list -t es6ify src/module.js) .npm
+dist/tangram.debug.js: .npm $(shell $(BROWSERIFY) --list -t es6ify src/module.js)
 	node build.js --debug=true --require './src/module.js' > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
