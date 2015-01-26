@@ -33,8 +33,8 @@ clean:
 	rm -f src/gl/shader_sources.js
 
 lint: .npm
-	$(JSHINT) src/**/*.js
-	$(JSHINT) test/*.js
+	$(JSHINT) `find src/ -name '*.js'`
+	$(JSHINT) `find test/ -name '*.js'`
 
 karma-start: .npm
 	$(KARMA) start --browsers Chrome --no-watch
