@@ -252,7 +252,7 @@ GLBuilders.buildPolylines = function (
                     // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev)
                     normCurr = Vector.normalize(Vector.add(normPrev, normNext));
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-                    normCurr = Vector.mult(normCurr, scale*scale);
+                    normCurr = Vector.mult(normCurr, (scale*scale) );
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
                     normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
@@ -272,7 +272,7 @@ GLBuilders.buildPolylines = function (
             if (isPrev || isNext) {
                 if (i === 0 && !isPrev){
                     // If is the first put a BEGIN CAP
-                    addCap(coordCurr, Vector.neg(normCurr),3,true,constants);
+                    addCap(coordCurr, Vector.neg(normCurr),0,true,constants);
                 }
                 addVertexPair(coordCurr, normCurr, i/lineSize, constants);
 
@@ -394,18 +394,21 @@ function addCap(coord, normal, numCorners, isBeginning, constants){
     addVertex(coord, normCurr, uv ,constants);
 
     // Iterate through the rest of the coorners
-    for( var nc = 0; nc < numCorners+1; nc++) {
+    for( var nc = 0; nc < numCorners*2; nc++) {
         normPrev = Vector.normalize(normCurr);
 
         normCurr = Vector.rot( Vector.normalize(normCurr), angle);     //  Rotate the extrusion normal
-        var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-        normCurr = Vector.mult(normCurr, scale*scale);
+
+        if( numCorners === 2 && (nc === 0 || nc === numCorners*2 - 2) ){
+            var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
+            normCurr = Vector.mult(normCurr, scale*scale );
+        }
 
         uv[1] += uv_ua;                                 //  Adjust the UV
         addVertex(coord, normCurr, uv, constants);      //  Add computed corner
     }
 
-    for ( var tNum = 0; tNum < numCorners+1; tNum++) {
+    for ( var tNum = 0; tNum < numCorners*2; tNum++) {
         addIndex(tNum+2, constants);
         addIndex(0, constants);
         addIndex(tNum+1, constants);
