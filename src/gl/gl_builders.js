@@ -148,7 +148,7 @@ GLBuilders.buildPolylines = function (
         scaling_index
     }) {
 
-    var cornersOnCap = 1;
+    var cornersOnCap = 4;
 
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
