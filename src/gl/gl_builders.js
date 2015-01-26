@@ -220,7 +220,7 @@ GLBuilders.buildPolylines = function (
             if (isNext) {
                 coordNext = line[i+1];
             } else if (closed_polygon === true) {
-                // If is the las point a close polygon
+                // If is the last point a close polygon
                 coordNext = line[1];
                 isNext = true;
             }
@@ -270,9 +270,17 @@ GLBuilders.buildPolylines = function (
             }
 
             if (isPrev || isNext) {
+                if (i === 0 && !isPrev){
+                    // If is the first put a BEGIN CAP
+                    addCap(coordCurr, Vector.neg(normCurr),3,true,constants);
+                }
                 addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+
                 if (isNext) {
                    nSegment++;
+                } else if ( i === lineSize-1){
+                    // If there is NO next put an END CAP
+                    // addCap(coordCurr,normCurr,3,false,constants);
                 }
                 isPrev = true;
             }
@@ -284,26 +292,27 @@ GLBuilders.buildPolylines = function (
 };
 
 // Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertexPair (coord, normal, v_pct, { halfWidth, vertices, scalingVecs, texcoords, min_u, min_v, max_u, max_v }) {
+function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
         vertices.push(coord);
-        vertices.push(coord);
         scalingVecs.push(normal);
-        scalingVecs.push(Vector.neg(normal));
     } else {
         //  b. Add the extruded vertexes
         vertices.push([coord[0] + normal[0] * halfWidth,
                        coord[1] + normal[1] * halfWidth]);
-        vertices.push([coord[0] - normal[0] * halfWidth,
-                       coord[1] - normal[1] * halfWidth]);
     }
 
     // c) Add uv's if they are enable
     if (texcoords) {
-        texcoords.push([max_u, (1-v_pct)*min_v + v_pct*max_v],
-                       [min_u, (1-v_pct)*min_v + v_pct*max_v]);
+        texcoords.push(uv);
     }
+}
+
+// Add to equidistant pairs of vertices (internal method for polyline builder)
+function addVertexPair (coord, normal, v_pct, constants) {
+    addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
@@ -345,6 +354,61 @@ function indexPairs(nPairs, constants) {
         addIndex(2*i+2, constants);
         addIndex(2*i+3, constants);
         addIndex(2*i+1, constants);
+    }
+
+    // Clean the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
+//  Function to add the vertex need for line caps,
+//  because re-use the buffers needs to be at the end
+function addCap(coord, normal, numCorners, isBeginning, constants){
+
+    if( numCorners < 1){
+        return;
+    }
+
+    var angle = 1.57079632679 / numCorners;
+    var normCurr = Vector.set(normal);
+    var normPrev = [0,0];
+
+    // UVs
+    var uv = [0.0, 0.0];
+    uv[0] = constants.min_u;
+    uv[1] = (isBeginning === true)? constants.min_v : constants.max_v;
+
+    // Pre calculate UV interpolation values
+    var uv_ua = constants.max_u/(numCorners+1);
+
+    //  Add the first and CENTER vertex 
+    //  The triangles will be composed on FAN style arround it
+    addVertex(coord, [0,0], [(constants.min_u+constants.max_u)/2, uv[1]] ,constants);
+
+    //  Add first corner
+    addVertex(coord, normCurr, uv ,constants);
+
+    // Iterate through the rest of the coorners
+    for( var nc = 0; nc < numCorners+1; nc++) {
+        normPrev = Vector.normalize(normCurr);
+
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle);     //  Rotate the extrusion normal
+        var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
+        normCurr = Vector.mult(normCurr, scale*scale);
+
+        uv[1] += uv_ua;                                 //  Adjust the UV
+        addVertex(coord, normCurr, uv, constants);      //  Add computed corner
+    }
+
+    for ( var tNum = 0; tNum < numCorners+1; tNum++) {
+        addIndex(tNum+2, constants);
+        addIndex(0, constants);
+        addIndex(tNum+1, constants);
     }
 
     // Clean the buffer
