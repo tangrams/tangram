@@ -13,7 +13,7 @@ describe('Tile', () => {
         scene = makeScene({});
         scene.setView(nycLatLng);
         scene.init().then(() => {
-            subject = Tile.create({coords: { x: 10, y: 10, z: 10 }, worker: scene.nextWorker()});
+            subject = Tile.create({coords: { x: 38605, y: 49254, z: 17 }, worker: scene.nextWorker()});
             done();
         });
     });
@@ -86,6 +86,56 @@ describe('Tile', () => {
 
         it('updates relative to scene', () => {
             sinon.assert.called(subject.update);
+        });
+
+    });
+
+    describe('sets visibility', () => {
+
+        describe('without a max_zoom', () => {
+
+            it('is visible when scene is at same zoom as tile zoom', () => {
+                subject.update(scene);
+                assert.isTrue(subject.visible);
+            });
+
+            it('is NOT visible when scene is lower than tile zoom', () => {
+                scene.setZoom(16);
+                subject.update(scene);
+                assert.isFalse(subject.visible);
+            });
+
+            it('is NOT visible when scene is higher than tile zoom', () => {
+                scene.setZoom(18);
+                subject.update(scene);
+                assert.isFalse(subject.visible);
+            });
+
+        });
+
+        describe('with a max_zoom', () => {
+
+            beforeEach(() => {
+                subject.max_zoom = 17;
+            });
+
+            afterEach(() => {
+                delete subject.max_zoom;
+            });
+
+            it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
+                scene.setZoom(18);
+                subject.update(scene);
+                assert.isTrue(subject.visible);
+            });
+
+            it('is NOT visible when scene is higher than tile zoom and tile is NOT at its max zoom', () => {
+                subject.max_zoom = 16;
+                scene.setZoom(18);
+                subject.update(scene);
+                assert.isFalse(subject.visible);
+            });
+
         });
 
     });
