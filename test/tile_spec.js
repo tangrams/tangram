@@ -71,21 +71,21 @@ describe('Tile', () => {
             subject = Tile.create({tile_source: scene.tile_source, coords: _.clone(samples.nyc_coords), worker: scene.nextWorker()});
 
             sinon.stub(subject, 'build');
-            sinon.spy(subject,  'updateVisibility');
+            sinon.spy(subject,  'update');
 
             subject.load(scene);
         });
 
         afterEach(() => {
-            subject.updateVisibility.restore();
+            subject.update.restore();
         });
 
         it('sets the key value', () => {
             assert.propertyVal(subject, 'key', '150/192/9');
         });
 
-        it('updates the visiblility', () => {
-            sinon.assert.called(subject.updateVisibility);
+        it('updates relative to scene', () => {
+            sinon.assert.called(subject.update);
         });
 
     });

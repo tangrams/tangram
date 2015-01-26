@@ -11,9 +11,10 @@ export default class Tile {
         Tile
         @constructor
         Required properties:
-        spec.coords: object with {x, y, z} properties identifying tile coordinate location
+        coords: object with {x, y, z} properties identifying tile coordinate location
+        worker: web worker to handle tile construction
     */
-    constructor(spec) {
+    constructor({ coords, worker, max_zoom }) {
         Object.assign(this, {
             coords: {
                 x: null,
@@ -29,7 +30,11 @@ export default class Tile {
                 min: Infinity,
                 max: -Infinity
             }
-        }, spec);
+        });
+
+        this.coords = coords;
+        this.worker = worker;
+        this.max_zoom = max_zoom;
 
         this.coords = this.calculateOverZoom();
         this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
@@ -300,30 +305,11 @@ export default class Tile {
         }
     }
 
-    // TODO: pass bounds only, rest of scene isn't needed
-    updateVisibility(scene) {
-        var visible = this.visible;
-        var max_zoom = Infinity;
-        // var min_zoom = 0;
-        for (var name in scene.sources) {
-            var source = scene.sources[name];
-            if (source.hasOwnProperty("max_zoom")) {
-                max_zoom = Math.min(max_zoom, source.max_zoom);
-            }
-            // if (source.hasOwnProperty("min_zoom")) {
-            //     min_zoom = Math.max(min_zoom, source.min_zoom);
-            // }
-        }
+    update(scene) {
+        this.visible = (this.coords.z === Math.round(scene.zoom)) || (scene.zoom >= this.max_zoom);
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
-
-        this.visible =  (this.coords.z == scene.zoom ||
-                        (this.coords.z == max_zoom && scene.zoom > max_zoom));
-                        // || (this.coords.z == min_zoom && scene.zoom < min_zoom));
-
-        return (visible !== this.visible);
     }
 
-    // TODO fix the z adjustment for continuous zoom
     calculateOverZoom() {
         var zgap,
             {x, y, z} = this.coords;
@@ -348,7 +334,7 @@ export default class Tile {
         this.loading = true;
 
         this.build(scene);
-        this.updateVisibility(scene);
+        this.update(scene);
     }
 
     merge(other) {
