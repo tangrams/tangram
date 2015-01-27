@@ -149,7 +149,8 @@ GLBuilders.buildPolylines = function (
         join, cap
     }) {
 
-    var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);
+    var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);  // Butt is the implicit default
+    var trianglesOnJoin = (cap === "bevel")? 1 : ((cap === "round")? 4 : 0);  // Miter is the implicit default
 
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
@@ -273,12 +274,21 @@ GLBuilders.buildPolylines = function (
             }
 
             if (isPrev || isNext) {
-                if (i === 0 && !isPrev){
-                    // If is the first put a BEGIN CAP
+                // If is the BEGINING of a LINE
+                if (i === 0 && !isPrev && !closed_polygon){
                     addCap(coordCurr, Vector.neg(normCurr), cornersOnCap, true, constants);
                 }
-                addVertexPair(coordCurr, normCurr, i/lineSize, constants);
 
+                // If is a JOIN
+                if(trianglesOnJoin !== 0 && isPrev && isNext){
+                    addJoin([coordPrev, coordCurr, coordNext], 
+                            [normPrev,normCurr, normNext], 
+                            i/lineSize, trianglesOnJoin, 
+                            nSegment, constants );
+                } else {
+                    addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+                }
+                
                 if (isNext) {
                    nSegment++;
                 }
@@ -289,8 +299,10 @@ GLBuilders.buildPolylines = function (
         // Add vertices to buffer acording their index
         indexPairs(nSegment, constants);
 
-         // If there is NO next put an END CAP
-        addCap(coordCurr, normCurr, cornersOnCap ,false, constants);
+         // If is the END OF a LINE
+        if(!closed_polygon){
+            addCap(coordCurr, normCurr, cornersOnCap ,false, constants);
+        }
     }
 };
 
@@ -312,10 +324,49 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
     }
 }
 
-// Add to equidistant pairs of vertices (internal method for polyline builder)
+//  Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, v_pct, constants) {
     addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+}
+
+//  Add speccials joins (not miter) tipes that require FAN tessalations  
+//  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
+function addJoin(coords, normals, v_pct, nTriangles, nPairs, constants){
+
+    var T = [ Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2]) ];
+    var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
+
+    var nA = T[0],  // normal to point A (aT)
+        nC = Vector.neg(T[1]),  // normal to center (-vP)
+        nB = T[2];  // normal to point B (bT)
+
+    var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+    
+    if (signed){
+        addVertex(coords[1], nA, uA, constants);
+        addVertex(coords[1], nC, uC, constants);
+    } else {
+        nA = Vector.neg(T[0]);
+        nC = T[1];
+        nB = Vector.neg(T[2]);
+        addVertex(coords[1], nC, uA, constants);
+        addVertex(coords[1], nA, uC, constants);
+    }
+
+    indexPairs(nPairs,constants);
+
+    addFan( coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
+
+    if (signed){
+        addVertex(coords[1], nB, uB, constants);
+        addVertex(coords[1], nC, uC, constants);
+    } else {
+        addVertex(coords[1], nC, uB, constants);
+        addVertex(coords[1], nB, uC, constants);
+    }
 }
 
 //  Function to add the vertex need for line caps,
@@ -376,6 +427,64 @@ function addCap(coord, normal, numCorners, isBeginning, constants){
     }
 }
 
+//  Tessalate a FAN geometry between points A       B
+//  using their normals from a center        \ . . /
+//  and interpolating their UVs               \ p /
+//                                             \./
+//                                              C
+function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
+
+    if(numTriangles < 1){
+        return;
+    }
+
+    var normCurr = Vector.set(nA);
+    var angle_delta = Math.acos( Vector.dot(nA, nB) ) / numTriangles;
+
+    if(!signed){
+        angle_delta *= -1;
+    }
+    
+    var uvCurr = Vector.set(uA);
+    var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
+
+    //  Add the first and CENTER vertex 
+    //  The triangles will be composed on FAN style arround it
+    addVertex(coord, nC, uC ,constants);
+
+    //  Add first corner
+    addVertex(coord, normCurr, uA ,constants);
+
+    // Iterate through the rest of the coorners
+    for( var t = 0; t < numTriangles; t++) {
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
+        uvCurr = Vector.add(uvCurr,uv_delta);
+
+        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+    }
+
+    for ( var i = 0; i < numTriangles; i++) {
+        if(signed){
+            addIndex(i+2, constants);
+            addIndex(0, constants);
+            addIndex(i+1, constants);
+        } else {
+            addIndex(i+1, constants);
+            addIndex(0, constants);
+            addIndex(i+2, constants);
+        }
+    }
+
+    // Clean the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
 function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
     // Prevent access to undefined vertices
@@ -416,6 +525,8 @@ function indexPairs(nPairs, constants) {
         addIndex(2*i+3, constants);
         addIndex(2*i+1, constants);
     }
+
+    nPairs = 0;
 
     // Clean the buffer
     constants.vertices = [];
