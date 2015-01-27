@@ -145,10 +145,11 @@ GLBuilders.buildPolylines = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
-        scaling_index
+        scaling_index,
+        join, cap
     }) {
 
-    var cornersOnCap = 4;
+    var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);
 
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
@@ -317,57 +318,6 @@ function addVertexPair (coord, normal, v_pct, constants) {
     addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 }
 
-// Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
-    // Prevent access to undefined vertices
-    if (index >= vertices.length) {
-        return;
-    }
-
-    // set vertex position
-    vertex_template[0] = vertices[index][0];
-    vertex_template[1] = vertices[index][1];
-
-    // set UVs
-    if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[index][0];
-        vertex_template[texcoord_index + 1] = texcoords[index][1];
-    }
-
-    // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
-    if (scaling_index) {
-        vertex_template[scaling_index + 0] = scalingVecs[index][0];
-        vertex_template[scaling_index + 1] = scalingVecs[index][1];
-        vertex_template[scaling_index + 2] = halfWidth;
-    }
-
-    //  Add vertex to VBO
-    vertex_data.addVertex(vertex_template);
-}
-
-// Add the index vertex to the VBO and clean the buffers
-function indexPairs(nPairs, constants) {
-    // Add vertices to buffer acording their index
-    for (var i = 0; i < nPairs; i++) {
-        addIndex(2*i+2, constants);
-        addIndex(2*i+1, constants);
-        addIndex(2*i+0, constants);
-
-        addIndex(2*i+2, constants);
-        addIndex(2*i+3, constants);
-        addIndex(2*i+1, constants);
-    }
-
-    // Clean the buffer
-    constants.vertices = [];
-    if (constants.scalingVecs) {
-        constants.scalingVecs = [];
-    }
-    if (constants.texcoords) {
-        constants.texcoords = [];
-    }
-}
-
 //  Function to add the vertex need for line caps,
 //  because re-use the buffers needs to be at the end
 function addCap(coord, normal, numCorners, isBeginning, constants){
@@ -414,6 +364,57 @@ function addCap(coord, normal, numCorners, isBeginning, constants){
         addIndex(tNum+2, constants);
         addIndex(0, constants);
         addIndex(tNum+1, constants);
+    }
+
+    // Clean the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
+// Add a vertex based on the index position into the VBO (internal method for polyline builder)
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
+    // Prevent access to undefined vertices
+    if (index >= vertices.length) {
+        return;
+    }
+
+    // set vertex position
+    vertex_template[0] = vertices[index][0];
+    vertex_template[1] = vertices[index][1];
+
+    // set UVs
+    if (texcoord_index) {
+        vertex_template[texcoord_index + 0] = texcoords[index][0];
+        vertex_template[texcoord_index + 1] = texcoords[index][1];
+    }
+
+    // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
+    if (scaling_index) {
+        vertex_template[scaling_index + 0] = scalingVecs[index][0];
+        vertex_template[scaling_index + 1] = scalingVecs[index][1];
+        vertex_template[scaling_index + 2] = halfWidth;
+    }
+
+    //  Add vertex to VBO
+    vertex_data.addVertex(vertex_template);
+}
+
+// Add the index vertex to the VBO and clean the buffers
+function indexPairs(nPairs, constants) {
+    // Add vertices to buffer acording their index
+    for (var i = 0; i < nPairs; i++) {
+        addIndex(2*i+2, constants);
+        addIndex(2*i+1, constants);
+        addIndex(2*i+0, constants);
+
+        addIndex(2*i+2, constants);
+        addIndex(2*i+3, constants);
+        addIndex(2*i+1, constants);
     }
 
     // Clean the buffer
