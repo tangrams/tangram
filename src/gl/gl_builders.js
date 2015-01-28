@@ -149,7 +149,7 @@ GLBuilders.buildPolylines = function (
 		join, cap
 	}) {
 
-	var cornersOnCap = 4;//(cap === "square")? 2 : ((cap === "round")? 4 : 0);  // Butt is the implicit default
+	var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);  // Butt is the implicit default
 	var trianglesOnJoin = (cap === "bevel")? 1 : ((cap === "round")? 4 : 0);  // Miter is the implicit default
 
 	// Build variables
@@ -165,7 +165,8 @@ GLBuilders.buildPolylines = function (
 		scalingVecs: scaling_index && [],
 		texcoord_index,
 		texcoords: texcoord_index && [],
-		min_u, min_v, max_u, max_v
+		min_u, min_v, max_u, max_v,
+		nPairs: 0
 	};
 
 	for (var ln = 0; ln < lines.length; ln++) {
@@ -176,6 +177,9 @@ GLBuilders.buildPolylines = function (
 		if (lineSize < 2) {
 			continue;
 		}
+
+		// line = line.slice(0, 2);
+		// lineSize = line.length;		
 
 		//  Initialize variables
 		var coordPrev = [0, 0], // Previous point coordinates
@@ -189,7 +193,8 @@ GLBuilders.buildPolylines = function (
 		var isPrev = false,
 			isNext = true;
 
-		var nSegment = 0;
+		// Add vertices to buffer acording their index
+		indexPairs(constants);
 
 		// Do this with the rest (except the last one)
 		for (let i = 0; i < lineSize ; i++) {
@@ -238,10 +243,10 @@ GLBuilders.buildPolylines = function (
 						normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
 						if (isPrev) {
 							addVertexPair(coordCurr, normCurr, i/lineSize, constants);
-							nSegment++;
+							constants.nPairs++;
 
 							// Add vertices to buffer acording their index
-							indexPairs(nSegment, constants);
+							indexPairs(constants);
 						}
 						isPrev = false;
 						continue;
@@ -276,7 +281,7 @@ GLBuilders.buildPolylines = function (
 			if (isPrev || isNext) {
 				// If is the BEGINING of a LINE
 				if (i === 0 && !isPrev && !closed_polygon){
-					addCap(coordCurr, Vector.neg(normCurr), cornersOnCap, true, constants);
+					addCap(coordCurr, normCurr, cornersOnCap, true, constants);
 				}
 
 				// If is a JOIN
@@ -284,24 +289,25 @@ GLBuilders.buildPolylines = function (
 					addJoin([coordPrev, coordCurr, coordNext], 
 							[normPrev,normCurr, normNext], 
 							i/lineSize, trianglesOnJoin, 
-							nSegment, constants );
+							constants );
 				} else {
-					addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+					addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
 				}
 				
 				if (isNext) {
-				   nSegment++;
+				   constants.nPairs++;
 				}
 
 				isPrev = true;
 			}
 		}
+		
 		// Add vertices to buffer acording their index
-		indexPairs(nSegment, constants);
+		indexPairs(constants);
 
 		 // If is the END OF a LINE
 		if(!closed_polygon){
-			addCap(coordCurr, normCurr, cornersOnCap ,false, constants);
+			addCap(coordCurr, normCurr, cornersOnCap , false, constants);
 		}
 	}
 };
@@ -330,45 +336,6 @@ function addVertexPair (coord, normal, v_pct, constants) {
 	addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 }
 
-//  Add speccials joins (not miter) tipes that require FAN tessalations  
-//  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
-function addJoin(coords, normals, v_pct, nTriangles, nPairs, constants){
-
-	var T = [ Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2]) ];
-	var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
-
-	var nA = T[0],              // normal to point A (aT)
-		nC = Vector.neg(T[1]),  // normal to center (-vP)
-		nB = T[2];              // normal to point B (bT)
-
-	var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-		uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-		uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-	
-	if (signed){
-		addVertex(coords[1], nA, uA, constants);
-		addVertex(coords[1], nC, uC, constants);
-	} else {
-		nA = Vector.neg(T[0]);
-		nC = T[1];
-		nB = Vector.neg(T[2]);
-		addVertex(coords[1], nC, uA, constants);
-		addVertex(coords[1], nA, uC, constants);
-	}
-
-	indexPairs(nPairs,constants);
-
-	addFan( coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
-
-	if (signed){
-		addVertex(coords[1], nB, uB, constants);
-		addVertex(coords[1], nC, uC, constants);
-	} else {
-		addVertex(coords[1], nC, uB, constants);
-		addVertex(coords[1], nB, uC, constants);
-	}
-}
-
 //  Tessalate a FAN geometry between points A       B
 //  using their normals from a center        \ . . /
 //  and interpolating their UVs               \ p /
@@ -380,14 +347,23 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
 		return;
 	}
 
+	// Add previus vertices to buffer and clean the buffers and index pairs 
+	// Because we are going to add more triangles.
+	indexPairs(constants);
+
 	var normCurr = Vector.set(nA);
 	var normPrev = [0,0];
-	var angle_delta = Math.acos( Vector.dot(nA, nB) ) / numTriangles;
+
+	var angle_delta = Vector.dot(nA, nB);
+	if (angle_delta < -1){
+		angle_delta = -1;
+	}
+	angle_delta = Math.acos( angle_delta ) / numTriangles;
 
 	if(!signed){
 		angle_delta *= -1;
 	}
-	
+
 	var uvCurr = Vector.set(uA);
 	var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
@@ -435,6 +411,43 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
 	}
 }
 
+//  Add speccials joins (not miter) tipes that require FAN tessalations  
+//  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
+function addJoin(coords, normals, v_pct, nTriangles, constants){
+
+	var T = [ Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2]) ];
+	var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
+
+	var nA = T[0],              // normal to point A (aT)
+		nC = Vector.neg(T[1]),  // normal to center (-vP)
+		nB = T[2];              // normal to point B (bT)
+
+	var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+		uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+		uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+	
+	if (signed){
+		addVertex(coords[1], nA, uA, constants);
+		addVertex(coords[1], nC, uC, constants);
+	} else {
+		nA = Vector.neg(T[0]);
+		nC = T[1];
+		nB = Vector.neg(T[2]);
+		addVertex(coords[1], nC, uC, constants);
+		addVertex(coords[1], nA, uA, constants);
+	}
+
+	addFan( coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
+
+	if (signed){
+		addVertex(coords[1], nB, uB, constants);
+		addVertex(coords[1], nC, uC, constants);
+	} else {
+		addVertex(coords[1], nC, uC, constants);
+		addVertex(coords[1], nB, uB, constants);
+	}
+}
+
 //  Function to add the vertex need for line caps,
 //  because re-use the buffers needs to be at the end
 function addCap(coord, normal, numCorners, isBeginning, constants){
@@ -445,19 +458,19 @@ function addCap(coord, normal, numCorners, isBeginning, constants){
 
 	// UVs
 	var uvA = [constants.min_u,constants.min_v],                        // Begining angle UVs
-		uvC = [(constants.min_u+constants.max_u)/2, constants.min_v],   // center point UVs
+		uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
 		uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
  
 	if(!isBeginning){
 		uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
-		uvC = [(constants.min_u+constants.max_u)/2, constants.max_v],   // center point UVs
+		uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
 		uvB = [constants.max_u,constants.max_v]; 
 	}
 
 	addFan( coord, 
-			normal, [0, 0], Vector.neg(normal), 
+			Vector.neg(normal), [0, 0], normal, 
 			uvA, uvC, uvB, 
-			true, numCorners*2, constants);
+			isBeginning, numCorners*2, constants);
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
@@ -489,9 +502,9 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 }
 
 // Add the index vertex to the VBO and clean the buffers
-function indexPairs(nPairs, constants) {
+function indexPairs(constants) {
 	// Add vertices to buffer acording their index
-	for (var i = 0; i < nPairs; i++) {
+	for (var i = 0; i < constants.nPairs; i++) {
 		addIndex(2*i+2, constants);
 		addIndex(2*i+1, constants);
 		addIndex(2*i+0, constants);
@@ -501,7 +514,7 @@ function indexPairs(nPairs, constants) {
 		addIndex(2*i+1, constants);
 	}
 
-	nPairs = 0;
+	constants.nPairs = 0;
 
 	// Clean the buffer
 	constants.vertices = [];
