@@ -162,6 +162,11 @@ export var Style = {
 
     /*** Texture management ***/
 
+    // Prefix texture name with style name
+    textureName (name) {
+        return this.name + '_' + name;
+    },
+
     setupTextureUniforms () {
         var num_textures = Object.keys(this.textures).length;
 
@@ -179,10 +184,11 @@ export var Style = {
 
             for (var name in this.textures) {
                 var texture = this.textures[name];
+                texture.name = this.textureName(name);
                 texture.id = tex_id++; // give every texture a unique id local to this style
 
                 // Consistently map named textures to the same array index in the texture uniform
-                this.shaders.uniforms.u_textures[texture.id] = name;
+                this.shaders.uniforms.u_textures[texture.id] = texture.name;
 
                 // Provide a #define mapping each texture back to its name in the stylesheet
                 this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
@@ -197,7 +203,7 @@ export var Style = {
         if (this.textures) {
             for (var name in this.textures) {
                 var { url, filtering, repeat, sprites } = this.textures[name];
-                var texture = new GLTexture(this.gl, name, { sprites });
+                var texture = new GLTexture(this.gl, this.textureName(name), { sprites });
 
                 texture.load(url, { filtering, repeat });
             }
@@ -206,7 +212,7 @@ export var Style = {
 
     // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
     calculateTextureSprites (name) {
-        var texture = GLTexture.textures[name];
+        var texture = GLTexture.textures[this.textureName(name)];
         if (texture.sprites) {
             this.texture_sprites = this.texture_sprites || {};
             this.texture_sprites[name] = {};

@@ -207,7 +207,7 @@ if (Utils.isWorkerThread) {
             if (style.textures) {
                 for (var t in style.textures) {
                     if (style.textures[t].sprites) {
-                        textures.push(t);
+                        textures.push(style.textureName(t));
                     }
                 }
             }
