@@ -84,6 +84,8 @@ export default class Tile {
     static buildGeometry (tile, layers, rules, styles) {
         tile.debug.rendering = +new Date();
 
+        let tile_data = {};
+
         for (let sourceName in tile.sources) {
             let source = tile.sources[sourceName];
             source.debug.rendering = +new Date();
@@ -125,7 +127,12 @@ export default class Tile {
                         // Add to style
                         rule.name = rule.name || StyleParser.defaults.style.name;
                         let style = styles[rule.name];
-                        style.addFeature(feature, rule, context);
+
+                        if (!tile_data[rule.name]) {
+                            tile_data[rule.name] = style.startData();
+                        }
+
+                        style.addFeature(feature, rule, context, tile_data[rule.name]);
                     }
 
                     source.debug.features++;
@@ -138,42 +145,44 @@ export default class Tile {
 
         // Finalize array buffer for each render style
         tile.vertex_data = {};
-        for (let name in styles) {
+        let queue = [];
+        for (let name in tile_data) {
             let style = styles[name];
-            let data = style.end();
-            if (data) {
-                tile.vertex_data[name] = data;
+            queue.push(style.endData(tile_data[name]).then((data) => {
+                if (data) {
+                    tile.vertex_data[name] = data;
 
-                // Track min/max order range
-                if (style.order.min < tile.order.min) {
-                    tile.order.min = style.order.min;
+                    // Track min/max order range
+                    if (tile_data[name].order.min < tile.order.min) {
+                        tile.order.min = tile_data[name].order.min;
+                    }
+                    if (tile_data[name].order.max > tile.order.max) {
+                        tile.order.max = tile_data[name].order.max;
+                    }
                 }
-                if (style.order.max > tile.order.max) {
-                    tile.order.max = style.order.max;
-                }
+            }));
+        }
 
-                style.reset();
+        return Promise.all(queue).then(() => {
+            // Aggregate debug info
+            tile.debug.rendering = +new Date() - tile.debug.rendering;
+            tile.debug.projection = 0;
+            tile.debug.features = 0;
+            tile.debug.network = 0;
+            tile.debug.parsing = 0;
+
+            for (let i in tile.sources) {
+                tile.debug.features  += tile.sources[i].debug.features;
+                tile.debug.projection += tile.sources[i].debug.projection;
+                tile.debug.network += tile.sources[i].debug.network;
+                tile.debug.parsing += tile.sources[i].debug.parsing;
             }
-        }
 
-        // Aggregate debug info
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
-        tile.debug.projection = 0;
-        tile.debug.features = 0;
-        tile.debug.network = 0;
-        tile.debug.parsing = 0;
-
-        for (let i in tile.sources) {
-            tile.debug.features  += tile.sources[i].debug.features;
-            tile.debug.projection += tile.sources[i].debug.projection;
-            tile.debug.network += tile.sources[i].debug.network;
-            tile.debug.parsing += tile.sources[i].debug.parsing;
-        }
-
-        // Return keys to be transfered to main thread
-        return {
-            vertex_data: true
-        };
+            // Return keys to be transfered to main thread
+            return {
+                vertex_data: true
+            };
+        });
     }
 
     /**

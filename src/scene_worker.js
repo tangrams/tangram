@@ -127,12 +127,13 @@ if (Utils.isWorkerThread) {
                     Promise.all(Object.keys(SceneWorker.sources).map(x => SceneWorker.sources[x].loadTile(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
-                        var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
-
-                        resolve({
-                            tile: SceneWorker.sliceTile(tile, keys),
-                            worker_id: SceneWorker.worker_id,
-                            selection_map_size: FeatureSelection.map_size
+                        // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                        Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
+                            resolve({
+                                tile: SceneWorker.sliceTile(tile, keys),
+                                worker_id: SceneWorker.worker_id,
+                                selection_map_size: FeatureSelection.map_size
+                            });
                         });
                     }).catch((error) => {
                         tile.loading = false;
@@ -159,13 +160,14 @@ if (Utils.isWorkerThread) {
                 SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
-
-                return {
-                    tile: SceneWorker.sliceTile(tile, keys),
-                    worker_id: SceneWorker.worker_id,
-                    selection_map_size: FeatureSelection.map_size
-                };
+                // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
+                    return {
+                        tile: SceneWorker.sliceTile(tile, keys),
+                        worker_id: SceneWorker.worker_id,
+                        selection_map_size: FeatureSelection.map_size
+                    };
+                });
             }
         });
     };

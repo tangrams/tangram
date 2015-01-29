@@ -34,7 +34,6 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
         this.initialized = true;
-        this.reset();
     },
 
     destroy () {
@@ -58,18 +57,20 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    // Resets state in preparation to add features to this style for a given tile
-    reset () {
-        this.vertex_data = null;
-        this.order = { min: Infinity, max: -Infinity }; // reset to track order range within tile
+    // Returns an object to hold feature data (for a tile or other object)
+    startData () {
+        return {
+            vertex_data: null,
+            order: { min: Infinity, max: -Infinity } // reset to track order range within tile
+        };
     },
 
-    // Called when finishing add features to this style for a given tile
-    end () {
-        return this.vertex_data && this.vertex_data.end().buffer;
+    // Finalizes an object holding feature data (for a tile or other object)
+    endData (tile_data) {
+        return Promise.resolve(tile_data.vertex_data && tile_data.vertex_data.end().buffer);
     },
 
-    addFeature (feature, rule, context) {
+    addFeature (feature, rule, context, tile_data) {
         let style = this.parseFeature(feature, rule, context);
 
         // Skip feature?
@@ -78,35 +79,35 @@ export var Style = {
         }
 
         // Track min/max order range
-        if (style.order < this.order.min) {
-            this.order.min = style.order;
+        if (style.order < tile_data.order.min) {
+            tile_data.order.min = style.order;
         }
-        if (style.order > this.order.max) {
-            this.order.max = style.order;
+        if (style.order > tile_data.order.max) {
+            tile_data.order.max = style.order;
         }
 
         // First feature in this render style?
-        if (!this.vertex_data) {
-            this.vertex_data = this.vertex_layout.createVertexData();
+        if (!tile_data.vertex_data) {
+            tile_data.vertex_data = this.vertex_layout.createVertexData();
         }
 
         if (feature.geometry.type === 'Polygon') {
-            this.buildPolygons([feature.geometry.coordinates], style, this.vertex_data);
+            this.buildPolygons([feature.geometry.coordinates], style, tile_data.vertex_data);
         }
         else if (feature.geometry.type === 'MultiPolygon') {
-            this.buildPolygons(feature.geometry.coordinates, style, this.vertex_data);
+            this.buildPolygons(feature.geometry.coordinates, style, tile_data.vertex_data);
         }
         else if (feature.geometry.type === 'LineString') {
-            this.buildLines([feature.geometry.coordinates], style, this.vertex_data);
+            this.buildLines([feature.geometry.coordinates], style, tile_data.vertex_data);
         }
         else if (feature.geometry.type === 'MultiLineString') {
-            this.buildLines(feature.geometry.coordinates, style, this.vertex_data);
+            this.buildLines(feature.geometry.coordinates, style, tile_data.vertex_data);
         }
         else if (feature.geometry.type === 'Point') {
-            this.buildPoints([feature.geometry.coordinates], style, this.vertex_data);
+            this.buildPoints([feature.geometry.coordinates], style, tile_data.vertex_data);
         }
         else if (feature.geometry.type === 'MultiPoint') {
-            this.buildPoints(feature.geometry.coordinates, style, this.vertex_data);
+            this.buildPoints(feature.geometry.coordinates, style, tile_data.vertex_data);
         }
     },
 
