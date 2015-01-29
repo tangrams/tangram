@@ -220,17 +220,12 @@ export var Style = {
             for (var s in texture.sprites) {
                 var sprite = texture.sprites[s];
 
-                // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
-                this.texture_sprites[name][s] = [
-                    GLBuilders.scaleTexcoordsToSprite(
-                        [0, 0],
-                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                        [texture.width, texture.height]),
-                    GLBuilders.scaleTexcoordsToSprite(
-                        [1, 1],
-                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                        [texture.width, texture.height])
-                ];
+                // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
+                this.texture_sprites[name][s] = GLBuilders.getTexcoordsForSprite(
+                    [sprite[0], sprite[1]],
+                    [sprite[2], sprite[3]],
+                    [texture.width, texture.height]
+                );
             }
         }
     },
