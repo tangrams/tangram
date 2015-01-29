@@ -14,7 +14,7 @@ export default function GLTexture (gl, name, options = {}) {
     if (this.texture) {
         this.valid = true;
     }
-    this.bind(0);
+    this.bind();
     this.image = null;      // an Image object/element that is the source for this texture
     this.canvas = null;     // a Canvas object/element that is the source for this texture
     this.loading = null;    // a Promise object to track the loading state of this texture
@@ -67,8 +67,14 @@ GLTexture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
-    this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+    if (unit) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+    }
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+};
+
+GLTexture.prototype.unbind = function () {
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 };
 
 // Loads a texture from a URL
@@ -127,7 +133,7 @@ GLTexture.prototype.update = function (options = {}) {
         return;
     }
 
-    this.bind(0);
+    this.bind();
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
     this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
@@ -146,14 +152,15 @@ GLTexture.prototype.update = function (options = {}) {
 };
 
 // Determines appropriate filtering mode
-// Assumes texture to be operated on is already bound
 GLTexture.prototype.setTextureFiltering = function (options = {}) {
     if (!this.valid) {
         return;
     }
 
     options.filtering = options.filtering || this.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+
     var gl = this.gl;
+    this.bind();
 
     // For power-of-2 textures, the following presets are available:
     // mipmap: linear blend from nearest mip
@@ -204,6 +211,8 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
     }
+
+    this.unbind();
 };
 
 // Static/class methods
