@@ -26,6 +26,7 @@ export default function GLTexture (gl, name, options = {}) {
     // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
 
     this.name = name;
+    this.filtering = options.filtering;
 
     // Destroy previous texture if present
     if (GLTexture.textures[this.name]) {
@@ -151,7 +152,7 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
         return;
     }
 
-    options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+    options.filtering = options.filtering || this.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
     var gl = this.gl;
 
     // For power-of-2 textures, the following presets are available:
