@@ -150,7 +150,7 @@ GLBuilders.buildPolylines = function (
 	}) {
 
 	var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);  // Butt is the implicit default
-	var trianglesOnJoin = (cap === "bevel")? 1 : ((cap === "round")? 4 : 0);  // Miter is the implicit default
+	var trianglesOnJoin = (cap === "bevel")? 1 : ((cap === "round")? 5 : 0);  // Miter is the implicit default
 
 	// Build variables
 	var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
