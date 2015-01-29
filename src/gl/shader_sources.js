@@ -442,12 +442,12 @@ shaderSources['text_fragment'] =
 "varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "\n" +
-"#if !defined(LIGHTING_VERTEX)\n" +
-"    varying vec4 v_position;\n" +
-"    varying vec3 v_normal;\n" +
-"#else\n" +
-"    varying vec3 v_lighting;\n" +
-"#endif\n" +
+"// #if !defined(LIGHTING_VERTEX)\n" +
+"//     varying vec4 v_position;\n" +
+"//     varying vec3 v_normal;\n" +
+"// #else\n" +
+"//     varying vec3 v_lighting;\n" +
+"// #endif\n" +
 "\n" +
 "#pragma tangram: globals\n" +
 "#pragma tangram: lighting\n" +
@@ -457,15 +457,20 @@ shaderSources['text_fragment'] =
 "\n" +
 "    color = texture2D(label_atlas, v_texcoord);\n" +
 "\n" +
-"    #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
-"        vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));\n" +
-"    #else\n" +
-"        vec3 lighting = v_lighting;\n" +
-"    #endif\n" +
+"    // if (color.a < .3) {\n" +
+"    if (color.a < u_alpha_discard) {\n" +
+"        discard;\n" +
+"    }\n" +
+"\n" +
+"    // #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting\n" +
+"    //     vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));\n" +
+"    // #else\n" +
+"    //     vec3 lighting = v_lighting;\n" +
+"    // #endif\n" +
 "\n" +
 "    // Apply lighting to color\n" +
 "    // TODO: add transformation points to give more control to style-specific shaders\n" +
-"    color.rgb *= lighting;\n" +
+"    // color.rgb *= lighting;\n" +
 "\n" +
 "    // Style-specific vertex transformations\n" +
 "    #pragma tangram: fragment\n" +
@@ -497,12 +502,12 @@ shaderSources['text_vertex'] =
 "varying vec4 v_color;\n" +
 "varying vec2 v_texcoord;\n" +
 "\n" +
-"#if !defined(LIGHTING_VERTEX)\n" +
-"    varying vec4 v_position;\n" +
-"    varying vec3 v_normal;\n" +
-"#else\n" +
-"    varying vec3 v_lighting;\n" +
-"#endif\n" +
+"// #if !defined(LIGHTING_VERTEX)\n" +
+"//     varying vec4 v_position;\n" +
+"//     varying vec3 v_normal;\n" +
+"// #else\n" +
+"//     varying vec3 v_lighting;\n" +
+"// #endif\n" +
 "\n" +
 "#pragma tangram: globals\n" +
 "#pragma tangram: camera\n" +
@@ -519,15 +524,15 @@ shaderSources['text_vertex'] =
 "    #pragma tangram: vertex\n" +
 "\n" +
 "    // Shading\n" +
-"    #if defined(LIGHTING_VERTEX)\n" +
+"    // #if defined(LIGHTING_VERTEX)\n" +
+"    //     v_color = a_color;\n" +
+"    //     v_lighting = calculateLighting(position, a_normal, vec3(1.));\n" +
+"    // #else\n" +
+"    //     // Send to fragment shader for per-pixel lighting\n" +
+"    //     v_position = position;\n" +
+"    //     v_normal = a_normal;\n" +
 "        v_color = a_color;\n" +
-"        v_lighting = calculateLighting(position, a_normal, vec3(1.));\n" +
-"    #else\n" +
-"        // Send to fragment shader for per-pixel lighting\n" +
-"        v_position = position;\n" +
-"        v_normal = a_normal;\n" +
-"        v_color = a_color;\n" +
-"    #endif\n" +
+"    // #endif\n" +
 "\n" +
 "    // Camera\n" +
 "    cameraProjection(position);\n" +

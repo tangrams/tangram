@@ -14,8 +14,9 @@ export default function GLTexture (gl, name, options = {}) {
     if (this.texture) {
         this.valid = true;
     }
-    this.bind(0);
+    this.bind();
     this.image = null;      // an Image object/element that is the source for this texture
+    this.canvas = null;     // a Canvas object/element that is the source for this texture
     this.loading = null;    // a Promise object to track the loading state of this texture
 
     // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
@@ -25,6 +26,7 @@ export default function GLTexture (gl, name, options = {}) {
     // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
 
     this.name = name;
+    this.filtering = options.filtering;
 
     // Destroy previous texture if present
     if (GLTexture.textures[this.name]) {
@@ -65,8 +67,14 @@ GLTexture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
-    this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+    if (unit) {
+        this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+    }
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+};
+
+GLTexture.prototype.unbind = function () {
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 };
 
 // Loads a texture from a URL
@@ -78,11 +86,12 @@ GLTexture.prototype.load = function (url, options = {}) {
     this.loading = new Promise((resolve, reject) => {
         this.image = new Image();
         this.image.onload = () => {
-            this.width = this.image.width;
-            this.height = this.image.height;
-            this.data = null; // mutually exclusive with direct data buffer textures
             this.update(options);
             this.setTextureFiltering(options);
+
+            this.canvas = null; // mutually exclusive with other types
+            this.data = null;
+
             resolve(this);
         };
         this.image.src = url;
@@ -96,10 +105,22 @@ GLTexture.prototype.setData = function (width, height, data, options = {}) {
     this.width = width;
     this.height = height;
     this.data = data;
-    this.image = null; // mutually exclusive with image element-based textures
+
+    this.image = null; // mutually exclusive with other types
+    this.canvas = null;
 
     this.update(options);
     this.setTextureFiltering(options);
+};
+
+// Sets the texture to track a canvas element
+GLTexture.prototype.setCanvas = function (canvas, options) {
+    this.canvas = canvas;
+    this.update(options);
+    this.setTextureFiltering(options);
+
+    this.image = null; // mutually exclusive with other types
+    this.data = null;
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
@@ -108,13 +129,21 @@ GLTexture.prototype.update = function (options = {}) {
         return;
     }
 
-    this.bind(0);
+    this.bind();
     this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
     this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
     // Image element
     if (this.image && this.image.complete) {
+        this.width = this.image.width;
+        this.height = this.image.height;
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
+    }
+    // Canvas element
+    else if (this.canvas) {
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.canvas);
     }
     // Raw image buffer
     else if (this.width && this.height) { // NOTE: this.data can be null, to zero out texture
@@ -123,14 +152,15 @@ GLTexture.prototype.update = function (options = {}) {
 };
 
 // Determines appropriate filtering mode
-// Assumes texture to be operated on is already bound
 GLTexture.prototype.setTextureFiltering = function (options = {}) {
     if (!this.valid) {
         return;
     }
 
-    options.filtering = options.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+    options.filtering = options.filtering || this.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+
     var gl = this.gl;
+    this.bind();
 
     // For power-of-2 textures, the following presets are available:
     // mipmap: linear blend from nearest mip
@@ -181,6 +211,8 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
     }
+
+    this.unbind();
 };
 
 // Static/class methods
