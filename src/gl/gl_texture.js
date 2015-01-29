@@ -86,8 +86,6 @@ GLTexture.prototype.load = function (url, options = {}) {
     this.loading = new Promise((resolve, reject) => {
         this.image = new Image();
         this.image.onload = () => {
-            this.width = this.image.width;
-            this.height = this.image.height;
             this.update(options);
             this.setTextureFiltering(options);
 
@@ -118,8 +116,6 @@ GLTexture.prototype.setData = function (width, height, data, options = {}) {
 // Sets the texture to track a canvas element
 GLTexture.prototype.setCanvas = function (canvas, options) {
     this.canvas = canvas;
-    this.width = this.canvas.width;
-    this.height = this.canvas.height;
     this.update(options);
     this.setTextureFiltering(options);
 
@@ -139,10 +135,14 @@ GLTexture.prototype.update = function (options = {}) {
 
     // Image element
     if (this.image && this.image.complete) {
+        this.width = this.image.width;
+        this.height = this.image.height;
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
     }
     // Canvas element
     else if (this.canvas) {
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.canvas);
     }
     // Raw image buffer
