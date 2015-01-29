@@ -101,8 +101,8 @@ export default class Tile {
             source.debug.features = 0;
 
             // Treat top-level style rules as 'layers'
-            for (let name in layers) {
-                let layer = layers[name];
+            for (let layer_name in layers) {
+                let layer = layers[layer_name];
                 // Skip layers with no geometry defined
                 if (!layer.geometry) {
                     log.warn(`Layer ${layer} was defined without an geometry configuration and will not be rendered.`);
@@ -122,7 +122,7 @@ export default class Tile {
 
                     // Find matching rules
                     let matched_rules = [];
-                    let layer_rules = rules[name];
+                    let layer_rules = rules[layer_name];
                     for (let r in layer_rules) {
                         layer_rules[r].matchFeature(context, matched_rules);
                     }
@@ -155,18 +155,18 @@ export default class Tile {
         // Finalize array buffer for each render style
         tile.vertex_data = {};
         let queue = [];
-        for (let name in tile_data) {
-            let style = styles[name];
-            queue.push(style.endData(tile_data[name]).then((data) => {
+        for (let style_name in tile_data) {
+            let style = styles[style_name];
+            queue.push(style.endData(tile_data[style_name]).then((data) => {
                 if (data) {
-                    tile.vertex_data[name] = data;
+                    tile.vertex_data[style_name] = data;
 
                     // Track min/max order range
-                    if (tile_data[name].order.min < tile.order.min) {
-                        tile.order.min = tile_data[name].order.min;
+                    if (tile_data[style_name].order.min < tile.order.min) {
+                        tile.order.min = tile_data[style_name].order.min;
                     }
-                    if (tile_data[name].order.max > tile.order.max) {
-                        tile.order.max = tile_data[name].order.max;
+                    if (tile_data[style_name].order.max > tile.order.max) {
+                        tile.order.max = tile_data[style_name].order.max;
                     }
                 }
             }));
