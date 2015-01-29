@@ -277,11 +277,6 @@ layers:
             order: 1
             interactive: true
             color: [0.5, 0.875, 0.5]
-        outine-style:
-            style:
-                outline:
-                    color: red
-                    width: 10px
 
         pitch:
             filter:
