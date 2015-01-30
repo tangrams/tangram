@@ -78,11 +78,16 @@ Object.assign(Polygons, {
             }
         }
 
+        style.cap = rule_style.cap;
+        style.join = rule_style.join;
+
         style.outline = style.outline || {};
         if (rule_style.outline) {
             style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
             style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
             style.outline.tile_edges = rule_style.outline.tile_edges;
+            style.outline.cap = rule_style.outline.cap || rule_style.cap;
+            style.outline.join = rule_style.outline.join || rule_style.join;
         }
         else {
             style.outline.color = null;
@@ -169,6 +174,7 @@ Object.assign(Polygons, {
                     vertex_data,
                     vertex_template,
                     {
+                        join: style.outline.join,
                         texcoord_index: this.vertex_layout.index.a_texcoord,
                         texcoord_scale: this.texcoord_scale,
                         closed_polygon: true,
@@ -190,6 +196,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
+                    cap: style.cap,
+                    join: style.join,
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale
                 }
@@ -216,6 +224,8 @@ Object.assign(Polygons, {
                 vertex_data,
                 vertex_template,
                 {
+                    cap: style.outline.cap,
+                    join: style.outline.join,
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale
                 }
