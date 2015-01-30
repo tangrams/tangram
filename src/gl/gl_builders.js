@@ -150,7 +150,7 @@ GLBuilders.buildPolylines = function (
     }) {
 
     var cornersOnCap = (cap === "square")? 2 : ((cap === "round")? 4 : 0);  // Butt is the implicit default
-    var trianglesOnJoin = (cap === "bevel")? 1 : ((cap === "round")? 5 : 0);  // Miter is the implicit default
+    var trianglesOnJoin = (join === "bevel")? 1 : ((join === "round")? 5 : 0);  // Miter is the implicit default
 
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
@@ -176,10 +176,7 @@ GLBuilders.buildPolylines = function (
         // Ignore non-lines
         if (lineSize < 2) {
             continue;
-        }
-
-        // line = line.slice(0, 2);
-        // lineSize = line.length;      
+        }   
 
         //  Initialize variables
         var coordPrev = [0, 0], // Previous point coordinates
@@ -261,7 +258,7 @@ GLBuilders.buildPolylines = function (
                     // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev)
                     normCurr = Vector.normalize(Vector.add(normPrev, normNext));
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-                    normCurr = Vector.mult(normCurr, (scale*scale) );
+                    normCurr = Vector.mult(normCurr,scale*scale);
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
                     normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
@@ -280,16 +277,16 @@ GLBuilders.buildPolylines = function (
 
             if (isPrev || isNext) {
                 // If is the BEGINING of a LINE
-                if (i === 0 && !isPrev && !closed_polygon){
+                if (i === 0 && !isPrev && !closed_polygon) {
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
                 // If is a JOIN
-                if(trianglesOnJoin !== 0 && isPrev && isNext){
+                if(trianglesOnJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext], 
                             [normPrev,normCurr, normNext], 
                             i/lineSize, trianglesOnJoin, 
-                            constants );
+                            constants);
                 } else {
                     addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
@@ -306,7 +303,7 @@ GLBuilders.buildPolylines = function (
         indexPairs(constants);
 
          // If is the END OF a LINE
-        if(!closed_polygon){
+        if(!closed_polygon) {
             addCap(coordCurr, normCurr, cornersOnCap , false, constants);
         }
     }
@@ -341,9 +338,9 @@ function addVertexPair (coord, normal, v_pct, constants) {
 //  and interpolating their UVs               \ p /
 //                                             \./
 //                                              C
-function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
+function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants) {
 
-    if(numTriangles < 1){
+    if (numTriangles < 1) {
         return;
     }
 
@@ -355,12 +352,12 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
     var normPrev = [0,0];
 
     var angle_delta = Vector.dot(nA, nB);
-    if (angle_delta < -1){
+    if (angle_delta < -1) {
         angle_delta = -1;
     }
-    angle_delta = Math.acos( angle_delta ) / numTriangles;
+    angle_delta = Math.acos(angle_delta)/numTriangles;
 
-    if(!signed){
+    if (!signed) {
         angle_delta *= -1;
     }
 
@@ -369,19 +366,19 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
 
     //  Add the first and CENTER vertex 
     //  The triangles will be composed on FAN style arround it
-    addVertex(coord, nC, uC ,constants);
+    addVertex(coord, nC, uC, constants);
 
     //  Add first corner
-    addVertex(coord, normCurr, uA ,constants);
+    addVertex(coord, normCurr, uA, constants);
 
     // Iterate through the rest of the coorners
-    for( var t = 0; t < numTriangles; t++) {
+    for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
         normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
 
-        if( numTriangles === 4 && (t === 0 || t === numTriangles - 2) ){
+        if (numTriangles === 4 && (t === 0 || t === numTriangles - 2)) {
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-            normCurr = Vector.mult(normCurr, scale*scale );
+            normCurr = Vector.mult(normCurr, scale*scale);
         }
 
         uvCurr = Vector.add(uvCurr,uv_delta);
@@ -389,8 +386,8 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
         addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
     }
 
-    for ( var i = 0; i < numTriangles; i++) {
-        if(signed){
+    for (var i = 0; i < numTriangles; i++) {
+        if (signed) {
             addIndex(i+2, constants);
             addIndex(0, constants);
             addIndex(i+1, constants);
@@ -413,9 +410,9 @@ function addFan(coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants){
 
 //  Add speccials joins (not miter) tipes that require FAN tessalations  
 //  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
-function addJoin(coords, normals, v_pct, nTriangles, constants){
+function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
-    var T = [ Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2]) ];
+    var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
 
     var nA = T[0],              // normal to point A (aT)
@@ -426,7 +423,7 @@ function addJoin(coords, normals, v_pct, nTriangles, constants){
         uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
         uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
     
-    if (signed){
+    if (signed) {
         addVertex(coords[1], nA, uA, constants);
         addVertex(coords[1], nC, uC, constants);
     } else {
@@ -437,9 +434,9 @@ function addJoin(coords, normals, v_pct, nTriangles, constants){
         addVertex(coords[1], nA, uA, constants);
     }
 
-    addFan( coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
+    addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
 
-    if (signed){
+    if (signed) {
         addVertex(coords[1], nB, uB, constants);
         addVertex(coords[1], nC, uC, constants);
     } else {
@@ -450,9 +447,9 @@ function addJoin(coords, normals, v_pct, nTriangles, constants){
 
 //  Function to add the vertex need for line caps,
 //  because re-use the buffers needs to be at the end
-function addCap(coord, normal, numCorners, isBeginning, constants){
+function addCap (coord, normal, numCorners, isBeginning, constants) {
 
-    if( numCorners < 1){
+    if (numCorners < 1) {
         return;
     }
 
@@ -461,7 +458,7 @@ function addCap(coord, normal, numCorners, isBeginning, constants){
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
         uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
  
-    if(!isBeginning){
+    if (!isBeginning) {
         uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
         uvB = [constants.max_u,constants.max_v]; 
@@ -502,7 +499,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 }
 
 // Add the index vertex to the VBO and clean the buffers
-function indexPairs(constants) {
+function indexPairs (constants) {
     // Add vertices to buffer acording their index
     for (var i = 0; i < constants.nPairs; i++) {
         addIndex(2*i+2, constants);
@@ -576,8 +573,7 @@ GLBuilders.buildQuadsForPoints = function (
 /* Utility functions */
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-GLBuilders.isOnTileEdge = function (pa, pb, options)
-{
+GLBuilders.isOnTileEdge = function (pa, pb, options) {
     options = options || {};
 
     var tolerance_function = options.tolerance_function || GLBuilders.valuesWithinTolerance;
@@ -602,23 +598,20 @@ GLBuilders.isOnTileEdge = function (pa, pb, options)
     return edge;
 };
 
-GLBuilders.setTileScale = function (scale)
-{
+GLBuilders.setTileScale = function (scale) {
     GLBuilders.tile_bounds = [
         { x: 0, y: 0},
         { x: scale, y: -scale } // TODO: correct for flipped y-axis?
     ];
 };
 
-GLBuilders.valuesWithinTolerance = function (a, b, tolerance)
-{
+GLBuilders.valuesWithinTolerance = function (a, b, tolerance) {
     tolerance = tolerance || 1;
     return (Math.abs(a - b) < tolerance);
 };
 
 // Build a zigzag line pattern for testing joins and caps
-GLBuilders.buildZigzagLineTestPattern = function ()
-{
+GLBuilders.buildZigzagLineTestPattern = function () {
     var min = { x: 0, y: 0}; //  tile.min;
     var max = { x: 4096, y: 4096 }; // tile.max;
 
