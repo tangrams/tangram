@@ -78,8 +78,8 @@ Object.assign(Polygons, {
             }
         }
 
-        style.cap = feature_style.cap;
-        style.join = feature_style.join;
+        style.cap = rule_style.cap;
+        style.join = rule_style.join;
 
         style.outline = style.outline || {};
         if (rule_style.outline) {
