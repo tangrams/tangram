@@ -343,6 +343,8 @@ layers:
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
+            cap: round
+            join: round
 
         highway:
             filter: { kind: highway }
@@ -358,6 +360,14 @@ layers:
                 outline:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+            bridge:
+                filter: { is_bridge: yes }
+                style:
+                    outline:
+                        # don't draw outline caps on bridges because they draw over connecting non-bridge roads
+                        # see FDR Drive: 40.70278074491014,-74.00795169174671,20
+                        cap: butt
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
