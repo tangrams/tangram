@@ -37,11 +37,9 @@ describe('Utils', () => {
         });
     });
 
-    describe('.serializeWithFunctions(obj)', () => {});
-    describe('.deserializeWithFunctions(serialized)', () => {});
-    describe('.stringsToFunctions(obj)', () => {});
-    describe('.inMainThread(block)', () => {});
-    describe('.inWorkerThread(block, err)', () => {});
+    // describe('.serializeWithFunctions(obj)', () => {});
+    // describe('.deserializeWithFunctions(serialized)', () => {});
+    // describe('.stringsToFunctions(obj)', () => {});
 
     describe('.isPowerOf2(value)', () => {
         let subject = Utils.isPowerOf2;
