@@ -171,39 +171,21 @@ Utils.stringsToFunctions = function(obj, wrap) {
     return obj;
 };
 
-// Run a block of code only if in the main thread
-Utils.inMainThread = function(block) {
+// Mark thread as main or worker
+(function() {
     try {
         if (window.document !== undefined) {
-            block();
+            Utils.isWorkerThread = false;
+            Utils.isMainThread   = true;
         }
     }
-    catch (e) {
-    }
-};
-
-// Run a block of code only if in a web worker thread
-Utils.inWorkerThread = function(block) {
-    try {
-        if (window.document !== undefined) {
-        }
-    } // jshint ignore:line
     catch (e) {
         if (self !== undefined) {
-            block();
+            Utils.isWorkerThread = true;
+            Utils.isMainThread   = false;
         }
     }
-};
-
-Utils.inWorkerThread(() => {
-    Utils.isWorkerThread = true;
-    Utils.isMainThread   = false;
-});
-
-Utils.inMainThread(() => {
-    Utils.isMainThread   = true;
-    Utils.isWorkerThread = false;
-});
+})();
 
 // Get URL that the current script was loaded from
 // If currentScript is not available, loops through <script> elements searching for a list of provided paths

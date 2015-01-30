@@ -14,6 +14,13 @@ GLBuilders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_si
     return suv;
 };
 
+GLBuilders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
+    return [
+        GLBuilders.scaleTexcoordsToSprite([0, 0], area_origin, area_size, tex_size),
+        GLBuilders.scaleTexcoordsToSprite([1, 1], area_origin, area_size, tex_size)
+    ];
+};
+
 // Tesselate a flat 2D polygon
 // x & y coordinates will be set as first two elements of provided vertex_template
 GLBuilders.buildPolygons = function (

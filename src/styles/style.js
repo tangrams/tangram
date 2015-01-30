@@ -57,19 +57,73 @@ export var Style = {
 
     /*** Style parsing and geometry construction ***/
 
-    parseFeature (feature, feature_style, context) {
+    // Returns an object to hold feature data (for a tile or other object)
+    startData () {
+        return {
+            vertex_data: null,
+            order: { min: Infinity, max: -Infinity } // reset to track order range within tile
+        };
+    },
+
+    // Finalizes an object holding feature data (for a tile or other object)
+    endData (tile_data) {
+        return Promise.resolve(tile_data.vertex_data && tile_data.vertex_data.end().buffer);
+    },
+
+    addFeature (feature, rule, context, tile_data) {
+        let style = this.parseFeature(feature, rule, context);
+
+        // Skip feature?
+        if (!style) {
+            return;
+        }
+
+        // Track min/max order range
+        if (style.order < tile_data.order.min) {
+            tile_data.order.min = style.order;
+        }
+        if (style.order > tile_data.order.max) {
+            tile_data.order.max = style.order;
+        }
+
+        // First feature in this render style?
+        if (!tile_data.vertex_data) {
+            tile_data.vertex_data = this.vertex_layout.createVertexData();
+        }
+
+        if (feature.geometry.type === 'Polygon') {
+            this.buildPolygons([feature.geometry.coordinates], style, tile_data.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiPolygon') {
+            this.buildPolygons(feature.geometry.coordinates, style, tile_data.vertex_data);
+        }
+        else if (feature.geometry.type === 'LineString') {
+            this.buildLines([feature.geometry.coordinates], style, tile_data.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiLineString') {
+            this.buildLines(feature.geometry.coordinates, style, tile_data.vertex_data);
+        }
+        else if (feature.geometry.type === 'Point') {
+            this.buildPoints([feature.geometry.coordinates], style, tile_data.vertex_data);
+        }
+        else if (feature.geometry.type === 'MultiPoint') {
+            this.buildPoints(feature.geometry.coordinates, style, tile_data.vertex_data);
+        }
+    },
+
+    parseFeature (feature, rule_style, context) {
         try {
             var style = this.feature_style;
 
             // Calculate order if it was not cached
-            style.order = feature_style.order;
+            style.order = rule_style.order;
             if (typeof style.order !== 'number') {
                 style.order = StyleParser.calculateOrder(style.order, context);
             }
 
             // Feature selection (only if style supports it)
             var selectable = false;
-            style.interactive = feature_style.interactive;
+            style.interactive = rule_style.interactive;
             if (this.selection) {
                 if (typeof style.interactive === 'function') {
                     selectable = style.interactive(context);
@@ -88,7 +142,7 @@ export var Style = {
             }
 
             // Subclass implementation
-            this._parseFeature(feature, feature_style, context);
+            this._parseFeature(feature, rule_style, context);
 
             return style;
         }
@@ -97,7 +151,7 @@ export var Style = {
         }
     },
 
-    _parseFeature (feature, feature_style, context) {
+    _parseFeature (feature, rule_style, context) {
         throw new MethodNotImplemented('_parseFeature');
     },
 
@@ -108,6 +162,11 @@ export var Style = {
 
 
     /*** Texture management ***/
+
+    // Prefix texture name with style name
+    textureName (name) {
+        return this.name + '_' + name;
+    },
 
     setupTextureUniforms () {
         var num_textures = Object.keys(this.textures).length;
@@ -126,10 +185,11 @@ export var Style = {
 
             for (var name in this.textures) {
                 var texture = this.textures[name];
+                texture.name = this.textureName(name);
                 texture.id = tex_id++; // give every texture a unique id local to this style
 
                 // Consistently map named textures to the same array index in the texture uniform
-                this.shaders.uniforms.u_textures[texture.id] = name;
+                this.shaders.uniforms.u_textures[texture.id] = texture.name;
 
                 // Provide a #define mapping each texture back to its name in the stylesheet
                 this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
@@ -144,7 +204,7 @@ export var Style = {
         if (this.textures) {
             for (var name in this.textures) {
                 var { url, filtering, repeat, sprites } = this.textures[name];
-                var texture = new GLTexture(this.gl, name, { sprites });
+                var texture = new GLTexture(this.gl, this.textureName(name), { sprites });
 
                 texture.load(url, { filtering, repeat });
             }
@@ -153,7 +213,7 @@ export var Style = {
 
     // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
     calculateTextureSprites (name) {
-        var texture = GLTexture.textures[name];
+        var texture = GLTexture.textures[this.textureName(name)];
         if (texture.sprites) {
             this.texture_sprites = this.texture_sprites || {};
             this.texture_sprites[name] = {};
@@ -161,17 +221,12 @@ export var Style = {
             for (var s in texture.sprites) {
                 var sprite = texture.sprites[s];
 
-                // Map [0, 0] and [1, 1] coords to the appropriate sprite sub-area of the texture
-                this.texture_sprites[name][s] = [
-                    GLBuilders.scaleTexcoordsToSprite(
-                        [0, 0],
-                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                        [texture.width, texture.height]),
-                    GLBuilders.scaleTexcoordsToSprite(
-                        [1, 1],
-                        [sprite[0], sprite[1]], [sprite[2], sprite[3]],
-                        [texture.width, texture.height])
-                ];
+                // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
+                this.texture_sprites[name][s] = GLBuilders.getTexcoordsForSprite(
+                    [sprite[0], sprite[1]],
+                    [sprite[2], sprite[3]],
+                    [texture.width, texture.height]
+                );
             }
         }
     },
