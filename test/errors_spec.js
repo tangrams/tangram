@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 
-import {MethodNotImplemented} from '../src/errors';
+import {MethodNotImplemented} from '../src/utils/errors';
 
 describe('Errors', () => {
 

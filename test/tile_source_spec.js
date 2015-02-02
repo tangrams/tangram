@@ -13,8 +13,8 @@ import {
     MapboxFormatTileSource
 } from '../src/tile_source';
 
-import Utils from '../src/utils';
-import {MethodNotImplemented} from '../src/errors';
+import Utils from '../src/utils/utils';
+import {MethodNotImplemented} from '../src/utils/errors';
 
 function getMockTile() {
     return _.clone(require('./fixtures/sample-tile.json'));

@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-import Utils from '../src/utils';
+import Utils from '../src/utils/utils';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 

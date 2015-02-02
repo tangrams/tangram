@@ -1,7 +1,7 @@
 /*global Tile */
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
-import WorkerBroker from './worker_broker';
+import WorkerBroker from './utils/worker_broker';
 
 import log from 'loglevel';
 

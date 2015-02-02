@@ -1,4 +1,4 @@
-import Utils from '../utils';
+import Utils from '../utils/utils';
 import Geo from '../geo';
 
 import parseCSSColor from 'csscolorparser';

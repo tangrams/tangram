@@ -1,5 +1,5 @@
 import Texture from './gl/texture';
-import WorkerBroker from './worker_broker';
+import WorkerBroker from './utils/worker_broker';
 
 class FeatureSelection {
 

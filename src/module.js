@@ -1,7 +1,7 @@
 /*jshint worker: true*/
 
 // Modules and dependencies to expose in the public Tangram module
-import Utils from './utils';
+import Utils from './utils/utils';
 
 // The leaflet layer plugin is currently the primary public API
 import {LeafletLayer, leafletLayer} from './leaflet_layer';
@@ -16,7 +16,7 @@ import GL from './gl/gl';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
-import WorkerBroker from './worker_broker';
+import WorkerBroker from './utils/worker_broker';
 
 import glMatrix from 'gl-matrix';
 

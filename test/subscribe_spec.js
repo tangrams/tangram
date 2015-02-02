@@ -1,4 +1,4 @@
-import subscribeMixin from '../src/subscribe';
+import subscribeMixin from '../src/utils/subscribe';
 
 describe('subscribeMixin', () => {
     let subject;
@@ -23,10 +23,10 @@ describe('subscribeMixin', () => {
             spyC = sinon.spy(),
             spyD = sinon.spy();
 
-        subject.subscribe({ test: spyA }); 
-        subject.subscribe({ test: spyB }); 
-        subject.subscribe({ test: spyC }); 
-        subject.subscribe({ test: spyD }); 
+        subject.subscribe({ test: spyA });
+        subject.subscribe({ test: spyB });
+        subject.subscribe({ test: spyC });
+        subject.subscribe({ test: spyD });
 
         sinon.assert.notCalled(spyA);
         sinon.assert.notCalled(spyB);
@@ -38,7 +38,7 @@ describe('subscribeMixin', () => {
         sinon.assert.called(spyA);
         sinon.assert.called(spyB);
         sinon.assert.called(spyC);
-        sinon.assert.called(spyD);        
+        sinon.assert.called(spyD);
     });
 
     it('does not fires events that are unsubscribed', () => {
@@ -60,7 +60,7 @@ describe('subscribeMixin', () => {
         subject.unsubscribe(subscriberA);
         subject.unsubscribe(subscriberB);
         subject.unsubscribe(subscriberC);
-           
+
         subject.trigger('test');
 
         sinon.assert.notCalled(spyA);
@@ -75,10 +75,10 @@ describe('subscribeMixin', () => {
             spyC = sinon.spy(),
             spyD = sinon.spy();
 
-        subject.subscribe({ test: spyA }); 
-        subject.subscribe({ test: spyB }); 
-        subject.subscribe({ test: spyC }); 
-        subject.subscribe({ test: spyD }); 
+        subject.subscribe({ test: spyA });
+        subject.subscribe({ test: spyB });
+        subject.subscribe({ test: spyC });
+        subject.subscribe({ test: spyD });
 
         sinon.assert.notCalled(spyA);
         sinon.assert.notCalled(spyB);
@@ -91,8 +91,8 @@ describe('subscribeMixin', () => {
         sinon.assert.notCalled(spyA);
         sinon.assert.notCalled(spyB);
         sinon.assert.notCalled(spyC);
-        sinon.assert.notCalled(spyD);        
+        sinon.assert.notCalled(spyD);
     });
-    
+
 
 });

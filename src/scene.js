@@ -1,8 +1,8 @@
 /*global Scene */
 import Geo from './geo';
-import Utils from './utils';
-import WorkerBroker from './worker_broker';
-import subscribeMixin from './subscribe';
+import Utils from './utils/utils';
+import WorkerBroker from './utils/worker_broker';
+import subscribeMixin from './utils/subscribe';
 import {GL} from './gl/gl';
 import Builders from './styles/builders';
 import ShaderProgram from './gl/shader_program';

@@ -1,6 +1,6 @@
 // Manage rendering styles
 
-import Utils from '../utils';
+import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 

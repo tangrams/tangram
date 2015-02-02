@@ -1,7 +1,7 @@
 /*global Texture */
 // Texture management
-import Utils from '../utils';
-import WorkerBroker from '../worker_broker';
+import Utils from '../utils/utils';
+import WorkerBroker from '../utils/worker_broker';
 import log from 'loglevel';
 
 // Global set of textures, by name

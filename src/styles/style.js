@@ -6,7 +6,7 @@ import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Builders from './builders';
 import Texture from '../gl/texture';
-import {MethodNotImplemented} from '../errors';
+import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import log from 'loglevel';

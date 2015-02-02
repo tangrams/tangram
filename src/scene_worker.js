@@ -1,6 +1,6 @@
 /*jshint worker: true*/
-import Utils from './utils';
-import WorkerBroker from './worker_broker'; // jshint ignore:line
+import Utils from './utils/utils';
+import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
