@@ -3,7 +3,7 @@
 // (injecting #defines and #pragma transforms into shaders), etc.
 import {GL} from './gl';
 import GLSL from './glsl';
-import GLTexture from './gl_texture';
+import Texture from './texture';
 
 import log from 'loglevel';
 import strip from 'strip-comments';
@@ -320,9 +320,9 @@ GLProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
 
 // Set a texture uniform, finds texture by name or creates a new one
 GLProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
-    var texture = GLTexture.textures[texture_name];
+    var texture = Texture.textures[texture_name];
     if (texture == null) {
-        texture = new GLTexture(this.gl, texture_name);
+        texture = new Texture(this.gl, texture_name);
         texture.load(texture_name);
     }
 

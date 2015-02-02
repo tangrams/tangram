@@ -1,14 +1,14 @@
-/*global GLTexture */
+/*global Texture */
 // Texture management
 import Utils from '../utils';
 import WorkerBroker from '../worker_broker';
 import log from 'loglevel';
 
 // Global set of textures, by name
-GLTexture.textures = {};
+Texture.textures = {};
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
-export default function GLTexture (gl, name, options = {}) {
+export default function Texture (gl, name, options = {}) {
     this.gl = gl;
     this.texture = gl.createTexture();
     if (this.texture) {
@@ -29,17 +29,17 @@ export default function GLTexture (gl, name, options = {}) {
     this.filtering = options.filtering;
 
     // Destroy previous texture if present
-    if (GLTexture.textures[this.name]) {
-        GLTexture.textures[this.name].destroy();
+    if (Texture.textures[this.name]) {
+        Texture.textures[this.name].destroy();
     }
 
-    GLTexture.textures[this.name] = this;
+    Texture.textures[this.name] = this;
 
     this.sprites = options.sprites;
 }
 
 // Destroy a single texture instance
-GLTexture.prototype.destroy = function () {
+Texture.prototype.destroy = function () {
     if (!this.valid) {
         return;
     }
@@ -47,23 +47,23 @@ GLTexture.prototype.destroy = function () {
     this.texture = null;
     delete this.data;
     this.data = null;
-    delete GLTexture.textures[this.name];
+    delete Texture.textures[this.name];
     this.valid = false;
 };
 
 // Destroy all texture instances for a given GL context
-GLTexture.destroy = function (gl) {
-    var textures = Object.keys(GLTexture.textures);
+Texture.destroy = function (gl) {
+    var textures = Object.keys(Texture.textures);
     for (var t of textures) {
-        var texture = GLTexture.textures[t];
+        var texture = Texture.textures[t];
         if (texture.gl === gl) {
-            log.trace(`destroying GLTexture ${texture.name}`);
+            log.trace(`destroying Texture ${texture.name}`);
             texture.destroy();
         }
     }
 };
 
-GLTexture.prototype.bind = function (unit) {
+Texture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
@@ -73,12 +73,12 @@ GLTexture.prototype.bind = function (unit) {
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
 };
 
-GLTexture.prototype.unbind = function () {
+Texture.prototype.unbind = function () {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 };
 
 // Loads a texture from a URL
-GLTexture.prototype.load = function (url, options = {}) {
+Texture.prototype.load = function (url, options = {}) {
     if (!this.valid) {
         return;
     }
@@ -101,7 +101,7 @@ GLTexture.prototype.load = function (url, options = {}) {
 };
 
 // Sets texture to a raw image buffer
-GLTexture.prototype.setData = function (width, height, data, options = {}) {
+Texture.prototype.setData = function (width, height, data, options = {}) {
     this.width = width;
     this.height = height;
     this.data = data;
@@ -114,7 +114,7 @@ GLTexture.prototype.setData = function (width, height, data, options = {}) {
 };
 
 // Sets the texture to track a canvas element
-GLTexture.prototype.setCanvas = function (canvas, options) {
+Texture.prototype.setCanvas = function (canvas, options) {
     this.canvas = canvas;
     this.update(options);
     this.setTextureFiltering(options);
@@ -124,7 +124,7 @@ GLTexture.prototype.setCanvas = function (canvas, options) {
 };
 
 // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
-GLTexture.prototype.update = function (options = {}) {
+Texture.prototype.update = function (options = {}) {
     if (!this.valid) {
         return;
     }
@@ -152,7 +152,7 @@ GLTexture.prototype.update = function (options = {}) {
 };
 
 // Determines appropriate filtering mode
-GLTexture.prototype.setTextureFiltering = function (options = {}) {
+Texture.prototype.setTextureFiltering = function (options = {}) {
     if (!this.valid) {
         return;
     }
@@ -220,19 +220,19 @@ GLTexture.prototype.setTextureFiltering = function (options = {}) {
 // Get metadata for a texture by name
 // Returns via promise, in case texture is still loading
 // Can be called on main thread from worker, to sync texture info to worker
-GLTexture.getInfo = function (name) {
+Texture.getInfo = function (name) {
     // Get info for all textures by default
     if (!name) {
-        name = Object.keys(GLTexture.textures);
+        name = Object.keys(Texture.textures);
     }
 
     // Get multiple textures
     if (Array.isArray(name)) {
-        return Promise.all(name.map(n => GLTexture.getInfo(n)));
+        return Promise.all(name.map(n => Texture.getInfo(n)));
     }
 
     // Get single texture
-    var tex = GLTexture.textures[name];
+    var tex = Texture.textures[name];
     if (tex) {
         // Wait for this texture to finish loading, or return immediately
         var loading = tex.loading || Promise.resolve(tex);
@@ -259,12 +259,12 @@ GLTexture.getInfo = function (name) {
 // Sync texture info to worker
 // Called from worker, gets info on one or more textures info from main thread via remote call, then stores it
 // locally in worker. 'textures' can be an array of texture names to sync, or if null, all textures are synced.
-GLTexture.syncTexturesToWorker = function (names) {
-    return WorkerBroker.postMessage('GLTexture', 'getInfo', names).
+Texture.syncTexturesToWorker = function (names) {
+    return WorkerBroker.postMessage('Texture', 'getInfo', names).
         then(textures => {
             for (var tex of textures) {
-                GLTexture.textures[tex.name] = tex;
+                Texture.textures[tex.name] = tex;
             }
-            return GLTexture.textures;
+            return Texture.textures;
         });
 };

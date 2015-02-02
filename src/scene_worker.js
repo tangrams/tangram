@@ -9,7 +9,7 @@ import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
 import {parseRules} from './rule';
 import {Builders} from './builders';
-import GLTexture from './gl/gl_texture';
+import Texture from './gl/texture';
 
 export var SceneWorker = {
     sources: {},
@@ -217,7 +217,7 @@ if (Utils.isWorkerThread) {
 
         SceneWorker.log('trace', 'sync textures to worker:', textures);
         if (textures.length > 0) {
-            return GLTexture.syncTexturesToWorker(textures);
+            return Texture.syncTexturesToWorker(textures);
         }
         return Promise.resolve();
     };

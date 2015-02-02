@@ -6,7 +6,7 @@ import subscribeMixin from './subscribe';
 import {GL} from './gl/gl';
 import {Builders} from './builders';
 import GLProgram from './gl/gl_program';
-import GLTexture from './gl/gl_texture';
+import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
@@ -145,7 +145,7 @@ Scene.prototype.destroy = function () {
         this.gl.deleteFramebuffer(this.fbo);
         this.fbo = null;
 
-        GLTexture.destroy(this.gl);
+        Texture.destroy(this.gl);
         StyleManager.destroy(this.gl);
         this.styles = {};
 

@@ -15,7 +15,7 @@ import {Geo} from './geo';
 import GL from './gl/gl';
 import GLSL from './gl/glsl';
 import GLProgram from './gl/gl_program';
-import GLTexture from './gl/gl_texture';
+import Texture from './gl/texture';
 import WorkerBroker from './worker_broker';
 
 import glMatrix from 'gl-matrix';
@@ -31,7 +31,7 @@ var debug = {
     GL,
     GLSL,
     GLProgram,
-    GLTexture,
+    Texture,
     SceneWorker,
     WorkerBroker
 };
@@ -39,7 +39,7 @@ var debug = {
 // Window can only be set in main thread
 if (Utils.isMainThread) {
     // Main thread objects that can be called from workers
-    WorkerBroker.addTarget('GLTexture', GLTexture);
+    WorkerBroker.addTarget('Texture', Texture);
 
     window.Tangram = module.exports = {
         LeafletLayer,

@@ -5,7 +5,7 @@ import FeatureSelection from '../selection';
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
 import {Builders} from '../builders';
-import GLTexture from '../gl/gl_texture';
+import Texture from '../gl/texture';
 import {MethodNotImplemented} from '../errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
@@ -203,7 +203,7 @@ export var Style = {
         if (this.textures) {
             for (var name in this.textures) {
                 var { url, filtering, repeat, sprites } = this.textures[name];
-                var texture = new GLTexture(this.gl, this.textureName(name), { sprites });
+                var texture = new Texture(this.gl, this.textureName(name), { sprites });
 
                 texture.load(url, { filtering, repeat });
             }
@@ -212,7 +212,7 @@ export var Style = {
 
     // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
     calculateTextureSprites (name) {
-        var texture = GLTexture.textures[this.textureName(name)];
+        var texture = Texture.textures[this.textureName(name)];
         if (texture.sprites) {
             this.texture_sprites = this.texture_sprites || {};
             this.texture_sprites[name] = {};
