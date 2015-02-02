@@ -2,7 +2,7 @@
 
 import {Style} from './style';
 import {StyleParser} from './style_parser';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
+import gl from '../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
 import {Builders} from '../builders';
 

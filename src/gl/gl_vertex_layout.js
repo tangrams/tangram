@@ -1,7 +1,6 @@
 /* global GLVertexLayout */
 
-import gl from './gl_constants'; // web workers don't have access to GL context, so import all GL constants
-
+import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
 import log from 'loglevel';
 
 // Describes a vertex layout that can be used with many different GL programs.

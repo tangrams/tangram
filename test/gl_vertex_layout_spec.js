@@ -2,7 +2,7 @@ import chai from 'chai';
 let assert = chai.assert;
 import GLVertexLayout from '../src/gl/gl_vertex_layout';
 import {GLVertexData} from '../src/gl/gl_vertex_layout';
-import gl from '../src/gl/gl_constants';
+import gl from '../src/gl/constants';
 
 describe('GLVertexLayout', () => {
 
