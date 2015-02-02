@@ -71,15 +71,27 @@ GLBuilders.buildExtrudedPolygons = function (
     normal_index,
     { texcoord_index, texcoord_scale }) {
 
+    // Top
     var min_z = z + (min_height || 0);
     var max_z = z + height;
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
-
-    // Top
     vertex_template[2] = max_z;
     GLBuilders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
 
     // Walls
+    // Fit UVs to wall quad
+    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    if (texcoord_index) {
+        var texcoords = [
+            [min_u, max_v],
+            [min_u, min_v],
+            [max_u, min_v],
+
+            [max_u, min_v],
+            [max_u, max_v],
+            [min_u, max_v]
+        ];
+    }
+
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -99,19 +111,6 @@ GLBuilders.buildExtrudedPolygons = function (
                     [contour[w][0], contour[w][1], max_z],
                     [contour[w+1][0], contour[w+1][1], max_z]
                 ];
-
-                // Fit UVs to wall quad
-                if (texcoord_index) {
-                    var texcoords = [
-                        [min_u, max_v],
-                        [min_u, min_v],
-                        [max_u, min_v],
-
-                        [max_u, min_v],
-                        [max_u, max_v],
-                        [min_u, max_v]
-                    ];
-                }
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
                 var normal = Vector.cross(
@@ -183,7 +182,7 @@ GLBuilders.buildPolylines = function (
         // Ignore non-lines
         if (lineSize < 2) {
             continue;
-        }   
+        }
 
         //  Initialize variables
         var coordPrev = [0, 0], // Previous point coordinates
@@ -290,14 +289,14 @@ GLBuilders.buildPolylines = function (
 
                 // If is a JOIN
                 if(trianglesOnJoin !== 0 && isPrev && isNext) {
-                    addJoin([coordPrev, coordCurr, coordNext], 
-                            [normPrev,normCurr, normNext], 
-                            i/lineSize, trianglesOnJoin, 
+                    addJoin([coordPrev, coordCurr, coordNext],
+                            [normPrev,normCurr, normNext],
+                            i/lineSize, trianglesOnJoin,
                             constants);
                 } else {
                     addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
-                
+
                 if (isNext) {
                    constants.nPairs++;
                 }
@@ -305,7 +304,7 @@ GLBuilders.buildPolylines = function (
                 isPrev = true;
             }
         }
-        
+
         // Add vertices to buffer acording their index
         indexPairs(constants);
 
@@ -351,7 +350,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         return;
     }
 
-    // Add previus vertices to buffer and clean the buffers and index pairs 
+    // Add previus vertices to buffer and clean the buffers and index pairs
     // Because we are going to add more triangles.
     indexPairs(constants);
 
@@ -371,7 +370,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var uvCurr = Vector.set(uA);
     var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
-    //  Add the first and CENTER vertex 
+    //  Add the first and CENTER vertex
     //  The triangles will be composed on FAN style arround it
     addVertex(coord, nC, uC, constants);
 
@@ -415,7 +414,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  Add speccials joins (not miter) tipes that require FAN tessalations  
+//  Add speccials joins (not miter) tipes that require FAN tessalations
 //  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
@@ -429,7 +428,7 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
     var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
         uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
         uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-    
+
     if (signed) {
         addVertex(coords[1], nA, uA, constants);
         addVertex(coords[1], nC, uC, constants);
@@ -464,16 +463,16 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     var uvA = [constants.min_u,constants.min_v],                        // Begining angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
         uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
- 
+
     if (!isBeginning) {
         uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
-        uvB = [constants.max_u,constants.max_v]; 
+        uvB = [constants.max_u,constants.max_v];
     }
 
-    addFan( coord, 
-            Vector.neg(normal), [0, 0], normal, 
-            uvA, uvC, uvB, 
+    addFan( coord,
+            Vector.neg(normal), [0, 0], normal,
+            uvA, uvC, uvB,
             isBeginning, numCorners*2, constants);
 }
 
@@ -536,7 +535,19 @@ GLBuilders.buildQuadsForPoints = function (
     vertex_data, vertex_template,
     { texcoord_index, texcoord_scale }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    if (texcoord_index) {
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+        var texcoords = [
+            [min_u, min_v],
+            [max_u, min_v],
+            [max_u, max_v],
+
+            [min_u, min_v],
+            [max_u, max_v],
+            [min_u, max_v]
+        ];
+    }
+
     var num_points = points.length;
     for (var p=0; p < num_points; p++) {
         var point = points[p];
@@ -548,20 +559,8 @@ GLBuilders.buildQuadsForPoints = function (
 
             [point[0] - width/2, point[1] - height/2],
             [point[0] + width/2, point[1] + height/2],
-            [point[0] - width/2, point[1] + height/2],
+            [point[0] - width/2, point[1] + height/2]
         ];
-
-        if (texcoord_index) {
-            var texcoords = [
-                [min_u, min_v],
-                [max_u, min_v],
-                [max_u, max_v],
-
-                [min_u, min_v],
-                [max_u, max_v],
-                [min_u, max_v]
-            ];
-        }
 
         for (var pos=0; pos < 6; pos++) {
             // Add texcoords
