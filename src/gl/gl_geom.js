@@ -22,7 +22,7 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
     // TODO: disabling VAOs for now because we need to support different vertex layout + program combinations,
     // where not all programs will recognize all attributes (e.g. feature selection shaders include extra attrib).
     // To support VAOs here, would need to support multiple per geometry, keyed by GL program?
-    // this.vao = GLVertexArrayObject.create(function() {
+    // this.vao = VertexArrayObject.create(function() {
     //     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     //     this.setup();
     // }.bind(this));
@@ -39,7 +39,7 @@ GLGeometry.prototype.render = function (options = {})
         return false;
     }
 
-    // GLVertexArrayObject.bind(this.vao);
+    // VertexArrayObject.bind(this.vao);
 
     if (typeof this._render_setup === 'function') {
         this._render_setup();
@@ -53,7 +53,7 @@ GLGeometry.prototype.render = function (options = {})
 
     // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
-    // GLVertexArrayObject.bind(null);
+    // VertexArrayObject.bind(null);
     return true;
 };
 

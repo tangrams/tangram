@@ -32,7 +32,7 @@ GL.getContext = function getContext (canvas, options)
         });
     }
 
-    // GLVertexArrayObject.init(gl); // TODO: this pattern doesn't support multiple active GL contexts, should that even be supported?
+    // VertexArrayObject.init(gl); // TODO: this pattern doesn't support multiple active GL contexts, should that even be supported?
 
     return gl;
 };
