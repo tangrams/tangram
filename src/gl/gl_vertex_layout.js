@@ -191,6 +191,8 @@ export class GLVertexData {
             var new_view = new Uint8Array(new_block);
             new_view.set(new Uint8Array(this.buffer, 0, this.buffer_offset));
             this.buffer = new_block;
+            this.buffer_views = null;
+            this.components = null;
         }
         return this;
     }
