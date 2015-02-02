@@ -1,10 +1,10 @@
 import chai from 'chai';
 let assert = chai.assert;
-import GLVertexLayout from '../src/gl/gl_vertex_layout';
-import {GLVertexData} from '../src/gl/gl_vertex_layout';
+import VertexLayout from '../src/gl/vertex_layout';
+import VertexData from '../src/gl/vertex_data';
 import gl from '../src/gl/constants';
 
-describe('GLVertexData', () => {
+describe('VertexData', () => {
 
     // Note: a_color is intentionally not a multiple of 4, to test padding
     let attribs =  [
@@ -18,12 +18,12 @@ describe('GLVertexData', () => {
         let layout;
 
         beforeEach(() => {
-            layout = new GLVertexLayout(attribs);
-            subject = new GLVertexData(layout);
+            layout = new VertexLayout(attribs);
+            subject = new VertexData(layout);
         });
 
         it('returns a new instance', () => {
-            assert.instanceOf(subject, GLVertexData);
+            assert.instanceOf(subject, VertexData);
         });
         it('sets up buffer views', () => {
             assert.instanceOf(subject.buffer_views[gl.FLOAT], Float32Array);
@@ -41,7 +41,7 @@ describe('GLVertexData', () => {
         ];
 
         beforeEach(() => {
-            layout = new GLVertexLayout(attribs);
+            layout = new VertexLayout(attribs);
             subject = layout.createVertexData();
             subject.addVertex(vertex);
         });
