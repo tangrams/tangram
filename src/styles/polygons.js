@@ -4,8 +4,7 @@ import {Style} from './style';
 import {StyleParser} from './style_parser';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
-
+import {Builders} from '../builders';
 
 export var Polygons = Object.create(Style);
 
@@ -137,7 +136,7 @@ Object.assign(Polygons, {
         if (style.color) {
             // Extruded polygons (e.g. 3D buildings)
             if (style.extrude && style.height) {
-                GLBuilders.buildExtrudedPolygons(
+                Builders.buildExtrudedPolygons(
                     polygons,
                     style.z, style.height, style.min_height,
                     vertex_data, vertex_template,
@@ -147,7 +146,7 @@ Object.assign(Polygons, {
             }
             // Regular polygons
             else {
-                GLBuilders.buildPolygons(
+                Builders.buildPolygons(
                     polygons,
                     vertex_data, vertex_template,
                     { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
@@ -168,7 +167,7 @@ Object.assign(Polygons, {
             vertex_template[this.vertex_layout.index.a_layer] += 0.0001;
 
             for (var mpc=0; mpc < polygons.length; mpc++) {
-                GLBuilders.buildPolylines(
+                Builders.buildPolylines(
                     polygons[mpc],
                     style.outline.width,
                     vertex_data,
@@ -190,7 +189,7 @@ Object.assign(Polygons, {
 
         // Main line
         if (style.color && style.width) {
-            GLBuilders.buildPolylines(
+            Builders.buildPolylines(
                 lines,
                 style.width,
                 vertex_data,
@@ -218,7 +217,7 @@ Object.assign(Polygons, {
             // (see complex road interchanges where casing outlines should be interleaved by road type)
             vertex_template[this.vertex_layout.index.a_layer] -= 0.0001;
 
-            GLBuilders.buildPolylines(
+            Builders.buildPolylines(
                 lines,
                 style.width + 2 * style.outline.width,
                 vertex_data,
@@ -240,7 +239,7 @@ Object.assign(Polygons, {
 
         var vertex_template = this.makeVertexTemplate(style);
 
-        GLBuilders.buildQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             style.size[0] || style.size,
             style.size[1] || style.size,

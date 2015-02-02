@@ -8,7 +8,7 @@ import Tile from './tile';
 import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
 import {parseRules} from './rule';
-import {GLBuilders} from './gl/gl_builders';
+import {Builders} from './builders';
 import GLTexture from './gl/gl_texture';
 
 export var SceneWorker = {
@@ -27,7 +27,7 @@ if (Utils.isWorkerThread) {
     SceneWorker.worker = self;
 
     // TODO: sync render style state between main thread and worker
-    GLBuilders.setTileScale(Scene.tile_scale);
+    Builders.setTileScale(Scene.tile_scale);
 
     // Initialize worker
     SceneWorker.worker.init = function (worker_id) {

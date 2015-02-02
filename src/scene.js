@@ -4,7 +4,7 @@ import Utils from './utils';
 import WorkerBroker from './worker_broker';
 import subscribeMixin from './subscribe';
 import {GL} from './gl/gl';
-import {GLBuilders} from './gl/gl_builders';
+import {Builders} from './builders';
 import GLProgram from './gl/gl_program';
 import GLTexture from './gl/gl_texture';
 import {StyleManager} from './styles/style_manager';
@@ -28,7 +28,7 @@ if (Utils.isMainThread) {
 
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
-GLBuilders.setTileScale(Scene.tile_scale);
+Builders.setTileScale(Scene.tile_scale);
 GLProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely

@@ -1,12 +1,12 @@
-import {Vector} from '../vector';
-import {Geo} from '../geo';
-import {GL} from './gl';
-export var GLBuilders = {};
+import {Vector} from './vector';
+import {Geo} from './geo';
+import {GL} from './gl/gl';
+export var Builders = {};
 
-GLBuilders.debug = false;
+Builders.debug = false;
 
 // Re-scale UVs from [0, 1] range to a smaller area within the image
-GLBuilders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_size) {
+Builders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_size) {
     var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
     var suv = [];
     suv[0] = (uv[0] * area_size[0] + area_origin[0]) / tex_size[0];
@@ -14,16 +14,16 @@ GLBuilders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_si
     return suv;
 };
 
-GLBuilders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
+Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
     return [
-        GLBuilders.scaleTexcoordsToSprite([0, 0], area_origin, area_size, tex_size),
-        GLBuilders.scaleTexcoordsToSprite([1, 1], area_origin, area_size, tex_size)
+        Builders.scaleTexcoordsToSprite([0, 0], area_origin, area_size, tex_size),
+        Builders.scaleTexcoordsToSprite([1, 1], area_origin, area_size, tex_size)
     ];
 };
 
 // Tesselate a flat 2D polygon
 // x & y coordinates will be set as first two elements of provided vertex_template
-GLBuilders.buildPolygons = function (
+Builders.buildPolygons = function (
     polygons,
     vertex_data, vertex_template,
     { texcoord_index, texcoord_scale }) {
@@ -64,7 +64,7 @@ GLBuilders.buildPolygons = function (
 };
 
 // Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-GLBuilders.buildExtrudedPolygons = function (
+Builders.buildExtrudedPolygons = function (
     polygons,
     z, height, min_height,
     vertex_data, vertex_template,
@@ -75,7 +75,7 @@ GLBuilders.buildExtrudedPolygons = function (
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    GLBuilders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
+    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
 
     // Walls
     // Fit UVs to wall quad
@@ -141,7 +141,7 @@ GLBuilders.buildExtrudedPolygons = function (
 };
 
 // Build tessellated triangles for a polyline
-GLBuilders.buildPolylines = function (
+Builders.buildPolylines = function (
     lines,
     width,
     vertex_data, vertex_template,
@@ -214,7 +214,7 @@ GLBuilders.buildPolylines = function (
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(GLBuilders.isOnTileEdge(line[i], line[lineSize-2], { tile_edge_tolerance })) {
+                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tile_edge_tolerance })) {
                         needToClose = false;
                     }
                 }
@@ -242,7 +242,7 @@ GLBuilders.buildPolylines = function (
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (GLBuilders.isOnTileEdge(coordCurr, coordNext, { tile_edge_tolerance })) {
+                    if (Builders.isOnTileEdge(coordCurr, coordNext, { tile_edge_tolerance })) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -530,7 +530,7 @@ function indexPairs (constants) {
 }
 
 // Build a quad centered on a point
-GLBuilders.buildQuadsForPoints = function (
+Builders.buildQuadsForPoints = function (
     points, width, height,
     vertex_data, vertex_template,
     { texcoord_index, texcoord_scale }) {
@@ -579,14 +579,14 @@ GLBuilders.buildQuadsForPoints = function (
 /* Utility functions */
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-GLBuilders.isOnTileEdge = function (pa, pb, options) {
+Builders.isOnTileEdge = function (pa, pb, options) {
     options = options || {};
 
-    var tolerance_function = options.tolerance_function || GLBuilders.valuesWithinTolerance;
+    var tolerance_function = options.tolerance_function || Builders.valuesWithinTolerance;
     var tolerance = options.tolerance || 3; // tweak this adjust if catching too few/many line segments near tile edges
                                             // TODO: make tolerance configurable by source if necessary
-    var tile_min = GLBuilders.tile_bounds[0];
-    var tile_max = GLBuilders.tile_bounds[1];
+    var tile_min = Builders.tile_bounds[0];
+    var tile_max = Builders.tile_bounds[1];
     var edge = null;
 
     if (tolerance_function(pa[0], tile_min.x, tolerance) && tolerance_function(pb[0], tile_min.x, tolerance)) {
@@ -604,20 +604,20 @@ GLBuilders.isOnTileEdge = function (pa, pb, options) {
     return edge;
 };
 
-GLBuilders.setTileScale = function (scale) {
-    GLBuilders.tile_bounds = [
+Builders.setTileScale = function (scale) {
+    Builders.tile_bounds = [
         { x: 0, y: 0},
         { x: scale, y: -scale } // TODO: correct for flipped y-axis?
     ];
 };
 
-GLBuilders.valuesWithinTolerance = function (a, b, tolerance) {
+Builders.valuesWithinTolerance = function (a, b, tolerance) {
     tolerance = tolerance || 1;
     return (Math.abs(a - b) < tolerance);
 };
 
 // Build a zigzag line pattern for testing joins and caps
-GLBuilders.buildZigzagLineTestPattern = function () {
+Builders.buildZigzagLineTestPattern = function () {
     var min = { x: 0, y: 0}; //  tile.min;
     var max = { x: 4096, y: 4096 }; // tile.max;
 

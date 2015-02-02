@@ -4,7 +4,7 @@ import {Style} from './style';
 import {StyleParser} from './style_parser';
 import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
 import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
+import {Builders} from '../builders';
 
 export var Points = Object.create(Style);
 
@@ -67,7 +67,7 @@ Object.assign(Points, {
 
         var vertex_template = this.makeVertexTemplate(style);
 
-        GLBuilders.buildQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             style.size[0] || style.size,
             style.size[1] || style.size,

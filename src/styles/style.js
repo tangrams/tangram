@@ -2,10 +2,9 @@
 
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
-
 import GLProgram from '../gl/gl_program';
 import GLGeometry from '../gl/gl_geom';
-import {GLBuilders} from '../gl/gl_builders';
+import {Builders} from '../builders';
 import GLTexture from '../gl/gl_texture';
 import {MethodNotImplemented} from '../errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
@@ -222,7 +221,7 @@ export var Style = {
                 var sprite = texture.sprites[s];
 
                 // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
-                this.texture_sprites[name][s] = GLBuilders.getTexcoordsForSprite(
+                this.texture_sprites[name][s] = Builders.getTexcoordsForSprite(
                     [sprite[0], sprite[1]],
                     [sprite[2], sprite[3]],
                     [texture.width, texture.height]
