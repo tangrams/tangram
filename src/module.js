@@ -14,7 +14,7 @@ import log from 'loglevel';
 import Geo from './geo';
 import GL from './gl/gl';
 import GLSL from './gl/glsl';
-import GLProgram from './gl/gl_program';
+import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
 import WorkerBroker from './worker_broker';
 
@@ -30,7 +30,7 @@ var debug = {
     Geo,
     GL,
     GLSL,
-    GLProgram,
+    ShaderProgram,
     Texture,
     SceneWorker,
     WorkerBroker

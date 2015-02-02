@@ -1,6 +1,6 @@
 /* global GLGeometry */
-/*** Manage rendering for primitives ***/
-import GLProgram from './gl_program';
+// Manage rendering for primitives
+import ShaderProgram from './shader_program';
 import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
@@ -45,7 +45,7 @@ GLGeometry.prototype.render = function (options = {})
         this._render_setup();
     }
 
-    var program = options.program || GLProgram.current;
+    var program = options.program || ShaderProgram.current;
     program.use();
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);

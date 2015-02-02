@@ -1,6 +1,7 @@
-/* global GLProgram */
+/* global ShaderProgram */
 // Thin GL program wrapp to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
+
 import {GL} from './gl';
 import GLSL from './glsl';
 import Texture from './texture';
@@ -8,10 +9,10 @@ import Texture from './texture';
 import log from 'loglevel';
 import strip from 'strip-comments';
 
-GLProgram.id = 0; // assign each program a unique id
-GLProgram.programs = {}; // programs, by id
+ShaderProgram.id = 0; // assign each program a unique id
+ShaderProgram.programs = {}; // programs, by id
 
-export default function GLProgram (gl, vertex_shader, fragment_shader, options)
+export default function ShaderProgram (gl, vertex_source, fragment_source, options)
 {
     options = options || {};
 
@@ -34,65 +35,65 @@ export default function GLProgram (gl, vertex_shader, fragment_shader, options)
     this.uniforms = {}; // program locations of uniforms, lazily added as each uniform is set
     this.attribs = {}; // program locations of vertex attributes, lazily added as each attribute is accessed
 
-    this.vertex_shader = vertex_shader;
-    this.fragment_shader = fragment_shader;
+    this.vertex_source = vertex_source;
+    this.fragment_source = fragment_source;
 
-    this.id = GLProgram.id++;
-    GLProgram.programs[this.id] = this;
+    this.id = ShaderProgram.id++;
+    ShaderProgram.programs[this.id] = this;
     this.name = options.name; // can provide a program name (useful for debugging)
 
     this.compile();
 }
 
-GLProgram.prototype.destroy = function () {
+ShaderProgram.prototype.destroy = function () {
     this.gl.useProgram(null);
     this.gl.deleteProgram(this.program);
     this.program = null;
     this.uniforms = {};
     this.attribs = {};
-    delete GLProgram.programs[this.id];
+    delete ShaderProgram.programs[this.id];
     this.compiled = false;
 };
 
 // Use program wrapper with simple state cache
-GLProgram.prototype.use = function ()
+ShaderProgram.prototype.use = function ()
 {
     if (!this.compiled) {
         return;
     }
 
-    if (GLProgram.current !== this) {
+    if (ShaderProgram.current !== this) {
         this.gl.useProgram(this.program);
     }
-    GLProgram.current = this;
+    ShaderProgram.current = this;
 };
-GLProgram.current = null;
+ShaderProgram.current = null;
 
 // Global config applied to all programs (duplicate properties for a specific program will take precedence)
-GLProgram.defines = {};
-GLProgram.transforms = {};
+ShaderProgram.defines = {};
+ShaderProgram.transforms = {};
 
-GLProgram.addTransform = function (key, ...transforms) {
-    GLProgram.transforms[key] = GLProgram.transforms[key] || [];
-    GLProgram.transforms[key].push(...transforms);
+ShaderProgram.addTransform = function (key, ...transforms) {
+    ShaderProgram.transforms[key] = ShaderProgram.transforms[key] || [];
+    ShaderProgram.transforms[key].push(...transforms);
 };
 
 // Remove all global shader transforms for a given key
-GLProgram.removeTransform = function (key) {
-    GLProgram.transforms[key] = [];
+ShaderProgram.removeTransform = function (key) {
+    ShaderProgram.transforms[key] = [];
 };
 
-GLProgram.prototype.compile = function () {
+ShaderProgram.prototype.compile = function () {
 
     if (this.compiling) {
-        throw(new Error(`GLProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
+        throw(new Error(`ShaderProgram.compile(): skipping for ${this.id} (${this.name}) because already compiling`));
     }
     this.compiling = true;
     this.compiled = false;
 
     // Copy sources from pre-modified template
-    this.computed_vertex_shader = this.vertex_shader;
-    this.computed_fragment_shader = this.fragment_shader;
+    this.computed_vertex_source = this.vertex_source;
+    this.computed_fragment_source = this.fragment_source;
 
     // Make list of defines to be injected later
     var defines = this.buildDefineList();
@@ -117,8 +118,8 @@ GLProgram.prototype.compile = function () {
 
         // First find code replace points in shaders
         regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+' + key + '\\s*$', 'm');
-        var inject_vertex = this.computed_vertex_shader.match(regexp);
-        var inject_fragment = this.computed_fragment_shader.match(regexp);
+        var inject_vertex = this.computed_vertex_source.match(regexp);
+        var inject_fragment = this.computed_fragment_source.match(regexp);
 
         // Avoid network request if nothing to replace
         if (inject_vertex == null && inject_fragment == null) {
@@ -134,10 +135,10 @@ GLProgram.prototype.compile = function () {
 
         // Inject
         if (inject_vertex != null) {
-            this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, source);
+            this.computed_vertex_source = this.computed_vertex_source.replace(regexp, source);
         }
         if (inject_fragment != null) {
-            this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, source);
+            this.computed_fragment_source = this.computed_fragment_source.replace(regexp, source);
         }
 
         // Add a #define for this injection point
@@ -146,26 +147,26 @@ GLProgram.prototype.compile = function () {
 
     // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
     regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
-    this.computed_vertex_shader = this.computed_vertex_shader.replace(regexp, '');
-    this.computed_fragment_shader = this.computed_fragment_shader.replace(regexp, '');
+    this.computed_vertex_source = this.computed_vertex_source.replace(regexp, '');
+    this.computed_fragment_source = this.computed_fragment_source.replace(regexp, '');
 
     // Build & inject defines
     // This is done *after* code injection so that we can add defines for which code points were injected
-    var define_str = GLProgram.buildDefineString(defines);
-    this.computed_vertex_shader = define_str + this.computed_vertex_shader;
-    this.computed_fragment_shader = define_str + this.computed_fragment_shader;
+    var define_str = ShaderProgram.buildDefineString(defines);
+    this.computed_vertex_source = define_str + this.computed_vertex_source;
+    this.computed_fragment_source = define_str + this.computed_fragment_source;
 
     // Detect uniform definitions, inject any missing ones
     this.ensureUniforms(this.dependent_uniforms);
 
     // Include program info useful for debugging
     var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-    this.computed_vertex_shader = '// Program: ' + info + '\n' + this.computed_vertex_shader;
-    this.computed_fragment_shader = '// Program: ' + info + '\n' + this.computed_fragment_shader;
+    this.computed_vertex_source = '// Program: ' + info + '\n' + this.computed_vertex_source;
+    this.computed_fragment_source = '// Program: ' + info + '\n' + this.computed_fragment_source;
 
     // Compile & set uniforms to cached values
     try {
-        this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_shader, this.computed_fragment_shader);
+        this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_source, this.computed_fragment_source);
         this.compiled = true;
         this.compiling = false;
     }
@@ -173,7 +174,7 @@ GLProgram.prototype.compile = function () {
         this.program = null;
         this.compiled = false;
         this.compiling = false;
-        throw(new Error(`GLProgram.compile(): program ${this.id} (${this.name}) error:`, error));
+        throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
     }
 
     this.use();
@@ -182,10 +183,10 @@ GLProgram.prototype.compile = function () {
 };
 
 // Make list of defines (global, then program-specific)
-GLProgram.prototype.buildDefineList = function () {
+ShaderProgram.prototype.buildDefineList = function () {
     var d, defines = {};
-    for (d in GLProgram.defines) {
-        defines[d] = GLProgram.defines[d];
+    for (d in ShaderProgram.defines) {
+        defines[d] = ShaderProgram.defines[d];
     }
     for (d in this.defines) {
         defines[d] = this.defines[d];
@@ -194,16 +195,16 @@ GLProgram.prototype.buildDefineList = function () {
 };
 
 // Make list of shader transforms (global, then program-specific)
-GLProgram.prototype.buildShaderTransformList = function () {
+ShaderProgram.prototype.buildShaderTransformList = function () {
     var d, transforms = {};
-    for (d in GLProgram.transforms) {
+    for (d in ShaderProgram.transforms) {
         transforms[d] = [];
 
-        if (Array.isArray(GLProgram.transforms[d])) {
-            transforms[d].push(...GLProgram.transforms[d]);
+        if (Array.isArray(ShaderProgram.transforms[d])) {
+            transforms[d].push(...ShaderProgram.transforms[d]);
         }
         else {
-            transforms[d] = [GLProgram.transforms[d]];
+            transforms[d] = [ShaderProgram.transforms[d]];
         }
     }
     for (d in this.transforms) {
@@ -220,7 +221,7 @@ GLProgram.prototype.buildShaderTransformList = function () {
 };
 
 // Turn #defines into a combined string
-GLProgram.buildDefineString = function (defines) {
+ShaderProgram.buildDefineString = function (defines) {
     var define_str = "";
     for (var d in defines) {
         if (defines[d] === false) {
@@ -240,13 +241,13 @@ GLProgram.buildDefineString = function (defines) {
 };
 
 // Detect uniform definitions, inject any missing ones
-GLProgram.prototype.ensureUniforms = function (uniforms) {
+ShaderProgram.prototype.ensureUniforms = function (uniforms) {
     if (!uniforms) {
         return;
     }
 
-    var vs = strip(this.computed_vertex_shader);
-    var fs = strip(this.computed_fragment_shader);
+    var vs = strip(this.computed_vertex_source);
+    var fs = strip(this.computed_fragment_source);
     var inject, vs_injections = [], fs_injections = [];
 
     // Check for missing uniform definitions
@@ -276,16 +277,16 @@ GLProgram.prototype.ensureUniforms = function (uniforms) {
     // NOTE: these are injected at the very top of the shaders, even before any #defines or #pragmas are added
     // this could cause some issues with certain #pragmas, or other functions that might expect #defines
     if (vs_injections.length > 0) {
-        this.computed_vertex_shader = vs_injections.join('\n') + this.computed_vertex_shader;
+        this.computed_vertex_source = vs_injections.join('\n') + this.computed_vertex_source;
     }
 
     if (fs_injections.length > 0) {
-        this.computed_fragment_shader = fs_injections.join('\n') + this.computed_fragment_shader;
+        this.computed_fragment_source = fs_injections.join('\n') + this.computed_fragment_source;
     }
 };
 
 // Set uniforms from a JS object, with inferred types
-GLProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
+ShaderProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
     if (!this.compiled) {
         return;
     }
@@ -319,7 +320,7 @@ GLProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
 };
 
 // Set a texture uniform, finds texture by name or creates a new one
-GLProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
+ShaderProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
     var texture = Texture.textures[texture_name];
     if (texture == null) {
         texture = new Texture(this.gl, texture_name);
@@ -333,7 +334,7 @@ GLProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
 
 // ex: program.uniform('3f', 'position', x, y, z);
 // TODO: only update uniforms when changed
-GLProgram.prototype.uniform = function (method, name, ...values) // 'values' is a method-appropriate arguments list
+ShaderProgram.prototype.uniform = function (method, name, ...values) // 'values' is a method-appropriate arguments list
 {
     if (!this.compiled) {
         return;
@@ -348,7 +349,7 @@ GLProgram.prototype.uniform = function (method, name, ...values) // 'values' is 
 };
 
 // Set a single uniform
-GLProgram.prototype.updateUniform = function (name)
+ShaderProgram.prototype.updateUniform = function (name)
 {
     if (!this.compiled) {
         return;
@@ -364,7 +365,7 @@ GLProgram.prototype.updateUniform = function (name)
 };
 
 // Refresh uniform locations and set to last cached values
-GLProgram.prototype.refreshUniforms = function ()
+ShaderProgram.prototype.refreshUniforms = function ()
 {
     if (!this.compiled) {
         return;
@@ -376,7 +377,7 @@ GLProgram.prototype.refreshUniforms = function ()
     }
 };
 
-GLProgram.prototype.refreshAttributes = function ()
+ShaderProgram.prototype.refreshAttributes = function ()
 {
     // var len = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_ATTRIBUTES);
     // for (var i=0; i < len; i++) {
@@ -386,7 +387,7 @@ GLProgram.prototype.refreshAttributes = function ()
 };
 
 // Get the location of a vertex attribute
-GLProgram.prototype.attribute = function (name)
+ShaderProgram.prototype.attribute = function (name)
 {
     if (!this.compiled) {
         return;

@@ -2,7 +2,7 @@
 
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
-import GLProgram from '../gl/gl_program';
+import ShaderProgram from '../gl/shader_program';
 import GLGeometry from '../gl/gl_geom';
 import Builders from '../builders';
 import Texture from '../gl/texture';
@@ -293,7 +293,7 @@ export var Style = {
 
         // Create shaders
         try {
-            this.program = new GLProgram(
+            this.program = new ShaderProgram(
                 this.gl,
                 shaderSources[this.vertex_shader_key],
                 shaderSources[this.fragment_shader_key],
@@ -306,7 +306,7 @@ export var Style = {
             );
 
             if (this.selection) {
-                this.selection_program = new GLProgram(
+                this.selection_program = new ShaderProgram(
                     this.gl,
                     shaderSources[this.vertex_shader_key],
                     shaderSources['selection_fragment'],
@@ -332,7 +332,7 @@ export var Style = {
         this.compiled = true;
     },
 
-    /** TODO: could probably combine and generalize this with similar method in GLProgram
+    /** TODO: could probably combine and generalize this with similar method in ShaderProgram
      * (list of define objects that inherit from each other)
      */
     buildDefineList () {
@@ -359,7 +359,7 @@ export var Style = {
 
     // Set style uniforms on currently bound program
     setUniforms () {
-        var program = GLProgram.current;
+        var program = ShaderProgram.current;
         if (program != null && this.shaders != null && this.shaders.uniforms != null) {
             program.setUniforms(this.shaders.uniforms);
         }
