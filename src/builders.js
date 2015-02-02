@@ -1,5 +1,5 @@
 import {Vector} from './vector';
-import {Geo} from './geo';
+import Geo from './geo';
 import {GL} from './gl/gl';
 
 var Builders;

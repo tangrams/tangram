@@ -1,5 +1,5 @@
 /*global Camera */
-import {Geo} from './geo';
+import Geo from './geo';
 import Utils from './utils';
 import GLProgram from './gl/gl_program';
 

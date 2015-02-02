@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 
-import {Geo} from '../src/geo';
+import Geo from '../src/geo';
 import simplePolygon from './fixtures/simple-polygon.json';
 
 describe('Geo', () => {

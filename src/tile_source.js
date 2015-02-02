@@ -1,6 +1,6 @@
 /*jshint worker: true */
 /*globals TileSource, topojson */
-import {Geo}   from './geo';
+import Geo from './geo';
 import {MethodNotImplemented} from './errors';
 import Utils from './utils';
 import log from 'loglevel';

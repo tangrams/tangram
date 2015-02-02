@@ -1,5 +1,5 @@
 /*global Scene */
-import {Geo} from './geo';
+import Geo from './geo';
 import Utils from './utils';
 import WorkerBroker from './worker_broker';
 import subscribeMixin from './subscribe';

@@ -11,7 +11,7 @@ import {SceneWorker} from '../src/scene_worker';
 
 // Additional modules are exposed for debugging
 import log from 'loglevel';
-import {Geo} from './geo';
+import Geo from './geo';
 import GL from './gl/gl';
 import GLSL from './gl/glsl';
 import GLProgram from './gl/gl_program';

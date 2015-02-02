@@ -1,5 +1,5 @@
 /*global Tile */
-import {Geo} from './geo';
+import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import WorkerBroker from './worker_broker';
 

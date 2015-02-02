@@ -3,7 +3,7 @@ let assert = chai.assert;
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import {Geo} from '../src/geo';
+import Geo from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
 import TileSource from '../src/tile_source';
 import {

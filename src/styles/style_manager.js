@@ -13,7 +13,6 @@ import log from 'loglevel';
 export var StyleManager = {};
 export var Styles = {};
 
-
 // Set the base object used to instantiate styles
 StyleManager.baseStyle = Style;
 
