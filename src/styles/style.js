@@ -4,7 +4,7 @@ import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
-import Builders from '../builders';
+import Builders from './builders';
 import Texture from '../gl/texture';
 import {MethodNotImplemented} from '../errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders

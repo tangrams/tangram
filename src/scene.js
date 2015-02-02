@@ -4,7 +4,7 @@ import Utils from './utils';
 import WorkerBroker from './worker_broker';
 import subscribeMixin from './subscribe';
 import {GL} from './gl/gl';
-import Builders from './builders';
+import Builders from './styles/builders';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';

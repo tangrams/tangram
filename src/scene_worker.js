@@ -1,14 +1,14 @@
 /*jshint worker: true*/
 import Utils from './utils';
 import WorkerBroker from './worker_broker'; // jshint ignore:line
-import {StyleParser} from './styles/style_parser';
-import {StyleManager} from './styles/style_manager';
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
-import {parseRules} from './rule';
-import Builders from './builders';
+import {StyleParser} from './styles/style_parser';
+import {StyleManager} from './styles/style_manager';
+import {parseRules} from './styles/rule';
+import Builders from './styles/builders';
 import Texture from './gl/texture';
 
 export var SceneWorker = {

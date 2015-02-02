@@ -1,6 +1,6 @@
-import {Vector} from './vector';
-import Geo from './geo';
-import {GL} from './gl/gl';
+import {Vector} from '../vector';
+import Geo from '../geo';
+import {GL} from '../gl/gl';
 
 var Builders;
 export default Builders = {};
