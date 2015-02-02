@@ -504,7 +504,7 @@ Scene.prototype.renderStyle = function (style, program) {
     for (var t in this.renderable_tiles) {
         var tile = this.renderable_tiles[t];
 
-        if (tile.gl_geometry[style] != null) {
+        if (tile.meshes[style] != null) {
             // Setup style if encountering for first time this frame
             // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
             if (first_for_style === true) {
@@ -544,8 +544,8 @@ Scene.prototype.renderStyle = function (style, program) {
             program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
             // Render tile
-            tile.gl_geometry[style].render();
-            render_count += tile.gl_geometry[style].geometry_count;
+            tile.meshes[style].render();
+            render_count += tile.meshes[style].geometry_count;
         }
     }
 
@@ -835,7 +835,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
         }
 
         if (!tile.error) {
-            tile.finalizeGeometry(this.styles);
+            tile.finalizeBuild(this.styles);
             this.dirty = true;
         }
         else {

@@ -42,17 +42,19 @@ export default class Tile {
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+
+        this.meshes = {}; // renderable VBO meshes keyed by style
     }
 
     static create(spec) { return new Tile(spec); }
 
     freeResources() {
-        if (this != null && this.gl_geometry != null) {
-            for (var p in this.gl_geometry) {
-                this.gl_geometry[p].destroy();
+        if (this != null && this.meshes != null) {
+            for (var p in this.meshes) {
+                this.meshes[p].destroy();
             }
-            this.gl_geometry = null;
         }
+        this.meshes = {};
     }
 
     destroy() {
@@ -222,22 +224,22 @@ export default class Tile {
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    finalizeGeometry(styles) {
-        var vertex_data = this.vertex_data;
-        // Cleanup existing GL geometry objects
+    finalizeBuild(styles) {
+        // Cleanup existing VBOs
         this.freeResources();
-        this.gl_geometry = {};
 
-        // Create GL geometry objects
+        let vertex_data = this.vertex_data;
+
+        // Create VBOs
         for (var s in vertex_data) {
-            this.gl_geometry[s] = styles[s].makeGLGeometry(vertex_data[s]);
+            this.meshes[s] = styles[s].makeMesh(vertex_data[s]);
         }
 
         this.debug.geometries = 0;
         this.debug.buffer_size = 0;
-        for (var p in this.gl_geometry) {
-            this.debug.geometries += this.gl_geometry[p].geometry_count;
-            this.debug.buffer_size += this.gl_geometry[p].vertex_data.byteLength;
+        for (var p in this.meshes) {
+            this.debug.geometries += this.meshes[p].geometry_count;
+            this.debug.buffer_size += this.meshes[p].vertex_data.byteLength;
         }
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 

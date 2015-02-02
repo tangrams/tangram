@@ -1,10 +1,10 @@
-/* global GLGeometry */
+/* global VBOMesh */
 // Manage rendering for primitives
 import ShaderProgram from './shader_program';
 import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
-export default function GLGeometry (gl, vertex_data, vertex_layout, options)
+export default function VBOMesh (gl, vertex_data, vertex_layout, options)
 {
     options = options || {};
 
@@ -33,7 +33,7 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
 }
 
 // Render, by default with currently bound program, or otherwise with optionally provided one
-GLGeometry.prototype.render = function (options = {})
+VBOMesh.prototype.render = function (options = {})
 {
     if (!this.valid) {
         return false;
@@ -57,12 +57,12 @@ GLGeometry.prototype.render = function (options = {})
     return true;
 };
 
-GLGeometry.prototype.destroy = function ()
+VBOMesh.prototype.destroy = function ()
 {
     if (!this.valid) {
         return false;
     }
-    log.trace('GLGeometry.destroy: delete buffer of size ' + this.vertex_data.byteLength);
+    log.trace('VBOMesh.destroy: delete buffer of size ' + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
     this.buffer = null;
     delete this.vertex_data;

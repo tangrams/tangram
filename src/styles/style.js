@@ -3,7 +3,7 @@
 import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
-import GLGeometry from '../gl/gl_geom';
+import VBOMesh from '../gl/vbo_mesh';
 import Builders from '../builders';
 import Texture from '../gl/texture';
 import {MethodNotImplemented} from '../errors';
@@ -265,8 +265,8 @@ export var Style = {
         this.preloadTextures();
     },
 
-    makeGLGeometry (vertex_data) {
-        return new GLGeometry(this.gl, vertex_data, this.vertex_layout);
+    makeMesh (vertex_data) {
+        return new VBOMesh(this.gl, vertex_data, this.vertex_layout);
     },
 
     compile () {
