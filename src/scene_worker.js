@@ -8,7 +8,7 @@ import Tile from './tile';
 import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
 import {parseRules} from './rule';
-import {Builders} from './builders';
+import Builders from './builders';
 import Texture from './gl/texture';
 
 export var SceneWorker = {

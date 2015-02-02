@@ -1,7 +1,9 @@
 import {Vector} from './vector';
 import {Geo} from './geo';
 import {GL} from './gl/gl';
-export var Builders = {};
+
+var Builders;
+export default Builders = {};
 
 Builders.debug = false;
 

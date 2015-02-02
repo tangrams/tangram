@@ -4,7 +4,7 @@ import {Style} from './style';
 import {StyleParser} from './style_parser';
 import gl from '../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../gl/vertex_layout';
-import {Builders} from '../builders';
+import Builders from '../builders';
 
 export var Points = Object.create(Style);
 
