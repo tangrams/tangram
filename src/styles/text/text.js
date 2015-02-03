@@ -60,9 +60,6 @@ Object.assign(Text, {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
 
-        this.canvas.width = 256;
-        this.canvas.height = 256;
-
         this.setFont({ size: 12 });
 
         this.texture.setCanvas(this.canvas);
@@ -117,14 +114,17 @@ Object.assign(Text, {
         }
 
         // Find smallest power-of-2 texture size
-        // let texture_size = Utils.fitPowerOf2(widest, height);
-        let texture_size = 256;
+        let texture_size = Utils.fitPowerOf2(widest, height);
+        // let texture_size = 512;
 
         console.log(`text summary for tile ${tile}: ${widest} widest, ${height} total height, fits in ${texture_size}x${texture_size}px`);
 
-        // this.canvas.width = texture_size;
-        // this.canvas.height = texture_size;
+        this.canvas.width = texture_size;
+        this.canvas.height = texture_size;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
+        this.setFont({ size: 12 });
 
         for (let text in this.texts[tile]) {
             let info = this.texts[tile][text];
