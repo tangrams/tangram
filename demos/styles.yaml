@@ -42,6 +42,36 @@ lighting:
 
 styles:
 
+    icons:
+        extends: polygons
+        animated: true # only needed for bouncy effect
+        texcoords: true
+        texture:
+            url: demos/images/poi_icons_32.png
+            filtering: nearest
+            sprites:
+                # each sprite is defined as: [x origin, y origin, width, height]
+                plane: [0, 0, 32, 32]
+                tree: [0, 185, 32, 32]
+                sunburst: [0, 629, 32, 32]
+                restaurant: [0, 777, 32, 32]
+                cafe: [0, 814, 32, 32]
+                museum: [0, 518, 32, 32]
+        shaders:
+            uniforms:
+                bouncy: false
+            transforms:
+                vertex: |
+                    // Bouncy icons
+                    if (bouncy) {
+                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
+                    }
+                fragment: |
+                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+                    if (color.a < .5) {
+                        discard;
+                    }
+
     water:
         extends: polygons
         animated: true
@@ -140,34 +170,6 @@ styles:
             transforms:
                 fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
-
-    icons:
-        extends: polygons
-        animated: true # only needed for bouncy effect
-        texcoords: true
-        texture:
-            url: demos/images/poi_icons_32.png
-            filtering: nearest
-            sprites:
-                # each sprite is defined as: [x origin, y origin, width, height]
-                plane: [0, 0, 32, 32]
-                tree: [0, 185, 32, 32]
-                sunburst: [0, 629, 32, 32]
-                restaurant: [0, 777, 32, 32]
-                cafe: [0, 814, 32, 32]
-                museum: [0, 518, 32, 32]
-        shaders:
-            uniforms:
-                bouncy: true
-            transforms:
-                vertex: |
-                    // Bouncy icons
-                    if (bouncy) {
-                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
-                    }
-                fragment: |
-                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
-
     uv_test:
         extends: polygons
         texcoords: true
@@ -177,6 +179,21 @@ styles:
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
+
+    # depth view
+    depth:
+        extends: polygons
+        shaders:
+            transforms:
+                fragment: |
+                    color = vec4(vec3(v_position.z / 256.), 1.);
+
+                    // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
+                    /*float ndcDepth =
+                        (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
+                        (gl_DepthRange.far - gl_DepthRange.near);
+                    float clipDepth = ndcDepth / gl_FragCoord.w;
+                    color = vec4((clipDepth * 0.5) + 0.5);*/
 
     # dynamic uniform tests
     # polygons:
@@ -476,14 +493,30 @@ layers:
             style:
                 color: [.2, .2, .6]
 
-    pois:
+    # icons:
+    #     geometry:
+    #         source: osm
+    #         filter: pois
+
+    #     # filter: function() { return feature.name == null; }
+    #     style:
+    #         name: icons
+    #         sprite: tree
+    #         size: [[13, 16px], [14, 24px], [15, 32px]]
+    #         color: [1, 1, 1]
+    #         # order: 5
+    #         order: 4.5
+    #         # order: function() { if (Math.random() > .5) { return 4.9; } else { return 3.95; } }
+
+    # pois:
+    labels:
         geometry:
             source: osm
             filter: pois
 
         filter: { name: true }
         style:
-            name: points
+            name: text
             size: 10px
 
             # name: icons
@@ -492,21 +525,22 @@ layers:
 
             # visible: false
             order: 5
+            # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
             color: [1, 1, 0]
 
         # examples of different icons mapped to faeture properties
-        restaurant:
-            filter: { kind: restaurant }
-            style:
-                sprite: restaurant
+        # restaurant:
+        #     filter: { kind: restaurant }
+        #     style:
+        #         sprite: restaurant
 
-        cafe:
-            filter: { kind: cafe }
-            style:
-                sprite: cafe
+        # cafe:
+        #     filter: { kind: cafe }
+        #     style:
+        #         sprite: cafe
 
-        culture:
-            filter: { kind: [museum, library] }
-            style:
-                sprite: museum
+        # culture:
+        #     filter: { kind: [museum, library] }
+        #     style:
+        #         sprite: museum
