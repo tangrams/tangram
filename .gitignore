@@ -3,6 +3,9 @@
 # jshint config
 .jshintrc
 
+# generated shaders
+src/gl/shader_sources.js
+
 node_modules
 
 # a make target for npm install
