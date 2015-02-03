@@ -360,9 +360,11 @@ export var Style = {
     // Set style uniforms on currently bound program
     setUniforms () {
         var program = ShaderProgram.current;
-        if (program != null && this.shaders != null && this.shaders.uniforms != null) {
-            program.setUniforms(this.shaders.uniforms);
+        if (!program) {
+            return;
         }
+
+        program.setUniforms(this.shaders && this.shaders.uniforms, true); // reset texture unit to 0
     },
 
     update () {

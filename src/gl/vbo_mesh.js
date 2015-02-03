@@ -15,6 +15,7 @@ export default function VBOMesh (gl, vertex_data, vertex_layout, options)
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
     this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
+    this.uniforms = options.uniforms;
 
     this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
     this.geometry_count = this.vertex_count / this.vertices_per_geometry;
@@ -48,12 +49,22 @@ VBOMesh.prototype.render = function (options = {})
     var program = options.program || ShaderProgram.current;
     program.use();
 
+    if (this.uniforms) {
+        program.saveUniforms(this.uniforms);
+        program.setUniforms(this.uniforms, false); // don't reset texture unit
+    }
+
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     this.vertex_layout.enable(this.gl, program);
 
     // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
     // VertexArrayObject.bind(null);
+
+    if (this.uniforms) {
+        program.restoreUniforms(this.uniforms);
+    }
+
     return true;
 };
 

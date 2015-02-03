@@ -285,7 +285,7 @@ ShaderProgram.prototype.ensureUniforms = function (uniforms) {
 };
 
 // Set uniforms from a JS object, with inferred types
-ShaderProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
+ShaderProgram.prototype.setUniforms = function (uniforms, reset_texture_unit = true) {
     if (!this.compiled) {
         return;
     }
@@ -293,13 +293,10 @@ ShaderProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
     // TODO: only update uniforms when changed
 
     // Texture units must be tracked and incremented each time a texture sampler uniform is set.
-    // By default, the texture unit is reset to 0 each time setUniforms is called, but an explicit
-    // texture unit # can also be passed in, for cases where multiple calls to setUniforms are
-    // needed, and/or if other code may be setting uniform values directly.
-    if (typeof texture_unit === 'number') {
-        this.texture_unit = texture_unit;
-    }
-    else {
+    // By default, the texture unit is reset to 0 each time setUniforms is called, but they can
+    // also be preserved, for example in cases where multiple calls to setUniforms are expected
+    // (e.g. program-specific uniforms followed by mesh-specific ones).
+    if (reset_texture_unit) {
         this.texture_unit = 0;
     }
 
@@ -318,6 +315,31 @@ ShaderProgram.prototype.setUniforms = function (uniforms, texture_unit = null) {
     }
 };
 
+// Cache some or all uniform values so they can be restored
+ShaderProgram.prototype.saveUniforms = function (subset) {
+    let uniforms = subset || this.uniforms;
+    for (let u in uniforms) {
+        let uniform = this.uniforms[u];
+        if (uniform) {
+            uniform.saved_value = uniform.value;
+        }
+    }
+    this.saved_texture_unit = this.texture_unit || 0;
+};
+
+// Restore some or all uniforms to saved values
+ShaderProgram.prototype.restoreUniforms = function (subset) {
+    let uniforms = subset || this.uniforms;
+    for (let u in uniforms) {
+        let uniform = this.uniforms[u];
+        if (uniform && uniform.saved_value) {
+            uniform.value = uniform.saved_value;
+            this.updateUniform(u);
+        }
+    }
+    this.texture_unit = this.saved_texture_unit || 0;
+};
+
 // Set a texture uniform, finds texture by name or creates a new one
 ShaderProgram.prototype.setTextureUniform = function (uniform_name, texture_name) {
     var texture = Texture.textures[texture_name];
@@ -333,7 +355,7 @@ ShaderProgram.prototype.setTextureUniform = function (uniform_name, texture_name
 
 // ex: program.uniform('3f', 'position', x, y, z);
 // TODO: only update uniforms when changed
-ShaderProgram.prototype.uniform = function (method, name, ...values) // 'values' is a method-appropriate arguments list
+ShaderProgram.prototype.uniform = function (method, name, ...value) // 'value' is a method-appropriate arguments list
 {
     if (!this.compiled) {
         return;
@@ -343,7 +365,7 @@ ShaderProgram.prototype.uniform = function (method, name, ...values) // 'values'
     uniform.name = name;
     uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
     uniform.method = 'uniform' + method;
-    uniform.values = values;
+    uniform.value = value;
     this.updateUniform(name);
 };
 
@@ -360,7 +382,7 @@ ShaderProgram.prototype.updateUniform = function (name)
     }
 
     this.use();
-    this.gl[uniform.method].apply(this.gl, [uniform.location].concat(uniform.values)); // call appropriate GL uniform method and pass through arguments
+    this.gl[uniform.method].apply(this.gl, [uniform.location].concat(uniform.value)); // call appropriate GL uniform method and pass through arguments
 };
 
 // Refresh uniform locations and set to last cached values
