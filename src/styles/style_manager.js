@@ -5,8 +5,8 @@ import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import {Style} from './style';
-import {Polygons} from './polygons';
-import {Points} from './points';
+import {Polygons} from './polygons/polygons';
+import {Points} from './points/points';
 
 import log from 'loglevel';
 
@@ -25,12 +25,12 @@ StyleManager.init = function () {
     ShaderProgram.removeTransform('globals');
 
     // Layer re-ordering function
-    ShaderProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+    ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
 
     // Spherical environment map
     ShaderProgram.addTransform('globals', `
         #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['modules/spherical_environment_map']}
+        ${shaderSources['gl/shaders/spherical_environment_map']}
         #endif
     `);
 

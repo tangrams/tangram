@@ -1,10 +1,10 @@
 // Polygon rendering style
 
-import {Style} from './style';
-import {StyleParser} from './style_parser';
-import gl from '../gl/constants'; // web workers don't have access to GL context, so import all GL constants
-import VertexLayout from '../gl/vertex_layout';
-import Builders from './builders';
+import {Style} from '../style';
+import {StyleParser} from '../style_parser';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
+import Builders from '../builders';
 
 export var Polygons = Object.create(Style);
 
@@ -16,8 +16,8 @@ Object.assign(Polygons, {
         Style.init.apply(this);
 
         // Base shaders
-        this.vertex_shader_key = 'polygon_vertex';
-        this.fragment_shader_key = 'polygon_fragment';
+        this.vertex_shader_key = 'styles/polygons/polygons.vertex';
+        this.fragment_shader_key = 'styles/polygons/polygons.fragment';
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines['WORLD_POSITION_WRAP'] = 100000;

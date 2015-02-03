@@ -309,7 +309,7 @@ export var Style = {
                 this.selection_program = new ShaderProgram(
                     this.gl,
                     shaderSources[this.vertex_shader_key],
-                    shaderSources['selection_fragment'],
+                    shaderSources['gl/shaders/selection_fragment'],
                     {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
