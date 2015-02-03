@@ -1,6 +1,10 @@
+// Geometry building functions
+
 import {Vector} from '../vector';
 import Geo from '../geo';
-import {GL} from '../gl/gl';
+
+import libtess from 'libtess';
+import log from 'loglevel';
 
 var Builders;
 export default Builders = {};
@@ -45,7 +49,7 @@ Builders.buildPolygons = function (
         }
 
         // Tessellate
-        var vertices = GL.triangulatePolygon(polygon);
+        var vertices = Builders.triangulatePolygon(polygon);
 
         // Add vertex data
         var num_vertices = vertices.length;
@@ -579,6 +583,63 @@ Builders.buildQuadsForPoints = function (
 };
 
 /* Utility functions */
+
+// Triangulation using libtess.js port of gluTesselator
+// https://github.com/brendankenny/libtess.js
+Builders.tesselator = (function initTesselator() {
+    var tesselator = new libtess.GluTesselator();
+
+    // Called for each vertex of tesselator output
+    function vertexCallback(data, polyVertArray) {
+        polyVertArray.push([data[0], data[1]]);
+    }
+
+    // Called when segments intersect and must be split
+    function combineCallback(coords, data, weight) {
+        return coords;
+    }
+
+    // Called when a vertex starts or stops a boundary edge of a polygon
+    function edgeCallback(flag) {
+        // No-op callback to force simple triangle primitives (no triangle strips or fans).
+        // See: http://www.glprogramming.com/red/chapter11.html
+        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
+        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
+        // called only with GL_TRIANGLES."
+        log.trace('Builders.tesselator: edge flag: ' + flag);
+    }
+
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
+    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
+
+    // Brendan Kenny:
+    // libtess will take 3d verts and flatten to a plane for tesselation
+    // since only doing 2d tesselation here, provide z=1 normal to skip
+    // iterating over verts only to get the same answer.
+    // comment out to test normal-generation code
+    tesselator.gluTessNormal(0, 0, 1);
+
+    return tesselator;
+})();
+
+Builders.triangulatePolygon = function (contours) {
+    var triangleVerts = [];
+    Builders.tesselator.gluTessBeginPolygon(triangleVerts);
+
+    for (var i = 0; i < contours.length; i++) {
+        Builders.tesselator.gluTessBeginContour();
+        var contour = contours[i];
+        for (var j = 0; j < contour.length; j ++) {
+            var coords = [contour[j][0], contour[j][1], 0];
+            Builders.tesselator.gluTessVertex(coords, coords);
+        }
+        Builders.tesselator.gluTessEndContour();
+    }
+
+    Builders.tesselator.gluTessEndPolygon();
+    return triangleVerts;
+};
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
 Builders.isOnTileEdge = function (pa, pb, options) {

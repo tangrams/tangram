@@ -3,7 +3,7 @@ import Geo from './geo';
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
-import {GL} from './gl/gl';
+import Context from './gl/context';
 import Builders from './styles/builders';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
@@ -110,7 +110,7 @@ Scene.prototype.init = function () {
                 this.canvas.style.zIndex = -1;
                 this.container.appendChild(this.canvas);
 
-                this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
+                this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
                 this.selection = new FeatureSelection(this.gl, this.workers);
 

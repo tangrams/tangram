@@ -2,7 +2,6 @@
 // GL program wrapper to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma transforms into shaders), etc.
 
-import {GL} from './gl';
 import GLSL from './glsl';
 import Texture from './texture';
 
@@ -166,7 +165,7 @@ ShaderProgram.prototype.compile = function () {
 
     // Compile & set uniforms to cached values
     try {
-        this.program = GL.updateProgram(this.gl, this.program, this.computed_vertex_source, this.computed_fragment_source);
+        this.program = ShaderProgram.updateProgram(this.gl, this.program, this.computed_vertex_source, this.computed_fragment_source);
         this.compiled = true;
         this.compiling = false;
     }
@@ -406,4 +405,72 @@ ShaderProgram.prototype.attribute = function (name)
     // attrib.size = info.size;
 
     return attrib;
+};
+
+// Compile & link a WebGL program from provided vertex and fragment shader sources
+// update a program if one is passed in. Create one if not. Alert and don't update anything if the shaders don't compile.
+ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragment_shader_source) {
+    try {
+        var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
+        var fragment_shader = ShaderProgram.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
+    }
+    catch(err) {
+        log.error(err);
+        throw err;
+    }
+
+    gl.useProgram(null);
+    if (program != null) {
+        var old_shaders = gl.getAttachedShaders(program);
+        for(var i = 0; i < old_shaders.length; i++) {
+            gl.detachShader(program, old_shaders[i]);
+        }
+    } else {
+        program = gl.createProgram();
+    }
+
+    if (vertex_shader == null || fragment_shader == null) {
+        return program;
+    }
+
+    gl.attachShader(program, vertex_shader);
+    gl.attachShader(program, fragment_shader);
+
+    gl.deleteShader(vertex_shader);
+    gl.deleteShader(fragment_shader);
+
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        var program_error = new Error(
+            `WebGL program error:
+            VALIDATE_STATUS: ${gl.getProgramParameter(program, gl.VALIDATE_STATUS)}
+            ERROR: ${gl.getError()}
+            --- Vertex Shader ---
+            ${vertex_shader_source}
+            --- Fragment Shader ---
+            ${fragment_shader_source}`);
+        log.error(program_error);
+        throw program_error;
+    }
+
+    return program;
+};
+
+// Compile a vertex or fragment shader from provided source
+ShaderProgram.createShader = function (gl, source, type) {
+    var shader = gl.createShader(type);
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        var shader_error =
+            "WebGL shader error:\n" +
+            (type === gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " SHADER:\n" +
+            gl.getShaderInfoLog(shader);
+        throw shader_error;
+    }
+
+    return shader;
 };

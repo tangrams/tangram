@@ -12,7 +12,6 @@ import {SceneWorker} from '../src/scene_worker';
 // Additional modules are exposed for debugging
 import log from 'loglevel';
 import Geo from './geo';
-import GL from './gl/gl';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
@@ -28,7 +27,6 @@ var debug = {
     log,
     Utils,
     Geo,
-    GL,
     GLSL,
     ShaderProgram,
     Texture,
