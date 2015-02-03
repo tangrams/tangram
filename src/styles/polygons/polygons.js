@@ -1,11 +1,10 @@
 // Polygon rendering style
 
-import {Style} from './style';
-import {StyleParser} from './style_parser';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
-import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
-
+import {Style} from '../style';
+import {StyleParser} from '../style_parser';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
+import Builders from '../builders';
 
 export var Polygons = Object.create(Style);
 
@@ -17,8 +16,8 @@ Object.assign(Polygons, {
         Style.init.apply(this);
 
         // Base shaders
-        this.vertex_shader_key = 'polygon_vertex';
-        this.fragment_shader_key = 'polygon_fragment';
+        this.vertex_shader_key = 'styles/polygons/polygons.vertex';
+        this.fragment_shader_key = 'styles/polygons/polygons.fragment';
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines['WORLD_POSITION_WRAP'] = 100000;
@@ -46,7 +45,7 @@ Object.assign(Polygons, {
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
         }
 
-        this.vertex_layout = new GLVertexLayout(attribs);
+        this.vertex_layout = new VertexLayout(attribs);
     },
 
     _parseFeature (feature, rule_style, context) {
@@ -137,7 +136,7 @@ Object.assign(Polygons, {
         if (style.color) {
             // Extruded polygons (e.g. 3D buildings)
             if (style.extrude && style.height) {
-                GLBuilders.buildExtrudedPolygons(
+                Builders.buildExtrudedPolygons(
                     polygons,
                     style.z, style.height, style.min_height,
                     vertex_data, vertex_template,
@@ -147,7 +146,7 @@ Object.assign(Polygons, {
             }
             // Regular polygons
             else {
-                GLBuilders.buildPolygons(
+                Builders.buildPolygons(
                     polygons,
                     vertex_data, vertex_template,
                     { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
@@ -168,7 +167,7 @@ Object.assign(Polygons, {
             vertex_template[this.vertex_layout.index.a_layer] += 0.0001;
 
             for (var mpc=0; mpc < polygons.length; mpc++) {
-                GLBuilders.buildPolylines(
+                Builders.buildPolylines(
                     polygons[mpc],
                     style.outline.width,
                     vertex_data,
@@ -190,7 +189,7 @@ Object.assign(Polygons, {
 
         // Main line
         if (style.color && style.width) {
-            GLBuilders.buildPolylines(
+            Builders.buildPolylines(
                 lines,
                 style.width,
                 vertex_data,
@@ -218,7 +217,7 @@ Object.assign(Polygons, {
             // (see complex road interchanges where casing outlines should be interleaved by road type)
             vertex_template[this.vertex_layout.index.a_layer] -= 0.0001;
 
-            GLBuilders.buildPolylines(
+            Builders.buildPolylines(
                 lines,
                 style.width + 2 * style.outline.width,
                 vertex_data,
@@ -240,7 +239,7 @@ Object.assign(Polygons, {
 
         var vertex_template = this.makeVertexTemplate(style);
 
-        GLBuilders.buildQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             style.size[0] || style.size,
             style.size[1] || style.size,

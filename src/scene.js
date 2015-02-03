@@ -1,12 +1,12 @@
 /*global Scene */
-import {Geo} from './geo';
-import Utils from './utils';
-import WorkerBroker from './worker_broker';
-import subscribeMixin from './subscribe';
-import {GL} from './gl/gl';
-import {GLBuilders} from './gl/gl_builders';
-import GLProgram from './gl/gl_program';
-import GLTexture from './gl/gl_texture';
+import Geo from './geo';
+import Utils from './utils/utils';
+import WorkerBroker from './utils/worker_broker';
+import subscribeMixin from './utils/subscribe';
+import Context from './gl/context';
+import Builders from './styles/builders';
+import ShaderProgram from './gl/shader_program';
+import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
@@ -28,8 +28,8 @@ if (Utils.isMainThread) {
 
 Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.setTileScale(Scene.tile_scale);
-GLBuilders.setTileScale(Scene.tile_scale);
-GLProgram.defines.TILE_SCALE = Scene.tile_scale;
+Builders.setTileScale(Scene.tile_scale);
+ShaderProgram.defines.TILE_SCALE = Scene.tile_scale;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default function Scene(config_source, options) {
@@ -110,7 +110,7 @@ Scene.prototype.init = function () {
                 this.canvas.style.zIndex = -1;
                 this.container.appendChild(this.canvas);
 
-                this.gl = GL.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
+                this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
                 this.resizeMap(this.container.clientWidth, this.container.clientHeight);
                 this.selection = new FeatureSelection(this.gl, this.workers);
 
@@ -145,7 +145,7 @@ Scene.prototype.destroy = function () {
         this.gl.deleteFramebuffer(this.fbo);
         this.fbo = null;
 
-        GLTexture.destroy(this.gl);
+        Texture.destroy(this.gl);
         StyleManager.destroy(this.gl);
         this.styles = {};
 
@@ -504,7 +504,7 @@ Scene.prototype.renderStyle = function (style, program) {
     for (var t in this.renderable_tiles) {
         var tile = this.renderable_tiles[t];
 
-        if (tile.gl_geometry[style] != null) {
+        if (tile.meshes[style] != null) {
             // Setup style if encountering for first time this frame
             // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
             if (first_for_style === true) {
@@ -544,8 +544,8 @@ Scene.prototype.renderStyle = function (style, program) {
             program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
             // Render tile
-            tile.gl_geometry[style].render();
-            render_count += tile.gl_geometry[style].geometry_count;
+            tile.meshes[style].render();
+            render_count += tile.meshes[style].geometry_count;
         }
     }
 
@@ -835,7 +835,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
         }
 
         if (!tile.error) {
-            tile.finalizeGeometry(this.styles);
+            tile.finalizeBuild(this.styles);
             this.dirty = true;
         }
         else {

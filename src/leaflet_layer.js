@@ -1,4 +1,4 @@
-import Utils from './utils';
+import Utils from './utils/utils';
 import Scene from './scene';
 
 import log from 'loglevel';

@@ -1,10 +1,10 @@
 // Points rendering style w/simple distance field rendering
 
-import {Style} from './style';
-import {StyleParser} from './style_parser';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
-import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
+import {Style} from '../style';
+import {StyleParser} from '../style_parser';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
+import Builders from '../builders';
 
 export var Points = Object.create(Style);
 
@@ -16,14 +16,14 @@ Object.assign(Points, {
         Style.init.apply(this);
 
         // Base shaders
-        this.vertex_shader_key = 'point_vertex';
-        this.fragment_shader_key = 'point_fragment';
+        this.vertex_shader_key = 'styles/points/points.vertex';
+        this.fragment_shader_key = 'styles/points/points.fragment';
 
         // Turn feature selection on
         this.selection = true;
 
         // Vertex attributes
-        this.vertex_layout = new GLVertexLayout([
+        this.vertex_layout = new VertexLayout([
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
@@ -67,7 +67,7 @@ Object.assign(Points, {
 
         var vertex_template = this.makeVertexTemplate(style);
 
-        GLBuilders.buildQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             style.size[0] || style.size,
             style.size[1] || style.size,

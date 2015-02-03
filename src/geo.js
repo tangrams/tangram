@@ -1,6 +1,7 @@
 // Miscellaneous geo functions
 
-export var Geo = {};
+var Geo;
+export default Geo = {};
 
 // Projection constants
 Geo.tile_size = 256;

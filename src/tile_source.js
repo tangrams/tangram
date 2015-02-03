@@ -1,8 +1,8 @@
 /*jshint worker: true */
 /*globals TileSource, topojson */
-import {Geo}   from './geo';
-import {MethodNotImplemented} from './errors';
-import Utils from './utils';
+import Geo from './geo';
+import {MethodNotImplemented} from './utils/errors';
+import Utils from './utils/utils';
 import log from 'loglevel';
 
 export default class TileSource {

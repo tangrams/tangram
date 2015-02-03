@@ -1,22 +1,20 @@
-BROWSERIFY = node_modules/.bin/browserify
-UGLIFY = node_modules/.bin/uglifyjs
+# BROWSERIFY = node_modules/.bin/browserify
+UGLIFY = ./node_modules/.bin/uglifyjs
 KARMA = ./node_modules/karma/bin/karma
 JSHINT = ./node_modules/.bin/jshint
 
 all: \
-	src/gl/shader_sources.js \
 	dist/tangram.min.js \
 	dist/tangram.debug.js
 
-# browserify --debug adds source maps
-dist/tangram.debug.js: .npm $(shell $(BROWSERIFY) --list -t es6ify src/module.js)
+dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
 	node build.js --debug=true --require './src/module.js' > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
 
 # Process shaders into strings and export as a module
-src/gl/shader_sources.js: $(wildcard src/gl/shaders/modules/*.glsl) $(wildcard src/gl/shaders/*.glsl)
+src/gl/shader_sources.js: $(shell find src/ -name '*.glsl')
 	bash ./build_shaders.sh > src/gl/shader_sources.js
 
 build-testable: lint dist/tangram.debug.js

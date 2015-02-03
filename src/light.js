@@ -1,5 +1,5 @@
 /*global Light */
-import GLProgram from './gl/gl_program';
+import ShaderProgram from './gl/shader_program';
 
 // Abstract base class
 export default class Light {
@@ -49,8 +49,8 @@ class PointLight extends Light {
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
         this.backlight = options.backlight || false;
 
-        GLProgram.removeTransform(Light.transform);
-        GLProgram.addTransform(Light.transform, `
+        ShaderProgram.removeTransform(Light.transform);
+        ShaderProgram.addTransform(Light.transform, `
             vec3 pointLight(
                 vec4 position,
                 vec3 normal,
@@ -111,8 +111,8 @@ class SpotLight extends Light {
         this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.2;
 
-        GLProgram.removeTransform(Light.transform);
-        GLProgram.addTransform(Light.transform, `
+        ShaderProgram.removeTransform(Light.transform);
+        ShaderProgram.addTransform(Light.transform, `
             vec3 spotLight(
                 vec4 position,
                 vec3 normal,
@@ -198,8 +198,8 @@ class DirectionalLight extends Light {
         this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
 
-        GLProgram.removeTransform(Light.transform);
-        GLProgram.addTransform(Light.transform, `
+        ShaderProgram.removeTransform(Light.transform);
+        ShaderProgram.addTransform(Light.transform, `
             vec3 directionalLight (
                 vec3 normal,
                 vec3 color,
@@ -246,8 +246,8 @@ class NoLight extends Light {
         super(scene);
         this.type = 'none';
 
-        GLProgram.removeTransform(Light.transform);
-        GLProgram.addTransform(Light.transform, `
+        ShaderProgram.removeTransform(Light.transform);
+        ShaderProgram.addTransform(Light.transform, `
             vec3 calculateLighting(
                 vec4 position,
                 vec3 normal,

@@ -1,6 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
-import {parseRules, matchFeature, groupProperties, cloneStyle} from '../src/rule';
+import {parseRules, matchFeature, groupProperties, cloneStyle} from '../src/styles/rule';
 import sampleStyle from './fixtures/sample-style.json';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);

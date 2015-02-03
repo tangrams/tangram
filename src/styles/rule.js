@@ -1,4 +1,4 @@
-import {StyleParser} from './styles/style_parser';
+import {StyleParser} from './style_parser';
 
 export var whiteList = ['filter', 'style', 'geometry'];
 

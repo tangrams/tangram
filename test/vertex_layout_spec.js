@@ -1,10 +1,10 @@
 import chai from 'chai';
 let assert = chai.assert;
-import GLVertexLayout from '../src/gl/gl_vertex_layout';
-import {GLVertexData} from '../src/gl/gl_vertex_layout';
-import gl from '../src/gl/gl_constants';
+import VertexLayout from '../src/gl/vertex_layout';
+import VertexData from '../src/gl/vertex_data';
+import gl from '../src/gl/constants';
 
-describe('GLVertexLayout', () => {
+describe('VertexLayout', () => {
 
     // Note: a_color is intentionally not a multiple of 4, to test padding
     let attribs =  [
@@ -16,11 +16,11 @@ describe('GLVertexLayout', () => {
     describe('.constructor(attribs)', () => {
         let subject;
         beforeEach(() => {
-            subject = new GLVertexLayout(attribs);
+            subject = new VertexLayout(attribs);
         });
 
         it('returns a new instance', () => {
-            assert.instanceOf(subject, GLVertexLayout);
+            assert.instanceOf(subject, VertexLayout);
         });
         it('calculates the right vertex stride', () => {
             assert.equal(subject.stride, 20);
@@ -32,12 +32,12 @@ describe('GLVertexLayout', () => {
         let vertex_data;
 
         beforeEach(() => {
-            subject = new GLVertexLayout(attribs);
+            subject = new VertexLayout(attribs);
             vertex_data = subject.createVertexData();
         });
 
         it('creates a vertex data buffer', () => {
-            assert.instanceOf(vertex_data, GLVertexData);
+            assert.instanceOf(vertex_data, VertexData);
         });
     });
 
@@ -45,7 +45,7 @@ describe('GLVertexLayout', () => {
     //     // TODO: what is the right way to test GL context creation and programs?
 
     //     it('enables the expected GL program attributes', () => {
-    //         assert.instanceOf(subject, GLVertexLayout);
+    //         assert.instanceOf(subject, VertexLayout);
     //     });
 
     // });

@@ -1,18 +1,17 @@
 // Manage rendering styles
 
-import Utils from '../utils';
-import GLProgram from '../gl/gl_program';
+import Utils from '../utils/utils';
+import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import {Style} from './style';
-import {Polygons} from './polygons';
-import {Points} from './points';
+import {Polygons} from './polygons/polygons';
+import {Points} from './points/points';
 
 import log from 'loglevel';
 
 export var StyleManager = {};
 export var Styles = {};
-
 
 // Set the base object used to instantiate styles
 StyleManager.baseStyle = Style;
@@ -23,15 +22,15 @@ StyleManager.init = function () {
         return;
     }
 
-    GLProgram.removeTransform('globals');
+    ShaderProgram.removeTransform('globals');
 
     // Layer re-ordering function
-    GLProgram.addTransform('globals', shaderSources['modules/reorder_layers']);
+    ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
 
     // Spherical environment map
-    GLProgram.addTransform('globals', `
+    ShaderProgram.addTransform('globals', `
         #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['modules/spherical_environment_map']}
+        ${shaderSources['gl/shaders/spherical_environment_map']}
         #endif
     `);
 
