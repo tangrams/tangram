@@ -215,6 +215,15 @@ Utils.isPowerOf2 = function(value) {
     return (value & (value - 1)) === 0;
 };
 
+// Find smallest power of 2 that fits all values
+Utils.fitPowerOf2 = function(...vals) {
+    var size = 1;
+    while (vals.some(v => v > size)) {
+        size *= 2;
+    }
+    return size;
+};
+
 // Interpolate 'x' along a series of control points
 // 'points' is an array of control points in the form [x, y]
 //
