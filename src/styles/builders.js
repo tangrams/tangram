@@ -442,6 +442,9 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nA = Vector.neg(T[0]);
         nC = T[1];
         nB = Vector.neg(T[2]);
+        uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+        uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+        uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         addVertex(coords[1], nC, uC, constants);
         addVertex(coords[1], nA, uA, constants);
     }
