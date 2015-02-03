@@ -60,13 +60,19 @@ export var Style = {
     startData () {
         return {
             vertex_data: null,
+            uniforms: null,
             order: { min: Infinity, max: -Infinity } // reset to track order range within tile
         };
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile_data) {
-        return Promise.resolve(tile_data.vertex_data && tile_data.vertex_data.end().buffer);
+        if (tile_data.vertex_data) {
+            // Only keep final byte buffer
+            tile_data.vertex_data.end();
+            tile_data.vertex_data = tile_data.vertex_data.buffer;
+        }
+        return Promise.resolve(tile_data);
     },
 
     addFeature (feature, rule, context, tile_data) {
@@ -265,8 +271,8 @@ export var Style = {
         this.preloadTextures();
     },
 
-    makeMesh (vertex_data) {
-        return new VBOMesh(this.gl, vertex_data, this.vertex_layout);
+    makeMesh (vertex_data, { uniforms } = {}) {
+        return new VBOMesh(this.gl, vertex_data, this.vertex_layout, { uniforms });
     },
 
     compile () {

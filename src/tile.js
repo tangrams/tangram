@@ -155,20 +155,23 @@ export default class Tile {
         }
 
         // Finalize array buffer for each render style
-        tile.vertex_data = {};
+        tile.mesh_data = {};
         let queue = [];
         for (let style_name in tile_data) {
             let style = styles[style_name];
-            queue.push(style.endData(tile_data[style_name]).then((data) => {
-                if (data) {
-                    tile.vertex_data[style_name] = data;
+            queue.push(style.endData(tile_data[style_name]).then((style_data) => {
+                if (style_data) {
+                    tile.mesh_data[style_name] = {
+                        vertex_data: style_data.vertex_data,
+                        uniforms: style_data.uniforms
+                    };
 
                     // Track min/max order range
-                    if (tile_data[style_name].order.min < tile.order.min) {
-                        tile.order.min = tile_data[style_name].order.min;
+                    if (style_data.order.min < tile.order.min) {
+                        tile.order.min = style_data.order.min;
                     }
-                    if (tile_data[style_name].order.max > tile.order.max) {
-                        tile.order.max = tile_data[style_name].order.max;
+                    if (style_data.order.max > tile.order.max) {
+                        tile.order.max = style_data.order.max;
                     }
                 }
             }));
@@ -191,7 +194,7 @@ export default class Tile {
 
             // Return keys to be transfered to main thread
             return {
-                vertex_data: true
+                mesh_data: true
             };
         });
     }
@@ -228,11 +231,10 @@ export default class Tile {
         // Cleanup existing VBOs
         this.freeResources();
 
-        let vertex_data = this.vertex_data;
-
         // Create VBOs
-        for (var s in vertex_data) {
-            this.meshes[s] = styles[s].makeMesh(vertex_data[s]);
+        let mesh_data = this.mesh_data;
+        for (var s in mesh_data) {
+            this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
         }
 
         this.debug.geometries = 0;
@@ -243,7 +245,7 @@ export default class Tile {
         }
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 
-        delete this.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+        this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
     }
 
     remove() {
