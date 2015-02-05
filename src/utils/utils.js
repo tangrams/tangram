@@ -215,6 +215,10 @@ Utils.isPowerOf2 = function(value) {
     return (value & (value - 1)) === 0;
 };
 
+Utils.nextPowerOf2 = function(value) {
+    return Math.pow(2, Math.ceil(Math.log2(value)));
+};
+
 // Find smallest power of 2 that fits all values
 Utils.fitPowerOf2 = function(...vals) {
     var size = 1;

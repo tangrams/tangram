@@ -112,13 +112,13 @@ Object.assign(Text, {
         }
 
         // Find smallest power-of-2 texture size
-        let texture_size = Utils.fitPowerOf2(widest, height);
+        let texture_size = [ Utils.nextPowerOf2(widest), Utils.nextPowerOf2(height) ];
         //let texture_size = 512;
 
-        console.log(`text summary for tile ${tile}: ${widest} widest, ${height} total height, fits in ${texture_size}x${texture_size}px`);
+        console.log(`text summary for tile ${tile}: ${widest} widest, ${height} total height, fits in ${texture_size[0]}x${texture_size[1]}px`);
 
-        canvas.width = texture_size;
-        canvas.height = texture_size;
+        canvas.width = texture_size[0];
+        canvas.height = texture_size[1];
         this.ctx[tile].clearRect(0, 0, canvas.width, canvas.height);
 
         // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
@@ -132,7 +132,7 @@ Object.assign(Text, {
             info.texcoords = Builders.getTexcoordsForSprite(
                 info.position,
                 info.size,
-                [texture_size, texture_size]
+                texture_size
             );
         }
 
