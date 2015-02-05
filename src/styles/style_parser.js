@@ -152,51 +152,52 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
     };
 };
 
-StyleParser.convertUnits = function(val, context) {
+StyleParser.convertUnits = function(val, context, convert = true) {
     if (typeof val === 'string') {
         var units = val.match(/([0-9.]+)([a-z]+)/);
         if (units && units.length === 3) {
-            val = units[1];
+            val = parseFloat(units[1]);
             units = units[2];
         }
 
-        // Convert from pixels
-        if (units === 'px') {
-            val *= Geo.metersPerPixel(context.zoom);
-        }
-        // Convert from kilometers
-        else if (units === 'km') {
-            val *= 1000;
-        }
-        // Convert from string
-        else {
-            val = parseFloat(val);
+        if (convert) {
+            // Convert from pixels
+            if (units === 'px') {
+                val *= Geo.metersPerPixel(context.zoom);
+            }
+            // Convert from kilometers
+            else if (units === 'km') {
+                val *= 1000;
+            }
         }
     }
     else if (Array.isArray(val)) {
         // Array of arrays, e.g. zoom-interpolated stops
         if (val.every(v => { return Array.isArray(v); })) {
-            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context)]; });
+            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context, convert)]; });
         }
         // Array of values
         else {
-            return val.map(v => { return StyleParser.convertUnits(v, context); });
+            return val.map(v => { return StyleParser.convertUnits(v, context, convert); });
         }
     }
     return val;
 };
 
-StyleParser.parseDistance = function(val, context) {
+StyleParser.parseDistance = function(val, context, convert = true) {
     if (typeof val === 'function') {
         val = val(context);
     }
-    val = StyleParser.convertUnits(val, context);
+    val = StyleParser.convertUnits(val, context, convert);
     val = Utils.interpolate(context.zoom, val);
-    if (typeof val === 'number') {
-        val *= context.units_per_meter;
-    }
-    else if (Array.isArray(val)) {
-        val.forEach((v, i) => val[i] *= context.units_per_meter);
+
+    if (convert) {
+        if (typeof val === 'number') {
+            val *= context.units_per_meter;
+        }
+        else if (Array.isArray(val)) {
+            val.forEach((v, i) => val[i] *= context.units_per_meter);
+        }
     }
     return val;
 };
