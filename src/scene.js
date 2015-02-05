@@ -268,14 +268,19 @@ Scene.prototype.startZoom = function () {
     this.zooming = true;
 };
 
+// Choose the base zoom level to use for a given fractional zoom
+Scene.prototype.baseZoom = function (zoom) {
+    return Math.round(zoom);
+};
+
 Scene.prototype.preserve_tiles_within_zoom = 2;
 Scene.prototype.setZoom = function (zoom) {
     this.zooming = false;
 
     // Schedule tiles for removal on integer zoom level change
-    if (Math.round(zoom) !== Math.round(this.last_zoom)) {
-        var below = Math.round(zoom);
-        var above = Math.round(zoom);
+    if (this.baseZoom(zoom) !== this.baseZoom(this.last_zoom)) {
+        var below = this.baseZoom(zoom);
+        var above = this.baseZoom(zoom);
 
         log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
@@ -357,8 +362,8 @@ Scene.prototype.updateBounds = function () {
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
-    below = Math.min(Math.round(below), this.findMaxZoom() || below);
-    above = Math.min(Math.round(above), this.findMaxZoom() || above);
+    below = Math.min(below, this.findMaxZoom() || below);
+    above = Math.min(above, this.findMaxZoom() || above);
 
     var remove_tiles = [];
     for (var t in this.tiles) {

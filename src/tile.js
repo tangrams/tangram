@@ -283,7 +283,7 @@ export default class Tile {
     }
 
     update(scene) {
-        this.visible =  (this.coords.z === Math.round(scene.zoom)) ||
+        this.visible =  (this.coords.z === scene.baseZoom(scene.zoom)) ||
                         (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
 
         this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
@@ -295,8 +295,8 @@ export default class Tile {
 
         if (z > this.max_zoom) {
             zgap = z - this.max_zoom;
-            x = ~~(x / Math.pow(2, zgap));
-            y = ~~(y / Math.pow(2, zgap));
+            x = Math.floor(x / Math.pow(2, zgap));
+            y = Math.floor(y / Math.pow(2, zgap));
             z -= zgap;
         }
 
