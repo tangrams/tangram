@@ -352,7 +352,7 @@ Scene.prototype.updateBounds = function () {
         }
     };
 
-    // Mark tiles as visible/invisible
+    // Mark tiles as visible
     for (var tile of Utils.values(this.tiles)) {
         tile.update(this);
     }
@@ -765,13 +765,13 @@ Scene.prototype.rebuildGeometry = function () {
         this.syncConfigToWorker();
 
         // Rebuild visible tiles first, from center out
-        var tile, visible = [], invisible = [];
+        let tile, visible = [];
         for (tile of Utils.values(this.tiles)) {
             if (tile.visible === true) {
                 visible.push(tile);
             }
             else {
-                invisible.push(tile);
+                this.removeTile(tile.key);
             }
         }
 
@@ -779,20 +779,7 @@ Scene.prototype.rebuildGeometry = function () {
             return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
         });
 
-        for (tile of visible) {
-            tile.build(this);
-        }
-
-        for (tile of invisible) {
-            // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-            if (tile.isInZoom(this)) {
-                tile.build(this);
-            }
-            // Drop tiles outside current zoom
-            else {
-                this.removeTile(tile.key);
-            }
-        }
+        visible.forEach(tile => tile.build(this));
 
         this.updateActiveStyles();
         this.resetTime();
