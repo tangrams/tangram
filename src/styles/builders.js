@@ -596,7 +596,7 @@ Builders.buildSpriteQuadsForPoints = function (
     { texcoord_index, texcoord_scale }) {
 
     let w2 = width / 2;
-    let h2 = height / 2
+    let h2 = height / 2;
     let scaling = [
         [-w2, -h2],
         [w2, -h2],
@@ -608,8 +608,9 @@ Builders.buildSpriteQuadsForPoints = function (
     ];
 
     let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    let texcoords;
     if (texcoord_index) {
-        let texcoords = [
+        texcoords = [
             [min_u, min_v],
             [max_u, min_v],
             [max_u, max_v],
