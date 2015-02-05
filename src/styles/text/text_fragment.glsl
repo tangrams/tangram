@@ -5,6 +5,7 @@ uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
+uniform sampler2D label_atlas;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;

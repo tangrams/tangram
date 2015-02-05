@@ -39,7 +39,6 @@ Object.assign(Text, {
         this.texcoords = true;
 
         this.shaders.uniforms = {
-            label_atlas: 'labels',
             u_alpha_discard: .4
         };
 
@@ -48,59 +47,58 @@ Object.assign(Text, {
         }
 
         this.texts = {}; // unique texts, keyed by tile
+        this.texture = {};
+        this.ctx = {};
 
         this.size = 14;
     },
 
     setGL (gl) {
         Style.setGL.apply(this, arguments);
-
-        this.texture = new Texture(this.gl, 'labels', { filtering: 'nearest' });
-
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-
-        this.setFont({ size: 12 });
-
-        this.texture.setCanvas(this.canvas);
     },
 
     // Set font style params for canvas drawing
     // TODO: un-hardcode
-    setFont ({ size }) {
+    setFont ({ size }, tile) {
         this.size = size;
         this.buffer = 6; // pixel padding around text
 
-        this.ctx.font = `${this.size}px Helvetica`;
-        this.ctx.strokeStyle = 'black';
-        this.ctx.fillStyle = 'white';
-        this.ctx.lineWidth = 4;
-        this.ctx.miterLimit = 2;
+        this.ctx[tile].font = `${this.size}px Helvetica`;
+        this.ctx[tile].strokeStyle = 'black';
+        this.ctx[tile].fillStyle = 'white';
+        this.ctx[tile].lineWidth = 4;
+        this.ctx[tile].miterLimit = 2;
     },
 
     // Width and height of text based on current font style
-    textSize (text) {
+    textSize (text, tile) {
         return [
-            Math.ceil(this.ctx.measureText(text).width) + this.buffer * 2,
+            Math.ceil(this.ctx[tile].measureText(text).width) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y]) {
+    drawText (text, [x, y], tile) {
         // TODO: optional stroke
-        this.ctx.strokeText(text, x + this.buffer, y + this.buffer + this.size);
-        this.ctx.fillText(text, x + this.buffer, y + this.buffer + this.size);
+        this.ctx[tile].strokeText(text, x + this.buffer, y + this.buffer + this.size);
+        this.ctx[tile].fillText(text, x + this.buffer, y + this.buffer + this.size);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
     addTexts (tile, texts) {
+        var canvas = document.createElement('canvas');
+
+        this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'nearest' });
+        this.texture[tile].setCanvas(canvas);
+        this.ctx[tile] = canvas.getContext('2d');
         this.texts[tile] = texts;
 
+        this.setFont({ size: 12 }, tile);
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
         for (let text in this.texts[tile]) {
-            let size = this.textSize(text);
+            let size = this.textSize(text, tile);
 
             this.texts[tile][text] = {
                 size,
@@ -115,21 +113,21 @@ Object.assign(Text, {
 
         // Find smallest power-of-2 texture size
         let texture_size = Utils.fitPowerOf2(widest, height);
-        // let texture_size = 512;
+        //let texture_size = 512;
 
         console.log(`text summary for tile ${tile}: ${widest} widest, ${height} total height, fits in ${texture_size}x${texture_size}px`);
 
-        this.canvas.width = texture_size;
-        this.canvas.height = texture_size;
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        canvas.width = texture_size;
+        canvas.height = texture_size;
+        this.ctx[tile].clearRect(0, 0, canvas.width, canvas.height);
 
         // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
-        this.setFont({ size: 12 });
+        this.setFont({ size: 12 }, tile);
 
         for (let text in this.texts[tile]) {
             let info = this.texts[tile][text];
 
-            this.drawText(text, info.position);
+            this.drawText(text, info.position, tile);
 
             info.texcoords = Builders.getTexcoordsForSprite(
                 info.position,
@@ -138,7 +136,7 @@ Object.assign(Text, {
             );
         }
 
-        this.texture.update();
+        this.texture[tile].update();
 
         return Promise.resolve(this.texts[tile]);
     },
@@ -162,6 +160,8 @@ Object.assign(Text, {
         if (!count) {
             return Promise.resolve();
         }
+
+        tile_data.uniforms = { label_atlas: 'labels-'+tile };
 
         return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile]).then(texts => {
 
