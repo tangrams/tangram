@@ -42,36 +42,6 @@ lighting:
 
 styles:
 
-    icons:
-        extends: polygons
-        animated: true # only needed for bouncy effect
-        texcoords: true
-        texture:
-            url: demos/images/poi_icons_32.png
-            filtering: nearest
-            sprites:
-                # each sprite is defined as: [x origin, y origin, width, height]
-                plane: [0, 0, 32, 32]
-                tree: [0, 185, 32, 32]
-                sunburst: [0, 629, 32, 32]
-                restaurant: [0, 777, 32, 32]
-                cafe: [0, 814, 32, 32]
-                museum: [0, 518, 32, 32]
-        shaders:
-            uniforms:
-                bouncy: false
-            transforms:
-                vertex: |
-                    // Bouncy icons
-                    if (bouncy) {
-                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
-                    }
-                fragment: |
-                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
-                    if (color.a < .5) {
-                        discard;
-                    }
-
     water:
         extends: polygons
         animated: true
@@ -169,6 +139,41 @@ styles:
         shaders:
             transforms:
                 fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+
+    icons:
+        # extends: polygons
+        extends: sprites
+        animated: true
+        texture:
+            url: demos/images/poi_icons_32.png
+            filtering: mipmap
+            sprites:
+                # each sprite is defined as: [x origin, y origin, width, height]
+                plane: [0, 0, 32, 32]
+                tree: [0, 185, 32, 32]
+                sunburst: [0, 629, 32, 32]
+                restaurant: [0, 777, 32, 32]
+                cafe: [0, 814, 32, 32]
+                museum: [0, 518, 32, 32]
+        shaders:
+            transforms:
+                vertex: |
+                    //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
+                    shape.z *= u_time;
+                    position.y += sin(position.y + u_time*3.) * 10.;
+                fragment:
+                    // color.rgb = vec3(v_texcoord.xy, 0.);
+        # shaders:
+        #     uniforms:
+        #         bouncy: true
+        #     transforms:
+        #         vertex: |
+        #             // Bouncy icons
+        #             if (bouncy) {
+        #                 position.y += sin(v_world_position.y + u_time*3.) * 10.;
+        #             }
+        #         fragment: |
+        #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     uv_test:
         extends: polygons
@@ -493,21 +498,6 @@ layers:
             style:
                 color: [.2, .2, .6]
 
-    # icons:
-    #     geometry:
-    #         source: osm
-    #         filter: pois
-
-    #     # filter: function() { return feature.name == null; }
-    #     style:
-    #         name: icons
-    #         sprite: tree
-    #         size: [[13, 16px], [14, 24px], [15, 32px]]
-    #         color: [1, 1, 1]
-    #         # order: 5
-    #         order: 4.5
-    #         # order: function() { if (Math.random() > .5) { return 4.9; } else { return 3.95; } }
-
     # pois:
     labels:
         geometry:
@@ -516,31 +506,47 @@ layers:
 
         filter: { name: true }
         style:
-            name: text
-            size: 10px
+            # name: points
+            # size: 10px
 
-            # name: icons
-            # sprite: tree
+            # name: text
+
+            name: icons
+            sprite: tree
+            size: [32px, 32px]
             # size: [[13, 16px], [14, 24px], [15, 32px]]
+            # size: function() { return (parseInt(feature.id, 16) % 100); }
+            # angle: 90
+            angle: function() { return (parseInt(feature.id, 16) % 360); }
+            # scale: 1
 
             # visible: false
             order: 5
             # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
-            color: [1, 1, 0]
 
-        # examples of different icons mapped to faeture properties
-        # restaurant:
-        #     filter: { kind: restaurant }
+        # z17:
+        #     filter: { scene.zoom: { min: 17, max: 18 } }
         #     style:
-        #         sprite: restaurant
+        #         scale: 3
 
-        # cafe:
-        #     filter: { kind: cafe }
+        # z18:
+        #     filter: { scene.zoom: { min: 18 } }
         #     style:
-        #         sprite: cafe
+        #         size: [64, 64] #px
 
-        # culture:
-        #     filter: { kind: [museum, library] }
-        #     style:
-        #         sprite: museum
+        # examples of different icons mapped to feature properties
+        restaurant:
+            filter: { kind: restaurant }
+            style:
+                sprite: restaurant
+
+        cafe:
+            filter: { kind: cafe }
+            style:
+                sprite: cafe
+
+        culture:
+            filter: { kind: [museum, library] }
+            style:
+                sprite: museum

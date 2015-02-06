@@ -585,6 +585,67 @@ Builders.buildQuadsForPoints = function (
     }
 };
 
+// Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
+// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
+// of a sprite between two zoom levels.
+Builders.buildSpriteQuadsForPoints = function (
+    points,
+    width, height, angle, scale,
+    vertex_data, vertex_template,
+    scaling_index,
+    { texcoord_index, texcoord_scale }) {
+
+    let w2 = width / 2;
+    let h2 = height / 2;
+    let scaling = [
+        [-w2, -h2],
+        [w2, -h2],
+        [w2, h2],
+
+        [-w2, -h2],
+        [w2, h2],
+        [-w2, h2]
+    ];
+
+    let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    let texcoords;
+    if (texcoord_index) {
+        texcoords = [
+            [min_u, min_v],
+            [max_u, min_v],
+            [max_u, max_v],
+
+            [min_u, min_v],
+            [max_u, max_v],
+            [min_u, max_v]
+        ];
+    }
+
+    let num_points = points.length;
+    for (let p=0; p < num_points; p++) {
+        let point = points[p];
+
+        for (let pos=0; pos < 6; pos++) {
+            // Add texcoords
+            if (texcoord_index) {
+                vertex_template[texcoord_index + 0] = texcoords[pos][0];
+                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+            }
+
+            vertex_template[0] = point[0];
+            vertex_template[1] = point[1];
+
+            vertex_template[scaling_index + 0] = scaling[pos][0];
+            vertex_template[scaling_index + 1] = scaling[pos][1];
+            vertex_template[scaling_index + 2] = angle;
+            vertex_template[scaling_index + 3] = scale;
+
+            vertex_data.addVertex(vertex_template);
+        }
+    }
+};
+
+
 /* Utility functions */
 
 // Triangulation using libtess.js port of gluTesselator
