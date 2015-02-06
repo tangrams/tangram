@@ -12,12 +12,15 @@ import Builders from './styles/builders';
 import Texture from './gl/texture';
 
 export var SceneWorker = {
-    tile_sources: {},
-    object_sources: {},
+    sources: {
+        tiles: {},
+        objects: {}
+    },
     styles: {},
     rules: {},
     layers: {},
     tiles: {},
+    objects: {},
     config: {}
 };
 
@@ -48,10 +51,18 @@ if (Utils.isWorkerThread) {
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
             if (source.tiled) {
-                SceneWorker.tile_sources[name] = source;
+                SceneWorker.sources.tiles[name] = source;
             }
             else {
-                SceneWorker.object_sources[name] = source;
+                // Distribute object sources across workers
+                if (source.id % SceneWorker.num_workers === SceneWorker.worker_id) {
+                    // Load source if not cached
+                    SceneWorker.sources.objects[name] = source;
+                    if (!SceneWorker.objects[source.name]) {
+                        SceneWorker.objects[source.name] = {};
+                        source.load(SceneWorker.objects[source.name]);
+                    }
+                }
             }
         }
 
@@ -131,7 +142,7 @@ if (Utils.isWorkerThread) {
                     tile.loaded = false;
                     tile.error = null;
 
-                    Promise.all(Object.keys(SceneWorker.tile_sources).map(x => SceneWorker.tile_sources[x].load(tile))).then(() => {
+                    Promise.all(Object.keys(SceneWorker.sources.tiles).map(x => SceneWorker.sources.tiles[x].load(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
                         // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
