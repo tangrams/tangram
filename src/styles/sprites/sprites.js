@@ -47,7 +47,7 @@ Object.assign(Sprites, {
             Math.min((style.size[1] || style.size), 256) / 128 * 32768
         ];
 
-        style.angle = rule_style.angle;
+        style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {
             style.angle = style.angle(context);
         }
@@ -56,6 +56,8 @@ Object.assign(Sprites, {
         // factor by which sprites scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
         style.scale = style.scale / 256 * 32768; // scale to 16-bit signed int, with max allowed scale factor of 256
+
+        this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
         return style;
     },
@@ -78,8 +80,6 @@ Object.assign(Sprites, {
             // draw order
             style.order
         ];
-
-        this.setTexcoordScale(style);   // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
         return template;
     },
