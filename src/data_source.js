@@ -22,6 +22,8 @@ export default class DataSource {
                 return new TopoJSONTileSource(source);
             case 'MapboxFormatTileSource':
                 return new MapboxFormatTileSource(source);
+            case 'GeoJSONSource':
+                return new GeoJSONSource(source);
             case 'GeoJSONTileSource':
             /* falls through */
             default:
@@ -71,7 +73,7 @@ export default class DataSource {
         }
     }
 
-    // load(tile) { throw new MethodNotImplemented('load'); }
+    load(dest) { throw new MethodNotImplemented('load'); }
 }
 
 
@@ -160,6 +162,24 @@ export class NetworkTileSource extends NetworkSource {
 }
 
 
+/**
+ GeoJSON standalone (non-tiled) source
+*/
+
+export class GeoJSONSource extends NetworkSource {
+
+    constructor (source) {
+        super(source);
+        this.type = 'GeoJSONSource';
+    }
+
+    formatUrl (dest) {
+        return this.url;
+    }
+
+    parseSourceData (tile, source, response) {
+        source.layers = { _default: JSON.parse(response) };
+        DataSource.projectData(source); // mercator projection
     }
 }
 
