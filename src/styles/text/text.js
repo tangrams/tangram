@@ -10,6 +10,7 @@ import Geo from '../../geo';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
+import {Vector} from '../../vector';
 
 export var Text = Object.create(Sprites);
 
@@ -89,7 +90,7 @@ Object.assign(Text, {
         }
 
         // Find smallest power-of-2 texture size
-        let texture_size = [ Utils.nextPowerOf2(widest), Utils.nextPowerOf2(height) ];
+        let texture_size = [ widest, height ];
         //let texture_size = 512;
 
         console.log(`text summary for tile ${tile}: ${widest} widest, ${height} total height, fits in ${texture_size[0]}x${texture_size[1]}px`);
@@ -168,6 +169,37 @@ Object.assign(Text, {
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
+    },
+
+    buildLines (lines, style, vertex_data) {
+        var vertex_template = this.makeVertexTemplate(style);
+        let line = lines[0];
+        let middle_point = Math.ceil(line.length / 2) - 1;
+        let p0 = line[middle_point];
+        let p1 = line[middle_point + 1];
+        let p0p1 = Vector.sub(p1, p0);
+
+        p0p1 = Vector.normalize(p0p1);
+
+        let theta = (Math.atan2(p0p1[0], p0p1[1]) + Math.PI / 2);
+
+        if (theta > Math.PI / 2 || theta < -Math.PI / 2) {
+            theta += Math.PI;
+        }
+
+        theta /= (Math.PI * 2); // to degrees
+        theta *= 32768; // scale to 16-bit unsigned int
+
+        Builders.buildSpriteQuadsForPoints(
+            [ line[middle_point] ],
+            style.size[0], style.size[1],
+            theta,
+            style.scale,
+            vertex_data,
+            vertex_template,
+            this.vertex_layout.index.a_shape,
+            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
+        );
     },
 
     _parseFeature (feature, rule_style, context) {

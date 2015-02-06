@@ -505,6 +505,20 @@ layers:
             style:
                 color: [.2, .2, .6]
 
+    labels_street:
+        geometry:
+            source: osm
+            filter: roads
+
+        filter: { name: true }  
+ 
+        major_road:
+            filter: { kind: major_road }
+            style:
+                name: text
+                order: 5
+
+
     # pois:
     labels:
         geometry:
@@ -512,6 +526,7 @@ layers:
             filter: pois
 
         filter: { name: true }
+
         style:
             # name: points
             # size: 10px
@@ -524,8 +539,8 @@ layers:
             # size: [[13, 16px], [14, 24px], [15, 32px]]
             # size: function() { return (parseInt(feature.id, 16) % 100); }
 
-            # angle: 90
-            angle: function() { return (parseInt(feature.id, 16) % 360); }
+            angle: 0
+            # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
             # visible: false
