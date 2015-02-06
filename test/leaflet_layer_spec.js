@@ -134,27 +134,4 @@ describe('Leaflet plugin', () => {
         });
     });
 
-    describe('.createTile(coords, done)', () => {
-        let subject;
-        let coords = { x: 9647, y: 12320, z: 15 };
-
-        beforeEach(() => {
-            subject = makeOne();
-            sinon.spy(subject.scene, 'loadTile');
-            subject.createTile(coords);
-        });
-
-        afterEach(() => {
-            subject.remove();
-        });
-
-        it('calls the .scene.loadTile() method', () => {
-            assert.isTrue(subject.scene.loadTile.called);
-        });
-
-    });
-
-    describe('.updateBounds()', () => {});
-    describe('.render()', () => {});
-
 });
