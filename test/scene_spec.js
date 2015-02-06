@@ -59,7 +59,7 @@ describe('Scene', function () {
         });
 
         it('calls _loadTile with the queued tile', () => {
-            sinon.assert.calledOnce(subject._loadTile);
+            sinon.assert.calledWith(subject._loadTile, midtownTile);
         });
     });
 
