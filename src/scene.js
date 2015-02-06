@@ -12,7 +12,7 @@ import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Lighting from './light';
 import Tile from './tile';
-import TileSource from './tile_source';
+import DataSource from './data_source';
 import FeatureSelection from './selection';
 
 import log from 'loglevel';
@@ -934,7 +934,7 @@ Scene.prototype.loadDataSources = function () {
     for (var name in this.config.sources) {
         let source = this.config.sources[name];
         source.url = Utils.addBaseURL(source.url);
-        this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
+        this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
     }
 };
 

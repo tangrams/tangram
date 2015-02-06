@@ -3,7 +3,7 @@ import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Scene  from './scene';
 import Tile from './tile';
-import TileSource from './tile_source.js';
+import DataSource from './data_source.js';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
@@ -12,7 +12,8 @@ import Builders from './styles/builders';
 import Texture from './gl/texture';
 
 export var SceneWorker = {
-    sources: {},
+    tile_sources: {},
+    object_sources: {},
     styles: {},
     rules: {},
     layers: {},
@@ -44,8 +45,13 @@ if (Utils.isWorkerThread) {
         config = JSON.parse(config);
 
         for (var name in config.sources) {
-            let source = config.sources[name];
-            SceneWorker.sources[name] = TileSource.create(Object.assign(source, {name}));
+            let source = DataSource.create(Object.assign(config.sources[name], {name}));
+            if (source.tiled) {
+                SceneWorker.tile_sources[name] = source;
+            }
+            else {
+                SceneWorker.object_sources[name] = source;
+            }
         }
 
         // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
@@ -124,7 +130,7 @@ if (Utils.isWorkerThread) {
                     tile.loaded = false;
                     tile.error = null;
 
-                    Promise.all(Object.keys(SceneWorker.sources).map(x => SceneWorker.sources[x].loadTile(tile))).then(() => {
+                    Promise.all(Object.keys(SceneWorker.tile_sources).map(x => SceneWorker.tile_sources[x].load(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
                         // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
