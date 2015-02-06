@@ -214,7 +214,7 @@ Scene.prototype.makeWorkers = function (url) {
 
         log.debug(`Scene.makeWorkers: initializing worker ${id}`);
         let _id = id;
-        queue.push(WorkerBroker.postMessage(worker, 'init', id).then(
+        queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers).then(
             (id) => {
                 log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                 return id;
@@ -958,6 +958,12 @@ Scene.prototype.preProcessSceneConfig = function () {
                 rule.style.visible = true;
             }
         }
+    }
+
+    // Assign ids to data sources
+    let source_id = 0;
+    for (let source in this.config.sources) {
+        this.config.sources[source].id = source_id++;
     }
 
     // If only one camera specified, set it as default

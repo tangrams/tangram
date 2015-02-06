@@ -8,6 +8,7 @@ import log from 'loglevel';
 export default class DataSource {
 
     constructor (source) {
+        this.id = source.id;
         this.name = source.name;
         this.url = source.url;
         // overzoom will apply for zooms higher than this

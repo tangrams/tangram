@@ -31,8 +31,9 @@ if (Utils.isWorkerThread) {
     Builders.setTileScale(Scene.tile_scale);
 
     // Initialize worker
-    SceneWorker.worker.init = function (worker_id) {
+    SceneWorker.worker.init = function (worker_id, num_workers) {
         SceneWorker.worker_id = worker_id;
+        SceneWorker.num_workers = num_workers;
         FeatureSelection.setPrefix(SceneWorker.worker_id);
         return worker_id;
     };
