@@ -206,12 +206,12 @@ export default class Tile {
         var geom;
 
         if (sourceConfig != null) {
-            // Just pass through data untouched if no data transform function defined
-            // if (!source.filter) {
-            //     geom = tile.layers[source.filter];
-            // }
+            // If single layer, no data transform
+            if (!sourceConfig.filter && sourceData.layers._default) {
+                geom = sourceData.layers._default;
+            }
             // Pass through data but with different layer name in tile source data
-            /*else*/ if (typeof sourceConfig.filter === 'string') {
+            else if (typeof sourceConfig.filter === 'string') {
                 geom = sourceData.layers[sourceConfig.filter];
             }
             // Apply the transform function for post-processing

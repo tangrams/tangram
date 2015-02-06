@@ -175,8 +175,15 @@ export class GeoJSONTileSource extends NetworkTileSource {
     }
 
     parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
 
-        source.layers = JSON.parse(response);
+        // Single layer or multi-layers?
+        if (data.type === 'Feature' || data.type === 'FeatureCollection') {
+            source.layers = { _default: data };
+        }
+        else {
+            source.layers = data;
+        }
 
         DataSource.projectData(source); // mercator projection
         DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
@@ -214,7 +221,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
         // Single layer
         if (source.layers.objects.vectiles != null) {
-            source.layers = topojson.feature(source.layers, source.layers.objects.vectiles);
+            source.layers = { _default: topojson.feature(source.layers, source.layers.objects.vectiles) };
         }
         // Multiple layers
         else {
