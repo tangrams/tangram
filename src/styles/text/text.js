@@ -9,39 +9,19 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
+import {Sprites} from '../sprites/sprites';
 
-export var Text = Object.create(Style);
+export var Text = Object.create(Sprites);
 
 Object.assign(Text, {
     name: 'text',
+    super: Sprites,
     built_in: true,
 
     init() {
-        Style.init.apply(this);
+        this.super.init.apply(this);
 
-        // Base shaders
-        this.vertex_shader_key = 'styles/text/text_vertex';
-        this.fragment_shader_key = 'styles/text/text_fragment';
-
-        var attribs = [
-            { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-            // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
-            // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false },
-            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false }
-        ];
-        this.vertex_layout = new VertexLayout(attribs);
-
-        this.texcoords = true;
-
-        this.shaders.uniforms = {
-            u_alpha_discard: .4
-        };
-
+        // Provide a hook for this object to be called from worker threads
         if (Utils.isMainThread) {
             WorkerBroker.addTarget('Text', this);
         }
@@ -51,10 +31,6 @@ Object.assign(Text, {
         this.ctx = {};
 
         this.size = 14;
-    },
-
-    setGL (gl) {
-        Style.setGL.apply(this, arguments);
     },
 
     // Set font style params for canvas drawing
@@ -89,12 +65,13 @@ Object.assign(Text, {
     addTexts (tile, texts) {
         var canvas = document.createElement('canvas');
 
-        this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'nearest' });
+        this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'linear' });
         this.texture[tile].setCanvas(canvas);
         this.ctx[tile] = canvas.getContext('2d');
         this.texts[tile] = texts;
 
         this.setFont({ size: 12 }, tile);
+
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
         for (let text in this.texts[tile]) {
@@ -143,7 +120,7 @@ Object.assign(Text, {
 
     // Override
     startData () {
-        let tile_data = Style.startData.apply(this);
+        let tile_data = this.super.startData.apply(this);
         tile_data.queue = [];
         return tile_data;
     },
@@ -161,18 +138,19 @@ Object.assign(Text, {
             return Promise.resolve();
         }
 
-        tile_data.uniforms = { label_atlas: 'labels-'+tile };
+        // Attach tile-specific label atlas to mesh as a texture uniform
+        tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
+        // Call to main thread to render label atlas for this tile, and return size & UV info
         return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile]).then(texts => {
 
-            // this.texcoord_scale = texcoords;
             this.texts[tile] = texts;
-            // this.texcoord_scale = this.texts[tile][Object.keys(this.texts[tile])[0]].texcoords;
 
-            tile_data.queue.forEach(q => Style.addFeature.apply(this, q));
+            // Build queued features
+            tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
             tile_data.queue = [];
 
-            return Style.endData.call(this, tile_data);
+            return this.super.endData.call(this, tile_data);
         });
     },
 
@@ -193,76 +171,32 @@ Object.assign(Text, {
     },
 
     _parseFeature (feature, rule_style, context) {
-        var style = this.feature_style;
-
-        // style.texture = rule_style.texture;
-        // style.sprite = 'test'; //rule_style.sprite;
-
-        // style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context);
-        // style.size = StyleParser.parseDistance(['256px', '256px'], context);
-
-        // var xratio = (this.texcoord_scale[1][0] - this.texcoord_scale[0][0]) / (this.texcoord_scale[1][1] - this.texcoord_scale[0][1]);
-        // style.size = StyleParser.parseDistance([`${this.size * xratio}px`, `${this.size}px`], context);
+        let style = this.feature_style;
+        let tile = context.tile.key;
 
         style.text = feature.properties.name;
 
-        let tile = context.tile.key;
+        // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = this.texts[tile][style.text].size;
-        style.size = [style.size[0] * Geo.units_per_pixel, style.size[1] * Geo.units_per_pixel];
+        style.size = [
+            Math.min((style.size[0] || style.size), 256) / 128 * 32768,
+            Math.min((style.size[1] || style.size), 256) / 128 * 32768
+        ];
 
+        style.angle = rule_style.angle || 0;
+        if (typeof style.angle === 'function') {
+            style.angle = style.angle(context);
+        }
+        style.angle = style.angle / 360 * 32768; // scale degrees to 16-bit signed int
+
+        // factor by which sprites scales from current zoom level to next zoom level
+        style.scale = rule_style.scale || 1;
+        style.scale = style.scale / 256 * 32768; // scale to 16-bit signed int, with max allowed scale factor of 256
+
+        // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;
 
         return style;
-    },
-
-    /**
-     * A "template" that sets constant attibutes for each vertex, which is then modified per vertex or per feature.
-     * A plain JS array matching the order of the vertex layout.
-     */
-    makeVertexTemplate(style) {
-        // Placeholder values
-        var color = style.color || [0, 0, 0, 1];
-
-        // Basic attributes, others can be added (see texture UVs below)
-        var template = [
-            // position - x & y coords will be filled in per-vertex below
-            0, 0, style.z || 0,
-            // normal
-            0, 0, 1,
-            // color
-            // TODO: automate multiplication for normalized attribs?
-            color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255,
-            // selection color
-            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // draw order
-            style.order
-        ];
-
-        // if (this.texcoords) {
-            template.push(0, 0);            // Add texture UVs to template only if needed
-            // this.setTexcoordScale(style);   // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        // }
-
-        return template;
-
-    },
-
-    buildPoints(points, style, vertex_data) {
-        // if (!style.color || !style.size) {
-        //     return;
-        // }
-
-        // WorkerBroker.postMessage('Text', 'addText', style.text); //.then(texcoords => {
-            // this.texcoords = texcoords;
-            Builders.buildQuadsForPoints(
-                points,
-                style.size[0] || style.size,
-                style.size[1] || style.size,
-                vertex_data,
-                this.makeVertexTemplate(style),
-                { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-            );
-        // });
     }
 
 });

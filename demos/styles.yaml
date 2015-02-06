@@ -175,6 +175,13 @@ styles:
         #         fragment: |
         #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
+    # text:
+    #     animated: true
+    #     shaders:
+    #         transforms:
+    #             vertex:
+    #                 shape.z *= u_time;
+
     uv_test:
         extends: polygons
         texcoords: true
@@ -509,13 +516,14 @@ layers:
             # name: points
             # size: 10px
 
-            # name: text
+            name: text
 
-            name: icons
-            sprite: tree
-            size: [32px, 32px]
+            # name: icons
+            # sprite: tree
+            # size: [32px, 32px]
             # size: [[13, 16px], [14, 24px], [15, 32px]]
             # size: function() { return (parseInt(feature.id, 16) % 100); }
+
             # angle: 90
             angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
