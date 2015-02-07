@@ -361,9 +361,12 @@ ShaderProgram.prototype.uniform = function (method, name, ...value) // 'value' i
         return;
     }
 
-    var uniform = (this.uniforms[name] = this.uniforms[name] || {});
+    this.uniforms[name] = this.uniforms[name] || {};
+    let uniform = this.uniforms[name];
     uniform.name = name;
-    uniform.location = uniform.location || this.gl.getUniformLocation(this.program, name);
+    if (uniform.location === undefined) {
+        uniform.location = this.gl.getUniformLocation(this.program, name);
+    }
     uniform.method = 'uniform' + method;
     uniform.value = value;
     this.updateUniform(name);
@@ -377,7 +380,7 @@ ShaderProgram.prototype.updateUniform = function (name)
     }
 
     var uniform = this.uniforms[name];
-    if (uniform == null || uniform.location == null) {
+    if (!uniform || uniform.location == null) {
         return;
     }
 

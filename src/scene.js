@@ -505,6 +505,22 @@ Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = 
     }
 };
 
+// Find min/max order for a set of tiles
+Scene.prototype.calcOrderRange = function (tiles) {
+    let order = { min: Infinity, max: -Infinity };
+    for (let t of tiles) {
+        if (t.order.min < order.min) {
+            order.min = t.order.min;
+        }
+        if (t.order.max > order.max) {
+            order.max = t.order.max;
+        }
+    }
+    order.max += 1;
+    order.range = order.max - order.min;
+    return order;
+};
+
 Scene.prototype.renderStyle = function (style, program) {
     var first_for_style = true;
     var render_count = 0;
@@ -586,17 +602,7 @@ Scene.prototype.render = function () {
     this.renderable_tiles_count = this.renderable_tiles.length;
 
     // Find min/max order for current tiles
-    this.order = { min: Infinity, max: -Infinity };
-    for (t of this.renderable_tiles) {
-        if (t.order.min < this.order.min) {
-            this.order.min = t.order.min;
-        }
-        if (t.order.max > this.order.max) {
-            this.order.max = t.order.max;
-        }
-    }
-    this.order.max += 1;
-    this.order.range = this.order.max - this.order.min;
+    this.order = this.calcOrderRange(this.renderable_tiles);
 
     // Render main pass - tiles grouped by rendering style (GL program)
     this.render_count = 0;
