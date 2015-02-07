@@ -11,12 +11,15 @@ let map = L.map(
 map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
-    return new LeafletLayer({
+    let layer = new LeafletLayer({
         source: sampleScene.tile_source,
         scene: sampleScene.config,
         disableRenderLoop: true,
         workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
+
+    sinon.stub(layer.scene, 'findVisibleTiles').returns([]);
+    return layer;
 };
 
 describe('Leaflet plugin', () => {

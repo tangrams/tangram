@@ -721,7 +721,7 @@ Scene.prototype.findMaxZoom = function () {
 };
 
 // Load a single tile
-Scene.prototype._loadTile = function (coords, options = {}) {
+Scene.prototype._loadTile = function (coords) {
     // Skip if not at current scene zoom
     if (coords.z !== this.baseZoom(this.zoom)) {
         return;
