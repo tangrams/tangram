@@ -136,7 +136,8 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
         if (style.shaders && style.shaders.transforms) {
             let _transforms = style.shaders.transforms;
 
-            for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
+            let key, transform;
+            for ([key, transform] of Utils.entries(style.shaders.transforms)) {
                 let _key = key;
 
                 // Array of transforms
