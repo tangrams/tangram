@@ -102,16 +102,7 @@ Scene.prototype.init = function () {
         this.loadScene().then(() => {
 
             this.createWorkers().then(() => {
-                this.container = this.container || document.body;
-                this.canvas = document.createElement('canvas');
-                this.canvas.style.position = 'absolute';
-                this.canvas.style.top = 0;
-                this.canvas.style.left = 0;
-                this.canvas.style.zIndex = -1;
-                this.container.appendChild(this.canvas);
-
-                this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
-                this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.createCanvas();
                 this.selection = new FeatureSelection(this.gl, this.workers);
 
                 // Loads rendering styles from config, sets GL context and compiles programs
@@ -162,10 +153,22 @@ Scene.prototype.destroy = function () {
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
+Scene.prototype.createCanvas = function () {
+    this.container = this.container || document.body;
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = 0;
+    this.canvas.style.left = 0;
+    this.canvas.style.zIndex = -1;
+    this.container.appendChild(this.canvas);
+
+    this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
+    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+};
+
 Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
-
 
 Scene.loadWorkerUrl = function (scene) {
     var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
