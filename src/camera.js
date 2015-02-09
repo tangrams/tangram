@@ -248,9 +248,9 @@ class IsometricCamera extends Camera {
         // convert meters to viewport
         mat4.scale(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                1 / this.scene.meter_zoom.x,
-                1 / this.scene.meter_zoom.y,
-                1 / this.scene.meter_zoom.y
+                2 / this.scene.viewport_meters.x,
+                2 / this.scene.viewport_meters.y,
+                2 / this.scene.viewport_meters.y
             )
         );
     }
