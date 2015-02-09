@@ -344,3 +344,16 @@ Utils.recurseValues = function* (obj) {
         }
     }
 };
+
+Utils.scaleInt16 = function (val, max) {
+    return (val / max) * 32768;
+}
+
+Utils.degToRad = function (degrees) {
+    return degrees * Math.PI / 180;
+}
+
+Utils.radToDeg = function (radians) {
+    return radians * 180 / Math.PI;
+}
+

@@ -5,7 +5,7 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
-import boxIntersect from 'box-intersect';
+import Utils from '../../utils/utils';
 
 export var Sprites = Object.create(Style);
 
@@ -44,19 +44,17 @@ Object.assign(Sprites, {
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [
-            Math.min((style.size[0] || style.size), 256) / 128 * 32768,
-            Math.min((style.size[1] || style.size), 256) / 128 * 32768
+            Math.min((style.size[0] || style.size), 256),
+            Math.min((style.size[1] || style.size), 256)
         ];
 
         style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {
             style.angle = style.angle(context);
         }
-        style.angle = style.angle / 360 * 32768; // scale degrees to 16-bit signed int
 
         // factor by which sprites scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
-        style.scale = style.scale / 256 * 32768; // scale to 16-bit signed int, with max allowed scale factor of 256
 
         this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
@@ -94,9 +92,9 @@ Object.assign(Sprites, {
 
         Builders.buildSpriteQuadsForPoints(
             points,
-            style.size[0], style.size[1],
-            style.angle,
-            style.scale,
+            Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
+            Utils.scaleInt16(style.angle, 360),
+            Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
             this.vertex_layout.index.a_shape,

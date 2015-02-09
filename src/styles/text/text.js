@@ -11,6 +11,7 @@ import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import {Vector} from '../../vector';
+import boxIntersect from 'box-intersect';
 
 export var Text = Object.create(Sprites);
 
@@ -20,6 +21,7 @@ Object.assign(Text, {
     built_in: true,
 
     init() {
+
         this.super.init.apply(this);
 
         // Provide a hook for this object to be called from worker threads
@@ -191,14 +193,17 @@ Object.assign(Text, {
             theta += Math.PI;
         }
 
-        theta /= (Math.PI * 2); // to degrees
-        theta *= 32768; // scale to 16-bit unsigned int
+        theta = Utils.radToDeg(theta); 
+        
+        let width = style.size[0];
+        let height = style.size[1];
+        let pos = line[0];
 
         Builders.buildSpriteQuadsForPoints(
-            [ line[0] ],
-            style.size[0], style.size[1],
-            theta,
-            style.scale,
+            [ pos ],
+            Utils.scaleInt16(width, 128), Utils.scaleInt16(height, 128),
+            Utils.scaleInt16(theta, 360), 
+            Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
             this.vertex_layout.index.a_shape,
@@ -212,22 +217,20 @@ Object.assign(Text, {
 
         style.text = feature.properties.name;
 
-        // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
+        // max allowed width + height of 128 pixels
         style.size = this.texts[tile][style.text].size;
         style.size = [
-            Math.min((style.size[0] || style.size), 256) / 128 * 32768,
-            Math.min((style.size[1] || style.size), 256) / 128 * 32768
+            Math.min((style.size[0] || style.size), 256),
+            Math.min((style.size[1] || style.size), 256) 
         ];
 
         style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {
             style.angle = style.angle(context);
         }
-        style.angle = style.angle / 360 * 32768; // scale degrees to 16-bit signed int
 
         // factor by which sprites scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
-        style.scale = style.scale / 256 * 32768; // scale to 16-bit signed int, with max allowed scale factor of 256
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;
