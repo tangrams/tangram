@@ -174,9 +174,13 @@ Object.assign(Text, {
     buildLines (lines, style, vertex_data) {
         var vertex_template = this.makeVertexTemplate(style);
         let line = lines[0];
-        let middle_point = Math.ceil(line.length / 2) - 1;
-        let p0 = line[middle_point];
-        let p1 = line[middle_point + 1];
+
+        if (line.length > 2) {
+            return;
+        }
+
+        let p0 = line[0];
+        let p1 = line[1];
         let p0p1 = Vector.sub(p1, p0);
 
         p0p1 = Vector.normalize(p0p1);
@@ -191,7 +195,7 @@ Object.assign(Text, {
         theta *= 32768; // scale to 16-bit unsigned int
 
         Builders.buildSpriteQuadsForPoints(
-            [ line[middle_point] ],
+            [ line[0] ],
             style.size[0], style.size[1],
             theta,
             style.scale,
