@@ -41,6 +41,10 @@ Vector.sub = function (v1, v2) {
     return v;
 };
 
+Vector.signed_area = function (v1, v2, v3) {
+    return (v2[0]-v1[0])*(v3[1]-v1[1]) - (v3[0]-v1[0])*(v2[1]-v1[1]);
+};
+
 // Multiplication of two vectors
 Vector.mult = function (v1, v2) {
     var v = [],
@@ -153,8 +157,7 @@ Vector.normalize = function (v)
 };
 
 // Cross product of two vectors
-Vector.cross  = function (v1, v2)
-{
+Vector.cross  = function (v1, v2) {
     return [
         (v1[1] * v2[2]) - (v1[2] * v2[1]),
         (v1[2] * v2[0]) - (v1[0] * v2[2]),
@@ -163,8 +166,7 @@ Vector.cross  = function (v1, v2)
 };
 
 // Dot product of two vectors
-Vector.dot = function (v1, v2)
-{
+Vector.dot = function (v1, v2) {
     var n = 0;
     var lim = Math.min(v1.length, v2.length);
     for (var i = 0; i < lim; i++) {
@@ -176,8 +178,7 @@ Vector.dot = function (v1, v2)
 // Find the intersection of two lines specified as segments from points (p1, p2) and (p3, p4)
 // http://en.wikipedia.org/wiki/Line-line_intersection
 // http://en.wikipedia.org/wiki/Cramer's_rule
-Vector.lineIntersection = function (p1, p2, p3, p4, parallel_tolerance)
-{
+Vector.lineIntersection = function (p1, p2, p3, p4, parallel_tolerance) {
     parallel_tolerance = parallel_tolerance || 0.01;
 
     // a1*x + b1*y = c1 for line (x1, y1) to (x2, y2)

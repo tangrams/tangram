@@ -1,4 +1,4 @@
-import Utils from './utils';
+import Utils from './utils/utils';
 import Scene from './scene';
 
 import log from 'loglevel';
@@ -17,8 +17,7 @@ if (Utils.isMainThread) {
 
         initialize: function (options) {
             // Defaults
-            options.unloadInvisibleTiles = options.unloadInvisibleTiles || false;
-            options.updateWhenIdle = options.updateWhenIdle || false;
+            options.showDebug = (!options.showDebug ? false : true);
 
             L.setOptions(this, options);
             this.createScene();
@@ -51,18 +50,6 @@ if (Utils.isMainThread) {
             }
 
             L.GridLayer.prototype.onAdd.apply(this, arguments);
-
-            this.hooks.tileunload = (event) => {
-                // TODO: not expecting leaflet to fire this event for tiles that simply pan
-                // out of bounds when 'unloadInvisibleTiles' option is set, but it's firing
-                // since upgrading to latest master branch - force-checking for now
-                if (this.options.unloadInvisibleTiles) {
-                    var tile = event.tile;
-                    var key = tile.getAttribute('data-tile-key');
-                    this.scene.removeTile(key);
-                }
-            };
-            this.on('tileunload', this.hooks.tileunload);
 
             this.hooks.resize = () => {
                 this._updating_tangram = true;
@@ -140,7 +127,6 @@ if (Utils.isMainThread) {
         onRemove: function () {
             L.GridLayer.prototype.onRemove.apply(this, arguments);
 
-            this.off('tileunload', this.hooks.tileunload);
             this._map.off('resize', this.hooks.resize);
             this._map.off('move', this.hooks.move);
             this._map.off('zoomstart', this.hooks.zoomstart);
@@ -155,8 +141,29 @@ if (Utils.isMainThread) {
         },
 
         createTile: function (coords) {
+            var key = coords.x + '/' + coords.y + '/' + coords.z;
             var div = document.createElement('div');
-            this.scene.loadTile(coords, { debugElement: div });
+            div.setAttribute('data-tile-key', key);
+            div.style.width = '256px';
+            div.style.height = '256px';
+
+            if (this.options.showDebug) {
+                var debug_overlay = document.createElement('div');
+                debug_overlay.textContent = key;
+                debug_overlay.style.position = 'absolute';
+                debug_overlay.style.left = 0;
+                debug_overlay.style.top = 0;
+                debug_overlay.style.color = 'white';
+                debug_overlay.style.fontSize = '16px';
+                debug_overlay.style.textOutline = '1px #000000';
+                debug_overlay.style.padding = '8px';
+
+                div.appendChild(debug_overlay);
+                div.style.borderStyle = 'solid';
+                div.style.borderColor = 'white';
+                div.style.borderWidth = '1px';
+            }
+
             return div;
         },
 

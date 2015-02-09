@@ -5,16 +5,17 @@ import samples from './fixtures/samples';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
-describe('Tile', () => {
+describe('Tile', function() {
+
     let subject,
         scene;
 
-    beforeEach((done) => {
+    beforeEach(() => {
         scene = makeScene({});
+        sinon.stub(scene, 'findVisibleTiles').returns([]);
         scene.setView(nycLatLng);
-        scene.init().then(() => {
+        return scene.init().then(() => {
             subject = Tile.create({coords: { x: 38605, y: 49254, z: 17 }, worker: scene.nextWorker()});
-            done();
         });
     });
 

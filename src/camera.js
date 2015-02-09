@@ -1,7 +1,7 @@
 /*global Camera */
-import {Geo} from './geo';
-import Utils from './utils';
-import GLProgram from './gl/gl_program';
+import Geo from './geo';
+import Utils from './utils/utils';
+import ShaderProgram from './gl/shader_program';
 
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
@@ -92,8 +92,8 @@ class PerspectiveCamera extends Camera {
         this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        GLProgram.removeTransform('camera');
-        GLProgram.addTransform('camera', `
+        ShaderProgram.removeTransform('camera');
+        ShaderProgram.addTransform('camera', `
             uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
@@ -214,8 +214,8 @@ class IsometricCamera extends Camera {
         this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        GLProgram.removeTransform('camera');
-        GLProgram.addTransform('camera', `
+        ShaderProgram.removeTransform('camera');
+        ShaderProgram.addTransform('camera', `
             uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
@@ -248,9 +248,9 @@ class IsometricCamera extends Camera {
         // convert meters to viewport
         mat4.scale(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                1 / this.scene.meter_zoom.x,
-                1 / this.scene.meter_zoom.y,
-                1 / this.scene.meter_zoom.y
+                2 / this.scene.viewport_meters.x,
+                2 / this.scene.viewport_meters.y,
+                2 / this.scene.viewport_meters.y
             )
         );
     }

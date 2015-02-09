@@ -1,10 +1,10 @@
 // Points rendering style w/simple distance field rendering
 
-import {Style} from './style';
-import {StyleParser} from './style_parser';
-import gl from '../gl/gl_constants'; // web workers don't have access to GL context, so import all GL constants
-import GLVertexLayout from '../gl/gl_vertex_layout';
-import {GLBuilders} from '../gl/gl_builders';
+import {Style} from '../style';
+import {StyleParser} from '../style_parser';
+import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import VertexLayout from '../../gl/vertex_layout';
+import Builders from '../builders';
 
 export var Points = Object.create(Style);
 
@@ -16,14 +16,14 @@ Object.assign(Points, {
         Style.init.apply(this);
 
         // Base shaders
-        this.vertex_shader_key = 'point_vertex';
-        this.fragment_shader_key = 'point_fragment';
+        this.vertex_shader_key = 'styles/points/points.vertex';
+        this.fragment_shader_key = 'styles/points/points.fragment';
 
         // Turn feature selection on
         this.selection = true;
 
         // Vertex attributes
-        this.vertex_layout = new GLVertexLayout([
+        this.vertex_layout = new VertexLayout([
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
@@ -32,11 +32,11 @@ Object.assign(Points, {
         ]);
     },
 
-    _parseFeature (feature, feature_style, context) {
+    _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
-        style.color = feature_style.color && StyleParser.parseColor(feature_style.color, context);
-        style.size = feature_style.size && StyleParser.parseDistance(feature_style.size, context);
-        style.z = (feature_style.z && StyleParser.parseDistance(feature_style.z || 0, context)) || StyleParser.defaults.z;
+        style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
+        style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context);
+        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
         return style;
     },
 
@@ -55,8 +55,8 @@ Object.assign(Points, {
             style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // layer number
-            style.layer
+            // draw order
+            style.order
         ];
     },
 
@@ -67,7 +67,7 @@ Object.assign(Points, {
 
         var vertex_template = this.makeVertexTemplate(style);
 
-        GLBuilders.buildQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             style.size[0] || style.size,
             style.size[1] || style.size,

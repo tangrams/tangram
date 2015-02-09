@@ -1,10 +1,10 @@
-/* global GLGeometry */
-/*** Manage rendering for primitives ***/
-import GLProgram from './gl_program';
+/* global VBOMesh */
+// Manage rendering for primitives
+import ShaderProgram from './shader_program';
 import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
-export default function GLGeometry (gl, vertex_data, vertex_layout, options)
+export default function VBOMesh (gl, vertex_data, vertex_layout, options)
 {
     options = options || {};
 
@@ -15,6 +15,7 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
     this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
     this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
     this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
+    this.uniforms = options.uniforms;
 
     this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
     this.geometry_count = this.vertex_count / this.vertices_per_geometry;
@@ -22,7 +23,7 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
     // TODO: disabling VAOs for now because we need to support different vertex layout + program combinations,
     // where not all programs will recognize all attributes (e.g. feature selection shaders include extra attrib).
     // To support VAOs here, would need to support multiple per geometry, keyed by GL program?
-    // this.vao = GLVertexArrayObject.create(function() {
+    // this.vao = VertexArrayObject.create(function() {
     //     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     //     this.setup();
     // }.bind(this));
@@ -33,36 +34,46 @@ export default function GLGeometry (gl, vertex_data, vertex_layout, options)
 }
 
 // Render, by default with currently bound program, or otherwise with optionally provided one
-GLGeometry.prototype.render = function (options = {})
+VBOMesh.prototype.render = function (options = {})
 {
     if (!this.valid) {
         return false;
     }
 
-    // GLVertexArrayObject.bind(this.vao);
+    // VertexArrayObject.bind(this.vao);
 
     if (typeof this._render_setup === 'function') {
         this._render_setup();
     }
 
-    var program = options.program || GLProgram.current;
+    var program = options.program || ShaderProgram.current;
     program.use();
+
+    if (this.uniforms) {
+        program.saveUniforms(this.uniforms);
+        program.setUniforms(this.uniforms, false); // don't reset texture unit
+    }
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
     this.vertex_layout.enable(this.gl, program);
 
     // TODO: support element array mode
     this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
-    // GLVertexArrayObject.bind(null);
+    // VertexArrayObject.bind(null);
+
+    if (this.uniforms) {
+        program.restoreUniforms(this.uniforms);
+    }
+
     return true;
 };
 
-GLGeometry.prototype.destroy = function ()
+VBOMesh.prototype.destroy = function ()
 {
     if (!this.valid) {
         return false;
     }
-    log.trace('GLGeometry.destroy: delete buffer of size ' + this.vertex_data.byteLength);
+    log.trace('VBOMesh.destroy: delete buffer of size ' + this.vertex_data.byteLength);
     this.gl.deleteBuffer(this.buffer);
     this.buffer = null;
     delete this.vertex_data;

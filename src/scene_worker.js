@@ -1,15 +1,15 @@
 /*jshint worker: true*/
-import Utils from './utils';
-import WorkerBroker from './worker_broker'; // jshint ignore:line
-import {StyleParser} from './styles/style_parser';
-import {StyleManager} from './styles/style_manager';
+import Utils from './utils/utils';
+import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Scene  from './scene';
 import Tile from './tile';
 import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
-import {parseRules} from './rule';
-import {GLBuilders} from './gl/gl_builders';
-import GLTexture from './gl/gl_texture';
+import {StyleParser} from './styles/style_parser';
+import {StyleManager} from './styles/style_manager';
+import {parseRules} from './styles/rule';
+import Builders from './styles/builders';
+import Texture from './gl/texture';
 
 export var SceneWorker = {
     sources: {},
@@ -27,7 +27,7 @@ if (Utils.isWorkerThread) {
     SceneWorker.worker = self;
 
     // TODO: sync render style state between main thread and worker
-    GLBuilders.setTileScale(Scene.tile_scale);
+    Builders.setTileScale(Scene.tile_scale);
 
     // Initialize worker
     SceneWorker.worker.init = function (worker_id) {
@@ -127,12 +127,13 @@ if (Utils.isWorkerThread) {
                     Promise.all(Object.keys(SceneWorker.sources).map(x => SceneWorker.sources[x].loadTile(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
-                        var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
-
-                        resolve({
-                            tile: SceneWorker.sliceTile(tile, keys),
-                            worker_id: SceneWorker.worker_id,
-                            selection_map_size: FeatureSelection.map_size
+                        // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                        Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
+                            resolve({
+                                tile: SceneWorker.sliceTile(tile, keys),
+                                worker_id: SceneWorker.worker_id,
+                                selection_map_size: FeatureSelection.map_size
+                            });
                         });
                     }).catch((error) => {
                         tile.loading = false;
@@ -159,13 +160,14 @@ if (Utils.isWorkerThread) {
                 SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
-
-                return {
-                    tile: SceneWorker.sliceTile(tile, keys),
-                    worker_id: SceneWorker.worker_id,
-                    selection_map_size: FeatureSelection.map_size
-                };
+                // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
+                return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
+                    return {
+                        tile: SceneWorker.sliceTile(tile, keys),
+                        worker_id: SceneWorker.worker_id,
+                        selection_map_size: FeatureSelection.map_size
+                    };
+                });
             }
         });
     };
@@ -207,7 +209,7 @@ if (Utils.isWorkerThread) {
             if (style.textures) {
                 for (var t in style.textures) {
                     if (style.textures[t].sprites) {
-                        textures.push(t);
+                        textures.push(style.textureName(t));
                     }
                 }
             }
@@ -215,7 +217,7 @@ if (Utils.isWorkerThread) {
 
         SceneWorker.log('trace', 'sync textures to worker:', textures);
         if (textures.length > 0) {
-            return GLTexture.syncTexturesToWorker(textures);
+            return Texture.syncTexturesToWorker(textures);
         }
         return Promise.resolve();
     };

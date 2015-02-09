@@ -5,7 +5,7 @@ let assert = chai.assert;
 
 import {Styles, StyleManager} from '../src/styles/style_manager';
 import {Style} from '../src/styles/style';
-import {GL} from '../src/gl/gl';
+import Context from '../src/gl/context';
 import Camera from '../src/camera';
 import Light from '../src/light';
 
@@ -23,7 +23,7 @@ describe('Styles:', () => {
 
         beforeEach(() => {
             canvas = document.createElement('canvas');
-            gl = GL.getContext(canvas, { alpha: false });
+            gl = Context.getContext(canvas, { alpha: false });
             StyleManager.init();
         });
 
@@ -88,7 +88,7 @@ describe('Styles:', () => {
 
         beforeEach(() => {
             canvas = document.createElement('canvas');
-            gl = GL.getContext(canvas, { alpha: false });
+            gl = Context.getContext(canvas, { alpha: false });
             StyleManager.init();
         });
 

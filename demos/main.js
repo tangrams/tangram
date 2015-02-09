@@ -603,7 +603,7 @@
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
         Object.keys(layer.scene.config.layers).forEach(function(l) {
-            if (layer.scene.config.layers[l] == null) {
+            if (!layer.scene.config.layers[l] || !layer.scene.config.layers[l].style) {
                 return;
             }
 

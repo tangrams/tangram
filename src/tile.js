@@ -1,7 +1,7 @@
 /*global Tile */
-import {Geo} from './geo';
+import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
-import WorkerBroker from './worker_broker';
+import WorkerBroker from './utils/worker_broker';
 
 import log from 'loglevel';
 
@@ -29,7 +29,9 @@ export default class Tile {
             order: {
                 min: Infinity,
                 max: -Infinity
-            }
+            },
+            visible: false,
+            center_dist: 0
         });
 
         this.worker = worker;
@@ -37,22 +39,39 @@ export default class Tile {
 
         this.coords = coords;
         this.coords = this.calculateOverZoom();
-        this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
+        this.key = Tile.key(this.coords);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+
+        this.meshes = {}; // renderable VBO meshes keyed by style
     }
 
-    static create(spec) { return new Tile(spec); }
+    static create(spec) {
+        return new Tile(spec);
+    }
+
+    static key({x, y, z}) {
+        return [x, y, z].join('/');
+    }
+
+    // Sort a set of tile instances (which already have a distance from center tile computed)
+    static sort(tiles) {
+        return tiles.sort((a, b) => {
+            let ad = a.center_dist;
+            let bd = b.center_dist;
+            return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+        });
+    }
 
     freeResources() {
-        if (this != null && this.gl_geometry != null) {
-            for (var p in this.gl_geometry) {
-                this.gl_geometry[p].destroy();
+        if (this != null && this.meshes != null) {
+            for (var p in this.meshes) {
+                this.meshes[p].destroy();
             }
-            this.gl_geometry = null;
         }
+        this.meshes = {};
     }
 
     destroy() {
@@ -91,104 +110,57 @@ export default class Tile {
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
     static buildGeometry (tile, layers, rules, styles) {
-        var feature, style, feature_style;
-        var vertex_data = {};
-        var style_vertex_data;
-
         tile.debug.rendering = +new Date();
+
+        let tile_data = {};
 
         for (let sourceName in tile.sources) {
             let source = tile.sources[sourceName];
-
             source.debug.rendering = +new Date();
             source.debug.features = 0;
 
             // Treat top-level style rules as 'layers'
-            for (var name in layers) {
-                let layer = layers[name];
+            for (let layer_name in layers) {
+                let layer = layers[layer_name];
                 // Skip layers with no geometry defined
                 if (!layer.geometry) {
                     log.warn(`Layer ${layer} was defined without an geometry configuration and will not be rendered.`);
                     continue;
                 }
 
-                var geom = Tile.getGeometryForSource(source, layer.geometry);
-
+                let geom = Tile.getGeometryForSource(source, layer.geometry);
                 if (!geom) {
                     continue;
                 }
 
-                var num_features = geom.features.length;
-
                 // Render features within each layer, in reverse order - aka top to bottom
-                for (var f = num_features-1; f >= 0; f--) {
-                    feature = geom.features[f];
+                let num_features = geom.features.length;
+                for (let f = num_features-1; f >= 0; f--) {
+                    let feature = geom.features[f];
+                    let context = StyleParser.getFeatureParseContext(feature, tile);
 
-                    feature.layer = name;
-
-                    var context = StyleParser.getFeatureParseContext(feature, tile);
                     // Find matching rules
-                    var matchedRules = [];
-                    var layer_rules = rules[name];
-                    for (var r in layer_rules) {
-                        layer_rules[r].matchFeature(context, matchedRules);
+                    let matched_rules = [];
+                    let layer_rules = rules[layer_name];
+                    for (let r in layer_rules) {
+                        layer_rules[r].matchFeature(context, matched_rules);
                     }
 
                     // Parse & render styles
-                    for (var rule of matchedRules) {
+                    for (let rule of matched_rules) {
                         if (!rule.visible) {
                             continue;
                         }
 
-                        // Parse style
+                        // Add to style
                         rule.name = rule.name || StyleParser.defaults.style.name;
-                        style = styles[rule.name];
-                        feature_style = style.parseFeature(feature, rule, context);
+                        let style = styles[rule.name];
 
-                        // Skip feature?
-                        if (!feature_style) {
-                            continue;
+                        if (!tile_data[rule.name]) {
+                            tile_data[rule.name] = style.startData();
                         }
 
-                        // Track min/max order range
-                        if (feature_style.order < tile.order.min) {
-                            tile.order.min = feature_style.order;
-                        }
-                        if (feature_style.order > tile.order.max) {
-                            tile.order.max = feature_style.order;
-                        }
-
-                        // First feature in this render style?
-                        if (vertex_data[style.name] == null) {
-                            vertex_data[style.name] = style.vertex_layout.createVertexData();
-                        }
-                        style_vertex_data = vertex_data[style.name];
-
-                        // Layer order: 'order' property between [-1, 1] adjusts render order of features *within* this layer
-                        // Does not affect order outside of this layer, e.g. all features on previous layers are drawn underneath
-                        //  this one, all features on subsequent layers are drawn on top of this one
-                        // feature_style.layer = (layer.geometry.order || 0) + 0.5;      // 'center' this layer at 0.5 above the baseline
-                        // feature_style.layer += feature_style.order / 2.5;   // scale [-1, 1] to [-.4, .4] to stay within layer bounds, .1 buffer to be safe
-                        feature_style.layer = feature_style.order;
-
-                        if (feature.geometry.type === 'Polygon') {
-                            style.buildPolygons([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiPolygon') {
-                            style.buildPolygons(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'LineString') {
-                            style.buildLines([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiLineString') {
-                            style.buildLines(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'Point') {
-                            style.buildPoints([feature.geometry.coordinates], feature_style, style_vertex_data);
-                        }
-                        else if (feature.geometry.type === 'MultiPoint') {
-                            style.buildPoints(feature.geometry.coordinates, feature_style, style_vertex_data);
-                        }
+                        style.addFeature(feature, rule, context, tile_data[rule.name]);
                     }
 
                     source.debug.features++;
@@ -196,33 +168,52 @@ export default class Tile {
 
             }
 
-
             source.debug.rendering = +new Date() - source.debug.rendering;
         }
 
         // Finalize array buffer for each render style
-        tile.vertex_data = {};
-        for (var m in vertex_data) {
-            tile.vertex_data[m] = vertex_data[m].end().buffer;
+        tile.mesh_data = {};
+        let queue = [];
+        for (let style_name in tile_data) {
+            let style = styles[style_name];
+            queue.push(style.endData(tile_data[style_name]).then((style_data) => {
+                if (style_data) {
+                    tile.mesh_data[style_name] = {
+                        vertex_data: style_data.vertex_data,
+                        uniforms: style_data.uniforms
+                    };
+
+                    // Track min/max order range
+                    if (style_data.order.min < tile.order.min) {
+                        tile.order.min = style_data.order.min;
+                    }
+                    if (style_data.order.max > tile.order.max) {
+                        tile.order.max = style_data.order.max;
+                    }
+                }
+            }));
         }
 
-        tile.debug.rendering = +new Date() - tile.debug.rendering;
-        tile.debug.projection = 0;
-        tile.debug.features = 0;
-        tile.debug.network = 0;
-        tile.debug.parsing = 0;
+        return Promise.all(queue).then(() => {
+            // Aggregate debug info
+            tile.debug.rendering = +new Date() - tile.debug.rendering;
+            tile.debug.projection = 0;
+            tile.debug.features = 0;
+            tile.debug.network = 0;
+            tile.debug.parsing = 0;
 
-        for (let i in tile.sources) {
-            tile.debug.features  += tile.sources[i].debug.features;
-            tile.debug.projection += tile.sources[i].debug.projection;
-            tile.debug.network += tile.sources[i].debug.network;
-            tile.debug.parsing += tile.sources[i].debug.parsing;
-        }
+            for (let i in tile.sources) {
+                tile.debug.features  += tile.sources[i].debug.features;
+                tile.debug.projection += tile.sources[i].debug.projection;
+                tile.debug.network += tile.sources[i].debug.network;
+                tile.debug.parsing += tile.sources[i].debug.parsing;
+            }
 
-        // Return keys to be transfered to main thread
-        return {
-            vertex_data: true
-        };
+            // Return keys to be transfered to main thread
+            return {
+                mesh_data: true
+            };
+        });
     }
 
     /**
@@ -253,67 +244,41 @@ export default class Tile {
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    finalizeGeometry(styles) {
-        var vertex_data = this.vertex_data;
-        // Cleanup existing GL geometry objects
+    finalizeBuild(styles) {
+        // Cleanup existing VBOs
         this.freeResources();
-        this.gl_geometry = {};
 
-        // Create GL geometry objects
-        for (var s in vertex_data) {
-            this.gl_geometry[s] = styles[s].makeGLGeometry(vertex_data[s]);
+        // Create VBOs
+        let mesh_data = this.mesh_data;
+        for (var s in mesh_data) {
+            this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
         }
 
         this.debug.geometries = 0;
         this.debug.buffer_size = 0;
-        for (var p in this.gl_geometry) {
-            this.debug.geometries += this.gl_geometry[p].geometry_count;
-            this.debug.buffer_size += this.gl_geometry[p].vertex_data.byteLength;
+        for (var p in this.meshes) {
+            this.debug.geometries += this.meshes[p].geometry_count;
+            this.debug.buffer_size += this.meshes[p].vertex_data.byteLength;
         }
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 
-        delete this.vertex_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+        this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
     }
 
     remove() {
         this.workerMessage('removeTile', this.key);
     }
 
-    showDebug(div) {
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = this.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        debug_overlay.style.fontSize = '16px';
-        debug_overlay.style.textOutline = '1px #000000';
-        div.appendChild(debug_overlay);
-        div.style.borderStyle = 'solid';
-        div.style.borderColor = 'white';
-        div.style.borderWidth = '1px';
-        return debug_overlay;
-    }
-
     printDebug () {
         log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
-    updateDebugElement(div, show) {
-        div.setAttribute('data-tile-key', this.key);
-        div.style.width = '256px';
-        div.style.height = '256px';
-
-        if (show) {
-            this.showDebug(div);
-        }
-    }
-
     update(scene) {
-        this.visible =  (this.coords.z === Math.round(scene.zoom)) ||
-                        (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
+        this.visible = (this.coords.z === scene.baseZoom(scene.zoom)) ||
+                       (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
 
-        this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
+        // TODO: handle tiles of mismatching zoom levels
+        this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
     }
 
     calculateOverZoom() {
@@ -322,8 +287,8 @@ export default class Tile {
 
         if (z > this.max_zoom) {
             zgap = z - this.max_zoom;
-            x = ~~(x / Math.pow(2, zgap));
-            y = ~~(y / Math.pow(2, zgap));
+            x = Math.floor(x / Math.pow(2, zgap));
+            y = Math.floor(y / Math.pow(2, zgap));
             z -= zgap;
         }
 

@@ -1,5 +1,5 @@
-import GLTexture from './gl/gl_texture';
-import WorkerBroker from './worker_broker';
+import Texture from './gl/texture';
+import WorkerBroker from './utils/worker_broker';
 
 class FeatureSelection {
 
@@ -27,7 +27,7 @@ class FeatureSelection {
         this.fbo_size.aspect = this.fbo_size.width / this.fbo_size.height;
 
         // Texture for the FBO color attachment
-        var fbo_texture = new GLTexture(this.gl, 'selection_fbo');
+        var fbo_texture = new Texture(this.gl, 'selection_fbo');
         fbo_texture.setData(this.fbo_size.width, this.fbo_size.height, null, { filtering: 'nearest' });
         this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, fbo_texture.texture, 0);
 

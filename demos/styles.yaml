@@ -299,7 +299,7 @@ layers:
                 width: |
                     function () {
                         return (
-                            zoom >= 16 &&
+                            zoom >= 15 &&
                             (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
                             (2.5 * Math.log(zoom))
                         );
@@ -309,31 +309,6 @@ layers:
         geometry:
             source: osm
             filter: roads
-            # filter: |
-            #     function (json) {
-            #         return {
-            #             type: 'FeatureCollection',
-            #             features: (((json['road']||{}).features)||[]).concat(((json['bridge']||{}).features)||[]).filter(function (feature) {
-            #                 if (['motorway', 'motorway_link'].indexOf(feature.properties.class) > 0) {
-            #                     feature.properties.kind = 'highway';
-            #                     feature.properties.sort_key = 10000;
-            #                 }
-            #                 else if (feature.properties.class == 'main') {
-            #                     feature.properties.kind = 'major_road';
-            #                     feature.properties.sort_key = 1000;
-            #                 }
-            #                 else if (['street', 'street_limited'].indexOf(feature.properties.class) > 0) {
-            #                     feature.properties.kind = 'minor_road';
-            #                     feature.properties.sort_key = 100;
-            #                 }
-            #                 else {
-            #                     feature.properties.kind = feature.properties.type;
-            #                     feature.properties.sort_key = 10;
-            #                 }
-            #                 return feature;
-            #             })
-            #         };
-            #     }
 
         style:
             order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
@@ -343,6 +318,8 @@ layers:
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
+            cap: round
+            join: round
 
         highway:
             filter: { kind: highway }
@@ -355,9 +332,20 @@ layers:
                 width: function () { return 3 * Math.log(zoom); }
                 # width: [[13, 3px], [15, 5px], [16, 20px]]
                 # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+            outline:
+                filter: { scene.zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+                bridge:
+                    filter: { is_bridge: yes }
+                    style:
+                        outline:
+                            # don't draw outline caps on bridges because they draw over connecting non-bridge roads
+                            # see FDR Drive: 40.70278074491014,-74.00795169174671,20
+                            cap: butt
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
@@ -366,33 +354,41 @@ layers:
                     color: '#333'
                     width: function () { return 2 * Math.log(zoom); }
                     # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-                    outline:
-                        color: white
-                        # width: [[15, 2px], [18, 6px]]
-                        # width: 2px
-                        width: function () { return 1 * Math.log(zoom); }
+                outline:
+                    filter: { scene.zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: white
+                            # width: [[15, 2px], [18, 6px]]
+                            # width: 2px
+                            width: function () { return 1 * Math.log(zoom); }
 
         major_road:
             filter: { kind: major_road }
             style:
                 color: [0.5, 0.5, 0.5]
                 width: function () { return 2.5 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+            outline:
+                filter: { scene.zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
 
         minor_road:
-            filter: { kind: minor_road }
+            filter: { kind: minor_road, scene.zoom: { min: 13 } }
             style:
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+            outline:
+                filter: { scene.zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
 
         path:
-            filter:
-               kind: path
+            filter: { kind: path, scene.zoom: { min: 15 } }
             style:
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
@@ -406,9 +402,12 @@ layers:
             style:
                 color: [0.5, 0.0, 0.0]
                 width: function () { return 2 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+            outline:
+                filter: { scene.zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
         geometry:
@@ -474,7 +473,7 @@ layers:
         filter: { name: true }
         style:
             name: points
-            size: 10px
+            size: [[12, 6px], [13, 10px]]
 
             # name: icons
             # sprite: tree

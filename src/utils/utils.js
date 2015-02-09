@@ -171,39 +171,21 @@ Utils.stringsToFunctions = function(obj, wrap) {
     return obj;
 };
 
-// Run a block of code only if in the main thread
-Utils.inMainThread = function(block) {
+// Mark thread as main or worker
+(function() {
     try {
         if (window.document !== undefined) {
-            block();
+            Utils.isWorkerThread = false;
+            Utils.isMainThread   = true;
         }
     }
-    catch (e) {
-    }
-};
-
-// Run a block of code only if in a web worker thread
-Utils.inWorkerThread = function(block) {
-    try {
-        if (window.document !== undefined) {
-        }
-    } // jshint ignore:line
     catch (e) {
         if (self !== undefined) {
-            block();
+            Utils.isWorkerThread = true;
+            Utils.isMainThread   = false;
         }
     }
-};
-
-Utils.inWorkerThread(() => {
-    Utils.isWorkerThread = true;
-    Utils.isMainThread   = false;
-});
-
-Utils.inMainThread(() => {
-    Utils.isMainThread   = true;
-    Utils.isWorkerThread = false;
-});
+})();
 
 // Get URL that the current script was loaded from
 // If currentScript is not available, loops through <script> elements searching for a list of provided paths
@@ -248,10 +230,6 @@ Utils.isPowerOf2 = function(value) {
 // TODO: add other interpolation methods besides linear
 //
 Utils.interpolate = function(x, points) {
-    if (!x || !points) {
-        return points;
-    }
-
     // If this doesn't resemble a list of control points, just return the original value
     if (!Array.isArray(points) || points.some(v => { return !Array.isArray(v); })) {
         return points;
@@ -274,12 +252,6 @@ Utils.interpolate = function(x, points) {
     else {
         for (var i=0; i < points.length - 1; i++) {
             if (x >= points[i][0] && x < points[i+1][0]) {
-                // Boolean? Just treat each control point as a threshold, no interpolation
-                if (typeof points[i][1] === 'boolean') {
-                    y = points[i][1];
-                    break;
-                }
-
                 // Linear interpolation
                 x1 = points[i][0];
                 x2 = points[i+1][0];
@@ -323,19 +295,29 @@ Utils.values = function* (obj) {
 // Recursive iterators for all properties of an object, no matter how deeply nested
 // TODO: fix for circular structures
 Utils.recurseEntries = function* (obj) {
+    if (!obj) {
+        return;
+    }
     for (var key of Object.keys(obj)) {
-        yield [key, obj[key]];
-        if (typeof obj[key] === 'object') {
-            yield* Utils.recurseEntries(obj[key]);
+        if (obj[key]) {
+            yield [key, obj[key]];
+            if (typeof obj[key] === 'object') {
+                yield* Utils.recurseEntries(obj[key]);
+            }
         }
     }
 };
 
 Utils.recurseValues = function* (obj) {
+    if (!obj) {
+        return;
+    }
     for (var key of Object.keys(obj)) {
-        yield obj[key];
-        if (typeof obj[key] === 'object') {
-            yield* Utils.recurseValues(obj[key]);
+        if (obj[key]) {
+            yield obj[key];
+            if (typeof obj[key] === 'object') {
+                yield* Utils.recurseValues(obj[key]);
+            }
         }
     }
 };

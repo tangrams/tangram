@@ -1,4 +1,5 @@
-cd src/gl/shaders;
+#!/bin/bash
+cd src;
 echo "// Generated from GLSL files, don't edit!";
 echo "var shaderSources = {};";
 echo;

@@ -68,7 +68,7 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                         type: 'sampler2D',
                         method: '1i',
                         name: name + '[' + u + ']',
-                        value: uniform[0]
+                        value: uniform[u]
                     });
                 }
             }
