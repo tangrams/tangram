@@ -28,8 +28,9 @@ sinon.stub(Scene, 'loadWorkerUrl').returns(Promise.resolve(
 ));
 
 let container = document.createElement('div');
-container.style.width = 250;
-container.style.height = 250;
+container.style.width = '250px';
+container.style.height = '250px';
+document.body.appendChild(container);
 
 window.makeScene = function (options) {
     options = options || {};

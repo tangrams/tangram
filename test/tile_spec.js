@@ -8,14 +8,15 @@ let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 describe('Tile', function() {
 
     let subject,
-        scene;
+        scene,
+        coords = { x: 38603, y: 49255, z: 17 };
 
     beforeEach(() => {
         scene = makeScene({});
         sinon.stub(scene, 'findVisibleTiles').returns([]);
         scene.setView(nycLatLng);
         return scene.init().then(() => {
-            subject = Tile.create({coords: { x: 38605, y: 49254, z: 17 }, worker: scene.nextWorker()});
+            subject = Tile.create({coords, worker: scene.nextWorker()});
         });
     });
 
@@ -32,8 +33,8 @@ describe('Tile', function() {
         });
 
         it('overzooms a coordinate above the tile source max zoom', () => {
-            let unzoomed_coords = { x: 77202, y: 98506, z: 18 };
-            let overzoomed_coords = { x: 9650, y: 12313, z: 15 };
+            let unzoomed_coords = { x: Math.floor(coords.x*2), y: Math.floor(coords.y*2), z: 18 };
+            let overzoomed_coords = { x: Math.floor(coords.x/4), y: Math.floor(coords.y/4), z: 15 };
 
             let overzoom_tile = new Tile({
                 max_zoom: 15,
@@ -93,6 +94,11 @@ describe('Tile', function() {
 
     describe('sets visibility', () => {
 
+        beforeEach(() => {
+            scene.findVisibleTiles.restore();
+            scene.visible_tiles = scene.findVisibleTiles();
+        });
+
         describe('without a max_zoom', () => {
 
             it('is visible when scene is at same zoom as tile zoom', () => {
@@ -118,10 +124,12 @@ describe('Tile', function() {
 
             beforeEach(() => {
                 subject.max_zoom = 17;
+                scene.max_zoom = 17;
             });
 
             afterEach(() => {
                 delete subject.max_zoom;
+                delete scene.max_zoom;
             });
 
             it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
@@ -132,6 +140,7 @@ describe('Tile', function() {
 
             it('is NOT visible when scene is higher than tile zoom and tile is NOT at its max zoom', () => {
                 subject.max_zoom = 16;
+                scene.max_zoom = 16;
                 scene.setZoom(18);
                 subject.update(scene);
                 assert.isFalse(subject.visible);

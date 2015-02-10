@@ -26,11 +26,11 @@ export default class Tile {
             loaded: false,
             error: null,
             worker: null,
+            visible: false,
             order: {
                 min: Infinity,
                 max: -Infinity
             },
-            visible: false,
             center_dist: 0
         });
 
@@ -38,7 +38,7 @@ export default class Tile {
         this.max_zoom = max_zoom;
 
         this.coords = coords;
-        this.coords = this.calculateOverZoom();
+        this.coords = Tile.calculateOverZoom(this.coords, this.max_zoom);
         this.key = Tile.key(this.coords);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
@@ -54,6 +54,20 @@ export default class Tile {
 
     static key({x, y, z}) {
         return [x, y, z].join('/');
+    }
+
+    static calculateOverZoom({x, y, z}, max_zoom) {
+        max_zoom = max_zoom || z;
+
+        if (z > max_zoom) {
+            let zdiff = z - max_zoom;
+
+            x = Math.floor(x >> zdiff);
+            y = Math.floor(y >> zdiff);
+            z -= zdiff;
+        }
+
+        return {x, y, z};
     }
 
     // Sort a set of tile instances (which already have a distance from center tile computed)
@@ -274,25 +288,20 @@ export default class Tile {
     }
 
     update(scene) {
-        this.visible = (this.coords.z === scene.baseZoom(scene.zoom)) ||
-                       (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
-
-        // TODO: handle tiles of mismatching zoom levels
-        this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
-    }
-
-    calculateOverZoom() {
-        var zgap,
-            {x, y, z} = this.coords;
-
-        if (z > this.max_zoom) {
-            zgap = z - this.max_zoom;
-            x = Math.floor(x / Math.pow(2, zgap));
-            y = Math.floor(y / Math.pow(2, zgap));
-            z -= zgap;
+        if (this.coords.z === scene.center_tile.z && scene.visible_tiles[this.key]) {
+            this.visible = true;
+        }
+        else {
+            this.visible = false;
         }
 
-        return {x, y, z};
+        // TODO: handle tiles of mismatching zoom levels
+        if (this.coords.z === scene.center_tile.z) {
+            this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
+        }
+        else {
+            this.center_dist = Infinity;
+        }
     }
 
     load(scene) {

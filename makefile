@@ -17,7 +17,7 @@ dist/tangram.min.js: dist/tangram.debug.js
 src/gl/shader_sources.js: $(shell find src/ -name '*.glsl')
 	bash ./build_shaders.sh > src/gl/shader_sources.js
 
-build-testable: dist/tangram.debug.js
+build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
