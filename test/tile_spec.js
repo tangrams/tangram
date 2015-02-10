@@ -124,10 +124,12 @@ describe('Tile', function() {
 
             beforeEach(() => {
                 subject.max_zoom = 17;
+                scene.max_zoom = 17;
             });
 
             afterEach(() => {
                 delete subject.max_zoom;
+                delete scene.max_zoom;
             });
 
             it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
@@ -138,6 +140,7 @@ describe('Tile', function() {
 
             it('is NOT visible when scene is higher than tile zoom and tile is NOT at its max zoom', () => {
                 subject.max_zoom = 16;
+                scene.max_zoom = 16;
                 scene.setZoom(18);
                 subject.update(scene);
                 assert.isFalse(subject.visible);

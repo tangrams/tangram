@@ -306,7 +306,7 @@ Scene.prototype.setZoom = function (zoom) {
 };
 
 Scene.prototype.viewReady = function () {
-    if (this.css_size == null || this.center == null || this.zoom == null) {
+    if (this.css_size == null || this.center == null || this.zoom == null || Object.keys(this.sources).length === 0) {
          return false;
     }
     return true;
@@ -328,9 +328,16 @@ Scene.prototype.updateBounds = function () {
     };
 
     // Center of viewport in meters, and tile
-    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+    let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
     this.center_meters = { x, y };
-    this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], this.baseZoom(this.zoom));
+
+    let z = this.baseZoom(this.zoom);
+    let max_zoom = this.findMaxZoom();
+    if (z > max_zoom) {
+        z = max_zoom;
+    }
+    this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], z);
+
     this.bounds_meters = {
         sw: {
             x: this.center_meters.x - this.viewport_meters.x / 2,
@@ -345,8 +352,7 @@ Scene.prototype.updateBounds = function () {
     // Find visible tiles and load new ones
     this.visible_tiles = this.findVisibleTiles();
     for (let key in this.visible_tiles) {
-        let coords = this.visible_tiles[key];
-        this.loadTile(coords);
+        this.loadTile(this.visible_tiles[key]);
     }
 
     // Update tile visible flags
@@ -360,8 +366,9 @@ Scene.prototype.updateBounds = function () {
 
 Scene.prototype.findVisibleTiles = function ({ buffer } = {}) {
     let z = this.baseZoom(this.zoom);
-    if (z > this.findMaxZoom()) {
-        z = this.findMaxZoom();
+    let max_zoom = this.findMaxZoom();
+    if (z > max_zoom) {
+        z = max_zoom;
     }
 
     let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
@@ -608,7 +615,7 @@ Scene.prototype.render = function () {
     this.renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded === true && this.visible_tiles[tile.key]) {
+        if (tile.visible && tile.loaded) {
             this.renderable_tiles.push(tile);
         }
     }
@@ -684,8 +691,8 @@ Scene.prototype.getFeatureAt = function (pixel) {
 };
 
 // Queue a tile for load
-Scene.prototype.loadTile = function (...args) {
-    this.queued_tiles[this.queued_tiles.length] = args;
+Scene.prototype.loadTile = function (coords) {
+    this.queued_tiles[this.queued_tiles.length] = coords;
 };
 
 // Load all queued tiles
@@ -700,12 +707,37 @@ Scene.prototype.loadQueuedTiles = function () {
 
     // Sort queued tiles from center tile
     this.queued_tiles.sort((a, b) => {
-        let ad = Math.abs(this.center_tile.x - a[0].x) + Math.abs(this.center_tile.y - a[0].y);
-        let bd = Math.abs(this.center_tile.x - b[0].x) + Math.abs(this.center_tile.y - b[0].y);
+        let ad = Math.abs(this.center_tile.x - a.x) + Math.abs(this.center_tile.y - a.y);
+        let bd = Math.abs(this.center_tile.x - b.x) + Math.abs(this.center_tile.y - b.y);
         return (bd > ad ? -1 : (bd === ad ? 0 : 1));
     });
-    this.queued_tiles.forEach(args => this._loadTile.apply(this, args));
+    this.queued_tiles.forEach(coords => this._loadTile(coords));
     this.queued_tiles = [];
+};
+
+// Load a single tile
+Scene.prototype._loadTile = function (coords) {
+    // Skip if not at current scene zoom
+    if (coords.z !== this.center_tile.z) {
+        return;
+    }
+
+    let key = Tile.key(coords);
+    let tile;
+    if (!this.hasTile(key)) {
+        tile = Tile.create({
+            coords: coords,
+            max_zoom: this.findMaxZoom(),
+            worker: this.nextWorker()
+        });
+
+        this.cacheTile(tile);
+        tile.load(this);
+    }
+    else {
+        tile = this.tiles[key];
+    }
+    return tile;
 };
 
 // tile manager
@@ -731,31 +763,6 @@ Scene.prototype.findMaxZoom = function () {
         }
     }
     return max_zoom;
-};
-
-// Load a single tile
-Scene.prototype._loadTile = function (coords) {
-    // Skip if not at current scene zoom
-    if (coords.z !== this.baseZoom(this.zoom)) {
-        return;
-    }
-
-    let key = Tile.key(coords);
-    let tile;
-    if (!this.hasTile(key)) {
-        tile = Tile.create({
-            coords: coords,
-            max_zoom: this.findMaxZoom(),
-            worker: this.nextWorker()
-        });
-
-        this.cacheTile(tile);
-        tile.load(this);
-    }
-    else {
-        tile = this.tiles[key];
-    }
-    return tile;
 };
 
 // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
@@ -798,12 +805,12 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Rebuild visible tiles, sorted from center
         let build = [];
-        for (let key in this.tiles) {
-            if (this.visible_tiles[key]) {
-                build.push(this.tiles[key]);
+        for (let tile of Utils.values(this.tiles)) {
+            if (tile.visible) {
+                build.push(tile);
             }
             else {
-                this.removeTile(key);
+                this.removeTile(tile.key);
             }
         }
         Tile.sort(build).forEach(tile => tile.build(this));
@@ -955,6 +962,7 @@ Scene.prototype.loadDataSources = function () {
         source.url = Utils.addBaseURL(source.url);
         this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
     }
+    this.updateBounds();
 };
 
 Scene.prototype.setSourceMax = function () {
