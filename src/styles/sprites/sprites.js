@@ -60,6 +60,9 @@ Object.assign(Sprites, {
         // factor by which sprites scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
 
+        // to store bbox by tiles
+        style.tile = tile;
+
         this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
         return style;
@@ -87,37 +90,71 @@ Object.assign(Sprites, {
         return template;
     },
 
-    buildPoints(points, style, vertex_data) {
+    getBBox (size, position) {
+        let upp = Geo.units_per_pixel;
+        let half_merc_width = size[0] * upp * 0.5;
+        let half_merc_height = size[1] * upp * 0.5;
+
+        return [
+            position[0] - half_merc_width, 
+            position[1] - half_merc_height, 
+            position[0] + half_merc_width, 
+            position[1] + half_merc_height
+        ];
+    },
+
+    getOBBox (size, position, angle) {
+        let upp = Geo.units_per_pixel;
+        let mw = size[0] * upp * 0.5; // half mercator height
+        let mh = size[1] * upp * 0.5; // half mercator width
+    
+        let c = Math.cos(angle);
+        let s = Math.sin(angle);
+
+        let p0 = [ mw * c - mh * s, mw * s + mh * c ];
+        let p1 = [ mh * s - mw * c, -(mw * s + mh * c) ];
+        let p2 = [ -(mw * c + mh * s), mh * c - mw * s ];
+        let p3 = [ mw * c + mh * s, mw * s - mh * c ];
+
+        return [
+            Math.min([p0[0], p1[0], p2[0], p3[0]]),
+            Math.min([p0[1], p1[1], p2[1], p3[1]]),
+            Math.max([p0[0], p1[0], p2[0], p3[0]]),
+            Math.max([p0[1], p1[1], p2[1], p3[1]])
+        ];
+    },
+
+    overlap (tile, size, position, theta) {
+        let bbox;
+
+        if (theta) {
+            bbox = this.getOBBox(size, position, theta);
+        } else { 
+            bbox = this.getBBox(size, position);
+        }
+         
+        if (this.bboxes[tile] === undefined) {
+            this.bboxes[tile] = [];
+        }
+
+        this.bboxes[tile].push(bbox);
+        let bboxes = this.bboxes;
+
+        return boxIntersect(this.bboxes[tile], function(i, j) {
+            if (bboxes[tile][i] == bbox || bboxes[tile][j] == bbox) {
+                return true; // early exit
+            }
+        });
+    },
+
+    buildPoints (points, style, vertex_data) {
         if (!style.size) {
             return;
         }
 
         var vertex_template = this.makeVertexTemplate(style);
         
-        let upp = Geo.units_per_pixel;
-        let merc_width = style.size[0] * upp * 0.5;
-        let merc_height = style.size[1] * upp * 0.5;
-        let pos = points[0];
-
-        let bbox = [
-            pos[0] - merc_width, pos[1] - merc_height, pos[0] + merc_width, pos[1] + merc_height
-        ];
-        
-        if (this.bboxes[style.tile] === undefined) {
-            this.bboxes[style.tile] = [];
-        }
-        this.bboxes[style.tile].push(bbox);
-
-        let bboxes = this.bboxes;
-        let intersect = false;
-
-        intersect = boxIntersect(this.bboxes[style.tile], function(i, j) {
-            if (bboxes[style.tile][i] == bbox || bboxes[style.tile][j] == bbox) {
-                return true; // early exit
-            }
-        });
-
-        if (intersect) {
+        if (this.overlap(style.tile, style.size, points[0])) {
             return;
         }
 

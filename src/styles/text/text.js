@@ -187,14 +187,20 @@ Object.assign(Text, {
 
         p0p1 = Vector.normalize(p0p1);
 
-        let theta = (Math.atan2(p0p1[0], p0p1[1]) + Math.PI / 2);
+        let theta = Math.atan2(p0p1[0], p0p1[1]) + Math.PI / 2;
 
         if (theta > Math.PI / 2 || theta < -Math.PI / 2) {
             theta += Math.PI;
         }
 
         theta = Utils.radToDeg(theta); 
-        
+
+        let bbox = this.getOBBox(style.size, line[0], theta);
+
+        if (this.overlap(style.size, style.size, line[0], theta)) {
+            return;
+        }
+
         Builders.buildSpriteQuadsForPoints(
             [ line[0] ],
             Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
