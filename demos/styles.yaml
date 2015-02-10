@@ -332,7 +332,7 @@ layers:
                 # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
 
             outline:
-                filter: { scene.zoom: { min: 15 } }
+                filter: { '@zoom': { min: 15 } }
                 style:
                     outline:
                         color: [0.7, 0.7, 0.7]
@@ -347,7 +347,7 @@ layers:
                             cap: butt
 
                 round:
-                    filter: { scene.zoom: { min: 17 }, is_bridge: no }
+                    filter: { '@zoom': { min: 17 }, is_bridge: no }
                     style:
                         cap: round
                         join: round
@@ -360,7 +360,7 @@ layers:
                     width: function () { return 2 * Math.log(zoom); }
                     # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
                 outline:
-                    filter: { scene.zoom: { min: 15 } }
+                    filter: { '@zoom': { min: 15 } }
                     style:
                         outline:
                             color: white
@@ -368,7 +368,7 @@ layers:
                             # width: 2px
                             width: function () { return 1 * Math.log(zoom); }
                 round:
-                    filter: { scene.zoom: { min: 17 } }
+                    filter: { '@zoom': { min: 17 } }
                     style:
                         cap: round
                         join: round
@@ -379,36 +379,36 @@ layers:
                 color: [0.5, 0.5, 0.5]
                 width: function () { return 2.5 * Math.log(zoom); }
             outline:
-                filter: { scene.zoom: { min: 15 } }
+                filter: { '@zoom': { min: 15 } }
                 style:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
                 round:
-                    filter: { scene.zoom: { min: 17 } }
+                    filter: { '@zoom': { min: 17 } }
                     style:
                         cap: round
                         join: round
 
         minor_road:
-            filter: { kind: minor_road, scene.zoom: { min: 13 } }
+            filter: { kind: minor_road, '@zoom': { min: 13 } }
             style:
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
             outline:
-                filter: { scene.zoom: { min: 15 } }
+                filter: { '@zoom': { min: 15 } }
                 style:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
                 round:
-                    filter: { scene.zoom: { min: 17 } }
+                    filter: { '@zoom': { min: 17 } }
                     style:
                         cap: round
                         join: round
 
         path:
-            filter: { kind: path, scene.zoom: { min: 15 } }
+            filter: { kind: path, '@zoom': { min: 15 } }
             style:
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
@@ -417,7 +417,7 @@ layers:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
             round:
-                filter: { scene.zoom: { min: 17 } }
+                filter: { '@zoom': { min: 17 } }
                 style:
                     cap: round
                     join: round
@@ -428,13 +428,13 @@ layers:
                 color: [0.5, 0.0, 0.0]
                 width: function () { return 2 * Math.log(zoom); }
             outline:
-                filter: { scene.zoom: { min: 15 } }
+                filter: { '@zoom': { min: 15 } }
                 style:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
                 round:
-                    filter: { scene.zoom: { min: 17 } }
+                    filter: { '@zoom': { min: 17 } }
                     style:
                         cap: round
                         join: round
