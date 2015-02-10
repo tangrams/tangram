@@ -193,13 +193,11 @@ Object.assign(Text, {
             theta += Math.PI;
         }
 
-        theta = Utils.radToDeg(theta); 
-
-        let bbox = this.getOBBox(style.size, line[0], theta);
-
         if (this.overlap(style.size, style.size, line[0], theta)) {
             return;
         }
+
+        theta = Utils.radToDeg(theta); 
 
         Builders.buildSpriteQuadsForPoints(
             [ line[0] ],

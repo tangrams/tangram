@@ -92,6 +92,7 @@ Object.assign(Sprites, {
 
     getBBox (size, position) {
         let upp = Geo.units_per_pixel;
+
         let half_merc_width = size[0] * upp * 0.5;
         let half_merc_height = size[1] * upp * 0.5;
 
@@ -105,22 +106,23 @@ Object.assign(Sprites, {
 
     getOBBox (size, position, angle) {
         let upp = Geo.units_per_pixel;
+
         let mw = size[0] * upp * 0.5; // half mercator height
         let mh = size[1] * upp * 0.5; // half mercator width
     
         let c = Math.cos(angle);
         let s = Math.sin(angle);
 
-        let p0 = [ mw * c - mh * s, mw * s + mh * c ];
-        let p1 = [ mh * s - mw * c, -(mw * s + mh * c) ];
-        let p2 = [ -(mw * c + mh * s), mh * c - mw * s ];
-        let p3 = [ mw * c + mh * s, mw * s - mh * c ];
+        let x = mw * c - mh * s;
+        let y = mw * s + mh * c;
+
+        let max = Math.max(x, y);
 
         return [
-            Math.min([p0[0], p1[0], p2[0], p3[0]]),
-            Math.min([p0[1], p1[1], p2[1], p3[1]]),
-            Math.max([p0[0], p1[0], p2[0], p3[0]]),
-            Math.max([p0[1], p1[1], p2[1], p3[1]])
+            position[0] - max,
+            position[1] - max,
+            position[0] + max,
+            position[1] + max
         ];
     },
 
