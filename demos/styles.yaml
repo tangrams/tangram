@@ -318,8 +318,6 @@ layers:
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
-            cap: round
-            join: round
 
         highway:
             filter: { kind: highway }
@@ -332,6 +330,7 @@ layers:
                 width: function () { return 3 * Math.log(zoom); }
                 # width: [[13, 3px], [15, 5px], [16, 20px]]
                 # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
+
             outline:
                 filter: { scene.zoom: { min: 15 } }
                 style:
@@ -346,6 +345,12 @@ layers:
                             # don't draw outline caps on bridges because they draw over connecting non-bridge roads
                             # see FDR Drive: 40.70278074491014,-74.00795169174671,20
                             cap: butt
+
+                round:
+                    filter: { scene.zoom: { min: 17 }, is_bridge: no }
+                    style:
+                        cap: round
+                        join: round
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
@@ -362,6 +367,11 @@ layers:
                             # width: [[15, 2px], [18, 6px]]
                             # width: 2px
                             width: function () { return 1 * Math.log(zoom); }
+                round:
+                    filter: { scene.zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
         major_road:
             filter: { kind: major_road }
@@ -374,6 +384,11 @@ layers:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+                round:
+                    filter: { scene.zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
         minor_road:
             filter: { kind: minor_road, scene.zoom: { min: 13 } }
@@ -386,6 +401,11 @@ layers:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+                round:
+                    filter: { scene.zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
         path:
             filter: { kind: path, scene.zoom: { min: 15 } }
@@ -396,6 +416,11 @@ layers:
                 outline:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+            round:
+                filter: { scene.zoom: { min: 17 } }
+                style:
+                    cap: round
+                    join: round
 
         rail:
             filter: { kind: rail }
@@ -408,6 +433,11 @@ layers:
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+                round:
+                    filter: { scene.zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
     buildings:
         geometry:
