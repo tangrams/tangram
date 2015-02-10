@@ -40,6 +40,7 @@ export default function Scene(config_source, options) {
     this.sources = {};
 
     this.tiles = {};
+    this.visible_tiles = {};
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
@@ -341,13 +342,17 @@ Scene.prototype.updateBounds = function () {
         }
     };
 
-    // Mark tiles as visible
-    for (var tile of Utils.values(this.tiles)) {
-        tile.update(this);
+    // Find visible tiles and load new ones
+    this.visible_tiles = this.findVisibleTiles();
+    for (let key in this.visible_tiles) {
+        let coords = this.visible_tiles[key];
+        this.loadTile(coords);
     }
 
-    // Find and load any new visible tiles
-    this.findVisibleTiles({ buffer: 1 }).forEach(coords => this.loadTile(coords));
+    // Update tile visible flags
+    for (let key in this.tiles) {
+        this.tiles[key].update(this);
+    }
 
     this.trigger('move');
     this.dirty = true;
@@ -355,17 +360,22 @@ Scene.prototype.updateBounds = function () {
 
 Scene.prototype.findVisibleTiles = function ({ buffer } = {}) {
     let z = this.baseZoom(this.zoom);
+    if (z > this.findMaxZoom()) {
+        z = this.findMaxZoom();
+    }
+
     let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
     let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
     buffer = buffer || 0;
 
-    let coords = [];
+    let tiles = {};
     for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
         for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
-            coords.push({ x, y, z });
+            let coords = { x, y, z };
+            tiles[Tile.key(coords)] = coords;
         }
     }
-    return coords;
+    return tiles;
 };
 
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
@@ -598,7 +608,7 @@ Scene.prototype.render = function () {
     this.renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded === true && tile.visible === true) {
+        if (tile.loaded === true && this.visible_tiles[tile.key]) {
             this.renderable_tiles.push(tile);
         }
     }
@@ -786,19 +796,17 @@ Scene.prototype.rebuildGeometry = function () {
         // Update config (in case JS objects were manipulated directly)
         this.syncConfigToWorker();
 
-        // Rebuild visible tiles first
-        let tile, visible = [];
-        for (tile of Utils.values(this.tiles)) {
-            if (tile.visible === true) {
-                visible.push(tile);
+        // Rebuild visible tiles, sorted from center
+        let build = [];
+        for (let key in this.tiles) {
+            if (this.visible_tiles[key]) {
+                build.push(this.tiles[key]);
             }
             else {
-                this.removeTile(tile.key);
+                this.removeTile(key);
             }
         }
-
-        // Sort from center tile
-        Tile.sort(visible).forEach(tile => tile.build(this));
+        Tile.sort(build).forEach(tile => tile.build(this));
 
         this.updateActiveStyles();
         this.resetTime();

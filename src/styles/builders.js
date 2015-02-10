@@ -4,7 +4,6 @@ import {Vector} from '../vector';
 import Geo from '../geo';
 
 import earcut from 'earcut';
-import log from 'loglevel';
 
 var Builders;
 export default Builders = {};

@@ -26,11 +26,11 @@ export default class Tile {
             loaded: false,
             error: null,
             worker: null,
+            visible: false,
             order: {
                 min: Infinity,
                 max: -Infinity
             },
-            visible: false,
             center_dist: 0
         });
 
@@ -274,8 +274,18 @@ export default class Tile {
     }
 
     update(scene) {
-        this.visible = (this.coords.z === scene.baseZoom(scene.zoom)) ||
-                       (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
+        // In zoom
+        if (this.coords.z === scene.baseZoom(scene.zoom) && scene.visible_tiles[this.key]) {
+            this.visible = true;
+        }
+        // Overzoom
+        else if (this.coords.z === this.max_zoom && scene.zoom > this.max_zoom) {
+            let zdiff = scene.zoom - this.max_zoom;
+            let coords = { x: this.coords.x << zdiff, y: this.coords.y << zdiff, z: scene.zoom };
+            if (scene.visible_tiles[Tile.key(coords)]) {
+                this.visible = true;
+            }
+        }
 
         // TODO: handle tiles of mismatching zoom levels
         this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
