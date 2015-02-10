@@ -6,6 +6,9 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Utils from '../../utils/utils';
+import Geo from '../../geo';
+import boxIntersect from 'box-intersect';
+
 
 export var Sprites = Object.create(Style);
 
@@ -21,6 +24,7 @@ Object.assign(Sprites, {
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
 
         this.selection = true;
+        this.bboxes = {};
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -89,6 +93,33 @@ Object.assign(Sprites, {
         }
 
         var vertex_template = this.makeVertexTemplate(style);
+        
+        let upp = Geo.units_per_pixel;
+        let merc_width = style.size[0] * upp * 0.5;
+        let merc_height = style.size[1] * upp * 0.5;
+        let pos = points[0];
+
+        let bbox = [
+            pos[0] - merc_width, pos[1] - merc_height, pos[0] + merc_width, pos[1] + merc_height
+        ];
+        
+        if (this.bboxes[style.tile] === undefined) {
+            this.bboxes[style.tile] = [];
+        }
+        this.bboxes[style.tile].push(bbox);
+
+        let bboxes = this.bboxes;
+        let intersect = false;
+
+        intersect = boxIntersect(this.bboxes[style.tile], function(i, j) {
+            if (bboxes[style.tile][i] == bbox || bboxes[style.tile][j] == bbox) {
+                return true; // early exit
+            }
+        });
+
+        if (intersect) {
+            return;
+        }
 
         Builders.buildSpriteQuadsForPoints(
             points,

@@ -195,13 +195,9 @@ Object.assign(Text, {
 
         theta = Utils.radToDeg(theta); 
         
-        let width = style.size[0];
-        let height = style.size[1];
-        let pos = line[0];
-
         Builders.buildSpriteQuadsForPoints(
-            [ pos ],
-            Utils.scaleInt16(width, 128), Utils.scaleInt16(height, 128),
+            [ line[0] ],
+            Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
             Utils.scaleInt16(theta, 360), 
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
@@ -231,6 +227,9 @@ Object.assign(Text, {
 
         // factor by which sprites scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
+
+        // to store bbox by tiles
+        style.tile = tile;
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;
