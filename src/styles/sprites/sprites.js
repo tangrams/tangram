@@ -140,10 +140,9 @@ Object.assign(Sprites, {
         }
 
         this.bboxes[tile].push(bbox);
-        let bboxes = this.bboxes;
 
-        return boxIntersect(this.bboxes[tile], function(i, j) {
-            if (bboxes[tile][i] == bbox || bboxes[tile][j] == bbox) {
+        return boxIntersect(this.bboxes[tile], (i, j) => {
+            if (this.bboxes[tile][i] == bbox || this.bboxes[tile][j] == bbox) {
                 return true; // early exit
             }
         });
@@ -158,7 +157,7 @@ Object.assign(Sprites, {
         
         if (this.overlap(style.tile, style.size, points[0])) {
             return;
-        }
+        } 
 
         Builders.buildSpriteQuadsForPoints(
             points,

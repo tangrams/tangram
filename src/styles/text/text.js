@@ -193,9 +193,9 @@ Object.assign(Text, {
             theta += Math.PI;
         }
 
-        if (this.overlap(style.size, style.size, line[0], theta)) {
+        if (this.overlap(style.tile, style.size, line[0], theta)) {
             return;
-        }
+        } 
 
         theta = Utils.radToDeg(theta); 
 
