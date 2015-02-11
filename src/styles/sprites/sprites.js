@@ -63,6 +63,8 @@ Object.assign(Sprites, {
         // to store bbox by tiles
         style.tile = tile;
 
+        style.keep_in_tile = true;
+
         this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
         return style;
@@ -126,7 +128,7 @@ Object.assign(Sprites, {
         ];
     },
 
-    overlap (tile, size, position, theta) {
+    overlap (tile, size, position, keep_in_tile, theta) {
         let bbox;
 
         if (theta) {
@@ -134,7 +136,15 @@ Object.assign(Sprites, {
         } else { 
             bbox = this.getBBox(size, position);
         }
-         
+ 
+        if (keep_in_tile) {
+            let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
+
+            if (bbox[0] < 0 || bbox[1] < -tile_pixel_size || bbox[2] > tile_pixel_size || bbox[3] > 0) {
+                return true;
+            }   
+        }
+
         if (this.bboxes[tile] === undefined) {
             this.bboxes[tile] = [];
         }
@@ -143,6 +153,12 @@ Object.assign(Sprites, {
 
         return boxIntersect(this.bboxes[tile], (i, j) => {
             if (this.bboxes[tile][i] == bbox || this.bboxes[tile][j] == bbox) {
+                let index = this.bboxes[tile].indexOf(bbox);
+                if (index > -1) {
+                    // remove that bbox
+                    this.bboxes[tile].splice(index, 1);
+                }
+
                 return true; // early exit
             }
         });
@@ -155,7 +171,7 @@ Object.assign(Sprites, {
 
         var vertex_template = this.makeVertexTemplate(style);
         
-        if (this.overlap(style.tile, style.size, points[0])) {
+        if (this.overlap(style.tile, style.size, points[0], style.keep_in_tile)) {
             return;
         } 
 

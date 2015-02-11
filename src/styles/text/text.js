@@ -193,7 +193,7 @@ Object.assign(Text, {
             theta += Math.PI;
         }
 
-        if (this.overlap(style.tile, style.size, line[0], theta)) {
+        if (this.overlap(style.tile, style.size, line[0], style.keep_in_tile, theta)) {
             return;
         } 
 
@@ -234,6 +234,9 @@ Object.assign(Text, {
 
         // to store bbox by tiles
         style.tile = tile;
+
+        // whether the labels should be removed when out of tile boundaries
+        style.keep_in_tile = true;
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;
