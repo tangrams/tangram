@@ -285,6 +285,12 @@ layers:
                 color: [0.3, 0.675, 0.3]
                 order: .1
 
+        airports:
+            filter: { kind: apron }
+            style:
+                color: lightyellow
+                order: .05
+
     water:
         geometry:
             source: osm
@@ -391,7 +397,7 @@ layers:
                         join: round
 
         minor_road:
-            filter: { kind: minor_road, '@zoom': { min: 13 } }
+            filter: { kind: minor_road, '@zoom': { min: 13 }, not: { aeroway: [taxiway, runway] } }
             style:
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
@@ -406,6 +412,23 @@ layers:
                     style:
                         cap: round
                         join: round
+
+        airports:
+            filter: { aeroway: true }
+
+            taxiways:
+                filter: { aeroway: taxiway }
+                style:
+                    width: [[12, 1px], [13, 2px], [17, 10px]]
+                    color: darkorange
+                    cap: round
+
+            runways:
+                filter: { aeroway: runway }
+                style:
+                    width: [[12, 5px], [13, 10px], [15, 30px], [17, 150px]]
+                    color: orange
+                    order: .1
 
         path:
             filter: { kind: path, '@zoom': { min: 15 } }
