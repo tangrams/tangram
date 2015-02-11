@@ -21,16 +21,18 @@ cameras:
         zoom: 17
 
 lighting:
-    type: point
-    position: [0, 0, 200]
-    color: [1, 1, 1]
-    # ambient: 0.5
-    backlight: true
+    light1:
+        type: point
+        position: [0, 0, 200]
+        color: [1, 1, 1]
+        # ambient: 0.5
+        backlight: true
 
-    # type: directional
-    # direction: [-1, 0, -.5]
-    # color: [1, 1, 1]
-    # ambient: 0.5
+    light2:
+        type: directional
+        direction: [-1, 0, -.5]
+        color: [1, 1, 1]
+        ambient: 0.5
 
     # type: spotlight
     # position: [0, 0, 500]

@@ -1,5 +1,6 @@
 /*global Light */
 import ShaderProgram from './gl/shader_program';
+import shaderSources from './gl/shader_sources'; // built-in shaders
 
 // Abstract base class
 export default class Light {
@@ -23,6 +24,55 @@ export default class Light {
         }
     }
 
+    static inject(lights) {
+
+        // clear previous injections
+        ShaderProgram.removeTransform(Light.transform);
+
+        // inject global things here
+
+        // inject materials
+        ShaderProgram.defines['LIGHT_X'] = true;
+
+        // Collect all types of lights
+        let types = {};
+        for (let name in lights) {
+            types[lights[name].type] = true;
+        }
+
+        // Inject each type of light
+        for (let type in types) {
+            switch (type) {
+                case 'point':
+                    PointLight.inject();
+                    break;
+                case 'directional':
+                    DirectionalLight.inject();
+                    break;
+                case 'spotlight':
+                    SpotLight.inject();
+                    break;
+            }            
+        }
+
+        // inject per-instance
+        for (let name in lights) {
+            lights[name].inject();
+        }
+
+        // inject the compute light wrapper
+
+        let compute = `
+            vec4 computeLight(...) {
+                ${Object.keys(lights).map(name => 'calculateLight(' + name + ');\n')}
+            }
+        `;
+
+        // ShaderProgram.removeTransform(Light.transform); // ??
+        ShaderProgram.addTransform(Light.transform, compute);
+        
+    }
+
     // Update method called once per frame
     update() {
     }
@@ -36,6 +86,35 @@ export default class Light {
 // Shader transform name
 Light.transform = 'lighting';
 
+// Directional light implementing diffuse, specular, and ambient terms
+class DirectionalLight extends Light {
+
+    constructor(scene, options = {}) {
+        super(scene);
+        this.type = 'directional';
+
+        this.direction = (options.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        this.color = (options.color || [1, 1, 1]).map(parseFloat);
+        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
+        );
+    }
+
+    static inject() {
+        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/directionalLight']);
+    }
+
+    inject() {
+        
+    }
+
+    setupProgram(program) {
+        program.uniform('3fv', 'u_directional_light_direction', this.direction);
+        program.uniform('3fv', 'u_directional_light_color', this.color);
+        program.uniform('1f', 'u_directional_light_ambient', this.ambient);
+    }
+
+}
+
 
 // Point light implementing diffuse, specular, and ambient terms
 class PointLight extends Light {
@@ -48,41 +127,14 @@ class PointLight extends Light {
         this.position = (options.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
         this.backlight = options.backlight || false;
+    }
 
-        ShaderProgram.removeTransform(Light.transform);
-        ShaderProgram.addTransform(Light.transform, `
-            vec3 pointLight(
-                vec4 position,
-                vec3 normal,
-                vec3 color,
-                vec4 light_pos,
-                float light_ambient,
-                const bool backlight) {
+    static inject() {
+        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/pointLight']);
+    }
 
-                // Lambert shading
-                vec3 light_dir = normalize(position.xyz - light_pos.xyz); // from light point to vertex
-                color *= abs(max(float(backlight) * -1., dot(normal, light_dir * -1.0))) + light_ambient;
-                return color;
-            }
-
-            uniform vec4 u_point_light_position;
-            uniform vec3 u_point_light_color;
-            uniform float u_point_light_ambient;
-            uniform bool u_point_light_backlight;
-
-            vec3 calculateLighting(
-                vec4 position,
-                vec3 normal,
-                vec3 color) {
-
-                return pointLight(
-                    position, normal, u_point_light_color,
-                    u_point_light_position,
-                    u_point_light_ambient,
-                    u_point_light_backlight
-                );
-            }`
-        );
+    inject() {
+        
     }
 
     setupProgram(program) {
@@ -92,10 +144,25 @@ class PointLight extends Light {
             this.position[2] * this.scene.meters_per_pixel,
             1);
         program.uniform('3fv', 'u_point_light_color', this.color);
+
+        this.uniform_name_color = `u_${this.name}_light_color`;
+        // program.uniform('3fv', this.uniform_name_color, this.color);
+        // program.uniform('3fv', `u_${this.name}_light_color`, this.color);
+
+        // let material = {
+        //     ambient: [1, 0, 0],
+        //     diffuse: [1, 1, 0]
+        // };
+        // program.setUniforms({ u_material: material });
+
+        // program.uniform('3fv', 'u_material.ambient', material.ambient);
+        // program.uniform('3fv', 'u_material.diffuse', material.diffuse);
+
+
+
         program.uniform('1f', 'u_point_light_ambient', this.ambient);
         program.uniform('1i', 'u_point_light_backlight', this.backlight);
     }
-
 }
 
 class SpotLight extends Light {
@@ -110,66 +177,14 @@ class SpotLight extends Light {
         this.outer_angle = parseFloat(options.outer_angle || 25);
         this.color = (options.color || [1, 1, 1]).map(parseFloat);
         this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.2;
+    }
 
-        ShaderProgram.removeTransform(Light.transform);
-        ShaderProgram.addTransform(Light.transform, `
-            vec3 spotLight(
-                vec4 position,
-                vec3 normal,
-                vec3 color,
-                vec4 light_pos,
-                vec3 light_dir,
-                float inner_angle,
-                float outer_angle,
-                float light_ambient) {
+    static inject() {
+        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/spotLight']);
+    }
 
-                // Lambert shading
-                vec3 light_to_pos = normalize(position.xyz - light_pos.xyz); // from light point to vertex
-
-                float inner_cutoff = cos(radians(inner_angle));
-                float outer_cutoff = cos(radians(outer_angle));
-
-                light_dir = normalize(light_dir);
-                float angle = dot(light_dir, light_to_pos);
-
-                if (angle > outer_cutoff) {
-                    float intensity = mix(.2, 1., max(0., dot(normal, light_to_pos * -1.0)));
-
-                    if (angle < inner_cutoff) {
-                        intensity *= mix(1., 0., (inner_cutoff - angle) / (inner_cutoff - outer_cutoff));
-                    }
-
-                    color *= intensity + light_ambient;
-                }
-                else {
-                    color *= light_ambient;
-                }
-
-                return color;
-            }
-
-            uniform vec4 u_spotlight_position;
-            uniform vec3 u_spotlight_direction;
-            uniform float u_spotlight_inner_angle;
-            uniform float u_spotlight_outer_angle;
-            uniform vec3 u_spotlight_color;
-            uniform float u_spotlight_ambient;
-
-            vec3 calculateLighting(
-                vec4 position,
-                vec3 normal,
-                vec3 color) {
-
-                return spotLight(
-                    position, normal, u_spotlight_color,
-                    u_spotlight_position,
-                    u_spotlight_direction,
-                    u_spotlight_inner_angle,
-                    u_spotlight_outer_angle,
-                    u_spotlight_ambient
-                );
-            }`
-        );
+    inject() {
+        
     }
 
     setupProgram(program) {
@@ -183,58 +198,6 @@ class SpotLight extends Light {
         program.uniform('1f', 'u_spotlight_outer_angle', this.outer_angle);
         program.uniform('3fv', 'u_spotlight_color', this.color);
         program.uniform('1f', 'u_spotlight_ambient', this.ambient);
-    }
-
-}
-
-// Directional light implementing diffuse, specular, and ambient terms
-class DirectionalLight extends Light {
-
-    constructor(scene, options = {}) {
-        super(scene);
-        this.type = 'directional';
-
-        this.direction = (options.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
-        this.color = (options.color || [1, 1, 1]).map(parseFloat);
-        this.ambient = !isNaN(parseFloat(options.ambient)) ? parseFloat(options.ambient) : 0.5;
-
-        ShaderProgram.removeTransform(Light.transform);
-        ShaderProgram.addTransform(Light.transform, `
-            vec3 directionalLight (
-                vec3 normal,
-                vec3 color,
-                vec3 light_dir,
-                float light_ambient) {
-
-                // Flat shading
-                light_dir = normalize(light_dir);
-                color *= max(0., dot(normal, light_dir * -1.0)) + light_ambient;
-                return color;
-            }
-
-            uniform vec3 u_directional_light_direction;
-            uniform vec3 u_directional_light_color;
-            uniform float u_directional_light_ambient;
-
-            vec3 calculateLighting(
-                vec4 position,
-                vec3 normal,
-                vec3 color) {
-
-                return directionalLight(
-                    normal,
-                    u_directional_light_color,
-                    u_directional_light_direction,
-                    u_directional_light_ambient
-                );
-            }`
-        );
-    }
-
-    setupProgram(program) {
-        program.uniform('3fv', 'u_directional_light_direction', this.direction);
-        program.uniform('3fv', 'u_directional_light_color', this.color);
-        program.uniform('1f', 'u_directional_light_ambient', this.ambient);
     }
 
 }
