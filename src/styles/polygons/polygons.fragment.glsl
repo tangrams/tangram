@@ -45,6 +45,7 @@ varying vec4 v_world_position;
 #endif
 
 #pragma tangram: globals
+#pragma tangram: material
 #pragma tangram: lighting
 
 void main (void) {
@@ -65,7 +66,7 @@ void main (void) {
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
-        vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));
+        vec3 lighting = calculateLighting(v_position, v_normal, color).rgb;
     #else
         vec3 lighting = v_lighting;
     #endif

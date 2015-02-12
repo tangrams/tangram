@@ -1,5 +1,5 @@
 
-vec3 lightFragment(in vec3 _eyeToPoint, in vec3 _normal, inout vec4 _colorOut) {
+vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
 
     #pragma tangram: fragment_lights_to_compute
 
@@ -16,14 +16,15 @@ vec3 lightFragment(in vec3 _eyeToPoint, in vec3 _normal, inout vec4 _colorOut) {
     #endif
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
-        color += g_light_accumulator_diffuse * g_material.diffuse;
+        color += g_light_accumulator_diffuse * _color * g_material.diffuse;
     #endif
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
         color += g_light_accumulator_specular * g_material.specular;
     #endif
 
+    // Clamp final color to be in the right spectrum
     color = clamp(color, 0.0, 1.0);
 
-    return color.rgb;
+    return color;
 }
