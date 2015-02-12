@@ -256,3 +256,12 @@ GLSL.isSymbolReferenced = function (name, source) {
     }
     return false;
 };
+
+GLSL.expandVec4 = function (v, w = 1) {
+    if (typeof v === 'number') {
+        return [v, v, v, v];
+    }
+    else if (Array.isArray(v) && v.length === 3) {
+        return [...v, w];
+    }
+};
