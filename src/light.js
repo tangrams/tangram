@@ -42,8 +42,8 @@ export default class Light {
 
         // Collect all TYPES of lights
         let types = {};
-        for (let name in _lights) {
-            types[_lights[name].type] = true;
+        for (let light_name in _lights) {
+            types[_lights[light_name].type] = true;
         }
 
         // Inject each type of light
@@ -63,13 +63,13 @@ export default class Light {
 
         // inject per-instance blocks and construct the list of function to calculate
         let calculateList = "";
-        for (let name in _lights) {
+        for (let light_name in _lights) {
 
             // Define instance
-            _lights[name].inject();
+            _lights[light_name].inject();
 
             // Add the calculation function to the list
-            calculateList += 'calculateLight(g_' + name + ', _eyeToPoint, _normal);\n';
+            calculateList += 'calculateLight(g_' + light_name + ', _eyeToPoint, _normal);\n';
         }
 
         // Glue together the calculate Lighting function

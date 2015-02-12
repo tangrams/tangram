@@ -1,28 +1,34 @@
 /*global Material */
 import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
+import GLSL from './gl/glsl';
 
 export default class Material {
     constructor (_style, _options = {}) {
         this.style = _style;
-        this.emission = (_options.emission || [0,0,0]).map(parseFloat);
-        this.ambient = (_options.ambient || [0,0,0]).map(parseFloat);
-        this.diffuse = (_options.diffuse || [1,1,1]).map(parseFloat);
-        this.specular = (_options.specular ||[0,0,0]).map(parseFloat);
-        this.shininess = !isNaN(parseFloat(options.shininess)) ? parseFloat(options.shininess) : 0.2;
+        this.emission = _options.emission && _options.emission.map(parseFloat);
+        this.ambient = _options.ambient && _options.ambient.map(parseFloat);
+        this.diffuse = _options.diffuse ? _options.diffuse.map(parseFloat) : [1,1,1];
+        this.specular = _options.specular && _options.specular.map(parseFloat);
+        this.shininess = _options.shininess ? parseFloat(_options.shininess) : 0.2;
+
+        this.emission = GLSL.expandVec4(this.emission);
+        this.ambient = GLSL.expandVec4(this.ambient);
+        this.diffuse = GLSL.expandVec4(this.diffuse);
+        this.specular = GLSL.expandVec4(this.specular);
     }
 
     inject () {
-        if (this.emission !== [0,0,0]) {
+        if (this.emission) {
             this.style.defines['TANGRAM_MATERIAL_EMISSION'] = true;
         }
-        if (this.ambient !== [0,0,0]) {
+        if (this.ambient) {
             this.style.defines['TANGRAM_MATERIAL_AMBIENT'] = true;
         }
-        if (this.diffuse !== [0,0,0]) {
+        if (this.diffuse) {
             this.style.defines['TANGRAM_MATERIAL_DIFFUSE'] = true;
         }
-        if (this.specular !== [0,0,0]) {
+        if (this.specular) {
             this.style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
         }
 
@@ -30,17 +36,17 @@ export default class Material {
     }
 
     setupProgram (_program) {
-        if (this.emission !== [0,0,0]) {
-            _program.uniform('3fv', 'u_material.emission', this.emission);
+        if (this.emission) {
+            _program.uniform('4fv', 'u_material.emission', this.emission);
         }
-        if (this.ambient !== [0,0,0]) {
-            _program.uniform('3fv', 'u_material.ambient', this.ambient);
+        if (this.ambient) {
+            _program.uniform('4fv', 'u_material.ambient', this.ambient);
         }
-        if (this.diffuse !== [0,0,0]) {
-            _program.uniform('3fv', 'u_material.diffuse', this.diffuse);
+        if (this.diffuse) {
+            _program.uniform('4fv', 'u_material.diffuse', this.diffuse);
         }
-        if (this.specular !== [0,0,0]) {
-            _program.uniform('3fv', 'u_material.specular', this.specular);
+        if (this.specular) {
+            _program.uniform('4fv', 'u_material.specular', this.specular);
             _program.uniform('1f', 'u_material.shininess', this.shininess);
         }
     }
