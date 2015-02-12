@@ -20,7 +20,7 @@ cameras:
         position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
-lighting:
+lights:
     light1:
         type: point
         position: [0, 0, 200]
@@ -29,10 +29,15 @@ lighting:
         backlight: true
 
     light2:
-        type: directional
-        direction: [-1, 0, -.5]
-        color: [1, 1, 1]
-        ambient: 0.5
+        type: point
+        position: [0, 0, 200]
+        diffuse: [1, 1, 0]
+
+    # light3:
+    #     type: directional
+    #     direction: [-1, 0, -.5]
+    #     color: [1, 1, 1]
+    #     ambient: 0.5
 
     # type: spotlight
     # position: [0, 0, 500]
