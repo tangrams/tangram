@@ -26,7 +26,7 @@ export default class Material {
             this.style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
         }
 
-        this.style.addTransform(Material.transform, shaderSources['gl/shaders/material']);
+        this.style.addShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
 
     setupProgram (_program) {
