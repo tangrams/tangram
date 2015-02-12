@@ -6,8 +6,7 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
-import boxIntersect from 'box-intersect';
+import {Label} from '../text/label';
 
 
 export var Sprites = Object.create(Style);
@@ -39,6 +38,8 @@ Object.assign(Sprites, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
+        let tile = context.tile.key;
+
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
         style.texture = rule_style.texture;
         style.sprite = rule_style.sprite;
@@ -64,6 +65,7 @@ Object.assign(Sprites, {
         style.tile = tile;
 
         style.keep_in_tile = true;
+        style.move_in_tile = false;
 
         this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
@@ -92,78 +94,6 @@ Object.assign(Sprites, {
         return template;
     },
 
-    getBBox (size, position) {
-        let upp = Geo.units_per_pixel;
-
-        let half_merc_width = size[0] * upp * 0.5;
-        let half_merc_height = size[1] * upp * 0.5;
-
-        return [
-            position[0] - half_merc_width, 
-            position[1] - half_merc_height, 
-            position[0] + half_merc_width, 
-            position[1] + half_merc_height
-        ];
-    },
-
-    getOBBox (size, position, angle) {
-        let upp = Geo.units_per_pixel;
-
-        let mw = size[0] * upp * 0.5; // half mercator height
-        let mh = size[1] * upp * 0.5; // half mercator width
-    
-        let c = Math.cos(angle);
-        let s = Math.sin(angle);
-
-        let x = mw * c - mh * s;
-        let y = mw * s + mh * c;
-
-        let max = Math.max(x, y);
-
-        return [
-            position[0] - max,
-            position[1] - max,
-            position[0] + max,
-            position[1] + max
-        ];
-    },
-
-    overlap (tile, size, position, keep_in_tile, theta) {
-        let bbox;
-
-        if (theta) {
-            bbox = this.getOBBox(size, position, theta);
-        } else { 
-            bbox = this.getBBox(size, position);
-        }
- 
-        if (keep_in_tile) {
-            let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
-
-            if (bbox[0] < 0 || bbox[1] < -tile_pixel_size || bbox[2] > tile_pixel_size || bbox[3] > 0) {
-                return true;
-            }   
-        }
-
-        if (this.bboxes[tile] === undefined) {
-            this.bboxes[tile] = [];
-        }
-
-        this.bboxes[tile].push(bbox);
-
-        return boxIntersect(this.bboxes[tile], (i, j) => {
-            if (this.bboxes[tile][i] == bbox || this.bboxes[tile][j] == bbox) {
-                let index = this.bboxes[tile].indexOf(bbox);
-                if (index > -1) {
-                    // remove that bbox
-                    this.bboxes[tile].splice(index, 1);
-                }
-
-                return true; // early exit
-            }
-        });
-    },
-
     buildPoints (points, style, vertex_data) {
         if (!style.size) {
             return;
@@ -171,9 +101,11 @@ Object.assign(Sprites, {
 
         var vertex_template = this.makeVertexTemplate(style);
         
-        if (this.overlap(style.tile, style.size, points[0], style.keep_in_tile)) {
+        let label = new Label(style.text, style.tile, points[0], style.size);
+        //label.init();
+        /*if (this.overlap(style.tile, style.size, points[0], style.keep_in_tile)) {
             return;
-        } 
+        }*/
 
         Builders.buildSpriteQuadsForPoints(
             points,

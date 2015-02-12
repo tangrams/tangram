@@ -1,17 +1,12 @@
 // Polygon rendering style
 
-import {Style} from '../style';
-import {StyleParser} from '../style_parser';
-import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
-import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Texture from '../../gl/texture';
-import Geo from '../../geo';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import {Vector} from '../../vector';
-import boxIntersect from 'box-intersect';
+import {Label} from './label';
 
 export var Text = Object.create(Sprites);
 
@@ -193,16 +188,12 @@ Object.assign(Text, {
             theta += Math.PI;
         }
 
-        if (this.overlap(style.tile, style.size, line[0], style.keep_in_tile, theta)) {
-            return;
-        } 
-
-        theta = Utils.radToDeg(theta); 
+        //let label = new Label(style.text, style.tile, line[0], style.size, theta);
 
         Builders.buildSpriteQuadsForPoints(
             [ line[0] ],
             Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
-            Utils.scaleInt16(theta, 360), 
+            Utils.scaleInt16(Utils.radToDeg(theta), 360), 
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
@@ -237,6 +228,7 @@ Object.assign(Text, {
 
         // whether the labels should be removed when out of tile boundaries
         style.keep_in_tile = true;
+        style.move_in_tile = true;
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;
