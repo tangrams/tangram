@@ -6,6 +6,7 @@ import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Builders from './builders';
 import Texture from '../gl/texture';
+import Material from '../material';
 import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
@@ -32,6 +33,10 @@ export var Style = {
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
+
+        this.material = new Material();
+        this.material.inject(this);
+
         this.initialized = true;
     },
 
@@ -372,6 +377,7 @@ export var Style = {
     // Setup any GL state for rendering
     setup () {
         this.setUniforms();
+        this.material.setupProgram(ShaderProgram.current);
     },
 
     // Set style uniforms on currently bound program
