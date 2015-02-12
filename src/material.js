@@ -4,13 +4,12 @@ import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 
 export default class Material {
-    constructor (_style, _options = {}) {
-        this.style = _style;
-        this.emission = _options.emission && _options.emission.map(parseFloat);
-        this.ambient = _options.ambient && _options.ambient.map(parseFloat);
-        this.diffuse = _options.diffuse ? _options.diffuse.map(parseFloat) : [1,1,1];
-        this.specular = _options.specular && _options.specular.map(parseFloat);
-        this.shininess = _options.shininess ? parseFloat(_options.shininess) : 0.2;
+    constructor (config = {}) {
+        this.emission = config.emission && config.emission.map(parseFloat);
+        this.ambient = config.ambient && config.ambient.map(parseFloat);
+        this.diffuse = config.diffuse ? config.diffuse.map(parseFloat) : [1,1,1];
+        this.specular = config.specular && config.specular.map(parseFloat);
+        this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
 
         this.emission = GLSL.expandVec4(this.emission);
         this.ambient = GLSL.expandVec4(this.ambient);
@@ -18,21 +17,21 @@ export default class Material {
         this.specular = GLSL.expandVec4(this.specular);
     }
 
-    inject () {
+    inject (style) {
         if (this.emission) {
-            this.style.defines['TANGRAM_MATERIAL_EMISSION'] = true;
+            style.defines['TANGRAM_MATERIAL_EMISSION'] = true;
         }
         if (this.ambient) {
-            this.style.defines['TANGRAM_MATERIAL_AMBIENT'] = true;
+            style.defines['TANGRAM_MATERIAL_AMBIENT'] = true;
         }
         if (this.diffuse) {
-            this.style.defines['TANGRAM_MATERIAL_DIFFUSE'] = true;
+            style.defines['TANGRAM_MATERIAL_DIFFUSE'] = true;
         }
         if (this.specular) {
-            this.style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
+            style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
         }
 
-        this.style.addShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
+        style.addShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
 
     setupProgram (_program) {
