@@ -1,16 +1,21 @@
 import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
+import GLSL from './gl/glsl';
 
 // ABSTRACT LIGHT
 export default class Light {
 
     constructor (_scene, _config) {
-        this.name = _config._name;
+        this.name = _config.name;
         this.scene = _scene;
 
         this.ambient = (_config.ambient || [0, 0, 0]).map(parseFloat);
         this.diffuse = (_config.diffuse || [1, 1, 1]).map(parseFloat);
         this.specular = (_config.specular || [0, 0, 0]).map(parseFloat);
+
+        this.ambient = GLSL.expandVec4(this.ambient);
+        this.diffuse = GLSL.expandVec4(this.diffuse);
+        this.specular = GLSL.expandVec4(this.specular);
     }
 
     // Create a light by type name, factory-style
@@ -19,7 +24,7 @@ export default class Light {
     //   - type
     //   - type-specific fields
     static create (_scene, _config) {
-        switch (config.type) {
+        switch (_config.type) {
             case 'point':
                 return new PointLight(_scene, _config);
             case 'directional':
@@ -53,7 +58,7 @@ export default class Light {
                 case 'spotlight':
                     SpotLight.inject();
                     break;
-            }            
+            }
         }
 
         // inject per-instance blocks and construct the list of function to calculate
@@ -76,7 +81,7 @@ export default class Light {
                 //  Final light intensity calculation
                 //
                 vec4 color = vec4(0.0);
-              
+
                 #ifdef TANGRAM_MATERIAL_EMISSION
                     color = g_material.emission;
                 #endif
@@ -100,7 +105,7 @@ export default class Light {
             }`;
 
         ShaderProgram.addTransform(Light.transform, calculateFunction);
-        
+
     }
 
     // Common instance definition
@@ -119,11 +124,10 @@ export default class Light {
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
     setupProgram (_program) {
-
         //  Three common light properties
-        _program.uniform('3fv', 'u_'+this.name+'.ambient', this.ambient);
-        _program.uniform('3fv', 'u_'+this.name+'.diffuse', this.diffuse);
-        _program.uniform('3fv', 'u_'+this.name+'.specular', this.specular);
+        _program.uniform('4fv', 'u_'+this.name+'.ambient', this.ambient);
+        _program.uniform('4fv', 'u_'+this.name+'.diffuse', this.diffuse);
+        _program.uniform('4fv', 'u_'+this.name+'.specular', this.specular);
     }
 
 }
@@ -177,6 +181,7 @@ class PointLight extends Light {
 
     inject() {
         super.inject();
+
         if(this.constantAttenuation !== 0){
             ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION'] = true;
         }
@@ -195,7 +200,7 @@ class PointLight extends Light {
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
-        
+
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION']){
             _program.uniform('1f', 'u_'+name+'.constantAttenuation', this.constantAttenuation);
         }
@@ -227,7 +232,7 @@ class SpotLight extends PointLight {
         //      - check style names for spotExponent and spotCutoff
 
         // Convert to RADIANTS and pre compute get the Cosine
-        this.spotCosCutoff = Math.cos(this.cutoff * 3.14159 / 180.0) ; 
+        this.spotCosCutoff = Math.cos(this.cutoff * 3.14159 / 180.0) ;
     }
 
     static inject () {
