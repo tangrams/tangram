@@ -342,6 +342,13 @@ export var Style = {
         this.compiled = true;
     },
 
+    // Add a shader transform
+    addShaderTransform (key, ...transforms) {
+        this.shaders.transforms = this.shaders.transforms || {};
+        this.shaders.transforms[key] = this.shaders.transforms[key] || [];
+        this.shaders.transforms[key].push(...transforms);
+    },
+
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram
      * (list of define objects that inherit from each other)
      */
