@@ -5,8 +5,7 @@ import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
-import {Vector} from '../../vector';
-import {Label} from './label';
+import Label from './label';
 
 export var Text = Object.create(Sprites);
 
@@ -172,28 +171,20 @@ Object.assign(Text, {
         var vertex_template = this.makeVertexTemplate(style);
         let line = lines[0];
 
-        if (line.length > 2) {
+        if (lines.length > 2) {
             return;
         }
 
-        let p0 = line[0];
-        let p1 = line[1];
-        let p0p1 = Vector.sub(p1, p0);
+        let label = new Label(style.text, line[0], style.size, lines);
 
-        p0p1 = Vector.normalize(p0p1);
-
-        let theta = Math.atan2(p0p1[0], p0p1[1]) + Math.PI / 2;
-
-        if (theta > Math.PI / 2 || theta < -Math.PI / 2) {
-            theta += Math.PI;
+        if (!this.keepLabel(style, label)) {
+            return;
         }
-
-        //let label = new Label(style.text, style.tile, line[0], style.size, theta);
 
         Builders.buildSpriteQuadsForPoints(
             [ line[0] ],
             Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(theta), 360), 
+            Utils.scaleInt16(Utils.radToDeg(label.angle), 360), 
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
@@ -228,7 +219,7 @@ Object.assign(Text, {
 
         // whether the labels should be removed when out of tile boundaries
         style.keep_in_tile = true;
-        style.move_in_tile = true;
+        style.move_in_tile = false;
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;

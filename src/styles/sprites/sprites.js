@@ -6,7 +6,7 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Utils from '../../utils/utils';
-import {Label} from '../text/label';
+import Label from '../text/label';
 
 
 export var Sprites = Object.create(Style);
@@ -94,6 +94,26 @@ Object.assign(Sprites, {
         return template;
     },
 
+    keepLabel (style, label) {
+        if (this.bboxes[style.tile] === undefined) {
+            this.bboxes[style.tile] = [];
+        }
+
+        if (style.keep_in_tile) {
+            if (style.move_in_tile) {
+                label.moveInTile();
+            } else {
+                return !label.inTileBounds();
+            }
+        } 
+
+        if (label.occluded(this.bboxes[style.tile])) {
+            return false;
+        }
+
+        return true;
+    },
+
     buildPoints (points, style, vertex_data) {
         if (!style.size) {
             return;
@@ -101,11 +121,11 @@ Object.assign(Sprites, {
 
         var vertex_template = this.makeVertexTemplate(style);
         
-        let label = new Label(style.text, style.tile, points[0], style.size);
-        //label.init();
-        /*if (this.overlap(style.tile, style.size, points[0], style.keep_in_tile)) {
+        let label = new Label(style.text, points[0], style.size);
+
+        if (!this.keepLabel(style, label)) {
             return;
-        }*/
+        }
 
         Builders.buildSpriteQuadsForPoints(
             points,
