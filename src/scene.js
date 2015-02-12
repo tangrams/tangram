@@ -10,7 +10,7 @@ import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
-import Lighting from './light';
+import Light from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 import FeatureSelection from './selection';
@@ -69,6 +69,9 @@ export default function Scene(config_source, options) {
     this.zooming = false;
     this.panning = false;
     this.container = options.container;
+
+    this.camera = null;
+    this.lights = null;
 
     // Model-view matrices
     // 64-bit versions are for CPU calcuations
@@ -579,7 +582,9 @@ Scene.prototype.renderStyle = function (style, program) {
                 program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                 this.camera.setupProgram(program);
-                this.lighting.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
             }
 
             // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
@@ -619,7 +624,9 @@ Scene.prototype.render = function () {
 
     // Update camera & lights
     this.camera.update();
-    this.lighting.update();
+    for (let i in this.lights) {
+        this.lights[i].update();
+    }
 
     // Renderable tile list
     this.renderable_tiles = [];
@@ -1012,7 +1019,7 @@ Scene.prototype.preProcessSceneConfig = function () {
         this.config.cameras[camera_names[0]].active = true;
     }
 
-    this.config.lighting = this.config.lighting || {}; // ensure lighting object
+    this.config.lights = this.config.lights || {}; // ensure lights object
 
     return StyleManager.preload(this.config.styles);
 };
@@ -1107,14 +1114,19 @@ Object.defineProperty(Scene.prototype, '_active_camera', {
 });
 
 // Create lighting
-Scene.prototype.createLighting = function () {
-    this.lighting = Lighting.create(this, this.config.lighting);
+Scene.prototype.createLights = function () {
+    this.lights = {};
+    for (let i in this.config.lights) {
+        this.config.lights[i].name = i;
+        this.lights[i] = Light.create(this, this.config.lights[i]);
+    }
+    Light.inject(this.lights);
 };
 
 // Update scene config
 Scene.prototype.updateConfig = function () {
     this.createCamera();
-    this.createLighting();
+    this.createLights();
     this.loadDataSources();
     this.setSourceMax();
 
