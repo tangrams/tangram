@@ -226,14 +226,9 @@ class SpotLight extends PointLight {
         this.struct_name = 'SpotLight';
 
         this.direction = (_config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
-        this.spotExponent = !isNaN(parseFloat(_config.exponent)) ? parseFloat(_config.exponent) : 0.2;
-        this.spotCutoff = !isNaN(parseFloat(_config.angle)) ? parseFloat(_config.angle) : 20.0;
+        this.exponent = _config.exponent ? parseFloat(_config.exponent) : 0.2;
+        this.angle = _config.angle ? parseFloat(_config.angle) : 20.0;
 
-        // TODO:
-        //      - check style names for spotExponent and spotCutoff
-
-        // Convert to RADIANTS and pre compute get the Cosine
-        this.spotCosCutoff = Math.cos(this.cutoff * 3.14159 / 180.0) ;
     }
 
     static inject () {
@@ -245,7 +240,7 @@ class SpotLight extends PointLight {
 
         _program.uniform('3fv', 'u_'+this.name+'.direction', this.direction);
 
-        _program.uniform('1f', 'u_'+this.name+'.spotCosCutoff', this.spotCosCutoff);
+        _program.uniform('1f', 'u_'+this.name+'.spotCosCutoff', Math.cos(this.angle * 3.14159 / 180.0) );
         _program.uniform('1f', 'u_'+this.name+'.spotExponent', this.exponent);
     }
 
