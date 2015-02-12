@@ -9,6 +9,52 @@ uniform vec2 u_tile_origin;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
+
+// TEMPORARY material to make lights compile (will be moved to dynamic injection)
+
+#define TANGRAM_MATERIAL_DIFFUSE
+
+struct Material {
+    #ifdef TANGRAM_MATERIAL_EMISSION
+        vec4 emission;
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_AMBIENT
+        vec4 ambient;
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_DIFFUSE
+        vec4 diffuse;
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_SPECULAR
+        vec4 specular;
+        float shininess;
+    #endif
+};
+
+// Note: uniforms (u_[name]) and varyings (v_[name]) are
+//      copy to global instances ( g_[name] ) to allow
+//      modifications
+//
+// uniform Material u_material;
+Material g_material = Material(vec4(1., 1., 1., 1.));
+
+// GLOBAL LIGHTS ACCUMULATORS for each enable MATERIAL property
+//
+#ifdef TANGRAM_MATERIAL_AMBIENT
+    vec4 g_light_accumulator_ambient = vec4(0.0);
+#endif
+#ifdef TANGRAM_MATERIAL_DIFFUSE
+    vec4 g_light_accumulator_diffuse = vec4(0.0);
+#endif
+#ifdef TANGRAM_MATERIAL_SPECULAR
+    vec4 g_light_accumulator_specular = vec4(0.0);
+#endif
+
+
+
+
 // built-in uniforms for texture maps
 #if defined(NUM_TEXTURES)
     uniform sampler2D u_textures[NUM_TEXTURES];
@@ -66,7 +112,7 @@ void main (void) {
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
-        vec3 lighting = calculateLighting(v_position, v_normal, color).rgb;
+        vec3 lighting = calculateLighting(v_position.xyz, v_normal, color).rgb;
     #else
         vec3 lighting = v_lighting;
     #endif
