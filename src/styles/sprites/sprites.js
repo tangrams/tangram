@@ -103,7 +103,7 @@ Object.assign(Sprites, {
             if (style.move_in_tile) {
                 label.moveInTile();
             } else {
-                return !label.inTileBounds();
+                return label.inTileBounds();
             }
         } 
 
