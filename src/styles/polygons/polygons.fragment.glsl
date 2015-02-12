@@ -12,7 +12,9 @@ varying vec4 v_world_position;
 
 // TEMPORARY material to make lights compile (will be moved to dynamic injection)
 
+#define TANGRAM_MATERIAL_AMBIENT
 #define TANGRAM_MATERIAL_DIFFUSE
+#define TANGRAM_MATERIAL_SPECULAR
 
 struct Material {
     #ifdef TANGRAM_MATERIAL_EMISSION
@@ -38,7 +40,7 @@ struct Material {
 //      modifications
 //
 // uniform Material u_material;
-Material g_material = Material(vec4(1., 1., 1., 1.));
+Material g_material = Material(vec4(1.),vec4(1.0),vec4(vec3(0.2),1.0),0.2);
 
 // GLOBAL LIGHTS ACCUMULATORS for each enable MATERIAL property
 //

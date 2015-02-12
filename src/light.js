@@ -195,22 +195,23 @@ class PointLight extends Light {
 
     setupProgram (_program) {
         super.setupProgram(_program);
-        _program.uniform('4f', 'u_'+name+'.position',
+
+        _program.uniform('4f', 'u_'+this.name+'.position',
             this.position[0] * this.scene.meters_per_pixel,
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION']){
-            _program.uniform('1f', 'u_'+name+'.constantAttenuation', this.constantAttenuation);
+            _program.uniform('1f', 'u_'+this.name+'.constantAttenuation', this.constantAttenuation);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION']){
-            _program.uniform('1f', 'u_'+name+'.linearAttenuation', this.linearAttenuation);
+            _program.uniform('1f', 'u_'+this.name+'.linearAttenuation', this.linearAttenuation);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION']){
-            _program.uniform('1f', 'u_'+name+'.quadraticAttenuation', this.quadraticAttenuation);
+            _program.uniform('1f', 'u_'+this.name+'.quadraticAttenuation', this.quadraticAttenuation);
         }
     }
 }
