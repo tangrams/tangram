@@ -15,6 +15,8 @@ import Geo from './geo';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
+import Material from './material';
+import Light from './light';
 import WorkerBroker from './utils/worker_broker';
 
 import glMatrix from 'gl-matrix';
@@ -30,6 +32,8 @@ var debug = {
     GLSL,
     ShaderProgram,
     Texture,
+    Material,
+    Light,
     SceneWorker,
     WorkerBroker
 };
