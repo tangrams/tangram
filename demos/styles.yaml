@@ -265,6 +265,8 @@ layers:
         geometry:
             source: osm
             filter: earth
+        filter:
+          layer_name: 'earth'
         style:
             order: 0
             color: [0.175, 0.175, 0.175]
@@ -273,6 +275,8 @@ layers:
         geometry:
             source: osm
             filter: landuse
+        filter:
+          layer_name: 'landuse'
         style:
             order: 1
             interactive: true
@@ -293,8 +297,10 @@ layers:
 
     water:
         geometry:
-            source: osm
-            filter: water
+          source: osm
+          filter: water
+        filter:
+          layer_name: 'water'
         style:
             # name: water
             order: 2
@@ -315,7 +321,8 @@ layers:
         geometry:
             source: osm
             filter: roads
-
+        filter:
+          layer_name: roads
         style:
             order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
             # order: 3
@@ -466,7 +473,8 @@ layers:
         geometry:
             source: osm
             filter: buildings
-
+        filter:
+          layer_name: buildings
         # properties:
         #     min_height: 50
         # filter: function () { return feature.height >= properties.min_height; }
@@ -523,7 +531,9 @@ layers:
             source: osm
             filter: pois
 
-        filter: { name: true }
+        #filter: { name: true }
+        filter:
+          layer_name: pois
         style:
             name: points
             size: [[12, 6px], [13, 10px]]
