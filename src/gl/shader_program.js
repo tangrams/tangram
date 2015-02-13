@@ -82,6 +82,11 @@ ShaderProgram.removeTransform = function (key) {
     ShaderProgram.transforms[key] = [];
 };
 
+ShaderProgram.replaceTransform = function (key, ...transforms) {
+    ShaderProgram.removeTransform(key);
+    ShaderProgram.addTransform(key, ...transforms);
+};
+
 ShaderProgram.prototype.compile = function () {
 
     if (this.compiling) {
