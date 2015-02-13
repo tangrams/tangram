@@ -92,8 +92,7 @@ class PerspectiveCamera extends Camera {
         this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        ShaderProgram.removeTransform('camera');
-        ShaderProgram.addTransform('camera', `
+        ShaderProgram.replaceTransform('camera', `
             uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
@@ -214,8 +213,7 @@ class IsometricCamera extends Camera {
         this.projectionMatrix = new Float32Array(16);
 
         // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        ShaderProgram.removeTransform('camera');
-        ShaderProgram.addTransform('camera', `
+        ShaderProgram.replaceTransform('camera', `
             uniform mat4 u_projection;
 
             void cameraProjection (inout vec4 position) {
