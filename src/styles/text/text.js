@@ -175,15 +175,19 @@ Object.assign(Text, {
             return;
         }
 
+        if (this.bboxes[style.tile] === undefined) {
+            this.bboxes[style.tile] = [];
+        }
+
         let label = new Label(style.text, line[0], style.size, lines);
 
-        if (!this.keepLabel(style, label)) {
+        if (label.discard(style.move_in_tile, style.keep_in_tile, this.bboxes[style.tile])) {
             return;
         }
 
         Builders.buildSpriteQuadsForPoints(
-            [ line[0] ],
-            Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
+            [ label.position ],
+            Utils.scaleInt16(label.size[0], 128), Utils.scaleInt16(label.size[1], 128),
             Utils.scaleInt16(Utils.radToDeg(label.angle), 360), 
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
@@ -219,7 +223,7 @@ Object.assign(Text, {
 
         // whether the labels should be removed when out of tile boundaries
         style.keep_in_tile = true;
-        style.move_in_tile = false;
+        style.move_in_tile = true;
 
         // Set UVs
         this.texcoord_scale = this.texts[tile][style.text].texcoords;

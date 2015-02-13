@@ -93,44 +93,37 @@ Object.assign(Sprites, {
 
         return template;
     },
-
-    keepLabel (style, label) {
-        if (this.bboxes[style.tile] === undefined) {
-            this.bboxes[style.tile] = [];
-        }
-
-        if (style.keep_in_tile) {
-            if (style.move_in_tile) {
-                label.moveInTile();
-            } else {
-                return label.inTileBounds();
-            }
-        } 
-
-        if (label.occluded(this.bboxes[style.tile])) {
-            return false;
-        }
-
-        return true;
-    },
-
+   
     buildPoints (points, style, vertex_data) {
         if (!style.size) {
             return;
         }
 
         var vertex_template = this.makeVertexTemplate(style);
-        
-        let label = new Label(style.text, points[0], style.size);
 
-        if (!this.keepLabel(style, label)) {
-            return;
+        let size = style.size;
+        let angle = style.angle;
+        let position = points[0];
+
+        if (this.bboxes[style.tile] === undefined) {
+            this.bboxes[style.tile] = [];
+        }
+
+        if (style.text) { // label point sprite
+            let label = new Label(style.text, points[0], style.size);
+
+            if (label.discard(style.move_in_tile, style.keep_in_tile, this.bboxes[style.tile])) {
+                return;
+            }
+
+            size = label.size;
+            position = label.position;
         }
 
         Builders.buildSpriteQuadsForPoints(
-            points,
-            Utils.scaleInt16(style.size[0], 128), Utils.scaleInt16(style.size[1], 128),
-            Utils.scaleInt16(style.angle, 360),
+            [ position ],
+            Utils.scaleInt16(size[0], 128), Utils.scaleInt16(size[1], 128),
+            Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,

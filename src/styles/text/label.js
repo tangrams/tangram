@@ -5,6 +5,15 @@ import {Vector} from '../../vector';
 export default class Label {
 
     constructor (text, position, size, lines) {
+        Object.assign(this, {
+            lines: null,
+            angle: null,
+            text: "",
+            position: [],
+            size: [],
+            bbox: []
+        });
+
         this.text = text;
         this.position = position;
         this.size = size;
@@ -16,6 +25,8 @@ export default class Label {
         } else {
             this.bbox = this.computeBBox();
         }
+
+        this.bbox["text"] = text;
     }
 
     occluded (bboxes) {
@@ -35,12 +46,17 @@ export default class Label {
     }
 
     inTileBounds () {
-        let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
+        let min = [this.bbox[0], this.bbox[1]];
+        let max = [this.bbox[2], this.bbox[3]];
 
-        return !(this.bbox[0] < 0 || this.bbox[1] < -tile_pixel_size || this.bbox[2] > tile_pixel_size || this.bbox[3] > 0);
+        if (!this.pointInTile(min) || !this.pointInTile(max)) {
+            return false;
+        } 
+
+        return true;
     }
 
-    angleForLine(line) {
+    angleForLine (line) {
         let p0 = line[0];
         let p1 = line[1];
         let p0p1 = Vector.sub(p1, p0);
@@ -56,8 +72,50 @@ export default class Label {
         return theta;
     }
 
-    moveInTile() {
-        // TODO : move label in the tile considering its bbox
+    pointInTile (point) {
+        let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
+
+        return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
+    }
+
+    moveInTile () {
+        if (this.lines) {
+            for (let line of this.lines) {
+                for (let p of line) {
+                    if (this.pointInTile(p)) {
+                        this.position = p;
+                        this.angle = this.angleForLine(line);
+                        this.bbox = this.computeOBBox();
+
+                        if (!this.inTileBounds()) {
+                            continue;
+                        }
+
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    discard (move_in_tile, keep_in_tile, bboxes) {
+        let discard = false;
+
+        if (keep_in_tile) {
+            let in_tile = this.inTileBounds();
+
+            if (!in_tile && move_in_tile) {
+                if (!this.moveInTile()) {
+                    discard = true;
+                }
+            } else if (!in_tile) { 
+                discard = true;
+            }
+        }
+
+        return discard || this.occluded(bboxes); 
     }
 
     computeBBox () {
@@ -77,8 +135,8 @@ export default class Label {
     computeOBBox (size) {
         let upp = Geo.units_per_pixel;
 
-        let half_merc_width = this.size[0] * upp * 0.5; // half mercator height
-        let half_merc_height = this.size[1] * upp * 0.5; // half mercator width
+        let half_merc_width = this.size[0] * upp * 0.5; 
+        let half_merc_height = this.size[1] * upp * 0.5;
 
         let c = Math.cos(this.angle);
         let s = Math.sin(this.angle);
