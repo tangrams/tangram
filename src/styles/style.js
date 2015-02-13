@@ -34,7 +34,10 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
 
-        this.material = new Material();
+        // If the style defines its own material, replace the inherited material instance
+        if (!(this.material instanceof Material)) {
+            this.material = new Material(this.material);
+        }
         this.material.inject(this);
 
         this.initialized = true;
