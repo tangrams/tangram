@@ -41,4 +41,4 @@ wood:
                 }
 
             fragment: |
-                color.rgb = wood(v_world_position.xyz) * lighting;
+                color.rgb = wood(v_world_position.xyz);

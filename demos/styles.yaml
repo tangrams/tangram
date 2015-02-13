@@ -51,9 +51,6 @@ styles:
     water:
         extends: polygons
         animated: true
-        material:
-            emission: [1, 1, 1]
-            ambient: [1, 1, 1]
         shaders:
             defines:
                 EFFECT_NOISE_ANIMATED: true
@@ -82,9 +79,11 @@ styles:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
                 fragment: |
-                    color .rgb+= lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    color .rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
-                        color.r += lighting.r * sin(u_time / 3.0);
+                        //color.r += lighting.r * sin(u_time / 3.0);
+                        color.r += sin(u_time / 3.0);
                     #endif
 
     rainbow:
