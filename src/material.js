@@ -4,9 +4,10 @@ import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 
 export default class Material {
-    constructor (config = {}) {
+    constructor (config) {
+        config = config || {};
         this.emission = config.emission && config.emission.map(parseFloat);
-        this.ambient = config.ambient && config.ambient.map(parseFloat);
+        this.ambient = config.ambient ? config.ambient.map(parseFloat) : [1,1,1];
         this.diffuse = config.diffuse ? config.diffuse.map(parseFloat) : [1,1,1];
         this.specular = config.specular && config.specular.map(parseFloat);
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
@@ -31,7 +32,7 @@ export default class Material {
             style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
         }
 
-        style.addShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
+        style.replaceShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
 
     setupProgram (_program) {
