@@ -354,6 +354,18 @@ export var Style = {
         this.shaders.transforms[key].push(...transforms);
     },
 
+    // Remove all shader transforms for key
+    removeShaderTransform (key) {
+        if (this.shaders.transforms) {
+            this.shaders.transforms[key] = null;
+        }
+    },
+
+    replaceShaderTransform (key, ...transforms) {
+        this.removeShaderTransform(key);
+        this.addShaderTransform(key, ...transforms);
+    },
+
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram
      * (list of define objects that inherit from each other)
      */
