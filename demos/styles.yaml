@@ -300,16 +300,13 @@ layers:
             order: 2
             interactive: true
             color: [0.5, 0.5, 0.875]
-            outline:
-                color: [0.6, 0.6, 0.975]
-                width: |
-                    function () {
-                        return (
-                            zoom >= 15 &&
-                            (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
-                            (2.5 * Math.log(zoom))
-                        );
-                    }
+
+        outlines:
+            filter: { not: { kind: [ocean, riverbank, dock] }, '@zoom': { min: 15 } }
+            style:
+                outline:
+                    color: [0.6, 0.6, 0.975]
+                    width: function() { return 2.5 * Math.log(zoom)); }
 
     roads:
         geometry:
