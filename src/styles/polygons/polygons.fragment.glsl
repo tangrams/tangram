@@ -66,14 +66,10 @@ void main (void) {
     #endif
 
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
-        vec3 lighting = calculateLighting(v_position.xyz, v_normal, color).rgb;
+        color = calculateLighting(v_position.xyz, v_normal, color);
     #else
-        vec3 lighting = v_lighting;
+        color = v_lighting;
     #endif
-
-    // Apply lighting to color
-    // TODO: add transformation points to give more control to style-specific shaders
-    color.rgb *= lighting;
 
     // Style-specific vertex transformations
     #pragma tangram: fragment

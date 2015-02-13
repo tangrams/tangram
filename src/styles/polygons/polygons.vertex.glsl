@@ -90,7 +90,7 @@ void main() {
     // Shading
     #if defined(LIGHTING_VERTEX)
         v_color = a_color;
-        v_lighting = calculateLighting(position, a_normal, vec3(1.));
+        v_lighting = calculateLighting(position, a_normal, a_color);
     #else
         // Send to fragment shader for per-pixel lighting
         v_position = position;
