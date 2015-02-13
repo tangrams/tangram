@@ -24,16 +24,17 @@ lights:
     light1:
         type: point
         position: [0, 0, 200]
-        # ambient: [1,1,1]
-        diffuse: [1,1,1]
-        # specular: [1,1,1]
+        # ambient: [.3, .3, .3]
+        # diffuse: [0, 0, 0]
+        # diffuse: [1, 1, 1]
+        specular: [.4, .4, .4]
 
-    # light2:
-    #     type: directional
-    #     direction: [0.5, 0.5, -0.5]
-    #     ambient: [1,1,1]
-    #     diffuse: [1,1,1]
-    #     specular: [1,1,1]
+    light2:
+        type: directional
+        # direction: [0.5, 0.5, -0.5]
+        # ambient: [1,1,1]
+        # diffuse: [1,1,1]
+        # specular: [1,1,1]
 
     # light3:
     #     type: spotlight
@@ -45,8 +46,16 @@ lights:
 
 styles:
 
-    polygons:
+    buildings:
+        extends: polygons
         animated: true
+        material:
+            # emission: [.3, 0, 0]
+            ambient: [1, 1, 1]
+            # diffuse: [0, 0, 0]
+            # diffuse: [1, 1, 0]
+            specular: [1, 1, 1]
+            shininess: 10
 
     water:
         extends: polygons
@@ -78,7 +87,8 @@ styles:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
-                fragment: |
+                # fragment: |
+                color: |
                     //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     color .rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
@@ -483,6 +493,7 @@ layers:
         # filter: function () { return true; }
 
         style:
+            name: buildings
             order: 4
             interactive: true
 

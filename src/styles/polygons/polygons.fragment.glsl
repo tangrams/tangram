@@ -51,6 +51,9 @@ varying vec4 v_world_position;
 void main (void) {
     vec4 color;
 
+    // Modify normal before lighting
+    #pragma tangram: normal
+
     #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
         color = texture2D(texture_default, v_texcoord);
     #else
@@ -65,13 +68,19 @@ void main (void) {
         color.rgb = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
     #endif
 
+    // Modify color and material properties before lighting
+    #pragma tangram: color
+
     #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
         color = calculateLighting(v_position.xyz, v_normal, color);
     #else
         color = v_lighting;
     #endif
 
-    // Style-specific vertex transformations
+    // Modify color after lighting (filter-like effects that don't require a additional render passes)
+    #pragma tangram: filter
+
+    // TODO: legacy, replace in existing styles
     #pragma tangram: fragment
 
     gl_FragColor = color;

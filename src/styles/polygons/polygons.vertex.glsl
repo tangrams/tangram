@@ -89,8 +89,18 @@ void main() {
 
     // Shading
     #if defined(LIGHTING_VERTEX)
-        v_color = a_color;
-        v_lighting = calculateLighting(position, a_normal, a_color);
+        vec4 color = a_color;
+        vec4 normal = a_normal;
+
+        // Modify normal before lighting
+        #pragma tangram: normal
+
+        // Modify color and material properties before lighting
+        #pragma tangram: color
+
+        v_lighting = calculateLighting(position, normal, color);
+        v_color = color;
+        v_normal = normal;
     #else
         // Send to fragment shader for per-pixel lighting
         v_position = position;
