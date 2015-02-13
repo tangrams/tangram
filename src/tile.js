@@ -151,14 +151,13 @@ export default class Tile {
                 let num_features = geom.features.length;
                 for (let f = num_features-1; f >= 0; f--) {
                     let feature = geom.features[f];
+                    // lame hack, talk to Brett about this
+                    feature.properties.layer_name = layer_name;
                     let context = StyleParser.getFeatureParseContext(feature, tile);
 
                     // Find matching rules
-                    let matched_rules = [];
-                    let layer_rules = rules[layer_name];
-                    for (let r in layer_rules) {
-                        layer_rules[r].matchFeature(context, matched_rules);
-                    }
+
+                    let matched_rules = rules.findMatchingRules(context);
 
                     // Parse & render styles
                     for (let rule of matched_rules) {
