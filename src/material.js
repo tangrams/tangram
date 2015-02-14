@@ -13,18 +13,10 @@ export default class Material {
     }
 
     inject (style) {
-        if (this.emission) {
-            style.defines['TANGRAM_MATERIAL_EMISSION'] = true;
-        }
-        if (this.ambient) {
-            style.defines['TANGRAM_MATERIAL_AMBIENT'] = true;
-        }
-        if (this.diffuse) {
-            style.defines['TANGRAM_MATERIAL_DIFFUSE'] = true;
-        }
-        if (this.specular) {
-            style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
-        }
+        style.defines['TANGRAM_MATERIAL_EMISSION'] = (this.emission != null);
+        style.defines['TANGRAM_MATERIAL_AMBIENT'] = (this.ambient != null);
+        style.defines['TANGRAM_MATERIAL_DIFFUSE'] = (this.diffuse != null);
+        style.defines['TANGRAM_MATERIAL_SPECULAR'] = (this.specular != null);
 
         style.replaceShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
