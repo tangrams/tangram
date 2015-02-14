@@ -2,84 +2,61 @@ import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 
-// ABSTRACT LIGHT
+// Abstract light
 export default class Light {
 
-    constructor (_scene, _config) {
-        this.name = _config.name;
-        this.scene = _scene;
+    constructor (scene, config) {
+        this.name = config.name;
+        this.scene = scene;
 
-        this.ambient = (_config.ambient || [0, 0, 0]).map(parseFloat);
-        this.diffuse = (_config.diffuse || [1, 1, 1]).map(parseFloat);
-        this.specular = (_config.specular || [0, 0, 0]).map(parseFloat);
-
-        this.ambient = GLSL.expandVec4(this.ambient);
-        this.diffuse = GLSL.expandVec4(this.diffuse);
-        this.specular = GLSL.expandVec4(this.specular);
+        this.ambient = GLSL.expandVec4(config.ambient || 0);
+        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+        this.specular = GLSL.expandVec4(config.specular || 0);
     }
 
     // Create a light by type name, factory-style
-    // _config must include:
-    //   - name
-    //   - type
-    //   - type-specific fields
-    static create (_scene, _config) {
-        switch (_config.type) {
-            case 'point':
-                return new PointLight(_scene, _config);
-            case 'directional':
-                return new DirectionalLight(_scene, _config);
-            case 'spotlight':
-                return new SpotLight(_scene, _config);
+    // 'config' must include 'name' and 'type', along with any other type-specific properties
+    static create (scene, config) {
+        if (Light.types[config.type]) {
+            return new Light.types[config.type](scene, config);
         }
     }
 
-    // Inject all provided light definitions, and cumulative calculate light function
-    static inject (_lights) {
+    // Inject all provided light definitions, and calculate cumulative light function
+    static inject (lights) {
 
-        // CLEAR previous injections
+        // Clear previous injections
         ShaderProgram.removeTransform(Light.transform);
 
-        // Collect all TYPES of lights
+        // Collect uniques types of lights
         let types = {};
-        for (let light_name in _lights) {
-            types[_lights[light_name].type] = true;
+        for (let light_name in lights) {
+            types[lights[light_name].type] = true;
         }
 
         // Inject each type of light
         for (let type in types) {
-            switch (type) {
-                case 'point':
-                    PointLight.inject();
-                    break;
-                case 'directional':
-                    DirectionalLight.inject();
-                    break;
-                case 'spotlight':
-                    SpotLight.inject();
-                    break;
-            }
+            Light.types[type].inject();
         }
 
-        // inject per-instance blocks and construct the list of function to calculate
+        // Inject per-instance blocks and construct the list of functions to calculate each light
         let calculateList = "";
-        for (let light_name in _lights) {
+        for (let light_name in lights) {
 
             // Define instance
-            _lights[light_name].inject();
+            lights[light_name].inject();
 
             // Add the calculation function to the list
-            calculateList += 'calculateLight(g_' + light_name + ', _eyeToPoint, _normal);\n';
+            calculateList += `calculateLight(g_${light_name}, _eyeToPoint, _normal);\n`;
         }
 
-        // Glue together the calculate Lighting function
+        // Glue together the final calculate lighting function that sums all the lights
         let calculateFunction = `
             vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
 
                 ` + calculateList + `
 
                 //  Final light intensity calculation
-                //
                 vec4 color = vec4(0.0);
 
                 #ifdef TANGRAM_MATERIAL_EMISSION
@@ -98,22 +75,20 @@ export default class Light {
                     color += g_light_accumulator_specular * g_material.specular;
                 #endif
 
-                // Clamp final color to be in the right spectrum
+                // Clamp final color
                 color = clamp(color, 0.0, 1.0);
 
                 return color;
             }`;
 
         ShaderProgram.addTransform(Light.transform, calculateFunction);
-
     }
 
     // Common instance definition
     inject () {
         let instance =  `
             uniform ${this.struct_name} u_${this.name};
-            ${this.struct_name} g_${this.name} = u_${this.name};
-        `;
+            ${this.struct_name} g_${this.name} = u_${this.name};\n`;
 
         ShaderProgram.addTransform(Light.transform, instance);
     }
@@ -122,73 +97,76 @@ export default class Light {
     update () {
     }
 
-    // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
+    // Called once per frame per program (e.g. for main render pass, then for each additional
+    // pass for feature selection, etc.)
     setupProgram (_program) {
         //  Three common light properties
-        _program.uniform('4fv', 'u_'+this.name+'.ambient', this.ambient);
-        _program.uniform('4fv', 'u_'+this.name+'.diffuse', this.diffuse);
-        _program.uniform('4fv', 'u_'+this.name+'.specular', this.specular);
+        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('4fv', `u_${this.name}.diffuse`, this.diffuse);
+        _program.uniform('4fv', `u_${this.name}.specular`, this.specular);
     }
 
 }
 
-// Shader transform name
-Light.transform = 'lighting';
+Light.types = {}; // references to subclasses by short name
+Light.transform = 'lighting'; // shader transform name
 
 
-// DIRECTIONAL LIGHT
-//
+// Light subclasses
+
 class DirectionalLight extends Light {
 
-    constructor(_scene, _config) {
-        super(_scene, _config);
+    constructor(scene, config) {
+        super(scene, config);
         this.type = 'directional';
         this.struct_name = 'DirectionalLight';
 
-        this.direction = (_config.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
+        this.direction = (config.direction || [0.2, 0.7, -0.5]).map(parseFloat); // [x, y, z]
     }
 
-    // DirectLigth Struct and function
+    // Inject struct and calculate function
     static inject() {
         ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/directionalLight']);
     }
 
     setupProgram (_program) {
         super.setupProgram(_program);
-        _program.uniform('3fv', 'u_'+this.name+'.direction', this.direction);
+        _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
     }
 
 }
+Light.types['directional'] = DirectionalLight;
 
-// POINT LIGHT
-//
+
 class PointLight extends Light {
 
-    constructor (_scene, _config) {
-        super(_scene, _config);
+    constructor (scene, config) {
+        super(scene, config);
         this.type = 'point';
         this.struct_name = 'PointLight';
 
-        this.position = (_config.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
-        this.constantAttenuation = !isNaN(parseFloat(_config.constantAttenuation)) ? parseFloat(_config.constantAttenuation) : 0.0;
-        this.linearAttenuation = !isNaN(parseFloat(_config.constantAttenuation)) ? parseFloat(_config.constantAttenuation) : 0.0;
-        this.quadraticAttenuation = !isNaN(parseFloat(_config.constantAttenuation)) ? parseFloat(_config.constantAttenuation) : 0.0;
+        this.position = (config.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
+        this.constantAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
+        this.linearAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
+        this.quadraticAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
     }
 
+    // Inject struct and calculate function
     static inject () {
         ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/pointLight']);
     }
 
+    // Inject isntance-specific settings
     inject() {
         super.inject();
 
-        if(this.constantAttenuation !== 0){
+        if(this.constantAttenuation !== 0) {
             ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION'] = true;
         }
-        if(this.constantAttenuation !== 0){
+        if(this.constantAttenuation !== 0) {
             ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION'] = true;
         }
-        if(this.constantAttenuation !== 0){
+        if(this.constantAttenuation !== 0) {
             ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION'] = true;
         }
     }
@@ -196,41 +174,41 @@ class PointLight extends Light {
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('4f', 'u_'+this.name+'.position',
+        _program.uniform('4f', `u_${this.name}.position`,
             this.position[0] * this.scene.meters_per_pixel,
             this.position[1] * this.scene.meters_per_pixel,
             this.position[2] * this.scene.meters_per_pixel,
             1);
 
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION']){
-            _program.uniform('1f', 'u_'+this.name+'.constantAttenuation', this.constantAttenuation);
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION']) {
+            _program.uniform('1f', `u_${this.name}.constantAttenuation`, this.constantAttenuation);
         }
 
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION']){
-            _program.uniform('1f', 'u_'+this.name+'.linearAttenuation', this.linearAttenuation);
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION']) {
+            _program.uniform('1f', `u_${this.name}.linearAttenuation`, this.linearAttenuation);
         }
 
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION']){
-            _program.uniform('1f', 'u_'+this.name+'.quadraticAttenuation', this.quadraticAttenuation);
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION']) {
+            _program.uniform('1f', `u_${this.name}.quadraticAttenuation`, this.quadraticAttenuation);
         }
     }
 }
+Light.types['point'] = PointLight;
 
-// SPOT LIGHT
-//
+
 class SpotLight extends PointLight {
 
-    constructor (_scene, _config) {
-        super(_scene, _config);
+    constructor (scene, config) {
+        super(scene, config);
         this.type = 'spotlight';
         this.struct_name = 'SpotLight';
 
-        this.direction = (_config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
-        this.exponent = _config.exponent ? parseFloat(_config.exponent) : 0.2;
-        this.angle = _config.angle ? parseFloat(_config.angle) : 20.0;
-
+        this.direction = (config.direction || [0, 0, -1]).map(parseFloat); // [x, y, z]
+        this.exponent = config.exponent ? parseFloat(config.exponent) : 0.2;
+        this.angle = config.angle ? parseFloat(config.angle) : 20;
     }
 
+    // Inject struct and calculate function
     static inject () {
         ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/spotLight']);
     }
@@ -238,10 +216,10 @@ class SpotLight extends PointLight {
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('3fv', 'u_'+this.name+'.direction', this.direction);
-
-        _program.uniform('1f', 'u_'+this.name+'.spotCosCutoff', Math.cos(this.angle * 3.14159 / 180.0) );
-        _program.uniform('1f', 'u_'+this.name+'.spotExponent', this.exponent);
+        _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
+        _program.uniform('1f', `u_${this.name}.spotCosCutoff`, Math.cos(this.angle * 3.14159 / 180));
+        _program.uniform('1f', `u_${this.name}.spotExponent`, this.exponent);
     }
 
 }
+Light.types['spotlight'] = SpotLight;

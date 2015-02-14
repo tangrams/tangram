@@ -6,16 +6,11 @@ import GLSL from './gl/glsl';
 export default class Material {
     constructor (config) {
         config = config || {};
-        this.emission = config.emission && config.emission.map(parseFloat);
-        this.ambient = config.ambient ? config.ambient.map(parseFloat) : [1,1,1];
-        this.diffuse = config.diffuse ? config.diffuse.map(parseFloat) : [1,1,1];
-        this.specular = config.specular && config.specular.map(parseFloat);
+        this.emission = GLSL.expandVec4(config.emission);
+        this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
+        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+        this.specular = GLSL.expandVec4(config.specular)
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
-
-        this.emission = GLSL.expandVec4(this.emission);
-        this.ambient = GLSL.expandVec4(this.ambient);
-        this.diffuse = GLSL.expandVec4(this.diffuse);
-        this.specular = GLSL.expandVec4(this.specular);
     }
 
     inject (style) {
