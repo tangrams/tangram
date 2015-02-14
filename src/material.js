@@ -1,36 +1,22 @@
 /*global Material */
-import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 
 export default class Material {
     constructor (config) {
         config = config || {};
-        this.emission = config.emission && config.emission.map(parseFloat);
-        this.ambient = config.ambient ? config.ambient.map(parseFloat) : [1,1,1];
-        this.diffuse = config.diffuse ? config.diffuse.map(parseFloat) : [1,1,1];
-        this.specular = config.specular && config.specular.map(parseFloat);
+        this.emission = GLSL.expandVec4(config.emission);
+        this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
+        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+        this.specular = GLSL.expandVec4(config.specular);
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
-
-        this.emission = GLSL.expandVec4(this.emission);
-        this.ambient = GLSL.expandVec4(this.ambient);
-        this.diffuse = GLSL.expandVec4(this.diffuse);
-        this.specular = GLSL.expandVec4(this.specular);
     }
 
     inject (style) {
-        if (this.emission) {
-            style.defines['TANGRAM_MATERIAL_EMISSION'] = true;
-        }
-        if (this.ambient) {
-            style.defines['TANGRAM_MATERIAL_AMBIENT'] = true;
-        }
-        if (this.diffuse) {
-            style.defines['TANGRAM_MATERIAL_DIFFUSE'] = true;
-        }
-        if (this.specular) {
-            style.defines['TANGRAM_MATERIAL_SPECULAR'] = true;
-        }
+        style.defines['TANGRAM_MATERIAL_EMISSION'] = (this.emission != null);
+        style.defines['TANGRAM_MATERIAL_AMBIENT'] = (this.ambient != null);
+        style.defines['TANGRAM_MATERIAL_DIFFUSE'] = (this.diffuse != null);
+        style.defines['TANGRAM_MATERIAL_SPECULAR'] = (this.specular != null);
 
         style.replaceShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
