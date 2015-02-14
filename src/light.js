@@ -1,3 +1,4 @@
+/*global Light */
 import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';

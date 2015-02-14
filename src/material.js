@@ -1,5 +1,4 @@
 /*global Material */
-import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 
@@ -9,7 +8,7 @@ export default class Material {
         this.emission = GLSL.expandVec4(config.emission);
         this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
         this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
-        this.specular = GLSL.expandVec4(config.specular)
+        this.specular = GLSL.expandVec4(config.specular);
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
     }
 
