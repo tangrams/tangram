@@ -257,11 +257,21 @@ GLSL.isSymbolReferenced = function (name, source) {
     return false;
 };
 
+/**
+    Expand a single value or 3-element array into a 4-element array, with the last (e.g. w or a)
+    coordinate defaulting to 1 (with option to specify). Also runs parseFloat to try to maintain
+    data integrity. Returns null if input couldn't be parsed.
+*/
 GLSL.expandVec4 = function (v, w = 1) {
+    let x;
     if (typeof v === 'number') {
-        return [v, v, v, v];
+        x = [v, v, v, v].map(parseFloat);
     }
     else if (Array.isArray(v) && v.length === 3) {
-        return [...v, w];
+        x = [...v, w].map(parseFloat);
+    }
+
+    if (x && x.every(n => typeof n === 'number' && !isNaN(n))) {
+        return x;
     }
 };
