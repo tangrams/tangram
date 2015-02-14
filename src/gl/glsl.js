@@ -264,11 +264,11 @@ GLSL.isSymbolReferenced = function (name, source) {
 */
 GLSL.expandVec4 = function (v, w = 1) {
     let x;
-    if (typeof v === 'number') {
-        x = [v, v, v, v].map(parseFloat);
-    }
-    else if (Array.isArray(v) && v.length === 3) {
+    if (Array.isArray(v) && v.length === 3) {
         x = [...v, w].map(parseFloat);
+    }
+    else {
+        x = [v, v, v, w].map(parseFloat);
     }
 
     if (x && x.every(n => typeof n === 'number' && !isNaN(n))) {
