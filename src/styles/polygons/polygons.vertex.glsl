@@ -49,7 +49,7 @@ varying vec4 v_world_position;
     varying vec4 v_position;
     varying vec3 v_normal;
 #else
-    varying vec3 v_lighting;
+    varying vec4 v_lighting;
 #endif
 
 #pragma tangram: globals
@@ -90,7 +90,7 @@ void main() {
     // Shading
     #if defined(LIGHTING_VERTEX)
         vec4 color = a_color;
-        vec4 normal = a_normal;
+        vec3 normal = a_normal;
 
         // Modify normal before lighting
         #pragma tangram: normal
@@ -98,9 +98,8 @@ void main() {
         // Modify color and material properties before lighting
         #pragma tangram: color
 
-        v_lighting = calculateLighting(position, normal, color);
+        v_lighting = calculateLighting(position.xyz, normal, color);
         v_color = color;
-        v_normal = normal;
     #else
         // Send to fragment shader for per-pixel lighting
         v_position = position;

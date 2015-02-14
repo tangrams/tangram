@@ -41,7 +41,7 @@ varying vec4 v_world_position;
     varying vec4 v_position;
     varying vec3 v_normal;
 #else
-    varying vec3 v_lighting;
+    varying vec4 v_lighting;
 #endif
 
 #pragma tangram: globals
