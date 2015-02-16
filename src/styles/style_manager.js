@@ -220,6 +220,7 @@ StyleManager.build = function (stylesheet_styles) {
 
     // Initialize all
     for (name in Styles) {
+        Styles[name].initialized = false;
         Styles[name].init();
     }
 
