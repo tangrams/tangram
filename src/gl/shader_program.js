@@ -107,16 +107,13 @@ ShaderProgram.prototype.compile = function () {
     // #pragma tangram: [key]
     // e.g. #pragma tangram: globals
 
-    // TODO: support glslify #pragma export names for better compatibility? (e.g. rename main() functions)
-    // TODO: auto-insert uniforms referenced in mode definition, but not in shader base or transforms? (problem: don't have access to uniform list/type here)
-
     // Gather all transform code snippets
     var transforms = this.buildShaderTransformList();
     var regexp;
 
     for (var key in transforms) {
         var transform = transforms[key];
-        if (!transform) {
+        if (!transform || (Array.isArray(transform) && transform.length === 0)) {
             continue;
         }
 
