@@ -28,5 +28,3 @@ vec4 sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2
     // Sample the environment map
     return texture2D(envmap, uv);
 }
-
-#pragma glslify: export(sphericalEnvironmentMap)

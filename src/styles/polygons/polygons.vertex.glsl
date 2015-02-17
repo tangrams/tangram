@@ -16,6 +16,8 @@ attribute vec3 a_normal;
 attribute vec4 a_color;
 attribute float a_layer;
 
+varying vec4 v_position;
+varying vec3 v_normal;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
@@ -45,10 +47,7 @@ varying vec4 v_world_position;
     varying vec4 v_selection_color;
 #endif
 
-#if !defined(LIGHTING_VERTEX)
-    varying vec4 v_position;
-    varying vec3 v_normal;
-#else
+#if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
 
@@ -84,11 +83,17 @@ void main() {
         v_world_position.xy -= world_position_anchor;
     #endif
 
-    // Style-specific vertex transformations
-    #pragma tangram: vertex
+    #pragma tangram: position
+
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: vertex
+
+    v_position = position;
+    v_normal = a_normal;
+    v_color = a_color;
 
     // Shading
-    #if defined(LIGHTING_VERTEX)
+    #if defined(TANGRAM_LIGHTING_VERTEX)
         vec4 color = a_color;
         vec3 normal = a_normal;
 
@@ -100,11 +105,6 @@ void main() {
 
         v_lighting = calculateLighting(position.xyz, normal, color);
         v_color = color;
-    #else
-        // Send to fragment shader for per-pixel lighting
-        v_position = position;
-        v_normal = a_normal;
-        v_color = a_color;
     #endif
 
     // Camera

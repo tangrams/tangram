@@ -6,6 +6,8 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 
+varying vec4 v_position;
+varying vec3 v_normal;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
@@ -37,10 +39,7 @@ varying vec4 v_world_position;
     uniform sampler2D u_env_map;
 #endif
 
-#if !defined(LIGHTING_VERTEX)
-    varying vec4 v_position;
-    varying vec3 v_normal;
-#else
+#if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
 
@@ -69,11 +68,13 @@ void main (void) {
     #endif
 
     // Modify color and material properties before lighting
+    #if !defined(TANGRAM_LIGHTING_VERTEX)
     #pragma tangram: color
+    #endif
 
-    #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
+    #if defined(TANGRAM_LIGHTING_FRAGMENT)
         color = calculateLighting(v_position.xyz, v_normal, color);
-    #else
+    #elif defined(TANGRAM_LIGHTING_VERTEX)
         color = v_lighting;
     #endif
 
@@ -81,7 +82,7 @@ void main (void) {
     #pragma tangram: filter
 
     // TODO: legacy, replace in existing styles
-    #pragma tangram: fragment
+    // #pragma tangram: fragment
 
     gl_FragColor = color;
 }
