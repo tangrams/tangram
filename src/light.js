@@ -23,39 +23,76 @@ export default class Light {
         }
     }
 
+    // Set light for a style: fragment lighting, vertex lighting, or none
+    static setMode (mode, style) {
+        if (!Light.enabled) {
+            mode = false;
+        }
+        else {
+            mode = (mode != null) ? mode : 'fragment'; // default to fragment lighting
+        }
+
+        if (mode === 'fragment') {
+            style.defines['TANGRAM_LIGHTING_VERTEX'] = false;
+            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = true;
+        }
+        else if (mode === 'vertex') {
+            style.defines['TANGRAM_LIGHTING_VERTEX'] = true;
+            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = false;
+        }
+        else {
+            style.defines['TANGRAM_LIGHTING_VERTEX'] = false;
+            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = false;
+        }
+    }
+
     // Inject all provided light definitions, and calculate cumulative light function
     static inject (lights) {
-
         // Clear previous injections
         ShaderProgram.removeTransform(Light.transform);
 
-        // Collect uniques types of lights
-        let types = {};
-        for (let light_name in lights) {
-            types[lights[light_name].type] = true;
+        // If lighting is globally disabled, nothing is injected (mostly for debugging or live editing)
+        if (!Light.enabled) {
+            return;
         }
 
-        // Inject each type of light
-        for (let type in types) {
-            Light.types[type].inject();
+        // Construct code to calculate each light instance
+        let calculateLights = "";
+        if (lights && Object.keys(lights).length > 0) {
+            // Collect uniques types of lights
+            let types = {};
+            for (let light_name in lights) {
+                types[lights[light_name].type] = true;
+            }
+
+            // Inject each type of light
+            for (let type in types) {
+                Light.types[type].inject();
+            }
+
+            // Inject per-instance blocks and construct the list of functions to calculate each light
+            for (let light_name in lights) {
+                // Define instance
+                lights[light_name].inject();
+
+                // Add the calculation function to the list
+                calculateLights += `calculateLight(g_${light_name}, _eyeToPoint, _normal);\n`;
+            }
+        }
+        else {
+            // If no light is defined, use 100% omnidirectional diffuse light
+            calculateLights = `
+                #ifdef TANGRAM_MATERIAL_DIFFUSE
+                    g_light_accumulator_diffuse = vec4(1.);
+                #endif
+            `;
         }
 
-        // Inject per-instance blocks and construct the list of functions to calculate each light
-        let calculateList = "";
-        for (let light_name in lights) {
-
-            // Define instance
-            lights[light_name].inject();
-
-            // Add the calculation function to the list
-            calculateList += `calculateLight(g_${light_name}, _eyeToPoint, _normal);\n`;
-        }
-
-        // Glue together the final calculate lighting function that sums all the lights
+        // Glue together the final lighting function that sums all the lights
         let calculateFunction = `
             vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
 
-                ` + calculateList + `
+                ${calculateLights}
 
                 //  Final light intensity calculation
                 vec4 color = vec4(0.0);
@@ -111,6 +148,7 @@ export default class Light {
 
 Light.types = {}; // references to subclasses by short name
 Light.transform = 'lighting'; // shader transform name
+Light.enabled = true; // lighting can be globally enabled/disabled
 
 
 // Light subclasses

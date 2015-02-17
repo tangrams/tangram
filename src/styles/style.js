@@ -7,6 +7,7 @@ import VBOMesh from '../gl/vbo_mesh';
 import Builders from './builders';
 import Texture from '../gl/texture';
 import Material from '../material';
+import Light from '../light';
 import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
@@ -39,6 +40,9 @@ export var Style = {
             this.material = new Material(this.material);
         }
         this.material.inject(this);
+
+        // Set lighting mode: fragment, vertex, or none (specified as 'false')
+        Light.setMode(this.lighting, this);
 
         this.initialized = true;
     },
