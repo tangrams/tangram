@@ -22,16 +22,16 @@ export default class Material {
     }
 
     setupProgram (_program) {
-        if (this.emission) {
+        if (this.emission != null) {
             _program.uniform('4fv', 'u_material.emission', this.emission);
         }
-        if (this.ambient) {
+        if (this.ambient != null) {
             _program.uniform('4fv', 'u_material.ambient', this.ambient);
         }
-        if (this.diffuse) {
+        if (this.diffuse != null) {
             _program.uniform('4fv', 'u_material.diffuse', this.diffuse);
         }
-        if (this.specular) {
+        if (this.specular != null) {
             _program.uniform('4fv', 'u_material.specular', this.specular);
             _program.uniform('1f', 'u_material.shininess', this.shininess);
         }
