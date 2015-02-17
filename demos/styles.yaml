@@ -24,38 +24,35 @@ lights:
     light1:
         type: point
         position: [0, 0, 200]
-        # ambient: [.3, .3, .3]
-        # diffuse: [0, 0, 0]
-        # diffuse: [1, 1, 1]
-        specular: [.4, .4, .4]
+        diffuse: 1
+        specular: 1
 
     light2:
         type: directional
-        # direction: [0.5, 0.5, -0.5]
-        # ambient: [1,1,1]
-        # diffuse: [1,1,1]
-        # specular: [1,1,1]
+        direction: [-0.5, 1, -0.5]
+        diffuse: 1
+        specular: 1
 
     # light3:
     #     type: spotlight
-    #     diffuse: [1, 1, 1]
     #     position: [0, 0, 200]
-    #     direction: [1, 0, 1]
+    #     diffuse: 1
+    #     # direction: [1, 0, 1]
     #     angle: 45
     #     exponent: 0.2
 
 styles:
 
+    # polygons:
+    #     lighting: false
+
     buildings:
         extends: polygons
         animated: true
-        material:
-            # emission: [.3, 0, 0]
-            ambient: [1, 1, 1]
-            # diffuse: [0, 0, 0]
-            # diffuse: [1, 1, 0]
-            specular: [1, 1, 1]
-            shininess: 10
+        # material:
+        #     diffuse: 0.1
+        #     specular: [1, 0, 0]
+        #     shininess: 20
 
     water:
         extends: polygons
@@ -66,18 +63,7 @@ styles:
             transforms:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
-                    url: demos/shaders/noise.glsl
-
-    formica:
-        extends: polygons
-        shaders:
-            defines:
-                EFFECT_NOISE_TEXTURE: true
-            transforms:
-                globals:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
+                color:
                     url: demos/shaders/noise.glsl
 
     colorbleed:
@@ -99,6 +85,7 @@ styles:
     rainbow:
         extends: polygons
         animated: true
+        lighting: false
         shaders:
             transforms:
                 globals: |
@@ -107,7 +94,7 @@ styles:
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
-                fragment: |
+                color: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
@@ -119,7 +106,7 @@ styles:
         animated: true
         shaders:
             transforms:
-                vertex: |
+                position: |
                     // Elevator buildings
                     if (position.z > 0.01) {
                         position.z *= (sin(position.z + u_time) + 1.0);
@@ -156,7 +143,7 @@ styles:
     points:
         shaders:
             transforms:
-                fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
 
     icons:
@@ -178,12 +165,12 @@ styles:
             uniforms:
                 bouncy: true
             transforms:
-                vertex: |
+                position: |
                     // Bouncy icons
                     if (bouncy) {
                         position.y += sin(v_world_position.y + u_time*3.) * 10.;
                     }
-                fragment: |
+                color: |
                     //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     uv_test:
@@ -191,7 +178,7 @@ styles:
         texcoords: true
         shaders:
             transforms:
-                fragment: |
+                color: |
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
@@ -262,7 +249,7 @@ styles:
             uniforms:
                 u_texture: demos/images/ghost_strip.gif
             transforms:
-                fragment: |
+                color: |
                     float number_of_frames = 2.;
                     float frames_per_second = 2.;
 
@@ -493,7 +480,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            name: buildings
+            # name: buildings
             order: 4
             interactive: true
 
