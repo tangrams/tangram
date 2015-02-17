@@ -37,6 +37,7 @@ export default function Scene(config_source, options) {
     subscribeMixin(this);
 
     this.initialized = false;
+    this.initializing = false;
     this.sources = {};
 
     this.tiles = {};
@@ -77,6 +78,9 @@ export default function Scene(config_source, options) {
     this.modelViewMatrix = new Float64Array(16);
     this.modelViewMatrix32 = new Float32Array(16);
 
+    this.selection = null;
+    this.texture_listener = null;
+
     // Debug config
     this.debug = {
         profile: {
@@ -106,6 +110,9 @@ Scene.prototype.init = function () {
                 this.createCanvas();
                 this.selection = new FeatureSelection(this.gl, this.workers);
 
+                this.texture_listener = { update: () => this.dirty = true };
+                Texture.subscribe(this.texture_listener);
+
                 // Loads rendering styles from config, sets GL context and compiles programs
                 this.updateConfig();
 
@@ -126,6 +133,9 @@ Scene.prototype.destroy = function () {
     this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
     this.unsubscribeAll(); // clear all event listeners
+
+    Texture.unsubscribe(this.texture_listener);
+    this.texture_listener = null;
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
