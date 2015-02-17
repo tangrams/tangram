@@ -76,17 +76,16 @@ export default class Label {
     }
 
     moveNextSegment () {
-        this.segment_index++;
-
-        if (this.segment_index >= this.lines[this.line_index].length - 1) {
+        if (this.segment_index + 1 >= this.lines[this.line_index].length - 1) {
             return false;
         }
 
+        this.segment_index++;
         let segment = this.currentSegment();
 
         this.angle = this.angleForSegment(segment);
-        this.bbox = this.computeOBBox();
         this.position = this.middleSegment(segment);
+        this.bbox = this.computeOBBox();
 
         return true;
     }
@@ -111,7 +110,7 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    fitToSegment (should_fit = false) {
+    fitToSegment (should_fit = true) {
         if (!should_fit) {
             return true;
         }
@@ -137,16 +136,28 @@ export default class Label {
     }
 
     discard (move_in_tile, keep_in_tile, bboxes) {
+        // first main rule : discard line labels that doesn't fit in the line they are sticking to
+        if (this.lines && !this.fitToSegment()) {
+            while (!this.fitToSegment()) {
+                if (!this.moveNextSegment()) {
+                    return true;
+                }
+            }
+        }
+
         let discard = false;
 
-        if (keep_in_tile) {
+        // perform specific styling rule, should we keep the label in tile bounds?
+        if (keep_in_tile) { 
             let in_tile = this.inTileBounds();
 
             if (!in_tile && this.lines && move_in_tile) {
                 let fits_to_segment = this.fitToSegment();
-                
+
+                // move this label until we found a line we can fit in
                 while (!in_tile && !fits_to_segment) {
-                    if (!this.moveNextSegment()) {
+                    if (!this.moveNextSegment()) { 
+                        // we can't move further in this line, just break
                         break;
                     } 
 
@@ -154,12 +165,14 @@ export default class Label {
                     fits_to_segment = this.fitToSegment();
                 }
 
-                discard = !in_tile || !fits_to_segment;
+                discard = !in_tile || !fits_to_segment;
             } else if (!in_tile) { 
-                discard = true;
+                // we didn't want to move at all, just discard since we're out of tile bounds
+                return true;
             }
         }
 
+        // should we discard? if not, just make occlusion test
         return discard || this.occluded(bboxes); 
     }
 
