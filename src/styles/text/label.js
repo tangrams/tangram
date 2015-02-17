@@ -15,26 +15,39 @@ export default class Label {
         });
 
         this.text = text;
-        this.position = position;
         this.size = size;
 
         if (lines) {
+            this.line_index = 0;
+            this.segment_index = 0;
             this.lines = lines;
-            this.angle = this.angleForLine(this.lines[0]);
+            this.angle = this.angleForSegment(this.currentSegment());
+            this.position = this.middleSegment(this.currentSegment());
             this.bbox = this.computeOBBox();
         } else {
+            this.position = position;
             this.bbox = this.computeBBox();
         }
 
         this.bbox["text"] = text;
     }
 
+    middleSegment(segment) {
+        return [
+            (segment[0][0] + segment[1][0]) / 2,
+            (segment[0][1] + segment[1][1]) / 2,
+        ];
+    }
+
     occluded (bboxes) {
         bboxes.push(this.bbox);
 
-        return boxIntersect(bboxes, (i, j) => {
+        let intersect = false;
+
+        let res = boxIntersect(bboxes, (i, j) => {
             if (bboxes[i] === this.bbox || bboxes[j] === this.bbox) {
                 let index = bboxes.indexOf(this.bbox);
+
                 if (index > -1) {
                     // remove that bbox
                     bboxes.splice(index, 1);
@@ -43,11 +56,17 @@ export default class Label {
                 return true; // early exit
             }
         });
+
+        if (res !== undefined) {
+            intersect = true;
+        }
+
+        return intersect;
     }
 
     inTileBounds () {
-        let min = [this.bbox[0], this.bbox[1]];
-        let max = [this.bbox[2], this.bbox[3]];
+        let min = [ this.bbox[0], this.bbox[1] ];
+        let max = [ this.bbox[2], this.bbox[3] ];
 
         if (!this.pointInTile(min) || !this.pointInTile(max)) {
             return false;
@@ -56,10 +75,24 @@ export default class Label {
         return true;
     }
 
-    angleForLine (line) {
-        let p0 = line[0];
-        let p1 = line[1];
-        let p0p1 = Vector.sub(p1, p0);
+    moveNextSegment () {
+        this.segment_index++;
+
+        if (this.segment_index >= this.lines[this.line_index].length - 1) {
+            return false;
+        }
+
+        let segment = this.currentSegment();
+
+        this.angle = this.angleForSegment(segment);
+        this.bbox = this.computeOBBox();
+        this.position = this.middleSegment(segment);
+
+        return true;
+    }
+
+    angleForSegment (segment) {
+        let p0p1 = Vector.sub(segment[0], segment[1]);
 
         p0p1 = Vector.normalize(p0p1);
 
@@ -78,26 +111,29 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    moveInTile () {
-        if (this.lines) {
-            for (let line of this.lines) {
-                for (let p of line) {
-                    if (this.pointInTile(p)) {
-                        this.position = p;
-                        this.angle = this.angleForLine(line);
-                        this.bbox = this.computeOBBox();
-
-                        if (!this.inTileBounds()) {
-                            continue;
-                        }
-
-                        return true;
-                    }
-                }
-            }
+    fitToSegment (should_fit = false) {
+        if (!should_fit) {
+            return true;
         }
 
-        return false;
+        let segment = this.currentSegment();
+        let p0p1 = Vector.sub(segment[0], segment[1]);
+        let length = Vector.length(p0p1);
+
+        return this.mercatorLength() < length;
+    }
+
+    mercatorLength () {
+        return this.size[0] * Geo.units_per_pixel;
+    }
+
+    mercatorHeight () {
+        return this.size[1] * Geo.units_per_pixel;
+    }
+
+    currentSegment () {
+        let line = this.lines[this.line_index];
+        return [ line[this.segment_index], line[this.segment_index + 1] ];
     }
 
     discard (move_in_tile, keep_in_tile, bboxes) {
@@ -106,10 +142,19 @@ export default class Label {
         if (keep_in_tile) {
             let in_tile = this.inTileBounds();
 
-            if (!in_tile && move_in_tile) {
-                if (!this.moveInTile()) {
-                    discard = true;
+            if (!in_tile && this.lines && move_in_tile) {
+                let fits_to_segment = this.fitToSegment();
+                
+                while (!in_tile && !fits_to_segment) {
+                    if (!this.moveNextSegment()) {
+                        break;
+                    } 
+
+                    in_tile = this.inTileBounds();
+                    fits_to_segment = this.fitToSegment();
                 }
+
+                discard = !in_tile || !fits_to_segment;
             } else if (!in_tile) { 
                 discard = true;
             }
@@ -119,10 +164,8 @@ export default class Label {
     }
 
     computeBBox () {
-        let upp = Geo.units_per_pixel;
-
-        let half_merc_width = this.size[0] * upp * 0.5;
-        let half_merc_height = this.size[1] * upp * 0.5;
+        let half_merc_width = this.mercatorLength() * 0.5;
+        let half_merc_height = this.mercatorHeight() * 0.5;
 
         return [
             this.position[0] - half_merc_width, 

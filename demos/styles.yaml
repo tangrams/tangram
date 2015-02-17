@@ -532,7 +532,7 @@ layers:
         filter: { name: true }
 
         major_road:
-            filter: { kind: major_road }
+            #filter: { kind: major_road }
             style:
                 name: text
                 order: 5
