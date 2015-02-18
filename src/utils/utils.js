@@ -347,3 +347,7 @@ Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };
 
+Utils.toCanvasColor = function (color) {
+    return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
+};
+

@@ -28,8 +28,6 @@ Object.assign(Text, {
         this.texture = {};
         this.ctx = {};
 
-        this.size = 14;
-
         this.font_style = {
             typeface: 'Helvetica',
             size: '12px',
@@ -39,13 +37,13 @@ Object.assign(Text, {
     },
 
     // Set font style params for canvas drawing
-    setFont ({ size }, tile, font_style) {
-        this.size = size;
+    setFont (tile, { size, typeface, fill, stroke }) {
+        this.size = parseInt(size);
         this.buffer = 6; // pixel padding around text
 
-        this.ctx[tile].font = font_style.size + ' ' + font_style.typeface;
-        this.ctx[tile].strokeStyle = font_style.stroke;
-        this.ctx[tile].fillStyle = font_style.fill;
+        this.ctx[tile].font = size + ' ' + typeface;
+        this.ctx[tile].strokeStyle = stroke;
+        this.ctx[tile].fillStyle = fill;
         this.ctx[tile].lineWidth = 4;
         this.ctx[tile].miterLimit = 2;
     },
@@ -74,7 +72,7 @@ Object.assign(Text, {
         this.ctx[tile] = canvas.getContext('2d');
         this.texts[tile] = texts;
 
-        this.setFont({ size: 12 }, tile, font_style);
+        this.setFont(tile, font_style);
 
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
@@ -103,7 +101,7 @@ Object.assign(Text, {
         this.ctx[tile].clearRect(0, 0, canvas.width, canvas.height);
 
         // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
-        this.setFont({ size: 12 }, tile, font_style);
+        this.setFont(tile, font_style);
 
         for (let text in this.texts[tile]) {
             let info = this.texts[tile][text];
@@ -174,8 +172,8 @@ Object.assign(Text, {
             this.font_style = {
                 typeface: rule.font.typeface || this.font_style.typeface,
                 size: rule.font.size || this.font_size.font_size,
-                fill: rule.font.fill === undefined ? this.font_style.fill : this.toCanvasColor(rule.font.fill),
-                stroke: rule.font.stroke === undefined ? this.font_style.stroke : this.toCanvasColor(rule.font.stroke)
+                fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
+                stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
             };
         }
 
@@ -212,9 +210,6 @@ Object.assign(Text, {
         );
     },
 
-    toCanvasColor(color) {
-        return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
-    },
 
     _parseFeature (feature, rule_style, context) {
         let style = this.feature_style;
