@@ -30,6 +30,7 @@ export default class Label {
         }
 
         this.bbox["text"] = text;
+        this.bbox["center"] = this.position;
     }
 
     middleSegment(segment) {

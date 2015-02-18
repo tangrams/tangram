@@ -6,6 +6,7 @@ import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import Label from './label';
+import {StyleParser} from '../style_parser';
 
 export var Text = Object.create(Sprites);
 
@@ -28,17 +29,23 @@ Object.assign(Text, {
         this.ctx = {};
 
         this.size = 14;
+
+        this.font_style = {
+            typeface: 'Helvetica',
+            size: '12px',
+            fill: 'white',
+            stroke: 'black'
+        }
     },
 
     // Set font style params for canvas drawing
-    // TODO: un-hardcode
-    setFont ({ size }, tile) {
+    setFont ({ size }, tile, font_style) {
         this.size = size;
         this.buffer = 6; // pixel padding around text
 
-        this.ctx[tile].font = `${this.size}px Helvetica`;
-        this.ctx[tile].strokeStyle = 'black';
-        this.ctx[tile].fillStyle = 'white';
+        this.ctx[tile].font = font_style.size + ' ' + font_style.typeface;
+        this.ctx[tile].strokeStyle = font_style.stroke;
+        this.ctx[tile].fillStyle = font_style.fill;
         this.ctx[tile].lineWidth = 4;
         this.ctx[tile].miterLimit = 2;
     },
@@ -59,7 +66,7 @@ Object.assign(Text, {
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    addTexts (tile, texts) {
+    addTexts (tile, texts, font_style) {
         var canvas = document.createElement('canvas');
 
         this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'linear' });
@@ -67,7 +74,7 @@ Object.assign(Text, {
         this.ctx[tile] = canvas.getContext('2d');
         this.texts[tile] = texts;
 
-        this.setFont({ size: 12 }, tile);
+        this.setFont({ size: 12 }, tile, font_style);
 
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
@@ -96,7 +103,7 @@ Object.assign(Text, {
         this.ctx[tile].clearRect(0, 0, canvas.width, canvas.height);
 
         // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
-        this.setFont({ size: 12 }, tile);
+        this.setFont({ size: 12 }, tile, font_style);
 
         for (let text in this.texts[tile]) {
             let info = this.texts[tile][text];
@@ -137,9 +144,8 @@ Object.assign(Text, {
 
         // Attach tile-specific label atlas to mesh as a texture uniform
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
-
         // Call to main thread to render label atlas for this tile, and return size & UV info
-        return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile], this.font_style).then(texts => {
 
             this.texts[tile] = texts;
 
@@ -162,6 +168,15 @@ Object.assign(Text, {
             }
 
             this.texts[tile][text] = true;
+        }
+
+        if (rule.font) {
+            this.font_style = {
+                typeface: rule.font.typeface || this.font_style.typeface,
+                size: rule.font.size || this.font_size.font_size,
+                fill: rule.font.fill === undefined ? this.font_style.fill : this.toCanvasColor(rule.font.fill),
+                stroke: rule.font.stroke === undefined ? this.font_style.stroke : this.toCanvasColor(rule.font.stroke)
+            };
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
@@ -195,6 +210,10 @@ Object.assign(Text, {
             this.vertex_layout.index.a_shape,
             { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
+    },
+
+    toCanvasColor(color) {
+        return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
     },
 
     _parseFeature (feature, rule_style, context) {
