@@ -25,25 +25,9 @@ export default class Light {
 
     // Set light for a style: fragment lighting, vertex lighting, or none
     static setMode (mode, style) {
-        if (!Light.enabled) {
-            mode = false;
-        }
-        else {
-            mode = (mode != null) ? mode : 'fragment'; // default to fragment lighting
-        }
-
-        if (mode === 'fragment') {
-            style.defines['TANGRAM_LIGHTING_VERTEX'] = false;
-            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = true;
-        }
-        else if (mode === 'vertex') {
-            style.defines['TANGRAM_LIGHTING_VERTEX'] = true;
-            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = false;
-        }
-        else {
-            style.defines['TANGRAM_LIGHTING_VERTEX'] = false;
-            style.defines['TANGRAM_LIGHTING_FRAGMENT'] = false;
-        }
+        mode = Light.enabled && ((mode != null) ? mode : 'fragment'); // default to fragment lighting
+        style.defines['TANGRAM_LIGHTING_FRAGMENT'] = (mode === 'fragment');
+        style.defines['TANGRAM_LIGHTING_VERTEX'] = (mode === 'vertex');
     }
 
     // Inject all provided light definitions, and calculate cumulative light function
@@ -185,9 +169,9 @@ class PointLight extends Light {
         this.struct_name = 'PointLight';
 
         this.position = (config.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
-        this.constantAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
-        this.linearAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
-        this.quadraticAttenuation = config.constantAttenuation ? parseFloat(config.constantAttenuation) : 0;
+        this.constantAttenuation = !isNaN(parseFloat(config.constantAttenuation)) ? parseFloat(config.constantAttenuation) : 0;
+        this.linearAttenuation = !isNaN(parseFloat(config.linearAttenuation)) ? parseFloat(config.linearAttenuation) : 0;
+        this.quadraticAttenuation = !isNaN(parseFloat(config.quadraticAttenuation)) ? parseFloat(config.quadraticAttenuation) : 0;
     }
 
     // Inject struct and calculate function
@@ -199,15 +183,9 @@ class PointLight extends Light {
     inject() {
         super.inject();
 
-        if(this.constantAttenuation !== 0) {
-            ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION'] = true;
-        }
-        if(this.constantAttenuation !== 0) {
-            ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION'] = true;
-        }
-        if(this.constantAttenuation !== 0) {
-            ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION'] = true;
-        }
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION'] = (this.constantAttenuation !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION'] = (this.linearAttenuation !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION'] = (this.quadraticAttenuation !== 0);
     }
 
     setupProgram (_program) {
