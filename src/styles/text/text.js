@@ -64,7 +64,7 @@ Object.assign(Text, {
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    addTexts (tile, texts, font_style) {
+    addTexts (tile, texts) {
         var canvas = document.createElement('canvas');
 
         this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'linear' });
@@ -72,17 +72,15 @@ Object.assign(Text, {
         this.ctx[tile] = canvas.getContext('2d');
         this.texts[tile] = texts;
 
-        this.setFont(tile, font_style);
-
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
         for (let text in this.texts[tile]) {
+            this.setFont(tile, this.texts[tile][text].text_style);
+
             let size = this.textSize(text, tile);
 
-            this.texts[tile][text] = {
-                size,
-                position: [0, height]
-             };
+            this.texts[tile][text].size = size; 
+            this.texts[tile][text].position = [0, height];
 
             if (size[0] > widest) {
                 widest = size[0];
@@ -100,12 +98,10 @@ Object.assign(Text, {
         canvas.height = texture_size[1];
         this.ctx[tile].clearRect(0, 0, canvas.width, canvas.height);
 
-        // TODO: cleanup, seems the canvas font settings need to be refreshed whenever canvas size changes
-        this.setFont(tile, font_style);
-
         for (let text in this.texts[tile]) {
             let info = this.texts[tile][text];
 
+            this.setFont(tile, info.text_style);
             this.drawText(text, info.position, tile);
 
             info.texcoords = Builders.getTexcoordsForSprite(
@@ -143,7 +139,7 @@ Object.assign(Text, {
         // Attach tile-specific label atlas to mesh as a texture uniform
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
         // Call to main thread to render label atlas for this tile, and return size & UV info
-        return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile], this.font_style).then(texts => {
+        return WorkerBroker.postMessage('Text', 'addTexts', tile, this.texts[tile]).then(texts => {
 
             this.texts[tile] = texts;
 
@@ -159,21 +155,26 @@ Object.assign(Text, {
     addFeature (feature, rule, context, tile_data) {
         // Collect text
         let text = feature.properties.name;
+
         if (text) {
             let tile = context.tile.key;
             if (!this.texts[tile]) {
                 this.texts[tile] = {};
             }
 
-            this.texts[tile][text] = true;
-        }
+            let style = this.font_style;
 
-        if (rule.font) {
-            this.font_style = {
-                typeface: rule.font.typeface || this.font_style.typeface,
-                size: rule.font.size || this.font_size.font_size,
-                fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+            if (rule.font) {
+                style = {
+                    typeface: rule.font.typeface || this.font_style.typeface,
+                    size: rule.font.size || this.font_size.font_size,
+                    fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
+                    stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+                };
+            }
+
+            this.texts[tile][text] = {
+                text_style: style   
             };
         }
 
