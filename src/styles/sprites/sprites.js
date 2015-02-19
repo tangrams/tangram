@@ -93,7 +93,7 @@ Object.assign(Sprites, {
 
         return template;
     },
-   
+
     buildPoints (points, style, vertex_data) {
         if (!style.size) {
             return;

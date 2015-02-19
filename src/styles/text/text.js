@@ -79,7 +79,7 @@ Object.assign(Text, {
 
             let size = this.textSize(text, tile);
 
-            this.texts[tile][text].size = size; 
+            this.texts[tile][text].size = size;
             this.texts[tile][text].position = [0, height];
 
             if (size[0] > widest) {
@@ -174,7 +174,7 @@ Object.assign(Text, {
             }
 
             this.texts[tile][text] = {
-                text_style: style   
+                text_style: style
             };
         }
 
@@ -202,7 +202,7 @@ Object.assign(Text, {
         Builders.buildSpriteQuadsForPoints(
             [ label.position ],
             Utils.scaleInt16(label.size[0], 128), Utils.scaleInt16(label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(label.angle), 360), 
+            Utils.scaleInt16(Utils.radToDeg(label.angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
@@ -222,7 +222,7 @@ Object.assign(Text, {
         style.size = this.texts[tile][style.text].size;
         style.size = [
             Math.min((style.size[0] || style.size), 256),
-            Math.min((style.size[1] || style.size), 256) 
+            Math.min((style.size[1] || style.size), 256)
         ];
 
         style.angle = rule_style.angle || 0;
