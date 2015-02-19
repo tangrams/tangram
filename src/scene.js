@@ -615,7 +615,7 @@ Scene.prototype.renderStyle = function (style, program) {
 Scene.prototype.render = function () {
     var gl = this.gl;
 
-    this.resetFrame({ alpha_blend: true });
+    this.resetFrame({ alpha_blend: false });
 
     // Map transforms
     if (!this.center_meters) {
