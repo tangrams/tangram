@@ -1,8 +1,8 @@
 camera:
-    type: perspective
+  type: perspective
 
 lighting:
-    type: point
+  type: point
 
 styles: {}
 
@@ -11,35 +11,53 @@ sources:
     type: 'GeoJSONTileSource'
     url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
 
-  # test:
-  #   type: 'GeoJSONTileSource'
-  #   url: 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
-
-
 layers:
 
-    earth:
-      geometry:
-        source: osm
-        filter: earth
-      style:
-        order: 0
-        color: [1, 1, 1]
+  earth:
+    geometry:
+      source: osm
+      filter: earth
+    style:
+      order: 0
+      color: [0.175, 0.175, 0.175]
 
-    roads:
-      geometry:
-        source: osm
-        filter: roads
-      style:
-        order: 2
-        color: [1, 1, 0]
-        width: 7
+  roads:
+    geometry:
+      source: osm
+      filter: roads
 
-    roads-outline:
-      geometry:
-        source: osm
-        filter: roads
+    major_road:
+      filter:
+        kind: major_road
+      style:
+        color: [0.5, 0.5, 0.5]
+        width: function () { return 3.5 * Math.log(zoom); }
+        join: round
+        cap: round
+
+    minor_road:
+      filter:
+        kind: minor_road
+      style:
+        color: '#fff'
+        width: function () { return 3 * Math.log(zoom); }
+        join: round
+        cap: round
+
+    highway:
+      filter:
+        kind: highway
       style:
         order: 1
-        color: [1, 0, 0]
-        width: 10
+        width: function () { return 4 * Math.log(zoom); }
+        color: [1.0, 1.0, 1.0]
+        join: round
+        cap: round
+      outline:
+        filter: { '@zoom': { min: 15 } }
+        style:
+          outline:
+            color: [0.7, 0.7, 0.7]
+            width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+            join: round
+            cap: round
