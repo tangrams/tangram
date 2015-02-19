@@ -10,6 +10,7 @@ uniform float u_order_range;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
+uniform mat3 u_normalMatrix;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
@@ -88,7 +89,7 @@ void main() {
     #pragma tangram: position
 
     v_position = position;
-    v_normal = a_normal;
+    v_normal = normalize(u_normalMatrix * a_normal);
     v_color = a_color;
 
     // Shading

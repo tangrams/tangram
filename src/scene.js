@@ -18,6 +18,7 @@ import FeatureSelection from './selection';
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
+var mat3 = glMatrix.mat3;
 var vec3 = glMatrix.vec3;
 
 // Global setup
@@ -80,6 +81,8 @@ export default function Scene(config_source, options) {
     this.modelMatrix32 = new Float32Array(16);
     this.modelViewMatrix = new Float64Array(16);
     this.modelViewMatrix32 = new Float32Array(16);
+    this.normalMatrix = new Float64Array(9);
+    this.normalMatrix32 = new Float32Array(9);
 
     this.selection = null;
     this.texture_listener = null;
@@ -602,6 +605,10 @@ Scene.prototype.renderStyle = function (style, program) {
             // Model view matrix - transform tile space into view space (meters, relative to camera)
             mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
             program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
+
+            // Normal matrix - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
 
             // Render tile
             tile.meshes[style].render();
