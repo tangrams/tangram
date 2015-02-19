@@ -11,6 +11,7 @@ cameras:
     isometric:
         type: isometric
         # axis: [1, .5]
+        # active: true
 
     flat:
         type: flat
@@ -23,13 +24,15 @@ cameras:
 lights:
     light1:
         type: point
-        position: [0, 0, 200]
-        diffuse: 1
-        specular: 1
+        # position: [50, -50, -500]
+        position: [0, 0, -400]
+        diffuse: .5
+        specular: .2
+        linearAttenuation: 0.01
 
     light2:
         type: directional
-        direction: [-0.5, 1, -0.5]
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
         diffuse: 1
         specular: 1
 
@@ -43,16 +46,21 @@ lights:
 
 styles:
 
-    # polygons:
-    #     lighting: false
+    polygons:
+        animated: true
+        # lighting: vertex
+        material:
+            diffuse: 1
+            specular: 1
+            shininess: 8
 
     buildings:
         extends: polygons
         animated: true
         # material:
-        #     diffuse: 0.1
+        #     diffuse: 0 #0.3
         #     specular: [1, 0, 0]
-        #     shininess: 20
+        #     shininess: 8
 
     water:
         extends: polygons
@@ -123,6 +131,7 @@ styles:
 
     envmap:
         extends: polygons
+        lighting: false
         shaders:
             defines:
                 LIGHTING_ENVIRONMENT: true
@@ -480,7 +489,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            # name: buildings
+            name: buildings
             order: 4
             interactive: true
 
@@ -538,7 +547,7 @@ layers:
             # sprite: tree
             # size: [[13, 16px], [14, 24px], [15, 32px]]
 
-            # visible: false
+            visible: false
             order: 5
             interactive: true
             color: [1, 1, 0]

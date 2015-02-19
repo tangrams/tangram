@@ -168,7 +168,7 @@ class PointLight extends Light {
         this.type = 'point';
         this.struct_name = 'PointLight';
 
-        this.position = (config.position || [0, 0, 200]).map(parseFloat); // [x, y, z]
+        this.position = (config.position || [0, 0, 0]).map(parseFloat); // [x, y, z]
         this.constantAttenuation = !isNaN(parseFloat(config.constantAttenuation)) ? parseFloat(config.constantAttenuation) : 0;
         this.linearAttenuation = !isNaN(parseFloat(config.linearAttenuation)) ? parseFloat(config.linearAttenuation) : 0;
         this.quadraticAttenuation = !isNaN(parseFloat(config.quadraticAttenuation)) ? parseFloat(config.quadraticAttenuation) : 0;

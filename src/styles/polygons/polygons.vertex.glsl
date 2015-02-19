@@ -69,9 +69,6 @@ void main() {
         v_selection_color = a_selection_color;
     #endif
 
-    // Position
-    vec4 position = u_modelView * vec4(a_position, 1.);
-
     // Texture UVs
     #if defined(TEXTURE_COORDS)
         v_texcoord = a_texcoord;
@@ -83,10 +80,12 @@ void main() {
         v_world_position.xy -= world_position_anchor;
     #endif
 
-    #pragma tangram: position
+    // Position
+    vec4 position = u_modelView * vec4(a_position, 1.);
 
     // TODO: legacy, replace in existing styles
     // #pragma tangram: vertex
+    #pragma tangram: position
 
     v_position = position;
     v_normal = a_normal;

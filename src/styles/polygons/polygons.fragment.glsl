@@ -44,6 +44,7 @@ varying vec4 v_world_position;
 #endif
 
 #pragma tangram: globals
+#pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
 
@@ -60,11 +61,8 @@ void main (void) {
     #endif
 
     #if defined(LIGHTING_ENVIRONMENT)
-        // Approximate location of eye (TODO: make this configurable)
-        vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
-
         // Replace object color with environment map
-        color.rgb = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
+        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, v_normal, u_env_map).rgb;
     #endif
 
     // Modify color and material properties before lighting
@@ -73,7 +71,7 @@ void main (void) {
     #endif
 
     #if defined(TANGRAM_LIGHTING_FRAGMENT)
-        color = calculateLighting(v_position.xyz, v_normal, color);
+        color = calculateLighting(v_position.xyz - u_eye, v_normal, color);
     #elif defined(TANGRAM_LIGHTING_VERTEX)
         color = v_lighting;
     #endif
