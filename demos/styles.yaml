@@ -25,16 +25,16 @@ lights:
     light1:
         type: point
         # position: [50, -50, -500]
-        position: [0, 0, -400]
+        position: [0, 0, -700]
         diffuse: .5
-        specular: .2
-        linearAttenuation: 0.01
+        specular: .1
+        # linearAttenuation: 0.01
 
     light2:
         type: directional
         direction: [.5, 0, -1] #[0.1, 0.1, -1]
         diffuse: 1
-        specular: 1
+        # specular: 1
 
     # light3:
     #     type: spotlight
