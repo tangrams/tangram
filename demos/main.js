@@ -43,7 +43,7 @@
 
     },
         default_tile_source = 'mapzen',
-        scene_url = 'demos/simple-styles.yaml',
+        scene_url = 'demos/styles.yaml',
         osm_debug = false,
         locations = {
             'London': [51.508, -0.105, 15],
