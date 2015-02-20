@@ -155,24 +155,22 @@ export default class Tile {
 
                     // Find matching rules
                     let layer_rules = rules[layer_name];
-                    let matched_rules = layer_rules.findMatchingRules(context, true);
+                    let rule = layer_rules.findMatchingRules(context, true);
 
                     // Parse & render styles
-                    for (let rule of matched_rules) {
-                        if (!rule.visible) {
-                            continue;
-                        }
-
-                        // Add to style
-                        rule.name = rule.name || StyleParser.defaults.style.name;
-                        let style = styles[rule.name];
-
-                        if (!tile_data[rule.name]) {
-                            tile_data[rule.name] = style.startData();
-                        }
-
-                        style.addFeature(feature, rule, context, tile_data[rule.name]);
+                    if (!rule || !rule.visible) {
+                        continue;
                     }
+
+                    // Add to style
+                    rule.name = rule.name || StyleParser.defaults.style.name;
+                    let style = styles[rule.name];
+
+                    if (!tile_data[rule.name]) {
+                        tile_data[rule.name] = style.startData();
+                    }
+
+                    style.addFeature(feature, rule, context, tile_data[rule.name]);
 
                     source.debug.features++;
                 }
