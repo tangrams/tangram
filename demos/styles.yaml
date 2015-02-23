@@ -306,7 +306,7 @@ layers:
             style:
                 outline:
                     color: [0.6, 0.6, 0.975]
-                    width: function() { return 2.5 * Math.log(zoom)); }
+                    width: function() { return 2.5 * Math.log(zoom); }
 
     roads:
         geometry:
