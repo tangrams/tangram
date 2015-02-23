@@ -64,9 +64,6 @@ Object.assign(Sprites, {
         // to store bbox by tiles
         style.tile = tile;
 
-        style.keep_in_tile = true;
-        style.move_in_tile = false;
-
         this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
 
         return style;
@@ -104,21 +101,6 @@ Object.assign(Sprites, {
         let size = style.size;
         let angle = style.angle;
         let position = points[0];
-
-        if (this.bboxes[style.tile] === undefined) {
-            this.bboxes[style.tile] = [];
-        }
-
-        if (style.text) { // label point sprite
-            let label = new Label(style.text, points[0], style.size);
-
-            if (label.discard(style.move_in_tile, style.keep_in_tile, this.bboxes[style.tile])) {
-                return;
-            }
-
-            size = label.size;
-            position = label.position;
-        }
 
         Builders.buildSpriteQuadsForPoints(
             [ position ],

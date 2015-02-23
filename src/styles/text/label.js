@@ -19,7 +19,6 @@ export default class Label {
         this.size = size;
 
         if (lines) {
-            this.line_index = 0;
             this.segment_index = 0;
             this.lines = lines;
             this.angle = this.angleForSegment(this.currentSegment());
@@ -68,7 +67,7 @@ export default class Label {
     }
 
     moveNextSegment () {
-        if (this.segment_index + 1 >= this.lines[this.line_index].length - 1) {
+        if (this.segment_index + 1 >= this.lines.length - 1) {
             return false;
         }
 
@@ -102,7 +101,7 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    fitToSegment (should_fit = true) {
+    fitToSegment (should_fit = false) {
         if (!should_fit) {
             return true;
         }
@@ -123,8 +122,9 @@ export default class Label {
     }
 
     currentSegment () {
-        let line = this.lines[this.line_index];
-        return [ line[this.segment_index], line[this.segment_index + 1] ];
+        let p1 = this.lines[this.segment_index];
+        let p2 = this.lines[this.segment_index + 1];
+        return [ p1, p2 ];
     }
 
     discard (move_in_tile, keep_in_tile, bboxes) {
