@@ -42,7 +42,7 @@ Object.assign(Text, {
     setFont (tile, { size, typeface, fill, stroke }) {
         this.size = parseInt(size);
         this.buffer = 6; // pixel padding around text
-        let ctx = this.getContext(tile);
+        let ctx = this.canvas[tile].context;
 
         ctx.font = size + ' ' + typeface;
         ctx.strokeStyle = stroke;
@@ -51,14 +51,10 @@ Object.assign(Text, {
         ctx.miterLimit = 2;
     },
 
-    getContext (tile) {
-        return this.canvas[tile].getContext('2d');
-    },
-
     // Width and height of text based on current font style
     textSize (text, tile) {
         return [
-            Math.ceil(this.getContext(tile).measureText(text).width) + this.buffer * 2,
+            Math.ceil(this.canvas[tile].context.measureText(text).width) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
     },
@@ -66,8 +62,8 @@ Object.assign(Text, {
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile) {
         // TODO: optional stroke
-        this.getContext(tile).strokeText(text, x + this.buffer, y + this.buffer + this.size);
-        this.getContext(tile).fillText(text, x + this.buffer, y + this.buffer + this.size);
+        this.canvas[tile].context.strokeText(text, x + this.buffer, y + this.buffer + this.size);
+        this.canvas[tile].context.fillText(text, x + this.buffer, y + this.buffer + this.size);
     },
 
     setTextureTextPositions (tile, texts) {
@@ -92,7 +88,7 @@ Object.assign(Text, {
     getTextSizes (tile, texts) {
         // create a canvas
         var canvas = document.createElement('canvas');
-        this.canvas[tile] = canvas;
+        this.canvas[tile] = {canvas: canvas, context: canvas.getContext('2d')};
 
         // update text sizes
         for (let key in texts) {
@@ -125,18 +121,18 @@ Object.assign(Text, {
         this.texts[tile] = texts;
 
         let texture_size = this.setTextureTextPositions(tile, texts);
-        let context = this.getContext(tile);
+        let context = this.canvas[tile].context;
 
         console.log(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // update the canvas "context"
-        this.canvas[tile].width = texture_size[0];
-        this.canvas[tile].height = texture_size[1];
+        this.canvas[tile].canvas.width = texture_size[0];
+        this.canvas[tile].canvas.height = texture_size[1];
         context.clearRect(0, 0, texture_size[0], texture_size[1]);
 
         // create a texture
         this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'linear' });
-        this.texture[tile].setCanvas(this.canvas[tile]);
+        this.texture[tile].setCanvas(this.canvas[tile].canvas);
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
@@ -169,6 +165,7 @@ Object.assign(Text, {
         // Attach tile-specific label atlas to mesh as a texture uniform
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
+        // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('Text', 'getTextSizes', tile, this.texts[tile]).then(texts => {
             if (this.bboxes[tile] === undefined) {
                 this.bboxes[tile] = [];
@@ -212,6 +209,7 @@ Object.assign(Text, {
                 return;
             }
 
+            // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage('Text', 'addTexts', tile, texts).then(texts => {
                 this.texts[tile] = texts;
 
