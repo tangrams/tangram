@@ -70,16 +70,21 @@ Object.assign(Text, {
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
 
-        for (let key in texts) {
-            let size = texts[key].size;
+        for (let style in texts) {
+            let text_infos = texts[style];
 
-            texts[key].position = [0, height];
+            for (let text in text_infos) {
+                let text_info = text_infos[text];
+                let size = text_info.size;
 
-            if (size[0] > widest) {
-                widest = size[0];
+                text_info.position = [0, height];
+
+                if (size[0] > widest) {
+                    widest = size[0];
+                }
+
+                height += size[1];
             }
-
-            height += size[1];
         }
 
         return [ widest, height ];
@@ -88,31 +93,41 @@ Object.assign(Text, {
     getTextSizes (tile, texts) {
         // create a canvas
         var canvas = document.createElement('canvas');
-        this.canvas[tile] = {canvas: canvas, context: canvas.getContext('2d')};
 
-        // update text sizes
-        for (let key in texts) {
-            let text = key.split('/')[0];
-            this.setFont(tile, texts[key].text_style);
-            texts[key].size = this.textSize(text, tile);
+        this.canvas[tile] = {
+            canvas: canvas,
+            context: canvas.getContext('2d')
+        };
+
+        for (let style in texts) {
+            let text_infos = texts[style];
+
+            for (let text in text_infos) {
+                // update text sizes
+                this.setFont(tile, text_infos[text].text_style);
+                text_infos[text].size = this.textSize(text, tile);
+            }
         }
 
         return Promise.resolve(texts);
     },
 
     rasterize (tile, texts, texture_size) {
-        for (let key in texts) {
-            let info = texts[key];
-            let text = key.split('/')[0];
+        for (let style in texts) {
+            let text_infos = texts[style];
 
-            this.setFont(tile, info.text_style);
-            this.drawText(text, info.position, tile);
+            for (let text in text_infos) {
+                let info = text_infos[text];
 
-            info.texcoords = Builders.getTexcoordsForSprite(
-                info.position,
-                info.size,
-                texture_size
-            );
+                this.setFont(tile, info.text_style);
+                this.drawText(text, info.position, tile);
+
+                info.texcoords = Builders.getTexcoordsForSprite(
+                    info.position,
+                    info.size,
+                    texture_size
+                );
+            }
         }
     },
 
@@ -171,37 +186,40 @@ Object.assign(Text, {
                 this.bboxes[tile] = [];
             }
 
-            for (let key in texts) {
-                let text_info = texts[key];
-                let text = key.split('/')[0];
-                let label;
-                let keep_in_tile;
-                let move_in_tile;
-                let geometry = this.geometries[tile][key];
+            for (let style in texts) {
+                let text_infos = texts[style];
 
-                if (geometry.type === "LineString") {
-                    let lines = geometry.coordinates;
-                    let line = [lines[0]];
+                for (let text in text_infos) {
+                    let text_info = text_infos[text];
+                    let label;
+                    let keep_in_tile;
+                    let move_in_tile;
+                    let geometry = this.geometries[tile][style][text];
 
-                    keep_in_tile = true;
-                    move_in_tile = true;
+                    if (geometry.type === "LineString") {
+                        let lines = geometry.coordinates;
+                        let line = [lines[0]];
 
-                    label = new Label(text, line[0], text_info.size, lines);
-                } else if (geometry.type === "Point") {
-                    let points = [geometry.coordinates];
+                        keep_in_tile = true;
+                        move_in_tile = true;
 
-                    keep_in_tile = true;
-                    move_in_tile = false;
+                        label = new Label(text, line[0], text_info.size, lines);
+                    } else if (geometry.type === "Point") {
+                        let points = [geometry.coordinates];
 
-                    label = new Label(text, points[0], text_info.size);
+                        keep_in_tile = true;
+                        move_in_tile = false;
+
+                        label = new Label(text, points[0], text_info.size);
+                    }
+
+                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
+                        // remove the text from the map
+                        delete text_infos[text];
+                    }
+
+                    // TODO : add labels to the worker
                 }
-
-                if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
-                    // remove the text from the map
-                    delete texts[key];
-                }
-
-                // TODO : add labels to the worker
             }
 
             if (Object.keys(texts).length == 0) {
@@ -246,17 +264,23 @@ Object.assign(Text, {
                     fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
                     stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
                 };
-
-                let style_key = `${style.typeface}/${style.size}/${style.fill}/${style.stroke}`;
             }
 
-            let key = `${text}/${style_key}`;
+            let style_key = `${style.typeface}/${style.size}/${style.fill}/${style.stroke}`;
 
-            this.texts[tile][key] = {
+            if (!this.texts[tile][style_key]) {
+                this.texts[tile][style_key] = {};
+            }
+
+            if (!this.geometries[tile][style_key]) {
+                this.geometries[tile][style_key] = feature.geometry;
+            }
+
+            this.texts[tile][style_key][text] = {
                 text_style: style
             };
 
-            this.geometries[tile][key] = feature.geometry;
+            this.geometries[tile][style_key][text] = feature.geometry;
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
