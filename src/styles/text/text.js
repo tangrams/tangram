@@ -218,7 +218,7 @@ Object.assign(Text, {
                         delete text_infos[text];
                     }
 
-                    // TODO : add labels to the worker
+                    text_info.label = label;
                 }
             }
 
@@ -255,18 +255,8 @@ Object.assign(Text, {
                 this.geometries[tile] = {};
             }
 
-            let style = this.font_style;
-
-            if (rule.font) {
-                style = {
-                    typeface: rule.font.typeface || this.font_style.typeface,
-                    size: rule.font.size || this.font_size.font_size,
-                    fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                    stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
-                };
-            }
-
-            let style_key = `${style.typeface}/${style.size}/${style.fill}/${style.stroke}`;
+            let style = this.constructFontStyle(rule);
+            let style_key = this.constructStyleKey(style);
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
@@ -286,18 +276,36 @@ Object.assign(Text, {
         tile_data.queue.push([feature, rule, context, tile_data]);
     },
 
-    buildLines (lines, style, vertex_data) {
-        var vertex_template = this.makeVertexTemplate(style);
-        let line = lines[0];
+    constructFontStyle(rule) {
+        let style = this.font_style;
 
-        // TODO : get labels
-        // let label = new Label(style.text, line[0], style.size, lines);
-        return;
+        if (rule.font) {
+            style = {
+                typeface: rule.font.typeface || this.font_style.typeface,
+                size: rule.font.size || this.font_size.font_size,
+                fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
+                stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+            };
+        }
+
+        return style;
+    },
+
+    constructStyleKey({ typeface, size, fill, stroke }) {
+        return `${typeface}/${size}/${fill}/${stroke}`;
+    },
+
+    buildLines (lines, style, vertex_data) {
+        if (style.discarded) {
+            return;
+        }
+
+        var vertex_template = this.makeVertexTemplate(style);
 
         Builders.buildSpriteQuadsForPoints(
-            [ label.position ],
-            Utils.scaleInt16(label.size[0], 128), Utils.scaleInt16(label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(label.angle), 360),
+            [ style.label.position ],
+            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
+            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
@@ -307,19 +315,16 @@ Object.assign(Text, {
     },
 
     buildPoints (points, style, vertex_data) {
+        if (style.discarded) {
+            return;
+        }
+
         var vertex_template = this.makeVertexTemplate(style);
 
-        // TODO : get labels
-        //let label = new Label(style.text, points[0], style.size);
-
-        // size = label.size;
-        // position = label.position;
-        return;
-
         Builders.buildSpriteQuadsForPoints(
-            [ position ],
-            Utils.scaleInt16(size[0], 128), Utils.scaleInt16(size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(angle), 360),
+            [ style.label.position ],
+            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
+            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
             vertex_template,
@@ -331,23 +336,33 @@ Object.assign(Text, {
     _parseFeature (feature, rule_style, context) {
         let style = this.feature_style;
         let tile = context.tile.key;
+        let text = feature.properties.name;
 
-        style.text = feature.properties.name;
+        let font_style = this.constructFontStyle(rule_style);
+        let style_key = this.constructStyleKey(font_style);
 
-        style.angle = rule_style.angle || 0;
-        if (typeof style.angle === 'function') {
-            style.angle = style.angle(context);
+        let discarded = this.texts[tile][style_key][text] === undefined;
+
+        style.discarded = discarded;
+
+        if (!discarded) {
+            let text_info = this.texts[tile][style_key][text];
+            this.texcoord_scale = text_info.texcoords;
+
+            style.text = text;
+
+            style.angle = rule_style.angle || 0;
+            if (typeof style.angle === 'function') {
+                style.angle = style.angle(context);
+            }
+
+            // factor by which sprites scales from current zoom level to next zoom level
+            style.scale = rule_style.scale || 1;
+
+            // to store bbox by tiles
+            style.tile = tile;
+            style.label = text_info.label;
         }
-
-        // factor by which sprites scales from current zoom level to next zoom level
-        style.scale = rule_style.scale || 1;
-
-        // to store bbox by tiles
-        style.tile = tile;
-
-        // Set UVs
-        // TODO : fix uvs
-        // this.texcoord_scale = this.texts[tile][style.text].texcoords;
 
         return style;
     }
