@@ -101,7 +101,7 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    fitToSegment (should_fit = false) {
+    fitToSegment (should_fit = true) {
         if (!should_fit) {
             return true;
         }

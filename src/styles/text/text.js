@@ -186,6 +186,7 @@ Object.assign(Text, {
                 this.bboxes[tile] = [];
             }
 
+            // cleanup of texts that should be removed after occlusion test
             for (let style in texts) {
                 let text_infos = texts[style];
 
@@ -276,7 +277,7 @@ Object.assign(Text, {
         tile_data.queue.push([feature, rule, context, tile_data]);
     },
 
-    constructFontStyle(rule) {
+    constructFontStyle (rule) {
         let style = this.font_style;
 
         if (rule.font) {
@@ -291,8 +292,23 @@ Object.assign(Text, {
         return style;
     },
 
-    constructStyleKey({ typeface, size, fill, stroke }) {
+    constructStyleKey ({ typeface, size, fill, stroke }) {
         return `${typeface}/${size}/${fill}/${stroke}`;
+    },
+
+    build (style, vertex_data) {
+        var vertex_template = this.makeVertexTemplate(style);
+
+        Builders.buildSpriteQuadsForPoints(
+            [ style.label.position ],
+            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
+            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
+            Utils.scaleInt16(style.scale, 256),
+            vertex_data,
+            vertex_template,
+            this.vertex_layout.index.a_shape,
+            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
+        );
     },
 
     buildLines (lines, style, vertex_data) {
@@ -300,18 +316,7 @@ Object.assign(Text, {
             return;
         }
 
-        var vertex_template = this.makeVertexTemplate(style);
-
-        Builders.buildSpriteQuadsForPoints(
-            [ style.label.position ],
-            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
-            Utils.scaleInt16(style.scale, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
-            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-        );
+        this.build(style, vertex_data);
     },
 
     buildPoints (points, style, vertex_data) {
@@ -319,18 +324,7 @@ Object.assign(Text, {
             return;
         }
 
-        var vertex_template = this.makeVertexTemplate(style);
-
-        Builders.buildSpriteQuadsForPoints(
-            [ style.label.position ],
-            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
-            Utils.scaleInt16(style.scale, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
-            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-        );
+        this.build(style, vertex_data);
     },
 
     _parseFeature (feature, rule_style, context) {
