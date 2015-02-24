@@ -7,7 +7,7 @@ import DataSource from './data_source.js';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseRules} from './styles/rule';
+import {parseRules} from 'unruly';
 import Builders from './styles/builders';
 import Texture from './gl/texture';
 
@@ -78,9 +78,8 @@ if (Utils.isWorkerThread) {
 
         // Parse each top-level layer as a separate rule tree
         // TODO: find a more graceful way to incorporate this
-        for (layer in SceneWorker.config.layers) {
-            SceneWorker.rules[layer] = parseRules({ [layer]: SceneWorker.config.layers[layer] });
-        }
+
+        SceneWorker.rules =  parseRules(SceneWorker.config.layers);
 
         // Sync tetxure info from main thread
         SceneWorker.syncing_textures = SceneWorker.syncTextures();

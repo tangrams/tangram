@@ -1,11 +1,14 @@
 /*global Texture */
 // Texture management
 import Utils from '../utils/utils';
+import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
 import log from 'loglevel';
 
 // Global set of textures, by name
 Texture.textures = {};
+
+subscribeMixin(Texture);
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
 export default function Texture (gl, name, options = {}) {
@@ -149,6 +152,8 @@ Texture.prototype.update = function (options = {}) {
     else if (this.width && this.height) { // NOTE: this.data can be null, to zero out texture
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
     }
+
+    Texture.trigger('update', this);
 };
 
 // Determines appropriate filtering mode
@@ -213,6 +218,7 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
     }
 
     this.unbind();
+    Texture.trigger('update', this);
 };
 
 // Static/class methods

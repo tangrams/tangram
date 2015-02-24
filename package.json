@@ -24,9 +24,11 @@
   },
   "license": "MIT",
   "dependencies": {
-    "libtess": "1.2.0",
     "pbf": "1.2.0",
     "vector-tile": "1.0.0",
+    "earcut": "1.2.0",
+    "match-feature": "tangrams/match-feature",
+    "unruly": "tangrams/unruly",
     "gl-matrix": "^2.1.0",
     "js-yaml": "^3.1.0",
     "csscolorparser": "^1.0.2",

@@ -37,9 +37,11 @@ export default function Scene(config_source, options) {
     subscribeMixin(this);
 
     this.initialized = false;
+    this.initializing = false;
     this.sources = {};
 
     this.tiles = {};
+    this.visible_tiles = {};
     this.queued_tiles = [];
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
@@ -76,6 +78,9 @@ export default function Scene(config_source, options) {
     this.modelViewMatrix = new Float64Array(16);
     this.modelViewMatrix32 = new Float32Array(16);
 
+    this.selection = null;
+    this.texture_listener = null;
+
     // Debug config
     this.debug = {
         profile: {
@@ -102,17 +107,11 @@ Scene.prototype.init = function () {
         this.loadScene().then(() => {
 
             this.createWorkers().then(() => {
-                this.container = this.container || document.body;
-                this.canvas = document.createElement('canvas');
-                this.canvas.style.position = 'absolute';
-                this.canvas.style.top = 0;
-                this.canvas.style.left = 0;
-                this.canvas.style.zIndex = -1;
-                this.container.appendChild(this.canvas);
-
-                this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
-                this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+                this.createCanvas();
                 this.selection = new FeatureSelection(this.gl, this.workers);
+
+                this.texture_listener = { update: () => this.dirty = true };
+                Texture.subscribe(this.texture_listener);
 
                 // Loads rendering styles from config, sets GL context and compiles programs
                 this.updateConfig();
@@ -134,6 +133,9 @@ Scene.prototype.destroy = function () {
     this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
 
     this.unsubscribeAll(); // clear all event listeners
+
+    Texture.unsubscribe(this.texture_listener);
+    this.texture_listener = null;
 
     if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
@@ -162,10 +164,22 @@ Scene.prototype.destroy = function () {
     this.tiles = {}; // TODO: probably destroy each tile separately too
 };
 
+Scene.prototype.createCanvas = function () {
+    this.container = this.container || document.body;
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = 0;
+    this.canvas.style.left = 0;
+    this.canvas.style.zIndex = -1;
+    this.container.appendChild(this.canvas);
+
+    this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
+    this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+};
+
 Scene.prototype.createObjectURL = function () {
     return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
 };
-
 
 Scene.loadWorkerUrl = function (scene) {
     var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
@@ -268,14 +282,19 @@ Scene.prototype.startZoom = function () {
     this.zooming = true;
 };
 
+// Choose the base zoom level to use for a given fractional zoom
+Scene.prototype.baseZoom = function (zoom) {
+    return Math.round(zoom);
+};
+
 Scene.prototype.preserve_tiles_within_zoom = 2;
 Scene.prototype.setZoom = function (zoom) {
     this.zooming = false;
 
     // Schedule tiles for removal on integer zoom level change
-    if (Math.round(zoom) !== Math.round(this.last_zoom)) {
-        var below = Math.round(zoom);
-        var above = Math.round(zoom);
+    if (this.baseZoom(zoom) !== this.baseZoom(this.last_zoom)) {
+        var below = this.baseZoom(zoom);
+        var above = this.baseZoom(zoom);
 
         log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
@@ -297,7 +316,7 @@ Scene.prototype.setZoom = function (zoom) {
 };
 
 Scene.prototype.viewReady = function () {
-    if (this.css_size == null || this.center == null || this.zoom == null) {
+    if (this.css_size == null || this.center == null || this.zoom == null || Object.keys(this.sources).length === 0) {
          return false;
     }
     return true;
@@ -313,52 +332,72 @@ Scene.prototype.updateBounds = function () {
     this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
 
     // Size of the half-viewport in meters at current zoom
-    this.meter_zoom = {
-        x: this.css_size.width / 2 * this.meters_per_pixel,
-        y: this.css_size.height / 2 * this.meters_per_pixel
+    this.viewport_meters = {
+        x: this.css_size.width * this.meters_per_pixel,
+        y: this.css_size.height * this.meters_per_pixel
     };
 
-    // Center of viewport in meters
-    var [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
+    // Center of viewport in meters, and tile
+    let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
     this.center_meters = { x, y };
+
+    let z = this.baseZoom(this.zoom);
+    let max_zoom = this.findMaxZoom();
+    if (z > max_zoom) {
+        z = max_zoom;
+    }
+    this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], z);
 
     this.bounds_meters = {
         sw: {
-            x: this.center_meters.x - this.meter_zoom.x,
-            y: this.center_meters.y - this.meter_zoom.y
+            x: this.center_meters.x - this.viewport_meters.x / 2,
+            y: this.center_meters.y - this.viewport_meters.y / 2
         },
         ne: {
-            x: this.center_meters.x + this.meter_zoom.x,
-            y: this.center_meters.y + this.meter_zoom.y
+            x: this.center_meters.x + this.viewport_meters.x / 2,
+            y: this.center_meters.y + this.viewport_meters.y / 2
         }
     };
 
-    // Buffered meter bounds catches objects outside viewport that stick into view space
-    // TODO: this is a hacky solution, need to revisit
-    var buffer = 200 * this.meters_per_pixel; // pixels -> meters
-    this.bounds_meters_buffered = {
-        sw: {
-            x: this.bounds_meters.sw.x - buffer,
-            y: this.bounds_meters.sw.y - buffer
-        },
-        ne: {
-            x: this.bounds_meters.ne.x + buffer,
-            y: this.bounds_meters.ne.y + buffer
-        }
-    };
+    // Find visible tiles and load new ones
+    this.visible_tiles = this.findVisibleTiles();
+    for (let key in this.visible_tiles) {
+        this.loadTile(this.visible_tiles[key]);
+    }
 
-    // Mark tiles as visible/invisible
-    for (var tile of Utils.values(this.tiles)) {
-        tile.update(this);
+    // Update tile visible flags
+    for (let key in this.tiles) {
+        this.tiles[key].update(this);
     }
 
     this.trigger('move');
     this.dirty = true;
 };
 
+Scene.prototype.findVisibleTiles = function ({ buffer } = {}) {
+    let z = this.baseZoom(this.zoom);
+    let max_zoom = this.findMaxZoom();
+    if (z > max_zoom) {
+        z = max_zoom;
+    }
+
+    let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
+    let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
+    buffer = buffer || 0;
+
+    let tiles = {};
+    for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
+        for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
+            let coords = { x, y, z };
+            tiles[Tile.key(coords)] = coords;
+        }
+    }
+    return tiles;
+};
+
 Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
-    below = Math.min(Math.round(below), this.findMaxZoom() || below);
-    above = Math.min(Math.round(above), this.findMaxZoom() || above);
+    below = Math.min(below, this.findMaxZoom() || below);
+    above = Math.min(above, this.findMaxZoom() || above);
 
     var remove_tiles = [];
     for (var t in this.tiles) {
@@ -496,6 +535,22 @@ Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = 
     }
 };
 
+// Find min/max order for a set of tiles
+Scene.prototype.calcOrderRange = function (tiles) {
+    let order = { min: Infinity, max: -Infinity };
+    for (let t of tiles) {
+        if (t.order.min < order.min) {
+            order.min = t.order.min;
+        }
+        if (t.order.max > order.max) {
+            order.max = t.order.max;
+        }
+    }
+    order.max += 1;
+    order.range = order.max - order.min;
+    return order;
+};
+
 Scene.prototype.renderStyle = function (style, program) {
     var first_for_style = true;
     var render_count = 0;
@@ -570,24 +625,14 @@ Scene.prototype.render = function () {
     this.renderable_tiles = [];
     for (var t in this.tiles) {
         var tile = this.tiles[t];
-        if (tile.loaded === true && tile.visible === true) {
+        if (tile.visible && tile.loaded) {
             this.renderable_tiles.push(tile);
         }
     }
     this.renderable_tiles_count = this.renderable_tiles.length;
 
     // Find min/max order for current tiles
-    this.order = { min: Infinity, max: -Infinity };
-    for (t of this.renderable_tiles) {
-        if (t.order.min < this.order.min) {
-            this.order.min = t.order.min;
-        }
-        if (t.order.max > this.order.max) {
-            this.order.max = t.order.max;
-        }
-    }
-    this.order.max += 1;
-    this.order.range = this.order.max - this.order.min;
+    this.order = this.calcOrderRange(this.renderable_tiles);
 
     // Render main pass - tiles grouped by rendering style (GL program)
     this.render_count = 0;
@@ -656,8 +701,8 @@ Scene.prototype.getFeatureAt = function (pixel) {
 };
 
 // Queue a tile for load
-Scene.prototype.loadTile = function (...args) {
-    this.queued_tiles[this.queued_tiles.length] = args;
+Scene.prototype.loadTile = function (coords) {
+    this.queued_tiles[this.queued_tiles.length] = coords;
 };
 
 // Load all queued tiles
@@ -670,11 +715,39 @@ Scene.prototype.loadQueuedTiles = function () {
         return;
     }
 
-    for (var t=0; t < this.queued_tiles.length; t++) {
-        this._loadTile.apply(this, this.queued_tiles[t]);
+    // Sort queued tiles from center tile
+    this.queued_tiles.sort((a, b) => {
+        let ad = Math.abs(this.center_tile.x - a.x) + Math.abs(this.center_tile.y - a.y);
+        let bd = Math.abs(this.center_tile.x - b.x) + Math.abs(this.center_tile.y - b.y);
+        return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+    });
+    this.queued_tiles.forEach(coords => this._loadTile(coords));
+    this.queued_tiles = [];
+};
+
+// Load a single tile
+Scene.prototype._loadTile = function (coords) {
+    // Skip if not at current scene zoom
+    if (coords.z !== this.center_tile.z) {
+        return;
     }
 
-    this.queued_tiles = [];
+    let key = Tile.key(coords);
+    let tile;
+    if (!this.hasTile(key)) {
+        tile = Tile.create({
+            coords: coords,
+            max_zoom: this.findMaxZoom(),
+            worker: this.nextWorker()
+        });
+
+        this.cacheTile(tile);
+        tile.load(this);
+    }
+    else {
+        tile = this.tiles[key];
+    }
+    return tile;
 };
 
 // tile manager
@@ -700,25 +773,6 @@ Scene.prototype.findMaxZoom = function () {
         }
     }
     return max_zoom;
-};
-
-// Load a single tile
-Scene.prototype._loadTile = function (coords, options = {}) {
-    var tile = Tile.create({
-        coords: coords,
-        max_zoom: this.findMaxZoom(),
-        worker: this.nextWorker()
-    });
-
-
-    if (!this.hasTile(tile.key)) {
-        this.cacheTile(tile);
-        tile.load(this);
-        if (options.debugElement) {
-            tile.updateDebugElement(options.debugElement, this.debug.showTileElements);
-        }
-    }
-    return tile;
 };
 
 // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
@@ -759,35 +813,17 @@ Scene.prototype.rebuildGeometry = function () {
         // Update config (in case JS objects were manipulated directly)
         this.syncConfigToWorker();
 
-        // Rebuild visible tiles first, from center out
-        var tile, visible = [], invisible = [];
-        for (tile of Utils.values(this.tiles)) {
-            if (tile.visible === true) {
-                visible.push(tile);
+        // Rebuild visible tiles, sorted from center
+        let build = [];
+        for (let tile of Utils.values(this.tiles)) {
+            if (tile.visible) {
+                build.push(tile);
             }
-            else {
-                invisible.push(tile);
-            }
-        }
-
-        visible.sort((a, b) => {
-            return (b.center_dist > a.center_dist ? -1 : (b.center_dist === a.center_dist ? 0 : 1));
-        });
-
-        for (tile of visible) {
-            tile.build(this);
-        }
-
-        for (tile of invisible) {
-            // Keep tiles in current zoom but out of visible range, but rebuild as lower priority
-            if (tile.isInZoom(this)) {
-                tile.build(this);
-            }
-            // Drop tiles outside current zoom
             else {
                 this.removeTile(tile.key);
             }
         }
+        Tile.sort(build).forEach(tile => tile.build(this));
 
         this.updateActiveStyles();
         this.resetTime();
@@ -936,6 +972,7 @@ Scene.prototype.loadDataSources = function () {
         source.url = Utils.addBaseURL(source.url);
         this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
     }
+    this.updateBounds();
 };
 
 Scene.prototype.setSourceMax = function () {

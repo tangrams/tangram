@@ -26,18 +26,20 @@ export default class Tile {
             loaded: false,
             error: null,
             worker: null,
+            visible: false,
             order: {
                 min: Infinity,
                 max: -Infinity
-            }
+            },
+            center_dist: 0
         });
 
         this.worker = worker;
         this.max_zoom = max_zoom;
 
         this.coords = coords;
-        this.coords = this.calculateOverZoom();
-        this.key = [this.coords.x, this.coords.y, this.coords.z].join('/');
+        this.coords = Tile.calculateOverZoom(this.coords, this.max_zoom);
+        this.key = Tile.key(this.coords);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
@@ -46,7 +48,36 @@ export default class Tile {
         this.meshes = {}; // renderable VBO meshes keyed by style
     }
 
-    static create(spec) { return new Tile(spec); }
+    static create(spec) {
+        return new Tile(spec);
+    }
+
+    static key({x, y, z}) {
+        return [x, y, z].join('/');
+    }
+
+    static calculateOverZoom({x, y, z}, max_zoom) {
+        max_zoom = max_zoom || z;
+
+        if (z > max_zoom) {
+            let zdiff = z - max_zoom;
+
+            x = Math.floor(x >> zdiff);
+            y = Math.floor(y >> zdiff);
+            z -= zdiff;
+        }
+
+        return {x, y, z};
+    }
+
+    // Sort a set of tile instances (which already have a distance from center tile computed)
+    static sort(tiles) {
+        return tiles.sort((a, b) => {
+            let ad = a.center_dist;
+            let bd = b.center_dist;
+            return (bd > ad ? -1 : (bd === ad ? 0 : 1));
+        });
+    }
 
     freeResources() {
         if (this != null && this.meshes != null) {
@@ -123,28 +154,23 @@ export default class Tile {
                     let context = StyleParser.getFeatureParseContext(feature, tile);
 
                     // Find matching rules
-                    let matched_rules = [];
                     let layer_rules = rules[layer_name];
-                    for (let r in layer_rules) {
-                        layer_rules[r].matchFeature(context, matched_rules);
-                    }
+                    let rule = layer_rules.findMatchingRules(context, true);
 
                     // Parse & render styles
-                    for (let rule of matched_rules) {
-                        if (!rule.visible) {
-                            continue;
-                        }
-
-                        // Add to style
-                        rule.name = rule.name || StyleParser.defaults.style.name;
-                        let style = styles[rule.name];
-
-                        if (!tile_data[rule.name]) {
-                            tile_data[rule.name] = style.startData();
-                        }
-
-                        style.addFeature(feature, rule, context, tile_data[rule.name]);
+                    if (!rule || !rule.visible) {
+                        continue;
                     }
+
+                    // Add to style
+                    rule.name = rule.name || StyleParser.defaults.style.name;
+                    let style = styles[rule.name];
+
+                    if (!tile_data[rule.name]) {
+                        tile_data[rule.name] = style.startData();
+                    }
+
+                    style.addFeature(feature, rule, context, tile_data[rule.name]);
 
                     source.debug.features++;
                 }
@@ -252,55 +278,25 @@ export default class Tile {
         this.workerMessage('removeTile', this.key);
     }
 
-    showDebug(div) {
-        var debug_overlay = document.createElement('div');
-        debug_overlay.textContent = this.key;
-        debug_overlay.style.position = 'absolute';
-        debug_overlay.style.left = 0;
-        debug_overlay.style.top = 0;
-        debug_overlay.style.color = 'white';
-        debug_overlay.style.fontSize = '16px';
-        debug_overlay.style.textOutline = '1px #000000';
-        div.appendChild(debug_overlay);
-        div.style.borderStyle = 'solid';
-        div.style.borderColor = 'white';
-        div.style.borderWidth = '1px';
-        return debug_overlay;
-    }
-
     printDebug () {
         log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
-    updateDebugElement(div, show) {
-        div.setAttribute('data-tile-key', this.key);
-        div.style.width = '256px';
-        div.style.height = '256px';
-
-        if (show) {
-            this.showDebug(div);
-        }
-    }
-
     update(scene) {
-        this.visible =  (this.coords.z === Math.round(scene.zoom)) ||
-                        (this.coords.z === this.max_zoom && scene.zoom >= this.max_zoom);
-
-        this.center_dist = Math.abs(scene.center_meters.x - this.min.x) + Math.abs(scene.center_meters.y - this.min.y);
-    }
-
-    calculateOverZoom() {
-        var zgap,
-            {x, y, z} = this.coords;
-
-        if (z > this.max_zoom) {
-            zgap = z - this.max_zoom;
-            x = ~~(x / Math.pow(2, zgap));
-            y = ~~(y / Math.pow(2, zgap));
-            z -= zgap;
+        if (this.coords.z === scene.center_tile.z && scene.visible_tiles[this.key]) {
+            this.visible = true;
+        }
+        else {
+            this.visible = false;
         }
 
-        return {x, y, z};
+        // TODO: handle tiles of mismatching zoom levels
+        if (this.coords.z === scene.center_tile.z) {
+            this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
+        }
+        else {
+            this.center_dist = Infinity;
+        }
     }
 
     load(scene) {
