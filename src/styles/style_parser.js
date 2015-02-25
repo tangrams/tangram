@@ -246,18 +246,28 @@ StyleParser.parseColor = function(val, context) {
 // Order is summed from top to bottom in the style hierarchy:
 // each child order value is added to the parent order value
 StyleParser.calculateOrder = function(order, context) {
-    return order.reduce((sum, order) => {
-        order = order || StyleParser.defaults.order;
-        if (typeof order === 'function') {
-            order = order(context);
-        }
-        else {
-            order = parseFloat(order);
-        }
+    if (typeof order === 'function') {
+        order = order(context);
+    }
+    else if (Array.isArray(order)) {
+        order = order.reduce((sum, order) => {
+            order = order || StyleParser.defaults.order;
+            if (typeof order === 'function') {
+                order = order(context);
+            }
+            else {
+                order = parseFloat(order);
+            }
 
-        if (!order || isNaN(order)) {
-            return sum;
-        }
-        return sum + order;
-    }, 0);
+            if (!order || isNaN(order)) {
+                return sum;
+            }
+            return sum + order;
+        }, 0);
+    }
+    else {
+        order = parseFloat(order);
+    }
+
+    return order;
 };
