@@ -154,28 +154,23 @@ export default class Tile {
                     let context = StyleParser.getFeatureParseContext(feature, tile);
 
                     // Find matching rules
-                    let matched_rules = [];
                     let layer_rules = rules[layer_name];
-                    for (let r in layer_rules) {
-                        layer_rules[r].matchFeature(context, matched_rules);
-                    }
+                    let rule = layer_rules.findMatchingRules(context, true);
 
                     // Parse & render styles
-                    for (let rule of matched_rules) {
-                        if (!rule.visible) {
-                            continue;
-                        }
-
-                        // Add to style
-                        rule.name = rule.name || StyleParser.defaults.style.name;
-                        let style = styles[rule.name];
-
-                        if (!tile_data[rule.name]) {
-                            tile_data[rule.name] = style.startData();
-                        }
-
-                        style.addFeature(feature, rule, context, tile_data[rule.name]);
+                    if (!rule || !rule.visible) {
+                        continue;
                     }
+
+                    // Add to style
+                    rule.name = rule.name || StyleParser.defaults.style.name;
+                    let style = styles[rule.name];
+
+                    if (!tile_data[rule.name]) {
+                        tile_data[rule.name] = style.startData();
+                    }
+
+                    style.addFeature(feature, rule, context, tile_data[rule.name]);
 
                     source.debug.features++;
                 }
