@@ -989,11 +989,9 @@ Scene.prototype.setSourceMax = function () {
 Scene.prototype.preProcessSceneConfig = function () {
     // Pre-process styles
     for (var rule of Utils.recurseValues(this.config.layers)) {
-        if (rule.style) {
-            // Styles are visible by default
-            if (rule.style.visible !== false) {
-                rule.style.visible = true;
-            }
+        // Styles are visible by default
+        if (rule.style && rule.style.visible !== false) {
+            rule.style.visible = true;
         }
     }
 
