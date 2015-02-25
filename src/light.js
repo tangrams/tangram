@@ -86,7 +86,7 @@ export default class Light {
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_AMBIENT
-                    color += g_light_accumulator_ambient * g_material.ambient;
+                    color += g_light_accumulator_ambient * _color * g_material.ambient;
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_DIFFUSE
