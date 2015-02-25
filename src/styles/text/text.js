@@ -6,7 +6,6 @@ import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import Label from './label';
-import {StyleParser} from '../style_parser';
 
 export var Text = Object.create(Sprites);
 
@@ -35,7 +34,7 @@ Object.assign(Text, {
             size: '12px',
             fill: 'white',
             stroke: 'black'
-        }
+        };
     },
 
     // Set font style params for canvas drawing
@@ -92,12 +91,13 @@ Object.assign(Text, {
 
     getTextSizes (tile, texts) {
         // create a canvas
-        var canvas = document.createElement('canvas');
-
-        this.canvas[tile] = {
-            canvas: canvas,
-            context: canvas.getContext('2d')
-        };
+        if(this.canvas[tile] === undefined) {
+            var canvas = document.createElement('canvas');
+            this.canvas[tile] = {
+                canvas: canvas,
+                context: canvas.getContext('2d')
+            };
+        }
 
         for (let style in texts) {
             let text_infos = texts[style];
@@ -182,9 +182,7 @@ Object.assign(Text, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('Text', 'getTextSizes', tile, this.texts[tile]).then(texts => {
-            if (this.bboxes[tile] === undefined) {
-                this.bboxes[tile] = [];
-            }
+            this.bboxes[tile] = [];
 
             // cleanup of texts that should be removed after occlusion test
             for (let style in texts) {
@@ -223,7 +221,7 @@ Object.assign(Text, {
                 }
             }
 
-            if (Object.keys(texts).length == 0) {
+            if (Object.keys(texts).length === 0) {
                 // early exit
                 return;
             }

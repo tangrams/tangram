@@ -6,7 +6,6 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Utils from '../../utils/utils';
-import Label from '../text/label';
 
 
 export var Sprites = Object.create(Style);

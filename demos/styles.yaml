@@ -559,11 +559,11 @@ layers:
             style:
                 name: text
                 order: 5
-                font: 
+                font:
                     size: 14px
-                    typeface: Futura 
-                    fill: [0.9, 0.9, 0.9] 
-                    stroke: [.31, .33, .31] 
+                    typeface: Futura
+                    fill: [0.9, 0.9, 0.9]
+                    stroke: [.31, .33, .31]
 
     # pois:
     labels:
@@ -577,9 +577,9 @@ layers:
             # name: points
             # size: [[12, 6px], [13, 10px]]
 
-            font: 
+            font:
                 size: 11px
-                typeface: Helvetica 
+                typeface: Helvetica
 
             name: text
 
