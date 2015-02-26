@@ -1,4 +1,4 @@
-// Polygon rendering style
+// Text rendering style
 
 import Builders from '../builders';
 import Texture from '../../gl/texture';
@@ -7,9 +7,9 @@ import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import Label from './label';
 
-export var Text = Object.create(Sprites);
+export let TextStyle = Object.create(Sprites);
 
-Object.assign(Text, {
+Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
     built_in: true,
@@ -20,7 +20,7 @@ Object.assign(Text, {
 
         // Provide a hook for this object to be called from worker threads
         if (Utils.isMainThread) {
-            WorkerBroker.addTarget('Text', this);
+            WorkerBroker.addTarget('TextStyle', this);
         }
 
         this.texts = {}; // unique texts, keyed by tile
@@ -96,7 +96,7 @@ Object.assign(Text, {
     getTextSizes (tile, texts) {
         // create a canvas
         if(this.canvas[tile] === undefined) {
-            var canvas = document.createElement('canvas');
+            let canvas = document.createElement('canvas');
             this.canvas[tile] = {
                 canvas: canvas,
                 context: canvas.getContext('2d')
@@ -185,7 +185,7 @@ Object.assign(Text, {
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage('Text', 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
             this.bboxes[tile] = [];
 
             // cleanup of texts that should be removed after occlusion test
@@ -232,7 +232,7 @@ Object.assign(Text, {
             }
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage('Text', 'addTexts', tile, texts).then(texts => {
+            return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(texts => {
                 this.texts[tile] = texts;
 
                 // Build queued features
@@ -304,7 +304,7 @@ Object.assign(Text, {
     },
 
     build (style, vertex_data) {
-        var vertex_template = this.makeVertexTemplate(style);
+        let vertex_template = this.makeVertexTemplate(style);
 
         Builders.buildSpriteQuadsForPoints(
             [ style.label.position ],
