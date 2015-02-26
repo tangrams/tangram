@@ -46,19 +46,9 @@ StyleParser.expandMacros = function expandMacros (obj) {
 StyleParser.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
-    'Style.pixels',
-    'Q.is'
+    'Style.pixels'
 ];
 
-
-export var Q = {
-    is: function (property, value) {
-        var fun = `function (obj) {
-            return Object.is(Utils.getIn(feature, "${property}".split('.')), "${value}");
-        }`;
-        return fun;
-    }
-};
 
 
 var Style = {};
