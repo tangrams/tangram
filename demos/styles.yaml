@@ -24,24 +24,26 @@ cameras:
 lights:
     light1:
         type: point
-        # position: [50, -50, -500]
         position: [0, 0, -100]
-        diffuse: .75
+        diffuse: 1
         # specular: .2
-        # linearAttenuation: 0.01
+        # constantAttenuation: .01
+        linearAttenuation: .1
+        quadraticAttenuation: .1
 
-    light3:
-        type: point
-        position: [100, 100, -100]
-        diffuse: 0
-        specular: .2
 
-    light2:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .4 #.5
-        # specular: 1
-        ambient: .4
+    # light3:
+    #     type: point
+    #     position: [100, 100, -100]
+    #     diffuse: 0
+    #     specular: .2
+
+    # light2:
+    #     type: directional
+    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
+    #     diffuse: .4 #.5
+    #     # specular: 1
+    #     ambient: .4
 
     # light4:
     #     type: spotlight
