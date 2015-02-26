@@ -35,6 +35,10 @@ Object.assign(Text, {
             fill: 'white',
             stroke: 'black'
         };
+
+        this.label_style = {
+            lines: { exceed: 60 }
+        };
     },
 
     // Set font style params for canvas drawing
@@ -196,6 +200,7 @@ Object.assign(Text, {
                     let geometry = this.geometries[tile][style][text];
 
                     if (geometry.type === "LineString") {
+                        let exceed_heuristic = this.label_style.lines.exceed;
                         let lines = geometry.coordinates;
                         let line = [lines[0]];
 
@@ -212,7 +217,7 @@ Object.assign(Text, {
                         label = new Label(text, points[0], text_info.size);
                     }
 
-                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
+                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile], exceed_heuristic)) {
                         // remove the text from the map
                         delete text_infos[text];
                     }
@@ -268,6 +273,10 @@ Object.assign(Text, {
             this.texts[tile][style_key][text] = {
                 text_style: style
             };
+
+            if (rule.labels) {
+                this.label_style = rule.labels;
+            }
 
             this.geometries[tile][style_key][text] = feature.geometry;
         }

@@ -561,6 +561,9 @@ layers:
                     typeface: Futura
                     fill: [0.9, 0.9, 0.9]
                     stroke: [.31, .33, .31]
+                labels:
+                    lines:
+                        exceed: 30 # percentage of how much the label could exceed its line
 
     # pois:
     labels:

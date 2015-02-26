@@ -101,7 +101,7 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    fitToSegment (exceed_heuristic = 60, should_fit = true) {
+    fitToSegment (exceed_heuristic, should_fit = true) {
         if (!should_fit) {
             return true;
         }
@@ -135,10 +135,10 @@ export default class Label {
         return [ p1, p2 ];
     }
 
-    discard (move_in_tile, keep_in_tile, bboxes) {
+    discard (move_in_tile, keep_in_tile, bboxes, exceed_heuristic = 60) {
         // first main rule : discard line labels that doesn't fit in the line they are sticking to
-        if (this.lines && !this.fitToSegment()) {
-            while (!this.fitToSegment()) {
+        if (this.lines && !this.fitToSegment(exceed_heuristic)) {
+            while (!this.fitToSegment(exceed_heuristic)) {
                 if (!this.moveNextSegment()) {
                     return true;
                 }
@@ -152,7 +152,7 @@ export default class Label {
             let in_tile = this.inTileBounds();
 
             if (!in_tile && this.lines && move_in_tile) {
-                let fits_to_segment = this.fitToSegment();
+                let fits_to_segment = this.fitToSegment(exceed_heuristic);
 
                 // move this label until we found a line we can fit in
                 while (!in_tile && !fits_to_segment) {
@@ -162,7 +162,7 @@ export default class Label {
                     }
 
                     in_tile = this.inTileBounds();
-                    fits_to_segment = this.fitToSegment();
+                    fits_to_segment = this.fitToSegment(exceed_heuristic);
                 }
 
                 discard = !in_tile || !fits_to_segment;
