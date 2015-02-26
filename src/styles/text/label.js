@@ -101,7 +101,7 @@ export default class Label {
         return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
     }
 
-    fitToSegment (exceed_heuristic = 40, should_fit = true) {
+    fitToSegment (exceed_heuristic = 60, should_fit = true) {
         if (!should_fit) {
             return true;
         }
@@ -113,7 +113,7 @@ export default class Label {
         let label_length = this.mercatorLength();
 
         if (label_length > length) {
-            // an exceed heurestic of 100% would let the label fit to any cases
+            // an exceed heurestic of 100% would let the label fit in any cases
             let exceed = (1 - (length / label_length)) * 100;
             return exceed < exceed_heuristic;
         }
