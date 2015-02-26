@@ -198,9 +198,9 @@ Object.assign(TextStyle, {
                     let keep_in_tile;
                     let move_in_tile;
                     let geometry = this.geometries[tile][style][text];
+                    let exceed_heuristic = this.label_style.lines.exceed;
 
                     if (geometry.type === "LineString") {
-                        let exceed_heuristic = this.label_style.lines.exceed;
                         let lines = geometry.coordinates;
                         let line = [lines[0]];
 
@@ -273,10 +273,6 @@ Object.assign(TextStyle, {
             this.texts[tile][style_key][text] = {
                 text_style: style
             };
-
-            if (rule.labels) {
-                this.label_style = rule.labels;
-            }
 
             this.geometries[tile][style_key][text] = feature.geometry;
         }
@@ -352,11 +348,6 @@ Object.assign(TextStyle, {
 
             style.text = text;
 
-            style.angle = rule_style.angle || 0;
-            if (typeof style.angle === 'function') {
-                style.angle = style.angle(context);
-            }
-
             // factor by which sprites scales from current zoom level to next zoom level
             style.scale = rule_style.scale || 1;
 
@@ -369,3 +360,4 @@ Object.assign(TextStyle, {
     }
 
 });
+

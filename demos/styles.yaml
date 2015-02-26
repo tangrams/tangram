@@ -40,6 +40,10 @@ lighting:
     # color: [1, 1, 1]
     # ambient: 0.2
 
+labels:
+    lines:
+        exceed: 30 # percentage of how much the label could exceed its line
+
 styles:
 
     water:
@@ -552,7 +556,7 @@ layers:
         filter: { name: true }
 
         major_road:
-            #filter: { kind: major_road }
+            filter: { kind: major_road }
             style:
                 name: text
                 order: 5
@@ -561,9 +565,16 @@ layers:
                     typeface: Futura
                     fill: [0.9, 0.9, 0.9]
                     stroke: [.31, .33, .31]
-                labels:
-                    lines:
-                        exceed: 30 # percentage of how much the label could exceed its line
+        minor_road:
+            filter: { kind: minor_road }
+            style:
+                name: text
+                order: 5
+                font:
+                    size: 12px
+                    typeface: Futura
+                    fill: [0.8, 0.7, 0.7]
+                    stroke: [.31, .33, .31]
 
     # pois:
     labels:
