@@ -4,25 +4,8 @@ struct PointLight {
     vec4 specular;
     vec4 position;
 
-    #ifdef TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION
-        #define TANGRAM_POINTLIGHT_ATTENUATION
-        float constantAttenuation;
-    #endif
-
-    #ifdef TANGRAM_POINTLIGHT_LINEAR_ATTENUATION
-        #ifndef TANGRAM_POINTLIGHT_ATTENUATION
-            #define TANGRAM_POINTLIGHT_ATTENUATION
-        #endif
-        float linearAttenuation;
-    #endif
-
-
-    #ifdef TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION
-        #ifndef TANGRAM_POINTLIGHT_ATTENUATION
-            #define TANGRAM_POINTLIGHT_ATTENUATION
-        #endif
-        float quadraticAttenuation;
-    #endif
+    float radius;
+    float cutoff;
 };
 
 void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
@@ -35,41 +18,19 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
     // Normalize the vector from surface to light position
     float nDotVP = clamp(dot(VP, _normal), 0.0, 1.0);
 
-    #ifdef TANGRAM_POINTLIGHT_ATTENUATION
-        float atFactor = 0.0;
-
-        #ifdef TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION
-            atFactor += _light.constantAttenuation;
-        #endif
-
-        #ifdef TANGRAM_POINTLIGHT_LINEAR_ATTENUATION
-            atFactor += _light.linearAttenuation * dist;
-        #endif
-
-        #ifdef TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION
-            atFactor += _light.quadraticAttenuation * dist * dist;
-        #endif
-        
-        float attenuation = 1.0;
-        if(atFactor!=0.0){
-            attenuation /= atFactor;
-        }
-    #endif
+    //  Calculate Spherical attenuation based on:
+    //  https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
+    float d = max(dist - _light.radius, 0.0);
+    float denom = d/_light.radius + 1.0;
+    float attenuation = 1.0 / (denom*denom);
+    attenuation = max((attenuation - _light.cutoff) / (1.0 - _light.cutoff), 0.0);
 
     #ifdef TANGRAM_MATERIAL_AMBIENT
-        #ifdef TANGRAM_POINTLIGHT_ATTENUATION
-            g_light_accumulator_ambient += _light.ambient * attenuation;
-        #else
-            g_light_accumulator_ambient += _light.ambient;
-        #endif
+        g_light_accumulator_ambient += _light.ambient * attenuation;
     #endif
     
     #ifdef TANGRAM_MATERIAL_DIFFUSE 
-        #ifdef TANGRAM_POINTLIGHT_ATTENUATION
-            g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
-        #else
-            g_light_accumulator_diffuse += _light.diffuse * nDotVP;
-        #endif
+        g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
     #endif
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
@@ -80,10 +41,6 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
             pf = pow(eyeDotR, g_material.shininess);
         }
 
-        #ifdef TANGRAM_POINTLIGHT_ATTENUATION
-            g_light_accumulator_specular += _light.specular * pf * attenuation;
-        #else
-            g_light_accumulator_specular += _light.specular * pf;
-        #endif
+        g_light_accumulator_specular += _light.specular * pf * attenuation;
     #endif
 }

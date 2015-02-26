@@ -22,26 +22,28 @@ cameras:
         zoom: 17
 
 lights:
-    light1:
-        type: point
-        # position: [50, -50, -500]
-        position: [0, 0, -100]
-        diffuse: .75
-        # specular: .2
-        # linearAttenuation: 0.01
+    # light1:
+    #     type: point
+    #     # position: [50, -50, -500]
+    #     position: [0, 0, -100]
+    #     ambient: .999
+    #     diffuse: .999
+    #     specular: .99
+    #     radius: 1000.0
+    #     cutoff: 0.0
 
-    light3:
-        type: point
-        position: [100, 100, -100]
-        diffuse: 0
-        specular: .2
+    # light3:
+    #     type: point
+    #     position: [100, 100, -100]
+    #     diffuse: 0
+    #     specular: .2
 
-    light2:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .4 #.5
-        # specular: 1
-        ambient: .4
+    # light2:
+    #     type: directional
+    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
+    #     diffuse: .4 #.5
+    #     # specular: 1
+    #     ambient: .4
 
     # light4:
     #     type: spotlight
@@ -50,6 +52,8 @@ lights:
     #     # direction: [1, 0, 1]
     #     angle: 45
     #     exponent: 0.2
+    #     radius: 1000.0
+    #     cutoff: 0.0
 
 styles:
 

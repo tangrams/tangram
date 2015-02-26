@@ -169,9 +169,8 @@ class PointLight extends Light {
         this.struct_name = 'PointLight';
 
         this.position = (config.position || [0, 0, 0]).map(parseFloat); // [x, y, z]
-        this.constantAttenuation = !isNaN(parseFloat(config.constantAttenuation)) ? parseFloat(config.constantAttenuation) : 0;
-        this.linearAttenuation = !isNaN(parseFloat(config.linearAttenuation)) ? parseFloat(config.linearAttenuation) : 0;
-        this.quadraticAttenuation = !isNaN(parseFloat(config.quadraticAttenuation)) ? parseFloat(config.quadraticAttenuation) : 0;
+        this.radius = !isNaN(parseFloat(config.radius)) ? parseFloat(config.radius) : 0;
+        this.cutoff = !isNaN(parseFloat(config.cutoff)) ? parseFloat(config.cutoff) : 0;
     }
 
     // Inject struct and calculate function
@@ -182,10 +181,6 @@ class PointLight extends Light {
     // Inject isntance-specific settings
     inject() {
         super.inject();
-
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION'] = (this.constantAttenuation !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION'] = (this.linearAttenuation !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION'] = (this.quadraticAttenuation !== 0);
     }
 
     setupProgram (_program) {
@@ -197,17 +192,8 @@ class PointLight extends Light {
             this.position[2] * this.scene.meters_per_pixel,
             1);
 
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_CONSTANT_ATTENUATION']) {
-            _program.uniform('1f', `u_${this.name}.constantAttenuation`, this.constantAttenuation);
-        }
-
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_LINEAR_ATTENUATION']) {
-            _program.uniform('1f', `u_${this.name}.linearAttenuation`, this.linearAttenuation);
-        }
-
-        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION']) {
-            _program.uniform('1f', `u_${this.name}.quadraticAttenuation`, this.quadraticAttenuation);
-        }
+        _program.uniform('1f', `u_${this.name}.radius`, this.radius);
+        _program.uniform('1f', `u_${this.name}.cutoff`, this.cutoff);
     }
 }
 Light.types['point'] = PointLight;
@@ -232,6 +218,9 @@ class SpotLight extends PointLight {
 
     setupProgram (_program) {
         super.setupProgram(_program);
+
+        _program.uniform('1f', `u_${this.name}.radius`, this.radius);
+        _program.uniform('1f', `u_${this.name}.cutoff`, this.cutoff);
 
         _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
         _program.uniform('1f', `u_${this.name}.spotCosCutoff`, Math.cos(this.angle * 3.14159 / 180));
