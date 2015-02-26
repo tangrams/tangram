@@ -4,8 +4,9 @@ struct SpotLight {
     vec4 specular;
     vec4 position;
     
-    float radius;
-    float cutoff;
+    float attExp;
+    float innerR;
+    float outerR;
 
     vec3 direction;
     float spotCosCutoff;
@@ -22,13 +23,33 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
     // normal . light direction
     float nDotVP = clamp(dot(_normal, VP), 0.0, 1.0);
 
-    //  Calculate Spherical attenuation based on:
-    //  https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
-    float d = max(dist - _light.radius, 0.0);
-    float denom = d/_light.radius + 1.0;
-    float attenuation = 1.0 / (denom*denom);
-    attenuation = max((attenuation - _light.cutoff) / (1.0 - _light.cutoff), 0.0);
+    // Compute Attenuation
+    float attenuation = 1.0;
 
+    float Rin = 0.0;
+    float Rdiff = 1.0;
+    float e = 1.0;
+
+    // If there is inner radius
+    if (_light.innerR > 0.0) {
+        Rin = _light.innerR;
+    }
+
+    // If there is an outer radius
+    if (_light.outerR >= _light.innerR) {
+        float Rout = _light.outerR;
+        Rdiff = Rout-Rin;   
+    }
+
+    float d = clamp( max(0.0,dist-Rin)/Rdiff ,0.0,1.0);
+
+    // If there is an exp to shape the interpolation
+    if ( _light.attExp > 0.0) {
+        e = _light.attExp;
+    }
+
+    attenuation = 1.0-pow(d,e); 
+    
     // spotlight attenuation factor
     float spotAttenuation = 0.0;
 

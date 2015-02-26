@@ -188,8 +188,10 @@ class PointLight extends Light {
         this.struct_name = 'PointLight';
 
         this.position = (config.position || [0, 0, 0]).map(parseFloat); // [x, y, z]
-        this.radius = !isNaN(parseFloat(config.radius)) ? parseFloat(config.radius) : 0;
-        this.cutoff = !isNaN(parseFloat(config.cutoff)) ? parseFloat(config.cutoff) : 0;
+        this.attExp = !isNaN(parseFloat(config.attExp)) ? parseFloat(config.attExp) : 0;
+        this.innerR = !isNaN(parseFloat(config.innerR)) ? parseFloat(config.innerR) : 0;
+        this.outerR = !isNaN(parseFloat(config.outerR)) ? parseFloat(config.outerR) : 0;
+        
     }
 
     // Inject struct and calculate function
@@ -211,8 +213,9 @@ class PointLight extends Light {
             this.position[2] * this.scene.meters_per_pixel,
             1);
 
-        _program.uniform('1f', `u_${this.name}.radius`, this.radius);
-        _program.uniform('1f', `u_${this.name}.cutoff`, this.cutoff);
+        _program.uniform('1f', `u_${this.name}.attExp`, this.attExp);
+        _program.uniform('1f', `u_${this.name}.innerR`, this.innerR);
+        _program.uniform('1f', `u_${this.name}.outerR`, this.outerR);
     }
 }
 Light.types['point'] = PointLight;
@@ -237,9 +240,6 @@ class SpotLight extends PointLight {
 
     setupProgram (_program) {
         super.setupProgram(_program);
-
-        _program.uniform('1f', `u_${this.name}.radius`, this.radius);
-        _program.uniform('1f', `u_${this.name}.cutoff`, this.cutoff);
 
         _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
         _program.uniform('1f', `u_${this.name}.spotCosCutoff`, Math.cos(this.angle * 3.14159 / 180));
