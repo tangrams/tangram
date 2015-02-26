@@ -27,6 +27,6 @@ popup:
                 uniform float u_popup_radius;
                 uniform float u_popup_height;
 
-            vertex: |
+            position: |
                 position.z *= u_popup_height; // boost height for exaggerated visual effect
                 position = popup(position, vec2(0., 0.), u_popup_radius * u_meters_per_pixel);

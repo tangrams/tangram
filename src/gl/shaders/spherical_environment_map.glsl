@@ -10,11 +10,6 @@ vec4 sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2
     // Normalized vector from camera to surface
     vec3 eye = normalize(position.xyz - view_pos.xyz);
 
-    // Force surfaces to be in front of camera (safeguard that fixes fake camera optics)
-    if (eye.z > 0.01) {
-        eye.z = 0.01;
-    }
-
     // Reflection of eye off of surface normal
     vec3 r = reflect(eye, normal);
 
@@ -28,5 +23,3 @@ vec4 sphericalEnvironmentMap(vec3 view_pos, vec3 position, vec3 normal, sampler2
     // Sample the environment map
     return texture2D(envmap, uv);
 }
-
-#pragma glslify: export(sphericalEnvironmentMap)

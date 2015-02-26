@@ -6,6 +6,8 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 
+varying vec4 v_position;
+varying vec3 v_normal;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
@@ -37,18 +39,20 @@ varying vec4 v_world_position;
     uniform sampler2D u_env_map;
 #endif
 
-#if !defined(LIGHTING_VERTEX)
-    varying vec4 v_position;
-    varying vec3 v_normal;
-#else
-    varying vec3 v_lighting;
+#if defined(TANGRAM_LIGHTING_VERTEX)
+    varying vec4 v_lighting;
 #endif
 
 #pragma tangram: globals
+#pragma tangram: camera
+#pragma tangram: material
 #pragma tangram: lighting
 
 void main (void) {
     vec4 color;
+
+    // Modify normal before lighting
+    #pragma tangram: normal
 
     #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
         color = texture2D(texture_default, v_texcoord);
@@ -57,25 +61,26 @@ void main (void) {
     #endif
 
     #if defined(LIGHTING_ENVIRONMENT)
-        // Approximate location of eye (TODO: make this configurable)
-        vec3 view_pos = vec3(0., 0., 100. * u_meters_per_pixel);
-
         // Replace object color with environment map
-        color.rgb = sphericalEnvironmentMap(view_pos, v_position.xyz, v_normal, u_env_map).rgb;
+        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, v_normal, u_env_map).rgb;
     #endif
 
-    #if !defined(LIGHTING_VERTEX) // default to per-pixel lighting
-        vec3 lighting = calculateLighting(v_position, v_normal, vec3(1.));
-    #else
-        vec3 lighting = v_lighting;
+    // Modify color and material properties before lighting
+    #if !defined(TANGRAM_LIGHTING_VERTEX)
+    #pragma tangram: color
     #endif
 
-    // Apply lighting to color
-    // TODO: add transformation points to give more control to style-specific shaders
-    color.rgb *= lighting;
+    #if defined(TANGRAM_LIGHTING_FRAGMENT)
+        color = calculateLighting(v_position.xyz - u_eye, v_normal, color);
+    #elif defined(TANGRAM_LIGHTING_VERTEX)
+        color = v_lighting;
+    #endif
 
-    // Style-specific vertex transformations
-    #pragma tangram: fragment
+    // Modify color after lighting (filter-like effects that don't require a additional render passes)
+    #pragma tangram: filter
+
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: fragment
 
     gl_FragColor = color;
 }

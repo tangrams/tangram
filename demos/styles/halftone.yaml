@@ -14,7 +14,7 @@ halftone:
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
-            fragment: |
+            filter: |
                 // Distance to nearest point in a grid of
                 // (frequency x frequency) points over the unit square
                 // Scale dot size for a subset of zoom
@@ -70,7 +70,7 @@ colorhalftone:
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
-            fragment: |
+            filter: |
                 // Distance to nearest point in a grid of
                 // (frequency x frequency) points over the unit square
                 // Scale dot size for a subset of zoom

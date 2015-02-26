@@ -10,7 +10,7 @@ import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
-import Lighting from './light';
+import Light from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 import FeatureSelection from './selection';
@@ -18,6 +18,7 @@ import FeatureSelection from './selection';
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
 var mat4 = glMatrix.mat4;
+var mat3 = glMatrix.mat3;
 var vec3 = glMatrix.vec3;
 
 // Global setup
@@ -70,6 +71,9 @@ export default function Scene(config_source, options) {
     this.panning = false;
     this.container = options.container;
 
+    this.camera = null;
+    this.lights = null;
+
     // Model-view matrices
     // 64-bit versions are for CPU calcuations
     // 32-bit versions are downsampled and sent to GPU
@@ -77,6 +81,8 @@ export default function Scene(config_source, options) {
     this.modelMatrix32 = new Float32Array(16);
     this.modelViewMatrix = new Float64Array(16);
     this.modelViewMatrix32 = new Float32Array(16);
+    this.normalMatrix = new Float64Array(9);
+    this.normalMatrix32 = new Float32Array(9);
 
     this.selection = null;
     this.texture_listener = null;
@@ -579,7 +585,9 @@ Scene.prototype.renderStyle = function (style, program) {
                 program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                 this.camera.setupProgram(program);
-                this.lighting.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
             }
 
             // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
@@ -598,6 +606,10 @@ Scene.prototype.renderStyle = function (style, program) {
             mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
             program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
+            // Normal matrix - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+
             // Render tile
             tile.meshes[style].render();
             render_count += tile.meshes[style].geometry_count;
@@ -610,7 +622,7 @@ Scene.prototype.renderStyle = function (style, program) {
 Scene.prototype.render = function () {
     var gl = this.gl;
 
-    this.resetFrame({ alpha_blend: true });
+    this.resetFrame({ alpha_blend: false });
 
     // Map transforms
     if (!this.center_meters) {
@@ -619,7 +631,9 @@ Scene.prototype.render = function () {
 
     // Update camera & lights
     this.camera.update();
-    this.lighting.update();
+    for (let i in this.lights) {
+        this.lights[i].update();
+    }
 
     // Renderable tile list
     this.renderable_tiles = [];
@@ -1012,7 +1026,7 @@ Scene.prototype.preProcessSceneConfig = function () {
         this.config.cameras[camera_names[0]].active = true;
     }
 
-    this.config.lighting = this.config.lighting || {}; // ensure lighting object
+    this.config.lights = this.config.lights || {}; // ensure lights object
 
     return StyleManager.preload(this.config.styles);
 };
@@ -1107,14 +1121,19 @@ Object.defineProperty(Scene.prototype, '_active_camera', {
 });
 
 // Create lighting
-Scene.prototype.createLighting = function () {
-    this.lighting = Lighting.create(this, this.config.lighting);
+Scene.prototype.createLights = function () {
+    this.lights = {};
+    for (let i in this.config.lights) {
+        this.config.lights[i].name = i;
+        this.lights[i] = Light.create(this, this.config.lights[i]);
+    }
+    Light.inject(this.lights);
 };
 
 // Update scene config
 Scene.prototype.updateConfig = function () {
     this.createCamera();
-    this.createLighting();
+    this.createLights();
     this.loadDataSources();
     this.setSourceMax();
 
