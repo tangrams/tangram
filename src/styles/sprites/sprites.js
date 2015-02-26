@@ -63,7 +63,7 @@ Object.assign(Sprites, {
         // to store bbox by tiles
         style.tile = tile;
 
-        this.setTexcoordScale(style); // Sets texcoord scale if needed (e.g. for sprite sub-area)
+        this.setTexcoordScale(style);
 
         return style;
     },
