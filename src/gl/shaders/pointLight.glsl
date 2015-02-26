@@ -43,16 +43,16 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
         #endif
 
         #ifdef TANGRAM_POINTLIGHT_LINEAR_ATTENUATION
-            atFactor += _light.linearAttenuation * dist;
+            atFactor += _light.linearAttenuation * dist / 1000. ;
         #endif
 
         #ifdef TANGRAM_POINTLIGHT_QUADRATIC_ATTENUATION
-            atFactor += _light.quadraticAttenuation * dist * dist;
+            atFactor += _light.quadraticAttenuation * dist * dist / 1000. / 1000. ;
         #endif
         
         float attenuation = 1.0;
         if(atFactor!=0.0){
-            attenuation /= atFactor;
+            attenuation -= atFactor;
         }
     #endif
 
