@@ -69,7 +69,7 @@ Object.assign(TextStyle, {
         this.canvas[tile].context.fillText(text, x + this.buffer, y + this.buffer + this.size);
     },
 
-    setTextureTextPositions (tile, texts) {
+    setTextureTextPositions (texts) {
         // Find widest label and sum of all label heights
         let widest = 0, height = 0;
 
@@ -139,7 +139,7 @@ Object.assign(TextStyle, {
     addTexts (tile, texts) {
         this.texts[tile] = texts;
 
-        let texture_size = this.setTextureTextPositions(tile, texts);
+        let texture_size = this.setTextureTextPositions(texts);
         let context = this.canvas[tile].context;
 
         console.log(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
