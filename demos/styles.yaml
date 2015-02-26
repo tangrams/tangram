@@ -23,6 +23,10 @@ cameras:
 
 lights:
     light1:
+        type: ambient
+        ambient: .5
+
+    light2:
         type: point
         # position: [50, -50, -500]
         position: [0, 0, -100]
@@ -33,12 +37,6 @@ lights:
         cutoff: 0.2
 
     # light3:
-    #     type: point
-    #     position: [100, 100, -100]
-    #     diffuse: 0
-    #     specular: .2
-
-    # light2:
     #     type: directional
     #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
     #     diffuse: .4 #.5

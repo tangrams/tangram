@@ -136,6 +136,25 @@ Light.enabled = true; // lighting can be globally enabled/disabled
 
 
 // Light subclasses
+class AmbientLight extends Light {
+
+    constructor(scene, config) {
+        super(scene, config);
+        this.type = 'ambient';
+        this.struct_name = 'AmbientLight';
+    }
+
+    // Inject struct and calculate function
+    static inject() {
+        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/ambientLight']);
+    }
+
+    setupProgram (_program) {
+        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
+    }
+
+}
+Light.types['ambient'] = AmbientLight;
 
 class DirectionalLight extends Light {
 
