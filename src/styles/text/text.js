@@ -96,7 +96,7 @@ Object.assign(TextStyle, {
 
     getTextSizes (tile, texts) {
         // create a canvas
-        if(this.canvas[tile] === undefined) {
+        if(!this.canvas[tile]) {
             let canvas = document.createElement('canvas');
             this.canvas[tile] = {
                 canvas: canvas,
@@ -115,6 +115,11 @@ Object.assign(TextStyle, {
         }
 
         return Promise.resolve(texts);
+    },
+
+    // Called on main thread to release tile-specific resources
+    freeTile (tile) {
+        this.canvas[tile] = null;
     },
 
     rasterize (tile, texts, texture_size) {
@@ -234,6 +239,7 @@ Object.assign(TextStyle, {
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
+                WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
                 // early exit
                 return;
             }
