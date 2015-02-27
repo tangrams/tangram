@@ -603,10 +603,11 @@
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
         Object.keys(layer.scene.config.layers).forEach(function(l) {
-            if (!layer.scene.config.layers[l] || !layer.scene.config.layers[l].style) {
+            if (!layer.scene.config.layers[l]) {
                 return;
             }
 
+            layer.scene.config.layers[l].style = layer.scene.config.layers[l].style || { visible: true };
             layer_controls[l] = !(layer.scene.config.layers[l].style.visible == false);
             layer_gui.
                 add(layer_controls, l).

@@ -7,6 +7,8 @@ import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import Label from './label';
 
+import log from 'loglevel';
+
 export let TextStyle = Object.create(Sprites);
 
 Object.assign(TextStyle, {
@@ -97,7 +99,7 @@ Object.assign(TextStyle, {
 
     getTextSizes (tile, texts) {
         // create a canvas
-        if(this.canvas[tile] === undefined) {
+        if(!this.canvas[tile]) {
             let canvas = document.createElement('canvas');
             this.canvas[tile] = {
                 canvas: canvas,
@@ -116,6 +118,11 @@ Object.assign(TextStyle, {
         }
 
         return Promise.resolve(texts);
+    },
+
+    // Called on main thread to release tile-specific resources
+    freeTile (tile) {
+        this.canvas[tile] = null;
     },
 
     rasterize (tile, texts, texture_size) {
@@ -144,7 +151,7 @@ Object.assign(TextStyle, {
         let texture_size = this.setTextureTextPositions(texts);
         let context = this.canvas[tile].context;
 
-        console.log(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+        log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // update the canvas "context"
         this.canvas[tile].canvas.width = texture_size[0];
@@ -177,7 +184,7 @@ Object.assign(TextStyle, {
         if (tile_data.queue.length > 0) {
             tile = tile_data.queue[0][2].tile.key;
             count = Object.keys(this.texts[tile]||{}).length;
-            console.log(`# texts for tile ${tile}: ${count}`);
+            log.trace(`# texts for tile ${tile}: ${count}`);
         }
         if (!count) {
             return Promise.resolve();
@@ -226,9 +233,16 @@ Object.assign(TextStyle, {
 
                     text_info.label = label;
                 }
+
+                // No labels for this style
+                if (Object.keys(text_infos).length === 0) {
+                    delete texts[style];
+                }
             }
 
+            // No labels for this tile
             if (Object.keys(texts).length === 0) {
+                WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
                 // early exit
                 return;
             }
@@ -236,11 +250,9 @@ Object.assign(TextStyle, {
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(texts => {
                 this.texts[tile] = texts;
-
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
-
                 return this.super.endData.call(this, tile_data);
             });
         });
@@ -340,11 +352,9 @@ Object.assign(TextStyle, {
         let font_style = this.constructFontStyle(rule_style);
         let style_key = this.constructStyleKey(font_style);
 
-        let discarded = this.texts[tile][style_key][text] === undefined;
+        style.discarded  = (!this.texts[tile] || !this.texts[tile][style_key] || !this.texts[tile][style_key][text]);
 
-        style.discarded = discarded;
-
-        if (!discarded) {
+        if (!style.discarded) {
             let text_info = this.texts[tile][style_key][text];
             this.texcoord_scale = text_info.texcoords;
 
