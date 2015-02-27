@@ -161,15 +161,16 @@ Object.assign(TextStyle, {
         context.clearRect(0, 0, texture_size[0], texture_size[1]);
 
         // create a texture
-        this.texture[tile] = new Texture(this.gl, 'labels-' + tile, { filtering: 'linear' });
-        this.texture[tile].setCanvas(this.canvas[tile].canvas);
+        let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
+        this.texture[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
-        this.texture[tile].update();
+        this.texture[tile].setCanvas(this.canvas[tile].canvas);
+        this.canvas[tile] = null; // we don't need canvas once it has been copied to GPU texture
 
-        return Promise.resolve(this.texts[tile]);
+        return Promise.resolve({ texts: this.texts[tile], texture });
     },
 
     // Override
@@ -191,9 +192,6 @@ Object.assign(TextStyle, {
         if (!count) {
             return Promise.resolve();
         }
-
-        // Attach tile-specific label atlas to mesh as a texture uniform
-        tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
@@ -250,8 +248,12 @@ Object.assign(TextStyle, {
             }
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(texts => {
+            return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(({ texts, texture }) => {
                 this.texts[tile] = texts;
+
+                // Attach tile-specific label atlas to mesh as a texture uniform
+                tile_data.uniforms = { u_textures: [texture] };
+
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
@@ -372,3 +374,4 @@ Object.assign(TextStyle, {
 
 });
 
+TextStyle.texture_id = 0;
