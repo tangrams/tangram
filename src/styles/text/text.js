@@ -225,8 +225,14 @@ Object.assign(TextStyle, {
 
                     text_info.label = label;
                 }
+
+                // No labels for this style
+                if (Object.keys(text_infos).length === 0) {
+                    delete texts[style];
+                }
             }
 
+            // No labels for this tile
             if (Object.keys(texts).length === 0) {
                 // early exit
                 return;
@@ -235,11 +241,9 @@ Object.assign(TextStyle, {
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(texts => {
                 this.texts[tile] = texts;
-
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
-
                 return this.super.endData.call(this, tile_data);
             });
         });
@@ -339,11 +343,9 @@ Object.assign(TextStyle, {
         let font_style = this.constructFontStyle(rule_style);
         let style_key = this.constructStyleKey(font_style);
 
-        let discarded = this.texts[tile][style_key][text] === undefined;
+        style.discarded  = (!this.texts[tile] || !this.texts[tile][style_key] || !this.texts[tile][style_key][text]);
 
-        style.discarded = discarded;
-
-        if (!discarded) {
+        if (!style.discarded) {
             let text_info = this.texts[tile][style_key][text];
             this.texcoord_scale = text_info.texcoords;
 
