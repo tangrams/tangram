@@ -7,6 +7,8 @@ import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
 import Label from './label';
 
+import log from 'loglevel';
+
 export let TextStyle = Object.create(Sprites);
 
 Object.assign(TextStyle, {
@@ -148,7 +150,7 @@ Object.assign(TextStyle, {
         let texture_size = this.setTextureTextPositions(texts);
         let context = this.canvas[tile].context;
 
-        console.log(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+        log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // update the canvas "context"
         this.canvas[tile].canvas.width = texture_size[0];
@@ -181,7 +183,7 @@ Object.assign(TextStyle, {
         if (tile_data.queue.length > 0) {
             tile = tile_data.queue[0][2].tile.key;
             count = Object.keys(this.texts[tile]||{}).length;
-            console.log(`# texts for tile ${tile}: ${count}`);
+            log.trace(`# texts for tile ${tile}: ${count}`);
         }
         if (!count) {
             return Promise.resolve();
