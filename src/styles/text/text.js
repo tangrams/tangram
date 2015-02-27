@@ -9,10 +9,6 @@ import Label from './label';
 
 export let TextStyle = Object.create(Sprites);
 
-TextStyle.setupTextStyle = function (label_style) {
-    TextStyle.label_style = label_style;
-}
-
 Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
@@ -40,13 +36,10 @@ Object.assign(TextStyle, {
             stroke: 'black'
         };
 
-        if (TextStyle.label_style === undefined) {
-            this.label_style = {
-                lines: { exceed: 60 }
-            };
-        } else {
-            this.label_style = TextStyle.label_style;
-        }
+        // default label style
+        this.label_style = {
+            lines: { exceed: 60 }
+        };
     },
 
     // Set font style params for canvas drawing
@@ -121,7 +114,7 @@ Object.assign(TextStyle, {
             }
         }
 
-        return Promise.resolve({ texts:texts, label_style:this.label_style });
+        return Promise.resolve(texts);
     },
 
     rasterize (tile, texts, texture_size) {
@@ -193,9 +186,7 @@ Object.assign(TextStyle, {
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(result => {
-            let texts = result.texts;
-            this.label_style = result.label_style;
+        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
             this.bboxes[tile] = [];
 
             // cleanup of texts that should be removed after occlusion test

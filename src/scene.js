@@ -14,7 +14,6 @@ import Lighting from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 import FeatureSelection from './selection';
-import {TextStyle} from './styles/text/text';
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
@@ -1112,15 +1111,10 @@ Scene.prototype.createLighting = function () {
     this.lighting = Lighting.create(this, this.config.lighting);
 };
 
-Scene.prototype.setupTextStyle = function () {
-    TextStyle.setupTextStyle(this.config.labels);
-}
-
 // Update scene config
 Scene.prototype.updateConfig = function () {
     this.createCamera();
     this.createLighting();
-    this.setupTextStyle();
     this.loadDataSources();
     this.setSourceMax();
 
