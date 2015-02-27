@@ -193,16 +193,16 @@ export default class Label {
     computeOBBox (size) {
         let upp = Geo.units_per_pixel;
 
-        let half_merc_width = this.size[0] * upp * 0.5;
-        let half_merc_height = this.size[1] * upp * 0.5;
+        let merc_width = this.size[0] * upp;
+        let merc_height = this.size[1] * upp;
 
         let c = Math.cos(this.angle);
         let s = Math.sin(this.angle);
 
-        let x = half_merc_width * c - half_merc_height * s;
-        let y = half_merc_width * s + half_merc_height * c;
+        let x = merc_width * c - merc_height * s;
+        let y = merc_width * s + merc_height * c;
 
-        let max = Math.max(x, y);
+        let max = Math.max(x, y) * 0.5;
 
         return [
             this.position[0] - max,

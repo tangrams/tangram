@@ -9,6 +9,10 @@ import Label from './label';
 
 export let TextStyle = Object.create(Sprites);
 
+TextStyle.setupTextStyle = function (label_style) {
+    TextStyle.label_style = label_style;
+}
+
 Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
@@ -36,9 +40,13 @@ Object.assign(TextStyle, {
             stroke: 'black'
         };
 
-        this.label_style = {
-            lines: { exceed: 60 }
-        };
+        if (TextStyle.label_style === undefined) {
+            this.label_style = {
+                lines: { exceed: 60 }
+            };
+        } else {
+            this.label_style = TextStyle.label_style;
+        }
     },
 
     // Set font style params for canvas drawing
