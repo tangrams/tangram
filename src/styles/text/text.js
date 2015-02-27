@@ -121,7 +121,7 @@ Object.assign(TextStyle, {
             }
         }
 
-        return Promise.resolve(texts);
+        return Promise.resolve({ texts:texts, label_style:this.label_style });
     },
 
     rasterize (tile, texts, texture_size) {
@@ -193,7 +193,9 @@ Object.assign(TextStyle, {
         tile_data.uniforms = { u_textures: ['labels-'+tile] };
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(result => {
+            let texts = result.texts;
+            this.label_style = result.label_style;
             this.bboxes[tile] = [];
 
             // cleanup of texts that should be removed after occlusion test

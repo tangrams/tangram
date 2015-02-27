@@ -137,7 +137,7 @@ export default class Label {
         return [ p1, p2 ];
     }
 
-    discard (move_in_tile, keep_in_tile, bboxes, exceed_heuristic = 60) {
+    discard (move_in_tile, keep_in_tile, bboxes, exceed_heuristic) {
         // first main rule : discard line labels that doesn't fit in the line they are sticking to
         if (this.lines && !this.fitToSegment(exceed_heuristic)) {
             while (!this.fitToSegment(exceed_heuristic)) {

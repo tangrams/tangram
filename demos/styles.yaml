@@ -42,7 +42,7 @@ lighting:
 
 labels:
     lines:
-        exceed: 30 # percentage of how much the label could exceed its line
+        exceed: 20 # percentage of how much the label could exceed its line
 
 styles:
 
