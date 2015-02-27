@@ -36,7 +36,6 @@ Object.assign(TextStyle, {
             typeface: 'Helvetica',
             size: '12px',
             fill: 'white',
-            stroke: 'black'
         };
 
         // default label style
@@ -52,7 +51,9 @@ Object.assign(TextStyle, {
         let ctx = this.canvas[tile].context;
 
         ctx.font = size + ' ' + typeface;
-        ctx.strokeStyle = stroke;
+        if (stroke) {
+            ctx.strokeStyle = stroke;
+        }
         ctx.fillStyle = fill;
         ctx.lineWidth = 4;
         ctx.miterLimit = 2;
@@ -67,9 +68,10 @@ Object.assign(TextStyle, {
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile) {
-        // TODO: optional stroke
-        this.canvas[tile].context.strokeText(text, x + this.buffer, y + this.buffer + this.size);
+    drawText (text, [x, y], tile, stroke) {
+        if (stroke) {
+            this.canvas[tile].context.strokeText(text, x + this.buffer, y + this.buffer + this.size);
+        }
         this.canvas[tile].context.fillText(text, x + this.buffer, y + this.buffer + this.size);
     },
 
@@ -133,7 +135,7 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style);
-                this.drawText(text, info.position, tile);
+                this.drawText(text, info.position, tile, info.text_style.stroke);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,

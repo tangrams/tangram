@@ -585,7 +585,7 @@ layers:
             # size: [[12, 6px], [13, 10px]]
 
             font:
-                size: 11px
+                size: 13px
                 typeface: Helvetica
 
             name: text
