@@ -30,7 +30,6 @@ Object.assign(TextStyle, {
         this.texture = {};
         this.canvas = {};
         this.bboxes = {};
-        this.geometries = {};
 
         this.font_style = {
             typeface: 'Helvetica',
@@ -206,7 +205,7 @@ Object.assign(TextStyle, {
                     let label;
                     let keep_in_tile;
                     let move_in_tile;
-                    let geometry = this.geometries[tile][style][text];
+                    let geometry = this.texts[tile][style][text].geometry;
                     let exceed_heuristic = this.label_style.lines.exceed;
 
                     if (geometry.type === "LineString") {
@@ -273,10 +272,6 @@ Object.assign(TextStyle, {
                 this.texts[tile] = {};
             }
 
-            if (!this.geometries[tile]) {
-                this.geometries[tile] = {};
-            }
-
             let style = this.constructFontStyle(rule);
             let style_key = this.constructStyleKey(style);
 
@@ -284,15 +279,10 @@ Object.assign(TextStyle, {
                 this.texts[tile][style_key] = {};
             }
 
-            if (!this.geometries[tile][style_key]) {
-                this.geometries[tile][style_key] = feature.geometry;
-            }
-
             this.texts[tile][style_key][text] = {
-                text_style: style
+                text_style: style,
+                geometry: feature.geometry
             };
-
-            this.geometries[tile][style_key][text] = feature.geometry;
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
