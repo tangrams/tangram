@@ -202,6 +202,10 @@ class PointLight extends Light {
     // Inject isntance-specific settings
     inject() {
         super.inject();
+
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT'] = (this.attExp !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS'] = (this.innerR !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = ((this.outerR !== 0) && (this.outerR >= this.innerR));
     }
 
     setupProgram (_program) {
@@ -213,9 +217,17 @@ class PointLight extends Light {
             this.position[2] * this.scene.meters_per_pixel,
             1);
 
-        _program.uniform('1f', `u_${this.name}.attExp`, this.attExp);
-        _program.uniform('1f', `u_${this.name}.innerR`, this.innerR);
-        _program.uniform('1f', `u_${this.name}.outerR`, this.outerR);
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
+            _program.uniform('1f', `u_${this.name}.attExp`, this.attExp);
+        }
+
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
+            _program.uniform('1f', `u_${this.name}.innerR`, this.innerR);
+        }
+
+        if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
+            _program.uniform('1f', `u_${this.name}.outerR`, this.outerR);
+        }
     }
 }
 Light.types['point'] = PointLight;

@@ -29,11 +29,11 @@ lights:
     light2:
         type: point
         position: [0, 0, -1000]
-        # ambient: .1
+        ambient: .1
         diffuse: 1
-        specular: .1
-        attExp: 3.0
-        innerR: 200.0
+        specular: .2
+        attExp: 1.5
+        # innerR: 100.0
         outerR: 300.0
 
     # light3:
