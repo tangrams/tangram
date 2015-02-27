@@ -316,7 +316,7 @@ Object.assign(TextStyle, {
             [ style.label.position ],
             Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
             Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
-            Utils.scaleInt16(style.scale, 256),
+            Utils.scaleInt16(1, 256),
             vertex_data,
             vertex_template,
             this.vertex_layout.index.a_shape,
@@ -357,9 +357,6 @@ Object.assign(TextStyle, {
             this.texcoord_scale = text_info.texcoords;
 
             style.text = text;
-
-            // factor by which sprites scales from current zoom level to next zoom level
-            style.scale = rule_style.scale || 1;
 
             // to store bbox by tiles
             style.tile = tile;
