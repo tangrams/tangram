@@ -40,10 +40,6 @@ lighting:
     # color: [1, 1, 1]
     # ambient: 0.2
 
-labels:
-    lines:
-        exceed: 20 # percentage of how much the label could exceed its line
-
 styles:
 
     water:

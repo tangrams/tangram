@@ -124,6 +124,8 @@ StyleManager.loadRemoteStyles = function (styles) {
                     }
                 }
                 resolve();
+
+                this.selection = false;
             }).catch((error) => {
                 log.error(`StyleManager.preload: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
             });

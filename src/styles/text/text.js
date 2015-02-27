@@ -13,6 +13,7 @@ Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
     built_in: true,
+    selection: false,
 
     init() {
 

@@ -13,6 +13,7 @@ export var Sprites = Object.create(Style);
 Object.assign(Sprites, {
     name: 'sprites',
     built_in: true,
+    selection: true,
 
     init() {
         Style.init.apply(this);
@@ -21,7 +22,6 @@ Object.assign(Sprites, {
         this.vertex_shader_key = 'styles/sprites/sprites_vertex';
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
 
-        this.selection = true;
         this.bboxes = {};
 
         var attribs = [
