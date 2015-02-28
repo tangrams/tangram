@@ -657,8 +657,8 @@ Scene.prototype.clearFrame = function ({ clear_color, clear_depth } = {}) {
     }
 
     // Defaults
-    clear_color = !(clear_color === false); // default true
-    clear_depth = !(clear_depth === false); // default true
+    clear_color = (clear_color === false) ? false : true; // default true
+    clear_depth = (clear_depth === false) ? false : true; // default true
 
     // Reset frame state
     let gl = this.gl;
@@ -684,10 +684,10 @@ Scene.prototype.setRenderState = function ({ depth_test, depth_write, cull_face,
 
     // Defaults
     // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-    depth_test = !(depth_test === false); // default true
-    depth_write = !(depth_write === false); // default true
-    cull_face = !(cull_face === false); // default true
-    alpha_blend = (alpha_blend === true); // default false
+    depth_test = (depth_test === false) ? false : true;     // default true
+    depth_write = (depth_write === false) ? false : true;   // default true
+    cull_face = (cull_face === false) ? false : true;       // default true
+    alpha_blend = (alpha_blend === true) ? true : false;    // default false
 
     // Reset frame state
     let gl = this.gl;
