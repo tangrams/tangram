@@ -599,7 +599,7 @@ Scene.prototype.renderStyles = function (styles, program_key) {
         count += this.renderStyle(style, program);
     }
     return count;
-}
+};
 
 Scene.prototype.renderStyle = function (style, program) {
     var first_for_style = true;
