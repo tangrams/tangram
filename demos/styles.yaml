@@ -29,20 +29,20 @@ lights:
     light2:
         type: point
         position: [0, 0, -300]
-        ambient: .3
-        # diffuse: .7
-        diffuse: [.7, .7, .7, .5]
+        # ambient: .3
+        diffuse: .5
         specular: .2
+        # diffuse: .3
         # attExp: 1.5
         innerR: 500
         outerR: 700
 
-    # light3:
-    #     type: directional
-    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
-    #     diffuse: .4 #.5
-    #     # specular: 1
-    #     ambient: .4
+    light3:
+        type: directional
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
+        diffuse: .5
+        # specular: .2
+        ambient: .2
 
     # light4:
     #     type: spotlight
@@ -64,9 +64,10 @@ styles:
             specular: 1
             shininess: 8
 
-    buildings:
+    transparent:
         extends: polygons
-        animated: true
+        # animated: true
+        blend: multiply
         # material:
         #     diffuse: 0 #0.3
         #     specular: [1, 0, 0]
@@ -530,7 +531,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            name: buildings
+            # name: buildings
             order: 4
             interactive: true
 
@@ -540,6 +541,10 @@ layers:
             # color: Style.color.pseudoRandomGrayscale()
             color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+
+        # blend:
+        #     filter: { height: { min: 100 } }
+        #     style: { name: transparent, color: yellow }
 
         colors:
             name:

@@ -570,19 +570,27 @@ Scene.prototype.renderPass = function (program_key = 'program', { allow_alpha_bl
     // Opaque styles: depth test on, depth write on, blending off
     styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
     this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+    count += this.renderStyles(styles, program_key);
 
-    for (let style of styles) {
-        let program = this.styles[style][program_key];
-        if (!program || !program.compiled) {
-            continue;
-        }
-        count += this.renderStyle(style, program);
-    }
+    // Transparent styles: depth test off, depth write on, custom blending
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: 'add' });
+    count += this.renderStyles(styles, program_key);
+
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: 'multiply' });
+    count += this.renderStyles(styles, program_key);
 
     // Overlay styles: depth test off, depth write off, blending on
     styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
     this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+    count += this.renderStyles(styles, program_key);
 
+    return count;
+};
+
+Scene.prototype.renderStyles = function (styles, program_key) {
+    let count = 0;
     for (let style of styles) {
         let program = this.styles[style][program_key];
         if (!program || !program.compiled) {
@@ -590,9 +598,8 @@ Scene.prototype.renderPass = function (program_key = 'program', { allow_alpha_bl
         }
         count += this.renderStyle(style, program);
     }
-
     return count;
-};
+}
 
 Scene.prototype.renderStyle = function (style, program) {
     var first_for_style = true;
@@ -689,10 +696,10 @@ Scene.prototype.setRenderState = function ({ depth_test, depth_write, cull_face,
 
     // Defaults
     // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-    depth_test = (depth_test === false) ? false : true;     // default true
-    depth_write = (depth_write === false) ? false : true;   // default true
-    cull_face = (cull_face === false) ? false : true;       // default true
-    alpha_blend = (alpha_blend === true) ? true : false;    // default false
+    depth_test = (depth_test === false) ? false : true;         // default true
+    depth_write = (depth_write === false) ? false : true;       // default true
+    cull_face = (cull_face === false) ? false : true;           // default true
+    alpha_blend = (alpha_blend != null) ? alpha_blend : false;  // default false
 
     // Reset frame state
     let gl = this.gl;
@@ -717,7 +724,19 @@ Scene.prototype.setRenderState = function ({ depth_test, depth_write, cull_face,
 
     if (alpha_blend) {
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        // Traditional blending
+        if (alpha_blend === true) {
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        // Additive blending
+        else if (alpha_blend === 'add') {
+            gl.blendFunc(gl.ONE, gl.ONE);
+        }
+        // Multiplicative blending
+        else if (alpha_blend === 'multiply') {
+            gl.blendFunc(gl.ZERO, gl.SRC_COLOR);
+        }
     }
     else {
         gl.disable(gl.BLEND);
