@@ -1,6 +1,7 @@
 // Text rendering style
 
 import Builders from '../builders';
+import {StyleParser} from '../style_parser';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
@@ -278,8 +279,12 @@ Object.assign(TextStyle, {
                 this.texts[tile] = {};
             }
 
-            let style = this.constructFontStyle(rule);
+            let style = this.constructFontStyle(rule, context);
             let style_key = this.constructStyleKey(style);
+
+            // Save font style info on feature for later use during geometry construction
+            feature.font_style = style;
+            feature.font_style_key = style_key;
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
@@ -294,10 +299,13 @@ Object.assign(TextStyle, {
         tile_data.queue.push([feature, rule, context, tile_data]);
     },
 
-    constructFontStyle (rule) {
+    constructFontStyle (rule, context) {
         let style = this.font_style;
 
         if (rule.font) {
+            rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
+            rule.font.stroke = rule.font.stroke && StyleParser.parseColor(rule.font.stroke, context);
+
             style = {
                 typeface: rule.font.typeface || this.font_style.typeface,
                 size: rule.font.size || this.font_size.font_size,
@@ -340,9 +348,7 @@ Object.assign(TextStyle, {
         let style = this.feature_style;
         let tile = context.tile.key;
         let text = feature.properties.name; // TODO: make configurable
-
-        let font_style = this.constructFontStyle(rule_style);
-        let style_key = this.constructStyleKey(font_style);
+        let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
         if (!text_info || !text_info.label) {
