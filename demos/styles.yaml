@@ -42,6 +42,11 @@ lighting:
 
 styles:
 
+    # polygons:
+    #     texcoords: true
+    #     texture:
+    #         url: demos/images/matball01.jpg
+
     water:
         extends: polygons
         animated: true
@@ -508,41 +513,21 @@ layers:
             # color: Style.color.randomColor()
             # color: Style.color.pseudoRandomColor()
             # color: Style.color.pseudoRandomGrayscale()
-            # color: |
-            #     function () {
-            #         var c = [.6, .6, .6];
-            #         if (feature.name || feature.kind) {
-            #             c = [.2, .2, .2];
-            #             c[0] = (feature.name && .6) || c[0];
-            #             c[2] = (feature.kind && .6) || c[2];
-            #         }
-            #         return c;
-            #     }
             color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
-        # buildingsOfInterest:
-        #     filter:
-        #         any:
-        #             name: true
-        #             kind: true
-        #     style:
-        #         color: red
+        colors:
+            name:
+                filter: { name: true, kind: false }
+                style: { color: [.6, .2, .2] }
 
-        namedBuildings:
-            filter: { name: true }
-            style:
-                color: [.6, .2, .2]
+            kind:
+                filter: { name: false, kind: true }
+                style: { color: [.2, .2, .6] }
 
-            namedKindBuildings:
-                filter: { kind: true }
-                style:
-                    color: [.6, .2, .6]
-
-        kindBuildings:
-            filter: { name: false, kind: true }
-            style:
-                color: [.2, .2, .6]
+            name-kind:
+                filter: { name: true, kind: true }
+                style: { color: [.6, .2, .6] }
 
     labels_street:
         geometry:
@@ -550,30 +535,34 @@ layers:
             filter: roads
 
         filter: { name: true }
+        style:
+            name: text
+            order: 5
+            font:
+                typeface: Helvetica
+                size: 12px
+                fill: white
 
         major_road:
             filter: { kind: major_road }
             style:
-                name: text
-                order: 5
                 font:
                     size: 14px
                     typeface: Futura
-                    fill: [0.9, 0.9, 0.9]
-                    stroke: [.31, .33, .31]
+                    fill: darkred
+                    stroke: white
         minor_road:
             filter: { kind: minor_road }
             style:
-                name: text
-                order: 5
                 font:
                     size: 12px
                     typeface: Futura
-                    fill: [0.8, 0.7, 0.7]
+                    # fill: [0.8, 0.7, 0.7]
+                    # stroke: [.31, .33, .31]
+                    fill: [0.9, 0.9, 0.9]
                     stroke: [.31, .33, .31]
 
-    # pois:
-    labels:
+    pois:
         geometry:
             source: osm
             filter: pois
@@ -630,3 +619,16 @@ layers:
             filter: { kind: [museum, library] }
             style:
                 sprite: museum
+
+    places:
+        geometry: { source: osm, filter: places }
+        filter: { name: true }
+
+        style:
+            name: text
+            font:
+                size: 14px
+                typeface: Futura
+                fill: [1, 0, 0]
+                stroke: [1, 1, 1]
+

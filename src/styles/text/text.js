@@ -35,7 +35,7 @@ Object.assign(TextStyle, {
         this.font_style = {
             typeface: 'Helvetica',
             size: '12px',
-            fill: 'white',
+            fill: 'white'
         };
 
         // default label style
@@ -280,6 +280,10 @@ Object.assign(TextStyle, {
             }
 
             let style = this.constructFontStyle(rule, context);
+            if (!style) {
+                return;
+            }
+
             let style_key = this.constructStyleKey(style);
 
             // Save font style info on feature for later use during geometry construction
@@ -300,7 +304,7 @@ Object.assign(TextStyle, {
     },
 
     constructFontStyle (rule, context) {
-        let style = this.font_style;
+        let style;
 
         if (rule.font) {
             rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
@@ -308,9 +312,9 @@ Object.assign(TextStyle, {
 
             style = {
                 typeface: rule.font.typeface || this.font_style.typeface,
-                size: rule.font.size || this.font_size.font_size,
-                fill: rule.font.fill === undefined ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: rule.font.stroke === undefined ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+                size: rule.font.size || this.font_style.size,
+                fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
+                stroke: !rule.font.stroke ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
             };
         }
 
