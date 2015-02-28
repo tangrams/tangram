@@ -259,8 +259,12 @@ export default class Tile {
 
         // Create VBOs
         let mesh_data = this.mesh_data;
-        for (var s in mesh_data) {
-            this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
+        if (mesh_data) {
+            for (var s in mesh_data) {
+                if (mesh_data[s].vertex_data) {
+                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
+                }
+            }
         }
 
         this.debug.geometries = 0;

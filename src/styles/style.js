@@ -151,12 +151,12 @@ export var Style = {
             }
 
             // Subclass implementation
-            this._parseFeature(feature, rule_style, context);
+            style = this._parseFeature(feature, rule_style, context);
 
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, error);
+            log.error('Style.parseFeature: style parsing error', feature, style, error);
         }
     },
 

@@ -427,7 +427,7 @@
                     scene.config.layers.landuse.style.name = style;
                     scene.config.layers.earth.style.name = style;
 
-                    scene.config.layers.pois.style.visible = false;
+                    // scene.config.layers.pois.style.visible = false;
 
                     this.state.dot_frequency = this.uniforms.dot_frequency;
                     this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
@@ -455,14 +455,14 @@
                     });
 
                     scene.config.layers.earth.style.visible = false;
-                    scene.config.layers.pois.style.visible = false;
+                    // scene.config.layers.pois.style.visible = false;
                 }
             },
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;
-                    scene.config.layers.pois.style.visible = false;
+                    // scene.config.layers.pois.style.visible = false;
                 }
             },
             'envmap': {
@@ -603,10 +603,11 @@
         var layer_gui = gui.addFolder('Layers');
         var layer_controls = {};
         Object.keys(layer.scene.config.layers).forEach(function(l) {
-            if (!layer.scene.config.layers[l] || !layer.scene.config.layers[l].style) {
+            if (!layer.scene.config.layers[l]) {
                 return;
             }
 
+            layer.scene.config.layers[l].style = layer.scene.config.layers[l].style || { visible: true };
             layer_controls[l] = !(layer.scene.config.layers[l].style.visible == false);
             layer_gui.
                 add(layer_controls, l).

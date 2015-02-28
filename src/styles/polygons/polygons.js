@@ -94,6 +94,11 @@ Object.assign(Polygons, {
             style.outline.tile_edges = false;
         }
 
+        // Sets texcoord scale if needed (e.g. for sprite sub-area)
+        if (this.texcoords) {
+            this.setTexcoordScale(style);
+        }
+
         return style;
     },
 
@@ -120,9 +125,9 @@ Object.assign(Polygons, {
             style.order
         ];
 
+        // Add texture UVs to template only if needed
         if (this.texcoords) {
-            template.push(0, 0);            // Add texture UVs to template only if needed
-            this.setTexcoordScale(style);   // Sets texcoord scale if needed (e.g. for sprite sub-area)
+            template.push(0, 0);
         }
 
         return template;
