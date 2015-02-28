@@ -7,6 +7,8 @@ import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import {Polygons} from './polygons/polygons';
 import {Points} from './points/points';
+import {Sprites} from './sprites/sprites';
+import {TextStyle} from './text/text';
 
 import log from 'loglevel';
 
@@ -122,6 +124,8 @@ StyleManager.loadRemoteStyles = function (styles) {
                     }
                 }
                 resolve();
+
+                this.selection = false;
             }).catch((error) => {
                 log.error(`StyleManager.preload: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
             });
@@ -245,3 +249,5 @@ StyleManager.compile = function () {
 // Add built-in rendering styles
 StyleManager.register(Polygons);
 StyleManager.register(Points);
+StyleManager.register(Sprites);
+StyleManager.register(TextStyle);
