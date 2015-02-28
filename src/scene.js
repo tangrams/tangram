@@ -501,6 +501,156 @@ Scene.prototype.update = function () {
     return true;
 };
 
+Scene.prototype.render = function () {
+    var gl = this.gl;
+
+    // Map transforms
+    if (!this.center_meters) {
+        return;
+    }
+
+    // Update styles, camera, lights
+    Object.keys(this.active_styles).forEach(i => this.styles[i].update());
+    Object.keys(this.lights).forEach(i => this.lights[i].update());
+    this.camera.update();
+
+    // Renderable tile list
+    this.renderable_tiles = [];
+    for (var t in this.tiles) {
+        var tile = this.tiles[t];
+        if (tile.visible && tile.loaded) {
+            this.renderable_tiles.push(tile);
+        }
+    }
+    this.renderable_tiles_count = this.renderable_tiles.length;
+
+    // Find min/max order for current tiles
+    this.order = this.calcOrderRange(this.renderable_tiles);
+
+    // Render main pass
+    this.render_count = this.renderPass();
+
+    // Render selection pass (if needed)
+    if (this.selection.pendingRequests()) {
+        if (this.panning) {
+            return;
+        }
+
+        this.selection.bind();                  // switch to FBO
+        this.renderPass('selection_program');   // render w/alternate shader program
+        this.selection.read();                  // read results from selection buffer
+
+        // Reset to screen buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    if (this.render_count !== this.last_render_count) {
+        log.info(`Scene: rendered ${this.render_count} primitives`);
+    }
+    this.last_render_count = this.render_count;
+
+    return true;
+};
+
+
+// Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
+// Called both for main render pass, and for secondary passes like selection buffer
+Scene.prototype.renderPass = function (program_key = 'program') {
+    let styles;
+    let count = 0; // how many primitives were rendered
+
+    this.clearFrame({ clear_color: true, clear_depth: true });
+
+    // Opaque styles: depth test on, depth write on, blending off
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
+    this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+
+    for (let style of styles) {
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            continue;
+        }
+        count += this.renderStyle(style, program);
+    }
+
+    // Overlay styles: depth test off, depth write off, blending on
+    styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
+    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: true });
+
+    for (let style of styles) {
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            continue;
+        }
+        count += this.renderStyle(style, program);
+    }
+
+    return count;
+};
+
+Scene.prototype.renderStyle = function (style, program) {
+    var first_for_style = true;
+    var render_count = 0;
+
+    // Render tile GL geometries
+    for (var t in this.renderable_tiles) {
+        var tile = this.renderable_tiles[t];
+
+        if (tile.meshes[style] != null) {
+            // Setup style if encountering for first time this frame
+            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+            if (first_for_style === true) {
+                first_for_style = false;
+
+                program.use();
+                this.styles[style].setup();
+
+                // TODO: don't set uniforms when they haven't changed
+                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
+                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
+                program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                program.uniform('1f', 'u_order_min', this.order.min);
+                program.uniform('1f', 'u_order_range', this.order.range);
+                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+
+                this.camera.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
+            }
+
+            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+
+            // Tile origin
+            program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+
+            // Model matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.modelMatrix);
+            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+            mat4.copy(this.modelMatrix32, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
+
+            // Model view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
+
+            // Normal matrix - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+
+            // Render tile
+            tile.meshes[style].render();
+            render_count += tile.meshes[style].geometry_count;
+        }
+    }
+
+    return render_count;
+};
+
 Scene.prototype.clearFrame = function ({ clear_color, clear_depth } = {}) {
     if (!this.initialized) {
         return;
@@ -585,154 +735,6 @@ Scene.prototype.calcOrderRange = function (tiles) {
     return order;
 };
 
-Scene.prototype.renderStyle = function (style, program) {
-    var first_for_style = true;
-    var render_count = 0;
-
-    // Render tile GL geometries
-    for (var t in this.renderable_tiles) {
-        var tile = this.renderable_tiles[t];
-
-        if (tile.meshes[style] != null) {
-            // Setup style if encountering for first time this frame
-            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-            if (first_for_style === true) {
-                first_for_style = false;
-
-                program.use();
-                this.styles[style].setup();
-
-                // TODO: don't set uniforms when they haven't changed
-                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
-                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
-                program.uniform('1f', 'u_order_min', this.order.min);
-                program.uniform('1f', 'u_order_range', this.order.range);
-                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-
-                this.camera.setupProgram(program);
-                for (let i in this.lights) {
-                    this.lights[i].setupProgram(program);
-                }
-            }
-
-            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-            // Tile origin
-            program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
-
-            // Model matrix - transform tile space into world space (meters, absolute mercator position)
-            mat4.identity(this.modelMatrix);
-            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
-            mat4.copy(this.modelMatrix32, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
-
-            // Model view matrix - transform tile space into view space (meters, relative to camera)
-            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-            // Normal matrix - transforms surface normals into view space
-            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
-
-            // Render tile
-            tile.meshes[style].render();
-            render_count += tile.meshes[style].geometry_count;
-        }
-    }
-
-    return render_count;
-};
-
-// Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
-// Called both for main render pass, and for secondary passes like selection buffer
-Scene.prototype.renderPass = function (program_key = 'program') {
-    let styles;
-    let count = 0; // how many primitives were rendered
-
-    this.clearFrame({ clear_color: true, clear_depth: true });
-
-    // Opaque styles: depth test on, depth write on, blending off
-    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
-    this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
-
-    for (let style of styles) {
-        let program = this.styles[style][program_key];
-        if (!program || !program.compiled) {
-            continue;
-        }
-        count += this.renderStyle(style, program);
-    }
-
-    // Overlay styles: depth test off, depth write off, blending on
-    styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
-    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: true });
-
-    for (let style of styles) {
-        let program = this.styles[style][program_key];
-        if (!program || !program.compiled) {
-            continue;
-        }
-        count += this.renderStyle(style, program);
-    }
-
-    return count;
-};
-
-Scene.prototype.render = function () {
-    var gl = this.gl;
-
-    // Map transforms
-    if (!this.center_meters) {
-        return;
-    }
-
-    // Update styles, camera, lights
-    Object.keys(this.active_styles).forEach(i => this.styles[i].update());
-    Object.keys(this.lights).forEach(i => this.lights[i].update());
-    this.camera.update();
-
-    // Renderable tile list
-    this.renderable_tiles = [];
-    for (var t in this.tiles) {
-        var tile = this.tiles[t];
-        if (tile.visible && tile.loaded) {
-            this.renderable_tiles.push(tile);
-        }
-    }
-    this.renderable_tiles_count = this.renderable_tiles.length;
-
-    // Find min/max order for current tiles
-    this.order = this.calcOrderRange(this.renderable_tiles);
-
-    // Render main pass
-    this.render_count = this.renderPass();
-
-    // Render selection pass (if needed)
-    if (this.selection.pendingRequests()) {
-        if (this.panning) {
-            return;
-        }
-
-        this.selection.bind();                  // switch to FBO
-        this.renderPass('selection_program');   // render w/alternate shader program
-        this.selection.read();                  // read results from selection buffer
-
-        // Reset to screen buffer
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    if (this.render_count !== this.last_render_count) {
-        log.info(`Scene: rendered ${this.render_count} primitives`);
-    }
-    this.last_render_count = this.render_count;
-
-    return true;
-};
 
 // Request feature selection at given pixel. Runs async and returns results via a promise.
 Scene.prototype.getFeatureAt = function (pixel) {
