@@ -574,11 +574,11 @@ Scene.prototype.renderPass = function (program_key = 'program', { allow_alpha_bl
 
     // Transparent styles: depth test off, depth write on, custom blending
     styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
-    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: 'add' });
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
     count += this.renderStyles(styles, program_key);
 
     styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
-    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: 'multiply' });
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
     count += this.renderStyles(styles, program_key);
 
     // Overlay styles: depth test off, depth write off, blending on
