@@ -19,6 +19,9 @@ Object.assign(Polygons, {
         this.vertex_shader_key = 'styles/polygons/polygons.vertex';
         this.fragment_shader_key = 'styles/polygons/polygons.fragment';
 
+        // Set opaque blending
+        this.blend = 'opaque'; // opaque styles are drawn first, without blending
+
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines['WORLD_POSITION_WRAP'] = 100000;
 

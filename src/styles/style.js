@@ -25,6 +25,7 @@ export var Style = {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
+        this.blend = this.blend || 'opaque';
         this.defines = this.defines || {};          // #defines to be injected into the shaders
         this.shaders = this.shaders || {};          // shader customization via scene definition (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection

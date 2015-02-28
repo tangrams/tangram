@@ -22,7 +22,7 @@ Object.assign(Sprites, {
         this.vertex_shader_key = 'styles/sprites/sprites_vertex';
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
 
-        this.bboxes = {};
+        this.blend = 'overlay'; // overlays drawn on top of all other styles, with blending
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },

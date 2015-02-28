@@ -53,6 +53,7 @@ export default function Scene(config_source, options) {
     this.config_serialized = null;
 
     this.styles = null;
+    this.active_styles = {};
 
     this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
@@ -500,23 +501,48 @@ Scene.prototype.update = function () {
     return true;
 };
 
-Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = {}) {
+Scene.prototype.clearFrame = function ({ clear_color, clear_depth } = {}) {
     if (!this.initialized) {
         return;
     }
 
+    // Defaults
+    clear_color = !(clear_color === false); // default true
+    clear_depth = !(clear_depth === false); // default true
+
     // Reset frame state
-    var gl = this.gl;
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    let gl = this.gl;
+
+    if (clear_color) {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    }
+
+    if (clear_depth) {
+        gl.depthMask(true); // always clear depth if requested, even if depth write will be turned off
+    }
+
+    if (clear_color || clear_depth) {
+        let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
+        gl.clear(mask);
+    }
+};
+
+Scene.prototype.setRenderState = function ({ depth_test, depth_write, cull_face, alpha_blend } = {}) {
+    if (!this.initialized) {
+        return;
+    }
 
     // Defaults
     // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-    depth_test = (depth_test === false) ? false : true;
-    cull_face = (cull_face === false) ? false : true;
-    alpha_blend = (alpha_blend !== true) ? false : true;
+    depth_test = !(depth_test === false); // default true
+    depth_write = !(depth_write === false); // default true
+    cull_face = !(cull_face === false); // default true
+    alpha_blend = (alpha_blend === true); // default false
 
-    if (depth_test !== false) {
+    // Reset frame state
+    let gl = this.gl;
+
+    if (depth_test) {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
     }
@@ -524,7 +550,9 @@ Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = 
         gl.disable(gl.DEPTH_TEST);
     }
 
-    if (cull_face !== false) {
+    gl.depthMask(depth_write);
+
+    if (cull_face) {
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
     }
@@ -532,7 +560,7 @@ Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = 
         gl.disable(gl.CULL_FACE);
     }
 
-    if (alpha_blend !== false) {
+    if (alpha_blend) {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
@@ -619,21 +647,53 @@ Scene.prototype.renderStyle = function (style, program) {
     return render_count;
 };
 
+// Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
+// Called both for main render pass, and for secondary passes like selection buffer
+Scene.prototype.renderPass = function (program_key = 'program') {
+    let styles;
+    let count = 0; // how many primitives were rendered
+
+    this.clearFrame({ clear_color: true, clear_depth: true });
+
+    // Opaque styles: depth test on, depth write on, blending off
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
+    this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+
+    for (let style of styles) {
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            continue;
+        }
+        count += this.renderStyle(style, program);
+    }
+
+    // Overlay styles: depth test off, depth write off, blending on
+    styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
+    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: true });
+
+    for (let style of styles) {
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            continue;
+        }
+        count += this.renderStyle(style, program);
+    }
+
+    return count;
+};
+
 Scene.prototype.render = function () {
     var gl = this.gl;
-
-    this.resetFrame({ alpha_blend: false });
 
     // Map transforms
     if (!this.center_meters) {
         return;
     }
 
-    // Update camera & lights
+    // Update styles, camera, lights
+    Object.keys(this.active_styles).forEach(i => this.styles[i].update());
+    Object.keys(this.lights).forEach(i => this.lights[i].update());
     this.camera.update();
-    for (let i in this.lights) {
-        this.lights[i].update();
-    }
 
     // Renderable tile list
     this.renderable_tiles = [];
@@ -648,20 +708,8 @@ Scene.prototype.render = function () {
     // Find min/max order for current tiles
     this.order = this.calcOrderRange(this.renderable_tiles);
 
-    // Render main pass - tiles grouped by rendering style (GL program)
-    this.render_count = 0;
-    for (var style in this.styles) {
-        // Per-frame style updates/animations
-        // Called even if the style isn't rendered by any current tiles, so time-based animations, etc. continue
-        this.styles[style].update();
-
-        var program = this.styles[style].program;
-        if (!program || !program.compiled) {
-            continue;
-        }
-
-        this.render_count += this.renderStyle(style, program);
-    }
+    // Render main pass
+    this.render_count = this.renderPass();
 
     // Render selection pass (if needed)
     if (this.selection.pendingRequests()) {
@@ -669,21 +717,9 @@ Scene.prototype.render = function () {
             return;
         }
 
-        // Switch to FBO
-        this.selection.bind();
-        this.resetFrame({ alpha_blend: false });
-
-        for (style in this.styles) {
-            program = this.styles[style].selection_program;
-            if (!program || !program.compiled) {
-                continue;
-            }
-
-            this.renderStyle(style, program);
-        }
-
-        // Read results from selection buffer
-        this.selection.read();
+        this.selection.bind();                  // switch to FBO
+        this.renderPass('selection_program');   // render w/alternate shader program
+        this.selection.read();                  // read results from selection buffer
 
         // Reset to screen buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
