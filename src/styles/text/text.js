@@ -224,6 +224,10 @@ Object.assign(TextStyle, {
 
                         label = new Label(text, points[0], text_info.size);
                     }
+                    else {
+                        // TODO: support MultiLineString, MultiPoint, Polygon, and MultiPolygon labels
+                        continue;
+                    }
 
                     if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile], exceed_heuristic)) {
                         // remove the text from the map
@@ -256,6 +260,8 @@ Object.assign(TextStyle, {
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
+                this.texts[tile] = null;
+
                 return this.super.endData.call(this, tile_data);
             });
         });
@@ -323,41 +329,30 @@ Object.assign(TextStyle, {
     },
 
     buildLines (lines, style, vertex_data) {
-        if (style.discarded) {
-            return;
-        }
-
         this.build(style, vertex_data);
     },
 
     buildPoints (points, style, vertex_data) {
-        if (style.discarded) {
-            return;
-        }
-
         this.build(style, vertex_data);
     },
 
     _parseFeature (feature, rule_style, context) {
         let style = this.feature_style;
         let tile = context.tile.key;
-        let text = feature.properties.name;
+        let text = feature.properties.name; // TODO: make configurable
 
         let font_style = this.constructFontStyle(rule_style);
         let style_key = this.constructStyleKey(font_style);
+        let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        style.discarded  = (!this.texts[tile] || !this.texts[tile][style_key] || !this.texts[tile][style_key][text]);
-
-        if (!style.discarded) {
-            let text_info = this.texts[tile][style_key][text];
-            this.texcoord_scale = text_info.texcoords;
-
-            style.text = text;
-
-            // to store bbox by tiles
-            style.tile = tile;
-            style.label = text_info.label;
+        if (!text_info || !text_info.label) {
+            return;
         }
+
+        this.texcoord_scale = text_info.texcoords;
+        style.text = text;
+        style.tile = tile; // to store bbox by tiles
+        style.label = text_info.label;
 
         return style;
     }
