@@ -537,7 +537,9 @@ Scene.prototype.render = function () {
         }
 
         this.selection.bind();                  // switch to FBO
-        this.renderPass('selection_program');   // render w/alternate shader program
+        this.renderPass(
+            'selection_program',                // render w/alternate program
+            { allow_alpha_blend: false });
         this.selection.read();                  // read results from selection buffer
 
         // Reset to screen buffer
@@ -556,9 +558,12 @@ Scene.prototype.render = function () {
 
 // Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
 // Called both for main render pass, and for secondary passes like selection buffer
-Scene.prototype.renderPass = function (program_key = 'program') {
+Scene.prototype.renderPass = function (program_key = 'program', { allow_alpha_blend } = {}) {
     let styles;
     let count = 0; // how many primitives were rendered
+
+    // optionally force alpha off (e.g. for selection pass)
+    allow_alpha_blend = (allow_alpha_blend == null) ? true : allow_alpha_blend;
 
     this.clearFrame({ clear_color: true, clear_depth: true });
 
@@ -576,7 +581,7 @@ Scene.prototype.renderPass = function (program_key = 'program') {
 
     // Overlay styles: depth test off, depth write off, blending on
     styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
-    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: true });
+    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
 
     for (let style of styles) {
         let program = this.styles[style][program_key];
