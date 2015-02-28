@@ -20,7 +20,11 @@ varying vec2 v_texcoord;
 void main (void) {
     vec4 color = texture2D(u_textures[0], v_texcoord);
 
-    #pragma tangram: fragment
+    #pragma tangram: color
+    #pragma tangram: filter
+
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: fragment
 
     gl_FragColor = color;
 }
