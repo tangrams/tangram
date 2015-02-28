@@ -22,26 +22,27 @@ cameras:
         zoom: 17
 
 lights:
-    # light1:
-        # type: ambient
-        # ambient: .5
+    light1:
+        type: ambient
+        ambient: .3
 
-    # light2:
-    #     type: point
-    #     position: [0, 0, -1000]
-    #     ambient: .1
-    #     diffuse: 1
-    #     specular: .2
-    #     attExp: 1.5
-    #     # innerR: 100.0
-    #     outerR: 300.0
+    light2:
+        type: point
+        position: [0, 0, -300]
+        ambient: .3
+        # diffuse: .7
+        diffuse: [.7, .7, .7, .5]
+        specular: .2
+        # attExp: 1.5
+        innerR: 500
+        outerR: 700
 
-    light3:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .4 #.5
-        # specular: 1
-        ambient: .4
+    # light3:
+    #     type: directional
+    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
+    #     diffuse: .4 #.5
+    #     # specular: 1
+    #     ambient: .4
 
     # light4:
     #     type: spotlight
@@ -199,11 +200,15 @@ styles:
         #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     # text:
+    #     selection: true
     #     animated: true
     #     shaders:
     #         transforms:
-    #             vertex:
-    #                 shape.z *= u_time;
+    #             position: |
+    #                 shape.z = (shape.z + 0.01) * u_time * .75;
+    #             # color: |
+    #             #     color.rgb = vec3(v_texcoord.xy, 0.);
+    #             #     //color.a = 1.;
 
     uv_test:
         extends: polygons
@@ -554,18 +559,19 @@ layers:
             source: osm
             filter: roads
 
-        filter: { name: true }
+        filter: { name: true, $zoom: { min: 14 } }
         style:
             name: text
             order: 5
-            font:
-                typeface: Helvetica
-                size: 12px
-                fill: white
-                stroke: black
+            interactive: true
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
 
         major_road:
-            filter: { kind: major_road }
+            filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
                     size: 14px
@@ -573,7 +579,7 @@ layers:
                     fill: darkred
                     stroke: white
         minor_road:
-            filter: { kind: minor_road, railway: false }
+            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
                     size: 12px
@@ -588,7 +594,7 @@ layers:
             source: osm
             filter: pois
 
-        filter: { name: true }
+        filter: { name: true, $zoom: { min: 17 } }
 
         style:
             # name: points
@@ -597,7 +603,7 @@ layers:
             font:
                 size: 12px
                 typeface: Helvetica
-                fill: white
+                fill: [.9, .9, .1]
                 stroke: black
 
             name: text
@@ -612,7 +618,7 @@ layers:
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
-            visible: false
+            # visible: false
             order: 5
             # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
@@ -652,8 +658,8 @@ layers:
         style:
             name: text
             font:
-                size: 14px
-                typeface: Futura
-                fill: [1, 0, 0]
-                stroke: [1, 1, 1]
+                size: 12px
+                typeface: Courier
+                fill: black
+                stroke: white
 
