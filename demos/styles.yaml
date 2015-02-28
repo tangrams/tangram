@@ -148,7 +148,7 @@ styles:
     icons:
         # extends: polygons
         extends: sprites
-        animated: true
+        # animated: true
         texture:
             url: demos/images/poi_icons_32.png
             filtering: mipmap
@@ -160,14 +160,14 @@ styles:
                 restaurant: [0, 777, 32, 32]
                 cafe: [0, 814, 32, 32]
                 museum: [0, 518, 32, 32]
-        shaders:
-            transforms:
-                vertex: |
-                    //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
-                    shape.z *= u_time;
-                    position.y += sin(position.y + u_time*3.) * 10.;
-                fragment:
-                    // color.rgb = vec3(v_texcoord.xy, 0.);
+        # shaders:
+        #     transforms:
+        #         vertex: |
+        #             //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
+        #             shape.z *= u_time;
+        #             position.y += sin(position.y + u_time*3.) * 10.;
+        #         fragment:
+        #             // color.rgb = vec3(v_texcoord.xy, 0.);
         # shaders:
         #     uniforms:
         #         bouncy: true
@@ -204,6 +204,7 @@ styles:
             transforms:
                 fragment: |
                     color = vec4(vec3(v_position.z / 256.), 1.);
+                    //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
 
                     // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
                     /*float ndcDepth =
@@ -542,6 +543,7 @@ layers:
                 typeface: Helvetica
                 size: 12px
                 fill: white
+                stroke: black
 
         major_road:
             filter: { kind: major_road }
@@ -552,7 +554,7 @@ layers:
                     fill: darkred
                     stroke: white
         minor_road:
-            filter: { kind: minor_road }
+            filter: { kind: minor_road, railway: false }
             style:
                 font:
                     size: 12px
@@ -574,8 +576,10 @@ layers:
             # size: [[12, 6px], [13, 10px]]
 
             font:
-                size: 13px
+                size: 12px
                 typeface: Helvetica
+                fill: white
+                stroke: black
 
             name: text
 
@@ -618,6 +622,8 @@ layers:
         culture:
             filter: { kind: [museum, library] }
             style:
+                name: icons
+                size: 32px
                 sprite: museum
 
     places:
