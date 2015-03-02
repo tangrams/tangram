@@ -5,15 +5,15 @@ struct PointLight {
     vec4 position;
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
-    float attExp;
+    float attenuationExponent;
 #endif
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-    float innerR;
+    float innerRadius;
 #endif
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-    float outerR;
+    float outerRadius;
 #endif
 };
 
@@ -31,17 +31,17 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
     float attenuation = 1.0;
     #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
         float Rin = 1.0;
-        float e = _light.attExp;
+        float e = _light.attenuationExponent;
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-            Rin = _light.innerR;
+            Rin = _light.innerRadius;
         #endif
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-            float Rdiff = _light.outerR-Rin;
+            float Rdiff = _light.outerRadius-Rin;
             float d = clamp(max(0.0,dist-Rin)/Rdiff, 0.0, 1.0);
-            attenuation = 1.0-(pow(d,e)); 
-        #else 
+            attenuation = 1.0-(pow(d,e));
+        #else
             // If no outer is provide behaves like:
             // https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
             float d = max(0.0,dist-Rin)/Rin+1.0;
@@ -51,12 +51,12 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
         float Rin = 0.0;
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-            Rin = _light.innerR;
+            Rin = _light.innerRadius;
             #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-                float Rdiff = _light.outerR-Rin;
+                float Rdiff = _light.outerRadius-Rin;
                 float d = clamp(max(0.0,dist-Rin)/Rdiff, 0.0, 1.0);
-                attenuation = 1.0-d*d; 
-            #else 
+                attenuation = 1.0-d*d;
+            #else
                 // If no outer is provide behaves like:
                 // https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
                 float d = max(0.0,dist-Rin)/Rin+1.0;
@@ -64,8 +64,8 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
             #endif
         #else
             #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-                float d = clamp(dist/_light.outerR, 0.0, 1.0);
-                attenuation = 1.0-d*d; 
+                float d = clamp(dist/_light.outerRadius, 0.0, 1.0);
+                attenuation = 1.0-d*d;
             #else
                 attenuation = 1.0;
             #endif
@@ -76,8 +76,8 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
     #ifdef TANGRAM_MATERIAL_AMBIENT
         g_light_accumulator_ambient += _light.ambient * attenuation;
     #endif
-    
-    #ifdef TANGRAM_MATERIAL_DIFFUSE 
+
+    #ifdef TANGRAM_MATERIAL_DIFFUSE
         g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
     #endif
 
