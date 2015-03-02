@@ -147,7 +147,7 @@ styles:
             defines:
                 LIGHTING_ENVIRONMENT: true
             uniforms:
-                u_env_map: demos/images/LitSphere_test_02.jpg
+                u_env_map: demos/images/sunset.jpg
             transforms:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
