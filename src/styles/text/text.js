@@ -217,7 +217,7 @@ Object.assign(TextStyle, {
                         keep_in_tile = true;
                         move_in_tile = true;
 
-                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic);
+                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0);
                     } else if (geometry.type === "Point") {
                         let points = [geometry.coordinates];
 

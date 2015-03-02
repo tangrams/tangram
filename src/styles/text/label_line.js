@@ -3,22 +3,35 @@ import {Vector} from '../../vector';
 import Label from './label';
 
 export default class LabelLine extends Label {
-    constructor (text, position, size, lines, exceed_heuristic) {
+    constructor (text, position, size, lines, exceed_heuristic, offset) {
         super(text, size);
 
         this.segment_index = 0;
         this.lines = lines;
         this.exceed_heuristic = exceed_heuristic;
-        this.angle = this.angleForSegment(this.currentSegment());
-        this.position = this.middleSegment(this.currentSegment());
-        this.bbox = this.computeBBox();
+        this.offset = offset;
+        this.update();
     }
 
-    middleSegment(segment) {
+    middleSegment (segment) {
         return [
             (segment[0][0] + segment[1][0]) / 2,
             (segment[0][1] + segment[1][1]) / 2,
         ];
+    }
+
+    update () {
+        let segment = this.currentSegment();
+
+        this.angle = this.angleForSegment(segment);
+
+        let upp = Geo.units_per_pixel;
+        let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
+        let dot = Vector.dot(perp, [0, 1]);
+        let offset = Vector.mult(perp, upp * this.offset * Math.sign(dot));
+
+        this.position = Vector.add(this.middleSegment(segment), offset);
+        this.bbox = this.computeBBox();
     }
 
     moveNextSegment () {
@@ -27,11 +40,7 @@ export default class LabelLine extends Label {
         }
 
         this.segment_index++;
-        let segment = this.currentSegment();
-
-        this.angle = this.angleForSegment(segment);
-        this.position = this.middleSegment(segment);
-        this.bbox = this.computeBBox();
+        this.update();
 
         return true;
     }
@@ -41,11 +50,13 @@ export default class LabelLine extends Label {
 
         p0p1 = Vector.normalize(p0p1);
 
-        let theta = Math.atan2(p0p1[0], p0p1[1]) + Math.PI / 2;
+        let PI_2 = Math.PI / 2;
+        let theta = Math.atan2(p0p1[0], p0p1[1]) + PI_2;
 
-        if (theta > Math.PI / 2 || theta < -Math.PI / 2) {
+        if (theta > PI_2 || theta < -PI_2) {
             theta += Math.PI;
         }
+        theta %= (Math.PI * 2);
 
         return theta;
     }
