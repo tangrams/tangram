@@ -936,6 +936,8 @@ Scene.prototype.removeTile = function (key) {
         tile.remove(this);
     }
 
+    this.workers.forEach(x => WorkerBroker.postMessage(x, 'removeTile', key));
+
     this.forgetTile(tile.key);
     this.dirty = true;
 };
