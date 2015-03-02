@@ -988,12 +988,16 @@ Scene.prototype.setSourceMax = function () {
 // Normalize some settings that may not have been explicitly specified in the scene definition
 Scene.prototype.preProcessSceneConfig = function () {
     // Pre-process styles
-    for (var rule of Utils.recurseValues(this.config.layers)) {
-        if (rule.style) {
-            // Styles are visible by default
-            if (rule.style.visible !== false) {
-                rule.style.visible = true;
-            }
+    // Ensure top-level layers have visible and order properties
+    for (let rule of Utils.values(this.config.layers)) {
+        rule.style = rule.style || {};
+
+        if (rule.style.visible == null) {
+            rule.style.visible = true;
+        }
+
+        if (rule.style.order == null) {
+            rule.style.order = 0;
         }
     }
 
@@ -1002,7 +1006,7 @@ Scene.prototype.preProcessSceneConfig = function () {
     if (this.config.camera) {
         this.config.cameras.default = this.config.camera;
     }
-    var camera_names = Object.keys(this.config.cameras);
+    let camera_names = Object.keys(this.config.cameras);
     if (camera_names.length === 0) {
         this.config.cameras.default = { active: true };
 
