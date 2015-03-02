@@ -17,8 +17,8 @@ import FeatureSelection from './selection';
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
-var mat4 = glMatrix.mat4;
-var vec3 = glMatrix.vec3;
+let mat4 = glMatrix.mat4;
+let vec3 = glMatrix.vec3;
 
 // Global setup
 if (Utils.isMainThread) {

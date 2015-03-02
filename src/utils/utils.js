@@ -51,7 +51,7 @@ Utils.cacheBusterForUrl = function (url) {
 
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
     var request = new XMLHttpRequest();
-    return new Promise((resolve, reject) => {
+    var promise = new Promise((resolve, reject) => {
         request.open(method, url, true);
         request.timeout = timeout;
         request.responseType = responseType;
@@ -75,6 +75,12 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
         };
         request.send();
     });
+
+    Object.defineProperty(promise, 'request', {
+        value: request
+    });
+
+    return promise;
 };
 
 Utils.parseResource = function (body) {
