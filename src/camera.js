@@ -157,7 +157,7 @@ class PerspectiveCamera extends Camera {
             vec3.fromValues(0, 1, 0));
 
         // Projection matrix
-        mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 1);
+        mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height * 2);
 
         // Convert vanishing point from pixels to viewport space
         var vanishing_point = [

@@ -349,101 +349,14 @@ layers:
             filter: roads
 
         style:
-            order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
+            # order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
+            order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .01, -1), 1) / 2; }
             # order: 3
             interactive: function () { return (zoom >= 18); }
             # color: yellow
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
-
-        highway:
-            filter: { kind: highway }
-            style:
-                color: [1.0, 1.0, 1.0]
-                # color: red
-                # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-                # color: [[13, 'darkorchid'], [17, 'honeydew']]
-                # color: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
-                width: function () { return 3 * Math.log(zoom); }
-                # width: [[13, 3px], [15, 5px], [16, 20px]]
-                # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
-
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-
-                bridge:
-                    filter: { is_bridge: yes }
-                    style:
-                        outline:
-                            # don't draw outline caps on bridges because they draw over connecting non-bridge roads
-                            # see FDR Drive: 40.70278074491014,-74.00795169174671,20
-                            cap: butt
-
-                round:
-                    filter: { $zoom: { min: 17 }, is_bridge: no }
-                    style:
-                        cap: round
-                        join: round
-
-            tunnel:
-                # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
-                filter: { is_tunnel: yes }
-                style:
-                    color: '#333'
-                    width: function () { return 2 * Math.log(zoom); }
-                    # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-                outline:
-                    filter: { $zoom: { min: 15 } }
-                    style:
-                        outline:
-                            color: white
-                            # width: [[15, 2px], [18, 6px]]
-                            # width: 2px
-                            width: function () { return 1 * Math.log(zoom); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
-
-        major_road:
-            filter: { kind: major_road }
-            style:
-                color: [0.5, 0.5, 0.5]
-                width: function () { return 2.5 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
-
-        minor_road:
-            filter: { kind: minor_road, $zoom: { min: 13 }, not: { aeroway: [taxiway, runway] } }
-            style:
-                color: [0.65, 0.65, 0.65]
-                width: function () { return 2 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
 
         airports:
             filter: { aeroway: true }
@@ -462,37 +375,110 @@ layers:
                     color: orange
                     order: .1
 
-        path:
-            filter: { kind: path, $zoom: { min: 15 } }
-            style:
-                color: [0.8, 0.8, 0.8]
-                # color: yellow
-                width: function () { return 1 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-            round:
-                filter: { $zoom: { min: 17 } }
+        not-airports:
+            filter: { aeroway: false }
+
+            rounded:
+                filter: { $zoom: { min: 17 }, is_bridge: no }
                 style:
                     cap: round
                     join: round
 
-        rail:
-            filter: { kind: rail }
-            style:
-                color: [0.5, 0.0, 0.0]
-                width: function () { return 2 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
+            bridges:
+                filter: { is_bridge: yes }
                 style:
+                    orderReset: true
+                    order: 8
+
+            highway:
+                filter: { kind: highway }
+                style:
+                    color: [1.0, 1.0, 1.0]
+                    # color: red
+                    # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+                    # color: [[13, 'darkorchid'], [17, 'honeydew']]
+                    # color: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
+                    width: function () { return 3 * Math.log(zoom); }
+                    # width: Style.zoomPow(3, 1)
+                    # width: [[13, 3px], [15, 5px], [16, 20px]]
+                    # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
+
+                # outline:
+                #     filter: { $zoom: { min: 15 } }
+                #     style:
+                #         outline:
+                #             color: [0.7, 0.7, 0.7]
+                #             width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+                    # bridge:
+                    #     filter: { is_bridge: yes }
+                    #     style:
+                    #         outline:
+                    #             # don't draw outline caps on bridges because they draw over connecting non-bridge roads
+                    #             # see FDR Drive: 40.70278074491014,-74.00795169174671,20
+                    #             cap: butt
+
+                tunnel:
+                    # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
+                    filter: { is_tunnel: yes }
+                    style:
+                        color: '#333'
+                        width: function () { return 2 * Math.log(zoom); }
+                        # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
+                    outline:
+                        filter: { $zoom: { min: 15 } }
+                        style:
+                            outline:
+                                color: white
+                                # width: [[15, 2px], [18, 6px]]
+                                # width: 2px
+                                width: function () { return 1 * Math.log(zoom); }
+
+            major_road:
+                filter: { kind: major_road }
+                style:
+                    color: [0.5, 0.5, 0.5]
+                    width: function () { return 2.5 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+            minor_road:
+                filter: { kind: minor_road, $zoom: { min: 13 } }
+                style:
+                    color: [0.65, 0.65, 0.65]
+                    width: function () { return 2 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+
+            path:
+                filter: { kind: path, $zoom: { min: 15 } }
+                style:
+                    color: [0.8, 0.8, 0.8]
+                    # color: yellow
+                    width: function () { return 1 * Math.log(zoom); }
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
+
+            rail:
+                filter: { kind: rail }
+                style:
+                    color: [0.5, 0.0, 0.0]
+                    width: function () { return 2 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
                     style:
-                        cap: round
-                        join: round
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
         geometry:
@@ -508,6 +494,7 @@ layers:
 
         style:
             order: 4
+            # order: 0
             interactive: true
 
             # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
@@ -538,12 +525,14 @@ layers:
         filter: { name: true }
         style:
             name: text
+            visible: false
             order: 5
-            font:
-                typeface: Helvetica
-                size: 12px
-                fill: white
-                stroke: black
+            interactive: true
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
 
         major_road:
             filter: { kind: major_road }
@@ -582,6 +571,7 @@ layers:
                 stroke: black
 
             name: text
+            visible: false
 
             # name: icons
             # sprite: tree
@@ -593,7 +583,6 @@ layers:
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
-            # visible: false
             order: 5
             # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
@@ -631,6 +620,9 @@ layers:
         filter: { name: true }
 
         style:
+            visible: false
+            # order: 4.1
+
             name: text
             font:
                 size: 14px

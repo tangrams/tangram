@@ -5,8 +5,8 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform float u_meters_per_pixel;
-uniform float u_order_min;
-uniform float u_order_range;
+// uniform float u_order_min;
+// uniform float u_order_range;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
@@ -99,9 +99,8 @@ void main() {
 
     // Camera
     cameraProjection(position);
-
-    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    reorderLayers(a_layer + u_order_min, u_order_range, position);
+    // reorderLayers(a_layer + u_order_min, u_order_range, position);
+    applyLayerOrder(a_layer, position);
 
     gl_Position = position;
 }
