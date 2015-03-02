@@ -6,7 +6,8 @@ import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
-import Label from './label';
+import LabelPoint from './label_point';
+import LabelLine from './label_line';
 
 import log from 'loglevel';
 
@@ -216,21 +217,21 @@ Object.assign(TextStyle, {
                         keep_in_tile = true;
                         move_in_tile = true;
 
-                        label = new Label(text, line[0], text_info.size, lines);
+                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic);
                     } else if (geometry.type === "Point") {
                         let points = [geometry.coordinates];
 
                         keep_in_tile = true;
                         move_in_tile = false;
 
-                        label = new Label(text, points[0], text_info.size);
+                        label = new LabelPoint(text, points[0], text_info.size);
                     }
                     else {
                         // TODO: support MultiLineString, MultiPoint, Polygon, and MultiPolygon labels
                         continue;
                     }
 
-                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile], exceed_heuristic)) {
+                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
                         // remove the text from the map
                         delete text_infos[text];
                     }
