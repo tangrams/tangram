@@ -234,9 +234,10 @@ Object.assign(TextStyle, {
                     if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
                         // remove the text from the map
                         delete text_infos[text];
+                    } else {
+                        text_info.label = label;
                     }
 
-                    text_info.label = label;
                 }
 
                 // No labels for this style

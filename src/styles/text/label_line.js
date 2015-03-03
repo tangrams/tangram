@@ -53,10 +53,10 @@ export default class LabelLine extends Label {
         let PI_2 = Math.PI / 2;
         let theta = Math.atan2(p0p1[0], p0p1[1]) + PI_2;
 
-        if (theta > PI_2 || theta < -PI_2) {
+        if (theta > PI_2 || theta < -PI_2) {
             theta += Math.PI;
         }
-        theta %= (Math.PI * 2);
+        theta %= Math.PI * 2;
 
         return theta;
     }
@@ -100,7 +100,7 @@ export default class LabelLine extends Label {
         let x = merc_width * c - merc_height * s;
         let y = merc_width * s + merc_height * c;
 
-        let max = Math.max(x, y) * 0.5;
+        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5;
 
         return [
             this.position[0] - max,
