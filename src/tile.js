@@ -87,10 +87,6 @@ export default class Tile {
             }
         }
         this.meshes = {};
-
-        if (this.request != null) {
-            this.request.abort();
-        }
     }
 
     destroy() {
