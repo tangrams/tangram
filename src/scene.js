@@ -311,7 +311,7 @@ Scene.prototype.setZoom = function (zoom) {
             if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
                 log.debug(`removed ${tile.key} (was loading, but outside current zoom)`);
                 return true;
-            };
+            }
         });
     }
 
@@ -409,9 +409,9 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
 
     this.removeTiles(tile => {
         if (tile.coords.z < below || tile.coords.z > above) {
-            log.debug(`removed ${key} (outside range [${below}, ${above}])`);
+            log.debug(`removed ${tile.key} (outside range [${below}, ${above}])`);
             return true;
-        };
+        }
     });
 };
 
