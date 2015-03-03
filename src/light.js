@@ -76,6 +76,10 @@ export default class Light {
         let calculateFunction = `
             vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
 
+                // Do initial material calculations over normal, emission, ambient, diffuse and specular values
+                calculateMaterial(_eyeToPoint,_normal);
+
+                // Un roll the loop of individual ligths to calculate
                 ${calculateLights}
 
                 //  Final light intensity calculation

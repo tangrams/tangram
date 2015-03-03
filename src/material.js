@@ -5,33 +5,153 @@ import GLSL from './gl/glsl';
 export default class Material {
     constructor (config) {
         config = config || {};
-        this.emission = GLSL.expandVec4(config.emission);
-        this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
-        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
-        this.specular = GLSL.expandVec4(config.specular);
+
+        if (config.normal != null) {
+            this.normalTexture = config.normal.texture != null ? config.normal.texture : null;
+            this.normalMapping = config.normal.mapping != null ? config.normal.mapping : 'triplanar';
+            this.normalScale = GLSL.expandVec3(config.normal.scale != null ? config.normal.scale : 1.0);
+            this.normalAmount = config.normal.amount != null ? config.normal.amount : 1.0;
+        }
+        
+        if (config.emission != null) {
+            this.emission = GLSL.expandVec4(config.emission);
+            if (config.emission.texture != null) {
+                this.emissionTexture = config.emission.texture != null ? config.emission.texture : null;
+                this.emissionMapping = config.emission.mapping != null ? config.emission.mapping : 'spheremap';
+                this.emissionScale = GLSL.expandVec4(config.emission.scale != null ? config.emission.scale : 1.0);
+            }
+        }
+        
+        if (config.ambient != null) {
+            this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
+            if (config.ambient.texture != null) {
+                this.ambientTexture = config.ambient.texture != null ? config.ambient.texture : null;
+                this.ambientMapping = config.ambient.mapping != null ? config.ambient.mapping : 'spheremap';
+                this.ambientScale = GLSL.expandVec4(config.ambient.scale != null ? config.ambient.scale : 1.0);
+            }
+        }
+
+        if (config.diffuse != null) {
+            this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+            if (config.diffuse.texture != null) {
+                this.diffuseTexture = config.diffuse.texture != null ? config.diffuse.texture : null;
+                this.diffuseMapping = config.diffuse.mapping != null ? config.diffuse.mapping : 'spheremap';
+                this.diffuseScale = GLSL.expandVec4(config.diffuse.scale != null ? config.diffuse.scale : 1.0);
+            }
+        }
+
+        if (config.specular != null) {
+            this.specular = GLSL.expandVec4(config.specular);
+            if (config.specular.texture != null) {
+                this.specularTexture = config.specular.texture != null ? config.specular.texture : null;
+                this.specularMapping = config.specular.mapping != null ? config.specular.mapping : 'spheremap';
+                this.specularScale = GLSL.expandVec4(config.specular.scale != null ? config.specular.scale : 1.0);
+            }
+        }
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
     }
 
     inject (style) {
-        style.defines['TANGRAM_MATERIAL_EMISSION'] = (this.emission != null);
-        style.defines['TANGRAM_MATERIAL_AMBIENT'] = (this.ambient != null);
-        style.defines['TANGRAM_MATERIAL_DIFFUSE'] = (this.diffuse != null);
-        style.defines['TANGRAM_MATERIAL_SPECULAR'] = (this.specular != null);
+
+        if (this.normalTexture != null) {
+            style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE'] = true;
+            if (this.normalMapping === 'uv'){
+                style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_UV'] = true;
+                style.texcoords = true;
+            } else if (this.normalMapping === 'triplanar') {
+                style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR'] = true;
+            }
+        }
+        
+        style.defines['TANGRAM_MATERIAL_EMISSION'] = (this.emission != null) || (this.emissionTexture != null);
+        if ( this.emissionTexture != null ) {
+            style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE'] = true;
+            if (this.emissionMapping === 'uv'){
+                style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_UV'] = true;
+                style.texcoords = true;
+            } else if (this.emissionMapping === 'triplanar') {
+                style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_TRIPLANAR'] = true;
+            } else if (this.emissionMapping === 'spheremap') {
+                style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_SPHEREMAP'] = true;
+            }
+        }
+
+        style.defines['TANGRAM_MATERIAL_AMBIENT'] = (this.ambient != null) || (this.ambientTexture != null);
+        if ( this.ambientTexture != null ) {
+            style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE'] = true;
+            if (this.ambientMapping === 'uv'){
+                style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_UV'] = true;
+                style.texcoords = true;
+            } else if (this.ambientMapping === 'triplanar') {
+                style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_TRIPLANAR'] = true;
+            } else if (this.ambientMapping === 'spheremap') {
+                style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_SPHEREMAP'] = true;
+            }
+        }
+
+        style.defines['TANGRAM_MATERIAL_DIFFUSE'] = (this.diffuse != null) || (this.diffuseTexture != null);
+        if ( this.diffuseTexture != null ) {
+            style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE'] = true;
+            if (this.diffuseMapping === 'uv'){
+                style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_UV'] = true;
+                style.texcoords = true;
+            } else if (this.diffuseMapping === 'triplanar') {
+                style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_TRIPLANAR'] = true;
+            } else if (this.diffuseMapping === 'spheremap') {
+                style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_SPHEREMAP'] = true;
+            }
+        }
+
+        style.defines['TANGRAM_MATERIAL_SPECULAR'] = (this.specular != null) || (this.specularTexture != null);
+        if ( this.specularTexture != null ) {
+            style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE'] = true;
+            if (this.specularMapping === 'uv'){
+                style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_UV'] = true;
+                style.texcoords = true;
+            } else if (this.specularMapping === 'triplanar') {
+                style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_TRIPLANAR'] = true;
+            } else if (this.specularMapping === 'spheremap') {
+                style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_SPHEREMAP'] = true;
+            }
+        }
 
         style.replaceShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
     }
 
     setupProgram (_program) {
-        if (this.emission != null) {
+
+        if (this.normalTexture != null ){
+            _program.setTextureUniform('u_material_normal_texture', this.normalTexture);
+            _program.uniform('3fv', 'u_material.normalScale', this.normalScale);
+            _program.uniform('1f', 'u_material.normalAmount', this.normalAmount);
+        }
+
+        if (this.emissionTexture != null ){
+            _program.setTextureUniform('u_material_emission_texture', this.emissionTexture);
+            _program.uniform('4fv', 'u_material.emission', this.emissionScale);
+        } else if (this.emission != null) {
             _program.uniform('4fv', 'u_material.emission', this.emission);
         }
-        if (this.ambient != null) {
+
+        if (this.ambientTexture != null ){
+            _program.setTextureUniform('u_material_ambient_texture', this.ambientTexture);
+            _program.uniform('4fv', 'u_material.ambient', this.ambientScale);
+        } else if (this.ambient != null) {
             _program.uniform('4fv', 'u_material.ambient', this.ambient);
         }
-        if (this.diffuse != null) {
+
+        if (this.diffuseTexture != null ){
+            _program.setTextureUniform('u_material_diffuse_texture', this.diffuseTexture);
+            _program.uniform('4fv', 'u_material.diffuse', this.diffuseScale);
+        } else if (this.diffuse != null) {
             _program.uniform('4fv', 'u_material.diffuse', this.diffuse);
         }
-        if (this.specular != null) {
+
+        if (this.specularTexture != null ){
+            _program.setTextureUniform('u_material_specular_texture', this.specularTexture);
+            _program.uniform('4fv', 'u_material.specular', this.specularScale);
+            _program.uniform('1f', 'u_material.shininess', this.shininess);
+        } else if (this.specular != null) {
             _program.uniform('4fv', 'u_material.specular', this.specular);
             _program.uniform('1f', 'u_material.shininess', this.shininess);
         }

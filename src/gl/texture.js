@@ -70,7 +70,7 @@ Texture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
-    if (unit) {
+    if (typeof unit === 'number') {
         this.gl.activeTexture(this.gl.TEXTURE0 + unit);
     }
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);

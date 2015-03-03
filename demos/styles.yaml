@@ -28,9 +28,9 @@ lights:
 
     light2:
         type: point
-        position: [0, 0, -300]
+        position: [0, 0, -500]
         # ambient: .3
-        diffuse: .5
+        diffuse: 0.5
         specular: .2
         # diffuse: .3
         # attExp: 1.5
@@ -42,7 +42,7 @@ lights:
         direction: [.5, 0, -1] #[0.1, 0.1, -1]
         diffuse: .5
         # specular: .2
-        ambient: .2
+        ambient: .0
 
     # light4:
     #     type: spotlight
@@ -58,11 +58,27 @@ styles:
 
     polygons:
         animated: true
+        # texcoords: true
         # lighting: vertex
         material:
-            diffuse: 1
-            specular: 1
             shininess: 8
+            normal:
+                texture: demos/images/normal-0011.jpg
+                mapping: uv
+                scale: 1.0
+            # diffuse: 1
+            diffuse: 
+                texture: demos/images/sem-0006.png
+                mapping: spheremap
+            ambient: 1
+            # ambient: 
+            #     texture: demos/images/sem-0008.jpg
+            #     mapping: spheremap
+            specular: 1
+            shininess: 0.1
+            # specular: 
+            #     texture: demos/images/sem-0008.jpg
+            #     mapping: spheremap
 
     transparent:
         extends: polygons

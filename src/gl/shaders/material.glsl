@@ -17,6 +17,11 @@ struct Material {
         vec4 specular;
         float shininess;
     #endif
+
+    #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
+        vec3 normalScale;
+        float normalAmount;
+    #endif
 };
 
 // Note: uniforms (u_[name]) and varyings (v_[name]) are 
@@ -25,6 +30,26 @@ struct Material {
 //
 uniform Material u_material;
 Material g_material = u_material;
+
+#ifdef TANGRAM_MATERIAL_EMISSION_TEXTURE
+uniform sampler2D u_material_emission_texture;
+#endif
+
+#ifdef TANGRAM_MATERIAL_AMBIENT_TEXTURE
+uniform sampler2D u_material_ambient_texture;
+#endif
+
+#ifdef TANGRAM_MATERIAL_DIFFUSE_TEXTURE
+uniform sampler2D u_material_diffuse_texture;
+#endif
+
+#ifdef TANGRAM_MATERIAL_SPECULAR_TEXTURE
+uniform sampler2D u_material_specular_texture;
+#endif
+
+#ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
+uniform sampler2D u_material_normal_texture;
+#endif
 
 // GLOBAL LIGHTS ACCUMULATORS for each enable MATERIAL property
 //
@@ -37,3 +62,101 @@ Material g_material = u_material;
 #ifdef TANGRAM_MATERIAL_SPECULAR
     vec4 g_light_accumulator_specular = vec4(0.0);
 #endif
+
+vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal ) {
+    vec3 r = reflect( normalize(_eyeToPoint), _normal );
+    r.z += 1.0;
+    float m = 2. * length(r);
+    vec2 uv = r.xy / m + .5;
+    return texture2D(_tex, uv);
+}
+
+vec3 getTriPlanarBlend ( in vec3 _normal ) {
+    vec3 blending = abs( _normal );
+    blending = normalize(max(blending, 0.00001));
+    float b = (blending.x + blending.y + blending.z);
+    return blending / b;
+}
+
+vec4 getTriPlanar ( in sampler2D _tex, in vec3 _pos, in vec3 _normal, in vec3 _scale) {
+    vec3 blending = getTriPlanarBlend(_normal);
+    vec4 xaxis = texture2D( _tex, fract(_pos.yz * _scale.x) );
+    vec4 yaxis = texture2D( _tex, fract(_pos.xz * _scale.y) );
+    vec4 zaxis = texture2D( _tex, fract(_pos.xy * _scale.z) );
+    return  xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+}
+
+void calculateMaterial(in vec3 _eyeToPoint, inout vec3 _normal){
+
+    // Get NORMALMAP
+    //------------------------------------------------
+    #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_UV
+    _normal = normalize(_normal+texture2D(u_material_normal_texture,fract(v_texcoord*g_material.normalScale.xy)).rgb*2.0-1.0);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR
+    vec3 normalTex = getTriPlanar(u_material_normal_texture, v_world_position.xyz, _normal, g_material.normalScale).rgb  * 2.0 - 1.0; 
+    _normal = normalize(_normal+normalTex);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_NORMAL_FUNCTION
+    // Example:
+    _normal += signed3DNoise(_eyeToPoint);
+    #endif
+
+    // get EMISSION TEXTUREMAP
+    //------------------------------------------------
+    #ifdef TANGRAM_MATERIAL_EMISSION_TEXTURE_UV
+    g_material.emission = texture2D(u_material_emission_texture,v_texcoord);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_EMISSION_TEXTURE_TRIPLANAR
+    g_material.emission = getTriPlanar(u_material_emission_texture, v_world_position.xyz, _normal, g_material.emission.xyz);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_EMISSION_TEXTURE_SPHEREMAP
+    g_material.emission = getSphereMap(u_material_emission_texture, _eyeToPoint, _normal);
+    #endif
+
+    // get AMBIENT TEXTUREMAP
+    //------------------------------------------------
+    #ifdef TANGRAM_MATERIAL_AMBIENT_TEXTURE_UV
+    g_material.ambient = texture2D(u_material_ambient_texture,v_texcoord);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_AMBIENT_TEXTURE_TRIPLANAR
+    g_material.ambient = getTriPlanar(u_material_ambient_texture, v_world_position.xyz, _normal, g_material.ambient.xyz);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_AMBIENT_TEXTURE_SPHEREMAP
+    g_material.ambient = getSphereMap(u_material_ambient_texture, _eyeToPoint, _normal);
+    #endif
+
+    // get DIFFUSE TEXTUREMAP
+    //------------------------------------------------
+    #ifdef TANGRAM_MATERIAL_DIFFUSE_TEXTURE_UV
+    g_material.diffuse = texture2D(u_material_diffuse_texture,v_texcoord);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_DIFFUSE_TEXTURE_TRIPLANAR
+    g_material.diffuse = getTriPlanar(u_material_diffuse_texture, v_world_position.xyz, _normal, g_material.diffuse.xyz);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_DIFFUSE_TEXTURE_SPHEREMAP
+    g_material.diffuse = getSphereMap(u_material_diffuse_texture, _eyeToPoint, _normal);
+    #endif
+
+    // get SPECULAR TEXTUREMAP
+    //------------------------------------------------
+    #ifdef TANGRAM_MATERIAL_SPECULAR_TEXTURE_UV
+    g_material.specular = texture2D(u_material_specular_texture,v_texcoord);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_SPECULAR_TEXTURE_TRIPLANAR
+    g_material.specular = getTriPlanar(u_material_specular_texture, v_world_position.xyz, _normal, g_material.specular.xyz);
+    #endif
+
+    #ifdef TANGRAM_MATERIAL_SPECULAR_TEXTURE_SPHEREMAP
+    g_material.specular = getSphereMap(u_material_specular_texture, _eyeToPoint, _normal);
+    #endif
+}
