@@ -620,6 +620,24 @@
         // Styles
         gui.add(style_options, 'effect', style_options.options).
             onChange(style_options.setup.bind(style_options));
+
+        // Link to edit in OSM - hold 'e' and click
+        window.addEventListener('click', function () {
+            // if (key.isPressed('e')) {
+            if (key.shift) {
+                var url = 'https://www.openstreetmap.org/edit?';
+
+                if (scene.selection.feature && scene.selection.feature.id) {
+                    url += 'way=' + scene.selection.feature.id;
+                }
+
+                if (scene.center) {
+                    url += '#map=' + scene.baseZoom(scene.zoom) + '/' + scene.center.lat + '/' + scene.center.lng;
+                }
+
+                window.open(url, '_blank');
+            }
+        });
     }
 
     // Feature selection
