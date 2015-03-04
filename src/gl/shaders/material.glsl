@@ -67,9 +67,9 @@ vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal, in v
     
     // Adding Brett's fix
     //https://github.com/tangrams/tangram/commit/2f6d3abe780cd96a27f7f160e561dd12bd97f744#diff-095e32924b88fd08d5f9fa07f925fee7R14
-    vec3 eye = _eyeToPoint;
-    eye.xy -= skew;
-+   eye = normalize(eye);
+    vec3 eye = normalize(_eyeToPoint);
+    eye.xy -= _skew;
+    eye = normalize(eye);
 
     vec3 r = reflect( eye, _normal );
     r.z += 1.0;
@@ -98,18 +98,15 @@ void calculateMaterial(in vec3 _eyeToPoint, inout vec3 _normal){
     // Get NORMALMAP
     //------------------------------------------------
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_UV
-    _normal = normalize(_normal+texture2D(u_material_normal_texture,fract(v_texcoord*g_material.normalScale.xy)).rgb*2.0-1.0);
+    _normal += texture2D(u_material_normal_texture,fract(v_texcoord*g_material.normalScale.xy)).rgb*2.0-1.0;
     #endif
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR
-    vec3 normalTex = getTriPlanar(u_material_normal_texture, v_world_position.xyz, _normal, g_material.normalScale, u_vanishing_point).rgb  * 2.0 - 1.0; 
-    _normal = normalize(_normal+normalTex);
+    vec3 normalTex = getTriPlanar(u_material_normal_texture, v_world_position.xyz, _normal, g_material.normalScale).rgb*2.0-1.0; 
+    _normal += normalTex;
     #endif
 
-    #ifdef TANGRAM_MATERIAL_NORMAL_FUNCTION
-    // Example:
-    _normal += signed3DNoise(_eyeToPoint);
-    #endif
+    _normal = normalize(_normal);
 
     // get EMISSION TEXTUREMAP
     //------------------------------------------------

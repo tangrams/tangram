@@ -5,8 +5,6 @@ import GLSL from './gl/glsl';
 export default class Material {
     constructor (config) {
 
-        console.log("ADDING MATERIAL");
-        
         config = config || {};
 
         if (config.normal != null) {
@@ -16,8 +14,8 @@ export default class Material {
             this.normalAmount = config.normal.amount != null ? config.normal.amount : 1.0;
         }
         
+        this.emission = GLSL.expandVec4(config.emission);
         if (config.emission != null) {
-            this.emission = GLSL.expandVec4(config.emission);
             if (config.emission.texture != null) {
                 this.emissionTexture = config.emission.texture != null ? config.emission.texture : null;
                 this.emissionMapping = config.emission.mapping != null ? config.emission.mapping : 'spheremap';
@@ -25,8 +23,8 @@ export default class Material {
             }
         }
         
+        this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
         if (config.ambient != null) {
-            this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
             if (config.ambient.texture != null) {
                 this.ambientTexture = config.ambient.texture != null ? config.ambient.texture : null;
                 this.ambientMapping = config.ambient.mapping != null ? config.ambient.mapping : 'spheremap';
@@ -34,8 +32,8 @@ export default class Material {
             }
         }
 
+        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
         if (config.diffuse != null) {
-            this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
             if (config.diffuse.texture != null) {
                 this.diffuseTexture = config.diffuse.texture != null ? config.diffuse.texture : null;
                 this.diffuseMapping = config.diffuse.mapping != null ? config.diffuse.mapping : 'spheremap';
@@ -43,14 +41,15 @@ export default class Material {
             }
         }
 
+        this.specular = GLSL.expandVec4(config.specular);
         if (config.specular != null) {
-            this.specular = GLSL.expandVec4(config.specular);
             if (config.specular.texture != null) {
                 this.specularTexture = config.specular.texture != null ? config.specular.texture : null;
                 this.specularMapping = config.specular.mapping != null ? config.specular.mapping : 'spheremap';
                 this.specularScale = GLSL.expandVec4(config.specular.scale != null ? config.specular.scale : 1.0);
             }
         }
+        
         this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
     }
 
