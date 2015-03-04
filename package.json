@@ -51,6 +51,7 @@
     "karma-chrome-launcher": "~0.1.4",
     "karma-sauce-launcher": "iwillig/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "~1.0.4",
-    "6to5ify": "^4.1.0"
+    "babel": "~4.6.6",
+    "babelify": "~5.0.3"
   }
 }
