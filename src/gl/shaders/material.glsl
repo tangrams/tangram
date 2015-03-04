@@ -98,7 +98,7 @@ void calculateMaterial(in vec3 _eyeToPoint, inout vec3 _normal){
     // Get NORMALMAP
     //------------------------------------------------
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_UV
-    _normal += texture2D(u_material_normal_texture,fract(v_texcoord*g_material.normalScale.xy)).rgb*2.0-1.0;
+    _normal += texture2D(u_material_normal_texture, fract(v_texcoord*g_material.normalScale.xy) ) .rgb*2.0-1.0;
     #endif
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR
