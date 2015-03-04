@@ -322,3 +322,34 @@ Utils.toCanvasColor = function (color) {
     return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
 };
 
+Utils.centroid = function (polygon) {
+    let n = polygon.length;
+    let centroid = [0, 0];
+
+    for (let p of polygon) {
+        centroid[0] += p[0];
+        centroid[1] += p[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Utils.multiCentroid = function(polygons) {
+    let n = polygons.length;
+    let centroid = [0, 0];
+
+    for (let polygon of polygons) {
+        let c = Utils.centroid(polygon);
+        centroid[0] += c[0];
+        centroid[1] += c[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+

@@ -225,9 +225,21 @@ Object.assign(TextStyle, {
                         move_in_tile = false;
 
                         label = new LabelPoint(text, points[0], text_info.size);
-                    }
-                    else {
-                        // TODO: support MultiLineString, MultiPoint, Polygon, and MultiPolygon labels
+                    } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
+                        let centroid;
+
+                        if (geometry.type === "Polygon") {
+                            centroid = Utils.centroid(geometry.coordinates[0]);
+                        } else {
+                            centroid = Utils.multiCentroid(geometry.coordinates[0]);
+                        }
+
+                        keep_in_tile = false;
+                        move_in_tile = false;
+
+                        label = new LabelPoint(text, centroid, text_info.size);
+                    } else {
+                        // TODO: support MultiLineString, MultiPoint labels
                         continue;
                     }
 
@@ -347,6 +359,10 @@ Object.assign(TextStyle, {
     },
 
     buildPoints (points, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
+    buildPolygons (points, style, vertex_data) {
         this.build(style, vertex_data);
     },
 

@@ -563,7 +563,6 @@ layers:
                     # stroke: [.31, .33, .31]
                     fill: [0.9, 0.9, 0.9]
                     stroke: [.31, .33, .31]
-
     pois:
         geometry:
             source: osm
@@ -637,4 +636,14 @@ layers:
                 typeface: Futura
                 fill: [1, 0, 0]
                 stroke: [1, 1, 1]
+
+        administrative:
+            filter: { kind: administrative }
+            style:
+                name: text
+                font:
+                    size: 15px
+                    typeface: Futura
+                    fill: white
+                    stroke: black
 
