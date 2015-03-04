@@ -45,7 +45,6 @@
     "yargs": "~1.3.2",
     "glob": "~4.0.6",
     "chai-as-promised": "~4.1.1",
-    "es6ify": "~1.6.0",
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
     "karma-chrome-launcher": "~0.1.4",
