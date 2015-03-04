@@ -217,16 +217,18 @@ class PointLight extends Light {
 
     updateEyePosition () {
         if (this.origin === 'world') {
-            // For world origin, format is: [longitude, latitude, meters]
+            // For world origin, format is: [longitude, latitude, meters (default) or pixels w/px units]
 
             // Move light's world position into camera space
             let [x, y] = Geo.latLngToMeters(this.position);
             this.position_eye[0] = x - this.scene.camera.position_meters[0];
             this.position_eye[1] = y - this.scene.camera.position_meters[1];
-            this.position_eye[2] = this.position[2] - this.scene.camera.position_meters[2];
+
+            this.position_eye[2] = StyleParser.convertUnits(this.position[2], { zoom: this.scene.zoom });
+            this.position_eye[2] = this.position_eye[2] - this.scene.camera.position_meters[2];
         }
         if (this.origin === 'ground' || this.origin === 'camera') {
-            // For camera or ground origin, format is: [x, y, z] in meters by default, or pixels (with 'px' units)
+            // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
             this.position_eye = StyleParser.convertUnits(this.position, { zoom: this.scene.zoom });
