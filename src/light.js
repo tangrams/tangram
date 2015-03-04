@@ -2,6 +2,8 @@
 import ShaderProgram from './gl/shader_program';
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
+import Geo from './geo';
+import {StyleParser} from './styles/style_parser';
 
 // Abstract light
 export default class Light {
@@ -187,11 +189,12 @@ class PointLight extends Light {
         this.type = 'point';
         this.struct_name = 'PointLight';
 
-        this.position = (config.position || [0, 0, 0]).map(parseFloat); // [x, y, z]
+        this.position = config.position || [0, 0, 0];
+        this.position_eye = []; // position in eyespace
+        this.origin = config.origin || 'world';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
-        this.inner_radius = !isNaN(parseFloat(config.inner_radius)) ? parseFloat(config.inner_radius) : 0;
-        this.outer_radius = !isNaN(parseFloat(config.outer_radius)) ? parseFloat(config.outer_radius) : 0;
-
+        this.inner_radius = config.inner_radius || 0;
+        this.outer_radius = config.outer_radius || 0;
     }
 
     // Inject struct and calculate function
@@ -208,25 +211,51 @@ class PointLight extends Light {
         ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = ((this.outer_radius !== 0) && (this.outer_radius >= this.inner_radius));
     }
 
+    update () {
+        this.updateEyePosition();
+    }
+
+    updateEyePosition () {
+        if (this.origin === 'world') {
+            // For world origin, format is: [longitude, latitude, meters]
+
+            // Move light's world position into camera space
+            let [x, y] = Geo.latLngToMeters(this.position);
+            this.position_eye[0] = x - this.scene.camera.position_meters[0];
+            this.position_eye[1] = y - this.scene.camera.position_meters[1];
+            this.position_eye[2] = this.position[2] - this.scene.camera.position_meters[2];
+        }
+        if (this.origin === 'ground' || this.origin === 'camera') {
+            // For camera or ground origin, format is: [x, y, z] in meters by default, or pixels (with 'px' units)
+
+            // Light is in camera space by default
+            this.position_eye = StyleParser.convertUnits(this.position, { zoom: this.scene.zoom });
+
+            if (this.origin === 'ground') {
+                // Leave light's xy in camera space, but z needs to be moved relative to ground plane
+                this.position_eye[2] = this.position_eye[2] - this.scene.camera.position_meters[2];
+            }
+        }
+    }
+
     setupProgram (_program) {
         super.setupProgram(_program);
 
         _program.uniform('4f', `u_${this.name}.position`,
-            this.position[0] * this.scene.meters_per_pixel,
-            this.position[1] * this.scene.meters_per_pixel,
-            this.position[2] * this.scene.meters_per_pixel,
-            1);
+            this.position_eye[0], this.position_eye[1], this.position_eye[2], 1);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
             _program.uniform('1f', `u_${this.name}.attenuationExponent`, this.attenuation);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
-            _program.uniform('1f', `u_${this.name}.innerRadius`, this.inner_radius);
+            _program.uniform('1f', `u_${this.name}.innerRadius`,
+                StyleParser.convertUnits(this.inner_radius, { zoom: this.scene.zoom }));
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
-            _program.uniform('1f', `u_${this.name}.outerRadius`, this.outer_radius);
+            _program.uniform('1f', `u_${this.name}.outerRadius`,
+                StyleParser.convertUnits(this.outer_radius, { zoom: this.scene.zoom }));
         }
     }
 }
