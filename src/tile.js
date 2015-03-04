@@ -80,6 +80,7 @@ export default class Tile {
     }
 
     freeResources() {
+
         if (this != null && this.meshes != null) {
             for (var p in this.meshes) {
                 this.meshes[p].destroy();
