@@ -193,8 +193,18 @@ class PointLight extends Light {
         this.position_eye = []; // position in eyespace
         this.origin = config.origin || 'world';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
-        this.inner_radius = config.inner_radius || 0;
-        this.outer_radius = config.outer_radius || 0;
+
+        if (config.radius) {
+            if (Array.isArray(config.radius) && config.radius.length === 2) {
+                this.radius = config.radius;
+            }
+            else {
+                this.radius = [null, config.radius];
+            }
+        }
+        else {
+            this.radius = null;
+        }
     }
 
     // Inject struct and calculate function
@@ -207,8 +217,8 @@ class PointLight extends Light {
         super.inject();
 
         ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT'] = (this.attenuation !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS'] = (this.inner_radius !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = ((this.outer_radius !== 0) && (this.outer_radius >= this.inner_radius));
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS'] = (this.radius != null && this.radius[0] != null);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = (this.radius != null);
     }
 
     update () {
@@ -252,12 +262,12 @@ class PointLight extends Light {
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.innerRadius`,
-                StyleParser.convertUnits(this.inner_radius, { zoom: this.scene.zoom }));
+                StyleParser.convertUnits(this.radius[0], { zoom: this.scene.zoom }));
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.outerRadius`,
-                StyleParser.convertUnits(this.outer_radius, { zoom: this.scene.zoom }));
+                StyleParser.convertUnits(this.radius[1], { zoom: this.scene.zoom }));
         }
     }
 }
