@@ -510,9 +510,9 @@ Scene.prototype.render = function () {
     }
 
     // Update styles, camera, lights
+    this.camera.update();
     Object.keys(this.active_styles).forEach(i => this.styles[i].update());
     Object.keys(this.lights).forEach(i => this.lights[i].update());
-    this.camera.update();
 
     // Renderable tile list
     this.renderable_tiles = [];
