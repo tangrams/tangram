@@ -17,9 +17,9 @@ import FeatureSelection from './selection';
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
-var mat4 = glMatrix.mat4;
-var mat3 = glMatrix.mat3;
-var vec3 = glMatrix.vec3;
+let mat4 = glMatrix.mat4;
+let mat3 = glMatrix.mat3;
+let vec3 = glMatrix.vec3;
 
 // Global setup
 if (Utils.isMainThread) {
@@ -297,11 +297,12 @@ Scene.prototype.baseZoom = function (zoom) {
 Scene.prototype.preserve_tiles_within_zoom = 2;
 Scene.prototype.setZoom = function (zoom) {
     this.zooming = false;
+    let base = this.baseZoom(zoom);
 
-    // Schedule tiles for removal on integer zoom level change
-    if (this.baseZoom(zoom) !== this.baseZoom(this.last_zoom)) {
-        var below = this.baseZoom(zoom);
-        var above = this.baseZoom(zoom);
+    if (base !== this.baseZoom(this.last_zoom)) {
+        // Remove tiles outside a given range above and below current zoom
+        var below = base;
+        var above = base;
 
         log.trace(`scene.last_zoom: ${this.last_zoom}`);
         if (Math.abs(zoom - this.last_zoom) <= this.preserve_tiles_within_zoom) {
@@ -311,8 +312,15 @@ Scene.prototype.setZoom = function (zoom) {
 
         log.debug(`removing tiles outside range [${below}, ${above}]`);
         this.removeTilesOutsideZoomRange(below, above);
-    }
 
+        // Remove tiles outside current zoom that are still loading
+        this.removeTiles(tile => {
+            if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
+                log.debug(`removed ${tile.key} (was loading, but outside current zoom)`);
+                return true;
+            }
+        });
+    }
 
     this.last_zoom = this.zoom;
     this.zoom = zoom;
@@ -406,16 +414,24 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
     below = Math.min(below, this.findMaxZoom() || below);
     above = Math.min(above, this.findMaxZoom() || above);
 
-    var remove_tiles = [];
-    for (var t in this.tiles) {
-        var tile = this.tiles[t];
+    this.removeTiles(tile => {
         if (tile.coords.z < below || tile.coords.z > above) {
+            log.debug(`removed ${tile.key} (outside range [${below}, ${above}])`);
+            return true;
+        }
+    });
+};
+
+Scene.prototype.removeTiles = function (filter) {
+    let remove_tiles = [];
+    for (let t in this.tiles) {
+        let tile = this.tiles[t];
+        if (filter(tile)) {
             remove_tiles.push(t);
         }
     }
-    for (var r=0; r < remove_tiles.length; r++) {
-        var key = remove_tiles[r];
-        log.debug(`removed ${key} (outside range [${below}, ${above}])`);
+    for (let r=0; r < remove_tiles.length; r++) {
+        let key = remove_tiles[r];
         this.removeTile(key);
     }
 };
@@ -837,6 +853,10 @@ Scene.prototype.hasTile = function (key) {
 
 Scene.prototype.forgetTile = function (key) {
     delete this.tiles[key];
+
+    if (this.building && this.building.tiles) {
+        delete this.building.tiles[key];
+    }
 };
 
 Scene.prototype.findMaxZoom = function () {
