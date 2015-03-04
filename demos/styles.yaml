@@ -21,6 +21,15 @@ cameras:
         position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
+
+        # position: [-73.97297501564027, 40.76434821445407, 500]
+
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
+        # height: 500
+
+        # origin: camera
+
 lights:
     light1:
         type: ambient
@@ -28,21 +37,32 @@ lights:
 
     light2:
         type: point
-        position: [0, 0, -300]
-        # ambient: .3
-        diffuse: .5
+
+        ambient: .2
+        diffuse: .7
         specular: .2
         # diffuse: .3
         # attenuation: 1.5
+
         inner_radius: 500
         outer_radius: 700
+        # inner_radius: 200px
+        # outer_radius: 300px
 
-    light3:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .5
-        # specular: .2
-        ambient: .2
+        position: [-73.97297501564027, 40.76434821445407, 100]
+
+        # position: [0, 0, -300]
+        # origin: camera
+
+        # position: [0, 0, 300px]
+        # origin: ground
+
+    # light3:
+    #     type: directional
+    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
+    #     diffuse: .5
+    #     # specular: .2
+    #     ambient: .2
 
     # light4:
     #     type: spotlight
@@ -56,13 +76,13 @@ lights:
 
 styles:
 
-    polygons:
-        animated: true
-        # lighting: vertex
-        material:
-            diffuse: 1
-            specular: 1
-            shininess: 8
+    # polygons:
+    #     animated: true
+    #     # lighting: vertex
+    #     material:
+    #         diffuse: 1
+    #         specular: 1
+    #         shininess: 8
 
     transparent:
         extends: polygons
