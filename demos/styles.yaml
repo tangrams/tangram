@@ -539,8 +539,7 @@ layers:
             source: osm
             filter: buildings
 
-        # properties:
-        #     min_height: 50
+        # properties: { min_height: 150 }
         # filter: function () { return feature.height >= properties.min_height; }
         # filter: function () { return feature.name != null; }
         # filter: function () { return Math.random() < 0.25; }
