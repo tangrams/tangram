@@ -145,7 +145,7 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
 
 StyleParser.convertUnits = function(val, context, convert = true) {
     if (typeof val === 'string') {
-        var units = val.match(/([0-9.]+)([a-z]+)/);
+        var units = val.match(/([0-9.-]+)([a-z]+)/);
         if (units && units.length === 3) {
             val = parseFloat(units[1]);
             units = units[2];
