@@ -4,6 +4,9 @@ import GLSL from './gl/glsl';
 
 export default class Material {
     constructor (config) {
+
+        console.log("ADDING MATERIAL");
+        
         config = config || {};
 
         if (config.normal != null) {

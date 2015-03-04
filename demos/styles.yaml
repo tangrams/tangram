@@ -60,25 +60,25 @@ styles:
         animated: true
         # texcoords: true
         # lighting: vertex
-        material:
-            shininess: 8
-            normal:
-                texture: demos/images/normal-0011.jpg
-                mapping: uv
-                scale: 1.0
-            # diffuse: 1
-            diffuse: 
-                texture: demos/images/sem-0006.png
-                mapping: spheremap
-            ambient: 1
-            # ambient: 
-            #     texture: demos/images/sem-0008.jpg
-            #     mapping: spheremap
-            specular: 1
-            shininess: 0.1
-            # specular: 
-            #     texture: demos/images/sem-0008.jpg
-            #     mapping: spheremap
+        # material:
+        #     shininess: 8
+        #     # normal:
+        #     #     texture: demos/images/normal-0001.png
+        #     #     mapping: uv
+        #     #     scale: 1.0
+        #     # diffuse: 1
+        #     diffuse: 
+        #         texture: demos/images/sem-0013.jpg
+        #         mapping: spheremap
+        #     # ambient: 1
+        #     # ambient: 
+        #     #     texture: demos/images/sem-0013.jpg
+        #     #     mapping: spheremap
+        #     specular: 1
+        #     # specular: 
+        #     #     texture: demos/images/sem-0013.jpg
+        #     #     mapping: spheremap
+        #     shininess: 0.1
 
     transparent:
         extends: polygons
