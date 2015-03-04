@@ -192,10 +192,10 @@ class PointLight extends Light {
         this.struct_name = 'PointLight';
 
         this.position = (config.position || [0, 0, 0]).map(parseFloat); // [x, y, z]
-        this.attExp = !isNaN(parseFloat(config.attExp)) ? parseFloat(config.attExp) : 0;
-        this.innerR = !isNaN(parseFloat(config.innerR)) ? parseFloat(config.innerR) : 0;
-        this.outerR = !isNaN(parseFloat(config.outerR)) ? parseFloat(config.outerR) : 0;
-        
+        this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
+        this.inner_radius = !isNaN(parseFloat(config.inner_radius)) ? parseFloat(config.inner_radius) : 0;
+        this.outer_radius = !isNaN(parseFloat(config.outer_radius)) ? parseFloat(config.outer_radius) : 0;
+
     }
 
     // Inject struct and calculate function
@@ -207,9 +207,9 @@ class PointLight extends Light {
     inject() {
         super.inject();
 
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT'] = (this.attExp !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS'] = (this.innerR !== 0);
-        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = ((this.outerR !== 0) && (this.outerR >= this.innerR));
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT'] = (this.attenuation !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS'] = (this.inner_radius !== 0);
+        ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS'] = ((this.outer_radius !== 0) && (this.outer_radius >= this.inner_radius));
     }
 
     setupProgram (_program) {
@@ -222,15 +222,15 @@ class PointLight extends Light {
             1);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
-            _program.uniform('1f', `u_${this.name}.attExp`, this.attExp);
+            _program.uniform('1f', `u_${this.name}.attenuationExponent`, this.attenuation);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
-            _program.uniform('1f', `u_${this.name}.innerR`, this.innerR);
+            _program.uniform('1f', `u_${this.name}.innerRadius`, this.inner_radius);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
-            _program.uniform('1f', `u_${this.name}.outerR`, this.outerR);
+            _program.uniform('1f', `u_${this.name}.outerRadius`, this.outer_radius);
         }
     }
 }

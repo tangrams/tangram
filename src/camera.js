@@ -86,6 +86,7 @@ class PerspectiveCamera extends Camera {
         }
 
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
+        this.vanishing_point_skew = [];
 
         this.position_meters = null;
         this.viewMatrix = new Float64Array(16);
@@ -95,6 +96,7 @@ class PerspectiveCamera extends Camera {
         ShaderProgram.replaceTransform('camera', `
             uniform mat4 u_projection;
             uniform vec3 u_eye;
+            uniform vec2 u_vanishing_point;
 
             void cameraProjection (inout vec4 position) {
                 position = u_projection * position;
@@ -162,22 +164,20 @@ class PerspectiveCamera extends Camera {
         mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 1);
 
         // Convert vanishing point from pixels to viewport space
-        var vanishing_point = [
-            this.vanishing_point[0] / this.scene.css_size.width,
-            this.vanishing_point[1] / this.scene.css_size.height
-        ];
+        this.vanishing_point_skew[0] = this.vanishing_point[0] / this.scene.css_size.width;
+        this.vanishing_point_skew[1] = this.vanishing_point[1] / this.scene.css_size.height;
 
         // Adjust projection matrix to include vanishing point skew
-        this.projectionMatrix[8] = -vanishing_point[0]; // z column of x row, e.g. amount z skews x
-        this.projectionMatrix[9] = -vanishing_point[1]; // z column of y row, e.g. amount z skews y
+        this.projectionMatrix[8] = -this.vanishing_point_skew[0]; // z column of x row, e.g. amount z skews x
+        this.projectionMatrix[9] = -this.vanishing_point_skew[1]; // z column of y row, e.g. amount z skews y
 
         // Translate geometry into the distance so that camera is appropriate height above ground
         // Additionally, adjust xy to compensate for any vanishing point skew, e.g. move geometry so that the displayed g
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
         mat4.translate(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                viewport_height/2 * this.scene.view_aspect * -vanishing_point[0],
-                viewport_height/2 * -vanishing_point[1],
+                viewport_height/2 * this.scene.view_aspect * -this.vanishing_point_skew[0],
+                viewport_height/2 * -this.vanishing_point_skew[1],
                 0
             )
         );
@@ -194,6 +194,7 @@ class PerspectiveCamera extends Camera {
     setupProgram(program) {
         program.uniform('Matrix4fv', 'u_projection', false, this.projectionMatrix);
         program.uniform('3f', 'u_eye', 0, 0, this.position_meters[2]);
+        program.uniform('2fv', 'u_vanishing_point', this.vanishing_point_skew);
     }
 
 }
@@ -220,6 +221,7 @@ class IsometricCamera extends Camera {
         ShaderProgram.replaceTransform('camera', `
             uniform mat4 u_projection;
             uniform vec3 u_eye;
+            uniform vec2 u_vanishing_point;
 
             void cameraProjection (inout vec4 position) {
                 position = u_projection * position;
@@ -264,6 +266,7 @@ class IsometricCamera extends Camera {
         var viewport_height = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
         program.uniform('3f', 'u_eye', 0, 0, viewport_height);
         // program.uniform('3f', 'u_eye', viewport_height * this.axis.x, viewport_height * this.axis.y, viewport_height);
+        program.uniform('2f', 'u_vanishing_point', 0, 0);
     }
 
 }

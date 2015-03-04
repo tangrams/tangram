@@ -3,17 +3,17 @@ struct SpotLight {
     vec4 diffuse;
     vec4 specular;
     vec4 position;
-    
+
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
-    float attExp;
+    float attenuationExponent;
 #endif
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-    float innerR;
+    float innerRadius;
 #endif
 
 #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-    float outerR;
+    float outerRadius;
 #endif
 
     vec3 direction;
@@ -35,17 +35,17 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
     float attenuation = 1.0;
     #ifdef TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT
         float Rin = 1.0;
-        float e = _light.attExp;
+        float e = _light.attenuationExponent;
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-            Rin = _light.innerR;
+            Rin = _light.innerRadius;
         #endif
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-            float Rdiff = _light.outerR-Rin;
+            float Rdiff = _light.outerRadius-Rin;
             float d = clamp(max(0.0,dist-Rin)/Rdiff, 0.0, 1.0);
-            attenuation = 1.0-(pow(d,e)); 
-        #else 
+            attenuation = 1.0-(pow(d,e));
+        #else
             // If no outer is provide behaves like:
             // https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
             float d = max(0.0,dist-Rin)/Rin+1.0;
@@ -55,12 +55,12 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
         float Rin = 0.0;
 
         #ifdef TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS
-            Rin = _light.innerR;
+            Rin = _light.innerRadius;
             #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-                float Rdiff = _light.outerR-Rin;
+                float Rdiff = _light.outerRadius-Rin;
                 float d = clamp(max(0.0,dist-Rin)/Rdiff, 0.0, 1.0);
-                attenuation = 1.0-d*d; 
-            #else 
+                attenuation = 1.0-d*d;
+            #else
                 // If no outer is provide behaves like:
                 // https://imdoingitwrong.wordpress.com/2011/01/31/light-attenuation/
                 float d = max(0.0,dist-Rin)/Rin+1.0;
@@ -68,20 +68,20 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
             #endif
         #else
             #ifdef TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS
-                float d = clamp(dist/_light.outerR, 0.0, 1.0);
-                attenuation = 1.0-d*d; 
+                float d = clamp(dist/_light.outerRadius, 0.0, 1.0);
+                attenuation = 1.0-d*d;
             #else
                 attenuation = 1.0;
             #endif
         #endif
     #endif
-    
+
     // spotlight attenuation factor
     float spotAttenuation = 0.0;
 
     // See if point on surface is inside cone of illumination
     float spotDot = clamp(dot(-VP, normalize(_light.direction)), 0.0, 1.0);
-    
+
     if (spotDot >= _light.spotCosCutoff) {
         spotAttenuation = pow(spotDot, _light.spotExponent);
     }
@@ -90,7 +90,7 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
         g_light_accumulator_ambient += _light.ambient * attenuation * spotAttenuation;
     #endif
 
-    #ifdef TANGRAM_MATERIAL_DIFFUSE 
+    #ifdef TANGRAM_MATERIAL_DIFFUSE
         g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation * spotAttenuation;
     #endif
 

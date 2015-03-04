@@ -62,7 +62,7 @@ void main (void) {
 
     #if defined(LIGHTING_ENVIRONMENT)
         // Replace object color with environment map
-        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, v_normal, u_env_map).rgb;
+        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, v_normal, u_vanishing_point, u_env_map).rgb;
     #endif
 
     // Modify color and material properties before lighting

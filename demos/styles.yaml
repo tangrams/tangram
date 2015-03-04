@@ -33,9 +33,9 @@ lights:
         diffuse: 0.5
         specular: .2
         # diffuse: .3
-        # attExp: 1.5
-        innerR: 500
-        outerR: 700
+        # attenuation: 1.5
+        inner_radius: 500
+        outer_radius: 700
 
     light3:
         type: directional
@@ -163,7 +163,7 @@ styles:
             defines:
                 LIGHTING_ENVIRONMENT: true
             uniforms:
-                u_env_map: demos/images/LitSphere_test_02.jpg
+                u_env_map: demos/images/sunset.jpg
             transforms:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
