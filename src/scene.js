@@ -10,7 +10,7 @@ import Texture from './gl/texture';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
-import Lighting from './light';
+import Light from './light';
 import Tile from './tile';
 import TileSource from './tile_source';
 import FeatureSelection from './selection';
@@ -18,6 +18,7 @@ import FeatureSelection from './selection';
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
 let mat4 = glMatrix.mat4;
+let mat3 = glMatrix.mat3;
 let vec3 = glMatrix.vec3;
 
 // Global setup
@@ -52,6 +53,7 @@ export default function Scene(config_source, options) {
     this.config_serialized = null;
 
     this.styles = null;
+    this.active_styles = {};
 
     this.building = null;                           // tracks current scene building state (tiles being built, etc.)
     this.dirty = true;                              // request a redraw
@@ -70,6 +72,9 @@ export default function Scene(config_source, options) {
     this.panning = false;
     this.container = options.container;
 
+    this.camera = null;
+    this.lights = null;
+
     // Model-view matrices
     // 64-bit versions are for CPU calcuations
     // 32-bit versions are downsampled and sent to GPU
@@ -77,6 +82,8 @@ export default function Scene(config_source, options) {
     this.modelMatrix32 = new Float32Array(16);
     this.modelViewMatrix = new Float64Array(16);
     this.modelViewMatrix32 = new Float32Array(16);
+    this.normalMatrix = new Float64Array(9);
+    this.normalMatrix32 = new Float32Array(9);
 
     this.selection = null;
     this.texture_listener = null;
@@ -303,13 +310,13 @@ Scene.prototype.setZoom = function (zoom) {
             above += this.preserve_tiles_within_zoom;
         }
 
-        log.debug(`removing tiles outside range [${below}, ${above}]`);
+        log.trace(`removing tiles outside range [${below}, ${above}]`);
         this.removeTilesOutsideZoomRange(below, above);
 
         // Remove tiles outside current zoom that are still loading
         this.removeTiles(tile => {
             if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
-                log.debug(`removed ${tile.key} (was loading, but outside current zoom)`);
+                log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
                 return true;
             }
         });
@@ -409,7 +416,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
 
     this.removeTiles(tile => {
         if (tile.coords.z < below || tile.coords.z > above) {
-            log.debug(`removed ${tile.key} (outside range [${below}, ${above}])`);
+            log.trace(`removed ${tile.key} (outside range [${below}, ${above}])`);
             return true;
         }
     });
@@ -510,61 +517,104 @@ Scene.prototype.update = function () {
     return true;
 };
 
-Scene.prototype.resetFrame = function ({ depth_test, cull_face, alpha_blend } = {}) {
-    if (!this.initialized) {
+Scene.prototype.render = function () {
+    var gl = this.gl;
+
+    // Map transforms
+    if (!this.center_meters) {
         return;
     }
 
-    // Reset frame state
-    var gl = this.gl;
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    // Update styles, camera, lights
+    this.camera.update();
+    Object.keys(this.active_styles).forEach(i => this.styles[i].update());
+    Object.keys(this.lights).forEach(i => this.lights[i].update());
 
-    // Defaults
-    // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-    depth_test = (depth_test === false) ? false : true;
-    cull_face = (cull_face === false) ? false : true;
-    alpha_blend = (alpha_blend !== true) ? false : true;
+    // Renderable tile list
+    this.renderable_tiles = [];
+    for (var t in this.tiles) {
+        var tile = this.tiles[t];
+        if (tile.visible && tile.loaded) {
+            this.renderable_tiles.push(tile);
+        }
+    }
+    this.renderable_tiles_count = this.renderable_tiles.length;
 
-    if (depth_test !== false) {
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
-    }
-    else {
-        gl.disable(gl.DEPTH_TEST);
+    // Find min/max order for current tiles
+    this.order = this.calcOrderRange(this.renderable_tiles);
+
+    // Render main pass
+    this.render_count = this.renderPass();
+
+    // Render selection pass (if needed)
+    if (this.selection.pendingRequests()) {
+        if (this.panning) {
+            return;
+        }
+
+        this.selection.bind();                  // switch to FBO
+        this.renderPass(
+            'selection_program',                // render w/alternate program
+            { allow_alpha_blend: false });
+        this.selection.read();                  // read results from selection buffer
+
+        // Reset to screen buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    if (cull_face !== false) {
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
+    if (this.render_count !== this.last_render_count) {
+        log.info(`Scene: rendered ${this.render_count} primitives`);
     }
-    else {
-        gl.disable(gl.CULL_FACE);
-    }
+    this.last_render_count = this.render_count;
 
-    if (alpha_blend !== false) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    }
-    else {
-        gl.disable(gl.BLEND);
-    }
+    return true;
 };
 
-// Find min/max order for a set of tiles
-Scene.prototype.calcOrderRange = function (tiles) {
-    let order = { min: Infinity, max: -Infinity };
-    for (let t of tiles) {
-        if (t.order.min < order.min) {
-            order.min = t.order.min;
+
+// Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
+// Called both for main render pass, and for secondary passes like selection buffer
+Scene.prototype.renderPass = function (program_key = 'program', { allow_alpha_blend } = {}) {
+    let styles;
+    let count = 0; // how many primitives were rendered
+
+    // optionally force alpha off (e.g. for selection pass)
+    allow_alpha_blend = (allow_alpha_blend == null) ? true : allow_alpha_blend;
+
+    this.clearFrame({ clear_color: true, clear_depth: true });
+
+    // Opaque styles: depth test on, depth write on, blending off
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
+    this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+    count += this.renderStyles(styles, program_key);
+
+    // Transparent styles: depth test off, depth write on, custom blending
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+    count += this.renderStyles(styles, program_key);
+
+    styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
+    this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+    count += this.renderStyles(styles, program_key);
+
+    // Overlay styles: depth test off, depth write off, blending on
+    styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
+    this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+    count += this.renderStyles(styles, program_key);
+
+    return count;
+};
+
+Scene.prototype.renderStyles = function (styles, program_key) {
+    let count = 0;
+    for (let style of styles) {
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            continue;
         }
-        if (t.order.max > order.max) {
-            order.max = t.order.max;
-        }
+        count += this.renderStyle(style, program);
     }
-    order.max += 1;
-    order.range = order.max - order.min;
-    return order;
+    return count;
 };
 
 Scene.prototype.renderStyle = function (style, program) {
@@ -595,7 +645,9 @@ Scene.prototype.renderStyle = function (style, program) {
                 program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
 
                 this.camera.setupProgram(program);
-                this.lighting.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
             }
 
             // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
@@ -614,6 +666,10 @@ Scene.prototype.renderStyle = function (style, program) {
             mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
             program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
 
+            // Normal matrix - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+
             // Render tile
             tile.meshes[style].render();
             render_count += tile.meshes[style].geometry_count;
@@ -623,82 +679,102 @@ Scene.prototype.renderStyle = function (style, program) {
     return render_count;
 };
 
-Scene.prototype.render = function () {
-    var gl = this.gl;
-
-    this.resetFrame({ alpha_blend: true });
-
-    // Map transforms
-    if (!this.center_meters) {
+Scene.prototype.clearFrame = function ({ clear_color, clear_depth } = {}) {
+    if (!this.initialized) {
         return;
     }
 
-    // Update camera & lights
-    this.camera.update();
-    this.lighting.update();
+    // Defaults
+    clear_color = (clear_color === false) ? false : true; // default true
+    clear_depth = (clear_depth === false) ? false : true; // default true
 
-    // Renderable tile list
-    this.renderable_tiles = [];
-    for (var t in this.tiles) {
-        var tile = this.tiles[t];
-        if (tile.visible && tile.loaded) {
-            this.renderable_tiles.push(tile);
-        }
-    }
-    this.renderable_tiles_count = this.renderable_tiles.length;
+    // Reset frame state
+    let gl = this.gl;
 
-    // Find min/max order for current tiles
-    this.order = this.calcOrderRange(this.renderable_tiles);
-
-    // Render main pass - tiles grouped by rendering style (GL program)
-    this.render_count = 0;
-    for (var style in this.styles) {
-        // Per-frame style updates/animations
-        // Called even if the style isn't rendered by any current tiles, so time-based animations, etc. continue
-        this.styles[style].update();
-
-        var program = this.styles[style].program;
-        if (!program || !program.compiled) {
-            continue;
-        }
-
-        this.render_count += this.renderStyle(style, program);
+    if (clear_color) {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
     }
 
-    // Render selection pass (if needed)
-    if (this.selection.pendingRequests()) {
-        if (this.panning) {
-            return;
-        }
-
-        // Switch to FBO
-        this.selection.bind();
-        this.resetFrame({ alpha_blend: false });
-
-        for (style in this.styles) {
-            program = this.styles[style].selection_program;
-            if (!program || !program.compiled) {
-                continue;
-            }
-
-            this.renderStyle(style, program);
-        }
-
-        // Read results from selection buffer
-        this.selection.read();
-
-        // Reset to screen buffer
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    if (clear_depth) {
+        gl.depthMask(true); // always clear depth if requested, even if depth write will be turned off
     }
 
-    if (this.render_count !== this.last_render_count) {
-        log.info(`Scene: rendered ${this.render_count} primitives`);
+    if (clear_color || clear_depth) {
+        let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
+        gl.clear(mask);
     }
-    this.last_render_count = this.render_count;
-
-    return true;
 };
+
+Scene.prototype.setRenderState = function ({ depth_test, depth_write, cull_face, alpha_blend } = {}) {
+    if (!this.initialized) {
+        return;
+    }
+
+    // Defaults
+    // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
+    depth_test = (depth_test === false) ? false : true;         // default true
+    depth_write = (depth_write === false) ? false : true;       // default true
+    cull_face = (cull_face === false) ? false : true;           // default true
+    alpha_blend = (alpha_blend != null) ? alpha_blend : false;  // default false
+
+    // Reset frame state
+    let gl = this.gl;
+
+    if (depth_test) {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+    }
+    else {
+        gl.disable(gl.DEPTH_TEST);
+    }
+
+    gl.depthMask(depth_write);
+
+    if (cull_face) {
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
+    }
+    else {
+        gl.disable(gl.CULL_FACE);
+    }
+
+    if (alpha_blend) {
+        gl.enable(gl.BLEND);
+
+        // Traditional blending
+        if (alpha_blend === true) {
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        // Additive blending
+        else if (alpha_blend === 'add') {
+            gl.blendFunc(gl.ONE, gl.ONE);
+        }
+        // Multiplicative blending
+        else if (alpha_blend === 'multiply') {
+            gl.blendFunc(gl.ZERO, gl.SRC_COLOR);
+        }
+    }
+    else {
+        gl.disable(gl.BLEND);
+    }
+};
+
+// Find min/max order for a set of tiles
+Scene.prototype.calcOrderRange = function (tiles) {
+    let order = { min: Infinity, max: -Infinity };
+    for (let t of tiles) {
+        if (t.order.min < order.min) {
+            order.min = t.order.min;
+        }
+        if (t.order.max > order.max) {
+            order.max = t.order.max;
+        }
+    }
+    order.max += 1;
+    order.range = order.max - order.min;
+    return order;
+};
+
 
 // Request feature selection at given pixel. Runs async and returns results via a promise.
 Scene.prototype.getFeatureAt = function (pixel) {
@@ -880,7 +956,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+        log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
     }
     else {
         var cached = this.tiles[tile.key];
@@ -943,7 +1019,7 @@ Scene.prototype.removeTile = function (key) {
     if (!this.initialized) {
         return;
     }
-    log.debug(`tile unload for ${key}`);
+    log.trace(`tile unload for ${key}`);
 
     if (this.zooming === true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
@@ -1031,7 +1107,7 @@ Scene.prototype.preProcessSceneConfig = function () {
         this.config.cameras[camera_names[0]].active = true;
     }
 
-    this.config.lighting = this.config.lighting || {}; // ensure lighting object
+    this.config.lights = this.config.lights || {}; // ensure lights object
 
     return StyleManager.preload(this.config.styles);
 };
@@ -1126,14 +1202,19 @@ Object.defineProperty(Scene.prototype, '_active_camera', {
 });
 
 // Create lighting
-Scene.prototype.createLighting = function () {
-    this.lighting = Lighting.create(this, this.config.lighting);
+Scene.prototype.createLights = function () {
+    this.lights = {};
+    for (let i in this.config.lights) {
+        this.config.lights[i].name = i;
+        this.lights[i] = Light.create(this, this.config.lights[i]);
+    }
+    Light.inject(this.lights);
 };
 
 // Update scene config
 Scene.prototype.updateConfig = function () {
     this.createCamera();
-    this.createLighting();
+    this.createLights();
     this.loadDataSources();
     this.setSourceMax();
 
