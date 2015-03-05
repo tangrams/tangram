@@ -9,5 +9,5 @@ breathe:
             globals: |
                 uniform float u_breathe_scale;
                 uniform float u_breathe_speed;
-            vertex: |
+            position: |
                 position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time * u_breathe_speed)));

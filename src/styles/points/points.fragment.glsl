@@ -15,7 +15,11 @@ void main (void) {
     }
     color.rgb *= (1. - smoothstep(.25, 1., len)) + 0.5;
 
-    #pragma tangram: fragment
+    #pragma tangram: color
+    #pragma tangram: filter
+
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: fragment
 
     gl_FragColor = color;
 }
