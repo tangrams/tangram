@@ -90,6 +90,7 @@ export default class Tile {
     }
 
     destroy() {
+        this.workerMessage('removeTile', this.key);
         this.freeResources();
         this.worker = null;
     }
@@ -277,10 +278,6 @@ export default class Tile {
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
-    }
-
-    remove() {
-        this.workerMessage('removeTile', this.key);
     }
 
     printDebug () {

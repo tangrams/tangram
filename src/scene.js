@@ -952,8 +952,7 @@ Scene.prototype.removeTile = function (key) {
     var tile = this.tiles[key];
 
     if (tile != null) {
-        tile.freeResources();
-        tile.remove(this);
+        tile.destroy();
     }
 
     this.forgetTile(tile.key);
