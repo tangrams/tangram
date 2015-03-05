@@ -31,7 +31,9 @@ void main() {
 
     vec4 position = u_modelView * vec4(a_position, 1.);
 
-    #pragma tangram: vertex
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: vertex
+    #pragma tangram: position
 
     v_color = a_color;
     v_texcoord = a_texcoord;

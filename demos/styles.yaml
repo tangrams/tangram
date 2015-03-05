@@ -11,6 +11,7 @@ cameras:
     isometric:
         type: isometric
         # axis: [1, .5]
+        # active: true
 
     flat:
         type: flat
@@ -20,32 +21,77 @@ cameras:
         position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
-lighting:
-    type: point
-    position: [0, 0, 200]
-    color: [1, 1, 1]
-    # ambient: 0.5
-    backlight: true
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
 
-    # type: directional
-    # direction: [-1, 0, -.5]
-    # color: [1, 1, 1]
-    # ambient: 0.5
+        # position: [-73.97297501564027, 40.76434821445407, 500]
 
-    # type: spotlight
-    # position: [0, 0, 500]
-    # direction: [0, 0, -1]
-    # inner_angle: 20
-    # outer_angle: 25
-    # color: [1, 1, 1]
-    # ambient: 0.2
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
+        # height: 500
+
+        # origin: camera
+
+lights:
+    light1:
+        type: ambient
+        ambient: .3
+
+    light2:
+        type: point
+
+        ambient: .2
+        diffuse: red #.7
+        specular: .2
+        # diffuse: .3
+        # attenuation: 1.5
+
+        # radius: 700
+        radius: [500, 700]
+        # radius: [200px, 300px]
+
+        position: [-73.97297501564027, 40.76434821445407, 100]
+
+        # position: [0, 0, -300]
+        # origin: camera
+
+        # position: [0, 0, 300px]
+        # origin: ground
+
+    light3:
+        type: directional
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
+        diffuse: .5
+        # specular: .2
+        ambient: .2
+
+    # light4:
+    #     type: spotlight
+    #     position: [0, 0, 200]
+    #     diffuse: 1
+    #     # direction: [1, 0, 1]
+    #     angle: 45
+    #     exponent: 0.2
+    #     radius: 1000.0
+    #     cutoff: 0.0
 
 styles:
 
     # polygons:
-    #     texcoords: true
-    #     texture:
-    #         url: demos/images/matball01.jpg
+    #     animated: true
+    #     # lighting: vertex
+    #     material:
+    #         ambient: white
+    #         diffuse: white
+    #         specular: 1
+    #         shininess: 8
+
+    transparent:
+        extends: polygons
+        # animated: true
+        blend: multiply
+        # material:
+        #     diffuse: 0 #0.3
+        #     specular: [1, 0, 0]
+        #     shininess: 8
 
     water:
         extends: polygons
@@ -56,18 +102,7 @@ styles:
             transforms:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
-                    url: demos/shaders/noise.glsl
-
-    formica:
-        extends: polygons
-        shaders:
-            defines:
-                EFFECT_NOISE_TEXTURE: true
-            transforms:
-                globals:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
+                color:
                     url: demos/shaders/noise.glsl
 
     colorbleed:
@@ -77,15 +112,19 @@ styles:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
-                fragment: |
-                    color .rgb+= lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                # fragment: |
+                color: |
+                    //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    color .rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
-                        color.r += lighting.r * sin(u_time / 3.0);
+                        //color.r += lighting.r * sin(u_time / 3.0);
+                        color.r += sin(u_time / 3.0);
                     #endif
 
     rainbow:
         extends: polygons
         animated: true
+        lighting: false
         shaders:
             transforms:
                 globals: |
@@ -94,7 +133,7 @@ styles:
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
-                fragment: |
+                color: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
@@ -106,7 +145,7 @@ styles:
         animated: true
         shaders:
             transforms:
-                vertex: |
+                position: |
                     // Elevator buildings
                     if (position.z > 0.01) {
                         position.z *= (sin(position.z + u_time) + 1.0);
@@ -123,11 +162,12 @@ styles:
 
     envmap:
         extends: polygons
+        lighting: false
         shaders:
             defines:
                 LIGHTING_ENVIRONMENT: true
             uniforms:
-                u_env_map: demos/images/LitSphere_test_02.jpg
+                u_env_map: demos/images/sunset.jpg
             transforms:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
@@ -143,7 +183,7 @@ styles:
     points:
         shaders:
             transforms:
-                fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
         # extends: polygons
@@ -181,18 +221,22 @@ styles:
         #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
 
     # text:
+    #     selection: true
     #     animated: true
     #     shaders:
     #         transforms:
-    #             vertex:
-    #                 shape.z *= u_time;
+    #             position: |
+    #                 shape.z = (shape.z + 0.01) * u_time * .75;
+    #             # color: |
+    #             #     color.rgb = vec3(v_texcoord.xy, 0.);
+    #             #     //color.a = 1.;
 
     uv_test:
         extends: polygons
         texcoords: true
         shaders:
             transforms:
-                fragment: |
+                color: |
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
@@ -279,7 +323,7 @@ styles:
             uniforms:
                 u_texture: demos/images/ghost_strip.gif
             transforms:
-                fragment: |
+                color: |
                     float number_of_frames = 2.;
                     float frames_per_second = 2.;
 
@@ -485,8 +529,7 @@ layers:
             source: osm
             filter: buildings
 
-        # properties:
-        #     min_height: 50
+        # properties: { min_height: 150 }
         # filter: function () { return feature.height >= properties.min_height; }
         # filter: function () { return feature.name != null; }
         # filter: function () { return Math.random() < 0.25; }
@@ -503,6 +546,10 @@ layers:
             # color: Style.color.pseudoRandomGrayscale()
             color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+
+        # blend:
+        #     filter: { height: { min: 100 } }
+        #     style: { name: transparent, color: yellow }
 
         colors:
             name:
@@ -522,7 +569,7 @@ layers:
             source: osm
             filter: roads
 
-        filter: { name: true }
+        filter: { name: true, $zoom: { min: 14 } }
         style:
             name: text
             visible: false
@@ -535,7 +582,7 @@ layers:
             #     stroke: black
 
         major_road:
-            filter: { kind: major_road }
+            filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
                     size: 14px
@@ -543,7 +590,7 @@ layers:
                     fill: darkred
                     stroke: white
         minor_road:
-            filter: { kind: minor_road, railway: false }
+            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
                     size: 12px
@@ -558,7 +605,7 @@ layers:
             source: osm
             filter: pois
 
-        filter: { name: true }
+        filter: { name: true, $zoom: { min: 17 } }
 
         style:
             # name: points
@@ -567,7 +614,7 @@ layers:
             font:
                 size: 12px
                 typeface: Helvetica
-                fill: white
+                fill: [.9, .9, .1]
                 stroke: black
 
             name: text
@@ -588,12 +635,12 @@ layers:
             interactive: true
 
         # z17:
-        #     filter: { scene.zoom: { min: 17, max: 18 } }
+        #     filter: { $zoom: { min: 17, max: 18 } }
         #     style:
         #         scale: 3
 
         # z18:
-        #     filter: { scene.zoom: { min: 18 } }
+        #     filter: { $zoom: { min: 18 } }
         #     style:
         #         size: [64, 64] #px
 
@@ -625,8 +672,8 @@ layers:
 
             name: text
             font:
-                size: 14px
-                typeface: Futura
-                fill: [1, 0, 0]
-                stroke: [1, 1, 1]
+                size: 12px
+                typeface: Courier
+                fill: black
+                stroke: white
 

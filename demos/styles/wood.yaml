@@ -40,5 +40,6 @@ wood:
                     );
                 }
 
-            fragment: |
-                color.rgb = wood(v_world_position.xyz) * lighting;
+            # fragment: |
+            color: |
+                color.rgb = wood(v_world_position.xyz);

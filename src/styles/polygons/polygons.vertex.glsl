@@ -10,12 +10,15 @@ uniform float u_meters_per_pixel;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
+uniform mat3 u_normalMatrix;
 
 attribute vec3 a_position;
 attribute vec3 a_normal;
 attribute vec4 a_color;
 attribute float a_layer;
 
+varying vec4 v_position;
+varying vec3 v_normal;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
@@ -45,15 +48,13 @@ varying vec4 v_world_position;
     varying vec4 v_selection_color;
 #endif
 
-#if !defined(LIGHTING_VERTEX)
-    varying vec4 v_position;
-    varying vec3 v_normal;
-#else
-    varying vec3 v_lighting;
+#if defined(TANGRAM_LIGHTING_VERTEX)
+    varying vec4 v_lighting;
 #endif
 
 #pragma tangram: globals
 #pragma tangram: camera
+#pragma tangram: material
 #pragma tangram: lighting
 
 void main() {
@@ -69,9 +70,6 @@ void main() {
         v_selection_color = a_selection_color;
     #endif
 
-    // Position
-    vec4 position = u_modelView * vec4(a_position, 1.);
-
     // Texture UVs
     #if defined(TEXTURE_COORDS)
         v_texcoord = a_texcoord;
@@ -83,18 +81,30 @@ void main() {
         v_world_position.xy -= world_position_anchor;
     #endif
 
-    // Style-specific vertex transformations
-    #pragma tangram: vertex
+    // Position
+    vec4 position = u_modelView * vec4(a_position, 1.);
+
+    // TODO: legacy, replace in existing styles
+    // #pragma tangram: vertex
+    #pragma tangram: position
+
+    v_position = position;
+    v_normal = normalize(u_normalMatrix * a_normal);
+    v_color = a_color;
 
     // Shading
-    #if defined(LIGHTING_VERTEX)
-        v_color = a_color;
-        v_lighting = calculateLighting(position, a_normal, vec3(1.));
-    #else
-        // Send to fragment shader for per-pixel lighting
-        v_position = position;
-        v_normal = a_normal;
-        v_color = a_color;
+    #if defined(TANGRAM_LIGHTING_VERTEX)
+        vec4 color = a_color;
+        vec3 normal = a_normal;
+
+        // Modify normal before lighting
+        #pragma tangram: normal
+
+        // Modify color and material properties before lighting
+        #pragma tangram: color
+
+        v_lighting = calculateLighting(position.xyz, normal, color);
+        v_color = color;
     #endif
 
     // Camera
