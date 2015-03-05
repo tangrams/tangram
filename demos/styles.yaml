@@ -74,15 +74,24 @@ lights:
     #     cutoff: 0.0
 
 styles:
-
-    # polygons:
-    #     animated: true
-    #     # lighting: vertex
-    #     material:
-    #         ambient: white
-    #         diffuse: white
-    #         specular: 1
-    #         shininess: 8
+    polygons:
+        animated: true
+        # lighting: vertex
+        material:
+            # normal:
+            #     texture: demos/images/normal-0001.jpg
+            #     mapping: planar
+            #     scale: 0.01
+            ambient:
+                texture: demos/images/grid-0001.jpg
+                mapping: planar
+                scale: 0.001
+            diffuse: white
+                # texture: demos/images/grid-0002.jpg
+                # mapping: triplanar
+                # scale: 0.01
+            specular: 1
+            shininess: 8
 
     transparent:
         extends: polygons

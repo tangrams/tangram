@@ -9,17 +9,17 @@ export default class Material {
         config = config || {};
 
         if (config.normal != null) {
-            this.normalTexture = config.normal.texture != null ? config.normal.texture : null;
-            this.normalMapping = config.normal.mapping != null ? config.normal.mapping : 'triplanar';
-            this.normalScale = GLSL.expandVec3(config.normal.scale != null ? config.normal.scale : 1.0);
-            this.normalAmount = config.normal.amount != null ? config.normal.amount : 1.0;
+            this.normalTexture = config.normal.texture;
+            this.normalMapping = config.normal.mapping || 'triplanar';
+            this.normalScale = GLSL.expandVec3(config.normal.scale != null ? config.normal.scale : 1);
+            this.normalAmount = config.normal.amount != null ? config.normal.amount : 1;
         }
         
 		if (config.emission && config.emission.texture) {
 			this.emissionTexture = config.emission.texture;
-			this.emissionMapping = config.emission.mapping != null ? config.emission.mapping : 'spheremap';
-			this.emissionScale = GLSL.expandVec4(config.emission.scale != null ? config.emission.scale : 1.0);
-			this.emissionAmount = GLSL.expandVec4(config.emission.amount != null ? config.emission.amount : 1.0);
+			this.emissionMapping = config.emission.mapping || 'spheremap';
+			this.emissionScale = GLSL.expandVec3(config.emission.scale != null ? config.emission.scale : 1);
+			this.emissionAmount = GLSL.expandVec4(config.emission.amount != null ? config.emission.amount : 1);
 		} else {
 			if (config.emission == null || typeof config.emission === 'number') {
            		this.emission = GLSL.expandVec4(config.emission || 0);
@@ -30,9 +30,9 @@ export default class Material {
         
         if (config.ambient && config.ambient.texture) {
 			this.ambientTexture = config.ambient.texture;
-			this.ambientMapping = config.ambient.mapping != null ? config.ambient.mapping : 'spheremap';
-			this.ambientScale = GLSL.expandVec4(config.ambient.scale != null ? config.ambient.scale : 1.0);
-			this.ambientAmount = GLSL.expandVec4(config.ambient.amount != null ? config.ambient.amount : 1.0);
+			this.ambientMapping = config.ambient.mapping || 'spheremap';
+			this.ambientScale = GLSL.expandVec3(config.ambient.scale != null ? config.ambient.scale : 1);
+			this.ambientAmount = GLSL.expandVec4(config.ambient.amount != null ? config.ambient.amount : 1);
         } else {
 			if (config.ambient == null || typeof config.ambient === 'number') {
             	this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
@@ -42,10 +42,10 @@ export default class Material {
 		}
 
         if (config.diffuse && config.diffuse.texture) {
-			this.diffuseTexture = config.diffuse.texture != null ? config.diffuse.texture : null;
-			this.diffuseMapping = config.diffuse.mapping != null ? config.diffuse.mapping : 'spheremap';
-			this.diffuseScale = GLSL.expandVec4(config.diffuse.scale != null ? config.diffuse.scale : 1.0);
-			this.diffuseAmount = GLSL.expandVec4(config.diffuse.amount != null ? config.diffuse.amount : 1.0);
+			this.diffuseTexture = config.diffuse.texture;
+			this.diffuseMapping = config.diffuse.mapping || 'spheremap';
+			this.diffuseScale = GLSL.expandVec3(config.diffuse.scale != null ? config.diffuse.scale : 1);
+			this.diffuseAmount = GLSL.expandVec4(config.diffuse.amount != null ? config.diffuse.amount : 1);
         } else {
 			if (config.diffuse == null || typeof config.diffuse === 'number') {
             	this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
@@ -55,10 +55,10 @@ export default class Material {
 		}
 
         if (config.specular && config.specular.texture) {
-			this.specularTexture = config.specular.texture != null ? config.specular.texture : null;
-			this.specularMapping = config.specular.mapping != null ? config.specular.mapping : 'spheremap';
-			this.specularScale = GLSL.expandVec4(config.specular.scale != null ? config.specular.scale : 1.0);
-			this.specularAmount = GLSL.expandVec4(config.specular.amount != null ? config.specular.amount : 1.0);
+			this.specularTexture = config.specular.texture;
+			this.specularMapping = config.specular.mapping || 'spheremap';
+			this.specularScale = GLSL.expandVec3(config.specular.scale != null ? config.specular.scale : 1);
+			this.specularAmount = GLSL.expandVec4(config.specular.amount != null ? config.specular.amount : 1);
         } else {
 			if (config.specular == null || typeof config.specular === 'number') {
             	this.specular = GLSL.expandVec4(config.specular || 0);
@@ -72,7 +72,7 @@ export default class Material {
 
     inject (style) {
 
-        if (this.normalTexture != null) {
+        if (this.normalTexture) {
             style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE'] = true;
             if (this.normalMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_UV'] = true;
@@ -149,42 +149,42 @@ export default class Material {
 
     setupProgram (_program) {
 
-        if (this.normalTexture != null ){
+        if (this.normalTexture){
             _program.setTextureUniform('u_material_normal_texture', this.normalTexture);
             _program.uniform('3fv', 'u_material.normalScale', this.normalScale);
             _program.uniform('1f', 'u_material.normalAmount', this.normalAmount);
         }
 
-        if (this.emissionTexture != null ){
+        if (this.emissionTexture){
             _program.setTextureUniform('u_material_emission_texture', this.emissionTexture);
-            _program.uniform('4fv', 'u_material.emissionScale', this.emissionScale);
+            _program.uniform('3fv', 'u_material.emissionScale', this.emissionScale);
             _program.uniform('4fv', 'u_material.emission', this.emissionAmount);
-        } else if (this.emission != null) {
+        } else if (this.emission) {
             _program.uniform('4fv', 'u_material.emission', this.emission);
         }
 
-        if (this.ambientTexture != null ){
+        if (this.ambientTexture){
             _program.setTextureUniform('u_material_ambient_texture', this.ambientTexture);
-            _program.uniform('4fv', 'u_material.ambientScale', this.ambientScale);
+            _program.uniform('3fv', 'u_material.ambientScale', this.ambientScale);
             _program.uniform('4fv', 'u_material.ambient', this.ambientAmount);
-        } else if (this.ambient != null) {
+        } else if (this.ambient) {
             _program.uniform('4fv', 'u_material.ambient', this.ambient);
         }
 
-        if (this.diffuseTexture != null ){
+        if (this.diffuseTexture){
             _program.setTextureUniform('u_material_diffuse_texture', this.diffuseTexture);
-            _program.uniform('4fv', 'u_material.diffuseScale', this.diffuseScale);
+            _program.uniform('3fv', 'u_material.diffuseScale', this.diffuseScale);
             _program.uniform('4fv', 'u_material.diffuse', this.diffuseAmount);
-        } else if (this.diffuse != null) {
+        } else if (this.diffuse) {
             _program.uniform('4fv', 'u_material.diffuse', this.diffuse);
         }
 
-        if (this.specularTexture != null ){
+        if (this.specularTexture){
             _program.setTextureUniform('u_material_specular_texture', this.specularTexture);
-            _program.uniform('4fv', 'u_material.specularScale', this.specularScale);
+            _program.uniform('3fv', 'u_material.specularScale', this.specularScale);
             _program.uniform('4fv', 'u_material.specular', this.specularAmount);
             _program.uniform('1f', 'u_material.shininess', this.shininess);
-        } else if (this.specular != null) {
+        } else if (this.specular) {
             _program.uniform('4fv', 'u_material.specular', this.specular);
             _program.uniform('1f', 'u_material.shininess', this.shininess);
         }
