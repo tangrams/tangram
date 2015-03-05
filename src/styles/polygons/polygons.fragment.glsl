@@ -49,20 +49,24 @@ varying vec4 v_world_position;
 #pragma tangram: lighting
 
 void main (void) {
-    vec4 color;
+    vec4 color = v_color;
+    vec3 normal = v_normal;
+
+    #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
+        calculateNormal(normal);
+    #endif
 
     // Modify normal before lighting
     #pragma tangram: normal
 
     #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
         color = texture2D(texture_default, v_texcoord);
-    #else
-        color = v_color;
     #endif
 
+    // DEPRECATED
     #if defined(LIGHTING_ENVIRONMENT)
         // Replace object color with environment map
-        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, v_normal, u_vanishing_point, u_env_map).rgb;
+        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, normal, u_vanishing_point, u_env_map).rgb;
     #endif
 
     // Modify color and material properties before lighting
@@ -71,7 +75,7 @@ void main (void) {
     #endif
 
     #if defined(TANGRAM_LIGHTING_FRAGMENT)
-        color = calculateLighting(v_position.xyz - u_eye, v_normal, color);
+        color = calculateLighting(v_position.xyz - u_eye, normal, color);
     #elif defined(TANGRAM_LIGHTING_VERTEX)
         color = v_lighting;
     #endif

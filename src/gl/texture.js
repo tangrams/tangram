@@ -70,7 +70,7 @@ Texture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
-    if (unit) {
+    if (typeof unit === 'number') {
         this.gl.activeTexture(this.gl.TEXTURE0 + unit);
     }
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
@@ -162,7 +162,7 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
         return;
     }
 
-    options.filtering = options.filtering || this.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+    options.filtering = options.filtering || this.filtering || 'linear'; // default to mipmaps for power-of-2 textures
 
     var gl = this.gl;
     this.bind();
@@ -176,10 +176,13 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
 
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.REPEAT);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.REPEAT);
+
         if (options.filtering === 'mipmap') {
             log.trace('power-of-2 MIPMAP');
             this.filtering = 'mipmap';
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
