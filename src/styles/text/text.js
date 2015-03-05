@@ -349,6 +349,9 @@ Object.assign(TextStyle, {
     },
 
     _parseFeature (feature, rule_style, context) {
+        // debugger;
+        // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
+
         let style = this.feature_style;
         let tile = context.tile.key;
         let text = feature.properties.name; // TODO: make configurable

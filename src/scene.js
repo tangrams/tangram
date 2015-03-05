@@ -310,13 +310,13 @@ Scene.prototype.setZoom = function (zoom) {
             above += this.preserve_tiles_within_zoom;
         }
 
-        log.debug(`removing tiles outside range [${below}, ${above}]`);
+        log.trace(`removing tiles outside range [${below}, ${above}]`);
         this.removeTilesOutsideZoomRange(below, above);
 
         // Remove tiles outside current zoom that are still loading
         this.removeTiles(tile => {
             if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
-                log.debug(`removed ${tile.key} (was loading, but outside current zoom)`);
+                log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
                 return true;
             }
         });
@@ -416,7 +416,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
 
     this.removeTiles(tile => {
         if (tile.coords.z < below || tile.coords.z > above) {
-            log.debug(`removed ${tile.key} (outside range [${below}, ${above}])`);
+            log.trace(`removed ${tile.key} (outside range [${below}, ${above}])`);
             return true;
         }
     });
@@ -956,7 +956,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+        log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
     }
     else {
         var cached = this.tiles[tile.key];
@@ -1019,7 +1019,7 @@ Scene.prototype.removeTile = function (key) {
     if (!this.initialized) {
         return;
     }
-    log.debug(`tile unload for ${key}`);
+    log.trace(`tile unload for ${key}`);
 
     if (this.zooming === true) {
         return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
