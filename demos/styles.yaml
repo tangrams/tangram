@@ -56,12 +56,12 @@ lights:
         # position: [0, 0, 300px]
         # origin: ground
 
-    # light3:
-    #     type: directional
-    #     direction: [.5, 0, -1] #[0.1, 0.1, -1]
-    #     diffuse: .5
-    #     # specular: .2
-    #     ambient: .2
+    light3:
+        type: directional
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
+        diffuse: .5
+        # specular: .2
+        ambient: .2
 
     # light4:
     #     type: spotlight
@@ -550,7 +550,6 @@ layers:
         # filter: function () { return true; }
 
         style:
-            # name: buildings
             order: 4
             interactive: true
 
