@@ -46,19 +46,9 @@ StyleParser.expandMacros = function expandMacros (obj) {
 StyleParser.macros = [
     'Style.color.pseudoRandomColor',
     'Style.color.randomColor',
-    'Style.pixels',
-    'Q.is'
+    'Style.pixels'
 ];
 
-
-export var Q = {
-    is: function (property, value) {
-        var fun = `function (obj) {
-            return Object.is(Utils.getIn(feature, "${property}".split('.')), "${value}");
-        }`;
-        return fun;
-    }
-};
 
 
 var Style = {};
@@ -117,7 +107,7 @@ StyleParser.wrapFunction = function (func) {
                 feature.id = context.feature.id;
                 var zoom = context.zoom;
                 var meters_per_pixel = context.meters_per_pixel;
-                var properties = context.style_properties;
+                var properties = context.properties;
                 return (${func}());
             }`;
     return f;
@@ -145,63 +135,65 @@ StyleParser.defaults = {
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
 StyleParser.getFeatureParseContext = function (feature, tile) {
     return {
-        feature: feature,
+        feature,
+        tile,
         zoom: tile.coords.z,
         meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
         units_per_meter: Geo.units_per_meter[tile.coords.z]
     };
 };
 
-StyleParser.convertUnits = function(val, context) {
+StyleParser.convertUnits = function(val, context, convert = true) {
     if (typeof val === 'string') {
-        var units = val.match(/([0-9.]+)([a-z]+)/);
+        var units = val.match(/([0-9.-]+)([a-z]+)/);
         if (units && units.length === 3) {
-            val = units[1];
+            val = parseFloat(units[1]);
             units = units[2];
         }
 
-        // Convert from pixels
-        if (units === 'px') {
-            val *= Geo.metersPerPixel(context.zoom);
-        }
-        // Convert from kilometers
-        else if (units === 'km') {
-            val *= 1000;
-        }
-        // Convert from string
-        else {
-            val = parseFloat(val);
+        if (convert) {
+            // Convert from pixels
+            if (units === 'px') {
+                val *= Geo.metersPerPixel(context.zoom);
+            }
+            // Convert from kilometers
+            else if (units === 'km') {
+                val *= 1000;
+            }
         }
     }
     else if (Array.isArray(val)) {
         // Array of arrays, e.g. zoom-interpolated stops
         if (val.every(v => { return Array.isArray(v); })) {
-            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context)]; });
+            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context, convert)]; });
         }
         // Array of values
         else {
-            return val.map(v => { return StyleParser.convertUnits(v, context); });
+            return val.map(v => { return StyleParser.convertUnits(v, context, convert); });
         }
     }
     return val;
 };
 
-StyleParser.parseDistance = function(val, context) {
+StyleParser.parseDistance = function(val, context, convert = true) {
     if (typeof val === 'function') {
         val = val(context);
     }
-    val = StyleParser.convertUnits(val, context);
+    val = StyleParser.convertUnits(val, context, convert);
     val = Utils.interpolate(context.zoom, val);
-    if (typeof val === 'number') {
-        val *= context.units_per_meter;
-    }
-    else if (Array.isArray(val)) {
-        val.forEach((v, i) => val[i] *= context.units_per_meter);
+
+    if (convert) {
+        if (typeof val === 'number') {
+            val *= context.units_per_meter;
+        }
+        else if (Array.isArray(val)) {
+            val.forEach((v, i) => val[i] *= context.units_per_meter);
+        }
     }
     return val;
 };
 
-StyleParser.parseColor = function(val, context) {
+StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
         val = val(context);
     }
@@ -231,7 +223,9 @@ StyleParser.parseColor = function(val, context) {
         });
     }
 
-    val = Utils.interpolate(context.zoom, val);
+    if (context.zoom) {
+        val = Utils.interpolate(context.zoom, val);
+    }
 
     // Default alpha
     if (!val[3]) {
@@ -244,18 +238,28 @@ StyleParser.parseColor = function(val, context) {
 // Order is summed from top to bottom in the style hierarchy:
 // each child order value is added to the parent order value
 StyleParser.calculateOrder = function(order, context) {
-    return order.reduce((sum, order) => {
-        order = order || StyleParser.defaults.order;
-        if (typeof order === 'function') {
-            order = order(context);
-        }
-        else {
-            order = parseFloat(order);
-        }
+    if (typeof order === 'function') {
+        order = order(context);
+    }
+    else if (Array.isArray(order)) {
+        order = order.reduce((sum, order) => {
+            order = order || StyleParser.defaults.order;
+            if (typeof order === 'function') {
+                order = order(context);
+            }
+            else {
+                order = parseFloat(order);
+            }
 
-        if (!order || isNaN(order)) {
-            return sum;
-        }
-        return sum + order;
-    }, 0);
+            if (!order || isNaN(order)) {
+                return sum;
+            }
+            return sum + order;
+        }, 0);
+    }
+    else {
+        order = parseFloat(order);
+    }
+
+    return order;
 };

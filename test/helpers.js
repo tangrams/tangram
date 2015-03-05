@@ -27,12 +27,17 @@ sinon.stub(Scene, 'loadWorkerUrl').returns(Promise.resolve(
     URL.createObjectURL(new Blob([workerBody], { type: 'application/javascript' }))
 ));
 
+let container = document.createElement('div');
+container.style.width = '250px';
+container.style.height = '250px';
+document.body.appendChild(container);
+
 window.makeScene = function (options) {
     options = options || {};
 
-    options.disableRenderLoop = true;
-    options.workerUrl = '/dist/tangram.debug.js';
-    options.worker_timeout = 1000;
+    options.disableRenderLoop = options.disableRenderLoop || true;
+    options.workerUrl = options.workerUrl || '/dist/tangram.debug.js';
+    options.container = options.container || container;
 
     return new Scene(
         sampleScene.config,

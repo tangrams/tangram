@@ -12,122 +12,20 @@ let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
 describe('Scene', function () {
 
+    let subject;
+
+    beforeEach(() => {
+        subject = makeScene({});
+        sinon.stub(subject, 'findVisibleTiles').returns([]);
+        subject.setView(nycLatLng);
+    });
+
+    afterEach(() => {
+        subject.destroy();
+        subject = null;
+    });
+
     describe('.constructor()', () => {
-
-        it.skip('returns a new instance', () => {
-            let scene = new Scene({});
-            assert.instanceOf(scene, Scene);
-            scene.destroy();
-        });
-
-        describe('when given sensible defaults', () => {
-            let scene;
-            afterEach(() => {
-                scene.destroy();
-            });
-
-            it('returns a instance', () => {
-                scene = makeScene({});
-                assert.instanceOf(scene, Scene);
-            });
-        });
-    });
-
-
-
-    describe('.loadQueuedTiles()', () => {
-        let subject;
-
-        beforeEach((done) => {
-            let coords = midtownTile;
-
-            subject = makeScene({});
-
-            sinon.spy(subject, '_loadTile');
-
-            subject.setView(nycLatLng);
-            subject.init().then(() => {
-                subject.loadTile(coords);
-                subject.loadQueuedTiles();
-                done();
-            });
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
-
-        it('calls _loadTile with the queued tile', () => {
-            sinon.assert.calledOnce(subject._loadTile);
-        });
-    });
-
-
-
-    describe('._loadTile(coords, options)', () => {
-        let subject,
-            coord = midtownTile,
-            div = document.createElement('div');
-
-        beforeEach((done) => {
-            subject = makeScene({});
-            subject.setView(nycLatLng);
-            subject.init().then(done);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
-
-        describe('when the scene has not loaded the tile', () => {
-
-            it('loads the tile', () => {
-                let tile = subject._loadTile(coord, { debugElement: div });
-                assert.instanceOf(tile, Tile);
-            });
-
-            it('caches the result in the scene object', () => {
-                let tile = subject._loadTile(coord, { debugElement: div });
-                let tiles = subject.tiles;
-                assert.instanceOf(tiles[tile.key], Tile);
-            });
-        });
-
-        describe('when the scene already have the tile', () => {
-            let key = midtownTileKey;
-            let tile;
-
-            beforeEach(() => {
-                subject.tiles[key] = {};
-                sinon.spy(subject, 'cacheTile');
-                tile = subject._loadTile(coord, { debugElement: div });
-            });
-
-            afterEach(() => {
-                subject.cacheTile.restore();
-                subject.tiles[key] = undefined;
-            });
-
-            it('updates the div', () => {
-                assert.equal(div.getAttribute('data-tile-key'), key);
-            });
-        });
-
-    });
-
-    describe('.create(options)', () => {
-        let subject;
-
-        beforeEach(() => {
-            subject = makeScene({});
-        });
-
-        afterEach( () => {
-            subject.destroy();
-            subject = null;
-        });
 
         it('returns a new instance', () => {
             assert.instanceOf(subject, Scene);
@@ -144,19 +42,95 @@ describe('Scene', function () {
 
     });
 
-    describe('.init()', () => {
+    describe('.loadTile(coords)', () => {
 
-        describe('when the scene is not initialized', () => {
-            let subject;
+        let coords = midtownTile;
+
+        beforeEach(() => {
+            sinon.spy(subject, '_loadTile');
+
+            return subject.init().then(() => {
+                subject.loadTile(coords);
+                subject.loadQueuedTiles();
+            });
+        });
+
+        it('calls _loadTile with the queued tile', () => {
+            sinon.assert.calledWith(subject._loadTile, coords);
+        });
+    });
+
+    // describe('.loadTile(tile)', () => {
+    //     let subject;
+    //     let tile = { coords: null };
+
+    //     beforeEach(() => {
+    //         subject.loadTile(tile);
+    //     });
+
+    //     it('appends the queued_tiles array', () => {
+    //         assert.include(subject.queued_tiles[0], tile);
+    //     });
+
+    // });
+
+    describe('._loadTile(coords, options)', () => {
+
+        let coords = midtownTile;
+
+        beforeEach(() => {
+            return subject.init();
+        });
+
+        describe('when the scene has not loaded the tile', () => {
+
+            it('loads the tile', () => {
+                let tile = subject._loadTile(coords);
+                assert.instanceOf(tile, Tile);
+            });
+
+            it('caches the result in the scene object', () => {
+                let tile = subject._loadTile(coords);
+                let tiles = subject.tiles;
+                assert.instanceOf(tiles[tile.key], Tile);
+            });
+        });
+
+        describe('when the scene already has the tile', () => {
+            let key = midtownTileKey;
+            let tile;
 
             beforeEach(() => {
-                subject = makeScene({});
-                return subject.init();
+                subject._loadTile(coords);
+                sinon.spy(subject, 'cacheTile');
+                tile = subject._loadTile(coords);
+                sinon.spy(tile, 'load');
             });
 
             afterEach(() => {
-                subject.destroy();
-                subject = null;
+                subject.cacheTile.restore();
+                tile.load.restore();
+                subject.tiles[key] = undefined;
+            });
+
+            it('does not load the tile', () => {
+                assert.isFalse(tile.load.called);
+            });
+
+            it('does not cache the tile', () => {
+                assert.isFalse(subject.cacheTile.called);
+            });
+
+        });
+
+    });
+
+    describe('.init()', () => {
+
+        describe('when the scene is not initialized', () => {
+
+            beforeEach(() => {
+                return subject.init();
             });
 
             it('correctly sets the value of the tile source', () => {
@@ -170,7 +144,7 @@ describe('Scene', function () {
             });
 
             it('sets the container property', () => {
-                assert.instanceOf(subject.container, HTMLBodyElement);
+                assert.instanceOf(subject.container, HTMLDivElement);
             });
 
             it('sets the canvas property', () => {
@@ -188,19 +162,10 @@ describe('Scene', function () {
         });
 
         describe('when the scene is already initialized', () => {
-            let subject;
-            beforeEach(() => {
-                subject = makeScene({});
-            });
 
-            afterEach(() => {
-                subject.destroy();
-                subject = null;
-            });
-
-            it('handles second init() call', (done) => {
-                subject.init().then(() => {
-                    subject.init().then(done);
+            it('handles second init() call', () => {
+                return subject.init().then(() => {
+                    return subject.init();
                 });
             });
 
@@ -208,27 +173,19 @@ describe('Scene', function () {
     });
 
     describe('.resizeMap()', () => {
-        let subject;
         let height = 100;
         let width = 200;
         let devicePixelRatio = 2;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
-        beforeEach((done) => {
-            subject = makeScene({});
+        beforeEach(() => {
             subject.device_pixel_ratio = devicePixelRatio;
-            subject.init().then(() => {
+            return subject.init().then(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
                 subject.resizeMap(width, height);
-                done();
             });
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
         });
 
         it('marks the scene as dirty', () => {
@@ -274,21 +231,18 @@ describe('Scene', function () {
     });
 
     describe('.setView(lng, lat)', () => {
-        let subject;
-        let {lng, lat} = nycLatLng;
+        let {lng, lat, zoom} = nycLatLng;
 
         beforeEach(() => {
-            subject = makeScene({});
             subject.setView(nycLatLng);
         });
 
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
+        it('sets the scene center and zoom', () => {
+            assert.deepEqual(subject.center, {lng, lat});
         });
 
-        it('sets the center scene?', () => {
-            assert.deepEqual(subject.center, {lng, lat});
+        it('sets the scene zoom', () => {
+            assert.equal(subject.zoom, zoom);
         });
 
         it('marks the scene as dirty', () => {
@@ -297,16 +251,9 @@ describe('Scene', function () {
     });
 
     describe('.startZoom()', () => {
-        let subject;
 
         beforeEach(() => {
-            subject = makeScene({});
             subject.startZoom();
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
         });
 
         it('sets the last zoom property with the value of the current zoom', () => {
@@ -316,21 +263,17 @@ describe('Scene', function () {
         it('marks the scene as zooming', () => {
             assert.isTrue(subject.zooming);
         });
+
     });
 
     // TODO this method does a lot of stuff
     describe('.setZoom(zoom)', () => {
-        let subject;
+
         beforeEach(() => {
-            subject = makeScene({});
             sinon.spy(subject, 'removeTilesOutsideZoomRange');
             subject.setZoom(10);
         });
 
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
         it('calls the removeTilesOutsideZoomRange method', () =>  {
             assert.isTrue(subject.removeTilesOutsideZoomRange.called);
         });
@@ -338,42 +281,17 @@ describe('Scene', function () {
         it('marks the scene as dirty', () => {
             assert.isTrue(subject.dirty);
         });
-    });
-
-    describe('.loadTile(tile)', () => {
-        let subject;
-        let tile = { coords: null };
-
-        beforeEach(() => {
-            subject = makeScene({});
-            subject.loadTile(tile);
-        });
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
-
-        it('appends the queued_tiles array', () => {
-            assert.include(subject.queued_tiles[0], tile);
-        });
 
     });
 
     describe('.update()', () => {
-        let subject;
 
-        beforeEach((done) => {
-            subject = makeScene({});
+        beforeEach(() => {
             sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'render');
 
             subject.setView(nycLatLng);
-            subject.init().then(done);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
+            return subject.init();
         });
 
         it('calls the loadQueuedTiles method', () => {
@@ -416,16 +334,9 @@ describe('Scene', function () {
     });
 
     describe('.updateStyles()', () => {
-        let subject;
 
-        beforeEach((done) => {
-            subject = makeScene({});
-            return subject.init().then(done);
-        });
-
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
+        beforeEach(() => {
+            return subject.init();
         });
 
         it('adds a new mode', () => {
@@ -457,100 +368,100 @@ describe('Scene', function () {
         });
     });
 
-    describe.skip('.rebuildGeometry()', () => {
-        let subject;
-        let div = document.createElement('div');
+    // describe.skip('.rebuildGeometry()', () => {
+    //     let subject;
+    //     let div = document.createElement('div');
 
-        beforeEach((done) => {
-            subject = makeScene({});
-            subject.setView(nycLatLng);
-            subject.init().then(() => {
-                subject.loadTile(midtownTile, div);
-                subject.loadQueuedTiles();
+    //     beforeEach((done) => {
+    //         subject = makeScene({});
+    //         subject.setView(nycLatLng);
+    //         subject.init().then(() => {
+    //             subject.loadTile(midtownTile, div);
+    //             subject.loadQueuedTiles();
 
-                var tile = subject.tiles['38603/49255/17'];
-                var check = setInterval(() => {
-                    if (tile.loaded) {
-                        clearInterval(check);
-                        done();
-                    }
-                }, 50);
-            });
-        });
+    //             var tile = subject.tiles['38603/49255/17'];
+    //             var check = setInterval(() => {
+    //                 if (tile.loaded) {
+    //                     clearInterval(check);
+    //                     done();
+    //                 }
+    //             }, 50);
+    //         });
+    //     });
 
-        afterEach(() => {
-            subject.destroy();
-            subject = undefined;
-        });
+    //     afterEach(() => {
+    //         subject.destroy();
+    //         subject = undefined;
+    //     });
 
-        it('calls back', (done) => {
-            subject.rebuildGeometry().then(done);
-        });
+    //     it('calls back', (done) => {
+    //         subject.rebuildGeometry().then(done);
+    //     });
 
-        it('queues the second call & then runs it when the first call is complete', (done) => {
-            subject.rebuildGeometry();
-            subject.rebuildGeometry().then(done);
-        });
+    //     it('queues the second call & then runs it when the first call is complete', (done) => {
+    //         subject.rebuildGeometry();
+    //         subject.rebuildGeometry().then(done);
+    //     });
 
-        it('runs first call, queues second call, then rejects second call when third call is made', (done) => {
-            let rejectedSecond;
-            subject.rebuildGeometry();
-            subject.rebuildGeometry().catch((error) => {
-                rejectedSecond = (error.message === 'Scene.rebuildGeometry: request superceded by a newer call');
-            });
-            subject.rebuildGeometry().then(() => {
-                assert.isTrue(rejectedSecond);
-                done();
-            });
-        });
-    });
+    //     it('runs first call, queues second call, then rejects second call when third call is made', (done) => {
+    //         let rejectedSecond;
+    //         subject.rebuildGeometry();
+    //         subject.rebuildGeometry().catch((error) => {
+    //             rejectedSecond = (error.message === 'Scene.rebuildGeometry: request superceded by a newer call');
+    //         });
+    //         subject.rebuildGeometry().then(() => {
+    //             assert.isTrue(rejectedSecond);
+    //             done();
+    //         });
+    //     });
+    // });
 
-    describe.skip('.createWorkers()', () => {
-        let subject;
-        beforeEach(() => {
-            subject = makeScene({num_workers: 2});
-            sinon.spy(subject, 'makeWorkers');
-        });
+    // describe.skip('.createWorkers()', () => {
+    //     let subject;
+    //     beforeEach(() => {
+    //         subject = makeScene({num_workers: 2});
+    //         sinon.spy(subject, 'makeWorkers');
+    //     });
 
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
+    //     afterEach(() => {
+    //         subject.destroy();
+    //         subject = null;
+    //     });
 
-        it('calls the makeWorkers method', (done) => {
-            subject.createWorkers().then(() => {
-                sinon.assert.called(subject.makeWorkers);
-                done();
-            });
-        });
+    //     it('calls the makeWorkers method', (done) => {
+    //         subject.createWorkers().then(() => {
+    //             sinon.assert.called(subject.makeWorkers);
+    //             done();
+    //         });
+    //     });
 
-    });
+    // });
 
-    describe.skip('.makeWorkers(url)', () => {
-        let subject,
-            numWorkers = 2,
-            url = '/tangram-worker.debug.js';
+    // describe.skip('.makeWorkers(url)', () => {
+    //     let subject,
+    //         numWorkers = 2,
+    //         url = '/tangram-worker.debug.js';
 
-        beforeEach(() => {
-            subject = makeScene({numWorkers});
-            subject.makeWorkers(url);
-        });
+    //     beforeEach(() => {
+    //         subject = makeScene({numWorkers});
+    //         subject.makeWorkers(url);
+    //     });
 
-        afterEach(() => {
-            subject.destroy();
-            subject = null;
-        });
+    //     afterEach(() => {
+    //         subject.destroy();
+    //         subject = null;
+    //     });
 
-        describe('when given a url', () => {
+    //     describe('when given a url', () => {
 
-            it('creates the correct number of workers', () => {
-                assert.equal(subject.workers.length, 2);
-            });
+    //         it('creates the correct number of workers', () => {
+    //             assert.equal(subject.workers.length, 2);
+    //         });
 
-            it('creates the correct type of workers', () => {
-                assert.instanceOf(subject.workers[0], Worker);
-            });
-        });
-    });
+    //         it('creates the correct type of workers', () => {
+    //             assert.instanceOf(subject.workers[0], Worker);
+    //         });
+    //     });
+    // });
 
 });

@@ -11,12 +11,15 @@ let map = L.map(
 map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
-    return new LeafletLayer({
+    let layer = new LeafletLayer({
         source: sampleScene.tile_source,
         scene: sampleScene.config,
         disableRenderLoop: true,
         workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
+
+    sinon.stub(layer.scene, 'findVisibleTiles').returns([]);
+    return layer;
 };
 
 describe('Leaflet plugin', () => {
@@ -133,28 +136,5 @@ describe('Leaflet plugin', () => {
             assert.isTrue(subject.scene.initialized);
         });
     });
-
-    describe('.createTile(coords, done)', () => {
-        let subject;
-        let coords = { x: 9647, y: 12320, z: 15 };
-
-        beforeEach(() => {
-            subject = makeOne();
-            sinon.spy(subject.scene, 'loadTile');
-            subject.createTile(coords);
-        });
-
-        afterEach(() => {
-            subject.remove();
-        });
-
-        it('calls the .scene.loadTile() method', () => {
-            assert.isTrue(subject.scene.loadTile.called);
-        });
-
-    });
-
-    describe('.updateBounds()', () => {});
-    describe('.render()', () => {});
 
 });

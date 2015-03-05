@@ -7,26 +7,6 @@ import yaml from 'js-yaml';
 var Utils;
 export default Utils = {};
 
-/**
- * Funtion that is able to return nested objects. Similar to a normal
- * property based lookup, but accepts an array of properties.
- *
- * var obj = {a: {b: {c: 10}}};
- * getIn(obj, ['a', 'b', 'c']); // 10
- */
-Utils.getIn = function (obj, key) {
-    function walk(obj, keys) {
-        var key = keys[0];
-        if (keys.length === 0) {
-            return obj;
-        } else if (!obj.hasOwnProperty(key)) {
-            return;
-        }
-        return walk(obj[key], keys.slice(1));
-    }
-    return walk(obj, key);
-};
-
 // Add the current base URL for schemeless or protocol-less URLs
 // Maybe use https://github.com/medialize/URI.js if more robust functionality is needed
 Utils.addBaseURL = function (url) {
@@ -51,7 +31,7 @@ Utils.cacheBusterForUrl = function (url) {
 
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
     var request = new XMLHttpRequest();
-    return new Promise((resolve, reject) => {
+    var promise = new Promise((resolve, reject) => {
         request.open(method, url, true);
         request.timeout = timeout;
         request.responseType = responseType;
@@ -75,6 +55,12 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
         };
         request.send();
     });
+
+    Object.defineProperty(promise, 'request', {
+        value: request
+    });
+
+    return promise;
 };
 
 Utils.parseResource = function (body) {
@@ -215,6 +201,10 @@ Utils.isPowerOf2 = function(value) {
     return (value & (value - 1)) === 0;
 };
 
+Utils.nextPowerOf2 = function(value) {
+    return Math.pow(2, Math.ceil(Math.log2(value)));
+};
+
 // Interpolate 'x' along a series of control points
 // 'points' is an array of control points in the form [x, y]
 //
@@ -321,3 +311,20 @@ Utils.recurseValues = function* (obj) {
         }
     }
 };
+
+Utils.scaleInt16 = function (val, max) {
+    return (val / max) * 32768;
+};
+
+Utils.degToRad = function (degrees) {
+    return degrees * Math.PI / 180;
+};
+
+Utils.radToDeg = function (radians) {
+    return radians * 180 / Math.PI;
+};
+
+Utils.toCanvasColor = function (color) {
+    return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
+};
+

@@ -7,6 +7,8 @@ import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import {Polygons} from './polygons/polygons';
 import {Points} from './points/points';
+import {Sprites} from './sprites/sprites';
+import {TextStyle} from './text/text';
 
 import log from 'loglevel';
 
@@ -122,6 +124,8 @@ StyleManager.loadRemoteStyles = function (styles) {
                     }
                 }
                 resolve();
+
+                this.selection = false;
             }).catch((error) => {
                 log.error(`StyleManager.preload: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
             });
@@ -178,12 +182,36 @@ StyleManager.update = function (name, settings) {
         Styles[name][s] = settings[s];
     }
 
-    // TODO: move these to a Style.clone method?
-    Styles[name].initialized = false;
-    Styles[name].defines = (base.define && Object.create(base.define)) || {};
-    Styles[name].shaders = Styles[name].shaders || (base.shaders && Object.create(base.shaders)) || {};
-
     Styles[name].name = name;
+    Styles[name].initialized = false;
+    Styles[name].defines = (base.defines && Object.create(base.defines)) || {};
+
+    // Merge shaders: defines, uniforms, transforms
+    let shaders = {};
+    let merge = [base.shaders, settings.shaders]; // first merge base (inherited) style shaders
+    merge = merge.filter(x => x); // remove null objects
+
+    shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
+    shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
+
+    // Merge transforms
+    merge.map(x => x.transforms).filter(x => x).forEach(transforms => {
+        shaders.transforms = shaders.transforms || {};
+
+        for (let [t, transform] of Utils.entries(transforms)) {
+            shaders.transforms[t] = shaders.transforms[t] || [];
+
+            if (Array.isArray(transform)) {
+                shaders.transforms[t].push(...transform);
+            }
+            else {
+                shaders.transforms[t].push(transform);
+            }
+        }
+    });
+
+    Styles[name].shaders = shaders;
+
     return Styles[name];
 };
 
@@ -196,6 +224,7 @@ StyleManager.build = function (stylesheet_styles) {
 
     // Initialize all
     for (name in Styles) {
+        Styles[name].initialized = false;
         Styles[name].init();
     }
 
@@ -220,3 +249,5 @@ StyleManager.compile = function () {
 // Add built-in rendering styles
 StyleManager.register(Polygons);
 StyleManager.register(Points);
+StyleManager.register(Sprites);
+StyleManager.register(TextStyle);

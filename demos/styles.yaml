@@ -11,6 +11,7 @@ cameras:
     isometric:
         type: isometric
         # axis: [1, .5]
+        # active: true
 
     flat:
         type: flat
@@ -20,27 +21,77 @@ cameras:
         position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
-lighting:
-    type: point
-    position: [0, 0, 200]
-    color: [1, 1, 1]
-    # ambient: 0.5
-    backlight: true
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
 
-    # type: directional
-    # direction: [-1, 0, -.5]
-    # color: [1, 1, 1]
-    # ambient: 0.5
+        # position: [-73.97297501564027, 40.76434821445407, 500]
 
-    # type: spotlight
-    # position: [0, 0, 500]
-    # direction: [0, 0, -1]
-    # inner_angle: 20
-    # outer_angle: 25
-    # color: [1, 1, 1]
-    # ambient: 0.2
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
+        # height: 500
+
+        # origin: camera
+
+lights:
+    light1:
+        type: ambient
+        ambient: .3
+
+    light2:
+        type: point
+
+        ambient: .2
+        diffuse: red #.7
+        specular: .2
+        # diffuse: .3
+        # attenuation: 1.5
+
+        # radius: 700
+        radius: [500, 700]
+        # radius: [200px, 300px]
+
+        position: [-73.97297501564027, 40.76434821445407, 100]
+
+        # position: [0, 0, -300]
+        # origin: camera
+
+        # position: [0, 0, 300px]
+        # origin: ground
+
+    light3:
+        type: directional
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
+        diffuse: .5
+        # specular: .2
+        ambient: .2
+
+    # light4:
+    #     type: spotlight
+    #     position: [0, 0, 200]
+    #     diffuse: 1
+    #     # direction: [1, 0, 1]
+    #     angle: 45
+    #     exponent: 0.2
+    #     radius: 1000.0
+    #     cutoff: 0.0
 
 styles:
+
+    # polygons:
+    #     animated: true
+    #     # lighting: vertex
+    #     material:
+    #         ambient: white
+    #         diffuse: white
+    #         specular: 1
+    #         shininess: 8
+
+    transparent:
+        extends: polygons
+        # animated: true
+        blend: multiply
+        # material:
+        #     diffuse: 0 #0.3
+        #     specular: [1, 0, 0]
+        #     shininess: 8
 
     water:
         extends: polygons
@@ -51,18 +102,7 @@ styles:
             transforms:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
-                    url: demos/shaders/noise.glsl
-
-    formica:
-        extends: polygons
-        shaders:
-            defines:
-                EFFECT_NOISE_TEXTURE: true
-            transforms:
-                globals:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
-                fragment:
+                color:
                     url: demos/shaders/noise.glsl
 
     colorbleed:
@@ -72,15 +112,19 @@ styles:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
             transforms:
-                fragment: |
-                    color .rgb+= lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                # fragment: |
+                color: |
+                    //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                    color .rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
                     #if defined(EFFECT_COLOR_BLEED_ANIMATED)
-                        color.r += lighting.r * sin(u_time / 3.0);
+                        //color.r += lighting.r * sin(u_time / 3.0);
+                        color.r += sin(u_time / 3.0);
                     #endif
 
     rainbow:
         extends: polygons
         animated: true
+        lighting: false
         shaders:
             transforms:
                 globals: |
@@ -89,7 +133,7 @@ styles:
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
-                fragment: |
+                color: |
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
@@ -101,7 +145,7 @@ styles:
         animated: true
         shaders:
             transforms:
-                vertex: |
+                position: |
                     // Elevator buildings
                     if (position.z > 0.01) {
                         position.z *= (sin(position.z + u_time) + 1.0);
@@ -118,11 +162,12 @@ styles:
 
     envmap:
         extends: polygons
+        lighting: false
         shaders:
             defines:
                 LIGHTING_ENVIRONMENT: true
             uniforms:
-                u_env_map: demos/images/LitSphere_test_02.jpg
+                u_env_map: demos/images/sunset.jpg
             transforms:
                 # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
 
@@ -138,16 +183,15 @@ styles:
     points:
         shaders:
             transforms:
-                fragment: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
-
+                color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
-        extends: polygons
-        animated: true # only needed for bouncy effect
-        texcoords: true
+        # extends: polygons
+        extends: sprites
+        # animated: true
         texture:
             url: demos/images/poi_icons_32.png
-            filtering: nearest
+            filtering: mipmap
             sprites:
                 # each sprite is defined as: [x origin, y origin, width, height]
                 plane: [0, 0, 32, 32]
@@ -156,27 +200,62 @@ styles:
                 restaurant: [0, 777, 32, 32]
                 cafe: [0, 814, 32, 32]
                 museum: [0, 518, 32, 32]
-        shaders:
-            uniforms:
-                bouncy: true
-            transforms:
-                vertex: |
-                    // Bouncy icons
-                    if (bouncy) {
-                        position.y += sin(v_world_position.y + u_time*3.) * 10.;
-                    }
-                fragment: |
-                    //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+        # shaders:
+        #     transforms:
+        #         vertex: |
+        #             //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
+        #             shape.z *= u_time;
+        #             position.y += sin(position.y + u_time*3.) * 10.;
+        #         fragment:
+        #             // color.rgb = vec3(v_texcoord.xy, 0.);
+        # shaders:
+        #     uniforms:
+        #         bouncy: true
+        #     transforms:
+        #         vertex: |
+        #             // Bouncy icons
+        #             if (bouncy) {
+        #                 position.y += sin(v_world_position.y + u_time*3.) * 10.;
+        #             }
+        #         fragment: |
+        #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+
+    # text:
+    #     selection: true
+    #     animated: true
+    #     shaders:
+    #         transforms:
+    #             position: |
+    #                 shape.z = (shape.z + 0.01) * u_time * .75;
+    #             # color: |
+    #             #     color.rgb = vec3(v_texcoord.xy, 0.);
+    #             #     //color.a = 1.;
 
     uv_test:
         extends: polygons
         texcoords: true
         shaders:
             transforms:
-                fragment: |
+                color: |
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
+
+    # depth view
+    depth:
+        extends: polygons
+        shaders:
+            transforms:
+                fragment: |
+                    color = vec4(vec3(v_position.z / 256.), 1.);
+                    //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
+
+                    // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
+                    /*float ndcDepth =
+                        (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
+                        (gl_DepthRange.far - gl_DepthRange.near);
+                    float clipDepth = ndcDepth / gl_FragCoord.w;
+                    color = vec4((clipDepth * 0.5) + 0.5);*/
 
     # dynamic uniform tests
     # polygons:
@@ -244,7 +323,7 @@ styles:
             uniforms:
                 u_texture: demos/images/ghost_strip.gif
             transforms:
-                fragment: |
+                color: |
                     float number_of_frames = 2.;
                     float frames_per_second = 2.;
 
@@ -285,6 +364,12 @@ layers:
                 color: [0.3, 0.675, 0.3]
                 order: .1
 
+        airports:
+            filter: { kind: apron }
+            style:
+                color: lightyellow
+                order: .05
+
     water:
         geometry:
             source: osm
@@ -294,46 +379,18 @@ layers:
             order: 2
             interactive: true
             color: [0.5, 0.5, 0.875]
-            outline:
-                color: [0.6, 0.6, 0.975]
-                width: |
-                    function () {
-                        return (
-                            zoom >= 16 &&
-                            (feature.kind != 'ocean' && feature.kind != 'riverbank') &&
-                            (2.5 * Math.log(zoom))
-                        );
-                    }
+
+        outlines:
+            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+            style:
+                outline:
+                    color: [0.6, 0.6, 0.975]
+                    width: function() { return 2.5 * Math.log(zoom); }
 
     roads:
         geometry:
             source: osm
             filter: roads
-            # filter: |
-            #     function (json) {
-            #         return {
-            #             type: 'FeatureCollection',
-            #             features: (((json['road']||{}).features)||[]).concat(((json['bridge']||{}).features)||[]).filter(function (feature) {
-            #                 if (['motorway', 'motorway_link'].indexOf(feature.properties.class) > 0) {
-            #                     feature.properties.kind = 'highway';
-            #                     feature.properties.sort_key = 10000;
-            #                 }
-            #                 else if (feature.properties.class == 'main') {
-            #                     feature.properties.kind = 'major_road';
-            #                     feature.properties.sort_key = 1000;
-            #                 }
-            #                 else if (['street', 'street_limited'].indexOf(feature.properties.class) > 0) {
-            #                     feature.properties.kind = 'minor_road';
-            #                     feature.properties.sort_key = 100;
-            #                 }
-            #                 else {
-            #                     feature.properties.kind = feature.properties.type;
-            #                     feature.properties.sort_key = 10;
-            #                 }
-            #                 return feature;
-            #             })
-            #         };
-            #     }
 
         style:
             order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
@@ -343,8 +400,6 @@ layers:
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
-            cap: round
-            join: round
 
         highway:
             filter: { kind: highway }
@@ -357,17 +412,27 @@ layers:
                 width: function () { return 3 * Math.log(zoom); }
                 # width: [[13, 3px], [15, 5px], [16, 20px]]
                 # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
 
-            bridge:
-                filter: { is_bridge: yes }
+            outline:
+                filter: { $zoom: { min: 15 } }
                 style:
                     outline:
-                        # don't draw outline caps on bridges because they draw over connecting non-bridge roads
-                        # see FDR Drive: 40.70278074491014,-74.00795169174671,20
-                        cap: butt
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+                bridge:
+                    filter: { is_bridge: yes }
+                    style:
+                        outline:
+                            # don't draw outline caps on bridges because they draw over connecting non-bridge roads
+                            # see FDR Drive: 40.70278074491014,-74.00795169174671,20
+                            cap: butt
+
+                round:
+                    filter: { $zoom: { min: 17 }, is_bridge: no }
+                    style:
+                        cap: round
+                        join: round
 
             tunnel:
                 # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
@@ -376,33 +441,73 @@ layers:
                     color: '#333'
                     width: function () { return 2 * Math.log(zoom); }
                     # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-                    outline:
-                        color: white
-                        # width: [[15, 2px], [18, 6px]]
-                        # width: 2px
-                        width: function () { return 1 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: white
+                            # width: [[15, 2px], [18, 6px]]
+                            # width: 2px
+                            width: function () { return 1 * Math.log(zoom); }
+                round:
+                    filter: { $zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
         major_road:
             filter: { kind: major_road }
             style:
                 color: [0.5, 0.5, 0.5]
                 width: function () { return 2.5 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+            outline:
+                filter: { $zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+                round:
+                    filter: { $zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
         minor_road:
-            filter: { kind: minor_road }
+            filter: { kind: minor_road, $zoom: { min: 13 }, not: { aeroway: [taxiway, runway] } }
             style:
                 color: [0.65, 0.65, 0.65]
                 width: function () { return 2 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+            outline:
+                filter: { $zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+                round:
+                    filter: { $zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
+
+        airports:
+            filter: { aeroway: true }
+
+            taxiways:
+                filter: { aeroway: taxiway }
+                style:
+                    width: [[12, 1px], [13, 2px], [17, 10px]]
+                    color: darkorange
+                    cap: round
+
+            runways:
+                filter: { aeroway: runway }
+                style:
+                    width: [[12, 5px], [13, 10px], [15, 30px], [17, 150px]]
+                    color: orange
+                    order: .1
 
         path:
-            filter:
-               kind: path
+            filter: { kind: path, $zoom: { min: 15 } }
             style:
                 color: [0.8, 0.8, 0.8]
                 # color: yellow
@@ -410,23 +515,35 @@ layers:
                 outline:
                     color: [0.7, 0.7, 0.7]
                     width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+            round:
+                filter: { $zoom: { min: 17 } }
+                style:
+                    cap: round
+                    join: round
 
         rail:
             filter: { kind: rail }
             style:
                 color: [0.5, 0.0, 0.0]
                 width: function () { return 2 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+            outline:
+                filter: { $zoom: { min: 15 } }
+                style:
+                    outline:
+                        color: [0.7, 0.7, 0.7]
+                        width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
+                round:
+                    filter: { $zoom: { min: 17 } }
+                    style:
+                        cap: round
+                        join: round
 
     buildings:
         geometry:
             source: osm
             filter: buildings
 
-        # properties:
-        #     min_height: 50
+        # properties: { min_height: 150 }
         # filter: function () { return feature.height >= properties.min_height; }
         # filter: function () { return feature.name != null; }
         # filter: function () { return Math.random() < 0.25; }
@@ -440,62 +557,106 @@ layers:
             # color: Style.color.randomColor()
             # color: Style.color.pseudoRandomColor()
             # color: Style.color.pseudoRandomGrayscale()
-            # color: |
-            #     function () {
-            #         var c = [.6, .6, .6];
-            #         if (feature.name || feature.kind) {
-            #             c = [.2, .2, .2];
-            #             c[0] = (feature.name && .6) || c[0];
-            #             c[2] = (feature.kind && .6) || c[2];
-            #         }
-            #         return c;
-            #     }
             color: [.6, .6, .6]
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
-        # buildingsOfInterest:
-        #     filter:
-        #         any:
-        #             name: true
-        #             kind: true
-        #     style:
-        #         color: red
+        # blend:
+        #     filter: { height: { min: 100 } }
+        #     style: { name: transparent, color: yellow }
 
-        namedBuildings:
-            filter: { name: true }
+        colors:
+            name:
+                filter: { name: true, kind: false }
+                style: { color: [.6, .2, .2] }
+
+            kind:
+                filter: { name: false, kind: true }
+                style: { color: [.2, .2, .6] }
+
+            name-kind:
+                filter: { name: true, kind: true }
+                style: { color: [.6, .2, .6] }
+
+    labels_street:
+        geometry:
+            source: osm
+            filter: roads
+
+        filter: { name: true, $zoom: { min: 14 } }
+        style:
+            name: text
+            order: 5
+            interactive: true
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
+
+        major_road:
+            filter: { kind: major_road, $zoom: { min: 14 } }
             style:
-                color: [.6, .2, .2]
-
-            namedKindBuildings:
-                filter: { kind: true }
-                style:
-                    color: [.6, .2, .6]
-
-        kindBuildings:
-            filter: { name: false, kind: true }
+                font:
+                    size: 14px
+                    typeface: Futura
+                    fill: darkred
+                    stroke: white
+        minor_road:
+            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
-                color: [.2, .2, .6]
+                font:
+                    size: 12px
+                    typeface: Futura
+                    # fill: [0.8, 0.7, 0.7]
+                    # stroke: [.31, .33, .31]
+                    fill: [0.9, 0.9, 0.9]
+                    stroke: [.31, .33, .31]
 
     pois:
         geometry:
             source: osm
             filter: pois
 
-        filter: { name: true }
+        filter: { name: true, $zoom: { min: 17 } }
+
         style:
-            name: points
-            size: 10px
+            # name: points
+            # size: [[12, 6px], [13, 10px]]
+
+            font:
+                size: 12px
+                typeface: Helvetica
+                fill: [.9, .9, .1]
+                stroke: black
+
+            name: text
 
             # name: icons
             # sprite: tree
+            # size: [32px, 32px]
             # size: [[13, 16px], [14, 24px], [15, 32px]]
+            # size: function() { return (parseInt(feature.id, 16) % 100); }
+
+            angle: 0
+            # angle: function() { return (parseInt(feature.id, 16) % 360); }
+            # scale: 1
 
             # visible: false
             order: 5
+            # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
-            color: [1, 1, 0]
 
-        # examples of different icons mapped to faeture properties
+        # z17:
+        #     filter: { $zoom: { min: 17, max: 18 } }
+        #     style:
+        #         scale: 3
+
+        # z18:
+        #     filter: { $zoom: { min: 18 } }
+        #     style:
+        #         size: [64, 64] #px
+
+        # examples of different icons mapped to feature properties
         restaurant:
             filter: { kind: restaurant }
             style:
@@ -509,4 +670,19 @@ layers:
         culture:
             filter: { kind: [museum, library] }
             style:
+                name: icons
+                size: 32px
                 sprite: museum
+
+    places:
+        geometry: { source: osm, filter: places }
+        filter: { name: true }
+
+        style:
+            name: text
+            font:
+                size: 12px
+                typeface: Courier
+                fill: black
+                stroke: white
+

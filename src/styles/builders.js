@@ -3,8 +3,7 @@
 import {Vector} from '../vector';
 import Geo from '../geo';
 
-import libtess from 'libtess';
-import log from 'loglevel';
+import earcut from 'earcut';
 
 var Builders;
 export default Builders = {};
@@ -585,63 +584,74 @@ Builders.buildQuadsForPoints = function (
     }
 };
 
+// Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
+// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
+// of a sprite between two zoom levels.
+Builders.buildSpriteQuadsForPoints = function (
+    points,
+    width, height, angle, scale,
+    vertex_data, vertex_template,
+    scaling_index,
+    { texcoord_index, texcoord_scale }) {
+
+    let w2 = width / 2;
+    let h2 = height / 2;
+    let scaling = [
+        [-w2, -h2],
+        [w2, -h2],
+        [w2, h2],
+
+        [-w2, -h2],
+        [w2, h2],
+        [-w2, h2]
+    ];
+
+    let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    let texcoords;
+    if (texcoord_index) {
+        texcoords = [
+            [min_u, min_v],
+            [max_u, min_v],
+            [max_u, max_v],
+
+            [min_u, min_v],
+            [max_u, max_v],
+            [min_u, max_v]
+        ];
+    }
+
+    let num_points = points.length;
+    for (let p=0; p < num_points; p++) {
+        let point = points[p];
+
+        for (let pos=0; pos < 6; pos++) {
+            // Add texcoords
+            if (texcoord_index) {
+                vertex_template[texcoord_index + 0] = texcoords[pos][0];
+                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+            }
+
+            vertex_template[0] = point[0];
+            vertex_template[1] = point[1];
+
+            vertex_template[scaling_index + 0] = scaling[pos][0];
+            vertex_template[scaling_index + 1] = scaling[pos][1];
+            vertex_template[scaling_index + 2] = angle;
+            vertex_template[scaling_index + 3] = scale;
+
+            vertex_data.addVertex(vertex_template);
+        }
+    }
+};
+
+
 /* Utility functions */
 
-// Triangulation using libtess.js port of gluTesselator
-// https://github.com/brendankenny/libtess.js
-Builders.tesselator = (function initTesselator() {
-    var tesselator = new libtess.GluTesselator();
-
-    // Called for each vertex of tesselator output
-    function vertexCallback(data, polyVertArray) {
-        polyVertArray.push([data[0], data[1]]);
-    }
-
-    // Called when segments intersect and must be split
-    function combineCallback(coords, data, weight) {
-        return coords;
-    }
-
-    // Called when a vertex starts or stops a boundary edge of a polygon
-    function edgeCallback(flag) {
-        // No-op callback to force simple triangle primitives (no triangle strips or fans).
-        // See: http://www.glprogramming.com/red/chapter11.html
-        // "Since edge flags make no sense in a triangle fan or triangle strip, if there is a callback
-        // associated with GLU_TESS_EDGE_FLAG that enables edge flags, the GLU_TESS_BEGIN callback is
-        // called only with GL_TRIANGLES."
-        log.trace('Builders.tesselator: edge flag: ' + flag);
-    }
-
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_VERTEX_DATA, vertexCallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_COMBINE, combineCallback);
-    tesselator.gluTessCallback(libtess.gluEnum.GLU_TESS_EDGE_FLAG, edgeCallback);
-
-    // Brendan Kenny:
-    // libtess will take 3d verts and flatten to a plane for tesselation
-    // since only doing 2d tesselation here, provide z=1 normal to skip
-    // iterating over verts only to get the same answer.
-    // comment out to test normal-generation code
-    tesselator.gluTessNormal(0, 0, 1);
-
-    return tesselator;
-})();
-
-Builders.triangulatePolygon = function (contours) {
-    var triangleVerts = [];
-    Builders.tesselator.gluTessBeginPolygon(triangleVerts);
-
-    for (var i = 0; i < contours.length; i++) {
-        Builders.tesselator.gluTessBeginContour();
-        var contour = contours[i];
-        for (var j = 0; j < contour.length; j ++) {
-            var coords = [contour[j][0], contour[j][1], 0];
-            Builders.tesselator.gluTessVertex(coords, coords);
-        }
-        Builders.tesselator.gluTessEndContour();
-    }
-
-    Builders.tesselator.gluTessEndPolygon();
-    return triangleVerts;
+// Triangulation using earcut
+// https://github.com/mapbox/earcut
+Builders.triangulatePolygon = function (contours)
+{
+    return earcut(contours);
 };
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile

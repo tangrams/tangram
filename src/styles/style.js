@@ -6,6 +6,8 @@ import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Builders from './builders';
 import Texture from '../gl/texture';
+import Material from '../material';
+import Light from '../light';
 import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
@@ -23,6 +25,7 @@ export var Style = {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
+        this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
         this.defines = this.defines || {};          // #defines to be injected into the shaders
         this.shaders = this.shaders || {};          // shader customization via scene definition (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -32,6 +35,16 @@ export var Style = {
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.textures = this.textures || {};
+
+        // If the style defines its own material, replace the inherited material instance
+        if (!(this.material instanceof Material)) {
+            this.material = new Material(this.material);
+        }
+        this.material.inject(this);
+
+        // Set lighting mode: fragment, vertex, or none (specified as 'false')
+        Light.setMode(this.lighting, this);
+
         this.initialized = true;
     },
 
@@ -151,12 +164,12 @@ export var Style = {
             }
 
             // Subclass implementation
-            this._parseFeature(feature, rule_style, context);
+            style = this._parseFeature(feature, rule_style, context);
 
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, error);
+            log.error('Style.parseFeature: style parsing error', feature, style, error);
         }
     },
 
@@ -342,6 +355,25 @@ export var Style = {
         this.compiled = true;
     },
 
+    // Add a shader transform
+    addShaderTransform (key, ...transforms) {
+        this.shaders.transforms = this.shaders.transforms || {};
+        this.shaders.transforms[key] = this.shaders.transforms[key] || [];
+        this.shaders.transforms[key].push(...transforms);
+    },
+
+    // Remove all shader transforms for key
+    removeShaderTransform (key) {
+        if (this.shaders.transforms) {
+            this.shaders.transforms[key] = null;
+        }
+    },
+
+    replaceShaderTransform (key, ...transforms) {
+        this.removeShaderTransform(key);
+        this.addShaderTransform(key, ...transforms);
+    },
+
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram
      * (list of define objects that inherit from each other)
      */
@@ -365,6 +397,7 @@ export var Style = {
     // Setup any GL state for rendering
     setup () {
         this.setUniforms();
+        this.material.setupProgram(ShaderProgram.current);
     },
 
     // Set style uniforms on currently bound program
