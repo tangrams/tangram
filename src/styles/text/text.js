@@ -32,6 +32,7 @@ Object.assign(TextStyle, {
         this.texture = {};
         this.canvas = {};
         this.bboxes = {};
+        this.maxPriority = 0;
 
         this.font_style = {
             typeface: 'Helvetica',
@@ -42,10 +43,10 @@ Object.assign(TextStyle, {
         // default label style
         this.label_style = {
             priorities: {
-                administrative: 'very high',
-                restaurant: 'very low',
-                minor_road: 'low',
-                major_road: 'high'
+                administrative: 4,
+                restaurant: 3,
+                major_road: 2,
+                minor_road: 1
             },
             lines: { exceed: 60 }
         };
@@ -187,6 +188,82 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
+    createLabels (tile, texts) {
+        let labels = [];
+
+        for (let style in texts) {
+            let text_infos = texts[style];
+
+            for (let text in text_infos) {
+                let text_info = text_infos[text];
+                let geometry = this.texts[tile][style][text].geometry;
+                let exceed_heuristic = this.label_style.lines.exceed;
+                let label;
+
+                if (geometry.type === "LineString") {
+                    let lines = geometry.coordinates;
+                    let line = [lines[0]];
+
+                    label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true);
+                } else if (geometry.type === "Point") {
+                    label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true);
+                } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
+                    let centroid;
+
+                    if (geometry.type === "Polygon") {
+                        centroid = Utils.centroid(geometry.coordinates[0]);
+                    } else {
+                        centroid = Utils.multiCentroid(geometry.coordinates[0]);
+                    }
+
+                    label = new LabelPoint(text, centroid, text_info.size, false, false);
+                } else {
+                    // TODO: support MultiLineString, MultiPoint labels
+                    continue;
+                }
+
+                if(labels[text_info.priority] === undefined) {
+                    labels[text_info.priority] = [];
+                }
+
+                labels[text_info.priority].push({ style: style, text_info: text_info, label: label });
+            }
+        }
+
+        return labels;
+    },
+
+    discardLabels (tile, labels, texts) {
+        this.bboxes[tile] = [];
+
+        for (let priority = this.maxPriority; priority >= 0; priority--) {
+            if(!labels[priority]) {
+                continue;
+            }
+
+            for (let priority_info of labels[priority]) {
+                let label = priority_info.label;
+                let text_info = priority_info.text_info;
+                let style = priority_info.style;
+
+                if (label.discard(this.bboxes[tile])) {
+                    // remove the text from the map
+                    delete texts[style][label.text];
+                } else {
+                    text_info.label = label;
+                }
+            }
+        }
+
+        for (let style in texts) {
+            let text_infos = texts[style];
+            // No labels for this style
+            if (Object.keys(text_infos).length === 0) {
+                delete texts[style];
+            }
+        }
+    },
+
     // Override
     endData (tile_data) {
         // Count collected text
@@ -202,73 +279,9 @@ Object.assign(TextStyle, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
-            this.bboxes[tile] = [];
+            let labels = this.createLabels(tile, texts);
 
-            // cleanup of texts that should be removed after occlusion test
-            for (let style in texts) {
-                let text_infos = texts[style];
-                let labels = [];
-
-                for (let text in text_infos) {
-                    let text_info = text_infos[text];
-                    let label;
-                    let keep_in_tile;
-                    let move_in_tile;
-                    let geometry = this.texts[tile][style][text].geometry;
-                    let exceed_heuristic = this.label_style.lines.exceed;
-
-                    if (geometry.type === "LineString") {
-                        let lines = geometry.coordinates;
-                        let line = [lines[0]];
-
-                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true, text_info.priority);
-                    } else if (geometry.type === "Point") {
-                        label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true, text_info.priority);
-                    } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
-                        let centroid;
-
-                        if (geometry.type === "Polygon") {
-                            centroid = Utils.centroid(geometry.coordinates[0]);
-                        } else {
-                            centroid = Utils.multiCentroid(geometry.coordinates[0]);
-                        }
-
-                        label = new LabelPoint(text, centroid, text_info.size, false, false, text_info.priority);
-                    } else {
-                        // TODO: support MultiLineString, MultiPoint labels
-                        continue;
-                    }
-
-                    if(labels[text_info.priority] === undefined) {
-                        labels[text_info.priority] = [];
-                    }
-
-                    labels[text_info.priority].push({ text_info: text_info, label: label });
-                }
-
-                for (let priority = Utils.maxPriority; priority >= 0; priority--) {
-                    if(!labels[priority]) {
-                        continue;
-                    }
-
-                    for (let priority of labels[priority]) {
-                        let label = priority.label;
-                        let text_info = priority.text_info;
-
-                        if (label.discard(this.bboxes[tile])) {
-                            // remove the text from the map
-                            delete text_infos[label.text];
-                        } else {
-                            text_info.label = label;
-                        }
-                    }
-                }
-
-                // No labels for this style
-                if (Object.keys(text_infos).length === 0) {
-                    delete texts[style];
-                }
-            }
+            this.discardLabels(tile, labels, texts);
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
@@ -320,14 +333,16 @@ Object.assign(TextStyle, {
                 this.texts[tile][style_key] = {};
             }
 
-            let priority = 'very low';
+            let priority = 0;
             if (this.label_style.priorities[feature.properties.kind]) {
                 priority = this.label_style.priorities[feature.properties.kind];
             }
 
+            this.maxPriority = Math.max(priority, this.maxPriority);
+
             this.texts[tile][style_key][text] = {
                 text_style: style,
-                priority: Utils.valueFromPriority(priority),
+                priority: priority,
                 geometry: feature.geometry
             };
         }

@@ -1,8 +1,8 @@
 import Label from './label';
 
 export default class LabelPoint extends Label {
-    constructor (text, position, size, priority, move_in_tile, keep_in_tile) {
-        super(text, size, move_in_tile, keep_in_tile, priority);
+    constructor (text, position, size, move_in_tile, keep_in_tile) {
+        super(text, size, move_in_tile, keep_in_tile);
 
         this.position = position;
         this.bbox = this.computeBBox();
@@ -18,8 +18,6 @@ export default class LabelPoint extends Label {
             this.position[0] + half_merc_width,
             this.position[1] + half_merc_height
         ];
-
-        bbox.priority = this.priority;
 
         return bbox;
     }

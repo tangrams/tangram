@@ -353,25 +353,3 @@ Utils.multiCentroid = function (polygons) {
     return centroid;
 };
 
-Utils.maxPriority = 3;
-
-Utils.valueFromPriority = function (priority) {
-    let p = Utils.maxPriority;
-
-    if (priority === 'very high') {
-        return p;
-    }
-    p--;
-    if (priority === 'high') {
-        return p;
-    }
-    p--;
-    if (priority === 'low') {
-        return p;
-    }
-    p--;
-    if (priority === 'very low') {
-        return p;
-    }
-};
-

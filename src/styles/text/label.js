@@ -4,20 +4,18 @@ import Geo from '../../geo';
 import boxIntersect from 'box-intersect';
 
 export default class Label {
-    constructor (text, size, move_in_tile, keep_in_tile, priority) {
+    constructor (text, size, move_in_tile, keep_in_tile) {
         Object.assign(this, {
             text: "",
             position: [],
             size: [],
             bbox: [],
-            priority: 0,
             move_in_tile: false,
             keep_in_tile: false
         });
 
         this.move_in_tile = move_in_tile;
         this.keep_in_tile = keep_in_tile;
-        this.priority = priority;
         this.id = Label.id++;
         this.text = text;
         this.size = size;
