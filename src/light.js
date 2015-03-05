@@ -12,9 +12,26 @@ export default class Light {
         this.name = config.name;
         this.scene = scene;
 
-        this.ambient = GLSL.expandVec4(config.ambient || 0);
-        this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
-        this.specular = GLSL.expandVec4(config.specular || 0);
+        if (config.ambient == null || typeof config.ambient === 'number') {
+            this.ambient = GLSL.expandVec4(config.ambient || 0);
+        }
+        else {
+            this.ambient = StyleParser.parseColor(config.ambient);
+        }
+
+        if (config.diffuse == null || typeof config.diffuse === 'number') {
+            this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
+        }
+        else {
+            this.diffuse = StyleParser.parseColor(config.diffuse);
+        }
+
+        if (config.specular == null || typeof config.specular === 'number') {
+            this.specular = GLSL.expandVec4(config.specular || 0);
+        }
+        else {
+            this.specular = StyleParser.parseColor(config.specular);
+        }
     }
 
     // Create a light by type name, factory-style

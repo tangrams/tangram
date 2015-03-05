@@ -39,7 +39,7 @@ lights:
         type: point
 
         ambient: .2
-        diffuse: .7
+        diffuse: red #.7
         specular: .2
         # diffuse: .3
         # attenuation: 1.5

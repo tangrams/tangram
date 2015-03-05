@@ -193,7 +193,7 @@ StyleParser.parseDistance = function(val, context, convert = true) {
     return val;
 };
 
-StyleParser.parseColor = function(val, context) {
+StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
         val = val(context);
     }
@@ -223,7 +223,9 @@ StyleParser.parseColor = function(val, context) {
         });
     }
 
-    val = Utils.interpolate(context.zoom, val);
+    if (context.zoom) {
+        val = Utils.interpolate(context.zoom, val);
+    }
 
     // Default alpha
     if (!val[3]) {
