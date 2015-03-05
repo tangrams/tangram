@@ -3,8 +3,8 @@ import {Vector} from '../../vector';
 import Label from './label';
 
 export default class LabelLine extends Label {
-    constructor (text, position, size, lines, exceed_heuristic, offset) {
-        super(text, size);
+    constructor (text, position, size, lines, exceed_heuristic, offset, move_in_tile, keep_in_tile, priority) {
+        super(text, size, move_in_tile, keep_in_tile, priority);
 
         this.segment_index = 0;
         this.lines = lines;
@@ -102,12 +102,16 @@ export default class LabelLine extends Label {
 
         let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5;
 
-        return [
+        let bbox = [
             this.position[0] - max,
             this.position[1] - max,
             this.position[0] + max,
             this.position[1] + max
         ];
+
+        bbox.priority = this.priority;
+
+        return bbox;
     }
 
     moveInTile () {
@@ -128,7 +132,7 @@ export default class LabelLine extends Label {
         return !in_tile || !fits_to_segment;
     }
 
-    discard (move_in_tile, keep_in_tile, bboxes) {
+    discard (bboxes) {
         if (this.lines && !this.fitToSegment()) {
             while (!this.fitToSegment()) {
                 if (!this.moveNextSegment()) {
@@ -137,7 +141,7 @@ export default class LabelLine extends Label {
             }
         }
 
-        return super.discard(move_in_tile, keep_in_tile, bboxes);
+        return super.discard(bboxes);
     }
 }
 

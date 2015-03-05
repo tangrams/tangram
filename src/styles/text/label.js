@@ -4,14 +4,20 @@ import Geo from '../../geo';
 import boxIntersect from 'box-intersect';
 
 export default class Label {
-    constructor (text, size) {
+    constructor (text, size, move_in_tile, keep_in_tile, priority) {
         Object.assign(this, {
             text: "",
             position: [],
             size: [],
-            bbox: []
+            bbox: [],
+            priority: 0,
+            move_in_tile: false,
+            keep_in_tile: false
         });
 
+        this.move_in_tile = move_in_tile;
+        this.keep_in_tile = keep_in_tile;
+        this.priority = priority;
         this.id = Label.id++;
         this.text = text;
         this.size = size;
@@ -60,14 +66,14 @@ export default class Label {
         return this.size[1] * Geo.units_per_pixel;
     }
 
-    discard (move_in_tile, keep_in_tile, bboxes) {
+    discard (bboxes) {
         let discard = false;
 
         // perform specific styling rule, should we keep the label in tile bounds?
-        if (keep_in_tile) {
+        if (this.keep_in_tile) {
             let in_tile = this.inTileBounds();
 
-            if (!in_tile && move_in_tile) {
+            if (!in_tile && this.move_in_tile) {
                 // can we move?
                 discard = this.moveInTile();
             } else if (!in_tile) {

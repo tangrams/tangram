@@ -337,7 +337,7 @@ Utils.centroid = function (polygon) {
     return centroid;
 };
 
-Utils.multiCentroid = function(polygons) {
+Utils.multiCentroid = function (polygons) {
     let n = polygons.length;
     let centroid = [0, 0];
 
@@ -351,5 +351,27 @@ Utils.multiCentroid = function(polygons) {
     centroid[1] /= n;
 
     return centroid;
+};
+
+Utils.maxPriority = 3;
+
+Utils.valueFromPriority = function (priority) {
+    let p = Utils.maxPriority;
+
+    if (priority === 'very high') {
+        return p;
+    }
+    p--;
+    if (priority === 'high') {
+        return p;
+    }
+    p--;
+    if (priority === 'low') {
+        return p;
+    }
+    p--;
+    if (priority === 'very low') {
+        return p;
+    }
 };
 

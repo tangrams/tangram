@@ -41,6 +41,12 @@ Object.assign(TextStyle, {
 
         // default label style
         this.label_style = {
+            priorities: {
+                administrative: 'very high',
+                restaurant: 'very low',
+                minor_road: 'low',
+                major_road: 'high'
+            },
             lines: { exceed: 60 }
         };
     },
@@ -201,6 +207,7 @@ Object.assign(TextStyle, {
             // cleanup of texts that should be removed after occlusion test
             for (let style in texts) {
                 let text_infos = texts[style];
+                let labels = [];
 
                 for (let text in text_infos) {
                     let text_info = text_infos[text];
@@ -214,17 +221,9 @@ Object.assign(TextStyle, {
                         let lines = geometry.coordinates;
                         let line = [lines[0]];
 
-                        keep_in_tile = true;
-                        move_in_tile = true;
-
-                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0);
+                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true, text_info.priority);
                     } else if (geometry.type === "Point") {
-                        let points = [geometry.coordinates];
-
-                        keep_in_tile = true;
-                        move_in_tile = false;
-
-                        label = new LabelPoint(text, points[0], text_info.size);
+                        label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true, text_info.priority);
                     } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
                         let centroid;
 
@@ -234,22 +233,35 @@ Object.assign(TextStyle, {
                             centroid = Utils.multiCentroid(geometry.coordinates[0]);
                         }
 
-                        keep_in_tile = false;
-                        move_in_tile = false;
-
-                        label = new LabelPoint(text, centroid, text_info.size);
+                        label = new LabelPoint(text, centroid, text_info.size, false, false, text_info.priority);
                     } else {
                         // TODO: support MultiLineString, MultiPoint labels
                         continue;
                     }
 
-                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile])) {
-                        // remove the text from the map
-                        delete text_infos[text];
-                    } else {
-                        text_info.label = label;
+                    if(labels[text_info.priority] === undefined) {
+                        labels[text_info.priority] = [];
                     }
 
+                    labels[text_info.priority].push({ text_info: text_info, label: label });
+                }
+
+                for (let priority = Utils.maxPriority; priority >= 0; priority--) {
+                    if(!labels[priority]) {
+                        continue;
+                    }
+
+                    for (let priority of labels[priority]) {
+                        let label = priority.label;
+                        let text_info = priority.text_info;
+
+                        if (label.discard(this.bboxes[tile])) {
+                            // remove the text from the map
+                            delete text_infos[label.text];
+                        } else {
+                            text_info.label = label;
+                        }
+                    }
                 }
 
                 // No labels for this style
@@ -308,8 +320,14 @@ Object.assign(TextStyle, {
                 this.texts[tile][style_key] = {};
             }
 
+            let priority = 'very low';
+            if (this.label_style.priorities[feature.properties.kind]) {
+                priority = this.label_style.priorities[feature.properties.kind];
+            }
+
             this.texts[tile][style_key][text] = {
                 text_style: style,
+                priority: Utils.valueFromPriority(priority),
                 geometry: feature.geometry
             };
         }
