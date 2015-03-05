@@ -79,7 +79,8 @@ styles:
     #     animated: true
     #     # lighting: vertex
     #     material:
-    #         diffuse: 1
+    #         ambient: white
+    #         diffuse: white
     #         specular: 1
     #         shininess: 8
 
