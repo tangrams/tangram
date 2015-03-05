@@ -7,8 +7,8 @@ if [ ! -f src/gl/shader_sources.js ];
 then
     # keep browserify from bombing by creating a temporary fake file
     touch src/gl/shader_sources.js
-    $BROWSERIFY --list -t es6ify src/module.js
+    $BROWSERIFY --list -t babelify src/module.js
     rm src/gl/shader_sources.js
 else
-    $BROWSERIFY --list -t es6ify src/module.js
+    $BROWSERIFY --list -t babelify src/module.js
 fi
