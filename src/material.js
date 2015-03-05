@@ -78,6 +78,8 @@ export default class Material {
             if (this.normalMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_UV'] = true;
                 style.texcoords = true;
+            } else if (this.normalMapping === 'planar') {
+                style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_PLANAR'] = true;
             } else if (this.normalMapping === 'triplanar') {
                 style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR'] = true;
             }
@@ -89,6 +91,8 @@ export default class Material {
             if (this.emissionMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_UV'] = true;
                 style.texcoords = true;
+            } else if (this.emissionMapping === 'planar') {
+                style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_PLANAR'] = true;
             } else if (this.emissionMapping === 'triplanar') {
                 style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE_TRIPLANAR'] = true;
             } else if (this.emissionMapping === 'spheremap') {
@@ -102,6 +106,8 @@ export default class Material {
             if (this.ambientMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_UV'] = true;
                 style.texcoords = true;
+            } else if (this.ambientMapping === 'planar') {
+                style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_PLANAR'] = true;
             } else if (this.ambientMapping === 'triplanar') {
                 style.defines['TANGRAM_MATERIAL_AMBIENT_TEXTURE_TRIPLANAR'] = true;
             } else if (this.ambientMapping === 'spheremap') {
@@ -115,6 +121,8 @@ export default class Material {
             if (this.diffuseMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_UV'] = true;
                 style.texcoords = true;
+            } else if (this.diffuseMapping === 'planar') {
+                style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_PLANAR'] = true;
             } else if (this.diffuseMapping === 'triplanar') {
                 style.defines['TANGRAM_MATERIAL_DIFFUSE_TEXTURE_TRIPLANAR'] = true;
             } else if (this.diffuseMapping === 'spheremap') {
@@ -128,6 +136,8 @@ export default class Material {
             if (this.specularMapping === 'uv'){
                 style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_UV'] = true;
                 style.texcoords = true;
+            } else if (this.specularMapping === 'planar') {
+                style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_PLANAR'] = true;
             } else if (this.specularMapping === 'triplanar') {
                 style.defines['TANGRAM_MATERIAL_SPECULAR_TEXTURE_TRIPLANAR'] = true;
             } else if (this.specularMapping === 'spheremap') {
