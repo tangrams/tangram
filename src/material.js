@@ -28,7 +28,6 @@ export default class Material {
         	}
 		}
         
-        
         if (config.ambient && config.ambient.texture) {
 			this.ambientTexture = config.ambient.texture;
 			this.ambientMapping = config.ambient.mapping != null ? config.ambient.mapping : 'spheremap';
@@ -42,7 +41,7 @@ export default class Material {
         	}
 		}
 
-        if (config.diffuse  && config.diffuse.texture) {
+        if (config.diffuse && config.diffuse.texture) {
 			this.diffuseTexture = config.diffuse.texture != null ? config.diffuse.texture : null;
 			this.diffuseMapping = config.diffuse.mapping != null ? config.diffuse.mapping : 'spheremap';
 			this.diffuseScale = GLSL.expandVec4(config.diffuse.scale != null ? config.diffuse.scale : 1.0);
