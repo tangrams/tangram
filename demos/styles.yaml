@@ -21,6 +21,15 @@ cameras:
         position: { lng: -73.97297501564027, lat: 40.76434821445407 }
         zoom: 17
 
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
+
+        # position: [-73.97297501564027, 40.76434821445407, 500]
+
+        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
+        # height: 500
+
+        # origin: camera
+
 lights:
     light1:
         type: ambient
@@ -28,20 +37,31 @@ lights:
 
     light2:
         type: point
-        position: [0, 0, -800]
-        ambient: .0
-        diffuse: 0.5
-        specular: 0.2
-        # attenuation: 0.6
-        # inner_radius: 500
-        # outer_radius: 1700
+
+        ambient: .2
+        diffuse: red #.7
+        specular: .2
+        # diffuse: .3
+        # attenuation: 1.5
+
+        # radius: 700
+        radius: [500, 700]
+        # radius: [200px, 300px]
+
+        position: [-73.97297501564027, 40.76434821445407, 100]
+
+        # position: [0, 0, -300]
+        # origin: camera
+
+        # position: [0, 0, 300px]
+        # origin: ground
 
     light3:
         type: directional
         direction: [.5, 0, -1] #[0.1, 0.1, -1]
         diffuse: .5
         # specular: .2
-        ambient: .0
+        ambient: .2
 
     # light4:
     #     type: spotlight
@@ -55,28 +75,14 @@ lights:
 
 styles:
 
-    polygons:
-        animated: true
-        # texcoords: true
-        # lighting: vertex
-        material:
-            # normal:
-            #     texture: demos/images/normal-0001.png
-            #     mapping: triplanar
-            #     scale: 0.01
-            # diffuse: 1.0
-            diffuse: 
-                texture: demos/images/wheel.png
-                mapping: spheremap
-            # ambient: 1.0
-            ambient: 
-                texture: demos/images/wheel.png
-                mapping: spheremap
-            # specular: 0.2
-            specular: 
-                texture: demos/images/wheel.png
-                mapping: spheremap
-            shininess: 1.1
+    # polygons:
+    #     animated: true
+    #     # lighting: vertex
+    #     material:
+    #         ambient: white
+    #         diffuse: white
+    #         specular: 1
+    #         shininess: 8
 
     transparent:
         extends: polygons
@@ -544,7 +550,6 @@ layers:
         # filter: function () { return true; }
 
         style:
-            # name: buildings
             order: 4
             interactive: true
 
@@ -559,18 +564,18 @@ layers:
         #     filter: { height: { min: 100 } }
         #     style: { name: transparent, color: yellow }
 
-        # colors:
-        #     name:
-        #         filter: { name: true, kind: false }
-        #         style: { color: [.6, .2, .2] }
+        colors:
+            name:
+                filter: { name: true, kind: false }
+                style: { color: [.6, .2, .2] }
 
-        #     kind:
-        #         filter: { name: false, kind: true }
-        #         style: { color: [.2, .2, .6] }
+            kind:
+                filter: { name: false, kind: true }
+                style: { color: [.2, .2, .6] }
 
-        #     name-kind:
-        #         filter: { name: true, kind: true }
-        #         style: { color: [.6, .2, .6] }
+            name-kind:
+                filter: { name: true, kind: true }
+                style: { color: [.6, .2, .6] }
 
     labels_street:
         geometry:
