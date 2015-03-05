@@ -257,6 +257,7 @@ Object.assign(TextStyle, {
 
                 // Attach tile-specific label atlas to mesh as a texture uniform
                 tile_data.uniforms = { u_textures: [texture] };
+                tile_data.textures = [texture]; // assign texture ownership to tile
 
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));

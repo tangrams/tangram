@@ -2,6 +2,7 @@
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import WorkerBroker from './utils/worker_broker';
+import Texture from './gl/texture';
 
 import log from 'loglevel';
 
@@ -46,6 +47,7 @@ export default class Tile {
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
 
         this.meshes = {}; // renderable VBO meshes keyed by style
+        this.textures = []; // textures that the tile owns (labels, etc.)
     }
 
     static create(spec) {
@@ -80,13 +82,23 @@ export default class Tile {
     }
 
     freeResources() {
-
-        if (this != null && this.meshes != null) {
-            for (var p in this.meshes) {
-                this.meshes[p].destroy();
+        if (this.meshes) {
+            for (let m in this.meshes) {
+                this.meshes[m].destroy();
             }
         }
+
+        if (this.textures) {
+            for (let t of this.textures) {
+                let texture = Texture.textures[t];
+                if (texture) {
+                    texture.destroy();
+                }
+            }
+        }
+
         this.meshes = {};
+        this.textures = [];
     }
 
     destroy() {
@@ -191,7 +203,8 @@ export default class Tile {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,
-                        uniforms: style_data.uniforms
+                        uniforms: style_data.uniforms,
+                        textures: style_data.textures
                     };
 
                     // Track min/max order range
@@ -264,7 +277,12 @@ export default class Tile {
         if (mesh_data) {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
-                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
+                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+
+                    // Assign ownership to textures if needed
+                    if (mesh_data[s].textures) {
+                        this.textures.push(...mesh_data[s].textures);
+                    }
                 }
             }
         }
