@@ -957,6 +957,7 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
         log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+        Tile.abortBuild(tile);
     }
     else {
         var cached = this.tiles[tile.key];

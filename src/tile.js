@@ -278,11 +278,11 @@ export default class Tile {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
                     this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                }
 
-                    // Assign ownership to textures if needed
-                    if (mesh_data[s].textures) {
-                        this.textures.push(...mesh_data[s].textures);
-                    }
+                // Assign ownership to textures if needed
+                if (mesh_data[s].textures) {
+                    this.textures.push(...mesh_data[s].textures);
                 }
             }
         }
@@ -296,6 +296,28 @@ export default class Tile {
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
 
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+    }
+
+    /**
+        Called on main thread when web worker completes processing, but tile has since been discarded
+        Frees resources that would have been transferred to the tile object.
+        Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
+    */
+    static abortBuild (tile) {
+        if (tile.mesh_data) {
+            for (let s in tile.mesh_data) {
+                let textures = tile.mesh_data[s].textures;
+                if (textures) {
+                    for (let t of textures) {
+                        let texture = Texture.textures[t];
+                        if (texture) {
+                            log.trace(`destroying texture ${t} for tile ${tile.key}`);
+                            texture.destroy();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     printDebug () {
