@@ -3,6 +3,7 @@
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
+import Builders from '../styles/builders';
 import log from 'loglevel';
 
 // Global set of textures, by name
@@ -39,6 +40,7 @@ export default function Texture (gl, name, options = {}) {
     Texture.textures[this.name] = this;
 
     this.sprites = options.sprites;
+    this.texcoords = {};
 }
 
 // Destroy a single texture instance
@@ -91,6 +93,7 @@ Texture.prototype.load = function (url, options = {}) {
         this.image.onload = () => {
             this.update(options);
             this.setTextureFiltering(options);
+            this.calculateSprites();
 
             this.canvas = null; // mutually exclusive with other types
             this.data = null;
@@ -221,7 +224,47 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
     Texture.trigger('update', this);
 };
 
+// Pre-calc sprite regions for a texture sprite in UV [0, 1] space
+Texture.prototype.calculateSprites = function () {
+    if (this.sprites) {
+        for (let s in this.sprites) {
+            let sprite = this.sprites[s];
+
+            // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
+            this.texcoords[s] = Builders.getTexcoordsForSprite(
+                [sprite[0], sprite[1]],
+                [sprite[2], sprite[3]],
+                [this.width, this.height]
+            );
+        }
+    }
+};
+
 // Static/class methods
+
+// Get sprite sub-area to use for texture coordinates (default is [0, 1])
+Texture.getSpriteTexcoords = function (texname, sprite) {
+    let texture = Texture.textures[texname];
+    return texture && texture.texcoords[sprite];
+};
+
+// Create a set of textures keyed in an object
+// Optionally load each if it has a URL specified
+Texture.createFromObject = function (gl, textures) {
+    let loading = [];
+    if (textures) {
+        for (let name in textures) {
+            let config = textures[name];
+            if (!Texture.textures[name]) {
+                let texture = new Texture(gl, name, config);
+                if (config.url) {
+                    loading.push(texture.load(config.url, config));
+                }
+            }
+        }
+    }
+    return Promise.all(loading);
+};
 
 // Get metadata for a texture by name
 // Returns via promise, in case texture is still loading
@@ -250,6 +293,7 @@ Texture.getInfo = function (name) {
                 width: tex.width,
                 height: tex.height,
                 sprites: tex.sprites,
+                texcoords: tex.texcoords,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid
