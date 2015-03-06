@@ -48,7 +48,7 @@ Object.assign(TextStyle, {
                 major_road: 2,
                 minor_road: 1
             },
-            lines: { exceed: 60 }
+            lines: { exceed: 80 }
         };
     },
 
@@ -196,37 +196,41 @@ Object.assign(TextStyle, {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let geometry = this.texts[tile][style][text].geometry;
+                let geometries = this.texts[tile][style][text].geometries;
                 let exceed_heuristic = this.label_style.lines.exceed;
                 let label;
 
-                if (geometry.type === "LineString") {
-                    let lines = geometry.coordinates;
-                    let line = [lines[0]];
+                for (let id in geometries) {
+                    let geometry = geometries[id];
+                    if (geometry.type === "LineString") {
+                        let lines = geometry.coordinates;
+                        let line = [lines[0]];
 
-                    label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true);
-                } else if (geometry.type === "Point") {
-                    label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true);
-                } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
-                    let centroid;
+                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true);
+                    } else if (geometry.type === "Point") {
+                        label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true);
+                    } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
+                        let centroid;
 
-                    if (geometry.type === "Polygon") {
-                        centroid = Utils.centroid(geometry.coordinates[0]);
+                        if (geometry.type === "Polygon") {
+                            centroid = Utils.centroid(geometry.coordinates[0]);
+                        } else {
+                            centroid = Utils.multiCentroid(geometry.coordinates[0]);
+                        }
+
+                        label = new LabelPoint(text, centroid, text_info.size, false, false);
                     } else {
-                        centroid = Utils.multiCentroid(geometry.coordinates[0]);
+                        // TODO: support MultiLineString, MultiPoint labels
+                        continue;
                     }
 
-                    label = new LabelPoint(text, centroid, text_info.size, false, false);
-                } else {
-                    // TODO: support MultiLineString, MultiPoint labels
-                    continue;
-                }
+                    if(labels[text_info.priority] === undefined) {
+                        labels[text_info.priority] = [];
+                    }
+                    label.draw = 0;
 
-                if(labels[text_info.priority] === undefined) {
-                    labels[text_info.priority] = [];
+                    labels[text_info.priority].push({ style: style, text_info: text_info, label: label, id: id });
                 }
-
-                labels[text_info.priority].push({ style: style, text_info: text_info, label: label });
             }
         }
 
@@ -250,7 +254,10 @@ Object.assign(TextStyle, {
                     // remove the text from the map
                     delete texts[style][label.text];
                 } else {
-                    text_info.label = label;
+                    if (text_info.labels === undefined) {
+                        text_info.labels = {};
+                    }
+                    text_info.labels[priority_info.id] = label;
                 }
             }
         }
@@ -340,11 +347,15 @@ Object.assign(TextStyle, {
 
             this.maxPriority = Math.max(priority, this.maxPriority);
 
-            this.texts[tile][style_key][text] = {
-                text_style: style,
-                priority: priority,
-                geometry: feature.geometry
-            };
+            if (this.texts[tile][style_key][text] === undefined) {
+                this.texts[tile][style_key][text] = {
+                    text_style: style,
+                    priority: priority,
+                    geometries: {}
+                };
+            }
+
+            this.texts[tile][style_key][text].geometries[feature.id] = feature.geometry;
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
@@ -406,14 +417,14 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !text_info.label) {
+        if (!text_info || !text_info.labels[feature.id]) {
             return;
         }
 
         this.texcoord_scale = text_info.texcoords;
         style.text = text;
         style.tile = tile; // to store bbox by tiles
-        style.label = text_info.label;
+        style.label = text_info.labels[feature.id];
 
         return style;
     }
