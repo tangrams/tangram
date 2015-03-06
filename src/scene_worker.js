@@ -138,13 +138,7 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-
-                        if (error) {
-                            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
-                        }
-                        else {
-                            SceneWorker.log('trace', `skip building tile ${tile.key} because no longer loading`);
-                        }
+                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
                         resolve({
                             tile: SceneWorker.sliceTile(tile),

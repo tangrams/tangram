@@ -1021,10 +1021,6 @@ Scene.prototype.removeTile = function (key) {
     }
     log.trace(`tile unload for ${key}`);
 
-    if (this.zooming === true) {
-        return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
-    }
-
     var tile = this.tiles[key];
 
     if (tile != null) {
