@@ -253,10 +253,10 @@ Texture.getSpriteTexcoords = function (texname, sprite) {
 Texture.createFromObject = function (gl, textures) {
     let loading = [];
     if (textures) {
-        for (let name in textures) {
-            let config = textures[name];
-            if (!Texture.textures[name]) {
-                let texture = new Texture(gl, name, config);
+        for (let texname in textures) {
+            let config = textures[texname];
+            if (!Texture.textures[texname]) {
+                let texture = new Texture(gl, texname, config);
                 if (config.url) {
                     loading.push(texture.load(config.url, config));
                 }
