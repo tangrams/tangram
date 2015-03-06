@@ -138,13 +138,7 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-
-                        if (error) {
-                            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
-                        }
-                        else {
-                            SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
-                        }
+                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
                         resolve({
                             tile: SceneWorker.sliceTile(tile),
@@ -156,7 +150,7 @@ if (Utils.isWorkerThread) {
             }
             // Tile already loaded, just rebuild
             else {
-                SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
+                SceneWorker.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
                 // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
@@ -178,13 +172,17 @@ if (Utils.isWorkerThread) {
         if (tile != null) {
             // Cancel if loading
             if (tile.loading === true) {
-                SceneWorker.log('debug', `cancel tile load for ${key}`);
+                SceneWorker.log('trace', `cancel tile load for ${key}`);
                 tile.loading = false;
+            }
+
+            if (tile.request) {
+                tile.request.abort();
             }
 
             // Remove from cache
             delete SceneWorker.tiles[key];
-            SceneWorker.log('debug', `remove tile from cache for ${key}`);
+            SceneWorker.log('trace', `remove tile from cache for ${key}`);
         }
     };
 

@@ -132,7 +132,8 @@ Object.assign(TextStyle, {
 
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
-        this.canvas[tile] = null;
+        delete this.canvas[tile];
+        delete this.texture[tile];
     },
 
     rasterize (tile, texts, texture_size) {
@@ -171,12 +172,14 @@ Object.assign(TextStyle, {
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
         this.texture[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
+        // this.texture[tile].owner = { tile };
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
         this.texture[tile].setCanvas(this.canvas[tile].canvas);
-        this.canvas[tile] = null; // we don't need canvas once it has been copied to GPU texture
+        delete this.texture[tile];
+        delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
 
         return Promise.resolve({ texts: this.texts[tile], texture });
     },
@@ -303,11 +306,12 @@ Object.assign(TextStyle, {
 
                 // Attach tile-specific label atlas to mesh as a texture uniform
                 tile_data.uniforms = { u_textures: [texture] };
+                tile_data.textures = [texture]; // assign texture ownership to tile
 
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
-                this.texts[tile] = null;
+                delete this.texts[tile];
 
                 return this.super.endData.call(this, tile_data);
             });
@@ -411,6 +415,9 @@ Object.assign(TextStyle, {
     },
 
     _parseFeature (feature, rule_style, context) {
+        // debugger;
+        // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
+
         let style = this.feature_style;
         let tile = context.tile.key;
         let text = feature.properties.name; // TODO: make configurable

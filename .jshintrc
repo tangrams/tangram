@@ -25,7 +25,6 @@
     "undef": true,
     "unused": "vars",
     "globals": {
-        "libtess": true,
         "L": true,
 
         "describe": true,

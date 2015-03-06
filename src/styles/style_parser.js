@@ -107,7 +107,7 @@ StyleParser.wrapFunction = function (func) {
                 feature.id = context.feature.id;
                 var zoom = context.zoom;
                 var meters_per_pixel = context.meters_per_pixel;
-                var properties = context.style_properties;
+                var properties = context.properties;
                 return (${func}());
             }`;
     return f;
@@ -145,7 +145,7 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
 
 StyleParser.convertUnits = function(val, context, convert = true) {
     if (typeof val === 'string') {
-        var units = val.match(/([0-9.]+)([a-z]+)/);
+        var units = val.match(/([0-9.-]+)([a-z]+)/);
         if (units && units.length === 3) {
             val = parseFloat(units[1]);
             units = units[2];
@@ -193,7 +193,7 @@ StyleParser.parseDistance = function(val, context, convert = true) {
     return val;
 };
 
-StyleParser.parseColor = function(val, context) {
+StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
         val = val(context);
     }
@@ -223,7 +223,9 @@ StyleParser.parseColor = function(val, context) {
         });
     }
 
-    val = Utils.interpolate(context.zoom, val);
+    if (context.zoom) {
+        val = Utils.interpolate(context.zoom, val);
+    }
 
     // Default alpha
     if (!val[3]) {
