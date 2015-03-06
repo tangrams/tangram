@@ -199,17 +199,17 @@ Object.assign(TextStyle, {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let geometries = this.texts[tile][style][text].geometries;
-                let exceed_heuristic = this.label_style.lines.exceed;
-                let label;
 
-                for (let id in geometries) {
-                    let geometry = geometries[id];
+                for (let f = 0; f < this.features[tile][style][text].length; f++) {
+                    let feature = this.features[tile][style][text][f];
+                    let geometry = feature.geometry;
+                    let label;
+
                     if (geometry.type === "LineString") {
                         let lines = geometry.coordinates;
                         let line = [lines[0]];
 
-                        label = new LabelLine(text, line[0], text_info.size, lines, exceed_heuristic, 20.0, true, true);
+                        label = new LabelLine(text, line[0], text_info.size, lines, this.label_style.lines.exceed, 20.0, true, true);
                     } else if (geometry.type === "Point") {
                         label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true);
                     } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
@@ -227,12 +227,10 @@ Object.assign(TextStyle, {
                         continue;
                     }
 
-                    if(labels[text_info.priority] === undefined) {
-                        labels[text_info.priority] = [];
+                    if (label) {
+                        labels[text_info.priority] = labels[text_info.priority] || [];
+                        labels[text_info.priority].push({ style, feature, label });
                     }
-                    label.draw = 0;
-
-                    labels[text_info.priority].push({ style: style, text_info: text_info, label: label, id: id });
                 }
             }
         }
@@ -244,23 +242,18 @@ Object.assign(TextStyle, {
         this.bboxes[tile] = [];
 
         for (let priority = this.maxPriority; priority >= 0; priority--) {
-            if(!labels[priority]) {
+            if (!labels[priority]) {
                 continue;
             }
 
-            for (let priority_info of labels[priority]) {
-                let label = priority_info.label;
-                let text_info = priority_info.text_info;
-                let style = priority_info.style;
+            for (let i = 0; i < labels[priority].length; i++) {
+                let { style, feature, label } = labels[priority][i];
 
                 if (label.discard(this.bboxes[tile])) {
                     // remove the text from the map
                     delete texts[style][label.text];
                 } else {
-                    if (text_info.labels === undefined) {
-                        text_info.labels = {};
-                    }
-                    text_info.labels[priority_info.id] = label;
+                    feature.label = label;
                 }
             }
         }
@@ -351,15 +344,18 @@ Object.assign(TextStyle, {
 
             this.maxPriority = Math.max(priority, this.maxPriority);
 
-            if (this.texts[tile][style_key][text] === undefined) {
+            if (!this.texts[tile][style_key][text]) {
                 this.texts[tile][style_key][text] = {
                     text_style: style,
                     priority: priority,
-                    geometries: {}
                 };
             }
 
-            this.texts[tile][style_key][text].geometries[feature.id] = feature.geometry;
+            this.features = this.features || {};
+            this.features[tile] = this.features[tile] || {};
+            this.features[tile][style_key] = this.features[tile][style_key] || {};
+            this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
+            this.features[tile][style_key][text].push(feature);
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
@@ -424,14 +420,14 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !text_info.labels[feature.id]) {
+        if (!text_info || !feature.label) {
             return;
         }
 
         this.texcoord_scale = text_info.texcoords;
         style.text = text;
         style.tile = tile; // to store bbox by tiles
-        style.label = text_info.labels[feature.id];
+        style.label = feature.label;
 
         return style;
     }
