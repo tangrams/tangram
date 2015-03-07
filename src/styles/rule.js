@@ -1,212 +1,335 @@
-import {StyleParser} from './style_parser';
-import mf from 'match-feature';
+'use strict';
+const {match} = require('match-feature');
 
-export var whiteList = ['filter', 'style', 'geometry'];
+export const whiteList = ['filter', 'style', 'geometry', 'properties'];
 
-function isWhiteListed(key) {
-    return whiteList.indexOf(key) > -1;
+export let ruleCache = {};
+
+function cacheKey (rules) {
+    return rules.map(r => r.id).join('/');
 }
 
+export function mergeTrees(matchingTrees, context) {
+    let style = {};
+    let deepestOrder, orderReset;
+    let visible;
 
-// TODO Check for circular references
-export function cloneStyle(target, source) {
+    // Find deepest tree
+    matchingTrees.sort((a, b) => a.length > b.length ? -1 : (b.length > a.length ? 1 : 0));
+    let len = matchingTrees[0].length;
 
-    for (var arg of source) {
-        for (var key in arg) {
-            var value = arg[key];
-            // In a style object, arrays are consider a scalar value so we don't want to clone them.
-            if (typeof value === 'object' && !Array.isArray(value)) {
-                target[key] = cloneStyle(target[key] || {}, [value]);
-            } else {
-                target[key] = arg[key];
+    // Iterate trees in parallel
+    for (let x = 0; x < len; x++) {
+        let styles = matchingTrees.map(tree => tree[x]);
+        mergeObjects(style, ...styles);
+
+        for (let i=0; i < styles.length; i++) {
+            if (!styles[i]) {
+                continue;
+            }
+
+            // `visible` property is only true if all matching rules are visible
+            if (styles[i].visible === false) {
+                visible = false;
+            } else if (visible === undefined) {
+                visible = true;
+            }
+
+            // Make note of the style positions of order-related properties
+            if (styles[i].order !== undefined) {
+                deepestOrder = i;
+            }
+
+            if (styles[i].orderReset !== undefined) {
+                orderReset = x;
             }
         }
     }
-    return target;
-}
 
+    if (visible === undefined) {
+        return null;
+    }
 
-// Merges a chain of parent-to-child styles into a single style object
-function mergeStyles(styles) {
-    // Merge styles, properties in children override the same property in parents
-    // Remove rules without styles
-    var style = cloneStyle({}, styles.filter(style => style));
+    style.visible = visible;
 
-    // Children of invisible parents are also invisible
-    style.visible = !styles.some(style => style.visible === false);
+    // Order must be calculated based on the deepest tree that had an order property
+    if (deepestOrder !== undefined) {
+        let orderTree = matchingTrees[deepestOrder];
 
-    // The full original order chain is preserved
-    // But, the order inheritance can be 'reset' at any point in the chain
-    var order_start = 0;
-    for (var i = styles.length-1; i >= 0; i--) {
-        if (styles[i].orderReset) {
-            order_start = i;
-            break;
+        if (orderTree.length <= 1) {
+            style.order = orderTree[0].order;
         }
-    }
-    style.order = styles.slice(order_start).filter(style => style.order).map(style => style.order);
+        else {
+            style.order = [];
+            for (let x = orderReset || 0; x < orderTree.length; x++) {
+                if (orderTree[x] && orderTree[x].order) {
+                    style.order.push(orderTree[x].order);
+                }
+            }
 
-    // Order can be cached if it is only a single value...
-    if (style.order.length === 1 && typeof style.order[0] === 'number') {
-        style.order = style.order[0];
-    }
-    // Or if there are no function dependencies
-    else if (!style.order.some(style => typeof style === 'function')) {
-        style.order = StyleParser.calculateOrder(style.order);
+            // Order can be cached if it is only a single value
+            if (style.order.length === 1 && typeof style.order[0] === 'number') {
+                style.order = style.order[0];
+            }
+            // Or if there are no function dependencies
+            else if (!style.order.some(v => typeof v === 'function')) {
+                style.order = calculateOrder(style.order, context);
+            }
+        }
     }
 
     return style;
 }
 
-export function matchFeature(context, rules, collectedRules) {
-    var current, matched = false, childMatched;
-
-    if (rules.length === 0) {
-        return;
-    }
-
-    for (var i = 0; i < rules.length; i += 1) {
-        current = rules[i];
-
-        if (current instanceof Rule) {
-
-            if (current.calculatedStyle) {
-
-                if ((typeof current.filter === 'function' && current.filter(context)) || (current.filter === undefined)) {
-                    matched = true;
-                    collectedRules.push(current.calculatedStyle);
-                }
-
-            } else {
-                throw new Error('A rule must have a style object');
-            }
-        }
-        else if (current instanceof RuleGroup) {
-
-            if ((typeof current.filter === 'function' && current.filter(context)) || current.filter === undefined) {
-                matched = true;
-                childMatched = matchFeature(context, current.rules, collectedRules);
-                if (!childMatched && current.calculatedStyle) {
-                    collectedRules.push(current.calculatedStyle);
-                }
-            }
-        }
-    }
-    return matched;
-}
-
-
-export function buildFilter(rule) {
-    if (rule.filter) {
-        if (typeof rule.filter === 'object') {
-            return mf.match(rule.filter);
-        } else  if (typeof rule.filter === 'function'){
-            return rule.filter;
-        }
-    }
-}
-
-class RuleGroup {
-
-    constructor(options) {
-        Object.assign(this, options);
-        this.rules = options.rules || [];
-    }
-
-    matchFeature(context, rules = []) {
-        matchFeature(context, this.rules, rules);
-        return rules;
-    }
-
-}
 
 class Rule {
 
-    constructor(options) {
-        Object.assign(this, options);
+    constructor(name, parent, style, filter, properties) {
+        this.id = Rule.id++;
+        this.name = name;
+        this.style = style;
+        this.filter = filter;
+        this.properties = properties;
+        this.parent = parent;
+        this.buildFilter();
+        this.buildStyle();
+    }
+
+    buildStyle() {
+        this.calculatedStyle = calculateStyle(this);
+    }
+
+    buildFilter() {
+        var type = typeof this.filter;
+        if (type === 'object') {
+            this.filter = match(this.filter);
+        }
     }
 
     toJSON() {
         return {
-            name:   this.name,
-            filter: this.filter,
-            style:  this.style,
-            rules:  this.rules
+            name: this.name,
+            sytle: this.style
         };
     }
+
 }
 
-export function groupProperties(style) {
-    var properties = {}, leftOvers = [];
+Rule.id = 0;
 
-    for (var key in style) {
-        if (isWhiteListed(key)) {
-            properties[key] = style[key];
-        }
-        else {
-            leftOvers.push(key);
+
+export class RuleLeaf extends Rule {
+    constructor({name, parent, style, filter, properties}) {
+        super(name, parent, style, filter, properties);
+    }
+
+}
+
+export class RuleTree extends Rule {
+    constructor({name, parent, style, rules, filter, properties}) {
+        super(name, parent, style, filter, properties);
+        this.rules = rules || [];
+    }
+
+    addRule(rule) {
+        this.rules.push(rule);
+    }
+
+    findMatchingRules(context) {
+        let rules  = [];
+        //TODO, should this function take a RuleTree
+        matchFeature(context, [this], rules);
+
+        if (rules.length > 0) {
+
+            let key = cacheKey(rules);
+            if (!ruleCache[key]) {
+                ruleCache[key] = mergeTrees(rules.map(x => x && x.calculatedStyle), context);
+            }
+            return ruleCache[key];
         }
     }
-    return [properties, leftOvers];
 
 }
 
+function isWhiteListed(key) {
+    return whiteList.indexOf(key) > -1;
+}
 
-export function calculateStyle(rule, styles = []) {
+function isEmpty(obj) {
+    return Object.keys(obj).length === 0;
+}
+
+export function walkUp(rule, cb) {
+
     if (rule.parent) {
-        calculateStyle(rule.parent, styles);
+        walkUp(rule.parent, cb);
     }
-    if (rule.style) { styles.push(rule.style); }
+
+    cb(rule);
+}
+
+export function walkDown(rule, cb) {
+
+    if (rule.rules) {
+        rule.rules.forEach((r) => {
+            walkDown(r, cb);
+        });
+    }
+
+    cb(rule);
+}
+
+export function groupProps(obj) {
+    let whiteListed = {}, nonWhiteListed = {};
+
+    for (let key in obj) {
+        if (isWhiteListed(key)) {
+            whiteListed[key] = obj[key];
+        } else {
+            nonWhiteListed[key] = obj[key];
+        }
+    }
+    return [whiteListed, nonWhiteListed];
+}
+
+export function calculateStyle(rule) {
+
+    let styles  = [];
+
+    if (rule.parent) {
+        let cs = rule.parent.calculatedStyle || [];
+        styles.push(...cs);
+    }
+
+    styles.push(rule.style);
     return styles;
 }
 
-export function parseRule(name, style, parent) {
-    var properties = {name, parent},
-        rule,
-        group,
-        filter, originalFilter;
+export function mergeObjects(newObj, ...sources) {
 
-    var [props, leftOvers] = groupProperties(style);
-
-    Object.assign(properties, props);
-
-    // if we are a leaf
-    if (leftOvers.length === 0) {
-        rule = new Rule(properties);
-        originalFilter = rule.filter;
-        rule.filter = buildFilter(rule);
-        rule.originalFilter = originalFilter;
-        parent.rules.push(rule);
-        rule.calculatedStyle = mergeStyles(calculateStyle(rule));
-    }
-    else {
-        filter = buildFilter(properties);
-        group = new RuleGroup({name, filter, parent});
-        group.style = properties.style;
-        parent.rules.push(group);
-        group.calculatedStyle = mergeStyles(calculateStyle(group));
-    }
-
-    for (var _name of leftOvers) {
-        var property = style[_name];
-        if (typeof property === 'object') {
-            parseRule(_name, property, group);
+    for (let source of sources) {
+        if (!source) {
+            continue;
         }
-        else {
-            throw new Error(
-                `In rule ${name}, property is not a object and it not whitelisted: ${_name} => ${property}`
-            );
+        for (let key in source) {
+            let value = source[key];
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                newObj[key] = mergeObjects(newObj[key] || {}, value);
+            } else {
+                newObj[key] = value;
+            }
         }
-    }
 
-    return parent;
+    }
+    return newObj;
 }
 
-export function parseRules(layers) {
-    return Object.keys(layers).reduce((c, name) => {
-        var layer = layers[name],
-            parent  = new RuleGroup({name});
-        c[name] = parseRule(name, layer, parent);
-        return c;
-    }, {});
+export function calculateOrder(orders, context = null, defaultOrder = 0) {
+    let sum = defaultOrder;
+
+    for (let order of orders) {
+        if (typeof order === 'function') {
+            order = order(context);
+        } else {
+            order = parseFloat(order);
+        }
+
+        if (!order || isNaN(order)) {
+            continue;
+        }
+        sum += order;
+    }
+    return sum;
+}
+
+
+export function parseRuleTree(name, rule, parent) {
+
+    let properties = {name, parent};
+    let [whiteListed, nonWhiteListed] = groupProps(rule);
+    let empty = isEmpty(nonWhiteListed);
+    let Create;
+
+    if (empty && parent != null) {
+        Create = RuleLeaf;
+    } else {
+        Create = RuleTree;
+    }
+
+    let r = new Create(Object.assign(properties, whiteListed));
+
+    if (parent) {
+        parent.addRule(r);
+    }
+
+    if (!empty) {
+        for (let key in nonWhiteListed) {
+            let property = nonWhiteListed[key];
+            if (typeof property === 'object') {
+                parseRuleTree(key, property, r);
+            } else {
+                console.error('Property must be an object');
+            }
+        }
+
+    }
+
+    return r;
+}
+
+
+export function parseRules(rules) {
+    let ruleTrees = {};
+
+    for (let key in rules) {
+        let rule = rules[key];
+        ruleTrees[key] = parseRuleTree(key, rule);
+    }
+
+    return ruleTrees;
+}
+
+
+function doesMatch(filter, context) {
+    return ((typeof filter === 'function' && filter(context)) || (filter == null));
+}
+
+export function matchFeature(context, rules, collectedRules) {
+    let matched = false;
+    let childMatched = false;
+
+    if (rules.length === 0) { return; }
+
+    for (let r=0; r < rules.length; r++) {
+        let current = rules[r];
+        context.properties = current.properties;
+
+        if (current instanceof RuleLeaf) {
+
+            if (doesMatch(current.filter, context)) {
+                matched = true;
+                collectedRules.push(current);
+            }
+
+        } else if (current instanceof RuleTree) {
+            if (doesMatch(current.filter, context)) {
+                matched = true;
+
+                childMatched = matchFeature(
+                    context,
+                    current.rules,
+                    collectedRules
+                );
+
+                if (!childMatched) {
+                    collectedRules.push(current);
+                }
+            }
+        }
+
+        context.properties = null;
+    }
+
+    return matched;
 }
