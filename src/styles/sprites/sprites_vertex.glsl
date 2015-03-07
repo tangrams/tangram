@@ -62,7 +62,7 @@ void main() {
     position.xy += rotate2D(shape.xy * 128. * zscale, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
 
     // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    // reorderLayers(a_layer + u_order_min, u_order_range, position);
+    reorderLayers(a_layer + u_order_min, u_order_range, position);
 
     gl_Position = position;
 }

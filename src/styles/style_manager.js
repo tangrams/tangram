@@ -71,22 +71,7 @@ StyleManager.preload = function (styles) {
     }
 
     // First load remote styles, then load shader blocks from remote URLs
-    // TODO: also preload textures
-    StyleManager.normalizeTextures(styles);
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
-};
-
-// Handle single or multi-texture syntax, for stylesheet convenience
-StyleManager.normalizeTextures = function (styles) {
-    for (var style of Utils.values(styles)) {
-        style.textures = style.textures || {};
-
-        // Support simpler single texture syntax
-        if (style.texture) {
-            style.textures.default = style.texture; // alias single texture to 'default'
-        }
-    }
-    return styles;
 };
 
 // Load style definitions from external URLs
