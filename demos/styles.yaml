@@ -73,6 +73,19 @@ lights:
     #     radius: 1000.0
     #     cutoff: 0.0
 
+# textures:
+#     pois:
+#         url: demos/images/poi_icons_32.png
+#         filtering: mipmap
+#         sprites:
+#             # each sprite is defined as: [x origin, y origin, width, height]
+#             plane: [0, 0, 32, 32]
+#             tree: [0, 185, 32, 32]
+#             sunburst: [0, 629, 32, 32]
+#             restaurant: [0, 777, 32, 32]
+#             cafe: [0, 814, 32, 32]
+#             museum: [0, 518, 32, 32]
+
 styles:
 
     # polygons:
@@ -186,9 +199,11 @@ styles:
                 color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
-        # extends: polygons
         extends: sprites
-        # animated: true
+        animated: true
+        # blend: multiply
+        # texture: pois
+        # texture: demos/images/sunset.jpg
         texture:
             url: demos/images/poi_icons_32.png
             filtering: mipmap
@@ -200,25 +215,24 @@ styles:
                 restaurant: [0, 777, 32, 32]
                 cafe: [0, 814, 32, 32]
                 museum: [0, 518, 32, 32]
-        # shaders:
-        #     transforms:
-        #         vertex: |
-        #             //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
-        #             shape.z *= u_time;
-        #             position.y += sin(position.y + u_time*3.) * 10.;
-        #         fragment:
-        #             // color.rgb = vec3(v_texcoord.xy, 0.);
-        # shaders:
-        #     uniforms:
-        #         bouncy: true
-        #     transforms:
-        #         vertex: |
-        #             // Bouncy icons
-        #             if (bouncy) {
-        #                 position.y += sin(v_world_position.y + u_time*3.) * 10.;
-        #             }
-        #         fragment: |
-        #             //color.rgb /= lighting; // reverse lighting hack (replace w/shader lighting block/defines)
+
+        shaders:
+            uniforms:
+                rotate: false
+            transforms:
+                position: |
+                    //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
+                    //shape.z *= u_time;
+                    //position.y += sin(position.y + u_time*3.) * 10.;
+                    if (rotate == true) {
+                        //shape.z += mod(position.y, 6.28) + u_time;
+                        shape.z += u_time;
+                    }
+                color: |
+                    //color.rgb = vec3(v_texcoord.xy, 0.);
+                    //if (color.a < .5) {
+                    //    color.rgb = vec3(1);
+                    //}
 
     # text:
     #     selection: true
@@ -585,6 +599,7 @@ layers:
         filter: { name: true, $zoom: { min: 14 } }
         style:
             name: text
+            # visible: false
             order: 5
             interactive: true
             # font:
@@ -623,19 +638,19 @@ layers:
             # name: points
             # size: [[12, 6px], [13, 10px]]
 
+            name: text
             font:
                 size: 12px
                 typeface: Helvetica
                 fill: [.9, .9, .1]
                 stroke: black
 
-            name: text
-
             # name: icons
             # sprite: tree
             # size: [32px, 32px]
             # size: [[13, 16px], [14, 24px], [15, 32px]]
             # size: function() { return (parseInt(feature.id, 16) % 100); }
+            color: white
 
             angle: 0
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
@@ -680,6 +695,7 @@ layers:
 
         style:
             name: text
+            visible: false
             font:
                 size: 12px
                 typeface: Courier
