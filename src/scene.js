@@ -1117,6 +1117,10 @@ Scene.prototype.loadTextures = function () {
 
 // Handle single or multi-texture syntax, for stylesheet convenience
 Scene.prototype.normalizeTextures = function () {
+    if (!this.config.styles) {
+        return;
+    }
+
     for (let [style_name, style] of Utils.entries(this.config.styles)) {
         // If style has a single 'texture' object, move it to the global scene texture set
         // and give it a default name
