@@ -40,7 +40,6 @@ if (Utils.isWorkerThread) {
     SceneWorker.worker.updateConfig = function ({ config }) {
         SceneWorker.config = null;
         SceneWorker.styles = null;
-        FeatureSelection.reset();
         config = JSON.parse(config);
 
         for (var name in config.sources) {
@@ -194,6 +193,11 @@ if (Utils.isWorkerThread) {
             id: id,
             feature: (selection && selection.feature)
         };
+    };
+
+    // Resets the feature selection state
+    SceneWorker.worker.resetFeatureSelection = function () {
+        FeatureSelection.reset();
     };
 
     // Texture info needs to be synced from main thread
