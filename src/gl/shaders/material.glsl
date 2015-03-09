@@ -7,21 +7,20 @@ struct Material {
             vec3 emissionScale;
         #endif
     #endif
-    
+
     #ifdef TANGRAM_MATERIAL_AMBIENT
         vec4 ambient;
         #ifdef TANGRAM_MATERIAL_AMBIENT_TEXTURE
             vec3 ambientScale;
         #endif
     #endif
-    
+
     #ifdef TANGRAM_MATERIAL_DIFFUSE
         vec4 diffuse;
         #ifdef TANGRAM_MATERIAL_DIFFUSE_TEXTURE
             vec3 diffuseScale;
         #endif
     #endif
-    
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
         vec4 specular;
@@ -30,7 +29,7 @@ struct Material {
             vec3 specularScale;
         #endif
     #endif
-    
+
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
         vec3 normalScale;
@@ -38,8 +37,8 @@ struct Material {
     #endif
 };
 
-// Note: uniforms (u_[name]) and varyings (v_[name]) are 
-//      copy to global instances ( g_[name] ) to allow 
+// Note: uniforms (u_[name]) and varyings (v_[name]) are
+//      copy to global instances ( g_[name] ) to allow
 //      modifications
 //
 uniform Material u_material;
@@ -67,9 +66,9 @@ uniform sampler2D u_material_normal_texture;
 
 // GLOBAL LIGHTS ACCUMULATORS for each enable MATERIAL property
 //
-#ifdef TANGRAM_MATERIAL_AMBIENT
+// #ifdef TANGRAM_MATERIAL_AMBIENT
     vec4 g_light_accumulator_ambient = vec4(0.0);
-#endif
+// #endif
 #ifdef TANGRAM_MATERIAL_DIFFUSE
     vec4 g_light_accumulator_diffuse = vec4(0.0);
 #endif
@@ -78,7 +77,7 @@ uniform sampler2D u_material_normal_texture;
 #endif
 
 vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal, in vec2 _skew ) {
-    
+
     // Adding Brett's fix
     //https://github.com/tangrams/tangram/commit/2f6d3abe780cd96a27f7f160e561dd12bd97f744#diff-095e32924b88fd08d5f9fa07f925fee7R14
     vec3 eye = normalize(_eyeToPoint);
@@ -120,12 +119,12 @@ void calculateNormal ( inout vec3 _normal ) {
     #endif
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_PLANAR
-    vec3 normalTex = getPlanar(u_material_normal_texture, v_world_position.xyz, g_material.normalScale.xy).rgb*2.0-1.0; 
+    vec3 normalTex = getPlanar(u_material_normal_texture, v_world_position.xyz, g_material.normalScale.xy).rgb*2.0-1.0;
     _normal += normalTex;
     #endif
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR
-    vec3 normalTex = getTriPlanar(u_material_normal_texture, v_world_position.xyz, _normal, g_material.normalScale).rgb*2.0-1.0; 
+    vec3 normalTex = getTriPlanar(u_material_normal_texture, v_world_position.xyz, _normal, g_material.normalScale).rgb*2.0-1.0;
     _normal += normalTex;
     #endif
 

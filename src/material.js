@@ -14,60 +14,71 @@ export default class Material {
             this.normalScale = GLSL.expandVec3(config.normal.scale != null ? config.normal.scale : 1);
             this.normalAmount = config.normal.amount != null ? config.normal.amount : 1;
         }
-        
-		if (config.emission && config.emission.texture) {
-			this.emissionTexture = config.emission.texture;
-			this.emissionMapping = config.emission.mapping || 'spheremap';
-			this.emissionScale = GLSL.expandVec3(config.emission.scale != null ? config.emission.scale : 1);
-			this.emissionAmount = GLSL.expandVec4(config.emission.amount != null ? config.emission.amount : 1);
-		} else {
-			if (config.emission == null || typeof config.emission === 'number') {
-           		this.emission = GLSL.expandVec4(config.emission || 0);
-        	} else {
+
+		if (config.emission != null) {
+            if (config.emission.texture) {
+    			this.emissionTexture = config.emission.texture;
+    			this.emissionMapping = config.emission.mapping || 'spheremap';
+    			this.emissionScale = GLSL.expandVec3(config.emission.scale != null ? config.emission.scale : 1);
+    			this.emissionAmount = GLSL.expandVec4(config.emission.amount != null ? config.emission.amount : 1);
+    		}
+            else if (typeof config.emission === 'number') {
+           		this.emission = GLSL.expandVec4(config.emission);
+        	}
+            else {
             	this.emission = StyleParser.parseColor(config.emission);
         	}
 		}
-        
-        if (config.ambient && config.ambient.texture) {
-			this.ambientTexture = config.ambient.texture;
-			this.ambientMapping = config.ambient.mapping || 'spheremap';
-			this.ambientScale = GLSL.expandVec3(config.ambient.scale != null ? config.ambient.scale : 1);
-			this.ambientAmount = GLSL.expandVec4(config.ambient.amount != null ? config.ambient.amount : 1);
-        } else {
-			if (config.ambient == null || typeof config.ambient === 'number') {
-            	this.ambient = GLSL.expandVec4(config.ambient != null ? config.ambient : 1);
-        	} else {
+
+        if (config.ambient != null) {
+            if (config.ambient.texture) {
+    			this.ambientTexture = config.ambient.texture;
+    			this.ambientMapping = config.ambient.mapping || 'spheremap';
+    			this.ambientScale = GLSL.expandVec3(config.ambient.scale != null ? config.ambient.scale : 1);
+    			this.ambientAmount = GLSL.expandVec4(config.ambient.amount != null ? config.ambient.amount : 1);
+            }
+			else if (typeof config.ambient === 'number') {
+            	this.ambient = GLSL.expandVec4(config.ambient);
+        	}
+            else {
             	this.ambient = StyleParser.parseColor(config.ambient);
         	}
 		}
 
-        if (config.diffuse && config.diffuse.texture) {
-			this.diffuseTexture = config.diffuse.texture;
-			this.diffuseMapping = config.diffuse.mapping || 'spheremap';
-			this.diffuseScale = GLSL.expandVec3(config.diffuse.scale != null ? config.diffuse.scale : 1);
-			this.diffuseAmount = GLSL.expandVec4(config.diffuse.amount != null ? config.diffuse.amount : 1);
-        } else {
-			if (config.diffuse == null || typeof config.diffuse === 'number') {
-            	this.diffuse = GLSL.expandVec4(config.diffuse != null ? config.diffuse : 1);
-        	} else {
+        if (config.diffuse != null) {
+            if (config.diffuse.texture) {
+    			this.diffuseTexture = config.diffuse.texture;
+    			this.diffuseMapping = config.diffuse.mapping || 'spheremap';
+    			this.diffuseScale = GLSL.expandVec3(config.diffuse.scale != null ? config.diffuse.scale : 1);
+    			this.diffuseAmount = GLSL.expandVec4(config.diffuse.amount != null ? config.diffuse.amount : 1);
+            }
+            else if (typeof config.diffuse === 'number') {
+            	this.diffuse = GLSL.expandVec4(config.diffuse);
+        	}
+            else {
             	this.diffuse = StyleParser.parseColor(config.diffuse);
         	}
 		}
+        else {
+            this.diffuse = GLSL.expandVec4(1);
+        }
 
-        if (config.specular && config.specular.texture) {
-			this.specularTexture = config.specular.texture;
-			this.specularMapping = config.specular.mapping || 'spheremap';
-			this.specularScale = GLSL.expandVec3(config.specular.scale != null ? config.specular.scale : 1);
-			this.specularAmount = GLSL.expandVec4(config.specular.amount != null ? config.specular.amount : 1);
-        } else {
-			if (config.specular == null || typeof config.specular === 'number') {
-            	this.specular = GLSL.expandVec4(config.specular || 0);
-        	} else {
+        if (config.specular != null) {
+            if (config.specular.texture) {
+    			this.specularTexture = config.specular.texture;
+    			this.specularMapping = config.specular.mapping || 'spheremap';
+    			this.specularScale = GLSL.expandVec3(config.specular.scale != null ? config.specular.scale : 1);
+    			this.specularAmount = GLSL.expandVec4(config.specular.amount != null ? config.specular.amount : 1);
+            }
+            else if (typeof config.specular === 'number') {
+            	this.specular = GLSL.expandVec4(config.specular);
+        	}
+            else {
             	this.specular = StyleParser.parseColor(config.specular);
         	}
+
+            this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
 		}
-        
-        this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
     }
 
     inject (style) {
@@ -83,7 +94,7 @@ export default class Material {
                 style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_TRIPLANAR'] = true;
             }
         }
-        
+
         style.defines['TANGRAM_MATERIAL_EMISSION'] = (this.emission != null) || (this.emissionTexture != null);
         if ( this.emissionTexture != null ) {
             style.defines['TANGRAM_MATERIAL_EMISSION_TEXTURE'] = true;

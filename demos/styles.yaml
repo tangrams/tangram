@@ -74,7 +74,15 @@ lights:
     #     cutoff: 0.0
 
 styles:
-    polygons:
+
+    # polygons:
+    #     material:
+    #         ambient: 1
+    #         diffuse: 1
+
+    # polygons:
+    buildings:
+        extends: polygons
         animated: true
         # lighting: vertex
         material:
@@ -82,11 +90,18 @@ styles:
             #     texture: demos/images/normal-0001.jpg
             #     mapping: planar
             #     scale: 0.01
-            ambient:
-                texture: demos/images/grid-0001.jpg
-                mapping: planar
-                scale: 0.001
-            diffuse: white
+            # emission:
+            #     texture: demos/images/sunset.jpg
+            #     mapping: spheremap
+            # ambient: 0
+            #     texture: demos/images/sunset.jpg
+            #     mapping: spheremap
+                # texture: demos/images/grid-0001.jpg
+                # mapping: planar
+                # scale: 0.001
+            diffuse: #0 #white
+                texture: demos/images/sunset.jpg
+                mapping: spheremap
                 # texture: demos/images/grid-0002.jpg
                 # mapping: triplanar
                 # scale: 0.01
@@ -559,6 +574,7 @@ layers:
         # filter: function () { return true; }
 
         style:
+            name: buildings
             order: 4
             interactive: true
 
@@ -566,25 +582,26 @@ layers:
             # color: Style.color.randomColor()
             # color: Style.color.pseudoRandomColor()
             # color: Style.color.pseudoRandomGrayscale()
-            color: [.6, .6, .6]
+            # color: [.6, .6, .6]
+            color: white
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
         # blend:
         #     filter: { height: { min: 100 } }
         #     style: { name: transparent, color: yellow }
 
-        colors:
-            name:
-                filter: { name: true, kind: false }
-                style: { color: [.6, .2, .2] }
+        # colors:
+        #     name:
+        #         filter: { name: true, kind: false }
+        #         style: { color: [.6, .2, .2] }
 
-            kind:
-                filter: { name: false, kind: true }
-                style: { color: [.2, .2, .6] }
+        #     kind:
+        #         filter: { name: false, kind: true }
+        #         style: { color: [.2, .2, .6] }
 
-            name-kind:
-                filter: { name: true, kind: true }
-                style: { color: [.6, .2, .6] }
+        #     name-kind:
+        #         filter: { name: true, kind: true }
+        #         style: { color: [.6, .2, .6] }
 
     labels_street:
         geometry:
