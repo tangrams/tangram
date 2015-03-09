@@ -58,9 +58,6 @@ colorhalftone:
 
         transforms:
             globals: |
-                uniform float dot_frequency;
-                uniform float dot_scale;
-                uniform bool true_color;
 
                 // Antialiasing
                 float aastep(float threshold, float value) {
