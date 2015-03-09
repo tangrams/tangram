@@ -39,7 +39,7 @@ lights:
         type: directional
         direction: [.5, 0, -1] #[0.1, 0.1, -1]
         diffuse: .5
-        # specular: .2
+        specular: .2
         ambient: .2
 
     point1:
@@ -692,6 +692,8 @@ layers:
         style:
             name: text
             visible: false
+            # interactive: true
+            order: 6
             font:
                 size: 12px
                 typeface: Courier

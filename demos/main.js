@@ -477,9 +477,9 @@
                         'Color Wheel': 'demos/images/wheel.png'
                     };
 
-                    this.state.envmap = scene.styles.envmap.material.emissionTexture;
+                    this.state.envmap = scene.styles.envmap.material.emission.texture;
                     this.folder.add(this.state, 'envmap', envmaps).onChange(function(value) {
-                        scene.styles.envmap.material.emissionTexture = value;
+                        scene.styles.envmap.material.emission.texture = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }
