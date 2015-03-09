@@ -3,13 +3,13 @@ import {Vector} from '../../vector';
 import Label from './label';
 
 export default class LabelLine extends Label {
-    constructor (text, position, size, lines, exceed_heuristic, offset, move_in_tile, keep_in_tile) {
+    constructor (text, size, lines, style, move_in_tile, keep_in_tile) {
         super(text, size, move_in_tile, keep_in_tile);
 
         this.segment_index = 0;
         this.lines = lines;
-        this.exceed_heuristic = exceed_heuristic;
-        this.offset = offset;
+        this.exceed_heuristic = style.exceed;
+        this.offset = style.offset;
         this.update();
     }
 

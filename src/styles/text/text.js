@@ -48,7 +48,10 @@ Object.assign(TextStyle, {
                 major_road: 2,
                 minor_road: 1
             },
-            lines: { exceed: 80 }
+            lines: {
+                exceed: 80,
+                offset: 20
+            }
         };
     },
 
@@ -191,8 +194,41 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
-    createLabels (tile, texts) {
+    labelsFromGeometry (geometry, { text, size }) {
         let labels = [];
+
+        if (geometry.type === "LineString") {
+            let lines = geometry.coordinates;
+            labels.push(new LabelLine(text, size, lines, this.label_style.lines, true, true));
+        } else if (geometry.type === "MultiLineString") {
+            let lines = geometry.coordinates;
+            for (let i = 0; i < lines.length; ++i) {
+                let line = lines[i];
+                labels.push(new LabelLine(text, size, line, this.label_style.lines, true, true));
+            }
+        } else if (geometry.type === "Point") {
+            labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
+        } else if (geometry.type === "MultiPoint") {
+            let points = geometry.coordinates;
+              for (let i = 0; i < points.length; ++i) {
+                let point = points[i];
+                labels.push(new LabelPoint(text, point, size, null, false, true));
+            }
+        } else if (geometry.type === "Polygon") {
+            let centroid = Utils.centroid(geometry.coordinates[0]);
+            let area = Utils.polygonArea(geometry.coordinates[0]);
+            labels.push(new LabelPoint(text, centroid, size, area, false, false));
+        } else if (geometry.type === "MultiPolygon") {
+            let centroid = Utils.multiCentroid(geometry.coordinates);
+            let area = Utils.multiPolygonArea(geometry.coordinates);
+            labels.push(new LabelPoint(text, centroid, size, area, false, false));
+        }
+
+        return labels;
+    },
+
+    createLabels (tile, texts) {
+        let labels_priorities = [];
 
         for (let style in texts) {
             let text_infos = texts[style];
@@ -202,49 +238,26 @@ Object.assign(TextStyle, {
 
                 for (let f = 0; f < this.features[tile][style][text].length; f++) {
                     let feature = this.features[tile][style][text][f];
-                    let geometry = feature.geometry;
-                    let label;
-                    let area;
+                    let labels = this.labelsFromGeometry(feature.geometry, { text: text, size: text_info.size });
 
-                    if (geometry.type === "LineString") {
-                        let lines = geometry.coordinates;
-                        let line = [lines[0]];
+                    for (let i = 0; i < labels.length; ++i) {
+                        let label = labels[i];
+                        let area = label.area;
 
-                        label = new LabelLine(text, line[0], text_info.size, lines, this.label_style.lines.exceed, 20.0, true, true);
-                    } else if (geometry.type === "Point") {
-                        label = new LabelPoint(text, geometry.coordinates, text_info.size, false, true);
-                    } else if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
-                        let centroid;
-
-                        if (geometry.type === "Polygon") {
-                            centroid = Utils.centroid(geometry.coordinates[0]);
-                            area = Utils.polygonArea(geometry.coordinates[0]);
-                        } else {
-                            centroid = Utils.multiCentroid(geometry.coordinates);
-                            area = Utils.multiPolygonArea(geometry.coordinates);
-                        }
-
-                        label = new LabelPoint(text, centroid, text_info.size, false, false);
-                    } else {
-                        // TODO: support MultiLineString, MultiPoint labels
-                        continue;
-                    }
-
-                    if (label) {
-                        labels[text_info.priority] = labels[text_info.priority] || [];
-                        labels[text_info.priority].push({ style, feature, label, area });
+                        labels_priorities[text_info.priority] = labels_priorities[text_info.priority] || [];
+                        labels_priorities[text_info.priority].push({ style, feature, label, area });
                     }
                 }
             }
         }
 
         // sort by area size if defined
-        for (let p = 0; p < labels.length; ++p) {
-            if (!labels[p]) {
+        for (let p = 0; p < labels_priorities.length; ++p) {
+            if (!labels_priorities[p]) {
                 continue;
             }
 
-            labels[p].sort((e1, e2) => {
+            labels_priorities[p].sort((e1, e2) => {
                 if (e1.area && e2.area) {
                     return e1.area < e2.area;
                 } else {
@@ -253,7 +266,7 @@ Object.assign(TextStyle, {
             });
         }
 
-        return labels;
+        return labels_priorities;
     },
 
     discardLabels (tile, labels, texts) {

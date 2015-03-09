@@ -1,9 +1,10 @@
 import Label from './label';
 
 export default class LabelPoint extends Label {
-    constructor (text, position, size, move_in_tile, keep_in_tile) {
+    constructor (text, position, size, area, move_in_tile, keep_in_tile) {
         super(text, size, move_in_tile, keep_in_tile);
 
+        this.area = area;
         this.position = position;
         this.bbox = this.computeBBox();
     }
