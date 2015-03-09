@@ -214,6 +214,9 @@ class IsometricCamera extends Camera {
             this.axis = { x: this.axis[0], y: this.axis[1] }; // allow axis to also be passed as 2-elem array
         }
 
+        this.position_meters = null;
+        this.viewport_height = null;
+
         this.viewMatrix = new Float64Array(16);
         this.projectionMatrix = new Float32Array(16);
 
@@ -238,8 +241,11 @@ class IsometricCamera extends Camera {
     update() {
         super.update();
 
+        this.viewport_height = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
+        var position = [this.scene.center_meters.x, this.scene.center_meters.y, this.viewport_height];
+        this.position_meters = position;
+
         // View
-        var position = [this.scene.center_meters.x, this.scene.center_meters.y];
         mat4.identity(this.viewMatrix);
         mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(-position[0], -position[1], 0));
 
@@ -263,9 +269,8 @@ class IsometricCamera extends Camera {
     setupProgram(program) {
         program.uniform('Matrix4fv', 'u_projection', false, this.projectionMatrix);
 
-        var viewport_height = this.scene.css_size.height * Geo.metersPerPixel(this.scene.zoom);
-        program.uniform('3f', 'u_eye', 0, 0, viewport_height);
-        // program.uniform('3f', 'u_eye', viewport_height * this.axis.x, viewport_height * this.axis.y, viewport_height);
+        program.uniform('3f', 'u_eye', 0, 0, this.viewport_height);
+        // program.uniform('3f', 'u_eye', this.viewport_height * this.axis.x, this.viewport_height * this.axis.y, this.viewport_height);
         program.uniform('2f', 'u_vanishing_point', 0, 0);
     }
 

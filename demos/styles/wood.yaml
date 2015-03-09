@@ -10,12 +10,6 @@ wood:
             u_wood_spacing: 1
         transforms:
             globals: |
-                uniform vec3 u_wood_color1; // = .1;
-                uniform vec3 u_wood_color2; // = .1;
-                uniform float u_wood_eccentricity; // = .07;
-                uniform float u_wood_twist; // = .07;
-                uniform float u_wood_scale; // = .07;
-                uniform float u_wood_spacing; // = .07;
 
                 vec3 wood( vec3 pos ) {
 

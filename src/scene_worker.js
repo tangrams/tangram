@@ -7,7 +7,7 @@ import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseRules} from 'unruly';
+import {parseRules} from './styles/rule';
 import Builders from './styles/builders';
 import Texture from './gl/texture';
 
@@ -40,7 +40,6 @@ if (Utils.isWorkerThread) {
     SceneWorker.worker.updateConfig = function ({ config }) {
         SceneWorker.config = null;
         SceneWorker.styles = null;
-        FeatureSelection.reset();
         config = JSON.parse(config);
 
         for (var name in config.sources) {
@@ -138,13 +137,7 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-
-                        if (error) {
-                            SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
-                        }
-                        else {
-                            SceneWorker.log('debug', `skip building tile ${tile.key} because no longer loading`);
-                        }
+                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
                         resolve({
                             tile: SceneWorker.sliceTile(tile),
@@ -156,7 +149,7 @@ if (Utils.isWorkerThread) {
             }
             // Tile already loaded, just rebuild
             else {
-                SceneWorker.log('debug', `used worker cache for tile ${tile.key}`);
+                SceneWorker.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
                 // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
@@ -178,7 +171,7 @@ if (Utils.isWorkerThread) {
         if (tile != null) {
             // Cancel if loading
             if (tile.loading === true) {
-                SceneWorker.log('debug', `cancel tile load for ${key}`);
+                SceneWorker.log('trace', `cancel tile load for ${key}`);
                 tile.loading = false;
             }
 
@@ -188,7 +181,7 @@ if (Utils.isWorkerThread) {
 
             // Remove from cache
             delete SceneWorker.tiles[key];
-            SceneWorker.log('debug', `remove tile from cache for ${key}`);
+            SceneWorker.log('trace', `remove tile from cache for ${key}`);
         }
     };
 
@@ -202,18 +195,20 @@ if (Utils.isWorkerThread) {
         };
     };
 
+    // Resets the feature selection state
+    SceneWorker.worker.resetFeatureSelection = function () {
+        FeatureSelection.reset();
+    };
+
     // Texture info needs to be synced from main thread
     SceneWorker.syncTextures = function () {
         // We're only syncing the textures that have sprites defined, since these are (currently) the only ones we
-        // need info about for geometry construction (we need width/height, which we only know after the texture loads)
-        // This is an async process, so it returns a promise
-        var textures = [];
-        for (var style of Utils.values(SceneWorker.styles)) {
-            if (style.textures) {
-                for (var t in style.textures) {
-                    if (style.textures[t].sprites) {
-                        textures.push(style.textureName(t));
-                    }
+        // need info about for geometry construction (e.g. width/height, which we only know after the texture loads)
+        let textures = [];
+        if (SceneWorker.config.textures) {
+            for (let [texname, texture] of Utils.entries(SceneWorker.config.textures)) {
+                if (texture.sprites) {
+                    textures.push(texname);
                 }
             }
         }
