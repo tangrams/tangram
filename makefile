@@ -21,7 +21,7 @@ build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
-	$(KARMA) start --single-run
+	$(KARMA) start --browsers Chrome --single-run
 
 test-ci: build-testable
 	$(KARMA) start  --browsers SL_Firefox --single-run
