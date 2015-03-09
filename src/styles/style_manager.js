@@ -29,13 +29,6 @@ StyleManager.init = function () {
     // Layer re-ordering function
     ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
 
-    // Spherical environment map
-    ShaderProgram.addTransform('globals', `
-        #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['gl/shaders/spherical_environment_map']}
-        #endif
-    `);
-
     StyleManager.initialized = true;
 };
 

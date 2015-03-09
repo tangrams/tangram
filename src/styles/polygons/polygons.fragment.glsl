@@ -11,11 +11,6 @@ varying vec3 v_normal;
 varying vec4 v_color;
 varying vec4 v_world_position;
 
-// built-in uniforms for texture maps
-#if defined(NUM_TEXTURES)
-    uniform sampler2D u_textures[NUM_TEXTURES];
-#endif
-
 #if defined(TEXTURE_COORDS)
     varying vec2 v_texcoord;
 #endif
@@ -33,10 +28,6 @@ varying vec4 v_world_position;
     vec4 absoluteWorldPosition () {
         return v_world_position;
     }
-#endif
-
-#if defined(LIGHTING_ENVIRONMENT)
-    uniform sampler2D u_env_map;
 #endif
 
 #if defined(TANGRAM_LIGHTING_VERTEX)
@@ -58,16 +49,6 @@ void main (void) {
 
     // Modify normal before lighting
     #pragma tangram: normal
-
-    #if defined(TEXTURE_COORDS) && defined(HAS_DEFAULT_TEXTURE)
-        color = texture2D(texture_default, v_texcoord);
-    #endif
-
-    // DEPRECATED
-    #if defined(LIGHTING_ENVIRONMENT)
-        // Replace object color with environment map
-        color.rgb = sphericalEnvironmentMap(u_eye, v_position.xyz, normal, u_vanishing_point, u_env_map).rgb;
-    #endif
 
     // Modify color and material properties before lighting
     #if !defined(TANGRAM_LIGHTING_VERTEX)

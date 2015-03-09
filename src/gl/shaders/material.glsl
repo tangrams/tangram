@@ -64,22 +64,14 @@ uniform sampler2D u_material_specular_texture;
 uniform sampler2D u_material_normal_texture;
 #endif
 
-// GLOBAL LIGHTS ACCUMULATORS for each enable MATERIAL property
-//
-// #ifdef TANGRAM_MATERIAL_AMBIENT
-    vec4 g_light_accumulator_ambient = vec4(0.0);
-// #endif
-// #ifdef TANGRAM_MATERIAL_DIFFUSE
-    vec4 g_light_accumulator_diffuse = vec4(0.0);
-// #endif
+// Global light accumulators for each property
+vec4 g_light_accumulator_ambient = vec4(0.0);
+vec4 g_light_accumulator_diffuse = vec4(0.0);
 #ifdef TANGRAM_MATERIAL_SPECULAR
     vec4 g_light_accumulator_specular = vec4(0.0);
 #endif
 
 vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal, in vec2 _skew ) {
-
-    // Adding Brett's fix
-    //https://github.com/tangrams/tangram/commit/2f6d3abe780cd96a27f7f160e561dd12bd97f744#diff-095e32924b88fd08d5f9fa07f925fee7R14
     vec3 eye = normalize(_eyeToPoint);
     eye.xy -= _skew;
     eye = normalize(eye);
