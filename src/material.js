@@ -59,9 +59,6 @@ export default class Material {
             	this.diffuse = StyleParser.parseColor(config.diffuse);
         	}
 		}
-        else {
-            this.diffuse = GLSL.expandVec4(1);
-        }
 
         if (config.specular != null) {
             if (config.specular.texture) {
@@ -79,6 +76,22 @@ export default class Material {
 
             this.shininess = config.shininess ? parseFloat(config.shininess) : 0.2;
 		}
+    }
+
+    // Determine if a material config block has sufficient properties to create a material
+    static isValid (config) {
+        if (config == null) {
+            return false;
+        }
+
+        if (config.emission == null &&
+            config.ambient == null &&
+            config.diffuse == null &&
+            config.specular == null) {
+            return false;
+        }
+
+        return true;
     }
 
     inject (style) {

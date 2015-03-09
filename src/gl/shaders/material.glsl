@@ -69,9 +69,9 @@ uniform sampler2D u_material_normal_texture;
 // #ifdef TANGRAM_MATERIAL_AMBIENT
     vec4 g_light_accumulator_ambient = vec4(0.0);
 // #endif
-#ifdef TANGRAM_MATERIAL_DIFFUSE
+// #ifdef TANGRAM_MATERIAL_DIFFUSE
     vec4 g_light_accumulator_diffuse = vec4(0.0);
-#endif
+// #endif
 #ifdef TANGRAM_MATERIAL_SPECULAR
     vec4 g_light_accumulator_specular = vec4(0.0);
 #endif
