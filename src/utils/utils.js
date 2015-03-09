@@ -347,7 +347,8 @@ Utils.multiCentroid = function (polygons) {
     let n = polygons.length;
     let centroid = [0, 0];
 
-    for (let polygon of polygons) {
+    for (let p in polygons) {
+        let polygon = polygons[p][0];
         let c = Utils.centroid(polygon);
         centroid[0] += c[0];
         centroid[1] += c[1];
@@ -357,5 +358,33 @@ Utils.multiCentroid = function (polygons) {
     centroid[1] /= n;
 
     return centroid;
+};
+
+Utils.polygonArea = function (polygon) {
+    let area = 0;
+    let n = polygon.length;
+
+    for (let i = 0; i < n - 1; i++) {
+        let p0 = polygon[i];
+        let p1 = polygon[i+1];
+
+        area += p0[0] * p1[1] - p1[0] * p0[1];
+    }
+
+    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+
+    return Math.abs(area) / 2;
+};
+
+Utils.multiPolygonArea = function (polygons) {
+    let n = polygons.length;
+    let area = 0;
+
+    for (let p in polygons) {
+        let polygon = polygons[p][0];
+        area += Utils.polygonArea(polygon);
+    }
+
+    return area;
 };
 

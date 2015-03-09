@@ -204,6 +204,7 @@ Object.assign(TextStyle, {
                     let feature = this.features[tile][style][text][f];
                     let geometry = feature.geometry;
                     let label;
+                    let area;
 
                     if (geometry.type === "LineString") {
                         let lines = geometry.coordinates;
@@ -217,8 +218,10 @@ Object.assign(TextStyle, {
 
                         if (geometry.type === "Polygon") {
                             centroid = Utils.centroid(geometry.coordinates[0]);
+                            area = Utils.polygonArea(geometry.coordinates[0]);
                         } else {
-                            centroid = Utils.multiCentroid(geometry.coordinates[0]);
+                            centroid = Utils.multiCentroid(geometry.coordinates);
+                            area = Utils.multiPolygonArea(geometry.coordinates);
                         }
 
                         label = new LabelPoint(text, centroid, text_info.size, false, false);
@@ -229,10 +232,25 @@ Object.assign(TextStyle, {
 
                     if (label) {
                         labels[text_info.priority] = labels[text_info.priority] || [];
-                        labels[text_info.priority].push({ style, feature, label });
+                        labels[text_info.priority].push({ style, feature, label, area });
                     }
                 }
             }
+        }
+
+        // sort by area size if defined
+        for (let p = 0; p < labels.length; ++p) {
+            if (!labels[p]) {
+                continue;
+            }
+
+            labels[p].sort((e1, e2) => {
+                if (e1.area && e2.area) {
+                    return e1.area < e2.area;
+                } else {
+                    return false;
+                }
+            });
         }
 
         return labels;
