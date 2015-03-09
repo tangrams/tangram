@@ -908,6 +908,7 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Update config (in case JS objects were manipulated directly)
         this.syncConfigToWorker();
+        this.resetFeatureSelection();
 
         // Rebuild visible tiles, sorted from center
         let build = [];
@@ -1109,6 +1110,30 @@ Scene.prototype.preProcessSceneConfig = function () {
     return StyleManager.preload(this.config.styles);
 };
 
+// Load all textures in the scene definition
+Scene.prototype.loadTextures = function () {
+    this.normalizeTextures();
+    return Texture.createFromObject(this.gl, this.config.textures);
+};
+
+// Handle single or multi-texture syntax, for stylesheet convenience
+Scene.prototype.normalizeTextures = function () {
+    if (!this.config.styles) {
+        return;
+    }
+
+    for (let [style_name, style] of Utils.entries(this.config.styles)) {
+        // If style has a single 'texture' object, move it to the global scene texture set
+        // and give it a default name
+        if (style.texture && typeof style.texture === 'object') {
+            let texture_name = '__' + style_name;
+            this.config.textures = this.config.textures || {};
+            this.config.textures[texture_name] = style.texture;
+            style.texture = texture_name; // point stlye to location of texture
+        }
+    }
+};
+
 // Called (currently manually) after styles are updated in stylesheet
 Scene.prototype.updateStyles = function (gl) {
     if (!this.initialized && !this.initializing) {
@@ -1214,6 +1239,7 @@ Scene.prototype.updateConfig = function () {
     this.createLights();
     this.loadDataSources();
     this.setSourceMax();
+    this.loadTextures();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
@@ -1230,6 +1256,10 @@ Scene.prototype.syncConfigToWorker = function () {
             config: this.config_serialized
         });
     });
+};
+
+Scene.prototype.resetFeatureSelection = function () {
+    this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging

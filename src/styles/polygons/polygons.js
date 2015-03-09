@@ -55,8 +55,6 @@ Object.assign(Polygons, {
         style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
 
-        style.texture = rule_style.texture;
-        style.sprite = rule_style.sprite;
         style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context);
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
@@ -92,11 +90,6 @@ Object.assign(Polygons, {
             style.outline.color = null;
             style.outline.width = null;
             style.outline.tile_edges = false;
-        }
-
-        // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        if (this.texcoords) {
-            this.setTexcoordScale(style);
         }
 
         return style;

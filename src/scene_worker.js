@@ -7,7 +7,7 @@ import TileSource from './tile_source.js';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseRules} from 'unruly';
+import {parseRules} from './styles/rule';
 import Builders from './styles/builders';
 import Texture from './gl/texture';
 
@@ -40,7 +40,6 @@ if (Utils.isWorkerThread) {
     SceneWorker.worker.updateConfig = function ({ config }) {
         SceneWorker.config = null;
         SceneWorker.styles = null;
-        FeatureSelection.reset();
         config = JSON.parse(config);
 
         for (var name in config.sources) {
@@ -196,18 +195,20 @@ if (Utils.isWorkerThread) {
         };
     };
 
+    // Resets the feature selection state
+    SceneWorker.worker.resetFeatureSelection = function () {
+        FeatureSelection.reset();
+    };
+
     // Texture info needs to be synced from main thread
     SceneWorker.syncTextures = function () {
         // We're only syncing the textures that have sprites defined, since these are (currently) the only ones we
-        // need info about for geometry construction (we need width/height, which we only know after the texture loads)
-        // This is an async process, so it returns a promise
-        var textures = [];
-        for (var style of Utils.values(SceneWorker.styles)) {
-            if (style.textures) {
-                for (var t in style.textures) {
-                    if (style.textures[t].sprites) {
-                        textures.push(style.textureName(t));
-                    }
+        // need info about for geometry construction (e.g. width/height, which we only know after the texture loads)
+        let textures = [];
+        if (SceneWorker.config.textures) {
+            for (let [texname, texture] of Utils.entries(SceneWorker.config.textures)) {
+                if (texture.sprites) {
+                    textures.push(texname);
                 }
             }
         }

@@ -9,10 +9,6 @@ dots:
             u_dot_color: [1, 1, 1]
         transforms:
             globals: |
-                uniform float u_dot_grid_scale; // = .1;
-                uniform float u_dot_scale; // = .07;
-                uniform vec3 u_dot_background_color; // vec3(.5, .2, .2)
-                uniform vec3 u_dot_color; // vec3(1.)
 
                 vec3 dots (vec3 pos) {
                     vec3 color = u_dot_background_color;

@@ -4,8 +4,6 @@ import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
-import Builders from './builders';
-import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import {MethodNotImplemented} from '../utils/errors';
@@ -34,7 +32,6 @@ export var Style = {
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
-        this.textures = this.textures || {};
 
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof Material)) {
@@ -183,109 +180,10 @@ export var Style = {
     buildPoints () {},
 
 
-    /*** Texture management ***/
-
-    // Prefix texture name with style name
-    textureName (name) {
-        return this.name + '_' + name;
-    },
-
-    setupTextureUniforms () {
-        var num_textures = Object.keys(this.textures).length;
-
-        // Set a default texture flag
-        if (this.textures.default) {
-            this.defines['HAS_DEFAULT_TEXTURE'] = true;
-        }
-
-        // Provide a built-in uniform array of textures
-        if (num_textures > 0) {
-            var tex_id = 0;
-            this.defines['NUM_TEXTURES'] = num_textures.toString(); // force string to avoid auto-conversion to float
-            this.shaders.uniforms = this.shaders.uniforms || {};
-            this.shaders.uniforms.u_textures = [];
-
-            for (var name in this.textures) {
-                var texture = this.textures[name];
-                texture.name = this.textureName(name);
-                texture.id = tex_id++; // give every texture a unique id local to this style
-
-                // Consistently map named textures to the same array index in the texture uniform
-                this.shaders.uniforms.u_textures[texture.id] = texture.name;
-
-                // Provide a #define mapping each texture back to its name in the stylesheet
-                this.defines[`texture_${name}`] = `u_textures[${texture.id}]`;
-            }
-        }
-    },
-
-    // Preload any textures with explicit configuration in the 'textures' field
-    // (textures can also be initialized on the fly via uniform setters if they don't require any additional configuration)
-    // NOTE: this is only run in the main thread, since workers don't use any GL resources
-    preloadTextures () {
-        if (this.textures) {
-            for (var name in this.textures) {
-                var { url, filtering, repeat, sprites } = this.textures[name];
-                var texture = new Texture(this.gl, this.textureName(name), { sprites });
-
-                texture.load(url, { filtering, repeat });
-            }
-        }
-    },
-
-    // Pre-calc sprite regions for a texture sprite in UV [0, 1] space
-    calculateTextureSprites (name) {
-        var texture = Texture.textures[this.textureName(name)];
-        if (texture.sprites) {
-            this.texture_sprites = this.texture_sprites || {};
-            this.texture_sprites[name] = {};
-
-            for (var s in texture.sprites) {
-                var sprite = texture.sprites[s];
-
-                // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
-                this.texture_sprites[name][s] = Builders.getTexcoordsForSprite(
-                    [sprite[0], sprite[1]],
-                    [sprite[2], sprite[3]],
-                    [texture.width, texture.height]
-                );
-            }
-        }
-    },
-
-    // Set optional scale to use for texture coordinates (default is [0, 1])
-    setTexcoordScale (style) {
-        // Get sprite sub-area if necessary
-        if (this.textures && style.sprite) {
-            // Use default texture if available, otherwise texture must be specified
-            var tex;
-            if (this.textures.default) {
-                tex = 'default';
-            }
-            else {
-                tex = style.texture;
-            }
-
-            if (!tex) {
-                log.error(`Style: in style '${this.name}', must specify texture to use for sprite '${style.sprite}', must be one of [${Object.keys(this.textures).join(', ')}]`);
-            }
-            else {
-                // Lazily calculate sprite UVs the first time they are encountered
-                if (!this.texture_sprites || !this.texture_sprites[tex]) {
-                    this.calculateTextureSprites(tex);
-                }
-                this.texcoord_scale = this.texture_sprites[tex] && this.texture_sprites[tex][style.sprite];
-            }
-        }
-    },
-
-
     /*** GL state and rendering ***/
 
     setGL (gl) {
         this.gl = gl;
-        this.setupTextureUniforms();
-        this.preloadTextures();
     },
 
     makeMesh (vertex_data, { uniforms } = {}) {
