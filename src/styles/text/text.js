@@ -131,9 +131,10 @@ Object.assign(TextStyle, {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
+                let text_style = text_infos[text].text_style;
                 // update text sizes
-                this.setFont(tile, text_infos[text].text_style);
-                text_infos[text].size = this.textSize(text, tile, text_infos.capitalized);
+                this.setFont(tile, text_style);
+                text_infos[text].size = this.textSize(text, tile, text_style.capitalized);
             }
         }
 
