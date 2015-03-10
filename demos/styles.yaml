@@ -607,15 +607,15 @@ layers:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
-                    typeface: italic bold Futura 14px
-                    fill: darkred
+                    typeface: bold 14px Futura
+                    fill: blue
                     stroke: white
 
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    typeface: italic bold 1.5em Futura
+                    typeface: bold 1.5em Futura
                     fill: [0.9, 0.9, 0.9]
                     stroke: { color: [.31, .33, .31], width: 4 }
     pois:
@@ -631,7 +631,7 @@ layers:
 
             name: text
             font:
-                typeface: 12px Helvetica
+                typeface: Italic 12px Helvetica
                 fill: [.9, .9, .1]
                 stroke: black
 
@@ -688,7 +688,7 @@ layers:
             name: text
             visible: false
             font:
-                typeface: Italic Courier 12pt
+                typeface: Italic 25pt Courier
                 fill: black
                 stroke: { color: white, width: 3 }
 
@@ -698,7 +698,7 @@ layers:
                 order: 6
                 name: text
                 font:
-                    typeface: 1em Futura
+                    typeface: 1.5em Futura
                     fill: blue
                     stroke: white
 
