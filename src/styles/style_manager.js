@@ -29,13 +29,6 @@ StyleManager.init = function () {
     // Layer re-ordering function
     ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
 
-    // Spherical environment map
-    ShaderProgram.addTransform('globals', `
-        #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['gl/shaders/spherical_environment_map']}
-        #endif
-    `);
-
     StyleManager.initialized = true;
 };
 
@@ -125,7 +118,7 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
         if (style.shaders && style.shaders.transforms) {
             let _transforms = style.shaders.transforms;
 
-            for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
+            for (let [key, transform] of Utils.entries(style.shaders.transforms)) {
                 let _key = key;
 
                 // Array of transforms

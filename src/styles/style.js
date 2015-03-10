@@ -35,6 +35,9 @@ export var Style = {
 
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof Material)) {
+            if (!Material.isValid(this.material)) {
+                this.material = StyleParser.defaults.material;
+            }
             this.material = new Material(this.material);
         }
         this.material.inject(this);
