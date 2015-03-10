@@ -12,7 +12,7 @@ import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Light from './light';
 import Tile from './tile';
-import TileSource from './tile_source';
+import DataSource from './data_source';
 import FeatureSelection from './selection';
 
 import log from 'loglevel';
@@ -235,7 +235,7 @@ Scene.prototype.makeWorkers = function (url) {
 
         log.debug(`Scene.makeWorkers: initializing worker ${id}`);
         let _id = id;
-        queue.push(WorkerBroker.postMessage(worker, 'init', id).then(
+        queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers).then(
             (id) => {
                 log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                 return id;
@@ -1063,7 +1063,7 @@ Scene.prototype.loadDataSources = function () {
     for (var name in this.config.sources) {
         let source = this.config.sources[name];
         source.url = Utils.addBaseURL(source.url);
-        this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
+        this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
     }
     this.updateBounds();
 };
@@ -1082,12 +1082,16 @@ Scene.prototype.setSourceMax = function () {
 Scene.prototype.preProcessSceneConfig = function () {
     // Pre-process styles
     for (var rule of Utils.recurseValues(this.config.layers)) {
-        if (rule.style) {
-            // Styles are visible by default
-            if (rule.style.visible !== false) {
-                rule.style.visible = true;
-            }
+        // Styles are visible by default
+        if (rule.style && rule.style.visible !== false) {
+            rule.style.visible = true;
         }
+    }
+
+    // Assign ids to data sources
+    let source_id = 0;
+    for (let source in this.config.sources) {
+        this.config.sources[source].id = source_id++;
     }
 
     // If only one camera specified, set it as default
