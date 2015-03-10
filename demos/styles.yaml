@@ -616,6 +616,7 @@ layers:
                     typeface: Futura
                     fill: darkred
                     stroke: white
+                    stroke_width: 3
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:

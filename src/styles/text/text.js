@@ -37,7 +37,9 @@ Object.assign(TextStyle, {
         this.font_style = {
             typeface: 'Helvetica',
             size: '12px',
-            fill: 'white'
+            fill: 'white',
+            stroke: 'black',
+            stroke_width: 3
         };
 
         // default label style
@@ -56,7 +58,7 @@ Object.assign(TextStyle, {
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { size, typeface, fill, stroke }) {
+    setFont (tile, { size, typeface, fill, stroke, stroke_width }) {
         this.size = parseInt(size);
         this.buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
@@ -66,7 +68,7 @@ Object.assign(TextStyle, {
             ctx.strokeStyle = stroke;
         }
         ctx.fillStyle = fill;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = stroke_width;
         ctx.miterLimit = 2;
     },
 
@@ -403,15 +405,16 @@ Object.assign(TextStyle, {
                 typeface: rule.font.typeface || this.font_style.typeface,
                 size: rule.font.size || this.font_style.size,
                 fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: !rule.font.stroke ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+                stroke: !rule.font.stroke ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke),
+                stroke_width: rule.font.stroke_width || this.font_style.stroke_width
             };
         }
 
         return style;
     },
 
-    constructStyleKey ({ typeface, size, fill, stroke }) {
-        return `${typeface}/${size}/${fill}/${stroke}`;
+    constructStyleKey ({ typeface, size, fill, stroke, stroke_width }) {
+        return `${typeface}/${size}/${fill}/${stroke}/${stroke_width}`;
     },
 
     build (style, vertex_data) {
