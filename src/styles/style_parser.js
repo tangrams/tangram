@@ -128,6 +128,10 @@ StyleParser.defaults = {
     z: 0,
     style: {
         name: 'polygons'
+    },
+    material: {
+        ambient: 1,
+        diffuse: 1
     }
 };
 

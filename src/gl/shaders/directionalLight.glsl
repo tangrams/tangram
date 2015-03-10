@@ -5,11 +5,9 @@ struct DirectionalLight {
     vec3 direction;
 };
 
-void calculateLight(in DirectionalLight _light, in vec3 _eyeToPoint, in vec3 _normal){
+void calculateLight(in DirectionalLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
 
-    #ifdef TANGRAM_MATERIAL_AMBIENT
-        g_light_accumulator_ambient += _light.ambient;
-    #endif
+    g_light_accumulator_ambient += _light.ambient;
 
     float nDotVP = clamp(dot(_normal, -normalize(_light.direction)), 0.0, 1.0);
 

@@ -95,6 +95,10 @@ export default class Light {
         let calculateFunction = `
             vec4 calculateLighting(in vec3 _eyeToPoint, in vec3 _normal, in vec4 _color) {
 
+                // Do initial material calculations over normal, emission, ambient, diffuse and specular values
+                calculateMaterial(_eyeToPoint,_normal);
+
+                // Un roll the loop of individual ligths to calculate
                 ${calculateLights}
 
                 //  Final light intensity calculation
@@ -106,6 +110,10 @@ export default class Light {
 
                 #ifdef TANGRAM_MATERIAL_AMBIENT
                     color += g_light_accumulator_ambient * _color * g_material.ambient;
+                #else
+                    #ifdef TANGRAM_MATERIAL_DIFFUSE
+                        color += g_light_accumulator_ambient * _color * g_material.diffuse;
+                    #endif
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_DIFFUSE
