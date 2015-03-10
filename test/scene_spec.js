@@ -133,10 +133,10 @@ describe('Scene', function () {
                 return subject.init();
             });
 
-            it('correctly sets the value of the tile source', () => {
+            it('correctly sets the value of the data source', () => {
                 let source = subject.sources['osm'];
                 assert.propertyVal(source, 'max_zoom', 20);
-                assert.propertyVal(source, 'url_template', 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
+                assert.propertyVal(source, 'url', 'http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json');
             });
 
             it('sets the initialized property', () => {
