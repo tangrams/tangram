@@ -397,4 +397,4 @@ Utils.toPixelSize = function (size, kind) {
     } else if (kind === "%") {
         return size / 6.25;
     }
-}
+};
