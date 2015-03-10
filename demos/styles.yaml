@@ -602,31 +602,22 @@ layers:
             # visible: false
             order: 5
             interactive: true
-            # font:
-            #     typeface: Helvetica
-            #     size: 12px
-            #     fill: white
-            #     stroke: black
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
-                    size: 14px
-                    typeface: Futura
+                    typeface: italic bold Futura 14px
                     fill: darkred
                     stroke: white
-                    stroke_width: 3
+
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    size: 12px
-                    typeface: Futura
-                    # fill: [0.8, 0.7, 0.7]
-                    # stroke: [.31, .33, .31]
+                    typeface: italic bold 1.5em Futura
                     fill: [0.9, 0.9, 0.9]
-                    stroke: [.31, .33, .31]
+                    stroke: { color: [.31, .33, .31], width: 4 }
     pois:
         geometry:
             source: osm
@@ -640,8 +631,7 @@ layers:
 
             name: text
             font:
-                size: 12px
-                typeface: Helvetica
+                typeface: 12px Helvetica
                 fill: [.9, .9, .1]
                 stroke: black
 
@@ -698,10 +688,9 @@ layers:
             name: text
             visible: false
             font:
-                size: 12px
-                typeface: Courier
+                typeface: Italic Courier 12pt
                 fill: black
-                stroke: white
+                stroke: { color: white, width: 3 }
 
         administrative:
             filter: { kind: administrative }
@@ -709,8 +698,7 @@ layers:
                 order: 6
                 name: text
                 font:
-                    size: 20px
-                    typeface: Futura
+                    typeface: 1em Futura
                     fill: blue
                     stroke: white
 

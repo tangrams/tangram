@@ -34,12 +34,14 @@ Object.assign(TextStyle, {
         this.bboxes = {};
         this.maxPriority = 0;
 
+        // default font style
         this.font_style = {
-            typeface: 'Helvetica',
-            size: '12px',
+            typeface: 'Helvetica 12px',
             fill: 'white',
-            stroke: 'black',
-            stroke_width: 3
+            stroke: {
+                color: 'black',
+                width: 3
+            }
         };
 
         // default label style
@@ -58,12 +60,12 @@ Object.assign(TextStyle, {
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { size, typeface, fill, stroke, stroke_width }) {
-        this.size = parseInt(size);
+    setFont (tile, { font, fill, stroke, stroke_width, px_size }) {
+        this.size = parseInt(px_size);
         this.buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
-        ctx.font = size + ' ' + typeface;
+        ctx.font = font;
         if (stroke) {
             ctx.strokeStyle = stroke;
         }
@@ -399,22 +401,33 @@ Object.assign(TextStyle, {
 
         if (rule.font) {
             rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
-            rule.font.stroke = rule.font.stroke && StyleParser.parseColor(rule.font.stroke, context);
+
+            if (rule.font.stroke) {
+                let color = rule.font.stroke.color || rule.font.stroke;
+                rule.font.stroke = {
+                    color: StyleParser.parseColor(color, context),
+                    width: rule.font.stroke.width
+                };
+            }
 
             style = {
-                typeface: rule.font.typeface || this.font_style.typeface,
-                size: rule.font.size || this.font_style.size,
+                font: rule.font.typeface || this.font_style.typeface,
                 fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: !rule.font.stroke ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke),
-                stroke_width: rule.font.stroke_width || this.font_style.stroke_width
+                stroke: !rule.font.stroke.color ? this.font_style.stroke.color : Utils.toCanvasColor(rule.font.stroke.color),
+                stroke_width: rule.font.stroke.width || this.font_style.stroke.width,
             };
+
+            let ft_size = style.font.match(/([0-9]*\.)?[0-9]+(px|pt|em|%)/g)[0];
+            let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
+
+            style.px_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
         }
 
         return style;
     },
 
-    constructStyleKey ({ typeface, size, fill, stroke, stroke_width }) {
-        return `${typeface}/${size}/${fill}/${stroke}/${stroke_width}`;
+    constructStyleKey ({ typeface, fill, stroke, stroke_width }) {
+        return `${typeface}/${fill}/${stroke}/${stroke_width}`;
     },
 
     build (style, vertex_data) {

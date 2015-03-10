@@ -387,3 +387,14 @@ Utils.multiPolygonArea = function (polygons) {
     return area;
 };
 
+Utils.toPixelSize = function (size, kind) {
+    if (kind === "px") {
+        return size;
+    } else if (kind === "em") {
+        return 16 * size;
+    } else if (kind === "pt") {
+        return size / 0.75;
+    } else if (kind === "%") {
+        return size / 6.25;
+    }
+}
