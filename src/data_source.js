@@ -108,7 +108,7 @@ export class NetworkSource extends DataSource {
             // }
             // promise.then((body) => {
             let promise = Utils.io(url, 60 * 1000, this.response_type);
-            tile.request = promise.request;
+            source.request = promise.request;
 
             promise.then((body) => {
                 source.debug.response_size = body.length || body.byteLength;

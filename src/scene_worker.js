@@ -193,9 +193,7 @@ if (Utils.isWorkerThread) {
                 tile.loading = false;
             }
 
-            if (tile.request) {
-                tile.request.abort();
-            }
+            Tile.cancel(tile);
 
             // Remove from cache
             delete SceneWorker.tiles[key];

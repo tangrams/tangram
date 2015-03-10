@@ -349,6 +349,20 @@ export default class Tile {
         this.update(scene);
     }
 
+    /**
+        Called on worker to cancel loading
+        Static method because the worker only has object representations of tile data, there is no
+        tile instance created yet.
+    */
+    static cancel(tile) {
+        if (tile && tile.sources) {
+            Object.keys(tile.sources).
+                map(s => tile.sources[s].request).
+                filter(s => s).
+                forEach(s => s.abort());
+        }
+    }
+
     merge(other) {
         for (var key in other) {
             if (key !== 'key') {
