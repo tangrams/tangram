@@ -38,6 +38,7 @@ Object.assign(TextStyle, {
         this.font_style = {
             typeface: 'Helvetica 12px',
             fill: 'white',
+            capitalized: false,
             stroke: {
                 color: 'black',
                 width: 3
@@ -75,19 +76,21 @@ Object.assign(TextStyle, {
     },
 
     // Width and height of text based on current font style
-    textSize (text, tile) {
+    textSize (text, tile, capitalized) {
+        let str = capitalized ? text : text.toUpperCase();
         return [
-            Math.ceil(this.canvas[tile].context.measureText(text).width) + this.buffer * 2,
+            Math.ceil(this.canvas[tile].context.measureText(str).width) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke) {
+    drawText (text, [x, y], tile, stroke, capitalized) {
+        let str = capitalized ? text : text.toUpperCase();
         if (stroke) {
-            this.canvas[tile].context.strokeText(text, x + this.buffer, y + this.buffer + this.size);
+            this.canvas[tile].context.strokeText(str, x + this.buffer, y + this.buffer + this.size);
         }
-        this.canvas[tile].context.fillText(text, x + this.buffer, y + this.buffer + this.size);
+        this.canvas[tile].context.fillText(str, x + this.buffer, y + this.buffer + this.size);
     },
 
     setTextureTextPositions (texts) {
@@ -130,7 +133,7 @@ Object.assign(TextStyle, {
             for (let text in text_infos) {
                 // update text sizes
                 this.setFont(tile, text_infos[text].text_style);
-                text_infos[text].size = this.textSize(text, tile);
+                text_infos[text].size = this.textSize(text, tile, text_infos.capitalized);
             }
         }
 
@@ -151,7 +154,7 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style);
-                this.drawText(text, info.position, tile, info.text_style.stroke);
+                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.capitalized);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
@@ -415,6 +418,7 @@ Object.assign(TextStyle, {
                 fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
                 stroke: !rule.font.stroke.color ? this.font_style.stroke.color : Utils.toCanvasColor(rule.font.stroke.color),
                 stroke_width: rule.font.stroke.width || this.font_style.stroke.width,
+                capitalized: rule.font.capitalized || this.font_style.capitalized
             };
 
             let ft_size = style.font.match(/([0-9]*\.)?[0-9]+(px|pt|em|%)/g)[0];

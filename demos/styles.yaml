@@ -609,6 +609,7 @@ layers:
                     typeface: bold 14px Futura
                     fill: blue
                     stroke: white
+                    capitalized: true
 
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
