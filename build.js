@@ -4,7 +4,7 @@
 var browserify = require('browserify'),
     yargs      = require('yargs'),
     glob       = require('glob'),
-    es6ify     = require('es6ify');
+    babelify   = require("babelify");
 
 
 var args = yargs.usage('Usage: $0 --debug --require --all').demand([]).argv;
@@ -12,9 +12,10 @@ var args = yargs.usage('Usage: $0 --debug --require --all').demand([]).argv;
 
 function main() {
 
+    // TODO: look at other 6to5 options (polyfill/runtime, self-contained, etc.)
     var bundle = browserify({ debug: true}).
-        add(es6ify.runtime).
-        transform(es6ify.configure(/^(?!.*node_modules)+.+\.js$/));
+        add('babelify/polyfill').
+        transform(babelify);
 
     if ((args.require !== undefined) && (args.all !== undefined)) {
         throw new Error('You must specify either the require or all option, not both.');
