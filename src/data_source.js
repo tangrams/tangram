@@ -107,7 +107,10 @@ export class NetworkSource extends DataSource {
             //     promise = Promise.reject(Error('fake data source error'));
             // }
             // promise.then((body) => {
-            Utils.io(url, 60 * 1000, this.response_type).then((body) => {
+            let promise = Utils.io(url, 60 * 1000, this.response_type);
+            tile.request = promise.request;
+
+            promise.then((body) => {
                 source.debug.response_size = body.length || body.byteLength;
                 source.debug.network = +new Date() - source.debug.network;
                 source.debug.parsing = +new Date();

@@ -14,7 +14,7 @@ halftone:
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
-            fragment: |
+            filter: |
                 // Distance to nearest point in a grid of
                 // (frequency x frequency) points over the unit square
                 // Scale dot size for a subset of zoom
@@ -58,9 +58,6 @@ colorhalftone:
 
         transforms:
             globals: |
-                uniform float dot_frequency;
-                uniform float dot_scale;
-                uniform bool true_color;
 
                 // Antialiasing
                 float aastep(float threshold, float value) {
@@ -70,7 +67,7 @@ colorhalftone:
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
-            fragment: |
+            filter: |
                 // Distance to nearest point in a grid of
                 // (frequency x frequency) points over the unit square
                 // Scale dot size for a subset of zoom

@@ -1,6 +1,8 @@
 /* global VBOMesh */
 // Manage rendering for primitives
+import GLSL from './glsl';
 import ShaderProgram from './shader_program';
+import Texture from './texture';
 import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
@@ -73,10 +75,20 @@ VBOMesh.prototype.destroy = function ()
     if (!this.valid) {
         return false;
     }
+    this.valid = false;
+
     log.trace('VBOMesh.destroy: delete buffer of size ' + this.vertex_data.byteLength);
+
     this.gl.deleteBuffer(this.buffer);
     this.buffer = null;
     delete this.vertex_data;
-    this.valid = false;
+
+    // Free texture uniforms that are owned by this mesh
+    for (let {type, value} of GLSL.parseUniforms(this.uniforms)) {
+        if (type === 'sampler2D' && Texture.textures[value]) {
+            Texture.textures[value].destroy();
+        }
+    }
+
     return true;
 };

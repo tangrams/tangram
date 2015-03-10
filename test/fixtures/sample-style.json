@@ -1,89 +1,31 @@
 {
-    "earth": {
-        "filter": "Q.is('layer', 'earth')",
+    "root": {
+        "filter": {
+            "kind": "highway"
+        },
         "style": {
             "color": [255, 255, 255]
         },
+
         "fill": {
+            "filter": {
+                "name": "FDR"
+            },
             "style": {
                 "color": [1, 1, 0]
+            },
+            "b": {
+                "style": {
+                    "a": "b",
+                    "color": [3.14, 3.14, 3.14]
+                }
             }
-        }
-    },
+        },
 
-    "roads": {
-        "filter": {
-            "layer": "roads"
-        },
-        "style": {
-            "type": "polygon",
-            "color": [1, 1, 1],
-            "width": 5,
-            "outline": {
-                "color": [0.7, 0.7, 0.7],
-                "width": 10
-            }
-        },
-        "highway": {
+        "rule1": {
             "filter": {
-                "kind": "highway"
-            },
-            "fill": {
-                "style": {
-                    "color": [1, 1, 1],
-                    "width": 10
-                },
-                "offramp": {
-                    "filter": {
-                        "offramp": true
-                    },
-                    "style": {
-                        "color": [1, 0.5, 0]
-                    }
-                }
-            },
-            "thing": {
-                "style": {
-                    "type": "polygon",
-                    "color": [1, 1, 0],
-                    "width": 12,
-                    "outline": {
-                        "color": [0.6, 0.6, 0.6]
-                    }
-                }
-            }
-        },
-        "bikepath": {
-            "filter": {
-                "kind": "bikepath"
-            },
-            "style": {
-                "order": 2,
-                "color": [0, 1, 1]
-            },
-            "another-style": {
-                "style": {
-                    "color": [0.5, 1, 1]
-                }
-            }
-        },
-        "stuff": {
-            "style": {
-                "color": [1, 0, 1]
-            }
-        }
-    },
-
-    "roads2": {
-        "filter": "Q.is('layer', 'roads')",
-        "style": {
-            "color": [1, 0, 1]
-        },
-        "more-stuff": {
-            "style": {
-                "color": [1, 0.5, 1]
+                "a": 1
             }
         }
     }
-
 }
