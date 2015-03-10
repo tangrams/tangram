@@ -77,7 +77,7 @@ Object.assign(TextStyle, {
 
     // Width and height of text based on current font style
     textSize (text, tile, capitalized) {
-        let str = capitalized ? text : text.toUpperCase();
+        let str = capitalized ? text.toUpperCase() : text;
         return [
             Math.ceil(this.canvas[tile].context.measureText(str).width) + this.buffer * 2,
             this.size + this.buffer * 2
@@ -86,7 +86,7 @@ Object.assign(TextStyle, {
 
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
-        let str = capitalized ? text : text.toUpperCase();
+        let str = capitalized ? text.toUpperCase() : text;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + this.buffer, y + this.buffer + this.size);
         }
