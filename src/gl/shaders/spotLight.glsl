@@ -86,9 +86,7 @@ void calculateLight(in SpotLight _light, in vec3 _eyeToPoint, in vec3 _normal) {
         spotAttenuation = pow(spotDot, _light.spotExponent);
     }
 
-    #ifdef TANGRAM_MATERIAL_AMBIENT
-        g_light_accumulator_ambient += _light.ambient * attenuation * spotAttenuation;
-    #endif
+    g_light_accumulator_ambient += _light.ambient * attenuation * spotAttenuation;
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
         g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation * spotAttenuation;

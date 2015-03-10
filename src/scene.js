@@ -908,6 +908,7 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Update config (in case JS objects were manipulated directly)
         this.syncConfigToWorker();
+        this.resetFeatureSelection();
 
         // Rebuild visible tiles, sorted from center
         let build = [];
@@ -1117,6 +1118,10 @@ Scene.prototype.loadTextures = function () {
 
 // Handle single or multi-texture syntax, for stylesheet convenience
 Scene.prototype.normalizeTextures = function () {
+    if (!this.config.styles) {
+        return;
+    }
+
     for (let [style_name, style] of Utils.entries(this.config.styles)) {
         // If style has a single 'texture' object, move it to the global scene texture set
         // and give it a default name
@@ -1251,6 +1256,10 @@ Scene.prototype.syncConfigToWorker = function () {
             config: this.config_serialized
         });
     });
+};
+
+Scene.prototype.resetFeatureSelection = function () {
+    this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging

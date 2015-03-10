@@ -31,11 +31,18 @@ cameras:
         # origin: camera
 
 lights:
-    light1:
+    ambient1:
         type: ambient
         ambient: .3
 
-    light2:
+    directional1:
+        type: directional
+        direction: [.5, 0, -1] #[0.1, 0.1, -1]
+        diffuse: .5
+        specular: .2
+        ambient: .2
+
+    point1:
         type: point
 
         ambient: .2
@@ -56,14 +63,7 @@ lights:
         # position: [0, 0, 300px]
         # origin: ground
 
-    light3:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .5
-        # specular: .2
-        ambient: .2
-
-    # light4:
+    # spot1:
     #     type: spotlight
     #     position: [0, 0, 200]
     #     diffuse: 1
@@ -87,15 +87,6 @@ lights:
 #             museum: [0, 518, 32, 32]
 
 styles:
-
-    # polygons:
-    #     animated: true
-    #     # lighting: vertex
-    #     material:
-    #         ambient: white
-    #         diffuse: white
-    #         specular: 1
-    #         shininess: 8
 
     transparent:
         extends: polygons
@@ -175,14 +166,18 @@ styles:
 
     envmap:
         extends: polygons
-        lighting: false
-        shaders:
-            defines:
-                LIGHTING_ENVIRONMENT: true
-            uniforms:
-                u_env_map: demos/images/sunset.jpg
-            transforms:
-                # fragment: color = mix(color_prelight, color_prelight * lighting, sin(u_time) / 2. + .5); // fade lighting in and out
+        animated: true
+        # lighting: vertex
+        material:
+            # normal:
+            #     texture: demos/images/normal-0001.jpg
+            #     mapping: planar
+            #     scale: 0.01
+            emission:
+                texture: demos/images/sunset.jpg
+                mapping: spheremap
+            # specular: 1
+            # shininess: 8
 
     halftone:
         url: demos/styles/halftone.yaml
@@ -260,7 +255,7 @@ styles:
         extends: polygons
         shaders:
             transforms:
-                fragment: |
+                color: |
                     color = vec4(vec3(v_position.z / 256.), 1.);
                     //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
 
@@ -572,6 +567,7 @@ layers:
             # color: Style.color.pseudoRandomColor()
             # color: Style.color.pseudoRandomGrayscale()
             color: [.6, .6, .6]
+            # color: white
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
         # blend:
@@ -696,6 +692,8 @@ layers:
         style:
             name: text
             visible: false
+            # interactive: true
+            order: 6
             font:
                 size: 12px
                 typeface: Courier
