@@ -18,7 +18,7 @@ src/gl/shader_sources.js: $(shell find src/ -name '*.glsl')
 	bash ./build_shaders.sh > src/gl/shader_sources.js
 
 build-testable: lint dist/tangram.debug.js
-	node build.js --debug=true --polyfill=false --all './test/*.js' > dist/tangram.test.js
+	node build.js --debug=true --all './test/*.js' > dist/tangram.test.js
 
 test: build-testable
 	$(KARMA) start --browsers Chrome --single-run
