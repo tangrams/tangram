@@ -14,11 +14,14 @@ function main() {
 
     // TODO: look at other 6to5 options (polyfill/runtime, self-contained, etc.)
     var bundle = browserify({ debug: true}).
-        add('babelify/polyfill').
         transform(babelify);
 
     if ((args.require !== undefined) && (args.all !== undefined)) {
         throw new Error('You must specify either the require or all option, not both.');
+    }
+
+    if (args.polyfill !== 'false') {
+        bundle.add('babelify/polyfill');
     }
 
     if (args.require !== undefined) {

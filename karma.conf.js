@@ -25,6 +25,7 @@ module.exports = function (config) {
         files: [
             'node_modules/topojson/topojson.js',
             'node_modules/lodash/lodash.js',
+            'node_modules/babel/browser-polyfill.js',
 
             { pattern: 'test/fixtures/*',
               watched: false,
