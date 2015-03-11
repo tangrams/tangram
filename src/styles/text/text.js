@@ -19,9 +19,9 @@ Object.assign(TextStyle, {
     built_in: true,
     selection: false,
 
-    init(scene) {
+    init() {
 
-        this.super.init.apply(this);
+        this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
         if (Utils.isMainThread) {
@@ -33,7 +33,6 @@ Object.assign(TextStyle, {
         this.canvas = {};
         this.bboxes = {};
         this.maxPriority = 0;
-        this.device_pixel_ratio = scene.device_pixel_ratio;
 
         // default font style
         this.font_style = {
@@ -64,7 +63,8 @@ Object.assign(TextStyle, {
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size }) {
         this.size = parseInt(px_size);
-        this.buffer = 6; // pixel padding around text
+        debugger;
+        this.buffer = 6 * this.device_pixel_ratio; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
         ctx.font = font;
@@ -427,8 +427,9 @@ Object.assign(TextStyle, {
             let ft_size = style.font.match(size_regex)[0];
             let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
-            style.px_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
-            style.font = style.font.replace(size_regex, style.px_size * this.device_pixel_ratio + "px");
+            style.px_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind) * this.device_pixel_ratio;
+            style.stroke_width *= this.device_pixel_ratio;
+            style.font = style.font.replace(size_regex, style.px_size + "px");
         }
 
         return style;

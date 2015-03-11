@@ -34,9 +34,10 @@ if (Utils.isWorkerThread) {
     Builders.setTileScale(Scene.tile_scale);
 
     // Initialize worker
-    SceneWorker.worker.init = function (worker_id, num_workers) {
+    SceneWorker.worker.init = function (worker_id, num_workers, device_pixel_ratio) {
         SceneWorker.worker_id = worker_id;
         SceneWorker.num_workers = num_workers;
+        SceneWorker.device_pixel_ratio = device_pixel_ratio;
         FeatureSelection.setPrefix(SceneWorker.worker_id);
         return worker_id;
     };
@@ -73,7 +74,7 @@ if (Utils.isWorkerThread) {
 
         // Expand styles
         SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles, SceneWorker.config);
+        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles, { device_pixel_ratio: SceneWorker.device_pixel_ratio });
 
         // Parse each top-level layer as a separate rule tree
         // TODO: find a more graceful way to incorporate this

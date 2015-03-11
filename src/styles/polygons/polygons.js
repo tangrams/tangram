@@ -12,8 +12,8 @@ Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
 
-    init(scene) {
-        Style.init.apply(this);
+    init() {
+        Style.init.apply(this, arguments);
 
         // Base shaders
         this.vertex_shader_key = 'styles/polygons/polygons.vertex';

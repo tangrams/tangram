@@ -235,7 +235,7 @@ Scene.prototype.makeWorkers = function (url) {
 
         log.debug(`Scene.makeWorkers: initializing worker ${id}`);
         let _id = id;
-        queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers).then(
+        queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, this.device_pixel_ratio).then(
             (id) => {
                 log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                 return id;
@@ -1244,7 +1244,6 @@ Scene.prototype.updateConfig = function () {
     this.loadDataSources();
     this.setSourceMax();
     this.loadTextures();
-    this.config.device_pixel_ratio = this.device_pixel_ratio;
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
