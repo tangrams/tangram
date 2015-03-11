@@ -63,7 +63,6 @@ Object.assign(TextStyle, {
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size }) {
         this.size = parseInt(px_size);
-        debugger;
         this.buffer = 6 * this.device_pixel_ratio; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
