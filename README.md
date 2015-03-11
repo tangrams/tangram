@@ -3,6 +3,8 @@ Tangram: WebGL for OpenStreetMap
 
 [![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram)
 
+![tangram-header](https://cloud.githubusercontent.com/assets/459970/6598598/200f0ce0-c7db-11e4-98c7-c5a056b7aac7.png)
+
 
 Tangram is a library for rendering 2D & 3D maps with WebGL. It is tuned for OpenStreetMap data, but supports any tiled source of GeoJSON/TopoJSON or binary vector tiles.
 
@@ -38,27 +40,20 @@ Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.j
 
 The library also includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
 
-## Installation
+## Development
 
-```
+If you'd like to contribute to the project or make changes to the source code for fun, you'll need to install development requirements and build the library:
+
+```shell
 npm install
 make
 ```
 
 The library will be minified in `dist/`, and `index.html` provides an example for rendering from different sources and simple Leaflet integration.
 
-## Examples
+### Testing
 
-- [**NYC / Lower Manhattan**](https://mapzen.com/tangram/#mapzen,40.70479834544056,-74.0057945251465,15)
-- [**NYC / Central Park**](https://mapzen.com/tangram/#mapzen,40.78004586258099,-73.96652698516847,16)
-- [**Berlin**](https://mapzen.com/tangram/#mapzen,52.52177659937554,13.373343944549562,16)
-- [**Colosseum & Roman ruins**](https://mapzen.com/tangram/#mapzen,41.889367479706124,12.488912343978884,17)
-
-
-
-## Test
-
-To run all of the tests.
+Tests are included to ensure that the code functions as expected. To run all of the tests:
 
 ```shell
 npm test
@@ -77,8 +72,8 @@ And then run the tests with,
 make run-tests
 ```
 
-## Lint
-We use jshint to maintain code quality
+### Lint
+We're using jshint to maintain code quality.
 
 ```shell
 make lint
