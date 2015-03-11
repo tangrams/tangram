@@ -4,7 +4,27 @@ Tangram: WebGL for OpenStreetMap
 [![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram)
 
 
-Tangram is a library for rendering 2D & 3D maps with WebGL, using GeoJSON/TopoJSON or binary vector tiles.
+Tangram is a library for rendering 2D & 3D maps with WebGL. It is tuned for OpenStreetMap data, but supports any tiled source of GeoJSON/TopoJSON or binary vector tiles.
+
+## Quickstart
+
+1. Clone or download this repository:
+  - clone in a terminal window with `git clone https://github.com/tangrams/tangram.git`
+  - or download a zip directly: https://github.com/tangrams/tangram/archive/master.zip
+2. Start a webserver in the repository's directory:
+  - in a terminal window, enter: `python -m SimpleHTTPServer 8000`
+  - if that doesn't work, try: `python -m http.server`
+3. View the map at http://localhost:8000 (or whatever port you started the server on)
+
+## Demos
+
+[**tangram-demo**](http://github.com/tangrams/tangram-demo) - A minimal demo showing the basic setup
+
+[**gui-demo**](http://github.com/tangrams/gui-demo) - Control styles in real-time with a gui
+
+[**shaders-demo**](http://github.com/tangrams/shaders-demo) - More complex glsl shaders
+
+[**highways-demo**](http://github.com/tangrams/highways-demo) - Zoom-dependent styles and contextual filtering rules
 
 ## Vector Tiles
 
