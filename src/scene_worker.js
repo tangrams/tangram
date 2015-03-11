@@ -73,7 +73,7 @@ if (Utils.isWorkerThread) {
 
         // Expand styles
         SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
+        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles, SceneWorker.config);
 
         // Parse each top-level layer as a separate rule tree
         // TODO: find a more graceful way to incorporate this

@@ -19,7 +19,7 @@ Object.assign(TextStyle, {
     built_in: true,
     selection: false,
 
-    init() {
+    init(scene) {
 
         this.super.init.apply(this);
 
@@ -33,6 +33,7 @@ Object.assign(TextStyle, {
         this.canvas = {};
         this.bboxes = {};
         this.maxPriority = 0;
+        this.device_pixel_ratio = scene.device_pixel_ratio;
 
         // default font style
         this.font_style = {
@@ -422,10 +423,12 @@ Object.assign(TextStyle, {
                 capitalized: rule.font.capitalized || this.font_style.capitalized
             };
 
-            let ft_size = style.font.match(/([0-9]*\.)?[0-9]+(px|pt|em|%)/g)[0];
+            let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
+            let ft_size = style.font.match(size_regex)[0];
             let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
             style.px_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
+            style.font = style.font.replace(size_regex, style.px_size * this.device_pixel_ratio + "px");
         }
 
         return style;

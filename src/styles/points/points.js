@@ -12,7 +12,7 @@ Object.assign(Points, {
     name: 'points',
     built_in: true,
 
-    init() {
+    init(scene) {
         Style.init.apply(this);
 
         // Base shaders

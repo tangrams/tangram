@@ -1146,7 +1146,7 @@ Scene.prototype.updateStyles = function (gl) {
 
     // (Re)build styles from config
     StyleManager.init();
-    this.styles = StyleManager.build(this.config.styles);
+    this.styles = StyleManager.build(this.config.styles, this);
 
     // Optionally set GL context (used when initializing or re-initializing GL resources)
     if (gl) {
@@ -1244,6 +1244,7 @@ Scene.prototype.updateConfig = function () {
     this.loadDataSources();
     this.setSourceMax();
     this.loadTextures();
+    this.config.device_pixel_ratio = this.device_pixel_ratio;
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);

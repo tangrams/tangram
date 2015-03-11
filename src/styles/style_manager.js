@@ -194,7 +194,7 @@ StyleManager.update = function (name, settings) {
 };
 
 // Called to create or update styles from stylesheet
-StyleManager.build = function (stylesheet_styles) {
+StyleManager.build = function (stylesheet_styles, scene = null) {
     // Stylesheet-defined styles
     for (var name in stylesheet_styles) {
         Styles[name] = StyleManager.update(name, stylesheet_styles[name]);
@@ -203,7 +203,7 @@ StyleManager.build = function (stylesheet_styles) {
     // Initialize all
     for (name in Styles) {
         Styles[name].initialized = false;
-        Styles[name].init();
+        Styles[name].init(scene);
     }
 
     return Styles;

@@ -12,7 +12,7 @@ Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
 
-    init() {
+    init(scene) {
         Style.init.apply(this);
 
         // Base shaders

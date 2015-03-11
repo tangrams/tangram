@@ -18,7 +18,7 @@ Object.assign(Sprites, {
     selection: true,
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
-    init() {
+    init(scene) {
         Style.init.apply(this);
 
         // Base shaders
