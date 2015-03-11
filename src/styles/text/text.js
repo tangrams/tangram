@@ -56,7 +56,7 @@ Object.assign(TextStyle, {
             },
             lines: {
                 exceed: 80,
-                offset: 20
+                offset: 0
             }
         };
     },
