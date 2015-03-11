@@ -12,10 +12,18 @@ var args = yargs.usage('Usage: $0 --debug --require --all').demand([]).argv;
 
 function main() {
 
-    var bundle = browserify({ debug: true}).
-        transform(babelify.configure({
+    var bundle = browserify({ debug: true});
+
+    // Use either Babel polyfill or runtime
+    if (args.polyfill) {
+        bundle.add('babel/polyfill');
+        bundle.transform(babelify);
+    }
+    else if (args.runtime) {
+        bundle.transform(babelify.configure({
             optional: ['runtime']
         }));
+    }
 
     if ((args.require !== undefined) && (args.all !== undefined)) {
         throw new Error('You must specify either the require or all option, not both.');
