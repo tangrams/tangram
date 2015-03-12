@@ -339,12 +339,12 @@ describe('Scene', function () {
             return subject.init();
         });
 
-        it('adds a new mode', () => {
+        it('adds a new style', () => {
             subject.config.styles.elevator = {
                 "extends": "polygons",
                 "animated": true,
                 "shaders": {
-                    "transforms": {
+                    "blocks": {
                         "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
                     }
                 }

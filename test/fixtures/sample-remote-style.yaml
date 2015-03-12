@@ -8,7 +8,7 @@ windows:
             u_windowColor: [1., 1., .9]
             u_buildingColor: [.8, .8, .7]
             u_roofColor: [.5, .4, .5]
-        transforms:
+        blocks:
             globals: |
                 uniform float u_frequency;
                 uniform vec3 u_windowColor;

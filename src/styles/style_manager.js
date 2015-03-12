@@ -24,10 +24,10 @@ StyleManager.init = function () {
         return;
     }
 
-    ShaderProgram.removeTransform('globals');
+    ShaderProgram.removeBlock('globals');
 
     // Layer re-ordering function
-    ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
+    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/reorder_layers']);
 
     StyleManager.initialized = true;
 };
@@ -64,7 +64,7 @@ StyleManager.preload = function (styles) {
     }
 
     // First load remote styles, then load shader blocks from remote URLs
-    return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
+    return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadShaderBlocks);
 };
 
 // Load style definitions from external URLs
@@ -112,34 +112,34 @@ StyleManager.loadRemoteStyles = function (styles) {
 };
 
 // Preload shader blocks from external URLs
-StyleManager.loadRemoteShaderTransforms = function (styles) {
+StyleManager.loadShaderBlocks = function (styles) {
     var queue = [];
     for (var style of Utils.values(styles)) {
-        if (style.shaders && style.shaders.transforms) {
-            let _transforms = style.shaders.transforms;
+        if (style.shaders && style.shaders.blocks) {
+            let _blocks = style.shaders.blocks;
 
-            for (let [key, transform] of Utils.entries(style.shaders.transforms)) {
+            for (let [key, block] of Utils.entries(style.shaders.blocks)) {
                 let _key = key;
 
-                // Array of transforms
-                if (Array.isArray(transform)) {
-                    for (let t=0; t < transform.length; t++) {
-                        if (typeof transform[t] === 'object' && transform[t].url) {
-                            let _index = t;
-                            queue.push(Utils.io(Utils.cacheBusterForUrl(transform[t].url)).then((data) => {
-                                _transforms[_key][_index] = data;
+                // Array of blocks
+                if (Array.isArray(block)) {
+                    for (let b=0; b < block.length; b++) {
+                        if (typeof block[b] === 'object' && block[b].url) {
+                            let _index = b;
+                            queue.push(Utils.io(Utils.cacheBusterForUrl(block[b].url)).then((data) => {
+                                _blocks[_key][_index] = data;
                             }).catch((error) => {
-                                log.error(`StyleManager.loadRemoteShaderTransforms: error loading shader transform`, _transforms, _key, _index, error);
+                                log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, _index, error);
                             }));
                         }
                     }
                 }
-                // Single transform
-                else if (typeof transform === 'object' && transform.url) {
-                    queue.push(Utils.io(Utils.cacheBusterForUrl(transform.url)).then((data) => {
-                        _transforms[_key] = data;
+                // Single block
+                else if (typeof block === 'object' && block.url) {
+                    queue.push(Utils.io(Utils.cacheBusterForUrl(block.url)).then((data) => {
+                        _blocks[_key] = data;
                     }).catch((error) => {
-                        log.error(`StyleManager.loadRemoteShaderTransforms: error loading shader transform`, _transforms, _key, error);
+                        log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, error);
                     }));
                 }
             }
@@ -164,7 +164,7 @@ StyleManager.update = function (name, settings) {
     Styles[name].initialized = false;
     Styles[name].defines = (base.defines && Object.create(base.defines)) || {};
 
-    // Merge shaders: defines, uniforms, transforms
+    // Merge shaders: defines, uniforms, blocks
     let shaders = {};
     let merge = [base.shaders, settings.shaders]; // first merge base (inherited) style shaders
     merge = merge.filter(x => x); // remove null objects
@@ -172,18 +172,18 @@ StyleManager.update = function (name, settings) {
     shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
     shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
 
-    // Merge transforms
-    merge.map(x => x.transforms).filter(x => x).forEach(transforms => {
-        shaders.transforms = shaders.transforms || {};
+    // Merge blocks
+    merge.map(x => x.blocks).filter(x => x).forEach(blocks => {
+        shaders.blocks = shaders.blocks || {};
 
-        for (let [t, transform] of Utils.entries(transforms)) {
-            shaders.transforms[t] = shaders.transforms[t] || [];
+        for (let [t, block] of Utils.entries(blocks)) {
+            shaders.blocks[t] = shaders.blocks[t] || [];
 
-            if (Array.isArray(transform)) {
-                shaders.transforms[t].push(...transform);
+            if (Array.isArray(block)) {
+                shaders.blocks[t].push(...block);
             }
             else {
-                shaders.transforms[t].push(transform);
+                shaders.blocks[t].push(block);
             }
         }
     });

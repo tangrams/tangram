@@ -1,6 +1,6 @@
 /* global ShaderProgram */
 // GL program wrapper to cache uniform locations/values, do compile-time pre-processing
-// (injecting #defines and #pragma transforms into shaders), etc.
+// (injecting #defines and #pragma blocks into shaders), etc.
 
 import GLSL from './glsl';
 import Texture from './texture';
@@ -24,7 +24,7 @@ export default function ShaderProgram (gl, vertex_source, fragment_source, optio
     this.defines = Object.assign({}, options.defines||{});
 
     // key/values for blocks that can be injected into shaders at compile-time
-    this.transforms = Object.assign({}, options.transforms||{});
+    this.blocks = Object.assign({}, options.blocks||{});
 
     // JS-object uniforms that are expected by this program
     // If they are not found in the existing shader source, their types will be inferred and definitions
@@ -70,21 +70,21 @@ ShaderProgram.current = null;
 
 // Global config applied to all programs (duplicate properties for a specific program will take precedence)
 ShaderProgram.defines = {};
-ShaderProgram.transforms = {};
+ShaderProgram.blocks = {};
 
-ShaderProgram.addTransform = function (key, ...transforms) {
-    ShaderProgram.transforms[key] = ShaderProgram.transforms[key] || [];
-    ShaderProgram.transforms[key].push(...transforms);
+ShaderProgram.addBlock = function (key, ...blocks) {
+    ShaderProgram.blocks[key] = ShaderProgram.blocks[key] || [];
+    ShaderProgram.blocks[key].push(...blocks);
 };
 
-// Remove all global shader transforms for a given key
-ShaderProgram.removeTransform = function (key) {
-    ShaderProgram.transforms[key] = [];
+// Remove all global shader blocks for a given key
+ShaderProgram.removeBlock = function (key) {
+    ShaderProgram.blocks[key] = [];
 };
 
-ShaderProgram.replaceTransform = function (key, ...transforms) {
-    ShaderProgram.removeTransform(key);
-    ShaderProgram.addTransform(key, ...transforms);
+ShaderProgram.replaceBlock = function (key, ...blocks) {
+    ShaderProgram.removeBlock(key);
+    ShaderProgram.addBlock(key, ...blocks);
 };
 
 ShaderProgram.prototype.compile = function () {
@@ -102,18 +102,18 @@ ShaderProgram.prototype.compile = function () {
     // Make list of defines to be injected later
     var defines = this.buildDefineList();
 
-    // Inject user-defined transforms (arbitrary code points matching named #pragmas)
+    // Inject user-defined blocks (arbitrary code points matching named #pragmas)
     // Replace according to this pattern:
     // #pragma tangram: [key]
     // e.g. #pragma tangram: globals
 
-    // Gather all transform code snippets
-    var transforms = this.buildShaderTransformList();
+    // Gather all block code snippets
+    var blocks = this.buildShaderBlockList();
     var regexp;
 
-    for (var key in transforms) {
-        var transform = transforms[key];
-        if (!transform || (Array.isArray(transform) && transform.length === 0)) {
+    for (var key in blocks) {
+        var block = blocks[key];
+        if (!block || (Array.isArray(block) && block.length === 0)) {
             continue;
         }
 
@@ -128,10 +128,10 @@ ShaderProgram.prototype.compile = function () {
         }
 
         // Each key can be a single string or array of strings
-        var source = transform;
-        if (Array.isArray(transform)) {
-            // Combine all transforms into one string
-            source = transform.reduce((prev, cur) => `${prev}\n${cur}`);
+        var source = block;
+        if (Array.isArray(block)) {
+            // Combine all blocks into one string
+            source = block.reduce((prev, cur) => `${prev}\n${cur}`);
         }
 
         // Inject
@@ -143,7 +143,7 @@ ShaderProgram.prototype.compile = function () {
         }
 
         // Add a #define for this injection point
-        defines['TANGRAM_TRANSFORM_' + key.replace(' ', '_').toUpperCase()] = true;
+        defines['TANGRAM_BLOCK_' + key.replace(' ', '_').toUpperCase()] = true;
     }
 
     // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
@@ -195,30 +195,30 @@ ShaderProgram.prototype.buildDefineList = function () {
     return defines;
 };
 
-// Make list of shader transforms (global, then program-specific)
-ShaderProgram.prototype.buildShaderTransformList = function () {
-    var d, transforms = {};
-    for (d in ShaderProgram.transforms) {
-        transforms[d] = [];
+// Make list of shader blocks (global, then program-specific)
+ShaderProgram.prototype.buildShaderBlockList = function () {
+    var d, blocks = {};
+    for (d in ShaderProgram.blocks) {
+        blocks[d] = [];
 
-        if (Array.isArray(ShaderProgram.transforms[d])) {
-            transforms[d].push(...ShaderProgram.transforms[d]);
+        if (Array.isArray(ShaderProgram.blocks[d])) {
+            blocks[d].push(...ShaderProgram.blocks[d]);
         }
         else {
-            transforms[d] = [ShaderProgram.transforms[d]];
+            blocks[d] = [ShaderProgram.blocks[d]];
         }
     }
-    for (d in this.transforms) {
-        transforms[d] = transforms[d] || [];
+    for (d in this.blocks) {
+        blocks[d] = blocks[d] || [];
 
-        if (Array.isArray(this.transforms[d])) {
-            transforms[d].push(...this.transforms[d]);
+        if (Array.isArray(this.blocks[d])) {
+            blocks[d].push(...this.blocks[d]);
         }
         else {
-            transforms[d].push(this.transforms[d]);
+            blocks[d].push(this.blocks[d]);
         }
     }
-    return transforms;
+    return blocks;
 };
 
 // Turn #defines into a combined string
