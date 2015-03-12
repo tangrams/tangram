@@ -605,6 +605,7 @@ layers:
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
+                text_source: value
                 font:
                     typeface: bold 14px Futura
                     fill: blue

@@ -353,9 +353,17 @@ Object.assign(TextStyle, {
     // Override to queue features instead of processing immediately
     addFeature (feature, rule, context, tile_data) {
         // Collect text
-        let text = feature.properties.name;
+        if (feature.properties.name) {
+            let text = feature.properties.name;
+            if (rule.text_source) {
+                if (rule.text_source === 'value') {
+                    text = feature.properties.value || text;
+                } else if (typeof rule.text_source === 'function') {
+                    text = rule.text_source(context);
+                }
+            }
+            feature.properties.text = text;
 
-        if (text) {
             let tile = context.tile.key;
             if (!this.texts[tile]) {
                 this.texts[tile] = {};
@@ -466,12 +474,11 @@ Object.assign(TextStyle, {
     },
 
     _parseFeature (feature, rule_style, context) {
-        // debugger;
         // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
+        let text = feature.properties.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
-        let text = feature.properties.name; // TODO: make configurable
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
