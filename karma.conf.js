@@ -25,7 +25,6 @@ module.exports = function (config) {
         files: [
             'node_modules/topojson/topojson.js',
             'node_modules/lodash/lodash.js',
-            'node_modules/babel/browser-polyfill.js',
 
             { pattern: 'test/fixtures/*',
               watched: false,
@@ -33,7 +32,7 @@ module.exports = function (config) {
               served: true },
 
             './demos/lib/leaflet/leaflet.js',
-            'dist/tangram.debug.js',
+            'dist/tangram.test-worker.js',
             'dist/tangram.test.js'
         ],
 

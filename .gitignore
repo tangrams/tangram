@@ -6,7 +6,10 @@
 # generated shaders
 src/gl/shader_sources.js
 
+# build & test artifacts
 node_modules
+dist/tangram.test.js
+dist/tangram.test-worker.js
 
 # a make target for npm install
 .npm
@@ -16,4 +19,3 @@ node_modules
 
 # storing some screenshots here
 screenshots
-dist/tangram.test.js
