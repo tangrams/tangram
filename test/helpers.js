@@ -1,7 +1,15 @@
 import Scene from '../src/scene';
 import sampleScene from './fixtures/sample-scene';
 
-let worker_url = '/tangram.debug.js';
+/*
+    Special web worker treatment:
+
+    - Custom worker build to use the Babel runtime (since there seem to be issues w/multiple instances of the
+      polyfill getting instantiated on each test run otherwise).
+    - Stub the worker so that we only load it once, to avoid flooding connections (was causing disconnnect errors).
+*/
+
+let worker_url = '/tangram.test-worker.js';
 
 function loadWorkerContent(url) {
     let xhr = new XMLHttpRequest(), response;
@@ -36,8 +44,9 @@ window.makeScene = function (options) {
     options = options || {};
 
     options.disableRenderLoop = options.disableRenderLoop || true;
-    options.workerUrl = options.workerUrl || '/dist/tangram.debug.js';
+    options.workerUrl = options.workerUrl || worker_url;
     options.container = options.container || container;
+    options.logLevel =  options.logLevel || 'info';
 
     return new Scene(
         sampleScene.config,

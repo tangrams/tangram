@@ -14,10 +14,6 @@ windows:
             u_roofColor: [.5, .4, .5]
         transforms:
             globals: |
-                uniform float u_frequency;
-                uniform vec3 u_windowColor;
-                uniform vec3 u_buildingColor;
-                uniform vec3 u_roofColor;
 
                 // 3d noise
                 vec4 v_mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}

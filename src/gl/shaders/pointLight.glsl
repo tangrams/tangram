@@ -73,9 +73,7 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
     #endif
 
     // Acummulators compute
-    #ifdef TANGRAM_MATERIAL_AMBIENT
-        g_light_accumulator_ambient += _light.ambient * attenuation;
-    #endif
+    g_light_accumulator_ambient += _light.ambient * attenuation;
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
         g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;

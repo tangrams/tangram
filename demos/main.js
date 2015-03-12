@@ -477,9 +477,9 @@
                         'Color Wheel': 'demos/images/wheel.png'
                     };
 
-                    this.state.u_env_map = this.uniforms().u_env_map;
-                    this.folder.add(this.state, 'u_env_map', envmaps).onChange(function(value) {
-                        this.uniforms().u_env_map = value;
+                    this.state.envmap = scene.styles.envmap.material.emission.texture;
+                    this.folder.add(this.state, 'envmap', envmaps).onChange(function(value) {
+                        scene.styles.envmap.material.emission.texture = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }
@@ -490,9 +490,9 @@
                     scene.config.layers.pois.style.sprite = 'tree';
                     scene.config.layers.pois.style.size = [[13, '16px'], [14, '24px'], [15, '32px']];
 
-                    this.state.bouncy = this.uniforms().bouncy;
-                    this.folder.add(this.state, 'bouncy').onChange(function(value) {
-                        this.uniforms().bouncy = value;
+                    this.state.rotate = this.uniforms().rotate;
+                    this.folder.add(this.state, 'rotate').onChange(function(value) {
+                        this.uniforms().rotate = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }

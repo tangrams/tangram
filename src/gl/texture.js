@@ -3,6 +3,7 @@
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
+import Builders from '../styles/builders';
 import log from 'loglevel';
 
 // Global set of textures, by name
@@ -39,6 +40,7 @@ export default function Texture (gl, name, options = {}) {
     Texture.textures[this.name] = this;
 
     this.sprites = options.sprites;
+    this.texcoords = {};
 }
 
 // Destroy a single texture instance
@@ -70,7 +72,7 @@ Texture.prototype.bind = function (unit) {
     if (!this.valid) {
         return;
     }
-    if (unit) {
+    if (typeof unit === 'number') {
         this.gl.activeTexture(this.gl.TEXTURE0 + unit);
     }
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
@@ -91,6 +93,7 @@ Texture.prototype.load = function (url, options = {}) {
         this.image.onload = () => {
             this.update(options);
             this.setTextureFiltering(options);
+            this.calculateSprites();
 
             this.canvas = null; // mutually exclusive with other types
             this.data = null;
@@ -162,7 +165,7 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
         return;
     }
 
-    options.filtering = options.filtering || this.filtering || 'mipmap'; // default to mipmaps for power-of-2 textures
+    options.filtering = options.filtering || this.filtering || 'linear'; // default to mipmaps for power-of-2 textures
 
     var gl = this.gl;
     this.bind();
@@ -176,10 +179,13 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
 
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.REPEAT);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.REPEAT);
+
         if (options.filtering === 'mipmap') {
             log.trace('power-of-2 MIPMAP');
             this.filtering = 'mipmap';
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST); // TODO: use trilinear filtering by defualt instead?
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); // TODO: use trilinear filtering by defualt instead?
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.generateMipmap(gl.TEXTURE_2D);
         }
@@ -221,7 +227,47 @@ Texture.prototype.setTextureFiltering = function (options = {}) {
     Texture.trigger('update', this);
 };
 
+// Pre-calc sprite regions for a texture sprite in UV [0, 1] space
+Texture.prototype.calculateSprites = function () {
+    if (this.sprites) {
+        for (let s in this.sprites) {
+            let sprite = this.sprites[s];
+
+            // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
+            this.texcoords[s] = Builders.getTexcoordsForSprite(
+                [sprite[0], sprite[1]],
+                [sprite[2], sprite[3]],
+                [this.width, this.height]
+            );
+        }
+    }
+};
+
 // Static/class methods
+
+// Get sprite sub-area to use for texture coordinates (default is [0, 1])
+Texture.getSpriteTexcoords = function (texname, sprite) {
+    let texture = Texture.textures[texname];
+    return texture && texture.texcoords[sprite];
+};
+
+// Create a set of textures keyed in an object
+// Optionally load each if it has a URL specified
+Texture.createFromObject = function (gl, textures) {
+    let loading = [];
+    if (textures) {
+        for (let texname in textures) {
+            let config = textures[texname];
+            if (!Texture.textures[texname]) {
+                let texture = new Texture(gl, texname, config);
+                if (config.url) {
+                    loading.push(texture.load(config.url, config));
+                }
+            }
+        }
+    }
+    return Promise.all(loading);
+};
 
 // Get metadata for a texture by name
 // Returns via promise, in case texture is still loading
@@ -250,6 +296,7 @@ Texture.getInfo = function (name) {
                 width: tex.width,
                 height: tex.height,
                 sprites: tex.sprites,
+                texcoords: tex.texcoords,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid

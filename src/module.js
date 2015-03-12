@@ -12,13 +12,14 @@ import {SceneWorker} from '../src/scene_worker';
 // Additional modules are exposed for debugging
 import log from 'loglevel';
 import Geo from './geo';
+import DataSource from './data_source';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
 import Material from './material';
 import Light from './light';
 import WorkerBroker from './utils/worker_broker';
-import {ruleCache} from 'unruly';
+import {ruleCache} from './styles/rule';
 
 import glMatrix from 'gl-matrix';
 
@@ -30,6 +31,7 @@ var debug = {
     log,
     Utils,
     Geo,
+    DataSource,
     GLSL,
     ShaderProgram,
     Texture,

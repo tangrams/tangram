@@ -5,8 +5,10 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Texture from '../../gl/texture';
 import Utils from '../../utils/utils';
 
+import log from 'loglevel';
 
 export var Sprites = Object.create(Style);
 
@@ -14,6 +16,7 @@ Object.assign(Sprites, {
     name: 'sprites',
     built_in: true,
     selection: true,
+    blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init() {
         Style.init.apply(this);
@@ -21,8 +24,6 @@ Object.assign(Sprites, {
         // Base shaders
         this.vertex_shader_key = 'styles/sprites/sprites_vertex';
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
-
-        this.blend = 'overlay'; // overlays drawn on top of all other styles, with blending
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -32,6 +33,9 @@ Object.assign(Sprites, {
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
         ];
         this.vertex_layout = new VertexLayout(attribs);
+
+        this.shaders.uniforms = this.shaders.uniforms || {};
+        this.shaders.uniforms.u_texture = this.texture;
     },
 
     _parseFeature (feature, rule_style, context) {
@@ -40,7 +44,6 @@ Object.assign(Sprites, {
         let tile = context.tile.key;
 
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
-        style.texture = rule_style.texture;
         style.sprite = rule_style.sprite;
 
         // sprite style only supports sizes in pixel units, so unit conversion flag is off
@@ -63,7 +66,13 @@ Object.assign(Sprites, {
         // to store bbox by tiles
         style.tile = tile;
 
-        this.setTexcoordScale(style);
+        // Sets texcoord scale if needed (e.g. for sprite sub-area)
+        if (this.texture && style.sprite) {
+            this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, style.sprite);
+            if (!this.texcoord_scale) {
+                log.warn(`Style: in style '${this.name}', could not find sprite '${style.sprite}' for texture '${this.texture}'`);
+            }
+        }
 
         return style;
     },

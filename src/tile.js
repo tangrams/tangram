@@ -2,6 +2,7 @@
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import WorkerBroker from './utils/worker_broker';
+import Texture from './gl/texture';
 
 import log from 'loglevel';
 
@@ -46,6 +47,7 @@ export default class Tile {
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
 
         this.meshes = {}; // renderable VBO meshes keyed by style
+        this.textures = []; // textures that the tile owns (labels, etc.)
     }
 
     static create(spec) {
@@ -80,16 +82,27 @@ export default class Tile {
     }
 
     freeResources() {
-
-        if (this != null && this.meshes != null) {
-            for (var p in this.meshes) {
-                this.meshes[p].destroy();
+        if (this.meshes) {
+            for (let m in this.meshes) {
+                this.meshes[m].destroy();
             }
         }
+
+        if (this.textures) {
+            for (let t of this.textures) {
+                let texture = Texture.textures[t];
+                if (texture) {
+                    texture.destroy();
+                }
+            }
+        }
+
         this.meshes = {};
+        this.textures = [];
     }
 
     destroy() {
+        this.workerMessage('removeTile', this.key);
         this.freeResources();
         this.worker = null;
     }
@@ -190,7 +203,8 @@ export default class Tile {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,
-                        uniforms: style_data.uniforms
+                        uniforms: style_data.uniforms,
+                        textures: style_data.textures
                     };
 
                     // Track min/max order range
@@ -233,12 +247,12 @@ export default class Tile {
         var geom;
 
         if (sourceConfig != null) {
-            // Just pass through data untouched if no data transform function defined
-            // if (!source.filter) {
-            //     geom = tile.layers[source.filter];
-            // }
+            // If single layer, no data transform
+            if (!sourceConfig.filter && sourceData.layers._default) {
+                geom = sourceData.layers._default;
+            }
             // Pass through data but with different layer name in tile source data
-            /*else*/ if (typeof sourceConfig.filter === 'string') {
+            else if (typeof sourceConfig.filter === 'string') {
                 geom = sourceData.layers[sourceConfig.filter];
             }
             // Apply the transform function for post-processing
@@ -263,7 +277,12 @@ export default class Tile {
         if (mesh_data) {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
-                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, { uniforms: mesh_data[s].uniforms });
+                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                }
+
+                // Assign ownership to textures if needed
+                if (mesh_data[s].textures) {
+                    this.textures.push(...mesh_data[s].textures);
                 }
             }
         }
@@ -279,8 +298,26 @@ export default class Tile {
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
     }
 
-    remove() {
-        this.workerMessage('removeTile', this.key);
+    /**
+        Called on main thread when web worker completes processing, but tile has since been discarded
+        Frees resources that would have been transferred to the tile object.
+        Static method because the tile object no longer exists (the tile data returned by the worker is passed instead).
+    */
+    static abortBuild (tile) {
+        if (tile.mesh_data) {
+            for (let s in tile.mesh_data) {
+                let textures = tile.mesh_data[s].textures;
+                if (textures) {
+                    for (let t of textures) {
+                        let texture = Texture.textures[t];
+                        if (texture) {
+                            log.trace(`destroying texture ${t} for tile ${tile.key}`);
+                            texture.destroy();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     printDebug () {
@@ -310,6 +347,20 @@ export default class Tile {
         this.loading = true;
         this.build(scene);
         this.update(scene);
+    }
+
+    /**
+        Called on worker to cancel loading
+        Static method because the worker only has object representations of tile data, there is no
+        tile instance created yet.
+    */
+    static cancel(tile) {
+        if (tile && tile.sources) {
+            Object.keys(tile.sources).
+                map(s => tile.sources[s].request).
+                filter(s => s).
+                forEach(s => s.abort());
+        }
     }
 
     merge(other) {

@@ -1,26 +1,18 @@
 /*jshint worker: true */
-/*globals TileSource, topojson */
+/*globals DataSource, topojson */
 import Geo from './geo';
 import {MethodNotImplemented} from './utils/errors';
 import Utils from './utils/utils';
 import log from 'loglevel';
 
-export default class TileSource {
+export default class DataSource {
 
     constructor (source) {
+        this.id = source.id;
         this.name = source.name;
-        this.url_template = source.url;
+        this.url = source.url;
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
-    }
-
-    buildAsMessage() {
-        return {
-            name: this.name,
-            type: this.type,
-            url: this.url_template,
-            max_zoom: this.max_zoom
-        };
     }
 
     // Create a tile source by type, factory-style
@@ -30,6 +22,8 @@ export default class TileSource {
                 return new TopoJSONTileSource(source);
             case 'MapboxFormatTileSource':
                 return new MapboxFormatTileSource(source);
+            case 'GeoJSONSource':
+                return new GeoJSONSource(source);
             case 'GeoJSONTileSource':
             /* falls through */
             default:
@@ -79,46 +73,27 @@ export default class TileSource {
         }
     }
 
-    loadTile(tile) { throw new MethodNotImplemented('loadTile'); }
+    load(dest) { throw new MethodNotImplemented('load'); }
 }
 
 
+/*** Generic network loading source - abstract class ***/
 
-/*** Generic network tile loading - abstract class ***/
-
-export class NetworkTileSource extends TileSource {
-
+export class NetworkSource extends DataSource {
 
     constructor (source) {
         super(source);
-
         this.response_type = ""; // use to set explicit XHR type
-        this.url_hosts = null;
-        var host_match = this.url_template.match(/{s:\[([^}+]+)\]}/);
-        if (host_match != null && host_match.length > 1) {
-            this.url_hosts = host_match[1].split(',');
-            this.next_host = 0;
-        }
     }
 
-    formatTileUrl(tile) {
-        var url = this.url_template.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+    load (dest) {
+        let url = this.formatUrl(dest);
 
-        if (this.url_hosts != null) {
-            url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
-            this.next_host = (this.next_host + 1) % this.url_hosts.length;
-        }
-        return url;
-    }
-
-    loadTile (tile) {
-        var url = this.formatTileUrl(tile);
-
-        if (tile.sources == null) {
-            tile.sources = {};
+        if (dest.sources == null) {
+            dest.sources = {};
         }
 
-        var source = tile.sources[this.name] = {};
+        var source = dest.sources[this.name] = {};
 
         source.url = url;
         source.debug = {};
@@ -129,19 +104,19 @@ export class NetworkTileSource extends TileSource {
             // For testing network errors
             // var promise = Utils.io(url, 60 * 100, this.response_type);
             // if (Math.random() < .7) {
-            //     promise = Promise.reject(Error('fake tile error'));
+            //     promise = Promise.reject(Error('fake data source error'));
             // }
             // promise.then((body) => {
             let promise = Utils.io(url, 60 * 1000, this.response_type);
-            tile.request = promise.request;
+            source.request = promise.request;
 
             promise.then((body) => {
                 source.debug.response_size = body.length || body.byteLength;
                 source.debug.network = +new Date() - source.debug.network;
                 source.debug.parsing = +new Date();
-                this.parseSourceData(tile, source, body);
+                this.parseSourceData(dest, source, body);
                 source.debug.parsing = +new Date() - source.debug.parsing;
-                resolve(tile);
+                resolve(dest);
             }).catch((error) => {
                 source.error = error.toString();
                 reject(error);
@@ -149,9 +124,65 @@ export class NetworkTileSource extends TileSource {
         });
     }
 
-    // Sub-classes must implement this method:
-    parseSourceData (tile, source, reponse) {
-        throw new MethodNotImplemented('parseTile');
+    // Sub-classes must implement:
+
+    formatUrl (dest) {
+        throw new MethodNotImplemented('formatUrl');
+    }
+
+    parseSourceData (dest, source, reponse) {
+        throw new MethodNotImplemented('parseSourceData');
+    }
+}
+
+
+/*** Generic network tile loading - abstract class ***/
+
+export class NetworkTileSource extends NetworkSource {
+
+    constructor (source) {
+        super(source);
+
+        this.tiled = true;
+        this.url_hosts = null;
+        var host_match = this.url.match(/{s:\[([^}+]+)\]}/);
+        if (host_match != null && host_match.length > 1) {
+            this.url_hosts = host_match[1].split(',');
+            this.next_host = 0;
+        }
+    }
+
+    formatUrl(tile) {
+        var url = this.url.replace('{x}', tile.coords.x).replace('{y}', tile.coords.y).replace('{z}', tile.coords.z);
+
+        if (this.url_hosts != null) {
+            url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);
+            this.next_host = (this.next_host + 1) % this.url_hosts.length;
+        }
+        return url;
+    }
+
+}
+
+
+/**
+ GeoJSON standalone (non-tiled) source
+*/
+
+export class GeoJSONSource extends NetworkSource {
+
+    constructor (source) {
+        super(source);
+        this.type = 'GeoJSONSource';
+    }
+
+    formatUrl (dest) {
+        return this.url;
+    }
+
+    parseSourceData (tile, source, response) {
+        source.layers = { _default: JSON.parse(response) };
+        DataSource.projectData(source); // mercator projection
     }
 }
 
@@ -168,11 +199,18 @@ export class GeoJSONTileSource extends NetworkTileSource {
     }
 
     parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
 
-        source.layers = JSON.parse(response);
+        // Single layer or multi-layers?
+        if (data.type === 'Feature' || data.type === 'FeatureCollection') {
+            source.layers = { _default: data };
+        }
+        else {
+            source.layers = data;
+        }
 
-        TileSource.projectData(source); // mercator projection
-        TileSource.scaleData(source, tile); // re-scale from meters to local tile coords
+        DataSource.projectData(source); // mercator projection
+        DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
     }
 }
 
@@ -207,7 +245,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
         // Single layer
         if (source.layers.objects.vectiles != null) {
-            source.layers = topojson.feature(source.layers, source.layers.objects.vectiles);
+            source.layers = { _default: topojson.feature(source.layers, source.layers.objects.vectiles) };
         }
         // Multiple layers
         else {
@@ -218,8 +256,8 @@ export class TopoJSONTileSource extends NetworkTileSource {
             source.layers = layers;
         }
 
-        TileSource.projectData(source); // mercator projection
-        TileSource.scaleData(source, tile); // re-scale from meters to local tile coords
+        DataSource.projectData(source); // mercator projection
+        DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
     }
 
 }

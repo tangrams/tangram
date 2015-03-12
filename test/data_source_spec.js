@@ -5,13 +5,13 @@ chai.use(chaiAsPromised);
 
 import Geo from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
-import TileSource from '../src/tile_source';
+import DataSource from '../src/data_source';
 import {
     NetworkTileSource,
     GeoJSONTileSource,
     TopoJSONTileSource,
     MapboxFormatTileSource
-} from '../src/tile_source';
+} from '../src/data_source';
 
 import Utils from '../src/utils/utils';
 import {MethodNotImplemented} from '../src/utils/errors';
@@ -29,7 +29,7 @@ function getMockTopoResponse() {
 }
 
 
-describe('TileSource', () => {
+describe('DataSource', () => {
 
     let url      = 'http://localhost:8080/stuff';
     let max_zoom = 12;
@@ -39,62 +39,62 @@ describe('TileSource', () => {
     describe('.constructor(options)', () => {
         let subject;
         beforeEach(() => {
-            subject = new TileSource(options);
+            subject = new DataSource(options);
         });
 
         it('returns a new instance', () => {
-            assert.instanceOf(subject, TileSource);
+            assert.instanceOf(subject, DataSource);
         });
         it('sets the max_zoom level', () => {
             assert.equal(subject.max_zoom, max_zoom);
         });
         it('sets the url', () => {
-            assert.equal(subject.url_template, url);
+            assert.equal(subject.url, url);
         });
     });
 
-    describe('.loadTile(tile)', () => {
-        let subject = new TileSource(options);
-        describe('when the .loadTile method is not overridden', () => {
+    describe('.load(tile)', () => {
+        let subject = new DataSource(options);
+        describe('when the .load method is not overridden', () => {
             it('throws a MethodNotImplemented error', () => {
                 assert.throws(
-                    () => { subject.loadTile({}, () => {}); },
+                    () => { subject.load({}, () => {}); },
                     MethodNotImplemented
                 );
             });
         });
     });
 
-    describe('TileSource.create(type, url_template, options)', () => {
+    describe('DataSource.create(type, url_template, options)', () => {
 
         describe('when I ask for a GeoJSONTileSource', () => {
-            let subject = TileSource.create(_.merge({type: 'GeoJSONTileSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'GeoJSONTileSource'}, options));
             it('returns a new GeoJSONTileSource', () => {
                 assert.instanceOf(subject, GeoJSONTileSource);
             });
         });
 
         describe('when I ask for a TopoJSONTileSource', () => {
-            let subject = TileSource.create(_.merge({type: 'TopoJSONTileSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'TopoJSONTileSource'}, options));
             it('returns a new TopoJSONTileSource', () => {
                 assert.instanceOf(subject, TopoJSONTileSource);
             });
         });
 
         describe('when I ask for a MapboxFormatTileSource', () => {
-            let subject = TileSource.create(_.merge({type: 'MapboxFormatTileSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'MapboxFormatTileSource'}, options));
             it('returns a new MapboxFormatTileSource', () => {
                 assert.instanceOf(subject, MapboxFormatTileSource);
             });
         });
     });
 
-    describe('TileSource.projectData(tile)', () => {
+    describe('DataSource.projectData(tile)', () => {
         let subject;
         beforeEach(() => {
             sinon.spy(Geo, 'transformGeometry');
             sinon.spy(Geo, 'latLngToMeters');
-            subject = TileSource.projectData(sampleTile);
+            subject = DataSource.projectData(sampleTile);
         });
 
         afterEach(() => {
@@ -113,7 +113,7 @@ describe('TileSource', () => {
 
     });
 
-    describe('TileSource.scaleData(tile)', () => {
+    describe('DataSource.scaleData(tile)', () => {
 
         beforeEach(() => {
             sinon.spy(Geo, 'transformGeometry');
@@ -125,13 +125,13 @@ describe('TileSource', () => {
 
         it('calls the .transformGeometry() method', () => {
 
-            TileSource.scaleData(sampleTile, sampleTile);
+            DataSource.scaleData(sampleTile, sampleTile);
             assert.strictEqual(Geo.transformGeometry.callCount, 3);
         });
 
         // This test seems flaky
         it.skip('scales the coordinates', () => {
-            let subject = TileSource.scaleData(sampleTile, sampleTile.layers);
+            let subject = DataSource.scaleData(sampleTile, sampleTile.layers);
             let firstFeature = subject.layers.water.features[0];
 
             assert.deepEqual(firstFeature.geometry.coordinates, [-0.006075396068253094,-0.006075396068253094]);
@@ -140,7 +140,7 @@ describe('TileSource', () => {
 
     describe('NetworkTileSource', () => {
 
-        describe('.parseSourceData(tile)', () => {
+        describe('.parseSourceData(dest, source, reponse)', () => {
             let subject;
             beforeEach(() => {
                 subject = new NetworkTileSource(options);
@@ -151,7 +151,7 @@ describe('TileSource', () => {
                     assert.throws(
                         () => { subject.parseSourceData({}); },
                         MethodNotImplemented,
-                        'Method parseTile must be implemented in subclass'
+                        'Method parseSourceData must be implemented in subclass'
                     );
                 });
             });
@@ -160,7 +160,7 @@ describe('TileSource', () => {
 
     describe('GeoJSONTileSource', () => {
 
-        describe('.loadTile(tile)', () => {
+        describe('.load(tile)', () => {
 
             describe('when there are no http errors', () => {
                 let subject, mockTile;
@@ -176,7 +176,7 @@ describe('TileSource', () => {
                 });
 
                 it('calls back with the tile object', () => {
-                    return assert.isFulfilled(subject.loadTile(mockTile));
+                    return assert.isFulfilled(subject.load(mockTile));
                 });
             });
 
@@ -194,7 +194,7 @@ describe('TileSource', () => {
                 });
 
                 it('is rejects the promise', () => {
-                    return assert.isRejected(subject.loadTile(mockTile));
+                    return assert.isRejected(subject.load(mockTile));
                 });
             });
         });
@@ -213,26 +213,26 @@ describe('TileSource', () => {
             });
         });
 
-        describe('.parseSourceData(tile, response)', () => {
+        describe('.parseSourceData(dest, source, reponse)', () => {
 
             beforeEach(() => {
-                sinon.spy(TileSource, 'projectData');
-                sinon.spy(TileSource, 'scaleData');
+                sinon.spy(DataSource, 'projectData');
+                sinon.spy(DataSource, 'scaleData');
             });
 
             afterEach(() => {
-                TileSource.projectData.restore();
-                TileSource.scaleData.restore();
+                DataSource.projectData.restore();
+                DataSource.scaleData.restore();
             });
 
-            it('calls .projectTile()', () => {
+            it('calls .projectData()', () => {
                 subject.parseSourceData(getMockTile(), {}, getMockTopoResponse());
-                sinon.assert.called(TileSource.projectData);
+                sinon.assert.called(DataSource.projectData);
             });
 
-            it('calls .scaleTile()', () => {
+            it('calls .scaleData()', () => {
                 subject.parseSourceData(getMockTile(), {},getMockTopoResponse());
-                sinon.assert.called(TileSource.scaleData);
+                sinon.assert.called(DataSource.scaleData);
             });
 
             it('attaches the response to the tile object', () => {
@@ -263,7 +263,7 @@ describe('TileSource', () => {
 
         // this is failing because of an isssue with either the mapbox
         // example tile, or the protobuffer library
-        describe.skip('.parseTile(tile, response)', (done) => {
+        describe.skip('.parseSourceData(dest, source, reponse)', (done) => {
             it('attaches the response to the tile object', () => {
 
                 // getMockMapboxResponse((body) => {

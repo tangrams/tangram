@@ -12,7 +12,7 @@ import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Light from './light';
 import Tile from './tile';
-import TileSource from './tile_source';
+import DataSource from './data_source';
 import FeatureSelection from './selection';
 
 import log from 'loglevel';
@@ -235,7 +235,7 @@ Scene.prototype.makeWorkers = function (url) {
 
         log.debug(`Scene.makeWorkers: initializing worker ${id}`);
         let _id = id;
-        queue.push(WorkerBroker.postMessage(worker, 'init', id).then(
+        queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers).then(
             (id) => {
                 log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                 return id;
@@ -310,13 +310,13 @@ Scene.prototype.setZoom = function (zoom) {
             above += this.preserve_tiles_within_zoom;
         }
 
-        log.debug(`removing tiles outside range [${below}, ${above}]`);
+        log.trace(`removing tiles outside range [${below}, ${above}]`);
         this.removeTilesOutsideZoomRange(below, above);
 
         // Remove tiles outside current zoom that are still loading
         this.removeTiles(tile => {
             if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
-                log.debug(`removed ${tile.key} (was loading, but outside current zoom)`);
+                log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
                 return true;
             }
         });
@@ -416,7 +416,7 @@ Scene.prototype.removeTilesOutsideZoomRange = function (below, above) {
 
     this.removeTiles(tile => {
         if (tile.coords.z < below || tile.coords.z > above) {
-            log.debug(`removed ${tile.key} (outside range [${below}, ${above}])`);
+            log.trace(`removed ${tile.key} (outside range [${below}, ${above}])`);
             return true;
         }
     });
@@ -908,6 +908,7 @@ Scene.prototype.rebuildGeometry = function () {
 
         // Update config (in case JS objects were manipulated directly)
         this.syncConfigToWorker();
+        this.resetFeatureSelection();
 
         // Rebuild visible tiles, sorted from center
         let build = [];
@@ -956,7 +957,8 @@ Scene.prototype.buildTileCompleted = function ({ tile, worker_id, selection_map_
 
     // Removed this tile during load?
     if (this.tiles[tile.key] == null) {
-        log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+        log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+        Tile.abortBuild(tile);
     }
     else {
         var cached = this.tiles[tile.key];
@@ -1019,17 +1021,12 @@ Scene.prototype.removeTile = function (key) {
     if (!this.initialized) {
         return;
     }
-    log.debug(`tile unload for ${key}`);
-
-    if (this.zooming === true) {
-        return; // short circuit tile removal, will sweep out tiles by zoom level when zoom ends
-    }
+    log.trace(`tile unload for ${key}`);
 
     var tile = this.tiles[key];
 
     if (tile != null) {
-        tile.freeResources();
-        tile.remove(this);
+        tile.destroy();
     }
 
     this.forgetTile(tile.key);
@@ -1066,7 +1063,7 @@ Scene.prototype.loadDataSources = function () {
     for (var name in this.config.sources) {
         let source = this.config.sources[name];
         source.url = Utils.addBaseURL(source.url);
-        this.sources[name] = TileSource.create(Object.assign({}, source, {name}));
+        this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
     }
     this.updateBounds();
 };
@@ -1084,17 +1081,17 @@ Scene.prototype.setSourceMax = function () {
 // Normalize some settings that may not have been explicitly specified in the scene definition
 Scene.prototype.preProcessSceneConfig = function () {
     // Pre-process styles
-    // Ensure top-level layers have visible and order properties
-    for (let rule of Utils.values(this.config.layers)) {
-        rule.style = rule.style || {};
-
-        if (rule.style.visible == null) {
+    for (var rule of Utils.recurseValues(this.config.layers)) {
+        // Styles are visible by default
+        if (rule.style && rule.style.visible !== false) {
             rule.style.visible = true;
         }
+    }
 
-        if (rule.style.order == null) {
-            rule.style.order = 0;
-        }
+    // Assign ids to data sources
+    let source_id = 0;
+    for (let source in this.config.sources) {
+        this.config.sources[source].id = source_id++;
     }
 
     // If only one camera specified, set it as default
@@ -1115,6 +1112,30 @@ Scene.prototype.preProcessSceneConfig = function () {
     this.config.lights = this.config.lights || {}; // ensure lights object
 
     return StyleManager.preload(this.config.styles);
+};
+
+// Load all textures in the scene definition
+Scene.prototype.loadTextures = function () {
+    this.normalizeTextures();
+    return Texture.createFromObject(this.gl, this.config.textures);
+};
+
+// Handle single or multi-texture syntax, for stylesheet convenience
+Scene.prototype.normalizeTextures = function () {
+    if (!this.config.styles) {
+        return;
+    }
+
+    for (let [style_name, style] of Utils.entries(this.config.styles)) {
+        // If style has a single 'texture' object, move it to the global scene texture set
+        // and give it a default name
+        if (style.texture && typeof style.texture === 'object') {
+            let texture_name = '__' + style_name;
+            this.config.textures = this.config.textures || {};
+            this.config.textures[texture_name] = style.texture;
+            style.texture = texture_name; // point stlye to location of texture
+        }
+    }
 };
 
 // Called (currently manually) after styles are updated in stylesheet
@@ -1222,6 +1243,7 @@ Scene.prototype.updateConfig = function () {
     this.createLights();
     this.loadDataSources();
     this.setSourceMax();
+    this.loadTextures();
 
     // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
     this.updateStyles(this.gl);
@@ -1238,6 +1260,10 @@ Scene.prototype.syncConfigToWorker = function () {
             config: this.config_serialized
         });
     });
+};
+
+Scene.prototype.resetFeatureSelection = function () {
+    this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
 };
 
 // Reset internal clock, mostly useful for consistent experience when changing styles/debugging

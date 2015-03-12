@@ -32,16 +32,24 @@ module.exports = function (config) {
               served: true },
 
             './demos/lib/leaflet/leaflet.js',
-            'dist/tangram.debug.js',
+            'dist/tangram.test-worker.js',
             'dist/tangram.test.js'
         ],
 
         exclude: [  ],
         preprocessors: {  },
-        reporters: ['progress'],
+
+        plugins: [
+            'karma-mocha',
+            'karma-sinon',
+            'karma-chrome-launcher',
+            'karma-sauce-launcher',
+            'karma-mocha-reporter'
+        ],
+        reporters: ['mocha'],
+
         port: 9876,
         colors: true,
-
 
         sauceLabs: {
             testName: 'Tangram test Suite',
@@ -51,7 +59,6 @@ module.exports = function (config) {
                 logfile: 'sauce_connect.log'
             }
         },
-
 
         logLevel: config.LOG_INFO,
         autoWatch: false,

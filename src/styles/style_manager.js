@@ -29,13 +29,6 @@ StyleManager.init = function () {
     // Layer re-ordering function
     ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
 
-    // Spherical environment map
-    ShaderProgram.addTransform('globals', `
-        #if defined(LIGHTING_ENVIRONMENT)
-        ${shaderSources['gl/shaders/spherical_environment_map']}
-        #endif
-    `);
-
     StyleManager.initialized = true;
 };
 
@@ -71,22 +64,7 @@ StyleManager.preload = function (styles) {
     }
 
     // First load remote styles, then load shader blocks from remote URLs
-    // TODO: also preload textures
-    StyleManager.normalizeTextures(styles);
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadRemoteShaderTransforms);
-};
-
-// Handle single or multi-texture syntax, for stylesheet convenience
-StyleManager.normalizeTextures = function (styles) {
-    for (var style of Utils.values(styles)) {
-        style.textures = style.textures || {};
-
-        // Support simpler single texture syntax
-        if (style.texture) {
-            style.textures.default = style.texture; // alias single texture to 'default'
-        }
-    }
-    return styles;
 };
 
 // Load style definitions from external URLs
@@ -140,7 +118,7 @@ StyleManager.loadRemoteShaderTransforms = function (styles) {
         if (style.shaders && style.shaders.transforms) {
             let _transforms = style.shaders.transforms;
 
-            for (var [key, transform] of Utils.entries(style.shaders.transforms)) {
+            for (let [key, transform] of Utils.entries(style.shaders.transforms)) {
                 let _key = key;
 
                 // Array of transforms
