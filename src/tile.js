@@ -156,6 +156,11 @@ export default class Tile {
                     continue;
                 }
 
+                // Source names don't match
+                if (layer.data.source !== source_name) {
+                    continue;
+                }
+
                 let geom = Tile.getDataForSource(source, layer.data, layer_name);
                 if (!geom) {
                     continue;
