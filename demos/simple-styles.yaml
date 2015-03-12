@@ -14,17 +14,13 @@ sources:
 layers:
 
   earth:
-    geometry:
-      source: osm
-      filter: earth
+    data: { source: osm }
     style:
       order: 0
       color: [0.175, 0.175, 0.175]
 
   roads:
-    geometry:
-      source: osm
-      filter: roads
+    data: { source: osm }
 
     major_road:
       filter:
