@@ -46,6 +46,7 @@ window.makeScene = function (options) {
     options.disableRenderLoop = options.disableRenderLoop || true;
     options.workerUrl = options.workerUrl || worker_url;
     options.container = options.container || container;
+    options.logLevel =  options.logLevel || 'info';
 
     return new Scene(
         sampleScene.config,

@@ -38,10 +38,18 @@ module.exports = function (config) {
 
         exclude: [  ],
         preprocessors: {  },
-        reporters: ['progress'],
+
+        plugins: [
+            'karma-mocha',
+            'karma-sinon',
+            'karma-chrome-launcher',
+            'karma-sauce-launcher',
+            'karma-mocha-reporter'
+        ],
+        reporters: ['mocha'],
+
         port: 9876,
         colors: true,
-
 
         sauceLabs: {
             testName: 'Tangram test Suite',
@@ -51,7 +59,6 @@ module.exports = function (config) {
                 logfile: 'sauce_connect.log'
             }
         },
-
 
         logLevel: config.LOG_INFO,
         autoWatch: false,

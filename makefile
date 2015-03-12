@@ -25,11 +25,10 @@ lint: .npm
 	$(JSHINT) `find src/ -name '*.js'`
 	$(JSHINT) `find test/ -name '*.js'`
 
-# Test-specific builds of the library
+# Test-specific builds of the library, which use  use the babel runtime (instead of polyfill),
+# to avoid errors w/multiple polyfill instances created for each test. First file is to be loaded as
+# a web worker, second is the core library plus tests, to be executed on main thread.
 build-testable: lint dist/tangram.debug.js
-	# Test builds use the babel runtime (instead of polyfill), to avoid errors w/multiple polyfill
-	# instances created for each test. First file is to be loaded as web worker, second is the core
-	# library plus tests, to be executed on main thread.
 	node build.js --debug=true --require './src/module.js' --runtime > dist/tangram.test-worker.js
 	node build.js --debug=true --all './test/*.js' --runtime > dist/tangram.test.js
 
