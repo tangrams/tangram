@@ -1,7 +1,7 @@
 import Texture from './gl/texture';
 import WorkerBroker from './utils/worker_broker';
 
-class FeatureSelection {
+export default class FeatureSelection {
 
     constructor(gl, workers) {
         this.gl = gl;
@@ -195,10 +195,6 @@ class FeatureSelection {
     }
 
 }
-
-// js hint requires export statement below class definition in order to recognize
-// class name when setting static properties below (sigh)
-export default FeatureSelection;
 
 // Static properties
 FeatureSelection.map = {}; // this will be unique per module instance (so unique per worker)
