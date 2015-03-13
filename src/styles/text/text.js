@@ -56,6 +56,9 @@ Object.assign(TextStyle, {
             lines: {
                 exceed: 80,
                 offset: 0
+            },
+            points: {
+                max_width: 50
             }
         };
     },
@@ -78,10 +81,27 @@ Object.assign(TextStyle, {
     // Width and height of text based on current font style
     textSize (text, tile, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
-        return [
-            Math.ceil(this.canvas[tile].context.measureText(str).width) + this.buffer * 2,
+        let ctx = this.canvas[tile].context;
+        let split = str.split(' ');
+        let split_size = {
+            " ": this.canvas[tile].context.measureText(" ").width
+        };
+
+        for (let i in split) {
+            let word = split[i];
+            split_size[word] = ctx.measureText(word).width;
+        }
+
+        let text_size = [
+            this.canvas[tile].context.measureText(str).width,
+            this.size
+        ];
+        let texture_text_size = [
+            Math.ceil(text_size[0]) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
+
+        return { split_size, text_size, texture_text_size };
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
@@ -102,7 +122,7 @@ Object.assign(TextStyle, {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let size = text_info.size;
+                let size = text_info.size.texture_text_size;
 
                 text_info.position = [0, height];
 
@@ -159,7 +179,7 @@ Object.assign(TextStyle, {
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
-                    info.size,
+                    info.size.texture_text_size,
                     texture_size
                 );
             }
@@ -215,7 +235,16 @@ Object.assign(TextStyle, {
                 labels.push(new LabelLine(text, size, line, this.label_style.lines, true, true));
             }
         } else if (geometry.type === "Point") {
-            labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
+            let width = this.label_style.points.max_width * this.device_pixel_ratio;
+            if (width && size.text_size[0] > width) {
+                let label = LabelPoint.explode(text, geometry.coordinates, size, width);
+                labels.push(label);
+            } else {
+                labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
+            }
+            //let pos = [geometry.coordinates[0], geometry.coordinates[1]];
+            //pos[1] += 500;
+            //labels.push(new LabelPoint(text, pos, size, null, false, true));
         } else if (geometry.type === "MultiPoint") {
             let points = geometry.coordinates;
               for (let i = 0; i < points.length; ++i) {
@@ -288,12 +317,15 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
-                if (label.discard(this.bboxes[tile])) {
-                    // remove the text from the map
-                    delete texts[style][label.text];
-                } else {
-                    feature.label = label;
-                }
+                //if (label.discard(this.bboxes[tile])) {
+                //    texts[style][label.text].ref--;
+                //} else {
+                    if (!feature.labels) {
+                        feature.labels = [];
+                    }
+                    feature.labels.push(label);
+                //    texts[style][label.text].ref++;
+                //}
             }
         }
 
@@ -395,6 +427,7 @@ Object.assign(TextStyle, {
                 this.texts[tile][style_key][text] = {
                     text_style: style,
                     priority: priority,
+                    refs: 0
                 };
             }
 
@@ -449,16 +482,21 @@ Object.assign(TextStyle, {
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
 
-        Builders.buildSpriteQuadsForPoints(
-            [ style.label.position ],
-            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
-            Utils.scaleInt16(1, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
-            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-        );
+        for (let i in style.labels) {
+            let label = style.labels[i];
+            let angle = label.angle || 0;
+
+            Builders.buildSpriteQuadsForPoints(
+                [ label.position ],
+                Utils.scaleInt16(label.size.texture_text_size[0], 128), Utils.scaleInt16(label.size.texture_text_size[1], 128),
+                Utils.scaleInt16(Utils.radToDeg(angle), 360),
+                Utils.scaleInt16(1, 256),
+                vertex_data,
+                vertex_template,
+                this.vertex_layout.index.a_shape,
+                { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
+            );
+        }
     },
 
     buildLines (lines, style, vertex_data) {
@@ -482,14 +520,14 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !feature.label) {
+        if (!text_info || !feature.labels) {
             return;
         }
 
         this.texcoord_scale = text_info.texcoords;
         style.text = text;
         style.tile = tile; // to store bbox by tiles
-        style.label = feature.label;
+        style.labels = feature.labels;
 
         return style;
     }
