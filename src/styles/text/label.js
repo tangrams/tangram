@@ -2,7 +2,7 @@
 
 import Geo from '../../geo';
 import boxIntersect from 'box-intersect';
-import {Vector} from '../../vector';
+import Vector from '../../vector';
 
 export default class Label {
 
