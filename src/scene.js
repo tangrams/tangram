@@ -7,6 +7,7 @@ import Context from './gl/context';
 import Builders from './styles/builders';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
+import VertexArrayObject from './gl/vao';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
@@ -47,6 +48,9 @@ export default function Scene(config_source, options) {
     this.num_workers = options.numWorkers || 2;
     this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
     this.worker_url = options.workerUrl;
+    if (options.disableVertexArrayObjects === true) {
+        VertexArrayObject.disabled = true;
+    }
 
     this.config = null;
     this.config_source = config_source;
@@ -182,6 +186,7 @@ Scene.prototype.createCanvas = function () {
 
     this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
     this.resizeMap(this.container.clientWidth, this.container.clientHeight);
+    VertexArrayObject.init(this.gl);
 };
 
 Scene.prototype.createObjectURL = function () {

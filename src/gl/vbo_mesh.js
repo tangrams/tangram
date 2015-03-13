@@ -3,6 +3,7 @@
 import GLSL from './glsl';
 import ShaderProgram from './shader_program';
 import Texture from './texture';
+import VertexArrayObject from './vao';
 import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
@@ -22,14 +23,7 @@ export default class VBOMesh  {
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
         this.geometry_count = this.vertex_count / this.vertices_per_geometry;
-
-        // TODO: disabling VAOs for now because we need to support different vertex layout + program combinations,
-        // where not all programs will recognize all attributes (e.g. feature selection shaders include extra attrib).
-        // To support VAOs here, would need to support multiple per geometry, keyed by GL program?
-        // this.vao = VertexArrayObject.create(function() {
-        //     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-        //     this.setup();
-        // }.bind(this));
+        this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
@@ -41,8 +35,6 @@ export default class VBOMesh  {
         if (!this.valid) {
             return false;
         }
-
-        // VertexArrayObject.bind(this.vao);
 
         if (typeof this._render_setup === 'function') {
             this._render_setup();
@@ -56,18 +48,32 @@ export default class VBOMesh  {
             program.setUniforms(this.uniforms, false); // don't reset texture unit
         }
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-        this.vertex_layout.enable(this.gl, program);
+        this.bind(program);
 
         // TODO: support element array mode
         this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
-        // VertexArrayObject.bind(null);
+        VertexArrayObject.bind(null);
 
         if (this.uniforms) {
             program.restoreUniforms(this.uniforms);
         }
 
         return true;
+    }
+
+    // Bind buffers and vertex attributes to prepare for rendering
+    bind(program) {
+        // Bind VAO for this progam, or create one
+        let vao = this.vaos.get(program);
+        if (vao) {
+            VertexArrayObject.bind(vao);
+        }
+        else {
+            this.vaos.set(program, VertexArrayObject.create(() => {
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+                this.vertex_layout.enable(this.gl, program);
+            }));
+        }
     }
 
     destroy() {
