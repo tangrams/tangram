@@ -1,6 +1,6 @@
-import Geo from '../../geo';
 import {Vector} from '../../vector';
 import Label from './label';
+import Utils from '../../utils/utils';
 
 export default class LabelLine extends Label {
     constructor (text, size, lines, style, move_in_tile, keep_in_tile) {
@@ -23,12 +23,11 @@ export default class LabelLine extends Label {
     update () {
         let segment = this.currentSegment();
 
-        this.angle = this.angleForSegment(segment);
+        this.angle = this.angle();
 
-        let upp = Geo.units_per_pixel;
         let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
         let dot = Vector.dot(perp, [0, 1]);
-        let offset = Vector.mult(perp, upp * this.offset * Math.sign(dot));
+        let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
 
         this.position = Vector.add(this.middleSegment(segment), offset);
         this.bbox = this.computeBBox();
@@ -45,7 +44,8 @@ export default class LabelLine extends Label {
         return true;
     }
 
-    angleForSegment (segment) {
+    angle () {
+        let segment = this.currentSegment();
         let p0p1 = Vector.sub(segment[0], segment[1]);
 
         p0p1 = Vector.normalize(p0p1);
@@ -70,7 +70,7 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = this.mercatorLength();
+        let label_length = Utils.pixelToMercator(this.size.text_size[0]);
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
@@ -91,8 +91,8 @@ export default class LabelLine extends Label {
     computeBBox (size) {
         let upp = Geo.units_per_pixel;
 
-        let merc_width = this.size[0] * upp;
-        let merc_height = this.size[1] * upp;
+        let merc_width = this.size.text_size[0] * upp;
+        let merc_height = this.size.text_size[1] * upp;
 
         let c = Math.cos(this.angle);
         let s = Math.sin(this.angle);

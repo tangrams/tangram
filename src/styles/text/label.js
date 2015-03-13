@@ -1,7 +1,7 @@
 /*global Label */
 
-import Geo from '../../geo';
 import boxIntersect from 'box-intersect';
+import Utils from '../../utils/utils';
 
 export default class Label {
     constructor (text, size, move_in_tile, keep_in_tile) {
@@ -19,6 +19,10 @@ export default class Label {
         this.id = Label.id++;
         this.text = text;
         this.size = size;
+    }
+
+    isComposite () {
+        return false;
     }
 
     occluded (bboxes) {
@@ -43,25 +47,11 @@ export default class Label {
         let min = [ this.bbox[0], this.bbox[1] ];
         let max = [ this.bbox[2], this.bbox[3] ];
 
-        if (!this.pointInTile(min) || !this.pointInTile(max)) {
+        if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
             return false;
         }
 
         return true;
-    }
-
-    pointInTile (point) {
-        let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
-
-        return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
-    }
-
-    mercatorLength () {
-        return this.size[0] * Geo.units_per_pixel;
-    }
-
-    mercatorHeight () {
-        return this.size[1] * Geo.units_per_pixel;
     }
 
     discard (bboxes) {

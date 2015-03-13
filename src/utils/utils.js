@@ -3,6 +3,7 @@
 
 import log from 'loglevel';
 import yaml from 'js-yaml';
+import Geo from '../geo';
 
 var Utils;
 export default Utils = {};
@@ -398,3 +399,14 @@ Utils.toPixelSize = function (size, kind) {
         return size / 6.25;
     }
 };
+
+Utils.pointInTile = function (point) {
+    let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
+
+    return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
+};
+
+Utils.pixelToMercator = function (size) {
+    return size * Geo.units_per_pixel;
+};
+
