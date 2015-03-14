@@ -37,6 +37,7 @@ export default class Scene {
         this.visible_tiles = {};
         this.queued_tiles = [];
         this.num_workers = options.numWorkers || 2;
+        this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
@@ -288,6 +289,10 @@ export default class Scene {
     setZoom(zoom) {
         this.zooming = false;
         let base = this.baseZoom(zoom);
+
+        if (!this.continuous_zoom) {
+            zoom = base;
+        }
 
         if (base !== this.baseZoom(this.last_zoom)) {
             // Remove tiles outside a given range above and below current zoom

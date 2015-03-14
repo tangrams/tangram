@@ -10,10 +10,22 @@ export function leafletLayer(options) {
 }
 
 // Leaflet layer functionality is only defined in main thread
-
 if (Utils.isMainThread) {
 
-    LeafletLayer = L.GridLayer.extend({
+    // Determine if we are extending the leaflet 0.7.x TileLayer class, or the newer
+    // leaflet 1.0 GridLayer class.
+    let layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
+    let leafletVersion = layerBaseClass === L.GridLayer ? '1.0' : '0.7';
+    let layerClassConfig = {};
+
+    // If extending leaflet 0.7.x TileLayer, make add/remove tile no ops
+    if (layerBaseClass === L.TileLayer) {
+        layerClassConfig._addTile = function(){};
+        layerClassConfig._removeTile = function(){};
+    }
+
+    // Define custom layer methods
+    Object.assign(layerClassConfig, {
 
         initialize: function (options) {
             // Defaults
@@ -35,6 +47,7 @@ if (Utils.isMainThread) {
                     numWorkers: this.options.numWorkers,
                     preUpdate: this.options.preUpdate,
                     postUpdate: this.options.postUpdate,
+                    continuousZoom: (LeafletLayer.leafletVersion === '1.0'),
                     logLevel: this.options.logLevel,
                     // advanced option, app will have to manually called scene.update() per frame
                     disableRenderLoop: this.options.disableRenderLoop,
@@ -49,7 +62,7 @@ if (Utils.isMainThread) {
                 this.createScene();
             }
 
-            L.GridLayer.prototype.onAdd.apply(this, arguments);
+            layerBaseClass.prototype.onAdd.apply(this, arguments);
 
             this.hooks.resize = () => {
                 this._updating_tangram = true;
@@ -125,7 +138,7 @@ if (Utils.isMainThread) {
         },
 
         onRemove: function () {
-            L.GridLayer.prototype.onRemove.apply(this, arguments);
+            layerBaseClass.prototype.onRemove.apply(this, arguments);
 
             this._map.off('resize', this.hooks.resize);
             this._map.off('move', this.hooks.move);
@@ -184,4 +197,9 @@ if (Utils.isMainThread) {
         }
 
     });
+
+    // Create the layer class
+    LeafletLayer = layerBaseClass.extend(layerClassConfig);
+    LeafletLayer.leafletVersion = leafletVersion;
+
 }
