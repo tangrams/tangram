@@ -22,12 +22,6 @@ let mat4 = glMatrix.mat4;
 let mat3 = glMatrix.mat3;
 let vec3 = glMatrix.vec3;
 
-// Global setup
-if (Utils.isMainThread) {
-    // On main thread only (skip in web worker)
-    Utils.requestAnimationFramePolyfill();
-}
-
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
 

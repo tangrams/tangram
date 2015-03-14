@@ -60,3 +60,7 @@ if (Utils.isWorkerThread) {
         debug
     };
 }
+
+if (Utils.isMainThread) {
+    Utils.requestAnimationFramePolyfill();
+}
