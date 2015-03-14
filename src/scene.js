@@ -70,6 +70,7 @@ export default class Scene {
 
         this.camera = null;
         this.lights = null;
+        this.background = null;
 
         // Model-view matrices
         // 64-bit versions are for CPU calcuations
@@ -683,7 +684,7 @@ export default class Scene {
         let gl = this.gl;
 
         if (clear_color) {
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clearColor(...this.background.color);
         }
 
         if (clear_depth) {
@@ -1223,6 +1224,18 @@ export default class Scene {
         Light.inject(this.lights);
     }
 
+    // Set background color
+    setBackground() {
+        let bg = this.config.background;
+        this.background = {};
+        if (bg && bg.color) {
+            this.background.color = StyleParser.parseColor(bg.color);
+        }
+        if (!this.background.color) {
+            this.background.color = [0, 0, 0, 1]; // default background to black
+        }
+    }
+
     // Update scene config
     updateConfig() {
         this.createCamera();
@@ -1230,6 +1243,7 @@ export default class Scene {
         this.loadDataSources();
         this.setSourceMax();
         this.loadTextures();
+        this.setBackground();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles(this.gl);

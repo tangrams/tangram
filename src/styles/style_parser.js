@@ -231,9 +231,15 @@ StyleParser.parseColor = function(val, context = {}) {
         val = Utils.interpolate(context.zoom, val);
     }
 
-    // Default alpha
-    if (!val[3]) {
-        val[3] = 1;
+    // Defaults
+    if (val) {
+        // alpha
+        if (!val[3]) {
+            val[3] = 1;
+        }
+    }
+    else {
+        val = [0, 0, 0, 1];
     }
 
     return val;
