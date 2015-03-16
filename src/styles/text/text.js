@@ -191,11 +191,12 @@ Object.assign(TextStyle, {
                         info.subtexcoords = {}
                     }
 
-                    info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
-                        info.position,
-                        info.size.texture_text_size,
-                        texture_size
-                    );
+                    // TODO : compute sub texture coordinates
+                    // info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
+                    //    info.position,
+                    //    info.size.texture_text_size,
+                    //    texture_size
+                    //);
                 }
             }
         }
@@ -252,7 +253,7 @@ Object.assign(TextStyle, {
         } else if (geometry.type === "Point") {
             let width = this.label_style.points.max_width * this.device_pixel_ratio;
             if (width && size.text_size[0] > width) {
-                let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(24), false, true);
+            //    let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(24), false, true);
             //    labels.push(label);
             } else {
                 labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
