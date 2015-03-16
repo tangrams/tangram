@@ -356,17 +356,13 @@ sources:
 layers:
 
     earth:
-        geometry:
-            source: osm
-            filter: earth
+        data: { source: osm }
         style:
             order: 0
             color: [0.175, 0.175, 0.175]
 
     landuse:
-        geometry:
-            source: osm
-            filter: landuse
+        data: { source: osm }
         style:
             order: 1
             interactive: true
@@ -386,9 +382,7 @@ layers:
                 order: .05
 
     water:
-        geometry:
-            source: osm
-            filter: water
+        data: { source: osm }
         style:
             # name: water
             order: 2
@@ -403,9 +397,7 @@ layers:
                     width: function() { return 2.5 * Math.log(zoom); }
 
     roads:
-        geometry:
-            source: osm
-            filter: roads
+        data: { source: osm }
 
         style:
             order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
@@ -553,10 +545,43 @@ layers:
                         cap: round
                         join: round
 
+
+    road_labels:
+        data: { source: osm, layer: roads }
+
+        filter: { name: true, $zoom: { min: 14 } }
+        style:
+            name: text
+            # visible: false
+            order: 5
+            interactive: true
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
+
+        major_road:
+            filter: { kind: major_road, $zoom: { min: 14 } }
+            style:
+                font:
+                    size: 14px
+                    typeface: Futura
+                    fill: darkred
+                    stroke: white
+        minor_road:
+            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
+            style:
+                font:
+                    size: 12px
+                    typeface: Futura
+                    # fill: [0.8, 0.7, 0.7]
+                    # stroke: [.31, .33, .31]
+                    fill: [0.9, 0.9, 0.9]
+                    stroke: [.31, .33, .31]
+
     buildings:
-        geometry:
-            source: osm
-            filter: buildings
+        data: { source: osm }
 
         # properties: { min_height: 150 }
         # filter: function () { return feature.height >= properties.min_height; }
@@ -593,46 +618,8 @@ layers:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
 
-    labels_street:
-        geometry:
-            source: osm
-            filter: roads
-
-        filter: { name: true, $zoom: { min: 14 } }
-        style:
-            name: text
-            # visible: false
-            order: 5
-            interactive: true
-            # font:
-            #     typeface: Helvetica
-            #     size: 12px
-            #     fill: white
-            #     stroke: black
-
-        major_road:
-            filter: { kind: major_road, $zoom: { min: 14 } }
-            style:
-                font:
-                    size: 14px
-                    typeface: Futura
-                    fill: darkred
-                    stroke: white
-        minor_road:
-            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-            style:
-                font:
-                    size: 12px
-                    typeface: Futura
-                    # fill: [0.8, 0.7, 0.7]
-                    # stroke: [.31, .33, .31]
-                    fill: [0.9, 0.9, 0.9]
-                    stroke: [.31, .33, .31]
-
     pois:
-        geometry:
-            source: osm
-            filter: pois
+        data: { source: osm }
 
         filter: { name: true, $zoom: { min: 17 } }
 
@@ -692,7 +679,8 @@ layers:
                 sprite: museum
 
     places:
-        geometry: { source: osm, filter: places }
+        data: { source: osm }
+
         filter: { name: true }
 
         style:
