@@ -34,8 +34,9 @@ export default class LabelPoint extends Label {
 }
 
 class LabelComposite extends Label {
-    constructor (position, labels) {
+    constructor (text, position, labels) {
         this.labels = labels;
+        this.text = text;
     }
 
     isComposite () {
@@ -85,14 +86,24 @@ class TextLine {
     }
 
     explode (max_width, exploded_lines = []) {
-        let half_width = this.line_length / 2;
-        let index = this.wordInfoIndex(half_width);
-        let word_info = this.words[index];
-
-        if (word_info.word === ' ') {
-            word_info = this.words[index + 1];
+        if (max_width > this.line_length) {
+            exploded_lines.push(this);
+            return exploded_lines;
         }
-        if (word_info.end > max_width) {
+
+        let index = this.wordInfoIndex(max_width);
+
+        if (this.words[index].word === ' ') {
+            index -= 1;
+        }
+
+        if (index < 1) {
+            exploded_lines.push(this);
+            return exploded_lines;
+        }
+
+        if (index < this.words.length) {
+            let word_info = this.words[index];
             let next_line_length = 0, previous_line_length = 0;
             let next_line_words = '', previous_line_words = '';
 
@@ -102,8 +113,10 @@ class TextLine {
             }
 
             for (let i = 0; i < index; i++) {
-                previous_line_words += this.words[i].word;
-                previous_line_length += this.size_info[this.words[i].word];
+                if (i != index - 1 && this.words[i] !== ' ') {
+                    previous_line_words += this.words[i].word;
+                    previous_line_length += this.size_info[this.words[i].word];
+                }
             }
 
             exploded_lines.push(new TextLine(
@@ -156,16 +169,23 @@ class TextLine {
     }
 }
 
-LabelPoint.explode = function (text, position, size, max_width) {
+LabelPoint.explode = function (text, position, size, max_width, padding, move_in_tile, keep_in_tile) {
     let split_text = text.split(' ');
+
     if (split_text.length <= 2) {
-        // TODO : one word string
-    } else {
-        let line = new TextLine(text, size.text_size[0], split_text, size.split_size);
-        let lines = line.explode(50);
-        debugger;
+        return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
     }
 
-    return new LabelComposite(position, null);
+    let line = new TextLine(text, size.text_size[0], split_text, size.split_size);
+    let lines = line.explode(max_width);
+    let labels = [];
+
+    for (let i in lines) {
+        let l = lines[i];
+        let pos = [position[0], position[1] + padding * i];
+        labels.push(new LabelPoint(l.text, pos, size, null, move_in_tile, keep_in_tile));
+    }
+
+    return new LabelComposite(text, position, labels);
 }
 
