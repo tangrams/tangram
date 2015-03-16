@@ -374,13 +374,13 @@ layers:
                 kind: ['pitch', 'garden', 'playground']
             style:
                 color: [0.3, 0.675, 0.3]
-                order: .1
+                order: 1
 
         airports:
             filter: { kind: apron }
             style:
                 color: lightyellow
-                order: .05
+                order: 1
 
     water:
         geometry:
@@ -406,13 +406,95 @@ layers:
 
         style:
             # order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
-            order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .01, -1), 1) / 2; }
-            # order: 3
+            # order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .01, -1), 1) / 2; }
+            # order: function () { return 5 + Math.round(Math.min(Math.max(feature.sort_key, -5), 5)) + 5; }
+            # order: function () { return 5 + Math.round(Math.min(Math.max(feature.sort_key, -50), 50)) + 50; }
+            order: |
+                function () {
+                    var order = 0;
+                    //order += feature.sort_key < 0 ? 1 : 2;
+                    //order += Math.round(Math.min(Math.max(feature.sort_key * .001, -50), 50)) + 50;
+                    //order += Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2 * 50 + 50;
+
+                    var sign = feature.sort_key >= 0 ? 1 : -1;
+                    if (Math.abs(feature.sort_key) < 10) {
+                        order += feature.sort_key;
+                    }
+                    else if (feature.sort_key > 90) {
+                        order -= 90;
+                    }
+                    else if (feature.sort_key < -100) {
+                        order += 90;
+                    }
+
+                    /*else if (Math.abs(feature.sort_key) > 100 && ) {
+                        order += Math.floor(feature.sort_key / 10) + 10 * sign;
+                    }
+                    else { //if (Math.abs(feature.sort_key) < 1000) {
+                        order += Math.floor(feature.sort_key / 100) + 100 * sign;
+                    }*/
+
+                    //order += 150;
+                    //order /= 10;
+                    order = Math.round(order);
+
+                    console.log(feature.kind, feature.sort_key, order);
+                    return order;
+                }
+            # order: 5
             interactive: function () { return (zoom >= 18); }
             # color: yellow
             # color: Style.color.pseudoRandomColor()
             # color: red #[0.4, 0.4, 0.4]
             # width: function () { return 2 * Math.log(zoom); }
+
+        # orders:
+        #     regular:
+        #         filter: { is_bridge: no, is_tunnel: no }
+
+        #         not-link:
+        #             filter: { is_link: no }
+        #             highway:
+        #                 filter: { kind: highway }
+        #                 style: { order: 15 }
+        #             major_road:
+        #                 filter: { kind: major_road }
+        #                 style: { order: 13 }
+        #             rail:
+        #                 filter: { kind: rail }
+        #                 style: { order: 11 }
+        #             minor_road:
+        #                 filter: { kind: minor_road }
+        #                 style: { order: 9 }
+        #             path:
+        #                 filter: { kind: path }
+        #                 style: { order: 7 }
+
+        #         link:
+        #             filter: { is_link: yes }
+        #             highway:
+        #                 filter: { kind: highway }
+        #                 style: { order: 14 }
+        #             major_road:
+        #                 filter: { kind: major_road }
+        #                 style: { order: 12 }
+        #             rail:
+        #                 filter: { kind: rail }
+        #                 style: { order: 10 }
+        #             minor_road:
+        #                 filter: { kind: minor_road }
+        #                 style: { order: 8 }
+        #             path:
+        #                 filter: { kind: path }
+        #                 style: { order: 6 }
+
+        #     bridges:
+        #         filter: { is_bridge: yes }
+        #         style: { order: 16 }
+
+        #     tunnels:
+        #         filter: { is_tunnel: yes }
+        #         style: { order: 5 }
 
         airports:
             filter: { aeroway: true }
@@ -429,7 +511,7 @@ layers:
                 style:
                     width: [[12, 5px], [13, 10px], [15, 30px], [17, 150px]]
                     color: orange
-                    order: .1
+                    order: 1
 
         not-airports:
             filter: { aeroway: false }
@@ -440,11 +522,11 @@ layers:
                     cap: round
                     join: round
 
-            bridges:
-                filter: { is_bridge: yes }
-                style:
-                    orderReset: true
-                    order: 8
+            # bridges:
+            #     filter: { is_bridge: yes }
+            #     style:
+            #         orderReset: true
+            #         order: 2
 
             highway:
                 filter: { kind: highway }
@@ -459,12 +541,12 @@ layers:
                     # width: [[13, 3px], [15, 5px], [16, 20px]]
                     # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
 
-                # outline:
-                #     filter: { $zoom: { min: 15 } }
-                #     style:
-                #         outline:
-                #             color: [0.7, 0.7, 0.7]
-                #             width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return 3/8 * Math.log(zoom); }
 
                     # bridge:
                     #     filter: { is_bridge: yes }
@@ -548,7 +630,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            order: 4
+            order: 20
             # order: 0
             interactive: true
 
@@ -586,7 +668,7 @@ layers:
         style:
             name: text
             # visible: false
-            order: 5
+            order: 21
             interactive: true
             # font:
             #     typeface: Helvetica
@@ -642,7 +724,7 @@ layers:
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
-            order: 5
+            order: 22
             # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
 
@@ -685,7 +767,7 @@ layers:
             name: text
             visible: false
             # interactive: true
-            order: 6
+            order: 23
             font:
                 size: 12px
                 typeface: Courier

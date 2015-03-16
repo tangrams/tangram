@@ -28,6 +28,7 @@ StyleManager.init = function () {
 
     // Layer re-ordering function
     ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
+    ShaderProgram.defines.LAYER_DELTA = 1 / (1 << 15);
 
     StyleManager.initialized = true;
 };
