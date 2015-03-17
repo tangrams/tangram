@@ -24,7 +24,7 @@ export default class LabelLine extends Label {
     update () {
         let segment = this.currentSegment();
 
-        this.angle = this.angle();
+        this.angle = this.computeAngle();
 
         let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
         let dot = Vector.dot(perp, [0, 1]);
@@ -45,7 +45,7 @@ export default class LabelLine extends Label {
         return true;
     }
 
-    angle () {
+    computeAngle () {
         let segment = this.currentSegment();
         let p0p1 = Vector.sub(segment[0], segment[1]);
 
