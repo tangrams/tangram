@@ -65,10 +65,10 @@ if (Utils.isWorkerThread) {
             }
         }
 
-        // Geometry block functions are not macro'ed and wrapped like the rest of the style functions are
+        // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
         for (var layer in config.layers) {
-            config.layers[layer].geometry = Utils.stringsToFunctions(config.layers[layer].geometry);
+            config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
         }
 
         // Expand styles
@@ -143,7 +143,6 @@ if (Utils.isWorkerThread) {
                     Promise.all(Object.keys(SceneWorker.sources.tiles).map(x => SceneWorker.sources.tiles[x].load(tile))).then(() => {
                         tile.loading = false;
                         tile.loaded = true;
-                        // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
                             resolve({
                                 tile: SceneWorker.sliceTile(tile, keys),
@@ -170,7 +169,6 @@ if (Utils.isWorkerThread) {
                 SceneWorker.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                // var keys = Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles);
                 return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
                     return {
                         tile: SceneWorker.sliceTile(tile, keys),

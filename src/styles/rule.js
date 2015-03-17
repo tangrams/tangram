@@ -1,7 +1,7 @@
 'use strict';
 const {match} = require('match-feature');
 
-export const whiteList = ['filter', 'style', 'geometry', 'properties'];
+export const whiteList = ['filter', 'style', 'data', 'properties'];
 
 export let ruleCache = {};
 

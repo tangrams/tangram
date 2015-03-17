@@ -27,19 +27,15 @@ VertexArrayObject.init = function (gl) {
 };
 
 VertexArrayObject.create = function (setup, teardown) {
-    var vao = {};
+    let vao = {};
     vao.setup = setup;
     vao.teardown = teardown;
 
-    var ext = VertexArrayObject.ext;
+    let ext = VertexArrayObject.ext;
     if (ext != null) {
         vao._vao = ext.createVertexArrayOES();
         ext.bindVertexArrayOES(vao._vao);
         vao.setup();
-        ext.bindVertexArrayOES(null);
-        if (typeof vao.teardown === 'function') {
-            vao.teardown();
-        }
     }
     else {
         vao.setup();
@@ -49,7 +45,7 @@ VertexArrayObject.create = function (setup, teardown) {
 };
 
 VertexArrayObject.bind = function (vao) {
-    var ext = VertexArrayObject.ext;
+    let ext = VertexArrayObject.ext;
     if (vao != null) {
         if (ext != null && vao._vao != null) {
             ext.bindVertexArrayOES(vao._vao);
