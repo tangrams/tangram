@@ -228,6 +228,7 @@ export var Style = {
                     blocks
                 }
             );
+            this.program.compile();
 
             if (this.selection) {
                 this.selection_program = new ShaderProgram(
@@ -241,6 +242,7 @@ export var Style = {
                         blocks
                     }
                 );
+                this.selection_program.compile();
             }
             else {
                 this.selection_program = null;

@@ -17,6 +17,7 @@ export default class ShaderProgram {
         this.program = null;
         this.compiled = false;
         this.compiling = false;
+        this.error = null;
 
         // key/values inserted as #defines into shaders at compile-time
         this.defines = Object.assign({}, options.defines||{});
@@ -38,8 +39,6 @@ export default class ShaderProgram {
         this.id = ShaderProgram.id++;
         ShaderProgram.programs[this.id] = this;
         this.name = options.name; // can provide a program name (useful for debugging)
-
-        this.compile();
     }
 
     destroy() {
@@ -70,6 +69,7 @@ export default class ShaderProgram {
         }
         this.compiling = true;
         this.compiled = false;
+        this.error = null;
 
         // Copy sources from pre-modified template
         this.computed_vertex_source = this.vertex_source;
@@ -151,6 +151,7 @@ export default class ShaderProgram {
             this.program = null;
             this.compiled = false;
             this.compiling = false;
+            this.error = error;
             throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
         }
 
