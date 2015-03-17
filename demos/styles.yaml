@@ -106,7 +106,7 @@ styles:
         shaders:
             defines:
                 EFFECT_NOISE_ANIMATED: true
-            transforms:
+            blocks:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
                 color:
@@ -118,7 +118,7 @@ styles:
         shaders:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
-            transforms:
+            blocks:
                 # fragment: |
                 color: |
                     //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
@@ -133,7 +133,7 @@ styles:
         animated: true
         lighting: false
         shaders:
-            transforms:
+            blocks:
                 globals: |
                     vec3 hsv2rgb(vec3 c) {
                         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -151,7 +151,7 @@ styles:
         extends: polygons
         animated: true
         shaders:
-            transforms:
+            blocks:
                 position: |
                     // Elevator buildings
                     if (position.z > 0.01) {
@@ -193,7 +193,7 @@ styles:
 
     points:
         shaders:
-            transforms:
+            blocks:
                 color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
@@ -217,7 +217,7 @@ styles:
         shaders:
             uniforms:
                 rotate: false
-            transforms:
+            blocks:
                 position: |
                     //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
                     //shape.z *= u_time;
@@ -236,18 +236,17 @@ styles:
     #     selection: true
     #     animated: true
     #     shaders:
-    #         transforms:
+    #         blocks:
     #             position: |
     #                 shape.z = (shape.z + 0.01) * u_time * .75;
     #             # color: |
     #             #     color.rgb = vec3(v_texcoord.xy, 0.);
-    #             #     //color.a = 1.;
 
     uv_test:
         extends: polygons
         texcoords: true
         shaders:
-            transforms:
+            blocks:
                 color: |
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
@@ -257,7 +256,7 @@ styles:
     depth:
         extends: polygons
         shaders:
-            transforms:
+            blocks:
                 color: |
                     color = vec4(vec3(v_position.z / 256.), 1.);
                     //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
@@ -268,80 +267,6 @@ styles:
                         (gl_DepthRange.far - gl_DepthRange.near);
                     float clipDepth = ndcDepth / gl_FragCoord.w;
                     color = vec4((clipDepth * 0.5) + 0.5);*/
-
-    # dynamic uniform tests
-    # polygons:
-    #     texcoords: true
-    #     shaders:
-    #         uniforms:
-    #             # u_texture: demos/images/LitSphere_test_02.jpg
-    #             # u_offset: { one: .5, two: .5 }
-
-    #             u_material:
-    #                 - texture: demos/images/matball01.jpg
-    #                   field: 1
-
-    #                 - texture: demos/images/sunset.jpg
-    #                   field: 2
-
-    #             u_mtex:
-    #                 - demos/images/matball01.jpg
-    #                 - demos/images/sunset.jpg
-
-    #             u_vecs: [[1,2,3],[4,5,6],[7,8,9]]
-
-    #             u_nested:
-    #                 one: 1
-    #                 child:
-    #                     two: 2
-
-    #         transforms:
-    #             globals: |
-    #                 /*struct Material {
-    #                     sampler2D texture;
-    #                     float field;
-    #                 };*/
-    #                 //uniform Material u_material[2];
-
-    #                 //uniform sampler2D u_mtex[2];
-    #                 //uniform vec3 u_vecs[3];
-
-    #                 varying float v_layer;
-
-    #             vertex: |
-    #                 v_layer = a_layer;
-
-    #             fragment: |
-    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two));
-    #                 //float t = mod(v_layer + u_vecs[0].y, 3.);
-    #                 float t = mod(v_layer + u_nested.one, 3.);
-    #                 if (t == 0.) {
-    #                     color = texture2D(u_texture, v_texcoord);
-    #                 }
-    #                 else if (t == 1.) {
-    #                     color = texture2D(u_material[0].texture, v_texcoord);
-    #                     //color = texture2D(u_mtex[0], v_texcoord);
-    #                 }
-    #                 else {
-    #                     color = texture2D(u_material[1].texture, v_texcoord);
-    #                     //color = texture2D(u_mtex[1], v_texcoord);
-    #                 }
-
-    ghosts:
-        extends: polygons
-        animated: true
-        texcoords: true
-        shaders:
-            uniforms:
-                u_texture: demos/images/ghost_strip.gif
-            transforms:
-                color: |
-                    float number_of_frames = 2.;
-                    float frames_per_second = 2.;
-
-                    float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
-                    if (color.rgb == vec3(0.)) discard;
 
 
 sources:

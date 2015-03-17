@@ -211,8 +211,8 @@ export var Style = {
             selection_defines['FEATURE_SELECTION'] = true;
         }
 
-        // Get any custom code transforms, uniform dependencies, etc.
-        var transforms = (this.shaders && this.shaders.transforms);
+        // Get any custom code blocks, uniform dependencies, etc.
+        var blocks = (this.shaders && this.shaders.blocks);
         var uniforms = (this.shaders && this.shaders.uniforms);
 
         // Create shaders
@@ -225,7 +225,7 @@ export var Style = {
                     name: this.name,
                     defines,
                     uniforms,
-                    transforms
+                    blocks
                 }
             );
 
@@ -238,7 +238,7 @@ export var Style = {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
                         uniforms,
-                        transforms
+                        blocks
                     }
                 );
             }
@@ -256,23 +256,23 @@ export var Style = {
         this.compiled = true;
     },
 
-    // Add a shader transform
-    addShaderTransform (key, ...transforms) {
-        this.shaders.transforms = this.shaders.transforms || {};
-        this.shaders.transforms[key] = this.shaders.transforms[key] || [];
-        this.shaders.transforms[key].push(...transforms);
+    // Add a shader block
+    addShaderBlock (key, ...blocks) {
+        this.shaders.blocks = this.shaders.blocks || {};
+        this.shaders.blocks[key] = this.shaders.blocks[key] || [];
+        this.shaders.blocks[key].push(...blocks);
     },
 
-    // Remove all shader transforms for key
-    removeShaderTransform (key) {
-        if (this.shaders.transforms) {
-            this.shaders.transforms[key] = null;
+    // Remove all shader blocks for key
+    removeShaderBlock (key) {
+        if (this.shaders.blocks) {
+            this.shaders.blocks[key] = null;
         }
     },
 
-    replaceShaderTransform (key, ...transforms) {
-        this.removeShaderTransform(key);
-        this.addShaderTransform(key, ...transforms);
+    replaceShaderBlock (key, ...blocks) {
+        this.removeShaderBlock(key);
+        this.addShaderBlock(key, ...blocks);
     },
 
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram

@@ -78,7 +78,7 @@
                 "extends": "polygons",
                 "animated": true,
                 "shaders": {
-                    "transforms": {
+                    "blocks": {
                         "globals":
                             "vec3 hsv2rgb(vec3 c) { \n\
                                 vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); \n\
@@ -97,7 +97,7 @@
                     "uniforms": {
                         "scale": [1, 2, 3]
                     },
-                    "transforms": {
+                    "blocks": {
                         "vertex":
                             "position.xyz *= scale;"
                     }
