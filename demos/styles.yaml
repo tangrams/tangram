@@ -601,11 +601,11 @@ layers:
             # visible: false
             order: 5
             interactive: true
+            # text_source: kind
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
-                text_source: value
                 font:
                     typeface: bold 14px Futura
                     fill: blue
@@ -631,6 +631,8 @@ layers:
             # size: [[12, 6px], [13, 10px]]
 
             name: text
+            # text_source: kind
+            # text_source: function() { return (Math.random() * 100).toFixed(); }
             font:
                 typeface: Italic 12px Helvetica
                 fill: [.9, .9, .1]
@@ -647,7 +649,7 @@ layers:
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
-            # visible: false
+            visible: false
             order: 5
             # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
@@ -679,6 +681,27 @@ layers:
                 name: icons
                 size: 32px
                 sprite: museum
+
+    building_labels:
+        geometry: { source: osm, filter: buildings }
+        style:
+            name: text
+            visible: false
+            order: 10
+            text_source: |
+                function() { return feature.height > 100 ? 'high' : 'low';  }
+            # text_source: function() { return 'test'; }
+            font:
+                typeface: 12px Helvetica
+                fill: white
+                stroke: black
+
+        high:
+            filter: function() { return feature.height > 100; }
+            style:
+                font:
+                    fill: red
+                    stroke: white
 
     places:
         geometry: { source: osm, filter: places }

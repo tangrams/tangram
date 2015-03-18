@@ -36,7 +36,6 @@ export default class Label {
         }
 
         if (!intersect) {
-            Label.bbox_labels[bboxes.length] = this;
             bboxes.push(this.bbox);
         }
 
@@ -77,5 +76,4 @@ export default class Label {
 }
 
 Label.id = 0;
-Label.bbox_labels = {}; // map bbox index to label object
 

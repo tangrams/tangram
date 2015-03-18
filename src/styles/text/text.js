@@ -84,20 +84,22 @@ Object.assign(TextStyle, {
         let ctx = this.canvas[tile].context;
         let split = str.split(' ');
         let split_size = {
-            " ": this.canvas[tile].context.measureText(" ").width
+            " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
         };
 
         for (let i in split) {
             let word = split[i];
-            split_size[word] = ctx.measureText(word).width;
+            split_size[word] = ctx.measureText(word).width / this.device_pixel_ratio;
         }
 
+        let str_width = ctx.measureText(str).width;
         let text_size = [
-            this.canvas[tile].context.measureText(str).width,
-            this.size
+            (str_width + this.buffer * 0) / this.device_pixel_ratio,
+            (this.size + this.buffer * 0) / this.device_pixel_ratio
         ];
+
         let texture_text_size = [
-            Math.ceil(text_size[0]) + this.buffer * 2,
+            Math.ceil(str_width) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
 
@@ -289,7 +291,7 @@ Object.assign(TextStyle, {
                 labels.push(new LabelLine(text, size, line, this.label_style.lines, true, true));
             }
         } else if (geometry.type === "Point") {
-            let width = this.label_style.points.max_width * this.device_pixel_ratio;
+            let width = this.label_style.points.max_width;
             if (width && size.text_size[0] > width) {
                 let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(12), false, true);
                 labels.push(label);
@@ -334,6 +336,7 @@ Object.assign(TextStyle, {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
+                text_info.ref = 0;
 
                 for (let f = 0; f < this.features[tile][style][text].length; f++) {
                     let feature = this.features[tile][style][text][f];
@@ -460,15 +463,15 @@ Object.assign(TextStyle, {
     addFeature (feature, rule, context, tile_data) {
         // Collect text
         if (feature.properties.name) {
-            let text = feature.properties.name;
-            if (rule.text_source) {
-                if (rule.text_source === 'value') {
-                    text = feature.properties.value || text;
-                } else if (typeof rule.text_source === 'function') {
-                    text = rule.text_source(context);
-                }
+            let text;
+            let source = rule.text_source || 'name';
+
+            if (typeof source === 'string') {
+                text = feature.properties[source];
+            } else if (typeof source === 'function') {
+                text = source(context);
             }
-            feature.properties.text = text;
+            feature.text = text;
 
             let tile = context.tile.key;
             if (!this.texts[tile]) {
@@ -604,7 +607,7 @@ Object.assign(TextStyle, {
 
     _parseFeature (feature, rule_style, context) {
         // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
-        let text = feature.properties.text;
+        let text = feature.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
