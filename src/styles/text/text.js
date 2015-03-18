@@ -84,20 +84,22 @@ Object.assign(TextStyle, {
         let ctx = this.canvas[tile].context;
         let split = str.split(' ');
         let split_size = {
-            " ": this.canvas[tile].context.measureText(" ").width
+            " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
         };
 
         for (let i in split) {
             let word = split[i];
-            split_size[word] = ctx.measureText(word).width;
+            split_size[word] = ctx.measureText(word).width / this.device_pixel_ratio;
         }
 
+        let str_width = ctx.measureText(str).width;
         let text_size = [
-            this.canvas[tile].context.measureText(str).width,
-            this.size
+            (str_width + this.buffer * 0) / this.device_pixel_ratio,
+            (this.size + this.buffer * 0) / this.device_pixel_ratio
         ];
+
         let texture_text_size = [
-            Math.ceil(text_size[0]) + this.buffer * 2,
+            Math.ceil(str_width) + this.buffer * 2,
             this.size + this.buffer * 2
         ];
 
@@ -251,7 +253,7 @@ Object.assign(TextStyle, {
                 labels.push(new LabelLine(text, size, line, this.label_style.lines, true, true));
             }
         } else if (geometry.type === "Point") {
-            let width = this.label_style.points.max_width * this.device_pixel_ratio;
+            let width = this.label_style.points.max_width;
             if (width && size.text_size[0] > width) {
             //    let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(24), false, true);
             //    labels.push(label);
