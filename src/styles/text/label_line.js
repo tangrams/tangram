@@ -131,16 +131,5 @@ export default class LabelLine extends Label {
         return !in_tile || !fits_to_segment;
     }
 
-    discard (bboxes) {
-        if (this.lines && !this.fitToSegment()) {
-            while (!this.fitToSegment()) {
-                if (!this.moveNextSegment()) {
-                    return true;
-                }
-            }
-        }
-
-        return super.discard(bboxes);
-    }
 }
 
