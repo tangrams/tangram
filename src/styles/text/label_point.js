@@ -28,9 +28,6 @@ export default class LabelPoint extends Label {
         return false;
     }
 
-    discard (bboxes) {
-        return super.discard(bboxes);
-    }
 }
 
 class LabelComposite extends Label {
@@ -188,4 +185,3 @@ LabelPoint.explode = function (text, position, size, max_width, padding, move_in
 
     return new LabelComposite(text, position, labels);
 }
-
