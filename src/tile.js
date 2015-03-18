@@ -189,8 +189,11 @@ export default class Tile {
                         tile_data[rule.name] = style.startData();
                     }
 
+                    context.properties = rule.properties; // add rule-specific properties to context
+
                     style.addFeature(feature, rule, context, tile_data[rule.name]);
 
+                    context.properties = null; // clear rule-specific properties
                     source.debug.features++;
                 }
 

@@ -91,6 +91,12 @@ class Rule {
         this.filter = filter;
         this.properties = properties;
         this.parent = parent;
+
+        // Add properties to style
+        if (this.style) {
+            this.style.properties = this.properties;
+        }
+
         this.buildFilter();
         this.buildStyle();
     }
