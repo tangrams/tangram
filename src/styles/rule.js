@@ -93,7 +93,7 @@ class Rule {
         this.parent = parent;
 
         // Add properties to style
-        if (this.style) {
+        if (this.style && this.properties) {
             this.style.properties = this.properties;
         }
 
