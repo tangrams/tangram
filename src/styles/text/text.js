@@ -58,7 +58,8 @@ Object.assign(TextStyle, {
                 offset: 0
             },
             points: {
-                max_width: 100
+                max_width: 100,
+                line_height: 100 // percentage
             }
         };
     },
@@ -83,6 +84,7 @@ Object.assign(TextStyle, {
         let str = capitalized ? text.toUpperCase() : text;
         let ctx = this.canvas[tile].context;
         let split = str.split(' ');
+        let px_size = this.size;
         let split_size = {
             " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
         };
@@ -94,8 +96,8 @@ Object.assign(TextStyle, {
 
         let str_width = ctx.measureText(str).width;
         let text_size = [
-            (str_width + this.buffer * 0) / this.device_pixel_ratio,
-            (this.size + this.buffer * 0) / this.device_pixel_ratio
+            str_width / this.device_pixel_ratio,
+            this.size / this.device_pixel_ratio
         ];
 
         let texture_text_size = [
@@ -103,7 +105,7 @@ Object.assign(TextStyle, {
             this.size + this.buffer * 2
         ];
 
-        return { split_size, text_size, texture_text_size };
+        return { split_size, text_size, texture_text_size, px_size };
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
@@ -293,7 +295,9 @@ Object.assign(TextStyle, {
         } else if (geometry.type === "Point") {
             let width = this.label_style.points.max_width;
             if (width && size.text_size[0] > width) {
-                let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(12), false, true);
+                let line_height = (size.px_size / 100) * this.label_style.points.line_height;
+                line_height = Utils.pixelToMercator(line_height);
+                let label = LabelPoint.explode(text, geometry.coordinates, size, width, line_height, false, true);
                 labels.push(label);
             } else {
                 labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
