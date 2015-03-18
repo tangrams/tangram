@@ -75,7 +75,7 @@ class TextLine {
         let offset = 0;
         let space_offset = this.size_info[' '];
 
-        for (let i in words) {
+        for (let i = 0; i < words.length; ++i) {
             let word = words[i];
             let word_length = this.size_info[word];
 
@@ -117,7 +117,6 @@ class TextLine {
         }
 
         if (index < this.words.length) {
-            let word_info = this.words[index];
             let next_line_length = 0, previous_line_length = 0;
             let next_line_words = '', previous_line_words = '';
 
@@ -168,7 +167,7 @@ class TextLine {
         while (word_info.start > position || word_info.end < position) {
             d /= 2;
             i += word_info.end < position ? Math.ceil(d) : -Math.ceil(d);
-            i = Math.min(Math.max(0, i), this.words.length -1);
+            i = Math.min(Math.max(0, i), this.words.length - 1);
             word_info = this.words[i];
         }
 
@@ -194,4 +193,4 @@ LabelPoint.explode = function (text, position, size, max_width, padding, move_in
     }
 
     return new LabelComposite(text, position, size, labels);
-}
+};

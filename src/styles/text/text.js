@@ -194,16 +194,16 @@ Object.assign(TextStyle, {
                 let width = this.buffer;
                 let dists = [];
 
-                for (let i in info.sub_texts) {
+                for (let i = 0; i < info.sub_texts.length; ++i) {
                     let sub_text = info.sub_texts[i];
                     let split = sub_text.split(' ');
 
                     dists[i] = width;
 
-                    for (let i in split) {
-                        let word = split[i];
+                    for (let j = 0; j < split.length; ++j) {
+                        let word = split[j];
                         width += info.size.split_size[word];
-                        if (i != split.length - 1) {
+                        if (j != split.length - 1) {
                             width += info.size.split_size[' '];
                         }
                     }
@@ -216,7 +216,7 @@ Object.assign(TextStyle, {
                     let sub_text = info.sub_texts[i];
 
                     if (!info.subtexcoords) {
-                        info.subtexcoords = {}
+                        info.subtexcoords = {};
                     }
 
                     let offset = 0;
