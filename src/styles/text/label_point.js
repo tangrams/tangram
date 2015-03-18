@@ -34,9 +34,10 @@ export default class LabelPoint extends Label {
 }
 
 class LabelComposite extends Label {
-    constructor (text, position, labels) {
+    constructor (text, position, size, labels) {
         this.labels = labels;
         this.text = text;
+        this.size = size;
     }
 
     isComposite () {
@@ -146,22 +147,15 @@ class TextLine {
             return 0;
         }
 
-        let half_width = this.line_length / 2;
-        let i = Math.floor(this.words.length / 2);
+        let d = this.words.length / 2;
+        let i = Math.ceil(d);
         let word_info = this.words[i];
 
         // dichotomic search
         while (word_info.start > position || word_info.end < position) {
-            let offset;
-
-            if (word_info.end < position) {
-                offset = Math.floor((this.words.length - i) / 2);
-                i += offset;
-            } else {
-                offset = Math.floor((i + 1) / 2);
-                i -= offset;
-            }
-
+            d /= 2;
+            i += word_info.end < position ? Math.ceil(d) : -Math.ceil(d);
+            i = Math.min(Math.max(0, i), this.words.length -1);
             word_info = this.words[i];
         }
 
@@ -182,10 +176,10 @@ LabelPoint.explode = function (text, position, size, max_width, padding, move_in
 
     for (let i in lines) {
         let l = lines[i];
-        let pos = [position[0], position[1] + padding * i];
+        let pos = [position[0], position[1] - Math.abs(padding) * i];
         labels.push(new LabelPoint(l.text, pos, size, null, move_in_tile, keep_in_tile));
     }
 
-    return new LabelComposite(text, position, labels);
+    return new LabelComposite(text, position, size, labels);
 }
 

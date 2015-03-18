@@ -183,20 +183,58 @@ Object.assign(TextStyle, {
                     texture_size
                 );
 
-                // sub-texts uv mapping
+                if (!info.sub_texts) {
+                    continue;
+                }
+
+                let width = this.buffer;
+                let dists = [];
+
                 for (let i in info.sub_texts) {
+                    let sub_text = info.sub_texts[i];
+                    let split = sub_text.split(' ');
+
+                    dists[i] = width;
+
+                    for (let i in split) {
+                        let word = split[i];
+                        width += info.size.split_size[word];
+                        if (i != split.length - 1) {
+                            width += info.size.split_size[' '];
+                        }
+                    }
+
+                    width += this.buffer / 2;
+                }
+
+                // sub-texts uv mapping
+                for (let i = 0; i < info.sub_texts.length; ++i) {
                     let sub_text = info.sub_texts[i];
 
                     if (!info.subtexcoords) {
                         info.subtexcoords = {}
                     }
 
-                    // TODO : compute sub texture coordinates
-                    // info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
-                    //    info.position,
-                    //    info.size.texture_text_size,
-                    //    texture_size
-                    //);
+                    let offset = 0;
+
+                    if (i < info.sub_texts.length - 1) {
+                        offset = info.size.texture_text_size[0] - dists[i + 1];
+                    }
+
+                    let position = [info.position[0] + dists[i], info.position[1]];
+                    let size = [
+                        (info.size.texture_text_size[0] - offset) - dists[i],
+                        info.size.texture_text_size[1]
+                    ];
+
+                    if (!info.subtext_size) {
+                        info.subtext_size = {};
+                    }
+                    info.subtext_size[sub_text] = size;
+
+                    info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
+                        position, size, texture_size
+                    );
                 }
             }
         }
@@ -253,8 +291,8 @@ Object.assign(TextStyle, {
         } else if (geometry.type === "Point") {
             let width = this.label_style.points.max_width * this.device_pixel_ratio;
             if (width && size.text_size[0] > width) {
-            //    let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(24), false, true);
-            //    labels.push(label);
+                let label = LabelPoint.explode(text, geometry.coordinates, size, width, Utils.pixelToMercator(12), false, true);
+                labels.push(label);
             } else {
                 labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
             }
@@ -515,12 +553,12 @@ Object.assign(TextStyle, {
         return `${typeface}/${fill}/${stroke}/${stroke_width}`;
     },
 
-    buildLabel (label, vertex_data, vertex_template, texcoord_scale) {
+    buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
         let angle = label.angle || 0;
         Builders.buildSpriteQuadsForPoints(
             [ label.position ],
-            Utils.scaleInt16(label.size.texture_text_size[0], 128),
-            Utils.scaleInt16(label.size.texture_text_size[1], 128),
+            Utils.scaleInt16(size[0], 128),
+            Utils.scaleInt16(size[1], 128),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(1, 256),
             vertex_data,
@@ -541,11 +579,13 @@ Object.assign(TextStyle, {
 
             if (label.isComposite()) {
                 for (let j in label.labels) {
-                    let subtexcoord_scale = this.subtexcoord_scale[label.text];
-                    this.buildLabel(label.labels[j], vertex_data, vertex_template, subtexcoord_scale);
+                    let l = label.labels[j];
+                    let subtexcoord_scale = this.subtexcoord_scale[l.text];
+                    let size = this.subtext_size[l.text];
+                    this.buildLabel(l, size, vertex_data, vertex_template, subtexcoord_scale);
                 }
             } else {
-                this.buildLabel(label, vertex_data, vertex_template, this.texcoord_scale);
+                this.buildLabel(label, label.size.texture_text_size, vertex_data, vertex_template, this.texcoord_scale);
             }
         }
     },
@@ -577,6 +617,7 @@ Object.assign(TextStyle, {
 
         this.texcoord_scale = text_info.texcoords;
         this.subtexcoord_scale = text_info.subtexcoords;
+        this.subtext_size = text_info.subtext_size;
         style.text = text;
         style.tile = tile; // to store bbox by tiles
         style.labels = feature.labels;
