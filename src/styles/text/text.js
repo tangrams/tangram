@@ -422,15 +422,15 @@ Object.assign(TextStyle, {
     addFeature (feature, rule, context, tile_data) {
         // Collect text
         if (feature.properties.name) {
-            let text = feature.properties.name;
-            if (rule.text_source) {
-                if (rule.text_source === 'value') {
-                    text = feature.properties.value || text;
-                } else if (typeof rule.text_source === 'function') {
-                    text = rule.text_source(context);
-                }
+            let text;
+            let source = rule.text_source || 'name';
+
+            if (typeof source === 'string') {
+                text = feature.properties[source];
+            } else if (typeof source === 'function') {
+                text = source(context);
             }
-            feature.properties.text = text;
+            feature.text = text;
 
             let tile = context.tile.key;
             if (!this.texts[tile]) {
@@ -564,7 +564,7 @@ Object.assign(TextStyle, {
 
     _parseFeature (feature, rule_style, context) {
         // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
-        let text = feature.properties.text;
+        let text = feature.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
