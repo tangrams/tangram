@@ -65,9 +65,10 @@ Object.assign(TextStyle, {
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { font, fill, stroke, stroke_width, px_size }) {
-        this.size = parseInt(px_size);
-        this.buffer = 6 * this.device_pixel_ratio; // pixel padding around text
+    setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
+        this.px_size = parseInt(px_size);
+        this.px_logical_size = parseInt(px_logical_size);
+        this.buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
         ctx.font = font;
@@ -84,7 +85,9 @@ Object.assign(TextStyle, {
         let str = capitalized ? text.toUpperCase() : text;
         let ctx = this.canvas[tile].context;
         let split = str.split(' ');
-        let px_size = this.size;
+        let px_size = this.px_size;
+        let px_logical_size = this.px_logical_size;
+        let buffer = this.buffer * this.device_pixel_ratio;
         let split_size = {
             " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
         };
@@ -97,24 +100,25 @@ Object.assign(TextStyle, {
         let str_width = ctx.measureText(str).width;
         let text_size = [
             str_width / this.device_pixel_ratio,
-            this.size / this.device_pixel_ratio
+            this.px_size / this.device_pixel_ratio
         ];
 
         let texture_text_size = [
-            Math.ceil(str_width) + this.buffer * 2,
-            this.size + this.buffer * 2
+            Math.ceil(str_width) + buffer * 2,
+            this.px_size + buffer * 2
         ];
 
-        return { split_size, text_size, texture_text_size, px_size };
+        return { split_size, text_size, texture_text_size, px_size, px_logical_size };
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
+        let buffer = this.buffer * this.device_pixel_ratio;
         if (stroke) {
-            this.canvas[tile].context.strokeText(str, x + this.buffer, y + this.buffer + this.size);
+            this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
-        this.canvas[tile].context.fillText(str, x + this.buffer, y + this.buffer + this.size);
+        this.canvas[tile].context.fillText(str, x + buffer, y + buffer + this.px_size);
     },
 
     setTextureTextPositions (texts) {
@@ -172,6 +176,8 @@ Object.assign(TextStyle, {
     },
 
     rasterize (tile, texts, texture_size) {
+        let pixel_scale = this.device_pixel_ratio;
+
         for (let style in texts) {
             let text_infos = texts[style];
 
@@ -198,7 +204,7 @@ Object.assign(TextStyle, {
                     let sub_text = info.sub_texts[i];
                     let split = sub_text.split(' ');
 
-                    dists[i] = width;
+                    dists[i] = width * pixel_scale;
 
                     for (let j = 0; j < split.length; ++j) {
                         let word = split[j];
@@ -225,7 +231,11 @@ Object.assign(TextStyle, {
                         offset = info.size.texture_text_size[0] - dists[i + 1];
                     }
 
-                    let position = [info.position[0] + dists[i], info.position[1]];
+                    let position = [
+                        info.position[0] + dists[i],
+                        info.position[1]
+                    ];
+
                     let size = [
                         (info.size.texture_text_size[0] - offset) - dists[i],
                         info.size.texture_text_size[1]
@@ -295,7 +305,7 @@ Object.assign(TextStyle, {
         } else if (geometry.type === "Point") {
             let width = this.label_style.points.max_width;
             if (width && size.text_size[0] > width) {
-                let line_height = (size.px_size / 100) * this.label_style.points.line_height;
+                let line_height = (size.px_logical_size / 100) * this.label_style.points.line_height;
                 line_height = Utils.pixelToMercator(line_height);
                 let label = LabelPoint.explode(text, geometry.coordinates, size, width, line_height, false, true);
                 labels.push(label);
@@ -548,7 +558,8 @@ Object.assign(TextStyle, {
             let ft_size = style.font.match(size_regex)[0];
             let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
-            style.px_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind) * this.device_pixel_ratio;
+            style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
+            style.px_size = style.px_logical_size * this.device_pixel_ratio;
             style.stroke_width *= this.device_pixel_ratio;
             style.font = style.font.replace(size_regex, style.px_size + "px");
         }
