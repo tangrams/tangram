@@ -35,14 +35,30 @@ class LabelComposite extends Label {
         this.labels = labels;
         this.text = text;
         this.size = size;
+        this.bbox = this.computeBBox();
     }
 
     isComposite () {
         return true;
     }
 
-    discard (bboxes) {
+    moveInTile (in_tile) {
         return false;
+    }
+
+    computeBBox () {
+        let bbox = [ Infinity, Infinity, -Infinity, -Infinity ];
+
+        for (let i in this.labels) {
+            let b = this.labels[i].bbox;
+
+            bbox[0] = Math.min(b[0], bbox[0]);
+            bbox[1] = Math.min(b[1], bbox[1]);
+            bbox[2] = Math.max(b[2], bbox[2]);
+            bbox[3] = Math.max(b[3], bbox[3]);
+        }
+
+        return bbox;
     }
 }
 
