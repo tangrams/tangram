@@ -161,6 +161,7 @@ class TextLine {
 
         let d = this.words.length / 2;
         let i = Math.ceil(d);
+        i = Math.min(Math.max(0, i), this.words.length - 1);
         let word_info = this.words[i];
 
         // dichotomic search
@@ -178,13 +179,17 @@ class TextLine {
 LabelPoint.explode = function (text, position, size, max_width, padding, move_in_tile, keep_in_tile) {
     let split_text = text.split(' ');
 
-    if (split_text.length <= 2) {
+    if (split_text.length < 2) {
         return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
     }
 
     let line = new TextLine(text, size.text_size[0], split_text, size.split_size);
     let lines = line.explode(max_width);
     let labels = [];
+
+    if (lines.length == 1) {
+        return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
+    }
 
     for (let i in lines) {
         let l = lines[i];

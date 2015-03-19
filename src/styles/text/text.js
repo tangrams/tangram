@@ -400,9 +400,7 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
-                if (label.discard(this.bboxes[tile])) {
-                    texts[style][label.text].ref--;
-                } else {
+                if (!label.discard(this.bboxes[tile])) {
                     if (!feature.labels) {
                         feature.labels = [];
                     }
@@ -414,7 +412,7 @@ Object.assign(TextStyle, {
 
         for (let style in texts) {
             for (let text in texts[style]) {
-                if (texts[style][text].ref <= 0) {
+                if (texts[style][text].ref < 1) {
                     delete texts[style][text];
                 }
             }
