@@ -101,7 +101,7 @@ export default class LabelLine extends Label {
         let x = merc_width * c - merc_height * s;
         let y = merc_width * s + merc_height * c;
 
-        let max = Math.max(Math.abs(x), Math.abs(y));
+        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5;
 
         let bbox = [
             this.position[0] - max,
