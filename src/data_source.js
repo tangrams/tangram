@@ -11,6 +11,15 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
+
+        // Get alter data.  Comes in as string, even if using actual
+        // function
+        if (typeof source.alter_data === 'string' && source.alter_data.indexOf('function') !== -1) {
+            source.alter_data = Utils.stringsToFunctions({ a: source.alter_data });
+            source.alter_data = source.alter_data.a;
+        }
+        this.alter_data = source.alter_data;
+
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
     }
@@ -201,6 +210,12 @@ export class GeoJSONTileSource extends NetworkTileSource {
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
 
+        // Edit response if provided
+        if (typeof this.alter_data === 'function') {
+            this.alter_data.bind(this);
+            data = this.alter_data(data);
+        }
+
         // Single layer or multi-layers?
         if (data.type === 'Feature' || data.type === 'FeatureCollection') {
             source.layers = { _default: data };
@@ -363,4 +378,3 @@ export class MapboxFormatTileSource extends NetworkTileSource {
     }
 
 }
-

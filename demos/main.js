@@ -7,7 +7,12 @@
     var tile_sources = {
         mapzen: {
             type: 'GeoJSONTileSource',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json',
+            alter_data: function(data) {
+                // You can edit the tile data here before it gets projected
+                // and rendered
+                return data;
+            }
         },
         'mapzen-dev': {
             type: 'GeoJSONTileSource',
