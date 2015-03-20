@@ -49,9 +49,9 @@ Object.assign(TextStyle, {
         this.label_style = {
             priorities: {
                 administrative: 4,
-                restaurant: 3,
-                major_road: 2,
-                minor_road: 1
+                major_road: 3,
+                minor_road: 2,
+                restaurant: 1,
             },
             lines: {
                 exceed: 80,
@@ -199,6 +199,7 @@ Object.assign(TextStyle, {
 
                 let width = this.buffer;
                 let dists = [];
+                let space_size = info.size.split_size[' '];
 
                 for (let i = 0; i < info.sub_texts.length; ++i) {
                     let sub_text = info.sub_texts[i];
@@ -209,12 +210,15 @@ Object.assign(TextStyle, {
                     for (let j = 0; j < split.length; ++j) {
                         let word = split[j];
                         width += info.size.split_size[word];
+
                         if (j != split.length - 1) {
-                            width += info.size.split_size[' '];
+                            width += space_size;
                         }
                     }
 
-                    width += this.buffer / 2;
+                    if (i != info.sub_texts.length - 1) {
+                        width += space_size;
+                    }
                 }
 
                 // sub-texts uv mapping

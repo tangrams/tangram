@@ -113,7 +113,7 @@ Object.assign(Sprites, {
 
         Builders.buildSpriteQuadsForPoints(
             [ position ],
-            Utils.scaleInt16(size[0], 128), Utils.scaleInt16(size[1], 128),
+            Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,
