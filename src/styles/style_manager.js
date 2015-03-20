@@ -28,7 +28,10 @@ StyleManager.init = function () {
 
     // Layer re-ordering function
     ShaderProgram.addTransform('globals', shaderSources['gl/shaders/reorder_layers']);
-    ShaderProgram.defines.LAYER_DELTA = 1 / (1 << 15);
+
+    // assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
+    // for outlines (inserted in between layers), another extra bit to prevent precision loss
+    ShaderProgram.defines.LAYER_DELTA = 1 / (1 << 14);
 
     StyleManager.initialized = true;
 };

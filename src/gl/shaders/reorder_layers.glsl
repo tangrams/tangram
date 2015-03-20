@@ -6,6 +6,5 @@ void reorderLayers (float layer, float num_layers, inout vec4 position) {
 }
 
 void applyLayerOrder (float layer, inout vec4 position) {
-    // position.z -= (layer + 1.) * 0.025;
     position.z -= layer * LAYER_DELTA * position.w;
 }
