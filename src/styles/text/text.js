@@ -573,8 +573,8 @@ Object.assign(TextStyle, {
         let angle = label.angle || 0;
         Builders.buildSpriteQuadsForPoints(
             [ label.position ],
-            Utils.scaleInt16(size[0], 128),
-            Utils.scaleInt16(size[1], 128),
+            Utils.scaleInt16(size[0], 256),
+            Utils.scaleInt16(size[1], 256),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(1, 256),
             vertex_data,
