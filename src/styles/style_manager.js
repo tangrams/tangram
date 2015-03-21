@@ -194,19 +194,46 @@ StyleManager.update = function (name, settings) {
 };
 
 // Called to create or update styles from stylesheet
-StyleManager.build = function (stylesheet_styles) {
-    // Stylesheet-defined styles
-    for (var name in stylesheet_styles) {
-        Styles[name] = StyleManager.update(name, stylesheet_styles[name]);
+StyleManager.build = function (styles) {
+    // Sort styles by dependency, then build them
+    let style_deps = Object.keys(styles).sort((a, b) => StyleManager.dependsOn(a, b, styles));
+    for (let sname of style_deps) {
+        Styles[sname] = StyleManager.update(sname, styles[sname]);
     }
 
     // Initialize all
-    for (name in Styles) {
-        Styles[name].initialized = false;
-        Styles[name].init();
+    for (let sname in Styles) {
+        Styles[sname].initialized = false;
+        Styles[sname].init();
     }
 
     return Styles;
+};
+
+// Given a set of styles to build, does style name A depend on style name B?
+StyleManager.dependsOn = function (a, b, styles) {
+    let sa = styles[a];
+    let sb = styles[b];
+
+    // Style not found
+    if (!sa) {
+        return 0;
+    }
+
+    // A modifies a built-in style, those should always be built first
+    if (Styles[a] && Styles[a].isBuiltIn()) {
+        return -1; // A first
+    }
+    else if (sa.extends) {
+        // A depends directly on B
+        if (sa.extends === b) {
+            return 1; // B first
+        }
+        // See if A has an ancestor dependency on B
+        else {
+            return StyleManager.dependsOn(sa.extends, b, styles);
+        }
+    }
 };
 
 // Compile all styles
