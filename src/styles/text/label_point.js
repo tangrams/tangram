@@ -32,12 +32,11 @@ export default class LabelPoint extends Label {
 
 class LabelComposite extends Label {
     constructor (text, position, size, labels, move_in_tile, keep_in_tile) {
+        super(text, size, move_in_tile, keep_in_tile);
+
+        this.position = position;
         this.labels = labels;
-        this.text = text;
-        this.size = size;
         this.bbox = this.computeBBox();
-        this.keep_in_tile = keep_in_tile;
-        this.move_in_tile = move_in_tile;
     }
 
     isComposite () {
