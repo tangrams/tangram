@@ -11,10 +11,6 @@ import Light from '../src/light';
 
 import sampleScene from './fixtures/sample-scene';
 
-// These create global shader blocks required by all rendering styles
-Camera.create('default', null, { type: 'flat' });
-Light.create(null, {});
-
 var canvas, gl;
 
 describe('Styles:', () => {
@@ -22,6 +18,10 @@ describe('Styles:', () => {
     describe('StyleManager:', () => {
 
         beforeEach(() => {
+            // These create global shader blocks required by all rendering styles
+            Camera.create('default', null, { type: 'flat' });
+            Light.inject();
+
             canvas = document.createElement('canvas');
             gl = Context.getContext(canvas, { alpha: false });
             StyleManager.init();
@@ -36,6 +36,8 @@ describe('Styles:', () => {
         it('initializes built-in styles', () => {
             assert.equal(Styles.polygons.constructor, Style.constructor);
             assert.equal(Styles.points.constructor, Style.constructor);
+            assert.equal(Styles.sprites.constructor, Style.constructor);
+            assert.equal(Styles.text.constructor, Style.constructor);
         });
 
         it('creates a custom style', () => {
@@ -44,15 +46,30 @@ describe('Styles:', () => {
             assert.equal(Styles.rainbow.extends, 'polygons');
         });
 
-        it('builds & compiles custom styles from stylesheet', () => {
-            // debugger;
-            StyleManager.build(sampleScene.config.styles);
-            Styles.rainbow.setGL(gl);
-            Styles.rainbow.compile();
-            assert.equal(Styles.rainbow.constructor, Style.constructor);
-            assert.equal(Styles.rainbow.extends, 'polygons');
-            assert.ok(Styles.rainbow.compiled);
-            assert.ok(Styles.rainbow.program.compiled);
+        describe('builds custom styles w/dependencies from stylesheet', () => {
+
+            beforeEach(() => {
+                StyleManager.build(sampleScene.config.styles);
+            });
+
+            it('compiles parent custom style', () => {
+                Styles.rainbow.setGL(gl);
+                Styles.rainbow.compile();
+                assert.equal(Styles.rainbow.constructor, Style.constructor);
+                assert.equal(Styles.rainbow.extends, 'polygons');
+                assert.ok(Styles.rainbow.compiled);
+                assert.ok(Styles.rainbow.program.compiled);
+            });
+
+            it('compiles child style dependent on another custom style', () => {
+                Styles.rainbow_child.setGL(gl);
+                Styles.rainbow_child.compile();
+                assert.equal(Styles.rainbow_child.constructor, Style.constructor);
+                assert.equal(Styles.rainbow_child.extends, 'rainbow');
+                assert.ok(Styles.rainbow_child.compiled);
+                assert.ok(Styles.rainbow_child.program.compiled);
+            });
+
         });
 
         it('loads a remote style from a URL', (done) => {

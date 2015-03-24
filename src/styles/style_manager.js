@@ -194,19 +194,49 @@ StyleManager.update = function (name, settings) {
 };
 
 // Called to create or update styles from stylesheet
-StyleManager.build = function (stylesheet_styles) {
-    // Stylesheet-defined styles
-    for (var name in stylesheet_styles) {
-        Styles[name] = StyleManager.update(name, stylesheet_styles[name]);
+StyleManager.build = function (styles) {
+    // Sort styles by dependency, then build them
+    let style_deps = Object.keys(styles).sort((a, b) => StyleManager.dependsOn(a, b, styles));
+    for (let sname of style_deps) {
+        Styles[sname] = StyleManager.update(sname, styles[sname]);
     }
 
     // Initialize all
-    for (name in Styles) {
-        Styles[name].initialized = false;
-        Styles[name].init();
+    for (let sname in Styles) {
+        Styles[sname].initialized = false;
+        Styles[sname].init();
     }
 
     return Styles;
+};
+
+// Given a set of styles to build, does style name A depend on style name B?
+StyleManager.dependsOn = function (a, b, styles) {
+    let as = { key: a, parents: 0 };
+    let bs = { key: b, parents: 0 };
+
+    // For each style, count the length of the inheritance chain
+    for (let s of [as, bs]) {
+        let k = s.key;
+        while(true) {
+            // Find style either in existing instances, or stylesheet
+            let style = Styles[k] || styles[k];
+            if (!style) {
+                break; // this is a scene def error, trying to extend a style that doesn't exist
+            }
+
+            // The end of the inheritance chain:
+            // a built-in style that doesn't extend another built-in style
+            if (!style.extends && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
+                break;
+            }
+
+            // Traverse next parent style
+            s.parents++;
+            k = style.extends;
+        }
+    }
+    return as.parents - bs.parents;
 };
 
 // Compile all styles
