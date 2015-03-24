@@ -212,28 +212,31 @@ StyleManager.build = function (styles) {
 
 // Given a set of styles to build, does style name A depend on style name B?
 StyleManager.dependsOn = function (a, b, styles) {
-    let sa = styles[a];
-    let sb = styles[b];
+    let as = { key: a, parents: 0 };
+    let bs = { key: b, parents: 0 };
 
-    // Style not found
-    if (!sa) {
-        return 0;
-    }
+    // For each style, count the length of the inheritance chain
+    for (let s of [as, bs]) {
+        let k = s.key;
+        while(true) {
+            // Find style either in existing instances, or stylesheet
+            let style = Styles[k] || styles[k];
+            if (!style) {
+                break; // this is a scene def error, trying to extend a style that doesn't exist
+            }
 
-    // A modifies a built-in style, those should always be built first
-    if (Styles[a] && Styles[a].isBuiltIn()) {
-        return -1; // A first
-    }
-    else if (sa.extends) {
-        // A depends directly on B
-        if (sa.extends === b) {
-            return 1; // B first
-        }
-        // See if A has an ancestor dependency on B
-        else {
-            return StyleManager.dependsOn(sa.extends, b, styles);
+            // The end of the inheritance chain:
+            // a built-in style that doesn't extend another built-in style
+            if (!style.extends && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
+                break;
+            }
+
+            // Traverse next parent style
+            s.parents++;
+            k = style.extends;
         }
     }
+    return as.parents - bs.parents;
 };
 
 // Compile all styles
