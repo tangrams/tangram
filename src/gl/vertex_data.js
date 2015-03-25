@@ -3,6 +3,17 @@
 import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
 import log from 'loglevel';
 
+// Maps GL types to JS array types
+let array_types = {
+    [gl.FLOAT]: Float32Array,
+    [gl.BYTE]: Int8Array,
+    [gl.UNSIGNED_BYTE]: Uint8Array,
+    [gl.INT]: Int32Array,
+    [gl.UNSIGNED_INT]: Uint32Array,
+    [gl.SHORT]: Int16Array,
+    [gl.UNSIGNED_SHORT]: Uint16Array
+};
+
 // An intermediary object that holds vertex data in typed arrays, according to a given vertex layout
 // Used to construct a mesh/VBO for rendering
 export default class VertexData {
@@ -28,7 +39,7 @@ export default class VertexData {
         for (var attrib of this.vertex_layout.attribs) {
             // Need view for this type?
             if (this.buffer_views[attrib.type] == null) {
-                var array_type = this.array_types[attrib.type];
+                var array_type = array_types[attrib.type];
                 this.buffer_views[attrib.type] = new array_type(this.buffer);
             }
         }
@@ -93,14 +104,3 @@ export default class VertexData {
     }
 
 }
-
-// Maps GL types to JS array types
-VertexData.prototype.array_types = {
-    [gl.FLOAT]: Float32Array,
-    [gl.BYTE]: Int8Array,
-    [gl.UNSIGNED_BYTE]: Uint8Array,
-    [gl.INT]: Int32Array,
-    [gl.UNSIGNED_INT]: Uint32Array,
-    [gl.SHORT]: Int16Array,
-    [gl.UNSIGNED_SHORT]: Uint16Array
-};

@@ -52,7 +52,7 @@ export default class Light {
     // Inject all provided light definitions, and calculate cumulative light function
     static inject (lights) {
         // Clear previous injections
-        ShaderProgram.removeTransform(Light.transform);
+        ShaderProgram.removeBlock(Light.block);
 
         // If lighting is globally disabled, nothing is injected (mostly for debugging or live editing)
         if (!Light.enabled) {
@@ -130,7 +130,7 @@ export default class Light {
                 return color;
             }`;
 
-        ShaderProgram.addTransform(Light.transform, calculateFunction);
+        ShaderProgram.addBlock(Light.block, calculateFunction);
     }
 
     // Common instance definition
@@ -139,7 +139,7 @@ export default class Light {
             uniform ${this.struct_name} u_${this.name};
             ${this.struct_name} g_${this.name} = u_${this.name};\n`;
 
-        ShaderProgram.addTransform(Light.transform, instance);
+        ShaderProgram.addBlock(Light.block, instance);
     }
 
     // Update method called once per frame
@@ -158,7 +158,7 @@ export default class Light {
 }
 
 Light.types = {}; // references to subclasses by short name
-Light.transform = 'lighting'; // shader transform name
+Light.block = 'lighting'; // shader block name
 Light.enabled = true; // lighting can be globally enabled/disabled
 
 
@@ -173,7 +173,7 @@ class AmbientLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/ambientLight']);
+        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/ambientLight']);
     }
 
     setupProgram (_program) {
@@ -195,7 +195,7 @@ class DirectionalLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/directionalLight']);
+        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/directionalLight']);
     }
 
     setupProgram (_program) {
@@ -234,7 +234,7 @@ class PointLight extends Light {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/pointLight']);
+        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/pointLight']);
     }
 
     // Inject isntance-specific settings
@@ -313,7 +313,7 @@ class SpotLight extends PointLight {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addTransform(Light.transform, shaderSources['gl/shaders/spotLight']);
+        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/spotLight']);
     }
 
     setupProgram (_program) {

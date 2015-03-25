@@ -15,6 +15,7 @@ export let TextStyle = Object.create(Sprites);
 Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
+    extends: 'sprites',
     built_in: true,
     selection: false,
 

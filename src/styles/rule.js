@@ -1,7 +1,7 @@
-'use strict';
-const {match} = require('match-feature');
+import {match} from 'match-feature';
+import log from 'loglevel';
 
-export const whiteList = ['filter', 'style', 'geometry', 'properties'];
+export const whiteList = ['filter', 'style', 'data', 'properties'];
 
 export let ruleCache = {};
 
@@ -81,6 +81,12 @@ class Rule {
         this.filter = filter;
         this.properties = properties;
         this.parent = parent;
+
+        // Add properties to style
+        if (this.style && this.properties) {
+            this.style.properties = this.properties;
+        }
+
         this.buildFilter();
         this.buildStyle();
     }
@@ -259,7 +265,7 @@ export function parseRuleTree(name, rule, parent) {
             if (typeof property === 'object') {
                 parseRuleTree(key, property, r);
             } else {
-                console.error('Property must be an object');
+                log.warn('Rule property must be an object: ', name, rule, property);
             }
         }
 
