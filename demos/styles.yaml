@@ -18,17 +18,8 @@ cameras:
 
     # testing camera with a location
     central_park:
-        position: { lng: -73.97297501564027, lat: 40.76434821445407 }
-        zoom: 17
-
-        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
-
-        # position: [-73.97297501564027, 40.76434821445407, 500]
-
-        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
-        # height: 500
-
-        # origin: camera
+        position: [-73.97297501564027, 40.76434821445407, 17]
+        # zoom: 17
 
 lights:
     ambient1:

@@ -40,12 +40,16 @@ export default class Camera {
     setupProgram(program) {
     }
 
-    // Sync camera position and/or zoom to scene
+    /**
+        Sync camera position and/or zoom to scene
+        position: [lat, lng] or [lat, lng, zoom]
+        zoom: zoom
+    */
     updateScene () {
         if (this.position || this.zoom) {
             var view = {};
             if (this.position) {
-                view = this.position;
+                view = { lng: this.position[0], lat: this.position[1], zoom: this.position[2] };
             }
             if (this.zoom) {
                 view.zoom = this.zoom;
