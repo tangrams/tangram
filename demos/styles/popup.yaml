@@ -4,7 +4,7 @@ popup:
         uniforms:
             u_popup_radius: 330
             u_popup_height: 3
-        transforms:
+        blocks:
             globals: |
                 // Pop-up effect - 3d in center of viewport, fading to 2d at edges
                 vec4 popup (vec4 position, const vec2 center, const float radius) {

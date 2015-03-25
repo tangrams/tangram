@@ -1,6 +1,7 @@
 /*** Vector functions - vectors provided as [x, y, z] arrays ***/
 
-export var Vector = {};
+var Vector;
+export default Vector = {};
 
 Vector.set = function (v) {
     var V = [];
@@ -50,7 +51,7 @@ Vector.mult = function (v1, v2) {
     var v = [],
         len = v1.length,
         i;
-    
+
     if (typeof v2 === 'number') {
         // Mulitply by scalar
         for (i = 0; i < len; i++) {
@@ -69,7 +70,7 @@ Vector.mult = function (v1, v2) {
 
 // Division of two vectors
 Vector.div = function (v1, v2) {
-    var v = [], 
+    var v = [],
         i;
     if(typeof v2 === 'number'){
         // Divide by scalar
@@ -85,14 +86,14 @@ Vector.div = function (v1, v2) {
     }
     return v;
 };
- 
+
 // Get 2D perpendicular
 Vector.perp = function (v1, v2) {
-    return [ v2[1] - v1[1], 
+    return [ v2[1] - v1[1],
              v1[0] - v2[0] ];
 };
 
-// Get 2D vector rotated 
+// Get 2D vector rotated
 Vector.rot = function (v, a) {
     var vr = Vector.length(v);
     var va = Vector.angle(v);

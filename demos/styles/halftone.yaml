@@ -2,7 +2,7 @@
 halftone:
     extends: polygons
     shaders:
-        transforms:
+        blocks:
             globals: |
                 const float dot_frequency = 100.4748637184972;
 
@@ -56,7 +56,7 @@ colorhalftone:
             dot_scale: 1.5
             true_color: false
 
-        transforms:
+        blocks:
             globals: |
 
                 // Antialiasing

@@ -82,7 +82,7 @@ export default class Material {
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 
-        style.replaceShaderTransform(Material.transform, shaderSources['gl/shaders/material']);
+        style.replaceShaderBlock(Material.block, shaderSources['gl/shaders/material']);
     }
 
     setupProgram (_program) {
@@ -114,4 +114,4 @@ export default class Material {
     }
 }
 
-Material.transform = 'material';
+Material.block = 'material';

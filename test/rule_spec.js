@@ -24,7 +24,7 @@ describe('RuleGroup', () => {
     });
 });
 
-describe('.mergeWithDepth()', () => {
+describe('.mergeTrees()', () => {
     let subject = [
         [ { a: 0.001 }, { b: 2 }, { c: 3 }, { d: 4 } ],
         [ { a: 3.14 }, { d: 3 }, { a: 1 }, { b: 2 }],
@@ -49,35 +49,26 @@ describe('.mergeWithDepth()', () => {
     });
 
     describe('when given a array that is similar to real data', () => {
+        const parent = {
+            "width": 10,
+            "order": 1,
+            "color": [1, 2, 3],
+            "a": "x"
+        };
+
         const subject = [
             [
+                parent,
                 {
-                    "width": 10,
-                    "order": 1,
-                    "color": [1, 2, 3]
-                },
-                {
-                    "order": 1,
-                    "orderReset": true,
-                    "color": [3.14, 3.14, 3.14]
-                },
-                {
-                    "width": 20,
                     "order": 3,
-                    "a": 'b',
-                    "color": [2.71828, 2.71828, 2.71828]
+                    "a": "y"
                 }
             ],
             [
+                parent,
                 {
                     "order": 1,
-                    "width": 10,
-                    "color": [1, 2, 3]
-                },
-                {
-                    "width": 10,
-                    "order": 1,
-                    "a": "x",
+                    "b": "z",
                     "color": [7, 8, 9]
                 }
             ]
@@ -86,11 +77,11 @@ describe('.mergeWithDepth()', () => {
         it('returns the correct object', () => {
             assert.deepEqual(mergeTrees(subject), {
                 visible: true,
-                orderReset: true,
-                width: 20,
-                order: 4,
-                a: 'b',
-                color: [2.71828, 2.71828, 2.71828]
+                width: 10,
+                order: 5,
+                a: 'y',
+                b: 'z',
+                color: [7, 8, 9]
             });
         });
 

@@ -31,7 +31,7 @@ function loadWorkerContent(url) {
 
 let workerBody = loadWorkerContent(worker_url);
 
-sinon.stub(Scene, 'loadWorkerUrl').returns(Promise.resolve(
+sinon.stub(Scene.prototype, 'loadWorkerUrl').returns(Promise.resolve(
     URL.createObjectURL(new Blob([workerBody], { type: 'application/javascript' }))
 ));
 
@@ -46,6 +46,7 @@ window.makeScene = function (options) {
     options.disableRenderLoop = options.disableRenderLoop || true;
     options.workerUrl = options.workerUrl || worker_url;
     options.container = options.container || container;
+    options.logLevel =  options.logLevel || 'info';
 
     return new Scene(
         sampleScene.config,

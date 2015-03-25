@@ -1,6 +1,6 @@
 // Geometry building functions
 
-import {Vector} from '../vector';
+import Vector from '../vector';
 import Geo from '../geo';
 
 import earcut from 'earcut';

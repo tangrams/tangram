@@ -73,19 +73,35 @@
                 }
             }
         },
+        "lights": {
+            "ambient": {
+                "type": "ambient",
+                "ambient": 0.5
+            }
+        },
         "styles": {
+            "rainbow_child": {
+                "extends": "rainbow",
+                "animated": true,
+                "shaders": {
+                    "blocks": {
+                        "color":
+                            "color.rgb = clamp(hsv2rgb(c) * 2., 0., 1.);"
+                    }
+                }
+            },
             "rainbow": {
                 "extends": "polygons",
                 "animated": true,
                 "shaders": {
-                    "transforms": {
+                    "blocks": {
                         "globals":
                             "vec3 hsv2rgb(vec3 c) { \n\
                                 vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); \n\
                                 vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www); \n\
                                 return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y); \n\
                             }",
-                        "fragment":
+                        "color":
                             "vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0); \n\
                             color.rgb = hsv2rgb(c);"
                     }
@@ -97,8 +113,8 @@
                     "uniforms": {
                         "scale": [1, 2, 3]
                     },
-                    "transforms": {
-                        "vertex":
+                    "blocks": {
+                        "position":
                             "position.xyz *= scale;"
                     }
                 }

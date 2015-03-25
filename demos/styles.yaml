@@ -18,17 +18,8 @@ cameras:
 
     # testing camera with a location
     central_park:
-        position: { lng: -73.97297501564027, lat: 40.76434821445407 }
-        zoom: 17
-
-        # position: { lng: -73.97297501564027, lat: 40.76434821445407, height: 500 }
-
-        # position: [-73.97297501564027, 40.76434821445407, 500]
-
-        # position: { lng: -73.97297501564027, lat: 40.76434821445407 }
-        # height: 500
-
-        # origin: camera
+        position: [-73.97297501564027, 40.76434821445407, 17]
+        # zoom: 17
 
 lights:
     ambient1:
@@ -86,6 +77,9 @@ lights:
 #             cafe: [0, 814, 32, 32]
 #             museum: [0, 518, 32, 32]
 
+background:
+    color: [0.475, 0.475, 0.8]
+
 styles:
 
     transparent:
@@ -103,7 +97,7 @@ styles:
         shaders:
             defines:
                 EFFECT_NOISE_ANIMATED: true
-            transforms:
+            blocks:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
                 color:
@@ -115,7 +109,7 @@ styles:
         shaders:
             defines:
                 EFFECT_COLOR_BLEED_ANIMATED: true
-            transforms:
+            blocks:
                 # fragment: |
                 color: |
                     //color .rgb += lighting * vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
@@ -130,7 +124,7 @@ styles:
         animated: true
         lighting: false
         shaders:
-            transforms:
+            blocks:
                 globals: |
                     vec3 hsv2rgb(vec3 c) {
                         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -148,7 +142,7 @@ styles:
         extends: polygons
         animated: true
         shaders:
-            transforms:
+            blocks:
                 position: |
                     // Elevator buildings
                     if (position.z > 0.01) {
@@ -190,7 +184,7 @@ styles:
 
     points:
         shaders:
-            transforms:
+            blocks:
                 color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
@@ -214,7 +208,7 @@ styles:
         shaders:
             uniforms:
                 rotate: false
-            transforms:
+            blocks:
                 position: |
                     //shape.xy *= abs(sin(u_time * shape.x + shape.y) * cos(u_time + shape.y * 1.5));
                     //shape.z *= u_time;
@@ -233,18 +227,17 @@ styles:
     #     selection: true
     #     animated: true
     #     shaders:
-    #         transforms:
+    #         blocks:
     #             position: |
     #                 shape.z = (shape.z + 0.01) * u_time * .75;
     #             # color: |
     #             #     color.rgb = vec3(v_texcoord.xy, 0.);
-    #             #     //color.a = 1.;
 
     uv_test:
         extends: polygons
         texcoords: true
         shaders:
-            transforms:
+            blocks:
                 color: |
                     color.rgb = vec3(v_texcoord.xy, 0.);
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
@@ -254,7 +247,7 @@ styles:
     depth:
         extends: polygons
         shaders:
-            transforms:
+            blocks:
                 color: |
                     color = vec4(vec3(v_position.z / 256.), 1.);
                     //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
@@ -265,80 +258,6 @@ styles:
                         (gl_DepthRange.far - gl_DepthRange.near);
                     float clipDepth = ndcDepth / gl_FragCoord.w;
                     color = vec4((clipDepth * 0.5) + 0.5);*/
-
-    # dynamic uniform tests
-    # polygons:
-    #     texcoords: true
-    #     shaders:
-    #         uniforms:
-    #             # u_texture: demos/images/LitSphere_test_02.jpg
-    #             # u_offset: { one: .5, two: .5 }
-
-    #             u_material:
-    #                 - texture: demos/images/matball01.jpg
-    #                   field: 1
-
-    #                 - texture: demos/images/sunset.jpg
-    #                   field: 2
-
-    #             u_mtex:
-    #                 - demos/images/matball01.jpg
-    #                 - demos/images/sunset.jpg
-
-    #             u_vecs: [[1,2,3],[4,5,6],[7,8,9]]
-
-    #             u_nested:
-    #                 one: 1
-    #                 child:
-    #                     two: 2
-
-    #         transforms:
-    #             globals: |
-    #                 /*struct Material {
-    #                     sampler2D texture;
-    #                     float field;
-    #                 };*/
-    #                 //uniform Material u_material[2];
-
-    #                 //uniform sampler2D u_mtex[2];
-    #                 //uniform vec3 u_vecs[3];
-
-    #                 varying float v_layer;
-
-    #             vertex: |
-    #                 v_layer = a_layer;
-
-    #             fragment: |
-    #                 // color = texture2D(u_texture, v_texcoord + vec2(u_offset.one, u_offset.two));
-    #                 //float t = mod(v_layer + u_vecs[0].y, 3.);
-    #                 float t = mod(v_layer + u_nested.one, 3.);
-    #                 if (t == 0.) {
-    #                     color = texture2D(u_texture, v_texcoord);
-    #                 }
-    #                 else if (t == 1.) {
-    #                     color = texture2D(u_material[0].texture, v_texcoord);
-    #                     //color = texture2D(u_mtex[0], v_texcoord);
-    #                 }
-    #                 else {
-    #                     color = texture2D(u_material[1].texture, v_texcoord);
-    #                     //color = texture2D(u_mtex[1], v_texcoord);
-    #                 }
-
-    ghosts:
-        extends: polygons
-        animated: true
-        texcoords: true
-        shaders:
-            uniforms:
-                u_texture: demos/images/ghost_strip.gif
-            transforms:
-                color: |
-                    float number_of_frames = 2.;
-                    float frames_per_second = 2.;
-
-                    float offset = floor(mod(u_time * frames_per_second, 2.))*.5;
-                    color.rgb = texture2D(u_texture, (vec2(v_texcoord.x/number_of_frames, v_texcoord.y) + vec2(offset, 0.))).rgb;
-                    if (color.rgb == vec3(0.)) discard;
 
 
 sources:
@@ -353,17 +272,13 @@ sources:
 layers:
 
     earth:
-        geometry:
-            source: osm
-            filter: earth
+        data: { source: osm }
         style:
             order: 0
             color: [0.175, 0.175, 0.175]
 
     landuse:
-        geometry:
-            source: osm
-            filter: landuse
+        data: { source: osm }
         style:
             order: 1
             interactive: true
@@ -371,24 +286,22 @@ layers:
 
         pitch:
             filter:
-                kind: ['pitch', 'garden', 'playground']
+                kind: [pitch, garden, playground]
             style:
                 color: [0.3, 0.675, 0.3]
-                order: .1
+                order: 1
 
         airports:
             filter: { kind: apron }
             style:
                 color: lightyellow
-                order: .05
+                order: 1
 
     water:
-        geometry:
-            source: osm
-            filter: water
+        data: { source: osm }
         style:
             # name: water
-            order: 2
+            order: 3
             interactive: true
             color: [0.5, 0.5, 0.875]
 
@@ -400,106 +313,24 @@ layers:
                     width: function() { return 2.5 * Math.log(zoom); }
 
     roads:
-        geometry:
-            source: osm
-            filter: roads
+        data: { source: osm }
 
         style:
-            order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
-            # order: 3
+            order: |
+                function () {
+                    function reduceSortKey(key) {
+                        return 30 * Math.floor((key % 10000) / 1000) +
+                               10 * Math.floor((key % 1000) / 100) +
+                               1  * (key % 10);
+                    }
+
+                    var min = reduceSortKey(-3109);
+                    var order = 4 + reduceSortKey(feature.sort_key) - min;
+                    return order;
+                }
+            # order: 5
             interactive: function () { return (zoom >= 18); }
-            # color: yellow
             # color: Style.color.pseudoRandomColor()
-            # color: red #[0.4, 0.4, 0.4]
-            # width: function () { return 2 * Math.log(zoom); }
-
-        highway:
-            filter: { kind: highway }
-            style:
-                color: [1.0, 1.0, 1.0]
-                # color: red
-                # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
-                # color: [[13, 'darkorchid'], [17, 'honeydew']]
-                # color: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
-                width: function () { return 3 * Math.log(zoom); }
-                # width: [[13, 3px], [15, 5px], [16, 20px]]
-                # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
-
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-
-                bridge:
-                    filter: { is_bridge: yes }
-                    style:
-                        outline:
-                            # don't draw outline caps on bridges because they draw over connecting non-bridge roads
-                            # see FDR Drive: 40.70278074491014,-74.00795169174671,20
-                            cap: butt
-
-                round:
-                    filter: { $zoom: { min: 17 }, is_bridge: no }
-                    style:
-                        cap: round
-                        join: round
-
-            tunnel:
-                # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
-                filter: { is_tunnel: yes }
-                style:
-                    color: '#333'
-                    width: function () { return 2 * Math.log(zoom); }
-                    # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
-                outline:
-                    filter: { $zoom: { min: 15 } }
-                    style:
-                        outline:
-                            color: white
-                            # width: [[15, 2px], [18, 6px]]
-                            # width: 2px
-                            width: function () { return 1 * Math.log(zoom); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
-
-        major_road:
-            filter: { kind: major_road }
-            style:
-                color: [0.5, 0.5, 0.5]
-                width: function () { return 2.5 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
-
-        minor_road:
-            filter: { kind: minor_road, $zoom: { min: 13 }, not: { aeroway: [taxiway, runway] } }
-            style:
-                color: [0.65, 0.65, 0.65]
-                width: function () { return 2 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
-                style:
-                    outline:
-                        color: [0.7, 0.7, 0.7]
-                        width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
-                    style:
-                        cap: round
-                        join: round
 
         airports:
             filter: { aeroway: true }
@@ -516,44 +347,115 @@ layers:
                 style:
                     width: [[12, 5px], [13, 10px], [15, 30px], [17, 150px]]
                     color: orange
-                    order: .1
+                    order: 1
 
-        path:
-            filter: { kind: path, $zoom: { min: 15 } }
-            style:
-                color: [0.8, 0.8, 0.8]
-                # color: yellow
-                width: function () { return 1 * Math.log(zoom); }
-                outline:
-                    color: [0.7, 0.7, 0.7]
-                    width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-            round:
-                filter: { $zoom: { min: 17 } }
+        not-airports:
+            filter: { aeroway: false }
+
+            rounded:
+                filter: { $zoom: { min: 17 }, is_bridge: no }
                 style:
                     cap: round
                     join: round
 
-        rail:
-            filter: { kind: rail }
-            style:
-                color: [0.5, 0.0, 0.0]
-                width: function () { return 2 * Math.log(zoom); }
-            outline:
-                filter: { $zoom: { min: 15 } }
+            # bridges:
+            #     filter: { is_bridge: yes }
+            #     style:
+            #         orderReset: true
+            #         order: 2
+
+            highway:
+                filter: { kind: highway }
                 style:
+                    color: [1.0, 1.0, 1.0]
+                    # color: red
+                    # color: [[13, [0, 0, 1.]], [17, [1, .5, .5]]]
+                    # color: [[13, 'darkorchid'], [17, 'honeydew']]
+                    # color: [[13, 'hsl(900, 40%, 60%)'], [17, 'hsl(700, 90%, 80%)']]
+                    width: function () { return 3 * Math.log(zoom); }
+                    # width: Style.zoomPow(3, 1)
+                    # width: [[13, 3px], [15, 5px], [16, 20px]]
+                    # width: [[10, 2px], [13, 3px], [15, 5px], [16, 8px], [18, 12px]]
+
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return 3/8 * Math.log(zoom); }
+
+                    # bridge:
+                    #     filter: { is_bridge: yes }
+                    #     style:
+                    #         outline:
+                    #             # don't draw outline caps on bridges because they draw over connecting non-bridge roads
+                    #             # see FDR Drive: 40.70278074491014,-74.00795169174671,20
+                    #             cap: butt
+
+                tunnel:
+                    # filter: function() { return feature.is_link == 'yes' || feature.is_tunnel == 'yes'; }
+                    filter: { is_tunnel: yes }
+                    style:
+                        color: '#333'
+                        width: function () { return 2 * Math.log(zoom); }
+                        # width: [[13, 0px], [15, 4px], [16, 6px], [18, 10px]]
+                    outline:
+                        filter: { $zoom: { min: 15 } }
+                        style:
+                            outline:
+                                color: white
+                                # width: [[15, 2px], [18, 6px]]
+                                # width: 2px
+                                width: function () { return 1 * Math.log(zoom); }
+
+            major_road:
+                filter: { kind: major_road }
+                style:
+                    color: [0.5, 0.5, 0.5]
+                    width: function () { return 2.5 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (3/8 * Math.log(zoom))); }
+
+            minor_road:
+                filter: { kind: minor_road, $zoom: { min: 13 } }
+                style:
+                    color: [0.65, 0.65, 0.65]
+                    width: function () { return 2 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
+                    style:
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (2.5/8 * Math.log(zoom))); }
+
+            path:
+                filter: { kind: path, $zoom: { min: 15 } }
+                style:
+                    color: [0.8, 0.8, 0.8]
+                    # color: yellow
+                    width: function () { return 1 * Math.log(zoom); }
                     outline:
                         color: [0.7, 0.7, 0.7]
                         width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
-                round:
-                    filter: { $zoom: { min: 17 } }
+
+            rail:
+                filter: { kind: rail }
+                style:
+                    color: [0.5, 0.0, 0.0]
+                    width: function () { return 2 * Math.log(zoom); }
+                outline:
+                    filter: { $zoom: { min: 15 } }
                     style:
-                        cap: round
-                        join: round
+                        outline:
+                            color: [0.7, 0.7, 0.7]
+                            width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
     buildings:
-        geometry:
-            source: osm
-            filter: buildings
+        data: { source: osm }
 
         # properties: { min_height: 150 }
         # filter: function () { return feature.height >= properties.min_height; }
@@ -562,7 +464,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            order: 4
+            order: 250
             interactive: true
 
             # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
@@ -590,10 +492,8 @@ layers:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
 
-    labels_street:
-        geometry:
-            source: osm
-            filter: roads
+    road_labels:
+        data: { source: osm, layer: roads }
 
         filter: { name: true, $zoom: { min: 14 } }
         style:
@@ -601,34 +501,38 @@ layers:
             # visible: false
             order: 5
             interactive: true
-            # text_source: kind
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
-                    typeface: bold 14px Futura
-                    fill: blue
+                    typeface: 12px Futura
+                    fill: darkred
                     stroke: white
-                    capitalized: true
-
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    typeface: bold 10pt Futura
+                    typeface: 10px Futura
+                    # fill: [0.8, 0.7, 0.7]
+                    # stroke: [.31, .33, .31]
                     fill: [0.9, 0.9, 0.9]
-                    stroke: { color: [.31, .33, .31], width: 4 }
+                    stroke: [.31, .33, .31]
+
     pois:
-        geometry:
-            source: osm
-            filter: pois
+        data: { source: osm }
 
         filter: { name: true, $zoom: { min: 17 } }
 
         style:
             # name: points
             # size: [[12, 6px], [13, 10px]]
+            # order: 3400
 
             name: text
             # text_source: kind
@@ -649,9 +553,6 @@ layers:
             # angle: function() { return (parseInt(feature.id, 16) % 360); }
             # scale: 1
 
-            visible: false
-            order: 5
-            # order: function() { if (Math.random() > .5) { return 5; } else { return 3.9; } }
             interactive: true
 
         # z17:
@@ -683,7 +584,7 @@ layers:
                 sprite: museum
 
     building_labels:
-        geometry: { source: osm, filter: buildings }
+        data: { source: osm, layer: buildings }
         style:
             name: text
             visible: false
@@ -704,7 +605,8 @@ layers:
                     stroke: white
 
     places:
-        geometry: { source: osm, filter: places }
+        data: { source: osm }
+
         filter: { name: true }
 
         style:
@@ -712,7 +614,6 @@ layers:
             name: text
             visible: false
             # interactive: true
-            order: 6
             font:
                 typeface: Italic 25pt Courier
                 fill: black

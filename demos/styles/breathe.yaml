@@ -5,6 +5,6 @@ breathe:
         uniforms:
             u_breathe_scale: 10
             u_breathe_speed: 1
-        transforms:
+        blocks:
             position: |
                 position.xy += a_normal.xy * u_breathe_scale * smoothstep(0.25, 1., abs(sin(u_time * u_breathe_speed)));

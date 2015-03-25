@@ -1,4 +1,4 @@
-import {Vector} from '../../vector';
+import Vector from '../../vector';
 import Geo from '../../geo';
 import Label from './label';
 import Utils from '../../utils/utils';

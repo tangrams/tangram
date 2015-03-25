@@ -1,5 +1,5 @@
 uniform mat4 u_modelView;
-uniform float u_num_layers;
+// uniform float u_num_layers;
 
 attribute vec3 a_position;
 attribute vec2 a_texcoord;
@@ -41,7 +41,8 @@ void main() {
     cameraProjection(position);
 
     // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    reorderLayers(a_layer, u_num_layers, position);
+    // reorderLayers(a_layer, u_num_layers, position);
+    applyLayerOrder(a_layer, position);
 
     gl_Position = position;
 }
