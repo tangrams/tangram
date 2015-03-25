@@ -162,7 +162,7 @@ Object.assign(Polygons, {
 
             // Polygon outlines sit over current layer but underneath the one above
             // TODO: address inconsistency with line outlines
-            vertex_template[this.vertex_layout.index.a_layer] += 0.0001;
+            vertex_template[this.vertex_layout.index.a_layer] += 0.5; // 0.0001 0.05
 
             for (var mpc=0; mpc < polygons.length; mpc++) {
                 Builders.buildPolylines(
@@ -213,7 +213,7 @@ Object.assign(Polygons, {
             // TODO: address inconsistency with polygon outlines
             // TODO: need more fine-grained styling controls for outlines
             // (see complex road interchanges where casing outlines should be interleaved by road type)
-            vertex_template[this.vertex_layout.index.a_layer] -= 0.0001;
+            vertex_template[this.vertex_layout.index.a_layer] -= 0.5; // 0.0001 0.05
 
             Builders.buildPolylines(
                 lines,

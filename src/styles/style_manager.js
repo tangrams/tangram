@@ -27,7 +27,11 @@ StyleManager.init = function () {
     ShaderProgram.removeBlock('globals');
 
     // Layer re-ordering function
-    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/reorder_layers']);
+    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/layer_order']);
+
+    // assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
+    // for outlines (inserted in between layers), another extra bit to prevent precision loss
+    ShaderProgram.defines.TANGRAM_LAYER_DELTA = 1 / (1 << 14);
 
     StyleManager.initialized = true;
 };

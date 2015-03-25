@@ -1090,7 +1090,7 @@ export default class Scene {
         if (this.config.camera) {
             this.config.cameras.default = this.config.camera;
         }
-        var camera_names = Object.keys(this.config.cameras);
+        let camera_names = Object.keys(this.config.cameras);
         if (camera_names.length === 0) {
             this.config.cameras.default = { active: true };
 
