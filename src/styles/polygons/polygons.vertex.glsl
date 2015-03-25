@@ -109,7 +109,6 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    // reorderLayers(a_layer + u_order_min, u_order_range, position);
     applyLayerOrder(a_layer, position);
 
     gl_Position = position;

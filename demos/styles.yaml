@@ -405,32 +405,21 @@ layers:
             filter: roads
 
         style:
-            # order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .000025, -1), 1) / 2; }
-            # order: function () { return 3.5 + Math.min(Math.max(feature.sort_key * .01, -1), 1) / 2; }
-            # order: function () { return 5 + Math.round(Math.min(Math.max(feature.sort_key, -5), 5)) + 5; }
-            # order: function () { return 5 + Math.round(Math.min(Math.max(feature.sort_key, -50), 50)) + 50; }
             order: |
                 function () {
-                    var order = 4;
-                    var min = -3109;
-                    var sort_key = feature.sort_key;
+                    function reduceSortKey(key) {
+                        return 30 * Math.floor((key % 10000) / 1000) +
+                               10 * Math.floor((key % 1000) / 100) +
+                               1  * (key % 10);
+                    }
 
-                    order += 30 * Math.floor((sort_key % 10000) / 1000) +
-                             10 * Math.floor((sort_key % 1000) / 100) +
-                             1  * (sort_key % 10);
-
-                    order = order - min;
-
-                    //console.log(feature.kind, feature.sort_key, order);
-                    //feature.order = order;
+                    var min = reduceSortKey(-3109);
+                    var order = 4 + reduceSortKey(feature.sort_key) - min;
                     return order;
                 }
             # order: 5
             interactive: function () { return (zoom >= 18); }
-            # color: yellow
             # color: Style.color.pseudoRandomColor()
-            # color: red #[0.4, 0.4, 0.4]
-            # width: function () { return 2 * Math.log(zoom); }
 
         airports:
             filter: { aeroway: true }
@@ -566,8 +555,7 @@ layers:
         # filter: function () { return true; }
 
         style:
-            order: 3300
-            # order: 0
+            order: 250
             interactive: true
 
             # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
