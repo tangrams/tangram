@@ -1,5 +1,3 @@
-/*global LabelPoint */
-
 import Label from './label';
 import Utils from '../../utils/utils';
 

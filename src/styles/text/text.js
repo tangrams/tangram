@@ -6,8 +6,7 @@ import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
-import LabelPoint from './label_point';
-import LabelLine from './label_line';
+import LabelBuilder from './label_builder';
 
 import log from 'loglevel';
 
@@ -295,47 +294,6 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
-    labelsFromGeometry (geometry, { text, size }) {
-        let labels = [];
-
-        if (geometry.type === "LineString") {
-            let lines = geometry.coordinates;
-            labels.push(new LabelLine(text, size, lines, this.label_style.lines, true, true));
-        } else if (geometry.type === "MultiLineString") {
-            let lines = geometry.coordinates;
-            for (let i = 0; i < lines.length; ++i) {
-                let line = lines[i];
-                labels.push(new LabelLine(text, size, line, this.label_style.lines, true, true));
-            }
-        } else if (geometry.type === "Point") {
-            let width = this.label_style.points.max_width;
-            if (width && size.text_size[0] > width) {
-                let line_height = (size.px_logical_size / 100) * this.label_style.points.line_height;
-                line_height = Utils.pixelToMercator(line_height);
-                let label = LabelPoint.explode(text, geometry.coordinates, size, width, line_height, false, true);
-                labels.push(label);
-            } else {
-                labels.push(new LabelPoint(text, geometry.coordinates, size, null, false, true));
-            }
-        } else if (geometry.type === "MultiPoint") {
-            let points = geometry.coordinates;
-            for (let i = 0; i < points.length; ++i) {
-                let point = points[i];
-                labels.push(new LabelPoint(text, point, size, null, false, true));
-            }
-        } else if (geometry.type === "Polygon") {
-            let centroid = Utils.centroid(geometry.coordinates[0]);
-            let area = Utils.polygonArea(geometry.coordinates[0]);
-            labels.push(new LabelPoint(text, centroid, size, area, false, false));
-        } else if (geometry.type === "MultiPolygon") {
-            let centroid = Utils.multiCentroid(geometry.coordinates);
-            let area = Utils.multiPolygonArea(geometry.coordinates);
-            labels.push(new LabelPoint(text, centroid, size, area, false, false));
-        }
-
-        return labels;
-    },
-
     subTextInfos (label_composite, text_info) {
         if (!text_info.sub_texts) {
             text_info.sub_texts = [];
@@ -359,7 +317,11 @@ Object.assign(TextStyle, {
 
                 for (let f = 0; f < this.features[tile][style][text].length; f++) {
                     let feature = this.features[tile][style][text][f];
-                    let labels = this.labelsFromGeometry(feature.geometry, { text: text, size: text_info.size });
+                    let labels = LabelBuilder.labelsFromGeometry(
+                            feature.geometry,
+                            { text: text, size: text_info.size },
+                            this.label_style
+                    );
 
                     for (let i = 0; i < labels.length; ++i) {
                         let label = labels[i];
