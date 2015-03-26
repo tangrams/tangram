@@ -339,20 +339,32 @@ describe('Scene', function () {
             return subject.init();
         });
 
-        it('adds a new style', () => {
-            subject.config.styles.elevator = {
-                "extends": "polygons",
-                "animated": true,
-                "shaders": {
-                    "blocks": {
-                        "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
-                    }
-                }
-            };
+        describe('when a new style is added', () => {
 
-            subject.updateStyles();
-            assert.isTrue(subject.styles.elevator.compiled);
-            assert.ok(subject.styles.elevator.program);
+            beforeEach(() => {
+                subject.config.styles.elevator = {
+                    "extends": "polygons",
+                    "animated": true,
+                    "shaders": {
+                        "blocks": {
+                            "vertex": "position.z *= (sin(position.z + u_time) + 1.0); // elevator buildings"
+                        }
+                    }
+                };
+            });
+
+            it('doesn\'t compile if the style isn\'t referenced by a style rule', () => {
+                subject.updateStyles();
+                assert.isFalse(subject.styles.elevator.compiled);
+            });
+
+            it('does compile if the style is referenced by a style rule', () => {
+                subject.config.layers.buildings.style.name = 'elevator';
+                subject.updateStyles();
+                assert.isTrue(subject.styles.elevator.compiled);
+                assert.ok(subject.styles.elevator.program);
+            });
+
         });
 
         it('adds properties to an existing style', () => {
