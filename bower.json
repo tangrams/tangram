@@ -30,6 +30,7 @@
     "demos",
     "src",
     "build*.*",
-    "karma*.*"
+    "karma*.*",
+    "index.html"
   ]
 }
