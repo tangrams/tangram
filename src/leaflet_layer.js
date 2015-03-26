@@ -13,9 +13,9 @@ export function leafletLayer(options) {
 if (Utils.isMainThread) {
 
     // Determine if we are extending the leaflet 0.7.x TileLayer class, or the newer
-    // leaflet 1.0 GridLayer class.
+    // leaflet 1.x GridLayer class.
     let layerBaseClass = L.GridLayer ? L.GridLayer : L.TileLayer;
-    let leafletVersion = layerBaseClass === L.GridLayer ? '1.0' : '0.7';
+    let leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
     let layerClassConfig = {};
 
     // If extending leaflet 0.7.x TileLayer, make add/remove tile no ops
@@ -47,7 +47,7 @@ if (Utils.isMainThread) {
                     numWorkers: this.options.numWorkers,
                     preUpdate: this.options.preUpdate,
                     postUpdate: this.options.postUpdate,
-                    continuousZoom: (LeafletLayer.leafletVersion === '1.0'),
+                    continuousZoom: (LeafletLayer.leafletVersion === '1.x'),
                     logLevel: this.options.logLevel,
                     // advanced option, app will have to manually called scene.update() per frame
                     disableRenderLoop: this.options.disableRenderLoop,
@@ -57,7 +57,7 @@ if (Utils.isMainThread) {
         },
 
         // Finish initializing scene and setup events when layer is added to map
-        onAdd: function () {
+        onAdd: function (map) {
             if (!this.scene) {
                 this.createScene();
             }
@@ -66,11 +66,11 @@ if (Utils.isMainThread) {
 
             this.hooks.resize = () => {
                 this._updating_tangram = true;
-                var size = this._map.getSize();
+                var size = map.getSize();
                 this.scene.resizeMap(size.x, size.y);
                 this._updating_tangram = false;
             };
-            this._map.on('resize', this.hooks.resize);
+            map.on('resize', this.hooks.resize);
 
             this.hooks.move = () => {
                 if (this._updating_tangram) {
@@ -78,8 +78,8 @@ if (Utils.isMainThread) {
                 }
 
                 this._updating_tangram = true;
-                var view = this._map.getCenter();
-                view.zoom = this._map.getZoom();
+                var view = map.getCenter();
+                view.zoom = map.getZoom();
 
                 var changed = this.scene.setView(view);
                 if (changed) {
@@ -87,7 +87,7 @@ if (Utils.isMainThread) {
                 }
                 this._updating_tangram = false;
             };
-            this._map.on('move', this.hooks.move);
+            map.on('move', this.hooks.move);
 
             this.hooks.zoomstart = () => {
                 if (this._updating_tangram) {
@@ -98,28 +98,28 @@ if (Utils.isMainThread) {
                 this.scene.startZoom();
                 this._updating_tangram = false;
             };
-            this._map.on('zoomstart', this.hooks.zoomstart);
+            map.on('zoomstart', this.hooks.zoomstart);
 
             this.hooks.dragstart = () => {
                 this.scene.panning = true;
             };
-            this._map.on('dragstart', this.hooks.dragstart);
+            map.on('dragstart', this.hooks.dragstart);
 
             this.hooks.dragend = () => {
                 this.scene.panning = false;
             };
-            this._map.on('dragend', this.hooks.dragend);
+            map.on('dragend', this.hooks.dragend);
 
             // Force leaflet zoom animations off
-            this._map._zoomAnimated = false;
+            map._zoomAnimated = false;
 
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-            this.scene.container = this._map.getContainer();
+            this.scene.container = map.getContainer();
 
             // Initial view
-            var view = this._map.getCenter();
-            view.zoom = this._map.getZoom();
+            var view = map.getCenter();
+            view.zoom = map.getZoom();
             this.scene.setView(view);
 
             // Subscribe to tangram events
@@ -137,14 +137,14 @@ if (Utils.isMainThread) {
             });
         },
 
-        onRemove: function () {
+        onRemove: function (map) {
             layerBaseClass.prototype.onRemove.apply(this, arguments);
 
-            this._map.off('resize', this.hooks.resize);
-            this._map.off('move', this.hooks.move);
-            this._map.off('zoomstart', this.hooks.zoomstart);
-            this._map.off('dragstart', this.hooks.dragstart);
-            this._map.off('dragend', this.hooks.dragend);
+            map.off('resize', this.hooks.resize);
+            map.off('move', this.hooks.move);
+            map.off('zoomstart', this.hooks.zoomstart);
+            map.off('dragstart', this.hooks.dragstart);
+            map.off('dragend', this.hooks.dragend);
             this.hooks = {};
 
             if (this.scene) {
@@ -200,6 +200,18 @@ if (Utils.isMainThread) {
 
     // Create the layer class
     LeafletLayer = layerBaseClass.extend(layerClassConfig);
+
+    // Polyfill some 1.0 methods
+    if (typeof LeafletLayer.remove !== 'function') {
+        LeafletLayer.prototype.remove = function() {
+            if (this._map) {
+                this._map.removeLayer(this);
+            }
+            this.fire('remove');
+        };
+    }
+
+    LeafletLayer.layerBaseClass = layerBaseClass;
     LeafletLayer.leafletVersion = leafletVersion;
 
 }

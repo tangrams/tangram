@@ -31,7 +31,7 @@ module.exports = function (config) {
               included: false,
               served: true },
 
-            './demos/lib/leaflet/leaflet.js',
+            'demos/lib/leaflet/leaflet-0.7.3.js',
             'dist/tangram.test-worker.js',
             'dist/tangram.test.js'
         ],

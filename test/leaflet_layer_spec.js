@@ -81,7 +81,7 @@ describe('Leaflet plugin', () => {
         beforeEach((done) => {
             subject = makeOne();
             scene = subject.scene;
-            sinon.spy(L.GridLayer.prototype, 'onRemove');
+            sinon.spy(LeafletLayer.layerBaseClass.prototype, 'onRemove');
             sinon.spy(scene, 'destroy');
 
 
@@ -96,11 +96,11 @@ describe('Leaflet plugin', () => {
         });
 
         afterEach(() => {
-            L.GridLayer.prototype.onRemove.restore();
+            LeafletLayer.layerBaseClass.prototype.onRemove.restore();
         });
 
         it('calls the .super', () => {
-            sinon.assert.called(L.GridLayer.prototype.onRemove);
+            sinon.assert.called(LeafletLayer.layerBaseClass.prototype.onRemove);
         });
 
         it('destroys the scene', () => {
