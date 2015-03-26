@@ -12,13 +12,30 @@ export default class DataSource {
         this.name = source.name;
         this.url = source.url;
 
-        // Get alter data.  Comes in as string, even if using actual
-        // function
+        // Get alter data.  Comes in as string when a web worker
         if (typeof source.alter_data === 'string' && source.alter_data.indexOf('function') !== -1) {
             source.alter_data = Utils.stringsToFunctions({ a: source.alter_data });
             source.alter_data = source.alter_data.a;
         }
         this.alter_data = source.alter_data;
+
+        // Since this process is done in a web worker, we can't actually
+        // pass data at time of processing, so handle it here.
+        this.extra_data = source.extra_data;
+
+        // Import any extra scripts
+        if (typeof importScripts === 'function' && source.scripts) {
+            source.scripts.forEach(function(s, si) {
+                try {
+                    importScripts(s);
+                    log.info('DataSource: loaded library: ' + s);
+                }
+                catch (e) {
+                    log.error('DataSource: failed to load library: ' + s);
+                    log.error(e);
+                }
+            });
+        }
 
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
@@ -213,7 +230,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
         // Edit response if provided
         if (typeof this.alter_data === 'function') {
             this.alter_data.bind(this);
-            data = this.alter_data(data);
+            data = this.alter_data(data, source, response);
         }
 
         // Single layer or multi-layers?
