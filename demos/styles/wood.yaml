@@ -8,7 +8,7 @@ wood:
             u_wood_twist: .0001
             u_wood_scale: 50
             u_wood_spacing: 1
-        transforms:
+        blocks:
             globals: |
 
                 vec3 wood( vec3 pos ) {

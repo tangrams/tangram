@@ -40,12 +40,16 @@ export default class Camera {
     setupProgram(program) {
     }
 
-    // Sync camera position and/or zoom to scene
+    /**
+        Sync camera position and/or zoom to scene
+        position: [lat, lng] or [lat, lng, zoom]
+        zoom: zoom
+    */
     updateScene () {
         if (this.position || this.zoom) {
             var view = {};
             if (this.position) {
-                view = this.position;
+                view = { lng: this.position[0], lat: this.position[1], zoom: this.position[2] };
             }
             if (this.zoom) {
                 view.zoom = this.zoom;
@@ -92,8 +96,8 @@ class PerspectiveCamera extends Camera {
         this.viewMatrix = new Float64Array(16);
         this.projectionMatrix = new Float32Array(16);
 
-        // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        ShaderProgram.replaceTransform('camera', `
+        // 'camera' is the name of the shader block, e.g. determines where in the shader this code is injected
+        ShaderProgram.replaceBlock('camera', `
             uniform mat4 u_projection;
             uniform vec3 u_eye;
             uniform vec2 u_vanishing_point;
@@ -161,7 +165,7 @@ class PerspectiveCamera extends Camera {
             vec3.fromValues(0, 1, 0));
 
         // Projection matrix
-        mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 1);
+        mat4.perspective(this.projectionMatrix, fov, this.scene.view_aspect, 1, height + 2);
 
         // Convert vanishing point from pixels to viewport space
         this.vanishing_point_skew[0] = this.vanishing_point[0] / this.scene.css_size.width;
@@ -220,8 +224,8 @@ class IsometricCamera extends Camera {
         this.viewMatrix = new Float64Array(16);
         this.projectionMatrix = new Float32Array(16);
 
-        // 'camera' is the name of the shader transform, e.g. determines where in the shader this code is injected
-        ShaderProgram.replaceTransform('camera', `
+        // 'camera' is the name of the shader block, e.g. determines where in the shader this code is injected
+        ShaderProgram.replaceBlock('camera', `
             uniform mat4 u_projection;
             uniform vec3 u_eye;
             uniform vec2 u_vanishing_point;

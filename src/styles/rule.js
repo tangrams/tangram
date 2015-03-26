@@ -1,7 +1,7 @@
-'use strict';
-const {match} = require('match-feature');
+import {match} from 'match-feature';
+import log from 'loglevel';
 
-export const whiteList = ['filter', 'style', 'geometry', 'properties'];
+export const whiteList = ['filter', 'style', 'data', 'properties'];
 
 export let ruleCache = {};
 
@@ -10,9 +10,10 @@ function cacheKey (rules) {
 }
 
 export function mergeTrees(matchingTrees, context) {
-    let style = {};
-    let deepestOrder, orderReset;
-    let visible;
+    let style = {},
+        order = [],
+        order_styles = [],
+        visible;
 
     // Find deepest tree
     matchingTrees.sort((a, b) => a.length > b.length ? -1 : (b.length > a.length ? 1 : 0));
@@ -21,8 +22,8 @@ export function mergeTrees(matchingTrees, context) {
     // Iterate trees in parallel
     for (let x = 0; x < len; x++) {
         let styles = matchingTrees.map(tree => tree[x]);
-        mergeObjects(style, ...styles);
 
+        // Property-specific logic
         for (let i=0; i < styles.length; i++) {
             if (!styles[i]) {
                 continue;
@@ -35,47 +36,36 @@ export function mergeTrees(matchingTrees, context) {
                 visible = true;
             }
 
-            // Make note of the style positions of order-related properties
+            // Collect unique orders (don't add the order multiple times for the smae style rule)
             if (styles[i].order !== undefined) {
-                deepestOrder = i;
-            }
-
-            if (styles[i].orderReset !== undefined) {
-                orderReset = x;
+                if (order_styles.indexOf(styles[i]) === -1) {
+                    order.push(styles[i].order);
+                    order_styles.push(styles[i]);
+                }
             }
         }
+
+        // Merge remaining style objects
+        mergeObjects(style, ...styles);
     }
 
+    // Short-circuit if not visible
     if (visible === undefined) {
         return null;
     }
-
     style.visible = visible;
 
-    // Order must be calculated based on the deepest tree that had an order property
-    if (deepestOrder !== undefined) {
-        let orderTree = matchingTrees[deepestOrder];
-
-        if (orderTree.length <= 1) {
-            style.order = orderTree[0].order;
+    // Sum all orders
+    if (order.length > 0) {
+        // Order can be cached if it is only a single value
+        if (order.length === 1 && typeof order[0] === 'number') {
+            order = order[0];
         }
-        else {
-            style.order = [];
-            for (let x = orderReset || 0; x < orderTree.length; x++) {
-                if (orderTree[x] && orderTree[x].order) {
-                    style.order.push(orderTree[x].order);
-                }
-            }
-
-            // Order can be cached if it is only a single value
-            if (style.order.length === 1 && typeof style.order[0] === 'number') {
-                style.order = style.order[0];
-            }
-            // Or if there are no function dependencies
-            else if (!style.order.some(v => typeof v === 'function')) {
-                style.order = calculateOrder(style.order, context);
-            }
+        // Or if there are no function dependencies
+        else if (!order.some(v => typeof v === 'function')) {
+            order = calculateOrder(order, context);
         }
+        style.order = order;
     }
 
     return style;
@@ -91,6 +81,12 @@ class Rule {
         this.filter = filter;
         this.properties = properties;
         this.parent = parent;
+
+        // Add properties to style
+        if (this.style && this.properties) {
+            this.style.properties = this.properties;
+        }
+
         this.buildFilter();
         this.buildStyle();
     }
@@ -269,7 +265,7 @@ export function parseRuleTree(name, rule, parent) {
             if (typeof property === 'object') {
                 parseRuleTree(key, property, r);
             } else {
-                console.error('Property must be an object');
+                log.warn('Rule property must be an object: ', name, rule, property);
             }
         }
 

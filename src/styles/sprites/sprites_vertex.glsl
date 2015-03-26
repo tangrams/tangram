@@ -5,8 +5,8 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform float u_meters_per_pixel;
-uniform float u_order_min;
-uniform float u_order_range;
+// uniform float u_order_min;
+// uniform float u_order_range;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
@@ -60,9 +60,6 @@ void main() {
     float zscale = fract(u_map_zoom) * (shape.w * 256. - 1.) + 1.;
     // float zscale = log(fract(u_map_zoom) + 1.) / log(2.) * (shape.w - 1.) + 1.;
     position.xy += rotate2D(shape.xy * 256. * zscale, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
-
-    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    //reorderLayers(a_layer + u_order_min, u_order_range, position);
 
     gl_Position = position;
 }

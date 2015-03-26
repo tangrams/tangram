@@ -142,21 +142,26 @@ export default class Tile {
 
         let tile_data = {};
 
-        for (let sourceName in tile.sources) {
-            let source = tile.sources[sourceName];
+        for (let source_name in tile.sources) {
+            let source = tile.sources[source_name];
             source.debug.rendering = +new Date();
             source.debug.features = 0;
 
             // Treat top-level style rules as 'layers'
             for (let layer_name in layers) {
                 let layer = layers[layer_name];
-                // Skip layers with no geometry defined
-                if (!layer.geometry) {
-                    log.warn(`Layer ${layer} was defined without an geometry configuration and will not be rendered.`);
+                // Skip layers with no data source defined
+                if (!layer.data) {
+                    log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
                     continue;
                 }
 
-                let geom = Tile.getGeometryForSource(source, layer.geometry);
+                // Source names don't match
+                if (layer.data.source !== source_name) {
+                    continue;
+                }
+
+                let geom = Tile.getDataForSource(source, layer.data, layer_name);
                 if (!geom) {
                     continue;
                 }
@@ -184,8 +189,11 @@ export default class Tile {
                         tile_data[rule.name] = style.startData();
                     }
 
+                    context.properties = rule.properties; // add rule-specific properties to context
+
                     style.addFeature(feature, rule, context, tile_data[rule.name]);
 
+                    context.properties = null; // clear rule-specific properties
                     source.debug.features++;
                 }
 
@@ -243,21 +251,25 @@ export default class Tile {
     /**
         Retrieves geometry from a tile according to a data source definition
     */
-    static getGeometryForSource (sourceData, sourceConfig) {
+    static getDataForSource (source_data, source_config, default_layer = null) {
         var geom;
 
-        if (sourceConfig != null) {
-            // If single layer, no data transform
-            if (!sourceConfig.filter && sourceData.layers._default) {
-                geom = sourceData.layers._default;
+        if (source_config != null) {
+            // If no layer specified, and a default source layer exists
+            if (!source_config.layer && source_data.layers._default) {
+                geom = source_data.layers._default;
             }
-            // Pass through data but with different layer name in tile source data
-            else if (typeof sourceConfig.filter === 'string') {
-                geom = sourceData.layers[sourceConfig.filter];
+            // If no layer specified, and a default requested layer exists
+            else if (!source_config.layer && default_layer) {
+                geom = source_data.layers[default_layer];
             }
-            // Apply the transform function for post-processing
-            else if (typeof sourceConfig.filter === 'function') {
-                geom = sourceConfig.filter(sourceData.layers);
+            // If a layer is specified by name, use it
+            else if (typeof source_config.layer === 'string') {
+                geom = source_data.layers[source_config.layer];
+            }
+            // Assemble a custom layer via a function, which is called with all source layers
+            else if (typeof source_config.layer === 'function') {
+                geom = source_config.layer(source_data.layers);
             }
         }
 
