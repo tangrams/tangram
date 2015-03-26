@@ -223,6 +223,20 @@
             'Rainbow': 'rainbow',
             'Icons': 'icons'
         },
+        saveInitial: function() {
+            // Save settings to restore later
+            if (!this.initial.layers[l]) {
+                var layer_styles = scene.config.layers;
+                for (var l in layer_styles) {
+                    this.initial.layers[l] = {
+                        style: Object.assign({}, layer_styles[l].style)
+                    };
+                }
+            }
+
+            this.initial.camera = this.initial.camera || scene.getActiveCamera();
+            this.initial.background = this.initial.background || Object.assign({}, scene.config.background);
+        },
         setup: function (style) {
             // Restore initial state
             var layer_styles = scene.config.layers;
@@ -236,6 +250,10 @@
                 scene.setActiveCamera(this.initial.camera);
             }
             gui.camera = scene.getActiveCamera();
+
+            if (this.initial.background) {
+                scene.config.background = Object.assign({}, this.initial.background);
+            }
 
             // Remove existing style-specific controls
             gui.removeFolder(this.folder);
@@ -451,6 +469,8 @@
             },
             'halftone': {
                 setup: function (style) {
+                    scene.config.background.color = 'black';
+
                     Object.keys(scene.config.layers).forEach(function(l) {
                         scene.config.layers[l].style.name = style;
                     });
@@ -747,6 +767,7 @@
         layer.on('init', function() {
             addGUI();
 
+            style_options.saveInitial();
             if (url_style) {
                 style_options.setup(url_style);
             }
