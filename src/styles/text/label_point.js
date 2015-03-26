@@ -1,3 +1,5 @@
+/*global LabelPoint */
+
 import Label from './label';
 import Utils from '../../utils/utils';
 
@@ -28,6 +30,29 @@ export default class LabelPoint extends Label {
         return false;
     }
 
+    static explode (text, position, size, max_width, padding, move_in_tile, keep_in_tile) {
+        let split_text = text.split(' ');
+
+        if (split_text.length < 2) {
+            return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
+        }
+
+        let line = new TextLine(text, size.text_size[0], split_text, size.split_size);
+        let lines = line.explode(max_width);
+        let labels = [];
+
+        if (lines.length === 1) {
+            return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
+        }
+
+        for (let i in lines) {
+            let l = lines[i];
+            let pos = [position[0], position[1] - Math.abs(padding) * i];
+            labels.push(new LabelPoint(l.text, pos, size, null, move_in_tile, keep_in_tile));
+        }
+
+        return new LabelComposite(text, position, size, labels, move_in_tile, keep_in_tile);
+    }
 }
 
 class LabelComposite extends Label {
@@ -87,7 +112,7 @@ class TextLine {
             });
             offset += word_length;
 
-            if (i != words.length - 1) {
+            if (i !== words.length - 1) {
                 word_infos.push({
                     word: ' ',
                     start: offset,
@@ -127,7 +152,7 @@ class TextLine {
             }
 
             for (let i = 0; i < index; i++) {
-                if (i != index - 1 && this.words[i] !== ' ') {
+                if (i !== index - 1 && this.words[i] !== ' ') {
                     previous_line_words += this.words[i].word;
                     previous_line_length += this.size_info[this.words[i].word];
                 }
@@ -177,26 +202,3 @@ class TextLine {
     }
 }
 
-LabelPoint.explode = function (text, position, size, max_width, padding, move_in_tile, keep_in_tile) {
-    let split_text = text.split(' ');
-
-    if (split_text.length < 2) {
-        return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
-    }
-
-    let line = new TextLine(text, size.text_size[0], split_text, size.split_size);
-    let lines = line.explode(max_width);
-    let labels = [];
-
-    if (lines.length == 1) {
-        return new LabelPoint(text, position, size, null, move_in_tile, keep_in_tile);
-    }
-
-    for (let i in lines) {
-        let l = lines[i];
-        let pos = [position[0], position[1] - Math.abs(padding) * i];
-        labels.push(new LabelPoint(l.text, pos, size, null, move_in_tile, keep_in_tile));
-    }
-
-    return new LabelComposite(text, position, size, labels, move_in_tile, keep_in_tile);
-};

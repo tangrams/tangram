@@ -690,7 +690,6 @@ layers:
             order: 10
             text_source: |
                 function() { return feature.height > 100 ? 'high' : 'low';  }
-            # text_source: function() { return 'test'; }
             font:
                 typeface: 12px Helvetica
                 fill: white

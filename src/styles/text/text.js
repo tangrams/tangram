@@ -211,12 +211,12 @@ Object.assign(TextStyle, {
                         let word = split[j];
                         width += info.size.split_size[word];
 
-                        if (j != split.length - 1) {
+                        if (j !== split.length - 1) {
                             width += space_size;
                         }
                     }
 
-                    if (i != info.sub_texts.length - 1) {
+                    if (i !== info.sub_texts.length - 1) {
                         width += space_size;
                     }
                 }
