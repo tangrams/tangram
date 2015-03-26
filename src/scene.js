@@ -1147,9 +1147,9 @@ export default class Scene {
         }
 
         // Compile all programs
-        StyleManager.compile();
-
         this.updateActiveStyles();
+        StyleManager.compile(Object.keys(this.active_styles));
+
         this.dirty = true;
     }
 

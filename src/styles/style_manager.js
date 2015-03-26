@@ -244,14 +244,15 @@ StyleManager.dependsOn = function (a, b, styles) {
 };
 
 // Compile all styles
-StyleManager.compile = function () {
-    for (var name in Styles) {
+StyleManager.compile = function (keys) {
+    keys = keys || Object.keys(Styles);
+    for (let key of keys) {
         try {
-            Styles[name].compile();
-            log.trace(`StyleManager.compile(): compiled style ${name}`);
+            Styles[key].compile();
+            log.trace(`StyleManager.compile(): compiled style ${key}`);
         }
         catch(error) {
-            log.error(`StyleManager.compile(): error compiling style ${name}:`, error);
+            log.error(`StyleManager.compile(): error compiling style ${key}:`, error);
         }
     }
 
