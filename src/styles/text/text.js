@@ -32,6 +32,8 @@ Object.assign(TextStyle, {
         this.texture = {};
         this.canvas = {};
         this.bboxes = {};
+        this.features = {};
+
         this.maxPriority = 0;
 
         // default font style
