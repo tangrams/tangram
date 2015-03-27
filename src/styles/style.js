@@ -15,10 +15,6 @@ import log from 'loglevel';
 
 export var Style = {
     init () {
-        if (this.initialized) {
-            return;
-        }
-
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
