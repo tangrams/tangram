@@ -59,10 +59,7 @@ void main() {
     // Apply scaling in screen space
     float zscale = fract(u_map_zoom) * (shape.w * 256. - 1.) + 1.;
     // float zscale = log(fract(u_map_zoom) + 1.) / log(2.) * (shape.w - 1.) + 1.;
-    position.xy += rotate2D(shape.xy * 128. * zscale, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
-
-    // reorderLayers(a_layer + u_order_min, u_order_range, position);
-    applyLayerOrder(a_layer, position);
+    position.xy += rotate2D(shape.xy * 256. * zscale, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
 
     gl_Position = position;
 }

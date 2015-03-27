@@ -198,20 +198,24 @@ StyleManager.update = function (name, settings) {
 };
 
 // Called to create or update styles from stylesheet
-StyleManager.build = function (styles) {
+
+StyleManager.build = function (styles, scene) {
     // Sort styles by dependency, then build them
     let style_deps = Object.keys(styles).sort((a, b) => StyleManager.dependsOn(a, b, styles));
     for (let sname of style_deps) {
         Styles[sname] = StyleManager.update(sname, styles[sname]);
     }
 
+    StyleManager.initStyles(scene);
+    return Styles;
+};
+
+// Initialize all styles
+StyleManager.initStyles = function (scene) {
     // Initialize all
     for (let sname in Styles) {
-        Styles[sname].initialized = false;
-        Styles[sname].init();
+        Styles[sname].init({ device_pixel_ratio: scene.device_pixel_ratio });
     }
-
-    return Styles;
 };
 
 // Given a set of styles to build, does style name A depend on style name B?

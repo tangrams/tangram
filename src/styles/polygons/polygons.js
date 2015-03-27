@@ -13,7 +13,7 @@ Object.assign(Polygons, {
     built_in: true,
 
     init() {
-        Style.init.apply(this);
+        Style.init.apply(this, arguments);
 
         // Base shaders
         this.vertex_shader_key = 'styles/polygons/polygons.vertex';

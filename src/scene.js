@@ -200,7 +200,6 @@ export default class Scene {
             } else {
                 resolve(worker_url);
             }
-
         });
     }
 
@@ -227,7 +226,7 @@ export default class Scene {
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers).then(
+            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, this.device_pixel_ratio).then(
                 (id) => {
                     log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -869,6 +868,7 @@ export default class Scene {
 
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
     rebuild() {
+        StyleManager.initStyles(this);
         return this.rebuildGeometry();
     }
 
@@ -1142,7 +1142,7 @@ export default class Scene {
 
         // (Re)build styles from config
         StyleManager.init();
-        this.styles = StyleManager.build(this.config.styles);
+        this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
         if (gl) {

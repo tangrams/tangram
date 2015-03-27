@@ -18,12 +18,13 @@ Object.assign(Sprites, {
     selection: true,
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
-    init() {
-        Style.init.apply(this);
+    init(options = {}) {
+        Style.init.apply(this, arguments);
 
         // Base shaders
         this.vertex_shader_key = 'styles/sprites/sprites_vertex';
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
+        this.device_pixel_ratio = options.device_pixel_ratio;
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -112,7 +113,7 @@ Object.assign(Sprites, {
 
         Builders.buildSpriteQuadsForPoints(
             [ position ],
-            Utils.scaleInt16(size[0], 128), Utils.scaleInt16(size[1], 128),
+            Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(style.scale, 256),
             vertex_data,

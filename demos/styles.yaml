@@ -454,41 +454,6 @@ layers:
                             color: [0.7, 0.7, 0.7]
                             width: function () { return (zoom >= 18 && (2/8 * Math.log(zoom))); }
 
-
-    road_labels:
-        data: { source: osm, layer: roads }
-
-        filter: { name: true, $zoom: { min: 14 } }
-        style:
-            name: text
-            # visible: false
-            order: 5
-            interactive: true
-            # font:
-            #     typeface: Helvetica
-            #     size: 12px
-            #     fill: white
-            #     stroke: black
-
-        major_road:
-            filter: { kind: major_road, $zoom: { min: 14 } }
-            style:
-                font:
-                    size: 14px
-                    typeface: Futura
-                    fill: darkred
-                    stroke: white
-        minor_road:
-            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-            style:
-                font:
-                    size: 12px
-                    typeface: Futura
-                    # fill: [0.8, 0.7, 0.7]
-                    # stroke: [.31, .33, .31]
-                    fill: [0.9, 0.9, 0.9]
-                    stroke: [.31, .33, .31]
-
     buildings:
         data: { source: osm }
 
@@ -527,6 +492,38 @@ layers:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
 
+    road_labels:
+        data: { source: osm, layer: roads }
+
+        filter: { name: true, $zoom: { min: 14 } }
+        style:
+            name: text
+            # visible: false
+            order: 5
+            interactive: true
+            # font:
+            #     typeface: Helvetica
+            #     size: 12px
+            #     fill: white
+            #     stroke: black
+
+        major_road:
+            filter: { kind: major_road, $zoom: { min: 14 } }
+            style:
+                font:
+                    typeface: 12px Futura
+                    fill: darkred
+                    stroke: white
+        minor_road:
+            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
+            style:
+                font:
+                    typeface: 10px Futura
+                    # fill: [0.8, 0.7, 0.7]
+                    # stroke: [.31, .33, .31]
+                    fill: [0.9, 0.9, 0.9]
+                    stroke: [.31, .33, .31]
+
     pois:
         data: { source: osm }
 
@@ -537,10 +534,11 @@ layers:
             # size: [[12, 6px], [13, 10px]]
             # order: 3400
 
-            # name: text
+            name: text
+            # text_source: kind
+            # text_source: function() { return (Math.random() * 100).toFixed(); }
             font:
-                size: 12px
-                typeface: Helvetica
+                typeface: Italic 12px Helvetica
                 fill: [.9, .9, .1]
                 stroke: black
 
@@ -585,18 +583,48 @@ layers:
                 size: 32px
                 sprite: museum
 
+    building_labels:
+        data: { source: osm, layer: buildings }
+        style:
+            name: text
+            visible: false
+            order: 10
+            text_source: |
+                function() { return feature.height > 100 ? 'high' : 'low';  }
+            font:
+                typeface: 12px Helvetica
+                fill: white
+                stroke: black
+
+        high:
+            filter: function() { return feature.height > 100; }
+            style:
+                font:
+                    fill: red
+                    stroke: white
+
     places:
         data: { source: osm }
 
         filter: { name: true }
 
         style:
+            order: 6
             name: text
             visible: false
             # interactive: true
             font:
-                size: 12px
-                typeface: Courier
+                typeface: Italic 25pt Courier
                 fill: black
-                stroke: white
+                stroke: { color: white, width: 3 }
+
+        administrative:
+            filter: { kind: administrative }
+            style:
+                order: 6
+                name: text
+                font:
+                    typeface: 1.5em Futura
+                    fill: blue
+                    stroke: white
 

@@ -3,6 +3,7 @@
 
 import log from 'loglevel';
 import yaml from 'js-yaml';
+import Geo from '../geo';
 
 var Utils;
 export default Utils = {};
@@ -326,5 +327,86 @@ Utils.radToDeg = function (radians) {
 
 Utils.toCanvasColor = function (color) {
     return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
+};
+
+Utils.centroid = function (polygon) {
+    let n = polygon.length;
+    let centroid = [0, 0];
+
+    for (let p of polygon) {
+        centroid[0] += p[0];
+        centroid[1] += p[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Utils.multiCentroid = function (polygons) {
+    let n = polygons.length;
+    let centroid = [0, 0];
+
+    for (let p in polygons) {
+        let polygon = polygons[p][0];
+        let c = Utils.centroid(polygon);
+        centroid[0] += c[0];
+        centroid[1] += c[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Utils.polygonArea = function (polygon) {
+    let area = 0;
+    let n = polygon.length;
+
+    for (let i = 0; i < n - 1; i++) {
+        let p0 = polygon[i];
+        let p1 = polygon[i+1];
+
+        area += p0[0] * p1[1] - p1[0] * p0[1];
+    }
+
+    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+
+    return Math.abs(area) / 2;
+};
+
+Utils.multiPolygonArea = function (polygons) {
+    let area = 0;
+
+    for (let p in polygons) {
+        let polygon = polygons[p][0];
+        area += Utils.polygonArea(polygon);
+    }
+
+    return area;
+};
+
+Utils.toPixelSize = function (size, kind) {
+    if (kind === "px") {
+        return size;
+    } else if (kind === "em") {
+        return 16 * size;
+    } else if (kind === "pt") {
+        return size / 0.75;
+    } else if (kind === "%") {
+        return size / 6.25;
+    }
+};
+
+Utils.pointInTile = function (point) {
+    let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
+
+    return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
+};
+
+Utils.pixelToMercator = function (size) {
+    return size * Geo.units_per_pixel;
 };
 

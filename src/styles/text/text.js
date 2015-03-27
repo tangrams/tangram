@@ -6,7 +6,7 @@ import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Sprites} from '../sprites/sprites';
-import Label from './label';
+import LabelBuilder from './label_builder';
 
 import log from 'loglevel';
 
@@ -21,7 +21,7 @@ Object.assign(TextStyle, {
 
     init() {
 
-        this.super.init.apply(this);
+        this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
         if (Utils.isMainThread) {
@@ -32,48 +32,95 @@ Object.assign(TextStyle, {
         this.texture = {};
         this.canvas = {};
         this.bboxes = {};
+        this.features = {};
 
+        this.maxPriority = 0;
+
+        // default font style
         this.font_style = {
-            typeface: 'Helvetica',
-            size: '12px',
-            fill: 'white'
+            typeface: 'Helvetica 12px',
+            fill: 'white',
+            capitalized: false,
+            stroke: {
+                color: 'black',
+                width: 3
+            }
         };
 
         // default label style
         this.label_style = {
-            lines: { exceed: 60 }
+            priorities: {
+                administrative: 4,
+                major_road: 3,
+                minor_road: 2,
+                restaurant: 1,
+            },
+            lines: {
+                exceed: 80,
+                offset: 0
+            },
+            points: {
+                max_width: 100,
+                line_height: 100 // percentage
+            }
         };
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { size, typeface, fill, stroke }) {
-        this.size = parseInt(size);
+    setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
+        this.px_size = parseInt(px_size);
+        this.px_logical_size = parseInt(px_logical_size);
         this.buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
-        ctx.font = size + ' ' + typeface;
+        ctx.font = font;
         if (stroke) {
             ctx.strokeStyle = stroke;
         }
         ctx.fillStyle = fill;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = stroke_width;
         ctx.miterLimit = 2;
     },
 
     // Width and height of text based on current font style
-    textSize (text, tile) {
-        return [
-            Math.ceil(this.canvas[tile].context.measureText(text).width) + this.buffer * 2,
-            this.size + this.buffer * 2
+    textSize (text, tile, capitalized) {
+        let str = capitalized ? text.toUpperCase() : text;
+        let ctx = this.canvas[tile].context;
+        let split = str.split(' ');
+        let px_size = this.px_size;
+        let px_logical_size = this.px_logical_size;
+        let buffer = this.buffer * this.device_pixel_ratio;
+        let split_size = {
+            " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
+        };
+
+        for (let i in split) {
+            let word = split[i];
+            split_size[word] = ctx.measureText(word).width / this.device_pixel_ratio;
+        }
+
+        let str_width = ctx.measureText(str).width;
+        let text_size = [
+            str_width / this.device_pixel_ratio,
+            this.px_size / this.device_pixel_ratio
         ];
+
+        let texture_text_size = [
+            Math.ceil(str_width) + buffer * 2,
+            this.px_size + buffer * 2
+        ];
+
+        return { split_size, text_size, texture_text_size, px_size, px_logical_size };
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke) {
+    drawText (text, [x, y], tile, stroke, capitalized) {
+        let str = capitalized ? text.toUpperCase() : text;
+        let buffer = this.buffer * this.device_pixel_ratio;
         if (stroke) {
-            this.canvas[tile].context.strokeText(text, x + this.buffer, y + this.buffer + this.size);
+            this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
-        this.canvas[tile].context.fillText(text, x + this.buffer, y + this.buffer + this.size);
+        this.canvas[tile].context.fillText(str, x + buffer, y + buffer + this.px_size);
     },
 
     setTextureTextPositions (texts) {
@@ -85,7 +132,7 @@ Object.assign(TextStyle, {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let size = text_info.size;
+                let size = text_info.size.texture_text_size;
 
                 text_info.position = [0, height];
 
@@ -114,9 +161,10 @@ Object.assign(TextStyle, {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
+                let text_style = text_infos[text].text_style;
                 // update text sizes
-                this.setFont(tile, text_infos[text].text_style);
-                text_infos[text].size = this.textSize(text, tile);
+                this.setFont(tile, text_style);
+                text_infos[text].size = this.textSize(text, tile, text_style.capitalized);
             }
         }
 
@@ -130,6 +178,8 @@ Object.assign(TextStyle, {
     },
 
     rasterize (tile, texts, texture_size) {
+        let pixel_scale = this.device_pixel_ratio;
+
         for (let style in texts) {
             let text_infos = texts[style];
 
@@ -137,13 +187,75 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style);
-                this.drawText(text, info.position, tile, info.text_style.stroke);
+                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.capitalized);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
-                    info.size,
+                    info.size.texture_text_size,
                     texture_size
                 );
+
+                if (!info.sub_texts) {
+                    continue;
+                }
+
+                let width = this.buffer;
+                let dists = [];
+                let space_size = info.size.split_size[' '];
+
+                for (let i = 0; i < info.sub_texts.length; ++i) {
+                    let sub_text = info.sub_texts[i];
+                    let split = sub_text.split(' ');
+
+                    dists[i] = width * pixel_scale;
+
+                    for (let j = 0; j < split.length; ++j) {
+                        let word = split[j];
+                        width += info.size.split_size[word];
+
+                        if (j !== split.length - 1) {
+                            width += space_size;
+                        }
+                    }
+
+                    if (i !== info.sub_texts.length - 1) {
+                        width += space_size;
+                    }
+                }
+
+                // sub-texts uv mapping
+                for (let i = 0; i < info.sub_texts.length; ++i) {
+                    let sub_text = info.sub_texts[i];
+
+                    if (!info.subtexcoords) {
+                        info.subtexcoords = {};
+                    }
+
+                    let offset = 0;
+
+                    if (i < info.sub_texts.length - 1) {
+                        offset = info.size.texture_text_size[0] - dists[i + 1];
+                    }
+
+                    let position = [
+                        info.position[0] + dists[i],
+                        info.position[1]
+                    ];
+
+                    let size = [
+                        (info.size.texture_text_size[0] - offset) - dists[i],
+                        info.size.texture_text_size[1]
+                    ];
+
+                    if (!info.subtext_size) {
+                        info.subtext_size = {};
+                    }
+                    info.subtext_size[sub_text] = size;
+
+                    info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
+                        position, size, texture_size
+                    );
+                }
             }
         }
     },
@@ -184,6 +296,106 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
+    subTextInfos (label_composite, text_info) {
+        if (!text_info.sub_texts) {
+            text_info.sub_texts = [];
+        }
+
+        for (let i in label_composite.labels) {
+            let label = label_composite.labels[i];
+            text_info.sub_texts.push(label.text);
+        }
+    },
+
+    createLabels (tile, texts) {
+        let labels_priorities = [];
+
+        for (let style in texts) {
+            let text_infos = texts[style];
+
+            for (let text in text_infos) {
+                let text_info = text_infos[text];
+                text_info.ref = 0;
+
+                for (let f = 0; f < this.features[tile][style][text].length; f++) {
+                    let feature = this.features[tile][style][text][f];
+                    let labels = LabelBuilder.labelsFromGeometry(
+                            feature.geometry,
+                            { text: text, size: text_info.size },
+                            this.label_style
+                    );
+
+                    for (let i = 0; i < labels.length; ++i) {
+                        let label = labels[i];
+                        let area = label.area;
+
+                        labels_priorities[text_info.priority] = labels_priorities[text_info.priority] || [];
+                        labels_priorities[text_info.priority].push({ style, feature, label, area });
+
+                        if (label.isComposite()) {
+                            this.subTextInfos(label, text_info);
+                        }
+                    }
+                }
+            }
+        }
+
+        // sort by area size if defined
+        for (let p = 0; p < labels_priorities.length; ++p) {
+            if (!labels_priorities[p]) {
+                continue;
+            }
+
+            labels_priorities[p].sort((e1, e2) => {
+                if (e1.area && e2.area) {
+                    return e1.area < e2.area;
+                } else {
+                    return false;
+                }
+            });
+        }
+
+        return labels_priorities;
+    },
+
+    discardLabels (tile, labels, texts) {
+        this.bboxes[tile] = [];
+
+        for (let priority = this.maxPriority; priority >= 0; priority--) {
+            if (!labels[priority]) {
+                continue;
+            }
+
+            for (let i = 0; i < labels[priority].length; i++) {
+                let { style, feature, label } = labels[priority][i];
+
+                if (!label.discard(this.bboxes[tile])) {
+                    if (!feature.labels) {
+                        feature.labels = [];
+                    }
+                    feature.labels.push(label);
+                    texts[style][label.text].ref++;
+                }
+            }
+        }
+
+        for (let style in texts) {
+            for (let text in texts[style]) {
+                if (texts[style][text].ref < 1) {
+                    delete texts[style][text];
+                }
+            }
+        }
+
+        for (let style in texts) {
+            let text_infos = texts[style];
+            // No labels for this style
+            if (Object.keys(text_infos).length === 0) {
+                delete texts[style];
+            }
+        }
+    },
+
     // Override
     endData (tile_data) {
         // Count collected text
@@ -199,54 +411,9 @@ Object.assign(TextStyle, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
-            this.bboxes[tile] = [];
+            let labels = this.createLabels(tile, texts);
 
-            // cleanup of texts that should be removed after occlusion test
-            for (let style in texts) {
-                let text_infos = texts[style];
-
-                for (let text in text_infos) {
-                    let text_info = text_infos[text];
-                    let label;
-                    let keep_in_tile;
-                    let move_in_tile;
-                    let geometry = this.texts[tile][style][text].geometry;
-                    let exceed_heuristic = this.label_style.lines.exceed;
-
-                    if (geometry.type === "LineString") {
-                        let lines = geometry.coordinates;
-                        let line = [lines[0]];
-
-                        keep_in_tile = true;
-                        move_in_tile = true;
-
-                        label = new Label(text, line[0], text_info.size, lines);
-                    } else if (geometry.type === "Point") {
-                        let points = [geometry.coordinates];
-
-                        keep_in_tile = true;
-                        move_in_tile = false;
-
-                        label = new Label(text, points[0], text_info.size);
-                    }
-                    else {
-                        // TODO: support MultiLineString, MultiPoint, Polygon, and MultiPolygon labels
-                        continue;
-                    }
-
-                    if (label.discard(move_in_tile, keep_in_tile, this.bboxes[tile], exceed_heuristic)) {
-                        // remove the text from the map
-                        delete text_infos[text];
-                    }
-
-                    text_info.label = label;
-                }
-
-                // No labels for this style
-                if (Object.keys(text_infos).length === 0) {
-                    delete texts[style];
-                }
-            }
+            this.discardLabels(tile, labels, texts);
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
@@ -276,9 +443,17 @@ Object.assign(TextStyle, {
     // Override to queue features instead of processing immediately
     addFeature (feature, rule, context, tile_data) {
         // Collect text
-        let text = feature.properties.name;
+        if (feature.properties.name) {
+            let text;
+            let source = rule.text_source || 'name';
 
-        if (text) {
+            if (typeof source === 'string') {
+                text = feature.properties[source];
+            } else if (typeof source === 'function') {
+                text = source(context);
+            }
+            feature.text = text;
+
             let tile = context.tile.key;
             if (!this.texts[tile]) {
                 this.texts[tile] = {};
@@ -299,10 +474,26 @@ Object.assign(TextStyle, {
                 this.texts[tile][style_key] = {};
             }
 
-            this.texts[tile][style_key][text] = {
-                text_style: style,
-                geometry: feature.geometry
-            };
+            let priority = 0;
+            if (this.label_style.priorities[feature.properties.kind]) {
+                priority = this.label_style.priorities[feature.properties.kind];
+            }
+
+            this.maxPriority = Math.max(priority, this.maxPriority);
+
+            if (!this.texts[tile][style_key][text]) {
+                this.texts[tile][style_key][text] = {
+                    text_style: style,
+                    priority: priority,
+                    ref: 0
+                };
+            }
+
+            this.features = this.features || {};
+            this.features[tile] = this.features[tile] || {};
+            this.features[tile][style_key] = this.features[tile][style_key] || {};
+            this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
+            this.features[tile][style_key][text].push(feature);
         }
 
         tile_data.queue.push([feature, rule, context, tile_data]);
@@ -313,36 +504,75 @@ Object.assign(TextStyle, {
 
         if (rule.font) {
             rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
-            rule.font.stroke = rule.font.stroke && StyleParser.parseColor(rule.font.stroke, context);
+
+            if (rule.font.stroke) {
+                let color = rule.font.stroke.color || rule.font.stroke;
+                rule.font.stroke = {
+                    color: StyleParser.parseColor(color, context),
+                    width: rule.font.stroke.width
+                };
+            }
 
             style = {
-                typeface: rule.font.typeface || this.font_style.typeface,
-                size: rule.font.size || this.font_style.size,
+                font: rule.font.typeface || this.font_style.typeface,
                 fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: !rule.font.stroke ? this.font_style.stroke : Utils.toCanvasColor(rule.font.stroke)
+                stroke: !rule.font.stroke.color ? this.font_style.stroke.color : Utils.toCanvasColor(rule.font.stroke.color),
+                stroke_width: rule.font.stroke.width || this.font_style.stroke.width,
+                capitalized: rule.font.capitalized || this.font_style.capitalized
             };
+
+            let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
+            let ft_size = style.font.match(size_regex)[0];
+            let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
+
+            style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
+            style.px_size = style.px_logical_size * this.device_pixel_ratio;
+            style.stroke_width *= this.device_pixel_ratio;
+            style.font = style.font.replace(size_regex, style.px_size + "px");
         }
 
         return style;
     },
 
-    constructStyleKey ({ typeface, size, fill, stroke }) {
-        return `${typeface}/${size}/${fill}/${stroke}`;
+    constructStyleKey ({ typeface, fill, stroke, stroke_width }) {
+        return `${typeface}/${fill}/${stroke}/${stroke_width}`;
+    },
+
+    buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
+        let angle = label.angle || 0;
+        Builders.buildSpriteQuadsForPoints(
+            [ label.position ],
+            Utils.scaleInt16(size[0], 256),
+            Utils.scaleInt16(size[1], 256),
+            Utils.scaleInt16(Utils.radToDeg(angle), 360),
+            Utils.scaleInt16(1, 256),
+            vertex_data,
+            vertex_template,
+            this.vertex_layout.index.a_shape,
+            {
+                texcoord_index: this.vertex_layout.index.a_texcoord,
+                texcoord_scale: texcoord_scale
+            }
+        );
     },
 
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
 
-        Builders.buildSpriteQuadsForPoints(
-            [ style.label.position ],
-            Utils.scaleInt16(style.label.size[0], 128), Utils.scaleInt16(style.label.size[1], 128),
-            Utils.scaleInt16(Utils.radToDeg(style.label.angle), 360),
-            Utils.scaleInt16(1, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
-            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-        );
+        for (let i in style.labels) {
+            let label = style.labels[i];
+
+            if (label.isComposite()) {
+                for (let j in label.labels) {
+                    let l = label.labels[j];
+                    let subtexcoord_scale = this.subtexcoord_scale[l.text];
+                    let size = this.subtext_size[l.text];
+                    this.buildLabel(l, size, vertex_data, vertex_template, subtexcoord_scale);
+                }
+            } else {
+                this.buildLabel(label, label.size.texture_text_size, vertex_data, vertex_template, this.texcoord_scale);
+            }
+        }
     },
 
     buildLines (lines, style, vertex_data) {
@@ -353,24 +583,29 @@ Object.assign(TextStyle, {
         this.build(style, vertex_data);
     },
 
+    buildPolygons (points, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
     _parseFeature (feature, rule_style, context) {
-        // debugger;
         // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
+        let text = feature.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
-        let text = feature.properties.name; // TODO: make configurable
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !text_info.label) {
+        if (!text_info || !feature.labels) {
             return;
         }
 
         this.texcoord_scale = text_info.texcoords;
+        this.subtexcoord_scale = text_info.subtexcoords;
+        this.subtext_size = text_info.subtext_size;
         style.text = text;
         style.tile = tile; // to store bbox by tiles
-        style.label = text_info.label;
+        style.labels = feature.labels;
 
         return style;
     }
