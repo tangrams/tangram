@@ -41,6 +41,12 @@ Here's an [example GeoJSON tile](http://vector.mapzen.com/osm/all/14/4826/6161.j
 
 The library also includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
 
+## Support
+
+For documentation, see the Tangram[ Documentation wiki](https://github.com/tangrams/tangram/wiki).
+
+For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
+
 ## Development
 
 If you'd like to contribute to the project or make changes to the source code for fun, you'll need to install development requirements and build the library:
