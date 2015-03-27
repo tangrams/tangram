@@ -154,25 +154,44 @@ StyleManager.loadShaderBlocks = function (styles) {
 
 // Update built-in style or create a new one
 StyleManager.update = function (name, settings) {
-    var base = Styles[settings.extends] || StyleManager.baseStyle;
+    // Determine which styles, if any, to extend and mixin
+    let extend = settings.extends;
+    let mixins = null;
+    if (Array.isArray(extend)) {
+        mixins = extend.slice(1);
+        extend = extend[0];
+    }
+
+    // Create or update style with base class
+    let base = Styles[extend] || StyleManager.baseStyle;
     Styles[name] = Styles[name] || Object.create(base);
-    if (Styles[settings.extends]) {
-        Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
+    let style = Styles[name];
+
+    // Copy properties
+    Object.assign(style, settings);
+
+    // Set 'super'
+    if (Styles[extend]) {
+        style.super = Styles[extend];
     }
 
-    for (var s in settings) {
-        Styles[name][s] = settings[s];
+    style.initialized = false;
+    style.defines = (base.defines && Object.create(base.defines)) || {};
+
+    if (mixins) {
+        style.animated = style.animated || mixins.some(n => Styles[n] && Styles[n].animated);
+        style.texcoords = style.texcoords || mixins.some(n => Styles[n] && Styles[n].texcoords);
     }
 
-    Styles[name].name = name;
-    Styles[name].initialized = false;
-    Styles[name].defines = (base.defines && Object.create(base.defines)) || {};
-
-    // Merge shaders: defines, uniforms, blocks
-    let shaders = {};
-    let merge = [base.shaders, settings.shaders]; // first merge base (inherited) style shaders
+    // List of shaders to merge, in order
+    let merge = [base.shaders]; // first merge base (inherited) style shaders
+    if (mixins) { // then merge mixin style shaders
+        merge.push(...mixins.map(n => Styles[n] && Styles[n].shaders));
+    }
+    merge.push(settings.shaders); // then merge this style instance's shaders
     merge = merge.filter(x => x); // remove null objects
 
+    let shaders = {};
     shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
     shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
 

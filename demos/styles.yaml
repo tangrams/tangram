@@ -243,6 +243,10 @@ styles:
                     //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
                     //color.rgb = texture2D(u_texture, uv).rgb;
 
+    multi:
+        extends: [popup, windows]
+        # extends: [elevator, breathe, wood, dots]
+
     # depth view
     depth:
         extends: polygons
@@ -464,6 +468,7 @@ layers:
         # filter: function () { return true; }
 
         style:
+            name: multi
             order: 250
             interactive: true
 
