@@ -518,7 +518,7 @@ layers:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    typeface: 10px Futura
+                    typeface: 11px Futura
                     # fill: [0.8, 0.7, 0.7]
                     # stroke: [.31, .33, .31]
                     fill: [0.9, 0.9, 0.9]
@@ -538,7 +538,7 @@ layers:
             # text_source: kind
             # text_source: function() { return (Math.random() * 100).toFixed(); }
             font:
-                typeface: Italic 12px Helvetica
+                typeface: 11px Helvetica
                 fill: [.9, .9, .1]
                 stroke: black
 
@@ -555,15 +555,11 @@ layers:
 
             interactive: true
 
-        # z17:
-        #     filter: { $zoom: { min: 17, max: 18 } }
-        #     style:
-        #         scale: 3
-
-        # z18:
-        #     filter: { $zoom: { min: 18 } }
-        #     style:
-        #         size: [64, 64] #px
+        z18:
+            filter: { $zoom: { min: 18 } }
+            style:
+                font:
+                    typeface: 12px Helvetica
 
         # examples of different icons mapped to feature properties
         restaurant:
@@ -589,8 +585,11 @@ layers:
             name: text
             visible: false
             order: 10
-            text_source: |
-                function() { return feature.height > 100 ? 'high' : 'low';  }
+            # text_source: |
+                # function() { return feature.height > 100 ? 'high' : 'low';  }
+            # text_source: height
+            # text_source: |
+            #     function() { return feature.height ? feature.height+'m' : ''; }
             font:
                 typeface: 12px Helvetica
                 fill: white
