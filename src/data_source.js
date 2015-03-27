@@ -20,8 +20,8 @@ export default class DataSource {
         switch (source.type) {
             case 'TopoJSONTileSource':
                 return new TopoJSONTileSource(source);
-            case 'MapboxFormatTileSource':
-                return new MapboxFormatTileSource(source);
+            case 'MVTSource':
+                return new MVTSource(source);
             case 'GeoJSONSource':
                 return new GeoJSONSource(source);
             case 'GeoJSONTileSource':
@@ -265,11 +265,11 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
 /*** Mapbox vector tiles ***/
 
-export class MapboxFormatTileSource extends NetworkTileSource {
+export class MVTSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
-        this.type = 'MapboxFormatTileSource';
+        this.type = 'MVTSource';
         this.response_type = "arraybuffer"; // binary data
         this.Protobuf = require('pbf');
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib
