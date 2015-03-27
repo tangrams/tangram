@@ -10,7 +10,7 @@ import {
     NetworkTileSource,
     GeoJSONTileSource,
     TopoJSONTileSource,
-    MapboxFormatTileSource
+    MVTSource
 } from '../src/data_source';
 
 import Utils from '../src/utils/utils';
@@ -81,10 +81,10 @@ describe('DataSource', () => {
             });
         });
 
-        describe('when I ask for a MapboxFormatTileSource', () => {
-            let subject = DataSource.create(_.merge({type: 'MapboxFormatTileSource'}, options));
-            it('returns a new MapboxFormatTileSource', () => {
-                assert.instanceOf(subject, MapboxFormatTileSource);
+        describe('when I ask for a MVTSource', () => {
+            let subject = DataSource.create(_.merge({type: 'MVTSource'}, options));
+            it('returns a new MVTSource', () => {
+                assert.instanceOf(subject, MVTSource);
             });
         });
     });
@@ -247,17 +247,17 @@ describe('DataSource', () => {
         });
     });
 
-    describe('MapboxFormatTileSource', () => {
+    describe('MVTSource', () => {
         let subject;
 //            tile   = getMockTile();
 
         beforeEach(() => {
-            subject = new MapboxFormatTileSource(options);
+            subject = new MVTSource(options);
         });
 
         describe('.constructor()', () => {
             it('returns a new instance', () => {
-                assert.instanceOf(subject, MapboxFormatTileSource);
+                assert.instanceOf(subject, MVTSource);
             });
         });
 

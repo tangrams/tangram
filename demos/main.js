@@ -5,7 +5,11 @@
     'use strict';
 
     var tile_sources = {
-        mapzen: {
+        'mapzen': {
+            type: 'MVTSource',
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+        },
+        'mapzen-geojson': {
             type: 'GeoJSONTileSource',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
@@ -16,14 +20,6 @@
         'mapzen-local': {
             type: 'GeoJSONTileSource',
             url: window.location.protocol + '//localhost:8080/all/{z}/{x}/{y}.json'
-        },
-        'mapzen-mvt': {
-            type: 'MapboxFormatTileSource',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
-        },
-        'mapzen-dev-mvt': {
-            type: 'MapboxFormatTileSource',
-            url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
         'mapzen-topojson': {
             type: 'TopoJSONTileSource',
@@ -36,21 +32,20 @@
         // },
 
         'mapbox': {
-            type: 'MapboxFormatTileSource',
+            type: 'MVTSource',
             url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }
 
     },
-        default_tile_source = 'mapzen',
-        scene_url = 'demos/styles.yaml',
-        osm_debug = false,
-        locations = {
-            'London': [51.508, -0.105, 15],
-            'New York': [40.70531887544228, -74.00976419448853, 16],
-            'Seattle': [47.609722, -122.333056, 15]
-        }, rS, url_hash, map_start_location, url_ui, url_style;
-
+    default_tile_source = 'mapzen',
+    scene_url = 'demos/styles.yaml',
+    osm_debug = false,
+    locations = {
+        'London': [51.508, -0.105, 15],
+        'New York': [40.70531887544228, -74.00976419448853, 16],
+        'Seattle': [47.609722, -122.333056, 15]
+    }, rS, url_hash, map_start_location, url_ui, url_style;
 
 
     getValuesFromUrl();
