@@ -12,64 +12,49 @@
 
         "layers": {
             "earth": {
-                "geometry": {
-                    "source": "osm",
-                    "filter": "earth",
-                    "order": 0
+                "data": {
+                    "source": "osm"
                 },
                 "style": {
-                    "color": {
-                        "default": [0.175, 0.175, 0.175]
-                    }
+                    "color": [0.175, 0.175, 0.175],
+                    "order": 0
                 }
             },
             "landuse": {
-                "geometry": {
-                    "source": "osm",
-                    "filter": "landuse",
-                    "order": 1
+                "data": {
+                    "source": "osm"
                 },
                 "style": {
-                    "color": {
-                        "default": [0.5, 0.875, 0.5]
-                    }
+                    "color": [0.5, 0.875, 0.5],
+                    "order": 1
                 }
             },
             "water": {
-                "geometry": {
-                    "source": "osm",
-                    "filter": "water",
-                    "order": 2
+                "data": {
+                    "source": "osm"
                 },
                 "style": {
-                    "color": {
-                        "default": [0.5, 0.5, 0.875]
-                    }
+                    "color": [0.5, 0.5, 0.875],
+                    "order": 2
                 }
             },
             "roads": {
-                "geometry": {
-                    "source": "osm",
-                    "filter": "roads",
-                    "order": 3
+                "data": {
+                    "source": "osm"
                 },
                 "style": {
-                    "color": {
-                        "default": [0.4, 0.4, 0.4]
-                    }
+                    "color": [0.4, 0.4, 0.4],
+                    "order": 3
                 }
             },
             "buildings": {
-                "geometry": {
-                    "source": "osm",
-                    "filter": "buildings",
-                    "order": 4
+                "data": {
+                    "source": "osm"
                 },
                 "style": {
                     "name": "rainbow",
-                    "color": {
-                        "default": [0.6, 0.6, 0.6]
-                    }
+                    "color": [0.6, 0.6, 0.6],
+                    "order": 4
                 }
             }
         },

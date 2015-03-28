@@ -199,7 +199,7 @@ StyleManager.update = function (name, settings) {
 
 // Called to create or update styles from stylesheet
 
-StyleManager.build = function (styles, scene) {
+StyleManager.build = function (styles, scene = {}) {
     // Sort styles by dependency, then build them
     let style_deps = Object.keys(styles).sort((a, b) => StyleManager.dependsOn(a, b, styles));
     for (let sname of style_deps) {
