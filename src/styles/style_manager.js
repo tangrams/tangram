@@ -201,7 +201,10 @@ StyleManager.update = function (name, settings) {
 
 StyleManager.build = function (styles, scene = {}) {
     // Sort styles by dependency, then build them
-    let style_deps = Object.keys(styles).sort((a, b) => StyleManager.dependsOn(a, b, styles));
+    let style_deps = Object.keys(styles).sort(
+        (a, b) => StyleManager.inheritanceDepth(a, styles) - StyleManager.inheritanceDepth(b, styles)
+    );
+
     for (let sname of style_deps) {
         Styles[sname] = StyleManager.update(sname, styles[sname]);
     }
@@ -218,33 +221,31 @@ StyleManager.initStyles = function (scene) {
     }
 };
 
-// Given a set of styles to build, does style name A depend on style name B?
-StyleManager.dependsOn = function (a, b, styles) {
-    let as = { key: a, parents: 0 };
-    let bs = { key: b, parents: 0 };
+// Given a style key in a set of styles to add, count the length of the inheritance chain
+// TODO: remove current (Styles) and future (styles) duplication, confusing
+StyleManager.inheritanceDepth = function (key, styles) {
+    let parents = 0;
 
-    // For each style, count the length of the inheritance chain
-    for (let s of [as, bs]) {
-        let k = s.key;
-        while(true) {
-            // Find style either in existing instances, or stylesheet
-            let style = Styles[k] || styles[k];
-            if (!style) {
-                break; // this is a scene def error, trying to extend a style that doesn't exist
-            }
-
-            // The end of the inheritance chain:
-            // a built-in style that doesn't extend another built-in style
-            if (!style.extends && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
-                break;
-            }
-
-            // Traverse next parent style
-            s.parents++;
-            k = style.extends;
+    while(true) {
+        // Find style either in existing instances, or stylesheet
+        let style = Styles[key] || styles[key];
+        if (!style) {
+            // this is a scene def error, trying to extend a style that doesn't exist
+            // TODO: warn/throw?
+            break;
         }
+
+        // The end of the inheritance chain:
+        // a built-in style that doesn't extend another built-in style
+        if (!style.extends && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
+            break;
+        }
+
+        // Traverse next parent style
+        parents++;
+        key = style.extends;
     }
-    return as.parents - bs.parents;
+    return parents;
 };
 
 // Compile all styles
