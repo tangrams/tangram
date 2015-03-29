@@ -166,7 +166,7 @@ StyleManager.update = function (name, settings) {
 
     Styles[name].name = name;
     Styles[name].initialized = false;
-    Styles[name].defines = (base.defines && Object.create(base.defines)) || {};
+    Styles[name].defines = Object.assign({}, base.defines||{}, settings.defines||{});
 
     // Merge shaders: defines, uniforms, blocks
     let shaders = {};
