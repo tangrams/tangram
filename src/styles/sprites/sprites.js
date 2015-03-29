@@ -48,7 +48,8 @@ Object.assign(Sprites, {
         style.sprite = rule_style.sprite;
 
         // sprite style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context, false);
+        style.size = rule_style.size || [32, 32];
+        style.size = StyleParser.parseDistance(style.size, context, false);
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [
