@@ -5,6 +5,7 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Utils from '../../utils/utils';
 
 export var Points = Object.create(Style);
 
@@ -76,6 +77,19 @@ Object.assign(Points, {
             { texcoord_index: this.vertex_layout.index.a_texcoord }
         );
 
+    },
+
+    buildPolygons(polygons, style, vertex_data) {
+        // Render polygons as centroids
+        let centroid = Utils.multiCentroid(polygons);
+        this.buildPoints([centroid], style, vertex_data);
+    },
+
+    buildLines(lines, style, vertex_data) {
+        // Render lines as individual points
+        for (let ln=0; ln < lines.length; ln++) {
+            this.buildPoints(lines[ln], style, vertex_data);
+        }
     }
 
 });
