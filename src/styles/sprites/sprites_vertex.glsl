@@ -14,7 +14,6 @@ uniform mat4 u_modelView;
 attribute vec3 a_position;
 attribute vec4 a_shape;
 attribute vec2 a_texcoord;
-attribute float a_layer;
 
 varying vec2 v_texcoord;
 
@@ -50,8 +49,6 @@ void main() {
     vec4 position = u_modelView * vec4(a_position, 1.);
     vec4 shape = a_shape;
 
-    // TODO: legacy, replace in existing styles
-    // #pragma tangram: vertex
     #pragma tangram: position
 
     cameraProjection(position);

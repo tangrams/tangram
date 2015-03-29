@@ -30,8 +30,7 @@ Object.assign(Sprites, {
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false }, // TODO: pack into shorts
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false } // TODO: pack into shorts
         ];
         this.vertex_layout = new VertexLayout(attribs);
 
@@ -93,9 +92,7 @@ Object.assign(Sprites, {
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // texture coords
-            0, 0,
-            // draw order
-            style.order
+            0, 0
         ];
 
         return template;
