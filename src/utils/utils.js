@@ -380,7 +380,7 @@ Utils.polygonArea = function (polygon) {
 Utils.multiPolygonArea = function (polygons) {
     let area = 0;
 
-    for (let p=0; p < polygon.length; p++) {
+    for (let p=0; p < polygons.length; p++) {
         let polygon = polygons[p][0];
         area += Utils.polygonArea(polygon);
     }
