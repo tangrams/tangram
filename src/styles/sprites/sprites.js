@@ -122,6 +122,19 @@ Object.assign(Sprites, {
             this.vertex_layout.index.a_shape,
             { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
+    },
+
+    buildPolygons(polygons, style, vertex_data) {
+        // Render polygons as centroids
+        let centroid = Utils.multiCentroid(polygons);
+        this.buildPoints([centroid], style, vertex_data);
+    },
+
+    buildLines(lines, style, vertex_data) {
+        // Render lines as individual points
+        for (let ln=0; ln < lines.length; ln++) {
+            this.buildPoints(lines[ln], style, vertex_data);
+        }
     }
 
 });
