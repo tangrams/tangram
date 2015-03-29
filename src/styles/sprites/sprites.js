@@ -44,7 +44,11 @@ Object.assign(Sprites, {
         let tile = context.tile.key;
 
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+
         style.sprite = rule_style.sprite;
+        if (typeof style.sprite === 'function') {
+            style.sprite = style.sprite(context);
+        }
 
         // sprite style only supports sizes in pixel units, so unit conversion flag is off
         style.size = rule_style.size || [32, 32];
