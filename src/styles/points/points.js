@@ -12,6 +12,8 @@ export var Points = Object.create(Style);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+    selection: true,
+    blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init() {
         Style.init.apply(this, arguments);
@@ -20,16 +22,12 @@ Object.assign(Points, {
         this.vertex_shader_key = 'styles/points/points.vertex';
         this.fragment_shader_key = 'styles/points/points.fragment';
 
-        // Turn feature selection on
-        this.selection = true;
-
         // Vertex attributes
         this.vertex_layout = new VertexLayout([
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ]);
     },
 
@@ -55,9 +53,7 @@ Object.assign(Points, {
             // TODO: automate multiplication for normalized attribs?
             style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
             // selection color
-            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // draw order
-            style.order
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255
         ];
     },
 
