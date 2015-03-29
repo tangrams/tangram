@@ -262,6 +262,13 @@ StyleManager.inheritanceDepth = function (key, styles) {
 
         // Traverse next parent style
         parents++;
+
+        if (Array.isArray(style.extends)) {
+            // If multiple parents (base + mixins), find the deepest parent
+            parents += Math.max(...style.extends.map(s => StyleManager.inheritanceDepth(s, styles)));
+            break;
+        }
+        // If single base parent, continue loop up the parent tree
         key = style.extends;
     }
     return parents;
