@@ -30,8 +30,7 @@ Object.assign(Sprites, {
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false }, // TODO: pack into shorts
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false } // TODO: pack into shorts
         ];
         this.vertex_layout = new VertexLayout(attribs);
 
@@ -45,10 +44,15 @@ Object.assign(Sprites, {
         let tile = context.tile.key;
 
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+
         style.sprite = rule_style.sprite;
+        if (typeof style.sprite === 'function') {
+            style.sprite = style.sprite(context);
+        }
 
         // sprite style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context, false);
+        style.size = rule_style.size || [32, 32];
+        style.size = StyleParser.parseDistance(style.size, context, false);
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [
@@ -92,9 +96,7 @@ Object.assign(Sprites, {
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // texture coords
-            0, 0,
-            // draw order
-            style.order
+            0, 0
         ];
 
         return template;
@@ -121,6 +123,19 @@ Object.assign(Sprites, {
             this.vertex_layout.index.a_shape,
             { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
         );
+    },
+
+    buildPolygons(polygons, style, vertex_data) {
+        // Render polygons as centroids
+        let centroid = Utils.multiCentroid(polygons);
+        this.buildPoints([centroid], style, vertex_data);
+    },
+
+    buildLines(lines, style, vertex_data) {
+        // Render lines as individual points
+        for (let ln=0; ln < lines.length; ln++) {
+            this.buildPoints(lines[ln], style, vertex_data);
+        }
     }
 
 });

@@ -5,12 +5,15 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Utils from '../../utils/utils';
 
 export var Points = Object.create(Style);
 
 Object.assign(Points, {
     name: 'points',
     built_in: true,
+    selection: true,
+    blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init() {
         Style.init.apply(this, arguments);
@@ -19,16 +22,12 @@ Object.assign(Points, {
         this.vertex_shader_key = 'styles/points/points.vertex';
         this.fragment_shader_key = 'styles/points/points.fragment';
 
-        // Turn feature selection on
-        this.selection = true;
-
         // Vertex attributes
         this.vertex_layout = new VertexLayout([
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ]);
     },
 
@@ -54,9 +53,7 @@ Object.assign(Points, {
             // TODO: automate multiplication for normalized attribs?
             style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
             // selection color
-            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // draw order
-            style.order
+            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255
         ];
     },
 
@@ -76,6 +73,19 @@ Object.assign(Points, {
             { texcoord_index: this.vertex_layout.index.a_texcoord }
         );
 
+    },
+
+    buildPolygons(polygons, style, vertex_data) {
+        // Render polygons as centroids
+        let centroid = Utils.multiCentroid(polygons);
+        this.buildPoints([centroid], style, vertex_data);
+    },
+
+    buildLines(lines, style, vertex_data) {
+        // Render lines as individual points
+        for (let ln=0; ln < lines.length; ln++) {
+            this.buildPoints(lines[ln], style, vertex_data);
+        }
     }
 
 });

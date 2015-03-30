@@ -1,10 +1,8 @@
 uniform mat4 u_modelView;
-// uniform float u_num_layers;
 
 attribute vec3 a_position;
 attribute vec2 a_texcoord;
 attribute vec4 a_color;
-attribute float a_layer;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -31,18 +29,12 @@ void main() {
 
     vec4 position = u_modelView * vec4(a_position, 1.);
 
-    // TODO: legacy, replace in existing styles
-    // #pragma tangram: vertex
     #pragma tangram: position
 
     v_color = a_color;
     v_texcoord = a_texcoord;
 
     cameraProjection(position);
-
-    // Re-orders depth so that higher numbered layers are "force"-drawn over lower ones
-    // reorderLayers(a_layer, u_num_layers, position);
-    applyLayerOrder(a_layer, position);
 
     gl_Position = position;
 }

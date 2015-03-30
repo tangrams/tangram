@@ -176,7 +176,7 @@ StyleManager.update = function (name, settings) {
     }
 
     style.initialized = false;
-    style.defines = (base.defines && Object.create(base.defines)) || {};
+    style.defines = Object.assign({}, base.defines||{}, settings.defines||{});
 
     if (mixins) {
         style.animated = style.animated || mixins.some(n => Styles[n] && Styles[n].animated);

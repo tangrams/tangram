@@ -184,8 +184,12 @@ styles:
 
     points:
         shaders:
+            defines:
+                FADE_RANGE: .4
             blocks:
-                color: color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+                color:
+                    color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
+                    color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
         extends: sprites
