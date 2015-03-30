@@ -43,11 +43,6 @@ varying vec4 v_world_position;
     }
 #endif
 
-#if defined(FEATURE_SELECTION)
-    attribute vec4 a_selection_color;
-    varying vec4 v_selection_color;
-#endif
-
 #if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
@@ -58,17 +53,8 @@ varying vec4 v_world_position;
 #pragma tangram: lighting
 
 void main() {
-    // Selection pass-specific rendering
-    #if defined(FEATURE_SELECTION)
-        if (a_selection_color.rgb == vec3(0.)) {
-            // Discard by forcing invalid triangle if we're in the feature
-            // selection pass but have no selection info
-            // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
-            gl_Position = vec4(0., 0., 0., 1.);
-            return;
-        }
-        v_selection_color = a_selection_color;
-    #endif
+    // Adds vertex shader support for feature selection
+    #pragma tangram: feature-selection-vertex
 
     // Texture UVs
     #if defined(TEXTURE_COORDS)

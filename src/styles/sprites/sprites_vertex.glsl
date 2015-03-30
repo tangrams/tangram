@@ -17,11 +17,6 @@ attribute vec2 a_texcoord;
 
 varying vec2 v_texcoord;
 
-#if defined(FEATURE_SELECTION)
-    attribute vec4 a_selection_color;
-    varying vec4 v_selection_color;
-#endif
-
 #pragma tangram: globals
 #pragma tangram: camera
 
@@ -31,17 +26,8 @@ vec2 rotate2D(vec2 _st, float _angle) {
 }
 
 void main() {
-    // Selection pass-specific rendering
-    #if defined(FEATURE_SELECTION)
-        if (a_selection_color.rgb == vec3(0.)) {
-            // Discard by forcing invalid triangle if we're in the feature
-            // selection pass but have no selection info
-            // TODO: in some cases we may actually want non-selectable features to occlude selectable ones?
-            gl_Position = vec4(0., 0., 0., 1.);
-            return;
-        }
-        v_selection_color = a_selection_color;
-    #endif
+    // Adds vertex shader support for feature selection
+    #pragma tangram: feature-selection-vertex
 
     v_texcoord = a_texcoord;
 
