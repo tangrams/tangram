@@ -129,9 +129,13 @@ export default class ShaderProgram {
 
         // Build & inject defines
         // This is done *after* code injection so that we can add defines for which code points were injected
-        var define_str = ShaderProgram.buildDefineString(defines);
-        this.computed_vertex_source = define_str + this.computed_vertex_source;
-        this.computed_fragment_source = define_str + this.computed_fragment_source;
+        defines['TANGRAM_VERTEX_SHADER'] = true;
+        defines['TANGRAM_FRAGMENT_SHADER'] = false;
+        this.computed_vertex_source = ShaderProgram.buildDefineString(defines) + this.computed_vertex_source;
+
+        defines['TANGRAM_VERTEX_SHADER'] = false;
+        defines['TANGRAM_FRAGMENT_SHADER'] = true;
+        this.computed_fragment_source = ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
 
         // Detect uniform definitions, inject any missing ones
         this.ensureUniforms(this.dependent_uniforms);
