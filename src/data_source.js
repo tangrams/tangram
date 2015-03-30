@@ -17,17 +17,8 @@ export default class DataSource {
 
     // Create a tile source by type, factory-style
     static create (source) {
-        switch (source.type) {
-            case 'TopoJSONTileSource':
-                return new TopoJSONTileSource(source);
-            case 'MVTSource':
-                return new MVTSource(source);
-            case 'GeoJSONSource':
-                return new GeoJSONSource(source);
-            case 'GeoJSONTileSource':
-            /* falls through */
-            default:
-                return new GeoJSONTileSource(source);
+        if (DataSource.types[source.type]) {
+            return new DataSource.types[source.type](source);
         }
     }
 
@@ -74,7 +65,19 @@ export default class DataSource {
     }
 
     load(dest) { throw new MethodNotImplemented('load'); }
+
+    // Register a new data source type
+    static register(type_class) {
+        if (!type_class || !type_class.type) {
+            return;
+        }
+
+        DataSource.types[type_class.type] = type_class;
+    }
+
 }
+
+DataSource.types = {}; // set of supported data source classes, referenced by type name
 
 
 /*** Generic network loading source - abstract class ***/
@@ -171,11 +174,6 @@ export class NetworkTileSource extends NetworkSource {
 
 export class GeoJSONSource extends NetworkSource {
 
-    constructor (source) {
-        super(source);
-        this.type = 'GeoJSONSource';
-    }
-
     formatUrl (dest) {
         return this.url;
     }
@@ -186,17 +184,15 @@ export class GeoJSONSource extends NetworkSource {
     }
 }
 
+GeoJSONSource.type = 'GeoJSONSource';
+DataSource.register(GeoJSONSource);
+
 
 /**
  Mapzen/OSM.US-style GeoJSON vector tiles
  @class GeoJSONTileSource
 */
 export class GeoJSONTileSource extends NetworkTileSource {
-
-    constructor (source) {
-        super(source);
-        this.type = 'GeoJSONTileSource';
-    }
 
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
@@ -214,13 +210,15 @@ export class GeoJSONTileSource extends NetworkTileSource {
     }
 }
 
+GeoJSONSource.type = 'GeoJSONTileSource';
+DataSource.register(GeoJSONTileSource);
+
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
 export class TopoJSONTileSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
-        this.type = 'TopoJSONTileSource';
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
@@ -262,6 +260,10 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
 }
 
+TopoJSONTileSource.type = 'TopoJSONTileSource';
+DataSource.register(TopoJSONTileSource);
+
+
 
 /*** Mapbox vector tiles ***/
 
@@ -269,7 +271,6 @@ export class MVTSource extends NetworkTileSource {
 
     constructor (source) {
         super(source);
-        this.type = 'MVTSource';
         this.response_type = "arraybuffer"; // binary data
         this.Protobuf = require('pbf');
         this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib
@@ -364,3 +365,5 @@ export class MVTSource extends NetworkTileSource {
 
 }
 
+MVTSource.type = 'MVTSource';
+DataSource.register(MVTSource);
