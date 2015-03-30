@@ -119,7 +119,7 @@ export default class ShaderProgram {
             }
 
             // Add a #define for this injection point
-            defines['TANGRAM_BLOCK_' + key.replace(' ', '_').toUpperCase()] = true;
+            defines['TANGRAM_BLOCK_' + key.replace(/[\s-]+/g, '_').toUpperCase()] = true;
         }
 
         // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
