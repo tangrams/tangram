@@ -603,12 +603,18 @@ layers:
                 fill: white
                 stroke: black
 
-        high:
-            filter: function() { return feature.height > 100; }
-            style:
-                font:
-                    fill: red
-                    stroke: white
+        filter:
+            any:
+                - { $zoom: { min: 18 } }
+                # - { height: { min: 100 } }
+                - function() { return feature.height > ((17 - zoom) * 100); }
+
+        # high:
+        #     filter: { height: { min: 100 } }
+        #     style:
+        #         font:
+        #             fill: red
+        #             stroke: white
 
     places:
         data: { source: osm }
