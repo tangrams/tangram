@@ -84,7 +84,7 @@ export default class Material {
         if (this.normal && this.normal.texture) {
             style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE'] = true;
             style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_' + this.normal.mapping.toUpperCase()] = true;
-            style.defines[`TANGRAM_MATERIAL_TEXTURE_${this[prop].mapping.toUpperCase()}`] = true;
+            style.defines[`TANGRAM_MATERIAL_TEXTURE_${this.normal.mapping.toUpperCase()}`] = true;
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 
