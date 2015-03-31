@@ -5,6 +5,7 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
 // uniform float u_order_min;
 // uniform float u_order_range;
 

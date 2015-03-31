@@ -639,6 +639,7 @@ export default class Scene {
                     program.uniform('1f', 'u_order_min', this.order.min);
                     program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                    program.uniform('1f', 'u_device_pixel_ratio', this.device_pixel_ratio);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
