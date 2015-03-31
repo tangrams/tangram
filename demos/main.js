@@ -436,12 +436,15 @@
             },
             'colorhalftone': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-                    scene.config.layers.water.style.name = style;
-                    scene.config.layers.landuse.style.name = style;
-                    scene.config.layers.earth.style.name = style;
+                    var layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
+                    layers.forEach(function(l) {
+                        scene.config.layers[l].style.name = style;
+                    });
 
-                    // scene.config.layers.pois.style.visible = false;
+                    Object.keys(scene.config.layers).forEach(function(l) {
+                        if (layers.indexOf(l) === -1)
+                        scene.config.layers[l].style.visible = false;
+                    });
 
                     this.state.dot_frequency = this.uniforms().dot_frequency;
                     this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
@@ -466,12 +469,15 @@
                 setup: function (style) {
                     scene.config.background.color = 'black';
 
-                    Object.keys(scene.config.layers).forEach(function(l) {
+                    var layers = ['landuse', 'water', 'roads', 'buildings'];
+                    layers.forEach(function(l) {
                         scene.config.layers[l].style.name = style;
                     });
 
-                    scene.config.layers.earth.style.visible = false;
-                    // scene.config.layers.pois.style.visible = false;
+                    Object.keys(scene.config.layers).forEach(function(l) {
+                        if (layers.indexOf(l) === -1)
+                        scene.config.layers[l].style.visible = false;
+                    });
                 }
             },
             'windows': {
