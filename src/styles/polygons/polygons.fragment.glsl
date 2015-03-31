@@ -1,6 +1,7 @@
 uniform vec2 u_resolution;
 uniform vec2 u_aspect;
 uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
 uniform float u_time;
 uniform float u_map_zoom;
 uniform vec2 u_map_center;
@@ -63,9 +64,6 @@ void main (void) {
 
     // Modify color after lighting (filter-like effects that don't require a additional render passes)
     #pragma tangram: filter
-
-    // TODO: legacy, replace in existing styles
-    // #pragma tangram: fragment
 
     gl_FragColor = color;
 }

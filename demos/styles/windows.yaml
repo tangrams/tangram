@@ -2,9 +2,10 @@ windows:
     extends: polygons
     animated: true
 
-    # material:
-    #     emission: 0
-    lighting: false
+    material:
+        emission: 0
+        diffuse: 1
+    # lighting: false
 
     shaders:
         uniforms:
@@ -39,8 +40,7 @@ windows:
 
                     return o4.y * d.y + o4.x * (1.0 - d.y);
                 }
-            # fragment: |
-            # filter: |
+
             color: |
                 vec3 vPos = v_world_position.xyz / u_frequency;
                 vec3 mask = mix(vec3(0.0), vec3(1.0), step(fract(mod(vPos, .9)), vec3(.4, .4, .6)));
@@ -61,14 +61,7 @@ windows:
                         float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
                         color.rgb = u_windowColor * noiseColor;
 
-                        //g_material.emission.rgb = color.rgb;
-                        //g_material.ambient = vec4(0.);
-                        //g_material.diffuse = vec4(0.);
+                        material.emission.rgb = color.rgb;
+                        material.diffuse = vec4(0.);
                     }
-
-                    //g_material.emission.rgb = color.rgb;
-                    //g_material.diffuse = vec4(0.);
                 }
-
-                //g_material.emission.rgb = color.rgb;
-                //color = vec4(0.);

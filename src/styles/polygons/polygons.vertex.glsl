@@ -5,6 +5,7 @@ uniform float u_map_zoom;
 uniform vec2 u_map_center;
 uniform vec2 u_tile_origin;
 uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
 // uniform float u_order_min;
 // uniform float u_order_range;
 
@@ -70,15 +71,15 @@ void main() {
     // Position
     vec4 position = u_modelView * vec4(a_position, 1.);
 
-    // TODO: legacy, replace in existing styles
-    // #pragma tangram: vertex
+    // Modify position before camera projection
     #pragma tangram: position
 
+    // Setup varyings
     v_position = position;
     v_normal = normalize(u_normalMatrix * a_normal);
     v_color = a_color;
 
-    // Shading
+    // Vertex lighting
     #if defined(TANGRAM_LIGHTING_VERTEX)
         vec4 color = a_color;
         vec3 normal = a_normal;

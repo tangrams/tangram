@@ -1,3 +1,11 @@
+/*
+
+Expected globals:
+material
+light_accumulator_*
+
+*/
+
 struct PointLight {
     vec4 ambient;
     vec4 diffuse;
@@ -72,11 +80,11 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
         #endif
     #endif
 
-    // Acummulators compute
-    g_light_accumulator_ambient += _light.ambient * attenuation;
+    // Computer accumulators
+    light_accumulator_ambient += _light.ambient * attenuation;
 
     #ifdef TANGRAM_MATERIAL_DIFFUSE
-        g_light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
+        light_accumulator_diffuse += _light.diffuse * nDotVP * attenuation;
     #endif
 
     #ifdef TANGRAM_MATERIAL_SPECULAR
@@ -84,9 +92,9 @@ void calculateLight(in PointLight _light, in vec3 _eyeToPoint, in vec3 _normal) 
         if (nDotVP > 0.0) {
             vec3 reflectVector = reflect(-VP, _normal);
             float eyeDotR = max(0.0, dot(-normalize(_eyeToPoint), reflectVector));
-            pf = pow(eyeDotR, g_material.shininess);
+            pf = pow(eyeDotR, material.shininess);
         }
 
-        g_light_accumulator_specular += _light.specular * pf * attenuation;
+        light_accumulator_specular += _light.specular * pf * attenuation;
     #endif
 }
