@@ -71,43 +71,53 @@ vec4 g_light_accumulator_diffuse = vec4(0.0);
     vec4 g_light_accumulator_specular = vec4(0.0);
 #endif
 
-vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal, in vec2 _skew ) {
+
+#ifdef TANGRAM_MATERIAL_TEXTURE_SPHEREMAP
+vec4 getSphereMap (in sampler2D _tex, in vec3 _eyeToPoint, in vec3 _normal, in vec2 _skew) {
     vec3 eye = normalize(_eyeToPoint);
     eye.xy -= _skew;
     eye = normalize(eye);
 
-    vec3 r = reflect( eye, _normal );
+    vec3 r = reflect(eye, _normal);
     r.z += 1.0;
     float m = 2. * length(r);
     vec2 uv = r.xy / m + .5;
     return texture2D(_tex, uv);
 }
+#endif
 
-vec3 getTriPlanarBlend ( in vec3 _normal ) {
-    vec3 blending = abs( _normal );
+
+#ifdef TANGRAM_MATERIAL_TEXTURE_TRIPLANAR
+vec3 getTriPlanarBlend (in vec3 _normal) {
+    vec3 blending = abs(_normal);
     blending = normalize(max(blending, 0.00001));
     float b = (blending.x + blending.y + blending.z);
     return blending / b;
 }
 
-vec4 getTriPlanar ( in sampler2D _tex, in vec3 _pos, in vec3 _normal, in vec3 _scale) {
+vec4 getTriPlanar (in sampler2D _tex, in vec3 _pos, in vec3 _normal, in vec3 _scale) {
     vec3 blending = getTriPlanarBlend(_normal);
-    vec4 xaxis = texture2D( _tex, fract(_pos.yz * _scale.x) );
-    vec4 yaxis = texture2D( _tex, fract(_pos.xz * _scale.y) );
-    vec4 zaxis = texture2D( _tex, fract(_pos.xy * _scale.z) );
+    vec4 xaxis = texture2D(_tex, fract(_pos.yz * _scale.x));
+    vec4 yaxis = texture2D(_tex, fract(_pos.xz * _scale.y));
+    vec4 zaxis = texture2D(_tex, fract(_pos.xy * _scale.z));
     return  xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
 }
+#endif
 
-vec4 getPlanar ( in sampler2D _tex, in vec3 _pos, in vec2 _scale) {
+
+#ifdef TANGRAM_MATERIAL_TEXTURE_PLANAR
+vec4 getPlanar (in sampler2D _tex, in vec3 _pos, in vec2 _scale) {
     return texture2D( _tex, fract(_pos.xy * _scale.x) );
 }
+#endif
+
 
 #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
-void calculateNormal ( inout vec3 _normal ) {
+void calculateNormal (inout vec3 _normal) {
     // Get NORMALMAP
     //------------------------------------------------
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_UV
-    _normal += texture2D(u_material_normal_texture, fract(v_texcoord*g_material.normalScale.xy) ).rgb*2.0-1.0;
+    _normal += texture2D(u_material_normal_texture, fract(v_texcoord*g_material.normalScale.xy)).rgb*2.0-1.0;
     #endif
 
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE_PLANAR
