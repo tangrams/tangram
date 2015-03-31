@@ -69,10 +69,6 @@ StyleManager.remove = function (name) {
 
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
 StyleManager.preload = function (styles) {
-    if (!styles) {
-        return Promise.resolve();
-    }
-
     // First load remote styles, then load shader blocks from remote URLs
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadShaderBlocks);
 };

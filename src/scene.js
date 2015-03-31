@@ -1106,6 +1106,7 @@ export default class Scene {
         }
 
         this.config.lights = this.config.lights || {}; // ensure lights object
+        this.config.styles = this.config.styles || {}; // ensure styles object
 
         return StyleManager.preload(this.config.styles);
     }
