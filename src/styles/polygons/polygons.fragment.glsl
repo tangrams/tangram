@@ -65,8 +65,5 @@ void main (void) {
     // Modify color after lighting (filter-like effects that don't require a additional render passes)
     #pragma tangram: filter
 
-    // TODO: legacy, replace in existing styles
-    // #pragma tangram: fragment
-
     gl_FragColor = color;
 }
