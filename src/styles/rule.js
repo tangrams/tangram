@@ -12,8 +12,10 @@ function cacheKey (rules) {
 export function mergeTrees(matchingTrees, context) {
     let style = {},
         order = [],
-        order_styles = [],
-        visible;
+        order_styles = [];
+
+    // Visible by default
+    style.visible = true;
 
     // Find deepest tree
     matchingTrees.sort((a, b) => a.length > b.length ? -1 : (b.length > a.length ? 1 : 0));
@@ -27,13 +29,6 @@ export function mergeTrees(matchingTrees, context) {
         for (let i=0; i < styles.length; i++) {
             if (!styles[i]) {
                 continue;
-            }
-
-            // `visible` property is only true if all matching rules are visible
-            if (styles[i].visible === false) {
-                visible = false;
-            } else if (visible === undefined) {
-                visible = true;
             }
 
             // Collect unique orders (don't add the order multiple times for the smae style rule)
@@ -50,10 +45,9 @@ export function mergeTrees(matchingTrees, context) {
     }
 
     // Short-circuit if not visible
-    if (visible === undefined) {
+    if (style.visible === false) {
         return null;
     }
-    style.visible = visible;
 
     // Sum all orders
     if (order.length > 0) {
