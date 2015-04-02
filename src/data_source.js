@@ -224,7 +224,8 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
-        if (typeof topojson === 'undefined') {
+        // Only loaded in worker since that is where data is processed
+        if (Utils.isWorkerThread && typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
                 log.info('TopoJSONTileSource: loaded topojson library');
