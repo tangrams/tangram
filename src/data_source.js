@@ -293,7 +293,6 @@ export class MVTSource extends NetworkTileSource {
                 var feature = source.layers[t].features[f];
 
                 // Copy OSM id
-                feature.properties.id = feature.properties.osm_id;
                 Geo.transformGeometry(feature.geometry, coord => {
                     // Slightly scale up tile to cover seams
                     coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
