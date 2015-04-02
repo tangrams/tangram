@@ -1,8 +1,7 @@
 uniform vec2 u_resolution;
 uniform vec2 u_aspect;
 uniform float u_time;
-uniform float u_map_zoom;
-uniform vec2 u_map_center;
+uniform vec3 u_map_position;
 uniform vec2 u_tile_origin;
 uniform float u_meters_per_pixel;
 // uniform float u_order_min;
@@ -40,8 +39,8 @@ void main() {
     cameraProjection(position);
 
     // Apply scaling in screen space
-    float zscale = fract(u_map_zoom) * (shape.w * 256. - 1.) + 1.;
-    // float zscale = log(fract(u_map_zoom) + 1.) / log(2.) * (shape.w - 1.) + 1.;
+    float zscale = fract(u_map_position.z) * (shape.w * 256. - 1.) + 1.;
+    // float zscale = log(fract(u_map_position.z) + 1.) / log(2.) * (shape.w - 1.) + 1.;
     position.xy += rotate2D(shape.xy * 256. * zscale, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
 
     gl_Position = position;

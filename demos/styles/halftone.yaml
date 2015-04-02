@@ -22,7 +22,7 @@ halftone:
                 const float min_scale_zoom = 17.;
                 const float scale_zoom_factor = .25;
                 float zoom_frequency = dot_frequency / u_device_pixel_ratio;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
 
                 float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
@@ -33,7 +33,7 @@ halftone:
                 // But peg to map center so dots on ground plane stay in place as we move
                 // (there's what looks like some floating point precision crawl, but it's not too bad)
                 const float dot_wrap = 1000.;
-                st += mod(u_map_center / meter_pixels, dot_wrap) / pixel_scale;
+                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
                 // Rotate dot & find nearest dot distance
                 vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
@@ -77,7 +77,7 @@ colorhalftone:
                 const float min_scale_zoom = 17.;
                 const float scale_zoom_factor = .25;
                 float zoom_frequency = dot_frequency / u_device_pixel_ratio;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
 
                 float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
@@ -88,7 +88,7 @@ colorhalftone:
                 // But peg to map center so dots on ground plane stay in place as we move
                 // (there's what looks like some floating point precision crawl, but it's not too bad)
                 const float dot_wrap = 1000.;
-                st += mod(u_map_center / meter_pixels, dot_wrap) / pixel_scale;
+                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
                 vec3 white = vec3(0.97);
                 vec3 black = vec3(0.1);

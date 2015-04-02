@@ -634,8 +634,8 @@ export default class Scene {
                     program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
                     program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                    program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+                    // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     program.uniform('1f', 'u_order_min', this.order.min);
                     program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
