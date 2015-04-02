@@ -18,8 +18,8 @@ export function mergeTrees(matchingTrees, context) {
     style.visible = true;
 
     // Find deepest tree
-    matchingTrees.sort((a, b) => a.length > b.length ? -1 : (b.length > a.length ? 1 : 0));
-    let len = matchingTrees[0].length;
+    let len = 0;
+    matchingTrees.map(x => x.length).forEach(x => len = Math.max(len, x));
 
     // Iterate trees in parallel
     for (let x = 0; x < len; x++) {
