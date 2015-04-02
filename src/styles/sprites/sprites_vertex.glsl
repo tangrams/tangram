@@ -1,5 +1,4 @@
 uniform vec2 u_resolution;
-uniform vec2 u_aspect;
 uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec2 u_tile_origin;

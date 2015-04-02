@@ -1,5 +1,4 @@
 uniform vec2 u_resolution;
-uniform vec2 u_aspect;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 uniform float u_time;
