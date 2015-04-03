@@ -267,6 +267,28 @@ styles:
                     float clipDepth = ndcDepth / gl_FragCoord.w;
                     color = vec4((clipDepth * 0.5) + 0.5);*/
 
+    # lines:
+    #     texcoords: true
+    #     shaders:
+    #         uniforms:
+    #             outline_width: .2
+    #             fade: .05
+    #             outline_color: [0, 0, 0]
+    #         blocks:
+    #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
+    #             # globals:
+    #             #     float outline_width = .2;
+    #             #     float fade = .05;
+    #             #     vec3 outline_color = vec3(0.);
+    #             color: |
+    #                 // Outline shader
+    #                 if (v_texcoord.x < outline_width + fade * .5) {
+    #                     color.rgb = mix(color.rgb, outline_color, (outline_width + fade * .5 - v_texcoord.x) / fade);
+    #                 }
+    #                 else if (v_texcoord.x > 1. - (outline_width + fade * .5)) {
+    #                     color.rgb = mix(color.rgb, outline_color, (v_texcoord.x - (1. - (outline_width + fade * .5))) / fade);
+    #                 }
+
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -313,17 +335,31 @@ layers:
             interactive: true
             color: [0.5, 0.5, 0.875]
 
-        outlines:
-            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
-            style:
-                outline:
-                    color: [0.6, 0.6, 0.975]
-                    width: function() { return 2.5 * Math.log(zoom); }
+        # outlines:
+        #     filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+        #     style:
+        #         outline:
+        #             color: [0.6, 0.6, 0.975]
+        #             width: function() { return 2.5 * Math.log(zoom); }
+
+    water_outlines:
+        data: { source: osm, layer: water }
+        filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+        style:
+            name: lines
+            order: 4
+            color: [0.6, 0.6, 0.975]
+            width: function() { return 2.5 * Math.log(zoom); }
+            # outline:
+            #     color: white
+            #     width: function () { return 3/8 * Math.log(zoom); }
+
 
     roads:
         data: { source: osm }
 
         style:
+            name: lines
             order: |
                 function () {
                     function reduceSortKey(key) {
@@ -482,6 +518,9 @@ layers:
             color: [.6, .6, .6]
             # color: white
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            # outline:
+            #     color: white
+            #     width: 2px
 
         # blend:
         #     filter: { height: { min: 100 } }
@@ -499,6 +538,16 @@ layers:
             name-kind:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
+
+    building_outlines:
+        data: { source: osm, layer: buildings }
+        style:
+            name: lines
+            visible: false
+            order: 251
+            color: white
+            width: 2px
+            extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
     road_labels:
         data: { source: osm, layer: roads }
