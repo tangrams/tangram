@@ -46,9 +46,9 @@ Object.assign(Lines, {
 
         style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
         style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
-        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
+        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.extrude = rule_style.extrude;
         if (style.extrude) {
@@ -62,6 +62,11 @@ Object.assign(Lines, {
             else if (Array.isArray(style.extrude)) {
                 style.height = style.extrude[1];
             }
+        }
+
+        // Raise line height if extruded
+        if (style.extrude && style.height) {
+            style.z += style.height;
         }
 
         style.cap = rule_style.cap;
@@ -117,13 +122,6 @@ Object.assign(Lines, {
 
     buildLines(lines, style, vertex_data, options = {}) {
         var vertex_template = this.makeVertexTemplate(style);
-
-        // Raise line height if extruded
-        let z = style.z;
-        if (style.extrude && style.height) {
-            z += style.height;
-        }
-        vertex_template[2] = z;
 
         // Main line
         if (style.color && style.width) {
