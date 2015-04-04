@@ -2,7 +2,7 @@ uniform vec2 u_resolution;
 uniform float u_meters_per_pixel;
 uniform float u_time;
 uniform vec3 u_map_position;
-uniform vec2 u_tile_origin;
+uniform vec3 u_tile_origin;
 
 uniform sampler2D u_texture;
 
