@@ -100,8 +100,12 @@ styles:
             blocks:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
-                color:
-                    url: demos/shaders/noise.glsl
+                color: |
+                    color.rgb *=
+                        abs(pnoise(
+                            (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
+                            vec3(WORLD_POSITION_WRAP / 10.0))
+                        ) / 4. + .75;
 
     colorbleed:
         extends: polygons
@@ -604,12 +608,18 @@ layers:
                 fill: white
                 stroke: black
 
-        high:
-            filter: function() { return feature.height > 100; }
-            style:
-                font:
-                    fill: red
-                    stroke: white
+        filter:
+            any:
+                - { $zoom: { min: 18 } }
+                # - { height: { min: 100 } }
+                - function() { return feature.height > ((17 - zoom) * 100); }
+
+        # high:
+        #     filter: { height: { min: 100 } }
+        #     style:
+        #         font:
+        #             fill: red
+        #             stroke: white
 
     places:
         data: { source: osm }

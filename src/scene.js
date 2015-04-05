@@ -632,13 +632,13 @@ export default class Scene {
 
                     // TODO: don't set uniforms when they haven't changed
                     program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                    program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+                    // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     program.uniform('1f', 'u_order_min', this.order.min);
                     program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                    program.uniform('1f', 'u_device_pixel_ratio', this.device_pixel_ratio);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
@@ -1036,7 +1036,7 @@ export default class Scene {
     loadScene() {
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
-            return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
+            return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
         }).catch(e => { throw e; });
     }
 
@@ -1075,15 +1075,7 @@ export default class Scene {
     }
 
     // Normalize some settings that may not have been explicitly specified in the scene definition
-    preProcessSceneConfig() {
-        // Pre-process styles
-        for (var rule of Utils.recurseValues(this.config.layers)) {
-            // Styles are visible by default
-            if (rule.style && rule.style.visible !== false) {
-                rule.style.visible = true;
-            }
-        }
-
+    preProcessConfig() {
         // Assign ids to data sources
         let source_id = 0;
         for (let source in this.config.sources) {
@@ -1106,6 +1098,7 @@ export default class Scene {
         }
 
         this.config.lights = this.config.lights || {}; // ensure lights object
+        this.config.styles = this.config.styles || {}; // ensure styles object
 
         return StyleManager.preload(this.config.styles);
     }

@@ -57,7 +57,7 @@ Style.color = {
     // pseudo-random grayscale by geometry id
     pseudoRandomGrayscale() {
         var func = `function() {
-            var c = Math.max((parseInt(feature.id, 16) % 100) / 100, 0.4);
+            var c = Math.max((parseInt(feature.osm_id, 16) % 100) / 100, 0.4);
             return [0.7 * c, 0.7 * c, 0.7 * c];
         }`;
         return func;
@@ -67,13 +67,13 @@ Style.color = {
     pseudoRandomColor() {
         var func = `function() {
             return [
-                0.7 * (parseInt(feature.id, 16) / 100 % 1),
-                0.7 * (parseInt(feature.id, 16) / 10000 % 1),
-                0.7 * (parseInt(feature.id, 16) / 1000000 % 1)
+                0.7 * (parseInt(feature.osm_id, 16) / 100 % 1),
+                0.7 * (parseInt(feature.osm_id, 16) / 10000 % 1),
+                0.7 * (parseInt(feature.osm_id, 16) / 1000000 % 1)
             ];
         }`;
         return func;
-        // return `function() { return [0.7 * (parseInt(feature.id, 16) / 100 % 1), 0.7 * (parseInt(feature.id, 16) / 10000 % 1), 0.7 * (parseInt(feature.id, 16) / 1000000 % 1)]; }`;
+        // return `function() { return [0.7 * (parseInt(feature.osm_id, 16) / 100 % 1), 0.7 * (parseInt(feature.osm_id, 16) / 10000 % 1), 0.7 * (parseInt(feature.osm_id, 16) / 1000000 % 1)]; }`;
     },
 
     // random color
@@ -104,7 +104,6 @@ Style.pixels = function (p) {
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
-                feature.id = context.feature.id;
                 var zoom = context.zoom;
                 var meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;

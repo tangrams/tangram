@@ -29,6 +29,12 @@ StyleManager.init = function () {
     // Layer re-ordering function
     ShaderProgram.addBlock('globals', shaderSources['gl/shaders/layer_order']);
 
+    // Feature selection globals
+    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/selection_globals']);
+
+    // Feature selection vertex shader support
+    ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);
+
     // assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
     // for outlines (inserted in between layers), another extra bit to prevent precision loss
     ShaderProgram.defines.TANGRAM_LAYER_DELTA = 1 / (1 << 14);
@@ -63,10 +69,6 @@ StyleManager.remove = function (name) {
 
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
 StyleManager.preload = function (styles) {
-    if (!styles) {
-        return Promise.resolve();
-    }
-
     // First load remote styles, then load shader blocks from remote URLs
     return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadShaderBlocks);
 };

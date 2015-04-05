@@ -86,7 +86,7 @@ export default class Light {
             // If no light is defined, use 100% omnidirectional diffuse light
             calculateLights = `
                 #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    g_light_accumulator_diffuse = vec4(1.);
+                    light_accumulator_diffuse = vec4(1.);
                 #endif
             `;
         }
@@ -105,23 +105,23 @@ export default class Light {
                 vec4 color = vec4(0.0);
 
                 #ifdef TANGRAM_MATERIAL_EMISSION
-                    color = g_material.emission;
+                    color = material.emission;
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_AMBIENT
-                    color += g_light_accumulator_ambient * _color * g_material.ambient;
+                    color += light_accumulator_ambient * _color * material.ambient;
                 #else
                     #ifdef TANGRAM_MATERIAL_DIFFUSE
-                        color += g_light_accumulator_ambient * _color * g_material.diffuse;
+                        color += light_accumulator_ambient * _color * material.diffuse;
                     #endif
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_DIFFUSE
-                    color += g_light_accumulator_diffuse * _color * g_material.diffuse;
+                    color += light_accumulator_diffuse * _color * material.diffuse;
                 #endif
 
                 #ifdef TANGRAM_MATERIAL_SPECULAR
-                    color += g_light_accumulator_specular * g_material.specular;
+                    color += light_accumulator_specular * material.specular;
                 #endif
 
                 // Clamp final color

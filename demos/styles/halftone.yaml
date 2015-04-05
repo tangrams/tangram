@@ -4,13 +4,13 @@ halftone:
     shaders:
         blocks:
             globals: |
-                const float dot_frequency = 100.4748637184972;
+                float dot_frequency = 100.4748637184972;
 
                 // Antialiasing
-                float aastep(float threshold, float value) {
+                float aastep(float threshold, const float freq, float value) {
                     const float scale = 2.;
                     const float y_rot = 0.;
-                    float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                    float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
@@ -21,8 +21,10 @@ halftone:
                 const float max_scale_zoom = 19.;
                 const float min_scale_zoom = 17.;
                 const float scale_zoom_factor = .25;
-                float zoom_frequency = dot_frequency;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                float zoom_frequency = dot_frequency / u_device_pixel_ratio;
+                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
                 // Sample based on screenspace
                 const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
@@ -31,7 +33,7 @@ halftone:
                 // But peg to map center so dots on ground plane stay in place as we move
                 // (there's what looks like some floating point precision crawl, but it's not too bad)
                 const float dot_wrap = 1000.;
-                st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
                 // Rotate dot & find nearest dot distance
                 vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
@@ -44,8 +46,8 @@ halftone:
                 // Color mix
                 const vec3 white = vec3(1.0, 1.0, 1.0);
                 const vec3 black = vec3(0.0, 0.0, 0.0);
-                // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, dist));
-                color.rgb = mix(black, white, aastep(radius, dist));
+                // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, zoom_frequency, dist));
+                color.rgb = mix(black, white, aastep(radius, zoom_frequency, dist));
 
 # Color version simulating CMYK printing process
 colorhalftone:
@@ -60,10 +62,10 @@ colorhalftone:
             globals: |
 
                 // Antialiasing
-                float aastep(float threshold, float value) {
+                float aastep(float threshold, const float freq, float value) {
                     const float scale = 2.;
                     const float y_rot = 0.;
-                    float afwidth = dot_frequency * (1.0/200.0) / scale / cos(y_rot);
+                    float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
                     return smoothstep(threshold-afwidth, threshold+afwidth, value);
                 }
 
@@ -74,8 +76,10 @@ colorhalftone:
                 const float max_scale_zoom = 19.;
                 const float min_scale_zoom = 17.;
                 const float scale_zoom_factor = .25;
-                float zoom_frequency = dot_frequency;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_zoom, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                float zoom_frequency = dot_frequency / u_device_pixel_ratio;
+                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+
+                float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
                 // Sample based on screenspace
                 const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
@@ -84,7 +88,7 @@ colorhalftone:
                 // But peg to map center so dots on ground plane stay in place as we move
                 // (there's what looks like some floating point precision crawl, but it's not too bad)
                 const float dot_wrap = 1000.;
-                st += mod(u_map_center / u_meters_per_pixel, dot_wrap) / pixel_scale;
+                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
                 vec3 white = vec3(0.97);
                 vec3 black = vec3(0.1);
@@ -99,16 +103,16 @@ colorhalftone:
                 // (frequency x frequency) points over the unit square
                 vec2 Kst = zoom_frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
                 vec2 Kuv = dot_scale*fract(Kst)-(dot_scale/2.);
-                float k = aastep(0.0, sqrt(cmyk.w)-length(Kuv));
+                float k = aastep(0.0, zoom_frequency, sqrt(cmyk.w)-length(Kuv));
                 vec2 Cst = zoom_frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
                 vec2 Cuv = dot_scale*fract(Cst)-(dot_scale/2.);
-                float c = aastep(0.0, sqrt(cmyk.x)-length(Cuv));
+                float c = aastep(0.0, zoom_frequency, sqrt(cmyk.x)-length(Cuv));
                 vec2 Mst = zoom_frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
                 vec2 Muv = dot_scale*fract(Mst)-(dot_scale/2.);
-                float m = aastep(0.0, sqrt(cmyk.y)-length(Muv));
+                float m = aastep(0.0, zoom_frequency, sqrt(cmyk.y)-length(Muv));
                 vec2 Yst = zoom_frequency*st; // 0 deg
                 vec2 Yuv = dot_scale*fract(Yst)-(dot_scale/2.);
-                float y = aastep(0.0, sqrt(cmyk.z)-length(Yuv));
+                float y = aastep(0.0, zoom_frequency, sqrt(cmyk.z)-length(Yuv));
 
                 vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y); // most saturated color = .9
                 rgbscreen = mix(rgbscreen, black, 0.85*k); // darkest black = .85
