@@ -167,6 +167,8 @@ styles:
         animated: true
         # lighting: vertex
         material:
+            ambient: 0
+            diffuse: 0
             # normal:
             #     texture: demos/images/normal-0001.jpg
             #     mapping: planar
