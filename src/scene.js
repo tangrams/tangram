@@ -868,7 +868,6 @@ export default class Scene {
 
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
     rebuild() {
-        StyleManager.initStyles(this);
         return this.rebuildGeometry();
     }
 
