@@ -5,6 +5,7 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Utils from '../../utils/utils';
 
 export var Lines = Object.create(Style);
 
@@ -25,6 +26,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_extrude', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_scale', size: 2, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
@@ -46,6 +48,17 @@ Object.assign(Lines, {
 
         style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
         style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
+
+        // Smoothly interpolate line width between zooms: get scale factors to previous and next zooms
+        // Adjust by factor of 2 because tile units are zoom-dependent (a given value is twice as
+        // big in world space at the next zoom than at the previous)
+        context.zoom--;
+        style.prev_width = StyleParser.parseDistance(rule_style.width, context) / 2;
+        style.prev_width = Utils.scaleInt16(style.prev_width / style.width, 256);
+        context.zoom += 2;
+        style.next_width = StyleParser.parseDistance(rule_style.width, context) * 2;
+        style.next_width = Utils.scaleInt16(style.next_width / style.width, 256);
+        context.zoom--;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
@@ -102,6 +115,8 @@ Object.assign(Lines, {
             0, 0, style.z || 0,
             // extrusion vector
             0, 0, 0,
+            // scaling to previous and next zoom
+            style.prev_width, style.next_width,
             // color
             // TODO: automate multiplication for normalized attribs?
             color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255,

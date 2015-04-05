@@ -11,6 +11,7 @@ uniform mat3 u_normalMatrix;
 
 attribute vec3 a_position;
 attribute vec3 a_extrude;
+attribute vec2 a_scale;
 // attribute vec3 a_normal;
 attribute vec4 a_color;
 attribute float a_layer;
@@ -61,6 +62,18 @@ void main() {
     vec4 position = vec4(a_position, 1.);
     vec2 extrude = a_extrude.xy;
     float width = a_extrude.z;
+
+    // Keep line width constant in screen-space
+    float zscale = u_tile_origin.z - u_map_position.z;
+    width *= pow(2., zscale);
+
+    // Smoothly interpolate line width between zooms
+    if (zscale >= 0.) {
+        width = mix(width, width * a_scale.x * 256., zscale);
+    }
+    else {
+        width = mix(width, width * a_scale.y * 256., -zscale);
+    }
 
     // Modify line width before extrusion
     #pragma tangram: width

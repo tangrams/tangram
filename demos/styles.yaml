@@ -376,6 +376,11 @@ layers:
             interactive: function () { return (zoom >= 18); }
             # color: Style.color.pseudoRandomColor()
 
+            color: white
+            # width: [[17, 4px], [18, 16px]]
+            # width: [[18, 16px], [19, 64px]]
+            # width: [[17, 8px], [18, 16px], [19, 32px], [20, 64px]]
+
         airports:
             filter: { aeroway: true }
 
