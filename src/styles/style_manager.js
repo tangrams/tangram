@@ -185,6 +185,17 @@ StyleManager.update = function (name, settings) {
         style.texcoords = style.texcoords || mixins.some(n => Styles[n] && Styles[n].texcoords);
     }
 
+    // Merge materials
+    let materials = [base.material];
+    if (mixins) {
+        materials.push(...mixins.map(n => Styles[n] && Styles[n].material));
+    }
+    materials.push(settings.material);
+    materials = materials.filter(x => x);
+    if (materials.length > 0) {
+        style.material = Object.assign({}, ...materials);
+    }
+
     // List of shaders to merge, in order
     let merge = [base.shaders]; // first merge base (inherited) style shaders
     if (mixins) { // then merge mixin style shaders

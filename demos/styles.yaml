@@ -254,6 +254,9 @@ styles:
     multi:
         extends: [popup, windows]
         # extends: [elevator, breathe, wood, dots]
+        # material:
+        #     specular: 1
+        #     diffuse: 0
 
     # depth view
     depth:
