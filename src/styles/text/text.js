@@ -89,20 +89,20 @@ Object.assign(TextStyle, {
         let split = str.split(' ');
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
-        let buffer = this.buffer * this.device_pixel_ratio;
+        let buffer = this.buffer * Utils.device_pixel_ratio;
         let split_size = {
-            " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
+            " ": this.canvas[tile].context.measureText(" ").width / Utils.device_pixel_ratio
         };
 
         for (let i in split) {
             let word = split[i];
-            split_size[word] = ctx.measureText(word).width / this.device_pixel_ratio;
+            split_size[word] = ctx.measureText(word).width / Utils.device_pixel_ratio;
         }
 
         let str_width = ctx.measureText(str).width;
         let text_size = [
-            str_width / this.device_pixel_ratio,
-            this.px_size / this.device_pixel_ratio
+            str_width / Utils.device_pixel_ratio,
+            this.px_size / Utils.device_pixel_ratio
         ];
 
         let texture_text_size = [
@@ -116,7 +116,7 @@ Object.assign(TextStyle, {
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
-        let buffer = this.buffer * this.device_pixel_ratio;
+        let buffer = this.buffer * Utils.device_pixel_ratio;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
@@ -178,7 +178,7 @@ Object.assign(TextStyle, {
     },
 
     rasterize (tile, texts, texture_size) {
-        let pixel_scale = this.device_pixel_ratio;
+        let pixel_scale = Utils.device_pixel_ratio;
 
         for (let style in texts) {
             let text_infos = texts[style];
@@ -526,8 +526,8 @@ Object.assign(TextStyle, {
             let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
             style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
-            style.px_size = style.px_logical_size * this.device_pixel_ratio;
-            style.stroke_width *= this.device_pixel_ratio;
+            style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
+            style.stroke_width *= Utils.device_pixel_ratio;
             style.font = style.font.replace(size_regex, style.px_size + "px");
         }
 

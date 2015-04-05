@@ -164,6 +164,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
         if (window.document !== undefined) {
             Utils.isWorkerThread = false;
             Utils.isMainThread   = true;
+            Utils.device_pixel_ratio = window.devicePixelRatio || 1;
         }
     }
     catch (e) {

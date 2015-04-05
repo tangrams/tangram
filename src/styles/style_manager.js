@@ -211,15 +211,15 @@ StyleManager.build = function (styles, scene = {}) {
         Styles[sname] = StyleManager.update(sname, styles[sname]);
     }
 
-    StyleManager.initStyles(scene);
+    StyleManager.initStyles();
     return Styles;
 };
 
 // Initialize all styles
-StyleManager.initStyles = function (scene) {
+StyleManager.initStyles = function () {
     // Initialize all
     for (let sname in Styles) {
-        Styles[sname].init({ device_pixel_ratio: scene.device_pixel_ratio });
+        Styles[sname].init();
     }
 };
 
