@@ -219,7 +219,7 @@ Object.assign(TextStyle, {
                     }
 
                     if (i !== info.sub_texts.length - 1) {
-                        width += space_size;
+                        width += space_size / 2;
                     }
                 }
 
