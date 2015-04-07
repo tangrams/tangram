@@ -34,8 +34,10 @@ Object.assign(Sprites, {
         ];
         this.vertex_layout = new VertexLayout(attribs);
 
-        this.shaders.uniforms = this.shaders.uniforms || {};
-        this.shaders.uniforms.u_texture = this.texture;
+        if (this.texture) {
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_texture = this.texture;
+        }
     },
 
     _parseFeature (feature, rule_style, context) {

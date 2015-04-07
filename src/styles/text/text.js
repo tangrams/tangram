@@ -29,7 +29,7 @@ Object.assign(TextStyle, {
         }
 
         this.texts = {}; // unique texts, keyed by tile
-        this.texture = {};
+        this.textures = {};
         this.canvas = {};
         this.bboxes = {};
         this.features = {};
@@ -174,7 +174,7 @@ Object.assign(TextStyle, {
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.canvas[tile];
-        delete this.texture[tile];
+        delete this.textures[tile];
     },
 
     rasterize (tile, texts, texture_size) {
@@ -276,14 +276,14 @@ Object.assign(TextStyle, {
 
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.texture[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
-        // this.texture[tile].owner = { tile };
+        this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
+        // this.textures[tile].owner = { tile };
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
-        this.texture[tile].setCanvas(this.canvas[tile].canvas);
-        delete this.texture[tile];
+        this.textures[tile].setCanvas(this.canvas[tile].canvas);
+        delete this.textures[tile];
         delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
 
         return Promise.resolve({ texts: this.texts[tile], texture });
@@ -427,8 +427,8 @@ Object.assign(TextStyle, {
                 this.texts[tile] = texts;
 
                 // Attach tile-specific label atlas to mesh as a texture uniform
-                tile_data.uniforms = { u_textures: [texture] };
-                tile_data.textures = [texture]; // assign texture ownership to tile
+                tile_data.uniforms = { u_texture: texture };
+                tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
