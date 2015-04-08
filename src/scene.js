@@ -62,7 +62,6 @@ export default class Scene {
 
         this.zoom = null;
         this.center = null;
-        this.device_pixel_ratio = window.devicePixelRatio || 1;
 
         this.zooming = false;
         this.preserve_tiles_within_zoom = 2;
@@ -226,7 +225,7 @@ export default class Scene {
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, this.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, Utils.device_pixel_ratio).then(
                 (id) => {
                     log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -435,8 +434,8 @@ export default class Scene {
 
         this.css_size = { width: width, height: height };
         this.device_size = {
-            width: Math.round(this.css_size.width * this.device_pixel_ratio),
-            height: Math.round(this.css_size.height * this.device_pixel_ratio)
+            width: Math.round(this.css_size.width * Utils.device_pixel_ratio),
+            height: Math.round(this.css_size.height * Utils.device_pixel_ratio)
         };
         this.view_aspect = this.css_size.width / this.css_size.height;
         this.updateBounds();
@@ -638,7 +637,7 @@ export default class Scene {
                     program.uniform('1f', 'u_order_min', this.order.min);
                     program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-                    program.uniform('1f', 'u_device_pixel_ratio', this.device_pixel_ratio);
+                    program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
@@ -779,8 +778,8 @@ export default class Scene {
 
         // Point scaled to [0..1] range
         var point = {
-            x: pixel.x * this.device_pixel_ratio / this.device_size.width,
-            y: pixel.y * this.device_pixel_ratio / this.device_size.height
+            x: pixel.x * Utils.device_pixel_ratio / this.device_size.width,
+            y: pixel.y * Utils.device_pixel_ratio / this.device_size.height
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
@@ -868,7 +867,6 @@ export default class Scene {
 
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
     rebuild() {
-        StyleManager.initStyles(this);
         return this.rebuildGeometry();
     }
 

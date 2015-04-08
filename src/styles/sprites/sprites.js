@@ -24,7 +24,6 @@ Object.assign(Sprites, {
         // Base shaders
         this.vertex_shader_key = 'styles/sprites/sprites_vertex';
         this.fragment_shader_key = 'styles/sprites/sprites_fragment';
-        this.device_pixel_ratio = options.device_pixel_ratio;
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
