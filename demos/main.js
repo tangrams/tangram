@@ -282,8 +282,9 @@
 
                     // Style-specific setup function
                     if (settings.setup) {
-                        settings.uniforms = function() { return settings.style.shaders.uniforms; };
-                        settings.style = scene.styles[style];
+                        settings.uniforms = function() {
+                            return scene.styles[style] && scene.styles[style].shaders.uniforms;
+                        };
                         settings.state = {}; // dat.gui needs a single object to old state
 
                         this.folder = style[0].toUpperCase() + style.slice(1); // capitalize first letter
