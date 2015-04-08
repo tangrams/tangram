@@ -1,6 +1,6 @@
 # 3d dots
 dots:
-    extends: polygons
+    base: polygons
     shaders:
         uniforms:
             u_dot_grid_scale: 0.02

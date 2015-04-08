@@ -1,6 +1,6 @@
 # Halftone shaders adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
 halftone:
-    extends: polygons
+    base: polygons
     shaders:
         blocks:
             globals: |
@@ -51,7 +51,7 @@ halftone:
 
 # Color version simulating CMYK printing process
 colorhalftone:
-    extends: polygons
+    base: polygons
     shaders:
         uniforms:
             dot_frequency: 100.

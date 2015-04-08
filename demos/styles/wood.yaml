@@ -1,5 +1,5 @@
 wood:
-    extends: polygons
+    base: polygons
     shaders:
         uniforms:
             u_wood_color1: [.9, .5, .5]
