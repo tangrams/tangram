@@ -1156,13 +1156,19 @@ export default class Scene {
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
         this.active_styles = {};
         var animated = false; // is any active style animated?
-
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.style && rule.style.visible !== false) {
-                this.active_styles[rule.style.name || StyleParser.defaults.style.name] = true;
+                let sname = rule.style.name || StyleParser.defaults.style.name;
+                let style = this.styles[sname];
 
-                if (this.styles[rule.style.name || StyleParser.defaults.style.name].animated) {
-                    animated = true;
+                if (style) {
+                    this.active_styles[sname] = true;
+                    if (style.animated) {
+                        animated = true;
+                    }
+                }
+                else {
+                    rule.style.name = undefined;
                 }
             }
         }
