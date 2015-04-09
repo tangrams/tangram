@@ -345,7 +345,7 @@ describe('Scene', function () {
 
             beforeEach(() => {
                 subject.config.styles.elevator = {
-                    "extends": "polygons",
+                    "base": "polygons",
                     "animated": true,
                     "shaders": {
                         "blocks": {
@@ -371,14 +371,15 @@ describe('Scene', function () {
 
         it('adds properties to an existing style', () => {
             subject.config.styles.rainbow.shaders.uniforms = { u_test: 10 };
-            subject.config.styles.rainbow.properties = { test: 20 };
+            subject.config.styles.rainbow.defines = subject.config.styles.rainbow.defines || {};
+            subject.config.styles.rainbow.defines.TEST = true;
             subject.updateStyles();
 
             assert.ok(subject.styles.rainbow);
             assert.isTrue(subject.styles.rainbow.compiled);
             assert.ok(subject.styles.rainbow.program);
             assert.deepPropertyVal(subject, 'styles.rainbow.shaders.uniforms.u_test', 10);
-            assert.deepPropertyVal(subject, 'styles.rainbow.properties.test', 20);
+            assert.deepPropertyVal(subject, 'styles.rainbow.defines.TEST', true);
         });
     });
 
