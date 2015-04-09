@@ -14,6 +14,7 @@ import log from 'loglevel';
 
 export var StyleManager = {};
 export var Styles = {};
+export var BaseStyles = {};
 
 // Set the base object used to instantiate styles
 StyleManager.baseStyle = Style;
@@ -60,6 +61,7 @@ StyleManager.destroy = function (gl) {
 // Register a style
 StyleManager.register = function (style) {
     Styles[style.name] = style;
+    BaseStyles[style.name] = style;
 };
 
 // Remove a style
@@ -154,9 +156,7 @@ StyleManager.loadShaderBlocks = function (styles) {
     return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
-StyleManager.mix = function (...sources) {
-    let dest = {};
-
+StyleManager.mix = function (dest, ...sources) {
     // Flags - OR'd, true if any style has it set
     dest.animated = sources.some(x => x && x.animated);
     dest.texcoords = sources.some(x => x && x.texcoords);
@@ -198,8 +198,9 @@ StyleManager.mix = function (...sources) {
 // name: name of new style
 // config: properties of new style
 // styles: working set of styles being built (used for mixing in existing styles)
-StyleManager.create = function (name, config, styles) {
+StyleManager.create = function (name, config, styles = {}) {
     let style = Object.assign({}, config); // shallow copy
+    style.name = name;
 
     // Style mixins
     let mixes = [];
@@ -216,14 +217,13 @@ StyleManager.create = function (name, config, styles) {
     // Always call mix(), even if there are no other mixins, so that style properties are copied
     // (mix() does a deep copy, otherwise we get undesired shared references between styles)
     mixes.push(style);
-    style = StyleManager.mix(...mixes);
+    StyleManager.mix(style, ...mixes);
 
-    // Has base style? Instantiate
-    if (style.base &&
-        Styles[style.base] &&
-        typeof Styles[style.base].isBuiltIn === 'function' &&
-        Styles[style.base].isBuiltIn()) {
-        style = Object.assign(Object.create(Styles[style.base]), style);
+    // Has base style?
+    // Only renderable (instantiated) styles should be included for run-time use
+    // Others are intermediary/abstract, used during style composition but not execution
+    if (style.base && BaseStyles[style.base]) {
+        Styles[name] = style = Object.assign(Object.create(BaseStyles[style.base]), style);
     }
 
     return style;
@@ -236,17 +236,17 @@ StyleManager.build = function (styles, scene = {}) {
         (a, b) => StyleManager.inheritanceDepth(a, styles) - StyleManager.inheritanceDepth(b, styles)
     );
 
-    // Working set of styles being built, renderable styles will be saved below
-    let ws = Object.assign({}, Styles);
+    // Only keep built-in base styles
+    for (let sname in Styles) {
+        if (!BaseStyles[sname]) {
+            delete Styles[sname];
+        }
+    }
 
+    // Working set of styles being built
+    let ws = {};
     for (let sname of style_deps) {
         ws[sname] = StyleManager.create(sname, styles[sname], ws);
-
-        // Only renderable (instantiated) styles should be included for run-time use
-        // Others are intermediary/abstract, used during style composition but not execution
-        if (typeof ws[sname].init === 'function') {
-            Styles[sname] = ws[sname];
-        }
     }
 
     StyleManager.initStyles();
