@@ -2,6 +2,7 @@ import chai from 'chai';
 let assert = chai.assert;
 import Scene from '../src/scene';
 import Tile from '../src/tile';
+import Utils from '../src/utils/utils';
 import sampleScene from './fixtures/sample-scene';
 
 
@@ -176,6 +177,7 @@ describe('Scene', function () {
         let height = 100;
         let width = 200;
         let devicePixelRatio = 2;
+        Utils.device_pixel_ratio = devicePixelRatio;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
