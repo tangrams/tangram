@@ -274,9 +274,8 @@ StyleManager.inheritanceDepth = function (key, styles) {
             break;
         }
 
-        // The end of the inheritance chain:
-        // a built-in style that doesn't extend another built-in style
-        if (!style.base && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
+        // Dependency chain ends when this style isn't mixing in any others
+        if (!style.mix) {
             break;
         }
 
@@ -284,12 +283,14 @@ StyleManager.inheritanceDepth = function (key, styles) {
         parents++;
 
         if (Array.isArray(style.mix)) {
-            // If multiple parents (base + mixins), find the deepest parent
+            // If multiple mixins, find the deepest one
             parents += Math.max(...style.mix.map(s => StyleManager.inheritanceDepth(s, styles)));
             break;
         }
-        // If single base parent, continue loop up the parent tree
-        key = style.base;
+        else {
+            // If single mixin, continue loop up the tree
+            key = style.mix;
+        }
     }
     return parents;
 };
