@@ -609,7 +609,6 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.tile = tile; // to store bbox by tiles
         style.labels = feature.labels;
 
         return style;
