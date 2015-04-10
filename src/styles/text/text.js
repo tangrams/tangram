@@ -28,12 +28,6 @@ Object.assign(TextStyle, {
             WorkerBroker.addTarget('TextStyle', this);
         }
 
-        this.texts = {}; // unique texts, keyed by tile
-        this.texture = {};
-        this.canvas = {};
-        this.bboxes = {};
-        this.features = {};
-
         this.maxPriority = 0;
 
         // default font style
@@ -64,6 +58,17 @@ Object.assign(TextStyle, {
                 line_height: 100 // percentage
             }
         };
+
+        this.clear();
+    },
+
+    clear() {
+        this.super.init.apply(this, arguments);
+        this.texts = {}; // unique texts, keyed by tile
+        this.texture = {};
+        this.canvas = {};
+        this.bboxes = {};
+        this.features = {};
     },
 
     // Set font style params for canvas drawing
