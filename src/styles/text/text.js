@@ -448,15 +448,16 @@ Object.assign(TextStyle, {
     // Override to queue features instead of processing immediately
     addFeature (feature, rule, context, tile_data) {
         // Collect text
-        if (feature.properties.name) {
-            let text;
-            let source = rule.text_source || 'name';
+        let text;
+        let source = rule.text_source || 'name';
 
-            if (typeof source === 'string') {
-                text = feature.properties[source];
-            } else if (typeof source === 'function') {
-                text = source(context);
-            }
+        if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+
+        if (text) {
             feature.text = text;
 
             let tile = context.tile.key;
@@ -499,9 +500,9 @@ Object.assign(TextStyle, {
             this.features[tile][style_key] = this.features[tile][style_key] || {};
             this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
             this.features[tile][style_key][text].push(feature);
-        }
 
-        tile_data.queue.push([feature, rule, context, tile_data]);
+            tile_data.queue.push([feature, rule, context, tile_data]);
+        }
     },
 
     constructFontStyle (rule, context) {
