@@ -69,6 +69,7 @@ Object.assign(TextStyle, {
         this.canvas = {};
         this.bboxes = {};
         this.features = {};
+        this.feature_labels = new Map();
     },
 
     // Set font style params for canvas drawing
@@ -375,10 +376,10 @@ Object.assign(TextStyle, {
                 let { style, feature, label } = labels[priority][i];
 
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!feature.labels) {
-                        feature.labels = [];
+                    if (!this.feature_labels.has(feature)) {
+                        this.feature_labels.set(feature, []);
                     }
-                    feature.labels.push(label);
+                    this.feature_labels.get(feature).push(label);
                     texts[style][label.text].ref++;
                 }
             }
@@ -602,7 +603,7 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !feature.labels) {
+        if (!text_info || !this.feature_labels.has(feature)) {
             return;
         }
 
@@ -610,7 +611,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.labels = feature.labels;
+        style.labels = this.feature_labels.get(feature);
 
         return style;
     }
