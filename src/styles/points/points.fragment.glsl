@@ -1,4 +1,5 @@
 uniform vec2 u_resolution;
+uniform float u_device_pixel_ratio;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
