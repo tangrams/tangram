@@ -1156,11 +1156,15 @@ export default class Scene {
         var animated = false; // is any active style animated?
 
         for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule.style && rule.style.visible !== false) {
-                this.active_styles[rule.style.name || StyleParser.defaults.style.name] = true;
+            if (rule.style) {
+                for (let style of Utils.values(rule.style)) {
+                    if (style.visible !== false) {
+                        this.active_styles[style.name || StyleParser.defaults.style.name] = true;
 
-                if (this.styles[rule.style.name || StyleParser.defaults.style.name].animated) {
-                    animated = true;
+                        if (this.styles[style.name || StyleParser.defaults.style.name].animated) {
+                            animated = true;
+                        }
+                    }
                 }
             }
         }

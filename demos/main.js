@@ -312,12 +312,12 @@
         settings: {
             'water': {
                 setup: function (style) {
-                    scene.config.layers.water.style.name = style;
+                    scene.config.layers.water.style.polygons.name = style;
                 }
             },
             'colorbleed': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     this.state.animated = scene.config.styles[style].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
                     this.folder.add(this.state, 'animated').onChange(function(value) {
@@ -328,12 +328,12 @@
             },
             'rainbow': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
                 }
             },
             'popup': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     this.state.popup_radius = this.uniforms().u_popup_radius;
                     this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
@@ -350,12 +350,12 @@
             },
             'elevator': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
                 }
             },
             'breathe': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     this.state.breathe_scale = this.uniforms().u_breathe_scale;
                     this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
@@ -372,7 +372,7 @@
             },
             'dots': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     this.state.background = style_options.scaleColor(this.uniforms().u_dot_background_color, 255);
                     this.folder.addColor(this.state, 'background').onChange(function(value) {
@@ -401,7 +401,7 @@
             },
             'wood': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     this.state.wood_color1 = style_options.scaleColor(this.uniforms().u_wood_color1, 255);
                     this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
@@ -438,7 +438,7 @@
                 setup: function (style) {
                     var layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
                     layers.forEach(function(l) {
-                        scene.config.layers[l].style.name = style;
+                        scene.config.layers[l].style.polygons.name = style; // TODO: fix for multiple styles
                     });
 
                     Object.keys(scene.config.layers).forEach(function(l) {
@@ -471,7 +471,7 @@
 
                     var layers = ['landuse', 'water', 'roads', 'buildings'];
                     layers.forEach(function(l) {
-                        scene.config.layers[l].style.name = style;
+                        scene.config.layers[l].style.polygons.name = style; // TODO: fix for multiple styles
                     });
 
                     Object.keys(scene.config.layers).forEach(function(l) {
@@ -483,13 +483,13 @@
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
                     // scene.config.layers.pois.style.visible = false;
                 }
             },
             'envmap': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.style.polygons.name = style;
 
                     var envmaps = {
                         'Chrome': 'demos/images/LitSphere_test_02.jpg',
@@ -507,9 +507,9 @@
             },
             'icons': {
                 setup: function (style) {
-                    scene.config.layers.pois.style.name = 'icons';
-                    scene.config.layers.pois.style.sprite = 'tree';
-                    scene.config.layers.pois.style.size = [[13, '16px'], [14, '24px'], [15, '32px']];
+                    scene.config.layers.pois.style.pois.name = 'icons';
+                    scene.config.layers.pois.style.pois.sprite = 'tree';
+                    scene.config.layers.pois.style.pois.size = [[13, '16px'], [14, '24px'], [15, '32px']];
 
                     this.state.rotate = this.uniforms().rotate;
                     this.folder.add(this.state, 'rotate').onChange(function(value) {

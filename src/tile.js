@@ -141,6 +141,7 @@ export default class Tile {
         tile.debug.rendering = +new Date();
 
         let tile_data = {};
+        let rule;
 
         for (let source_name in tile.sources) {
             let source = tile.sources[source_name];
@@ -174,26 +175,34 @@ export default class Tile {
 
                     // Find matching rules
                     let layer_rules = rules[layer_name];
-                    let rule = layer_rules.findMatchingRules(context, true);
+                    let style_sets = layer_rules.findMatchingRules(context, true);
 
-                    // Parse & render styles
-                    if (!rule || !rule.visible) {
+                    if (!style_sets) {
                         continue;
                     }
 
-                    // Add to style
-                    rule.name = rule.name || StyleParser.defaults.style.name;
-                    let style = styles[rule.name];
+                    // Render styles
+                    for (let r in style_sets) {
+                        let rule = style_sets[r];
+                        if (!rule.visible) {
+                            continue;
+                        }
 
-                    if (!tile_data[rule.name]) {
-                        tile_data[rule.name] = style.startData();
+                        // Add to style
+                        rule.name = rule.name || StyleParser.defaults.style.name;
+                        let style = styles[rule.name];
+
+                        if (!tile_data[rule.name]) {
+                            tile_data[rule.name] = style.startData();
+                        }
+
+                        context.properties = rule.properties; // add rule-specific properties to context
+
+                        style.addFeature(feature, rule, context, tile_data[rule.name]);
+
+                        context.properties = null; // clear rule-specific properties
                     }
 
-                    context.properties = rule.properties; // add rule-specific properties to context
-
-                    style.addFeature(feature, rule, context, tile_data[rule.name]);
-
-                    context.properties = null; // clear rule-specific properties
                     source.debug.features++;
                 }
 

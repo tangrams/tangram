@@ -9,7 +9,7 @@ function cacheKey (rules) {
     return rules.map(r => r.id).join('/');
 }
 
-export function mergeTrees(matchingTrees, context) {
+export function mergeTrees(matchingTrees, context, key) {
     var style = {},
         styles,
         order = [],
@@ -34,7 +34,10 @@ export function mergeTrees(matchingTrees, context) {
 
     // Iterate trees in parallel
     for (x = 0; x < treeDepth; x++) {
-        styles = matchingTrees.map(tree => tree[x]);
+        styles = matchingTrees.map(tree => tree[x] && tree[x][key]);
+        if (styles.length === 0) {
+            continue;
+        }
 
         // Property-specific logic
         for (i=0; i < styles.length; i++) {
@@ -142,14 +145,43 @@ export class RuleTree extends Rule {
         matchFeature(context, [this], rules);
 
         if (rules.length > 0) {
-            let key = cacheKey(rules);
+            let cache_key = cacheKey(rules);
 
             // Only evaluate each rule combination once (undefined means not yet evaluated,
             // null means evaluated with no style object)
-            if (ruleCache[key] === undefined) {
-                ruleCache[key] = mergeTrees(rules.map(x => x && x.calculatedStyle), context);
+            if (ruleCache[cache_key] === undefined) {
+                // Find all the unique style blocks for this rule tree
+                let style_rules = rules.map(x => x && x.calculatedStyle);
+                let style_keys = {};
+
+                for (let rule of style_rules) {
+                    if (!rule) {
+                        continue;
+                    }
+                    for (let block of rule) {
+                        for (let key in block) {
+                            style_keys[key] = true;
+                        }
+                    }
+                }
+
+                // Calculate each style type
+                for (let style_key in style_keys) {
+                    ruleCache[cache_key] = ruleCache[cache_key] || {};
+                    ruleCache[cache_key][style_key] = mergeTrees(style_rules, context, style_key);
+
+                    // Only save the ones that weren't null
+                    if (!ruleCache[cache_key][style_key]) {
+                        delete ruleCache[cache_key][style_key];
+                    }
+                }
+
+                // No rules evaluated
+                if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
+                    ruleCache[cache_key] = null;
+                }
             }
-            return ruleCache[key];
+            return ruleCache[cache_key];
         }
     }
 
