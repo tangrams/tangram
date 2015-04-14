@@ -197,7 +197,7 @@ styles:
 
     icons:
         extends: sprites
-        animated: true
+        # animated: true
         # blend: multiply
         # texture: pois
         # texture: demos/images/sunset.jpg
@@ -268,27 +268,10 @@ styles:
                     color = vec4((clipDepth * 0.5) + 0.5);*/
 
     # lines:
-    #     texcoords: true
+    #     animated: true
     #     shaders:
-    #         uniforms:
-    #             outline_width: .2
-    #             fade: .05
-    #             outline_color: [0, 0, 0]
     #         blocks:
     #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
-    #             # globals:
-    #             #     float outline_width = .2;
-    #             #     float fade = .05;
-    #             #     vec3 outline_color = vec3(0.);
-    #             color: |
-    #                 // Outline shader
-    #                 if (v_texcoord.x < outline_width + fade * .5) {
-    #                     color.rgb = mix(color.rgb, outline_color, (outline_width + fade * .5 - v_texcoord.x) / fade);
-    #                 }
-    #                 else if (v_texcoord.x > 1. - (outline_width + fade * .5)) {
-    #                     color.rgb = mix(color.rgb, outline_color, (v_texcoord.x - (1. - (outline_width + fade * .5))) / fade);
-    #                 }
-
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -344,7 +327,7 @@ layers:
 
     water_outlines:
         data: { source: osm, layer: water }
-        filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+        filter: { not: { kind: [ocean, river, riverbank, dock] }, $zoom: { min: 15 } }
         style:
             name: lines
             order: 4
@@ -353,7 +336,6 @@ layers:
             # outline:
             #     color: white
             #     width: function () { return 3/8 * Math.log(zoom); }
-
 
     roads:
         data: { source: osm }
