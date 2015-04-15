@@ -902,7 +902,9 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
+            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
             this.resetFeatureSelection();
+            this.resetTime();
 
             // Rebuild visible tiles, sorted from center
             let build = [];
@@ -915,9 +917,6 @@ export default class Scene {
                 }
             }
             Tile.sort(build).forEach(tile => tile.build(this));
-
-            this.updateActiveStyles();
-            this.resetTime();
 
             // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
             if (this.building && Object.keys(this.building.tiles).length === 0) {
@@ -1142,7 +1141,7 @@ export default class Scene {
             }
         }
 
-        // Compile all programs
+        // Find & compile active styles
         this.updateActiveStyles();
         StyleManager.compile(Object.keys(this.active_styles));
 
@@ -1152,6 +1151,7 @@ export default class Scene {
     updateActiveStyles() {
         // Make a set of currently active styles (used in a style rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
+        let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
 
@@ -1165,6 +1165,9 @@ export default class Scene {
             }
         }
         this.animated = animated;
+
+        // Compile newly active styles
+        return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
     // Create camera
