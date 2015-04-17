@@ -285,10 +285,10 @@ styles:
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
-    #     type: GeoJSONTileSource
+    #     type: GeoJSONTiles
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
     # schools:
-    #     type: GeoJSONSource
+    #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
 
 layers:
