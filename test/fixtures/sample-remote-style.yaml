@@ -1,5 +1,5 @@
 windows:
-    extends: polygons
+    base: polygons
     animated: true
 
     shaders:

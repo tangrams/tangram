@@ -12,9 +12,22 @@ uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 
 attribute vec3 a_position;
-attribute vec3 a_normal;
 attribute vec4 a_color;
 attribute float a_layer;
+
+// Optional normal attribute, otherwise default to up
+#ifdef TANGRAM_NORMAL_ATTRIBUTE
+    attribute vec3 a_normal;
+    #define TANGRAM_NORMAL a_normal
+#else
+    #define TANGRAM_NORMAL vec3(0., 0., 1.)
+#endif
+
+// Optional dynamic line extrusion
+#ifdef TANGRAM_EXTRUDE_LINES
+    attribute vec3 a_extrude;
+    attribute vec2 a_scale;
+#endif
 
 varying vec4 v_position;
 varying vec3 v_normal;
@@ -67,20 +80,44 @@ void main() {
     #endif
 
     // Position
-    vec4 position = u_modelView * vec4(a_position, 1.);
+    vec4 position = vec4(a_position, 1.);
+
+    #ifdef TANGRAM_EXTRUDE_LINES
+        vec2 extrude = a_extrude.xy;
+        float width = a_extrude.z;
+
+        // Keep line width constant in screen-space
+        float zscale = u_tile_origin.z - u_map_position.z;
+        width *= pow(2., zscale);
+
+        // Smoothly interpolate line width between zooms
+        if (zscale >= 0.) {
+            width = mix(width, width * a_scale.x * 256., zscale);
+        }
+        else {
+            width = mix(width, width * a_scale.y * 256., -zscale);
+        }
+
+        // Modify line width before extrusion
+        #pragma tangram: width
+
+        position.xy += extrude * width;
+    #endif
+
+    position = u_modelView * position;
 
     // Modify position before camera projection
     #pragma tangram: position
 
     // Setup varyings
     v_position = position;
-    v_normal = normalize(u_normalMatrix * a_normal);
+    v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);
     v_color = a_color;
 
     // Vertex lighting
     #if defined(TANGRAM_LIGHTING_VERTEX)
         vec4 color = a_color;
-        vec3 normal = a_normal;
+        vec3 normal = TANGRAM_NORMAL;
 
         // Modify normal before lighting
         #pragma tangram: normal

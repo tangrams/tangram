@@ -65,13 +65,12 @@ export function mergeTrees(matchingTrees, context, key) {
 
     // Sum all orders
     if (order.length > 0) {
-        // Order can be cached if it is only a single value
+        // Order can be cached if it is all numeric
         if (order.length === 1 && typeof order[0] === 'number') {
             order = order[0];
         }
-        // Or if there are no function dependencies
-        else if (!order.some(v => typeof v === 'function')) {
-            order = calculateOrder(order, context);
+        else if (order.every(v => typeof v === 'number')) {
+            order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
         }
         style.order = order;
     }

@@ -82,17 +82,8 @@ background:
 
 styles:
 
-    transparent:
-        extends: polygons
-        # animated: true
-        blend: multiply
-        # material:
-        #     diffuse: 0 #0.3
-        #     specular: [1, 0, 0]
-        #     shininess: 8
-
     water:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             defines:
@@ -108,7 +99,7 @@ styles:
                         ) / 4. + .75;
 
     colorbleed:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             defines:
@@ -124,7 +115,7 @@ styles:
                     #endif
 
     rainbow:
-        extends: polygons
+        base: polygons
         animated: true
         lighting: false
         shaders:
@@ -143,7 +134,7 @@ styles:
         url: demos/styles/popup.yaml
 
     elevator:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             blocks:
@@ -163,10 +154,12 @@ styles:
         url: demos/styles/wood.yaml
 
     envmap:
-        extends: polygons
+        base: polygons
         animated: true
         # lighting: vertex
         material:
+            ambient: 0
+            diffuse: 0
             # normal:
             #     texture: demos/images/normal-0001.jpg
             #     mapping: planar
@@ -186,17 +179,17 @@ styles:
     windows:
         url: demos/styles/windows.yaml
 
-    points:
-        shaders:
-            defines:
-                FADE_RANGE: .4
-            blocks:
-                color:
-                    color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
-                    color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+    # points:
+    #     shaders:
+    #         defines:
+    #             FADE_RANGE: .4
+    #         blocks:
+    #             color:
+    #                 color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
+    #                 color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
-        extends: sprites
+        base: sprites
         # animated: true
         # blend: multiply
         # texture: pois
@@ -212,7 +205,6 @@ styles:
                 restaurant: [0, 777, 32, 32]
                 cafe: [0, 814, 32, 32]
                 museum: [0, 518, 32, 32]
-
         shaders:
             uniforms:
                 rotate: false
@@ -241,62 +233,62 @@ styles:
     #             # color: |
     #             #     color.rgb = vec3(v_texcoord.xy, 0.);
 
-    uv_test:
-        extends: polygons
-        texcoords: true
-        shaders:
-            blocks:
-                color: |
-                    color.rgb = vec3(v_texcoord.xy, 0.);
-                    //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-                    //color.rgb = texture2D(u_texture, uv).rgb;
-
-    # depth view
-    depth:
-        extends: polygons
-        shaders:
-            blocks:
-                color: |
-                    color = vec4(vec3(v_position.z / 256.), 1.);
-                    //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
-
-                    // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
-                    /*float ndcDepth =
-                        (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
-                        (gl_DepthRange.far - gl_DepthRange.near);
-                    float clipDepth = ndcDepth / gl_FragCoord.w;
-                    color = vec4((clipDepth * 0.5) + 0.5);*/
-
-    # lines:
+    # uv_test:
+    #     base: polygons
     #     texcoords: true
     #     shaders:
-    #         uniforms:
-    #             outline_width: .2
-    #             fade: .05
-    #             outline_color: [0, 0, 0]
+    #         blocks:
+    #             color: |
+    #                 color.rgb = vec3(v_texcoord.xy, 0.);
+    #                 //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+    #                 //color.rgb = texture2D(u_texture, uv).rgb;
+
+    # transparent:
+    #     base: polygons
+    #     # animated: true
+    #     blend: multiply
+    #     # material:
+    #     #     diffuse: 0 #0.3
+    #     #     specular: [1, 0, 0]
+    #     #     shininess: 8
+
+    mixed:
+        base: polygons
+        mix: [popup, windows]
+        # mix: [elevator, breathe, wood, dots]
+        # material:
+        #     specular: 1
+        #     diffuse: 0
+
+    # # depth view
+    # depth:
+    #     base: polygons
+    #     shaders:
+    #         blocks:
+    #             color: |
+    #                 color = vec4(vec3(v_position.z / 256.), 1.);
+    #                 //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
+
+    #                 // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
+    #                 /*float ndcDepth =
+    #                     (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
+    #                     (gl_DepthRange.far - gl_DepthRange.near);
+    #                 float clipDepth = ndcDepth / gl_FragCoord.w;
+    #                 color = vec4((clipDepth * 0.5) + 0.5);*/
+
+    # lines:
+    #     animated: true
+    #     shaders:
     #         blocks:
     #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
-    #             # globals:
-    #             #     float outline_width = .2;
-    #             #     float fade = .05;
-    #             #     vec3 outline_color = vec3(0.);
-    #             color: |
-    #                 // Outline shader
-    #                 if (v_texcoord.x < outline_width + fade * .5) {
-    #                     color.rgb = mix(color.rgb, outline_color, (outline_width + fade * .5 - v_texcoord.x) / fade);
-    #                 }
-    #                 else if (v_texcoord.x > 1. - (outline_width + fade * .5)) {
-    #                     color.rgb = mix(color.rgb, outline_color, (v_texcoord.x - (1. - (outline_width + fade * .5))) / fade);
-    #                 }
-
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
-    #     type: GeoJSONTileSource
+    #     type: GeoJSONTiles
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
     # schools:
-    #     type: GeoJSONSource
+    #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
 
 layers:
@@ -355,7 +347,7 @@ layers:
 
     # water_outlines:
     #     data: { source: osm, layer: water }
-    #     filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+    #     filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
     #     style:
     #         name: lines
     #         order: 4

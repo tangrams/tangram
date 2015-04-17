@@ -293,12 +293,18 @@ export default class Tile {
         // Cleanup existing VBOs
         this.freeResources();
 
+        // Debug
+        this.debug.geometries = 0;
+        this.debug.buffer_size = 0;
+
         // Create VBOs
         let mesh_data = this.mesh_data;
         if (mesh_data) {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
+                    this.debug.buffer_size += mesh_data[s].vertex_data.byteLength;
                     this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                    this.debug.geometries += this.meshes[s].geometry_count;
                 }
 
                 // Assign ownership to textures if needed
@@ -308,14 +314,7 @@ export default class Tile {
             }
         }
 
-        this.debug.geometries = 0;
-        this.debug.buffer_size = 0;
-        for (var p in this.meshes) {
-            this.debug.geometries += this.meshes[p].geometry_count;
-            this.debug.buffer_size += this.meshes[p].vertex_data.byteLength;
-        }
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
-
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
     }
 

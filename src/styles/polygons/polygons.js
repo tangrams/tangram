@@ -16,11 +16,11 @@ Object.assign(Polygons, {
         Style.init.apply(this, arguments);
 
         // Base shaders
-        this.vertex_shader_key = 'styles/polygons/polygons.vertex';
-        this.fragment_shader_key = 'styles/polygons/polygons.fragment';
+        this.vertex_shader_key = 'styles/polygons/polygons_vertex';
+        this.fragment_shader_key = 'styles/polygons/polygons_fragment';
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines['WORLD_POSITION_WRAP'] = 100000;
+        this.defines.WORLD_POSITION_WRAP = 100000;
 
         // Turn feature selection on
         this.selection = true;
@@ -37,9 +37,12 @@ Object.assign(Polygons, {
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
         ];
 
+        // Tell the shader we have a normal attribute
+        this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
+
         // Optional texture UVs
         if (this.texcoords) {
-            this.defines['TEXTURE_COORDS'] = true;
+            this.defines.TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });

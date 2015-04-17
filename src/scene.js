@@ -902,7 +902,9 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
+            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
             this.resetFeatureSelection();
+            this.resetTime();
 
             // Rebuild visible tiles, sorted from center
             let build = [];
@@ -915,9 +917,6 @@ export default class Scene {
                 }
             }
             Tile.sort(build).forEach(tile => tile.build(this));
-
-            this.updateActiveStyles();
-            this.resetTime();
 
             // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
             if (this.building && Object.keys(this.building.tiles).length === 0) {
@@ -1045,7 +1044,7 @@ export default class Scene {
         }
 
         this.loadScene().then(() => {
-            this.updateStyles(this.gl);
+            this.updateStyles();
             this.syncConfigToWorker();
             return this.rebuildGeometry();
         }, (error) => {
@@ -1126,7 +1125,7 @@ export default class Scene {
     }
 
     // Called (currently manually) after styles are updated in stylesheet
-    updateStyles(gl) {
+    updateStyles() {
         if (!this.initialized && !this.initializing) {
             throw new Error('Scene.updateStyles() called before scene was initialized');
         }
@@ -1136,13 +1135,11 @@ export default class Scene {
         this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
-        if (gl) {
-            for (var style of Utils.values(this.styles)) {
-                style.setGL(gl);
-            }
+        for (var style of Utils.values(this.styles)) {
+            style.setGL(this.gl);
         }
 
-        // Compile all programs
+        // Find & compile active styles
         this.updateActiveStyles();
         StyleManager.compile(Object.keys(this.active_styles));
 
@@ -1152,23 +1149,33 @@ export default class Scene {
     updateActiveStyles() {
         // Make a set of currently active styles (used in a style rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
+        let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
-
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.style) {
-                for (let style of Utils.values(rule.style)) {
-                    if (style.visible !== false) {
-                        this.active_styles[style.name || StyleParser.defaults.style.name] = true;
+                for (let rule_style of Utils.values(rule.style)) {
+                    if (rule_style.visible !== false) {
+                        let sname = rule_style.name || StyleParser.defaults.style.name;
+                        let style = this.styles[sname];
 
-                        if (this.styles[style.name || StyleParser.defaults.style.name].animated) {
-                            animated = true;
+                        if (style) {
+                            this.active_styles[sname] = true;
+                            if (style.animated) {
+                                animated = true;
+                            }
+                        }
+                        else {
+                            rule_style.name = undefined;
                         }
                     }
                 }
             }
         }
         this.animated = animated;
+
+        // Compile newly active styles
+        return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
     // Create camera
@@ -1219,7 +1226,10 @@ export default class Scene {
         this.lights = {};
         for (let i in this.config.lights) {
             this.config.lights[i].name = i;
-            this.lights[i] = Light.create(this, this.config.lights[i]);
+            this.config.lights[i].visible = (this.config.lights[i].visible === false) ? false : true;
+            if (this.config.lights[i].visible) {
+                this.lights[i] = Light.create(this, this.config.lights[i]);
+            }
         }
         Light.inject(this.lights);
     }
@@ -1246,7 +1256,7 @@ export default class Scene {
         this.setBackground();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-        this.updateStyles(this.gl);
+        this.updateStyles();
         this.syncConfigToWorker();
     }
 

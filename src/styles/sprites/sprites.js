@@ -33,8 +33,10 @@ Object.assign(Sprites, {
         ];
         this.vertex_layout = new VertexLayout(attribs);
 
-        this.shaders.uniforms = this.shaders.uniforms || {};
-        this.shaders.uniforms.u_texture = this.texture;
+        if (this.texture) {
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_texture = this.texture;
+        }
     },
 
     _parseFeature (feature, rule_style, context) {
@@ -58,6 +60,9 @@ Object.assign(Sprites, {
             Math.min((style.size[0] || style.size), 256),
             Math.min((style.size[1] || style.size), 256)
         ];
+
+        style.size[0] *= Utils.device_pixel_ratio;
+        style.size[1] *= Utils.device_pixel_ratio;
 
         style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {

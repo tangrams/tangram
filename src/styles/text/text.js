@@ -15,7 +15,6 @@ export let TextStyle = Object.create(Sprites);
 Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
-    extends: 'sprites',
     built_in: true,
     selection: false,
 
@@ -28,7 +27,13 @@ Object.assign(TextStyle, {
             WorkerBroker.addTarget('TextStyle', this);
         }
 
-        this.maxPriority = 0;
+        this.texts = {}; // unique texts, keyed by tile
+        this.textures = {};
+        this.canvas = {};
+        this.bboxes = {};
+        this.features = {};
+
+        this.max_priority = 0;
 
         // default font style
         this.font_style = {
@@ -180,7 +185,7 @@ Object.assign(TextStyle, {
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.canvas[tile];
-        delete this.texture[tile];
+        delete this.textures[tile];
     },
 
     rasterize (tile, texts, texture_size) {
@@ -282,14 +287,14 @@ Object.assign(TextStyle, {
 
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.texture[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
-        // this.texture[tile].owner = { tile };
+        this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
+        // this.textures[tile].owner = { tile };
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
-        this.texture[tile].setCanvas(this.canvas[tile].canvas);
-        delete this.texture[tile];
+        this.textures[tile].setCanvas(this.canvas[tile].canvas);
+        delete this.textures[tile];
         delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
 
         return Promise.resolve({ texts: this.texts[tile], texture });
@@ -367,7 +372,7 @@ Object.assign(TextStyle, {
     discardLabels (tile, labels, texts) {
         this.bboxes[tile] = [];
 
-        for (let priority = this.maxPriority; priority >= 0; priority--) {
+        for (let priority = this.max_priority; priority >= 0; priority--) {
             if (!labels[priority]) {
                 continue;
             }
@@ -433,8 +438,8 @@ Object.assign(TextStyle, {
                 this.texts[tile] = texts;
 
                 // Attach tile-specific label atlas to mesh as a texture uniform
-                tile_data.uniforms = { u_textures: [texture] };
-                tile_data.textures = [texture]; // assign texture ownership to tile
+                tile_data.uniforms = { u_texture: texture };
+                tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
@@ -486,7 +491,7 @@ Object.assign(TextStyle, {
                 priority = this.label_style.priorities[feature.properties.kind];
             }
 
-            this.maxPriority = Math.max(priority, this.maxPriority);
+            this.max_priority = Math.max(priority, this.max_priority);
 
             if (!this.texts[tile][style_key][text]) {
                 this.texts[tile][style_key][text] = {

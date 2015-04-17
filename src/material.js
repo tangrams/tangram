@@ -22,8 +22,11 @@ export default class Material {
                 else if (typeof config[prop] === 'number') {
                     this[prop] = { amount: GLSL.expandVec4(config[prop]) };
                 }
-                else {
+                else if (typeof config[prop] === 'string') {
                     this[prop] = { amount: StyleParser.parseColor(config[prop]) };
+                }
+                else {
+                    this[prop] = config[prop];
                 }
             }
         }

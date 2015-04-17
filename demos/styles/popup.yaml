@@ -1,5 +1,5 @@
 popup:
-    extends: polygons
+    base: polygons
     shaders:
         uniforms:
             u_popup_radius: 330

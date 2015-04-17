@@ -68,21 +68,21 @@ describe('DataSource', () => {
     describe('DataSource.create(type, url_template, options)', () => {
 
         describe('when I ask for a GeoJSONTileSource', () => {
-            let subject = DataSource.create(_.merge({type: 'GeoJSONTileSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'GeoJSONTiles'}, options));
             it('returns a new GeoJSONTileSource', () => {
                 assert.instanceOf(subject, GeoJSONTileSource);
             });
         });
 
         describe('when I ask for a TopoJSONTileSource', () => {
-            let subject = DataSource.create(_.merge({type: 'TopoJSONTileSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'TopoJSONTiles'}, options));
             it('returns a new TopoJSONTileSource', () => {
                 assert.instanceOf(subject, TopoJSONTileSource);
             });
         });
 
         describe('when I ask for a MVTSource', () => {
-            let subject = DataSource.create(_.merge({type: 'MVTSource'}, options));
+            let subject = DataSource.create(_.merge({type: 'MVT'}, options));
             it('returns a new MVTSource', () => {
                 assert.instanceOf(subject, MVTSource);
             });

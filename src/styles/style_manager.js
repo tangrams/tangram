@@ -15,6 +15,7 @@ import log from 'loglevel';
 
 export var StyleManager = {};
 export var Styles = {};
+export var BaseStyles = {};
 
 // Set the base object used to instantiate styles
 StyleManager.baseStyle = Style;
@@ -61,6 +62,7 @@ StyleManager.destroy = function (gl) {
 // Register a style
 StyleManager.register = function (style) {
     Styles[style.name] = style;
+    BaseStyles[style.name] = style;
 };
 
 // Remove a style
@@ -155,31 +157,24 @@ StyleManager.loadShaderBlocks = function (styles) {
     return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
-// Update built-in style or create a new one
-StyleManager.update = function (name, settings) {
-    var base = Styles[settings.extends] || StyleManager.baseStyle;
-    Styles[name] = Styles[name] || Object.create(base);
-    if (Styles[settings.extends]) {
-        Styles[name].super = Styles[settings.extends]; // explicit 'super' class access
-    }
+StyleManager.mix = function (dest, ...sources) {
+    // Flags - OR'd, true if any style has it set
+    dest.animated = sources.some(x => x && x.animated);
+    dest.texcoords = sources.some(x => x && x.texcoords);
 
-    for (var s in settings) {
-        Styles[name][s] = settings[s];
-    }
+    // Overwrites - last definition wins
+    dest.base = sources.map(x => x.base).filter(x => x).pop();
+    dest.texture = sources.map(x => x.texture).filter(x => x).pop();
 
-    Styles[name].name = name;
-    Styles[name].initialized = false;
-    Styles[name].defines = Object.assign({}, base.defines||{}, settings.defines||{});
+    // Merges - property-specific rules for merging values
+    dest.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x));
+    dest.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
 
-    // Merge shaders: defines, uniforms, blocks
+    let merge = sources.map(x => x.shaders).filter(x => x);
     let shaders = {};
-    let merge = [base.shaders, settings.shaders]; // first merge base (inherited) style shaders
-    merge = merge.filter(x => x); // remove null objects
-
     shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
     shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
 
-    // Merge blocks
     merge.map(x => x.blocks).filter(x => x).forEach(blocks => {
         shaders.blocks = shaders.blocks || {};
 
@@ -195,21 +190,64 @@ StyleManager.update = function (name, settings) {
         }
     });
 
-    Styles[name].shaders = shaders;
+    dest.shaders = shaders;
 
-    return Styles[name];
+    return dest;
 };
 
-// Called to create or update styles from stylesheet
+// Create a new style
+// name: name of new style
+// config: properties of new style
+// styles: working set of styles being built (used for mixing in existing styles)
+StyleManager.create = function (name, config, styles = {}) {
+    let style = Object.assign({}, config); // shallow copy
+    style.name = name;
 
+    // Style mixins
+    let mixes = [];
+    if (style.mix) {
+        if (Array.isArray(style.mix)) {
+            mixes.push(...style.mix);
+        }
+        else {
+            mixes.push(style.mix);
+        }
+        mixes = mixes.map(x => styles[x]).filter(x => x);
+    }
+
+    // Always call mix(), even if there are no other mixins, so that style properties are copied
+    // (mix() does a deep copy, otherwise we get undesired shared references between styles)
+    mixes.push(style);
+    StyleManager.mix(style, ...mixes);
+
+    // Has base style?
+    // Only renderable (instantiated) styles should be included for run-time use
+    // Others are intermediary/abstract, used during style composition but not execution
+    if (style.base && BaseStyles[style.base]) {
+        Styles[name] = style = Object.assign(Object.create(BaseStyles[style.base]), style);
+    }
+
+    return style;
+};
+
+// Called to create and initialize styles
 StyleManager.build = function (styles, scene = {}) {
     // Sort styles by dependency, then build them
     let style_deps = Object.keys(styles).sort(
         (a, b) => StyleManager.inheritanceDepth(a, styles) - StyleManager.inheritanceDepth(b, styles)
     );
 
+    // Only keep built-in base styles
+    for (let sname in Styles) {
+        if (!BaseStyles[sname]) {
+            delete Styles[sname];
+        }
+    }
+
+    // Working set of styles being built
+    let ws = {};
     for (let sname of style_deps) {
-        Styles[sname] = StyleManager.update(sname, styles[sname]);
+        ws[sname] = StyleManager.create(sname, styles[sname], ws);
     }
 
     StyleManager.initStyles();
@@ -230,23 +268,30 @@ StyleManager.inheritanceDepth = function (key, styles) {
     let parents = 0;
 
     while(true) {
-        // Find style either in existing instances, or stylesheet
-        let style = Styles[key] || styles[key];
+        let style = styles[key];
         if (!style) {
             // this is a scene def error, trying to extend a style that doesn't exist
             // TODO: warn/throw?
             break;
         }
 
-        // The end of the inheritance chain:
-        // a built-in style that doesn't extend another built-in style
-        if (!style.extends && typeof style.isBuiltIn === 'function' && style.isBuiltIn()) {
+        // Dependency chain ends when this style isn't mixing in any others
+        if (!style.mix) {
             break;
         }
 
         // Traverse next parent style
         parents++;
-        key = style.extends;
+
+        if (Array.isArray(style.mix)) {
+            // If multiple mixins, find the deepest one
+            parents += Math.max(...style.mix.map(s => StyleManager.inheritanceDepth(s, styles)));
+            break;
+        }
+        else {
+            // If single mixin, continue loop up the tree
+            key = style.mix;
+        }
     }
     return parents;
 };
