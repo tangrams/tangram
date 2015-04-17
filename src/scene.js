@@ -1222,7 +1222,10 @@ export default class Scene {
         this.lights = {};
         for (let i in this.config.lights) {
             this.config.lights[i].name = i;
-            this.lights[i] = Light.create(this, this.config.lights[i]);
+            this.config.lights[i].visible = (this.config.lights[i].visible === false) ? false : true;
+            if (this.config.lights[i].visible) {
+                this.lights[i] = Light.create(this, this.config.lights[i]);
+            }
         }
         Light.inject(this.lights);
     }
