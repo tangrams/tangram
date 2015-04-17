@@ -197,7 +197,7 @@ styles:
 
     icons:
         extends: sprites
-        animated: true
+        # animated: true
         # blend: multiply
         # texture: pois
         # texture: demos/images/sunset.jpg
@@ -267,6 +267,11 @@ styles:
                     float clipDepth = ndcDepth / gl_FragCoord.w;
                     color = vec4((clipDepth * 0.5) + 0.5);*/
 
+    # lines:
+    #     animated: true
+    #     shaders:
+    #         blocks:
+    #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -313,17 +318,30 @@ layers:
             interactive: true
             color: [0.5, 0.5, 0.875]
 
-        outlines:
-            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
-            style:
-                outline:
-                    color: [0.6, 0.6, 0.975]
-                    width: function() { return 2.5 * Math.log(zoom); }
+        # outlines:
+        #     filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+        #     style:
+        #         outline:
+        #             color: [0.6, 0.6, 0.975]
+        #             width: function() { return 2.5 * Math.log(zoom); }
+
+    water_outlines:
+        data: { source: osm, layer: water }
+        filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
+        style:
+            name: lines
+            order: 4
+            color: [0.6, 0.6, 0.975]
+            width: function() { return 2.5 * Math.log(zoom); }
+            # outline:
+            #     color: white
+            #     width: function () { return 3/8 * Math.log(zoom); }
 
     roads:
         data: { source: osm }
 
         style:
+            name: lines
             order: |
                 function () {
                     function reduceSortKey(key) {
@@ -339,6 +357,11 @@ layers:
             # order: 5
             interactive: function () { return (zoom >= 18); }
             # color: Style.color.pseudoRandomColor()
+
+            color: white
+            # width: [[17, 4px], [18, 16px]]
+            # width: [[18, 16px], [19, 64px]]
+            # width: [[17, 8px], [18, 16px], [19, 32px], [20, 64px]]
 
         airports:
             filter: { aeroway: true }
@@ -482,6 +505,9 @@ layers:
             color: [.6, .6, .6]
             # color: white
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            # outline:
+            #     color: white
+            #     width: 2px
 
         # blend:
         #     filter: { height: { min: 100 } }
@@ -499,6 +525,16 @@ layers:
             name-kind:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
+
+    building_outlines:
+        data: { source: osm, layer: buildings }
+        style:
+            name: lines
+            visible: false
+            order: 251
+            color: white
+            width: 2px
+            extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
     road_labels:
         data: { source: osm, layer: roads }

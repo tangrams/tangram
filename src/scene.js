@@ -648,7 +648,7 @@ export default class Scene {
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
 
                 // Tile origin
-                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.coords.z);
 
                 // Model matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(this.modelMatrix);
