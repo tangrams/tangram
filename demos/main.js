@@ -6,33 +6,33 @@
 
     var tile_sources = {
         'mapzen': {
-            type: 'MVTSource',
+            type: 'MVT',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
         },
         'mapzen-geojson': {
-            type: 'GeoJSONTileSource',
+            type: 'GeoJSONTiles',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-dev': {
-            type: 'GeoJSONTileSource',
+            type: 'GeoJSONTiles',
             url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-local': {
-            type: 'GeoJSONTileSource',
+            type: 'GeoJSONTiles',
             url: window.location.protocol + '//localhost:8080/all/{z}/{x}/{y}.json'
         },
         'mapzen-topojson': {
-            type: 'TopoJSONTileSource',
+            type: 'TopoJSONTiles',
             url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
         },
 
         // 'osm': {
-        //     type: 'GeoJSONTileSource',
+        //     type: 'GeoJSONTiles',
         //     url: window.location.protocol + '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         // },
 
         'mapbox': {
-            type: 'MVTSource',
+            type: 'MVT',
             url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }

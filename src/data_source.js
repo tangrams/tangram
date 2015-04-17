@@ -184,7 +184,7 @@ export class GeoJSONSource extends NetworkSource {
     }
 }
 
-GeoJSONSource.type = 'GeoJSONSource';
+GeoJSONSource.type = 'GeoJSON';
 DataSource.register(GeoJSONSource);
 
 
@@ -210,7 +210,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
     }
 }
 
-GeoJSONSource.type = 'GeoJSONTileSource';
+GeoJSONTileSource.type = 'GeoJSONTiles';
 DataSource.register(GeoJSONTileSource);
 
 
@@ -261,7 +261,7 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
 }
 
-TopoJSONTileSource.type = 'TopoJSONTileSource';
+TopoJSONTileSource.type = 'TopoJSONTiles';
 DataSource.register(TopoJSONTileSource);
 
 
@@ -365,5 +365,5 @@ export class MVTSource extends NetworkTileSource {
 
 }
 
-MVTSource.type = 'MVTSource';
+MVTSource.type = 'MVT';
 DataSource.register(MVTSource);

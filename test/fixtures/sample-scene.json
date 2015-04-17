@@ -5,7 +5,7 @@
         "sources": {
             "osm": {
                 "max_zoom": 20,
-                "type": "GeoJSONTileSource",
+                "type": "GeoJSONTiles",
                 "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
             }
         },
