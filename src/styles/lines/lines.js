@@ -12,8 +12,8 @@ export var Lines = Object.create(Style);
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_key: 'styles/polygons/polygons.vertex', // re-use polygon shaders
-    fragment_shader_key: 'styles/polygons/polygons.fragment',
+    vertex_shader_key: 'styles/polygons/polygons_vertex', // re-use polygon shaders
+    fragment_shader_key: 'styles/polygons/polygons_fragment',
     selection: true,
 
     init() {

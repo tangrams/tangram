@@ -19,8 +19,8 @@ Object.assign(Points, {
         Style.init.apply(this, arguments);
 
         // Base shaders
-        this.vertex_shader_key = 'styles/points/points.vertex';
-        this.fragment_shader_key = 'styles/points/points.fragment';
+        this.vertex_shader_key = 'styles/points/points_vertex';
+        this.fragment_shader_key = 'styles/points/points_fragment';
 
         // Vertex attributes
         this.vertex_layout = new VertexLayout([
