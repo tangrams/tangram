@@ -256,6 +256,9 @@ StyleParser.calculateOrder = function(order, context) {
             if (typeof order === 'function') {
                 order = order(context);
             }
+            else if (typeof order === 'string') {
+                order = context.feature.properties[order];
+            }
             else {
                 order = parseFloat(order);
             }
@@ -265,6 +268,9 @@ StyleParser.calculateOrder = function(order, context) {
             }
             return sum + order;
         }, 0);
+    }
+    else if (typeof order === 'string') {
+        order = context.feature.properties[order];
     }
     else {
         order = parseFloat(order);
