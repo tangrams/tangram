@@ -20,6 +20,7 @@ export default class VBOMesh  {
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;
         this.vertices_per_geometry = 3; // TODO: support lines, strip, fan, etc.
         this.uniforms = options.uniforms;
+        this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
         this.geometry_count = this.vertex_count / this.vertices_per_geometry;
@@ -27,6 +28,10 @@ export default class VBOMesh  {
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
+
+        if (!this.retain) {
+            delete this.vertex_data;
+        }
         this.valid = true;
     }
 
@@ -82,7 +87,7 @@ export default class VBOMesh  {
         }
         this.valid = false;
 
-        log.trace('VBOMesh.destroy: delete buffer of size ' + this.vertex_data.byteLength);
+        log.trace('VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
 
         this.gl.deleteBuffer(this.buffer);
         this.buffer = null;
