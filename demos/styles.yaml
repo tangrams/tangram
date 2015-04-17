@@ -327,7 +327,7 @@ layers:
 
     water_outlines:
         data: { source: osm, layer: water }
-        filter: { not: { kind: [ocean, river, riverbank, dock] }, $zoom: { min: 15 } }
+        filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
         style:
             name: lines
             order: 4

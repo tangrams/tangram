@@ -12,15 +12,15 @@ export var Lines = Object.create(Style);
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_key: 'styles/lines/lines.vertex',
-    fragment_shader_key: 'styles/polygons/polygons.fragment', // re-use polygon fragment
+    vertex_shader_key: 'styles/polygons/polygons.vertex', // re-use polygon shaders
+    fragment_shader_key: 'styles/polygons/polygons.fragment',
     selection: true,
 
     init() {
         Style.init.apply(this, arguments);
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines['WORLD_POSITION_WRAP'] = 100000;
+        this.defines.WORLD_POSITION_WRAP = 100000;
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
@@ -32,9 +32,12 @@ Object.assign(Lines, {
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
         ];
 
+        // Tell the shader we want to extrude lines
+        this.defines.TANGRAM_EXTRUDE_LINES = true;
+
         // Optional texture UVs
         if (this.texcoords) {
-            this.defines['TEXTURE_COORDS'] = true;
+            this.defines.TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
