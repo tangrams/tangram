@@ -22,8 +22,11 @@ export default class Material {
                 else if (typeof config[prop] === 'number') {
                     this[prop] = { amount: GLSL.expandVec4(config[prop]) };
                 }
-                else {
+                else if (typeof config[prop] === 'string') {
                     this[prop] = { amount: StyleParser.parseColor(config[prop]) };
+                }
+                else {
+                    this[prop] = config[prop];
                 }
             }
         }
@@ -62,7 +65,9 @@ export default class Material {
 
     inject (style) {
         // For each property, sets defines to configure texture mapping, with a pattern like:
-        // TANGRAM_MATERIAL_DIFFUSE, TANGRAM_MATERIAL_DIFFUSE_TEXTURE, TANGRAM_MATERIAL_DIFFUSE_TEXTURE_SPHEREMAP
+        //   TANGRAM_MATERIAL_DIFFUSE, TANGRAM_MATERIAL_DIFFUSE_TEXTURE, TANGRAM_MATERIAL_DIFFUSE_TEXTURE_SPHEREMAP
+        // Also sets flags to keep track of each unique mapping type being used, e.g.:
+        //   TANGRAM_MATERIAL_TEXTURE_SPHEREMAP
         // Enables texture coordinates if needed and not already on
         for (let prop of ['emission', 'ambient', 'diffuse', 'specular']) {
             let def = `TANGRAM_MATERIAL_${prop.toUpperCase()}`;
@@ -71,14 +76,18 @@ export default class Material {
             if (this[prop] && this[prop].texture) {
                 style.defines[texdef] = true;
                 style.defines[texdef + '_' + this[prop].mapping.toUpperCase()] = true;
+                style.defines[`TANGRAM_MATERIAL_TEXTURE_${this[prop].mapping.toUpperCase()}`] = true;
                 style.texcoords = style.texcoords || (this[prop].mapping === 'uv');
             }
         }
 
         // Normal mapping
+        // As anove, sets flags to keep track of each unique mapping type being used, e.g.:
+        //   TANGRAM_MATERIAL_TEXTURE_SPHEREMAP
         if (this.normal && this.normal.texture) {
             style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE'] = true;
             style.defines['TANGRAM_MATERIAL_NORMAL_TEXTURE_' + this.normal.mapping.toUpperCase()] = true;
+            style.defines[`TANGRAM_MATERIAL_TEXTURE_${this.normal.mapping.toUpperCase()}`] = true;
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 

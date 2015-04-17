@@ -104,10 +104,10 @@ export default class ShaderProgram {
             }
 
             // Each key can be a single string or array of strings
-            var source = block;
+            var source = `\n${block}\n`;
             if (Array.isArray(block)) {
                 // Combine all blocks into one string
-                source = block.reduce((prev, cur) => `${prev}\n${cur}`);
+                source = block.reduce((prev, cur) => `\n${prev}\n${cur}\n`);
             }
 
             // Inject
@@ -119,19 +119,23 @@ export default class ShaderProgram {
             }
 
             // Add a #define for this injection point
-            defines['TANGRAM_BLOCK_' + key.replace(' ', '_').toUpperCase()] = true;
+            defines['TANGRAM_BLOCK_' + key.replace(/[\s-]+/g, '_').toUpperCase()] = true;
         }
 
         // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
-        regexp = new RegExp('^\\s*#pragma\\s+tangram:\\s+\\w+\\s*$', 'gm');
+        regexp = new RegExp('^\\s*#pragma.*$', 'gm');
         this.computed_vertex_source = this.computed_vertex_source.replace(regexp, '');
         this.computed_fragment_source = this.computed_fragment_source.replace(regexp, '');
 
         // Build & inject defines
         // This is done *after* code injection so that we can add defines for which code points were injected
-        var define_str = ShaderProgram.buildDefineString(defines);
-        this.computed_vertex_source = define_str + this.computed_vertex_source;
-        this.computed_fragment_source = define_str + this.computed_fragment_source;
+        defines['TANGRAM_VERTEX_SHADER'] = true;
+        defines['TANGRAM_FRAGMENT_SHADER'] = false;
+        this.computed_vertex_source = ShaderProgram.buildDefineString(defines) + this.computed_vertex_source;
+
+        defines['TANGRAM_VERTEX_SHADER'] = false;
+        defines['TANGRAM_FRAGMENT_SHADER'] = true;
+        this.computed_fragment_source = ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
 
         // Detect uniform definitions, inject any missing ones
         this.ensureUniforms(this.dependent_uniforms);

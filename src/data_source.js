@@ -222,7 +222,8 @@ export class TopoJSONTileSource extends NetworkTileSource {
 
         // Loads TopoJSON library from official D3 source on demand
         // Not including in base library to avoid the extra weight
-        if (typeof topojson === 'undefined') {
+        // Only loaded in worker since that is where data is processed
+        if (Utils.isWorkerThread && typeof topojson === 'undefined') {
             try {
                 importScripts('http://d3js.org/topojson.v1.min.js');
                 log.info('TopoJSONTileSource: loaded topojson library');
@@ -294,7 +295,6 @@ export class MVTSource extends NetworkTileSource {
                 var feature = source.layers[t].features[f];
 
                 // Copy OSM id
-                feature.properties.id = feature.properties.osm_id;
                 Geo.transformGeometry(feature.geometry, coord => {
                     // Slightly scale up tile to cover seams
                     coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));

@@ -164,6 +164,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
         if (window.document !== undefined) {
             Utils.isWorkerThread = false;
             Utils.isMainThread   = true;
+            Utils.device_pixel_ratio = window.devicePixelRatio || 1;
         }
     }
     catch (e) {
@@ -291,7 +292,7 @@ Utils.recurseEntries = function* (obj) {
     }
     for (var key of Object.keys(obj)) {
         if (obj[key]) {
-            yield [key, obj[key]];
+            yield [key, obj[key], obj];
             if (typeof obj[key] === 'object') {
                 yield* Utils.recurseEntries(obj[key]);
             }

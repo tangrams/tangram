@@ -10,30 +10,36 @@ function cacheKey (rules) {
 }
 
 export function mergeTrees(matchingTrees, context) {
-    let style = {},
+    var style = {},
+        styles,
         order = [],
         order_styles = [],
-        visible;
+        treeDepth = 0,
+        i, x, t;
+
+    // Visible by default
+    style.visible = true;
 
     // Find deepest tree
-    matchingTrees.sort((a, b) => a.length > b.length ? -1 : (b.length > a.length ? 1 : 0));
-    let len = matchingTrees[0].length;
+    for (t = 0; t < matchingTrees.length; t++) {
+        if (matchingTrees[t].length > treeDepth) {
+            treeDepth = matchingTrees[t].length;
+        }
+    }
+
+    // No rules to parse
+    if (treeDepth === 0) {
+        return null;
+    }
 
     // Iterate trees in parallel
-    for (let x = 0; x < len; x++) {
-        let styles = matchingTrees.map(tree => tree[x]);
+    for (x = 0; x < treeDepth; x++) {
+        styles = matchingTrees.map(tree => tree[x]);
 
         // Property-specific logic
-        for (let i=0; i < styles.length; i++) {
+        for (i=0; i < styles.length; i++) {
             if (!styles[i]) {
                 continue;
-            }
-
-            // `visible` property is only true if all matching rules are visible
-            if (styles[i].visible === false) {
-                visible = false;
-            } else if (visible === undefined) {
-                visible = true;
             }
 
             // Collect unique orders (don't add the order multiple times for the smae style rule)
@@ -50,20 +56,18 @@ export function mergeTrees(matchingTrees, context) {
     }
 
     // Short-circuit if not visible
-    if (visible === undefined) {
+    if (style.visible === false) {
         return null;
     }
-    style.visible = visible;
 
     // Sum all orders
     if (order.length > 0) {
-        // Order can be cached if it is only a single value
+        // Order can be cached if it is all numeric
         if (order.length === 1 && typeof order[0] === 'number') {
             order = order[0];
         }
-        // Or if there are no function dependencies
-        else if (!order.some(v => typeof v === 'function')) {
-            order = calculateOrder(order, context);
+        else if (order.every(v => typeof v === 'number')) {
+            order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
         }
         style.order = order;
     }
@@ -137,9 +141,11 @@ export class RuleTree extends Rule {
         matchFeature(context, [this], rules);
 
         if (rules.length > 0) {
-
             let key = cacheKey(rules);
-            if (!ruleCache[key]) {
+
+            // Only evaluate each rule combination once (undefined means not yet evaluated,
+            // null means evaluated with no style object)
+            if (ruleCache[key] === undefined) {
                 ruleCache[key] = mergeTrees(rules.map(x => x && x.calculatedStyle), context);
             }
             return ruleCache[key];

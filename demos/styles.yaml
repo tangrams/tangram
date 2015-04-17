@@ -82,17 +82,8 @@ background:
 
 styles:
 
-    transparent:
-        extends: polygons
-        # animated: true
-        blend: multiply
-        # material:
-        #     diffuse: 0 #0.3
-        #     specular: [1, 0, 0]
-        #     shininess: 8
-
     water:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             defines:
@@ -100,11 +91,15 @@ styles:
             blocks:
                 globals:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
-                color:
-                    url: demos/shaders/noise.glsl
+                color: |
+                    color.rgb *=
+                        abs(pnoise(
+                            (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
+                            vec3(WORLD_POSITION_WRAP / 10.0))
+                        ) / 4. + .75;
 
     colorbleed:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             defines:
@@ -120,7 +115,7 @@ styles:
                     #endif
 
     rainbow:
-        extends: polygons
+        base: polygons
         animated: true
         lighting: false
         shaders:
@@ -139,7 +134,7 @@ styles:
         url: demos/styles/popup.yaml
 
     elevator:
-        extends: polygons
+        base: polygons
         animated: true
         shaders:
             blocks:
@@ -159,10 +154,12 @@ styles:
         url: demos/styles/wood.yaml
 
     envmap:
-        extends: polygons
+        base: polygons
         animated: true
         # lighting: vertex
         material:
+            ambient: 0
+            diffuse: 0
             # normal:
             #     texture: demos/images/normal-0001.jpg
             #     mapping: planar
@@ -182,18 +179,18 @@ styles:
     windows:
         url: demos/styles/windows.yaml
 
-    points:
-        shaders:
-            defines:
-                FADE_RANGE: .4
-            blocks:
-                color:
-                    color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
-                    color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+    # points:
+    #     shaders:
+    #         defines:
+    #             FADE_RANGE: .4
+    #         blocks:
+    #             color:
+    #                 color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
+    #                 color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
-        extends: sprites
-        animated: true
+        base: sprites
+        # animated: true
         # blend: multiply
         # texture: pois
         # texture: demos/images/sunset.jpg
@@ -208,7 +205,6 @@ styles:
                 restaurant: [0, 777, 32, 32]
                 cafe: [0, 814, 32, 32]
                 museum: [0, 518, 32, 32]
-
         shaders:
             uniforms:
                 rotate: false
@@ -237,32 +233,54 @@ styles:
     #             # color: |
     #             #     color.rgb = vec3(v_texcoord.xy, 0.);
 
-    uv_test:
-        extends: polygons
-        texcoords: true
-        shaders:
-            blocks:
-                color: |
-                    color.rgb = vec3(v_texcoord.xy, 0.);
-                    //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-                    //color.rgb = texture2D(u_texture, uv).rgb;
+    # uv_test:
+    #     base: polygons
+    #     texcoords: true
+    #     shaders:
+    #         blocks:
+    #             color: |
+    #                 color.rgb = vec3(v_texcoord.xy, 0.);
+    #                 //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
+    #                 //color.rgb = texture2D(u_texture, uv).rgb;
 
-    # depth view
-    depth:
-        extends: polygons
-        shaders:
-            blocks:
-                color: |
-                    color = vec4(vec3(v_position.z / 256.), 1.);
-                    //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
+    # transparent:
+    #     base: polygons
+    #     # animated: true
+    #     blend: multiply
+    #     # material:
+    #     #     diffuse: 0 #0.3
+    #     #     specular: [1, 0, 0]
+    #     #     shininess: 8
 
-                    // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
-                    /*float ndcDepth =
-                        (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
-                        (gl_DepthRange.far - gl_DepthRange.near);
-                    float clipDepth = ndcDepth / gl_FragCoord.w;
-                    color = vec4((clipDepth * 0.5) + 0.5);*/
+    mixed:
+        base: polygons
+        mix: [popup, windows]
+        # mix: [elevator, breathe, wood, dots]
+        # material:
+        #     specular: 1
+        #     diffuse: 0
 
+    # # depth view
+    # depth:
+    #     base: polygons
+    #     shaders:
+    #         blocks:
+    #             color: |
+    #                 color = vec4(vec3(v_position.z / 256.), 1.);
+    #                 //color *= clamp(vec4(vec3(v_position.z / 256.), 1.), 0., 1.);
+
+    #                 // http://stackoverflow.com/questions/6408851/draw-the-depth-value-in-opengl-using-shaders
+    #                 /*float ndcDepth =
+    #                     (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
+    #                     (gl_DepthRange.far - gl_DepthRange.near);
+    #                 float clipDepth = ndcDepth / gl_FragCoord.w;
+    #                 color = vec4((clipDepth * 0.5) + 0.5);*/
+
+    # lines:
+    #     animated: true
+    #     shaders:
+    #         blocks:
+    #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -309,17 +327,30 @@ layers:
             interactive: true
             color: [0.5, 0.5, 0.875]
 
-        outlines:
-            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
-            style:
-                outline:
-                    color: [0.6, 0.6, 0.975]
-                    width: function() { return 2.5 * Math.log(zoom); }
+        # outlines:
+        #     filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+        #     style:
+        #         outline:
+        #             color: [0.6, 0.6, 0.975]
+        #             width: function() { return 2.5 * Math.log(zoom); }
+
+    water_outlines:
+        data: { source: osm, layer: water }
+        filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
+        style:
+            name: lines
+            order: 4
+            color: [0.6, 0.6, 0.975]
+            width: function() { return 2.5 * Math.log(zoom); }
+            # outline:
+            #     color: white
+            #     width: function () { return 3/8 * Math.log(zoom); }
 
     roads:
         data: { source: osm }
 
         style:
+            name: lines
             order: |
                 function () {
                     function reduceSortKey(key) {
@@ -335,6 +366,11 @@ layers:
             # order: 5
             interactive: function () { return (zoom >= 18); }
             # color: Style.color.pseudoRandomColor()
+
+            color: white
+            # width: [[17, 4px], [18, 16px]]
+            # width: [[18, 16px], [19, 64px]]
+            # width: [[17, 8px], [18, 16px], [19, 32px], [20, 64px]]
 
         airports:
             filter: { aeroway: true }
@@ -468,6 +504,7 @@ layers:
         # filter: function () { return true; }
 
         style:
+            # name: mixed
             order: 250
             interactive: true
 
@@ -478,6 +515,9 @@ layers:
             color: [.6, .6, .6]
             # color: white
             extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+            # outline:
+            #     color: white
+            #     width: 2px
 
         # blend:
         #     filter: { height: { min: 100 } }
@@ -495,6 +535,16 @@ layers:
             name-kind:
                 filter: { name: true, kind: true }
                 style: { color: [.6, .2, .6] }
+
+    building_outlines:
+        data: { source: osm, layer: buildings }
+        style:
+            name: lines
+            visible: false
+            order: 251
+            color: white
+            width: 2px
+            extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
 
     road_labels:
         data: { source: osm, layer: roads }
@@ -599,12 +649,18 @@ layers:
                 fill: white
                 stroke: black
 
-        high:
-            filter: function() { return feature.height > 100; }
-            style:
-                font:
-                    fill: red
-                    stroke: white
+        filter:
+            any:
+                - { $zoom: { min: 18 } }
+                # - { height: { min: 100 } }
+                - function() { return feature.height > ((17 - zoom) * 100); }
+
+        # high:
+        #     filter: { height: { min: 100 } }
+        #     style:
+        #         font:
+        #             fill: red
+        #             stroke: white
 
     places:
         data: { source: osm }

@@ -20,6 +20,8 @@ import Material from './material';
 import Light from './light';
 import WorkerBroker from './utils/worker_broker';
 import {ruleCache} from './styles/rule';
+import {StyleManager} from './styles/style_manager';
+import {StyleParser} from './styles/style_parser';
 
 import glMatrix from 'gl-matrix';
 
@@ -39,7 +41,9 @@ var debug = {
     Light,
     SceneWorker,
     WorkerBroker,
-    ruleCache
+    ruleCache,
+    StyleManager,
+    StyleParser
 };
 
 // Window can only be set in main thread

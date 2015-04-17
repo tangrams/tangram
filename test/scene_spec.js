@@ -2,6 +2,7 @@ import chai from 'chai';
 let assert = chai.assert;
 import Scene from '../src/scene';
 import Tile from '../src/tile';
+import Utils from '../src/utils/utils';
 import sampleScene from './fixtures/sample-scene';
 
 
@@ -176,6 +177,7 @@ describe('Scene', function () {
         let height = 100;
         let width = 200;
         let devicePixelRatio = 2;
+        Utils.device_pixel_ratio = devicePixelRatio;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
@@ -343,7 +345,7 @@ describe('Scene', function () {
 
             beforeEach(() => {
                 subject.config.styles.elevator = {
-                    "extends": "polygons",
+                    "base": "polygons",
                     "animated": true,
                     "shaders": {
                         "blocks": {
@@ -369,14 +371,15 @@ describe('Scene', function () {
 
         it('adds properties to an existing style', () => {
             subject.config.styles.rainbow.shaders.uniforms = { u_test: 10 };
-            subject.config.styles.rainbow.properties = { test: 20 };
+            subject.config.styles.rainbow.defines = subject.config.styles.rainbow.defines || {};
+            subject.config.styles.rainbow.defines.TEST = true;
             subject.updateStyles();
 
             assert.ok(subject.styles.rainbow);
             assert.isTrue(subject.styles.rainbow.compiled);
             assert.ok(subject.styles.rainbow.program);
             assert.deepPropertyVal(subject, 'styles.rainbow.shaders.uniforms.u_test', 10);
-            assert.deepPropertyVal(subject, 'styles.rainbow.properties.test', 20);
+            assert.deepPropertyVal(subject, 'styles.rainbow.defines.TEST', true);
         });
     });
 

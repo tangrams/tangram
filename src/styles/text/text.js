@@ -15,7 +15,6 @@ export let TextStyle = Object.create(Sprites);
 Object.assign(TextStyle, {
     name: 'text',
     super: Sprites,
-    extends: 'sprites',
     built_in: true,
     selection: false,
 
@@ -29,12 +28,12 @@ Object.assign(TextStyle, {
         }
 
         this.texts = {}; // unique texts, keyed by tile
-        this.texture = {};
+        this.textures = {};
         this.canvas = {};
         this.bboxes = {};
         this.features = {};
 
-        this.maxPriority = 0;
+        this.max_priority = 0;
 
         // default font style
         this.font_style = {
@@ -64,6 +63,18 @@ Object.assign(TextStyle, {
                 line_height: 100 // percentage
             }
         };
+
+        this.clear();
+    },
+
+    clear() {
+        this.super.init.apply(this, arguments);
+        this.texts = {}; // unique texts, keyed by tile
+        this.texture = {};
+        this.canvas = {};
+        this.bboxes = {};
+        this.features = {};
+        this.feature_labels = new Map();
     },
 
     // Set font style params for canvas drawing
@@ -89,20 +100,20 @@ Object.assign(TextStyle, {
         let split = str.split(' ');
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
-        let buffer = this.buffer * this.device_pixel_ratio;
+        let buffer = this.buffer * Utils.device_pixel_ratio;
         let split_size = {
-            " ": this.canvas[tile].context.measureText(" ").width / this.device_pixel_ratio
+            " ": this.canvas[tile].context.measureText(" ").width / Utils.device_pixel_ratio
         };
 
         for (let i in split) {
             let word = split[i];
-            split_size[word] = ctx.measureText(word).width / this.device_pixel_ratio;
+            split_size[word] = ctx.measureText(word).width / Utils.device_pixel_ratio;
         }
 
         let str_width = ctx.measureText(str).width;
         let text_size = [
-            str_width / this.device_pixel_ratio,
-            this.px_size / this.device_pixel_ratio
+            str_width / Utils.device_pixel_ratio,
+            this.px_size / Utils.device_pixel_ratio
         ];
 
         let texture_text_size = [
@@ -116,7 +127,7 @@ Object.assign(TextStyle, {
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
-        let buffer = this.buffer * this.device_pixel_ratio;
+        let buffer = this.buffer * Utils.device_pixel_ratio;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
@@ -174,11 +185,11 @@ Object.assign(TextStyle, {
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.canvas[tile];
-        delete this.texture[tile];
+        delete this.textures[tile];
     },
 
     rasterize (tile, texts, texture_size) {
-        let pixel_scale = this.device_pixel_ratio;
+        let pixel_scale = Utils.device_pixel_ratio;
 
         for (let style in texts) {
             let text_infos = texts[style];
@@ -219,7 +230,7 @@ Object.assign(TextStyle, {
                     }
 
                     if (i !== info.sub_texts.length - 1) {
-                        width += space_size;
+                        width += space_size / 2;
                     }
                 }
 
@@ -276,14 +287,14 @@ Object.assign(TextStyle, {
 
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.texture[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
-        // this.texture[tile].owner = { tile };
+        this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
+        // this.textures[tile].owner = { tile };
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
-        this.texture[tile].setCanvas(this.canvas[tile].canvas);
-        delete this.texture[tile];
+        this.textures[tile].setCanvas(this.canvas[tile].canvas);
+        delete this.textures[tile];
         delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
 
         return Promise.resolve({ texts: this.texts[tile], texture });
@@ -361,7 +372,7 @@ Object.assign(TextStyle, {
     discardLabels (tile, labels, texts) {
         this.bboxes[tile] = [];
 
-        for (let priority = this.maxPriority; priority >= 0; priority--) {
+        for (let priority = this.max_priority; priority >= 0; priority--) {
             if (!labels[priority]) {
                 continue;
             }
@@ -370,10 +381,10 @@ Object.assign(TextStyle, {
                 let { style, feature, label } = labels[priority][i];
 
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!feature.labels) {
-                        feature.labels = [];
+                    if (!this.feature_labels.has(feature)) {
+                        this.feature_labels.set(feature, []);
                     }
-                    feature.labels.push(label);
+                    this.feature_labels.get(feature).push(label);
                     texts[style][label.text].ref++;
                 }
             }
@@ -427,8 +438,8 @@ Object.assign(TextStyle, {
                 this.texts[tile] = texts;
 
                 // Attach tile-specific label atlas to mesh as a texture uniform
-                tile_data.uniforms = { u_textures: [texture] };
-                tile_data.textures = [texture]; // assign texture ownership to tile
+                tile_data.uniforms = { u_texture: texture };
+                tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
@@ -443,15 +454,16 @@ Object.assign(TextStyle, {
     // Override to queue features instead of processing immediately
     addFeature (feature, rule, context, tile_data) {
         // Collect text
-        if (feature.properties.name) {
-            let text;
-            let source = rule.text_source || 'name';
+        let text;
+        let source = rule.text_source || 'name';
 
-            if (typeof source === 'string') {
-                text = feature.properties[source];
-            } else if (typeof source === 'function') {
-                text = source(context);
-            }
+        if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+
+        if (text) {
             feature.text = text;
 
             let tile = context.tile.key;
@@ -479,7 +491,7 @@ Object.assign(TextStyle, {
                 priority = this.label_style.priorities[feature.properties.kind];
             }
 
-            this.maxPriority = Math.max(priority, this.maxPriority);
+            this.max_priority = Math.max(priority, this.max_priority);
 
             if (!this.texts[tile][style_key][text]) {
                 this.texts[tile][style_key][text] = {
@@ -494,9 +506,9 @@ Object.assign(TextStyle, {
             this.features[tile][style_key] = this.features[tile][style_key] || {};
             this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
             this.features[tile][style_key][text].push(feature);
-        }
 
-        tile_data.queue.push([feature, rule, context, tile_data]);
+            tile_data.queue.push([feature, rule, context, tile_data]);
+        }
     },
 
     constructFontStyle (rule, context) {
@@ -526,8 +538,8 @@ Object.assign(TextStyle, {
             let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
             style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
-            style.px_size = style.px_logical_size * this.device_pixel_ratio;
-            style.stroke_width *= this.device_pixel_ratio;
+            style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
+            style.stroke_width *= Utils.device_pixel_ratio;
             style.font = style.font.replace(size_regex, style.px_size + "px");
         }
 
@@ -596,7 +608,7 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !feature.labels) {
+        if (!text_info || !this.feature_labels.has(feature)) {
             return;
         }
 
@@ -604,8 +616,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.tile = tile; // to store bbox by tiles
-        style.labels = feature.labels;
+        style.labels = this.feature_labels.get(feature);
 
         return style;
     }

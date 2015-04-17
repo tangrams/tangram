@@ -62,7 +62,6 @@ export default class Scene {
 
         this.zoom = null;
         this.center = null;
-        this.device_pixel_ratio = window.devicePixelRatio || 1;
 
         this.zooming = false;
         this.preserve_tiles_within_zoom = 2;
@@ -226,7 +225,7 @@ export default class Scene {
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, this.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, Utils.device_pixel_ratio).then(
                 (id) => {
                     log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -435,8 +434,8 @@ export default class Scene {
 
         this.css_size = { width: width, height: height };
         this.device_size = {
-            width: Math.round(this.css_size.width * this.device_pixel_ratio),
-            height: Math.round(this.css_size.height * this.device_pixel_ratio)
+            width: Math.round(this.css_size.width * Utils.device_pixel_ratio),
+            height: Math.round(this.css_size.height * Utils.device_pixel_ratio)
         };
         this.view_aspect = this.css_size.width / this.css_size.height;
         this.updateBounds();
@@ -632,13 +631,13 @@ export default class Scene {
 
                     // TODO: don't set uniforms when they haven't changed
                     program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('2f', 'u_aspect', this.view_aspect, 1.0);
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('1f', 'u_map_zoom', this.zoom); // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('2f', 'u_map_center', this.center_meters.x, this.center_meters.y);
+                    program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+                    // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
                     program.uniform('1f', 'u_order_min', this.order.min);
                     program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                    program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
@@ -649,7 +648,7 @@ export default class Scene {
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
 
                 // Tile origin
-                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.coords.z);
 
                 // Model matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(this.modelMatrix);
@@ -779,8 +778,8 @@ export default class Scene {
 
         // Point scaled to [0..1] range
         var point = {
-            x: pixel.x * this.device_pixel_ratio / this.device_size.width,
-            y: pixel.y * this.device_pixel_ratio / this.device_size.height
+            x: pixel.x * Utils.device_pixel_ratio / this.device_size.width,
+            y: pixel.y * Utils.device_pixel_ratio / this.device_size.height
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
@@ -868,7 +867,6 @@ export default class Scene {
 
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
     rebuild() {
-        StyleManager.initStyles(this);
         return this.rebuildGeometry();
     }
 
@@ -904,7 +902,9 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
+            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
             this.resetFeatureSelection();
+            this.resetTime();
 
             // Rebuild visible tiles, sorted from center
             let build = [];
@@ -917,9 +917,6 @@ export default class Scene {
                 }
             }
             Tile.sort(build).forEach(tile => tile.build(this));
-
-            this.updateActiveStyles();
-            this.resetTime();
 
             // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
             if (this.building && Object.keys(this.building.tiles).length === 0) {
@@ -1036,7 +1033,7 @@ export default class Scene {
     loadScene() {
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
-            return this.preProcessSceneConfig().then(() => { this.trigger('loadScene', this.config); });
+            return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
         }).catch(e => { throw e; });
     }
 
@@ -1047,7 +1044,7 @@ export default class Scene {
         }
 
         this.loadScene().then(() => {
-            this.updateStyles(this.gl);
+            this.updateStyles();
             this.syncConfigToWorker();
             return this.rebuildGeometry();
         }, (error) => {
@@ -1075,15 +1072,7 @@ export default class Scene {
     }
 
     // Normalize some settings that may not have been explicitly specified in the scene definition
-    preProcessSceneConfig() {
-        // Pre-process styles
-        for (var rule of Utils.recurseValues(this.config.layers)) {
-            // Styles are visible by default
-            if (rule.style && rule.style.visible !== false) {
-                rule.style.visible = true;
-            }
-        }
-
+    preProcessConfig() {
         // Assign ids to data sources
         let source_id = 0;
         for (let source in this.config.sources) {
@@ -1106,6 +1095,7 @@ export default class Scene {
         }
 
         this.config.lights = this.config.lights || {}; // ensure lights object
+        this.config.styles = this.config.styles || {}; // ensure styles object
 
         return StyleManager.preload(this.config.styles);
     }
@@ -1135,7 +1125,7 @@ export default class Scene {
     }
 
     // Called (currently manually) after styles are updated in stylesheet
-    updateStyles(gl) {
+    updateStyles() {
         if (!this.initialized && !this.initializing) {
             throw new Error('Scene.updateStyles() called before scene was initialized');
         }
@@ -1145,13 +1135,11 @@ export default class Scene {
         this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
-        if (gl) {
-            for (var style of Utils.values(this.styles)) {
-                style.setGL(gl);
-            }
+        for (var style of Utils.values(this.styles)) {
+            style.setGL(this.gl);
         }
 
-        // Compile all programs
+        // Find & compile active styles
         this.updateActiveStyles();
         StyleManager.compile(Object.keys(this.active_styles));
 
@@ -1161,19 +1149,29 @@ export default class Scene {
     updateActiveStyles() {
         // Make a set of currently active styles (used in a style rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
+        let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
-
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.style && rule.style.visible !== false) {
-                this.active_styles[rule.style.name || StyleParser.defaults.style.name] = true;
+                let sname = rule.style.name || StyleParser.defaults.style.name;
+                let style = this.styles[sname];
 
-                if (this.styles[rule.style.name || StyleParser.defaults.style.name].animated) {
-                    animated = true;
+                if (style) {
+                    this.active_styles[sname] = true;
+                    if (style.animated) {
+                        animated = true;
+                    }
+                }
+                else {
+                    rule.style.name = undefined;
                 }
             }
         }
         this.animated = animated;
+
+        // Compile newly active styles
+        return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
     // Create camera
@@ -1251,7 +1249,7 @@ export default class Scene {
         this.setBackground();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-        this.updateStyles(this.gl);
+        this.updateStyles();
         this.syncConfigToWorker();
     }
 
