@@ -41,9 +41,9 @@ describe('Styles:', () => {
         });
 
         it('creates a custom style', () => {
-            StyleManager.update('rainbow', sampleScene.config.styles.rainbow);
+            StyleManager.create('rainbow', sampleScene.config.styles.rainbow);
             assert.equal(Styles.rainbow.constructor, Style.constructor);
-            assert.equal(Styles.rainbow.extends, 'polygons');
+            assert.equal(Styles.rainbow.base, 'polygons');
         });
 
         describe('builds custom styles w/dependencies from stylesheet', () => {
@@ -56,7 +56,7 @@ describe('Styles:', () => {
                 Styles.rainbow.setGL(gl);
                 Styles.rainbow.compile();
                 assert.equal(Styles.rainbow.constructor, Style.constructor);
-                assert.equal(Styles.rainbow.extends, 'polygons');
+                assert.equal(Styles.rainbow.base, 'polygons');
                 assert.ok(Styles.rainbow.compiled);
                 assert.ok(Styles.rainbow.program.compiled);
             });
@@ -65,7 +65,7 @@ describe('Styles:', () => {
                 Styles.rainbow_child.setGL(gl);
                 Styles.rainbow_child.compile();
                 assert.equal(Styles.rainbow_child.constructor, Style.constructor);
-                assert.equal(Styles.rainbow_child.extends, 'rainbow');
+                assert.equal(Styles.rainbow_child.base, 'polygons');
                 assert.ok(Styles.rainbow_child.compiled);
                 assert.ok(Styles.rainbow_child.program.compiled);
             });
@@ -123,7 +123,7 @@ describe('Styles:', () => {
         });
 
         it('injects a dependent uniform in a custom style', () => {
-            StyleManager.update('scale', sampleScene.config.styles.scale);
+            StyleManager.create('scale', sampleScene.config.styles.scale);
             Styles.scale.init();
             Styles.scale.setGL(gl);
             Styles.scale.compile();

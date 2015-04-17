@@ -1,5 +1,5 @@
 breathe:
-    extends: polygons
+    base: polygons
     animated: true
     shaders:
         uniforms:

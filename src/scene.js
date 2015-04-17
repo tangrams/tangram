@@ -1044,7 +1044,7 @@ export default class Scene {
         }
 
         this.loadScene().then(() => {
-            this.updateStyles(this.gl);
+            this.updateStyles();
             this.syncConfigToWorker();
             return this.rebuildGeometry();
         }, (error) => {
@@ -1125,7 +1125,7 @@ export default class Scene {
     }
 
     // Called (currently manually) after styles are updated in stylesheet
-    updateStyles(gl) {
+    updateStyles() {
         if (!this.initialized && !this.initializing) {
             throw new Error('Scene.updateStyles() called before scene was initialized');
         }
@@ -1135,10 +1135,8 @@ export default class Scene {
         this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
-        if (gl) {
-            for (var style of Utils.values(this.styles)) {
-                style.setGL(gl);
-            }
+        for (var style of Utils.values(this.styles)) {
+            style.setGL(this.gl);
         }
 
         // Find & compile active styles
@@ -1154,13 +1152,19 @@ export default class Scene {
         let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
-
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.style && rule.style.visible !== false) {
-                this.active_styles[rule.style.name || StyleParser.defaults.style.name] = true;
+                let sname = rule.style.name || StyleParser.defaults.style.name;
+                let style = this.styles[sname];
 
-                if (this.styles[rule.style.name || StyleParser.defaults.style.name].animated) {
-                    animated = true;
+                if (style) {
+                    this.active_styles[sname] = true;
+                    if (style.animated) {
+                        animated = true;
+                    }
+                }
+                else {
+                    rule.style.name = undefined;
                 }
             }
         }
@@ -1245,7 +1249,7 @@ export default class Scene {
         this.setBackground();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
-        this.updateStyles(this.gl);
+        this.updateStyles();
         this.syncConfigToWorker();
     }
 
