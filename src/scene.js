@@ -648,7 +648,7 @@ export default class Scene {
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
 
                 // Tile origin
-                program.uniform('2f', 'u_tile_origin', tile.min.x, tile.min.y);
+                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.coords.z);
 
                 // Model matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(this.modelMatrix);
@@ -902,7 +902,9 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
+            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
             this.resetFeatureSelection();
+            this.resetTime();
 
             // Rebuild visible tiles, sorted from center
             let build = [];
@@ -915,9 +917,6 @@ export default class Scene {
                 }
             }
             Tile.sort(build).forEach(tile => tile.build(this));
-
-            this.updateActiveStyles();
-            this.resetTime();
 
             // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
             if (this.building && Object.keys(this.building.tiles).length === 0) {
@@ -1140,7 +1139,7 @@ export default class Scene {
             style.setGL(this.gl);
         }
 
-        // Compile all programs
+        // Find & compile active styles
         this.updateActiveStyles();
         StyleManager.compile(Object.keys(this.active_styles));
 
@@ -1150,6 +1149,7 @@ export default class Scene {
     updateActiveStyles() {
         // Make a set of currently active styles (used in a style rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
+        let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
@@ -1169,6 +1169,9 @@ export default class Scene {
             }
         }
         this.animated = animated;
+
+        // Compile newly active styles
+        return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
     // Create camera

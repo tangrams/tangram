@@ -292,7 +292,7 @@ Utils.recurseEntries = function* (obj) {
     }
     for (var key of Object.keys(obj)) {
         if (obj[key]) {
-            yield [key, obj[key]];
+            yield [key, obj[key], obj];
             if (typeof obj[key] === 'object') {
                 yield* Utils.recurseEntries(obj[key]);
             }

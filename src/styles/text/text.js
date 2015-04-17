@@ -33,7 +33,7 @@ Object.assign(TextStyle, {
         this.bboxes = {};
         this.features = {};
 
-        this.maxPriority = 0;
+        this.max_priority = 0;
 
         // default font style
         this.font_style = {
@@ -63,6 +63,18 @@ Object.assign(TextStyle, {
                 line_height: 100 // percentage
             }
         };
+
+        this.clear();
+    },
+
+    clear() {
+        this.super.init.apply(this, arguments);
+        this.texts = {}; // unique texts, keyed by tile
+        this.texture = {};
+        this.canvas = {};
+        this.bboxes = {};
+        this.features = {};
+        this.feature_labels = new Map();
     },
 
     // Set font style params for canvas drawing
@@ -360,7 +372,7 @@ Object.assign(TextStyle, {
     discardLabels (tile, labels, texts) {
         this.bboxes[tile] = [];
 
-        for (let priority = this.maxPriority; priority >= 0; priority--) {
+        for (let priority = this.max_priority; priority >= 0; priority--) {
             if (!labels[priority]) {
                 continue;
             }
@@ -369,10 +381,10 @@ Object.assign(TextStyle, {
                 let { style, feature, label } = labels[priority][i];
 
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!feature.labels) {
-                        feature.labels = [];
+                    if (!this.feature_labels.has(feature)) {
+                        this.feature_labels.set(feature, []);
                     }
-                    feature.labels.push(label);
+                    this.feature_labels.get(feature).push(label);
                     texts[style][label.text].ref++;
                 }
             }
@@ -442,15 +454,16 @@ Object.assign(TextStyle, {
     // Override to queue features instead of processing immediately
     addFeature (feature, rule, context, tile_data) {
         // Collect text
-        if (feature.properties.name) {
-            let text;
-            let source = rule.text_source || 'name';
+        let text;
+        let source = rule.text_source || 'name';
 
-            if (typeof source === 'string') {
-                text = feature.properties[source];
-            } else if (typeof source === 'function') {
-                text = source(context);
-            }
+        if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+
+        if (text) {
             feature.text = text;
 
             let tile = context.tile.key;
@@ -478,7 +491,7 @@ Object.assign(TextStyle, {
                 priority = this.label_style.priorities[feature.properties.kind];
             }
 
-            this.maxPriority = Math.max(priority, this.maxPriority);
+            this.max_priority = Math.max(priority, this.max_priority);
 
             if (!this.texts[tile][style_key][text]) {
                 this.texts[tile][style_key][text] = {
@@ -493,9 +506,9 @@ Object.assign(TextStyle, {
             this.features[tile][style_key] = this.features[tile][style_key] || {};
             this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
             this.features[tile][style_key][text].push(feature);
-        }
 
-        tile_data.queue.push([feature, rule, context, tile_data]);
+            tile_data.queue.push([feature, rule, context, tile_data]);
+        }
     },
 
     constructFontStyle (rule, context) {
@@ -595,7 +608,7 @@ Object.assign(TextStyle, {
         let style_key = feature.font_style_key;
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !feature.labels) {
+        if (!text_info || !this.feature_labels.has(feature)) {
             return;
         }
 
@@ -603,8 +616,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.tile = tile; // to store bbox by tiles
-        style.labels = feature.labels;
+        style.labels = this.feature_labels.get(feature);
 
         return style;
     }
