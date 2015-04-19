@@ -28,10 +28,6 @@ export default class Tile {
             error: null,
             worker: null,
             visible: false,
-            order: {
-                min: Infinity,
-                max: -Infinity
-            },
             center_dist: 0
         });
 
@@ -113,7 +109,6 @@ export default class Tile {
             coords: this.coords,
             min: this.min,
             max: this.max,
-            order: this.order,
             debug: this.debug
         };
     }
@@ -166,7 +161,7 @@ export default class Tile {
                     continue;
                 }
 
-                // Render features within each layer, in reverse order - aka top to bottom
+                // Render features in layer
                 let num_features = geom.features.length;
                 for (let f = num_features-1; f >= 0; f--) {
                     let feature = geom.features[f];
@@ -214,14 +209,6 @@ export default class Tile {
                         uniforms: style_data.uniforms,
                         textures: style_data.textures
                     };
-
-                    // Track min/max order range
-                    if (style_data.order.min < tile.order.min) {
-                        tile.order.min = style_data.order.min;
-                    }
-                    if (style_data.order.max > tile.order.max) {
-                        tile.order.max = style_data.order.max;
-                    }
                 }
             }));
         }

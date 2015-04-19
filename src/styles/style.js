@@ -69,8 +69,7 @@ export var Style = {
     startData () {
         return {
             vertex_data: null,
-            uniforms: null,
-            order: { min: Infinity, max: -Infinity } // reset to track order range within tile
+            uniforms: null
         };
     },
 
@@ -90,14 +89,6 @@ export var Style = {
         // Skip feature?
         if (!style) {
             return;
-        }
-
-        // Track min/max order range
-        if (style.order < tile_data.order.min) {
-            tile_data.order.min = style.order;
-        }
-        if (style.order > tile_data.order.max) {
-            tile_data.order.max = style.order;
         }
 
         // First feature in this render style?

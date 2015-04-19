@@ -536,9 +536,6 @@ export default class Scene {
         }
         this.renderable_tiles_count = this.renderable_tiles.length;
 
-        // Find min/max order for current tiles
-        this.order = this.calcOrderRange(this.renderable_tiles);
-
         // Render main pass
         this.render_count = this.renderPass();
 
@@ -634,8 +631,6 @@ export default class Scene {
                     program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
                     program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
                     // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('1f', 'u_order_min', this.order.min);
-                    program.uniform('1f', 'u_order_range', this.order.range);
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
                     program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
@@ -752,22 +747,6 @@ export default class Scene {
         else {
             gl.disable(gl.BLEND);
         }
-    }
-
-    // Find min/max order for a set of tiles
-    calcOrderRange(tiles) {
-        let order = { min: Infinity, max: -Infinity };
-        for (let t of tiles) {
-            if (t.order.min < order.min) {
-                order.min = t.order.min;
-            }
-            if (t.order.max > order.max) {
-                order.max = t.order.max;
-            }
-        }
-        order.max += 1;
-        order.range = order.max - order.min;
-        return order;
     }
 
     // Request feature selection at given pixel. Runs async and returns results via a promise.
