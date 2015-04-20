@@ -7,7 +7,7 @@ import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import {Polygons} from './polygons/polygons';
 import {Lines} from './lines/lines';
-import {Points} from './points/points';
+// import {Points} from './points/points';
 import {Sprites} from './sprites/sprites';
 import {TextStyle} from './text/text';
 
@@ -315,6 +315,6 @@ StyleManager.compile = function (keys) {
 // Add built-in rendering styles
 StyleManager.register(Polygons);
 StyleManager.register(Lines);
-StyleManager.register(Points);
+// StyleManager.register(Points);
 StyleManager.register(Sprites);
 StyleManager.register(TextStyle);
