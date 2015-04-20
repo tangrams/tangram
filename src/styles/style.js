@@ -20,8 +20,8 @@ export var Style = {
         }
 
         this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
-        this.defines = this.defines || {};          // #defines to be injected into the shaders
-        this.shaders = this.shaders || {};          // shader customization via scene definition (uniforms, defines, blocks, etc.)
+        this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
+        this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
         this.compiling = false;                     // programs are currently compiling
         this.compiled = false;                      // programs are finished compiling
