@@ -37,8 +37,9 @@ Object.assign(Polygons, {
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
         ];
 
-        // Tell the shader we have a normal attribute
+        // Tell the shader we have a normal and order attributes
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
+        this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
 
         // Optional texture UVs
         if (this.texcoords) {

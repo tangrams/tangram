@@ -10,6 +10,12 @@ uniform sampler2D u_texture;
 varying vec4 v_color;
 varying vec2 v_texcoord;
 
+// Alpha discard threshold (substitute for alpha blending)
+#ifndef TANGRAM_ALPHA_DISCARD
+#define TANGRAM_ALPHA_DISCARD 0.5
+#endif
+
+// Alpha fade range for edges of points
 #ifndef FADE_RANGE
 #define FADE_RANGE .15
 #endif
@@ -29,6 +35,13 @@ void main (void) {
         vec2 uv = v_texcoord * 2. - 1.;
         float dist = length(uv);
         color.a = clamp(1. - (smoothstep(0., FADE_RANGE, (dist - FADE_START)) / FADE_RANGE), 0., 1.);
+    #endif
+
+    // If blending is off, use alpha discard as a lower-quality substitute
+    #ifndef TANGRAM_BLEND_OVERLAY
+        if (color.a < TANGRAM_ALPHA_DISCARD) {
+            discard;
+        }
     #endif
 
     #pragma tangram: color

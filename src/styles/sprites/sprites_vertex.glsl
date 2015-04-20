@@ -11,6 +11,9 @@ attribute vec3 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
+#ifdef TANGRAM_ORDER_ATTRIBUTE
+    attribute float a_layer;
+#endif
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -37,6 +40,10 @@ void main() {
     #pragma tangram: position
 
     cameraProjection(position);
+
+    #ifdef TANGRAM_ORDER_ATTRIBUTE
+        applyLayerOrder(a_layer, position);
+    #endif
 
     // Apply scaling in screen space
     float zscale = fract(u_map_position.z) * (shape.w * 256. - 1.) + 1.;

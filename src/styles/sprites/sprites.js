@@ -32,6 +32,13 @@ Object.assign(Sprites, {
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false } // TODO: pack into shorts
         ];
+
+        // If we're not rendering as overlay, we need a layer attribute
+        if (this.blend !== 'overlay') {
+            this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
+            attribs.push({ name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false });
+        }
+
         this.vertex_layout = new VertexLayout(attribs);
 
         if (this.texture) {
@@ -108,6 +115,11 @@ Object.assign(Sprites, {
             // texture coords
             0, 0
         ];
+
+        // Add layer attribute if needed
+        if (this.defines.TANGRAM_ORDER_ATTRIBUTE) {
+            template.push(style.order);
+        }
 
         return template;
     },

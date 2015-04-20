@@ -19,7 +19,6 @@ export var Style = {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
-        this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -28,6 +27,10 @@ export var Style = {
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
+
+        // Blending
+        this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
+        this.defines[`TANGRAM_BLEND_${this.blend.toUpperCase()}`] = true;
 
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof Material)) {
