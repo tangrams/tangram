@@ -5,16 +5,16 @@ import {StyleParser} from '../style_parser';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
-import {Sprites} from '../sprites/sprites';
+import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
 
 import log from 'loglevel';
 
-export let TextStyle = Object.create(Sprites);
+export let TextStyle = Object.create(Points);
 
 Object.assign(TextStyle, {
     name: 'text',
-    super: Sprites,
+    super: Points,
     built_in: true,
     selection: false,
 
@@ -35,9 +35,9 @@ Object.assign(TextStyle, {
 
         this.max_priority = 0;
 
-        // Sprite style (parent class) requires texturing to be turned on
+        // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
-        this.defines.TANGRAM_SPRITE_TEXTURE = true;
+        this.defines.TANGRAM_POINT_TEXTURE = true;
 
         // default font style
         this.font_style = {
@@ -622,7 +622,7 @@ Object.assign(TextStyle, {
         style.text = text;
         style.labels = this.feature_labels.get(feature);
 
-        // TODO: sprite style (parent class) requires a color, setting it to white for now,
+        // TODO: point style (parent class) requires a color, setting it to white for now,
         // but could be made conditional in the vertex layout to save space
         style.color = [1, 1, 1, 1];
 

@@ -27,7 +27,7 @@ void main (void) {
     vec4 color = v_color;
 
     // Apply a texture
-    #ifdef TANGRAM_SPRITE_TEXTURE
+    #ifdef TANGRAM_POINT_TEXTURE
         color *= texture2D(u_texture, v_texcoord);
     // Draw a point
     #else

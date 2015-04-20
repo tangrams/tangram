@@ -1,4 +1,4 @@
-// Sprite rendering style
+// Point rendering style
 
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
@@ -10,10 +10,10 @@ import Utils from '../../utils/utils';
 
 import log from 'loglevel';
 
-export var Sprites = Object.create(Style);
+export var Points = Object.create(Style);
 
-Object.assign(Sprites, {
-    name: 'sprites',
+Object.assign(Points, {
+    name: 'points',
     built_in: true,
     selection: true,
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
@@ -22,8 +22,8 @@ Object.assign(Sprites, {
         Style.init.apply(this, arguments);
 
         // Base shaders
-        this.vertex_shader_key = 'styles/sprites/sprites_vertex';
-        this.fragment_shader_key = 'styles/sprites/sprites_fragment';
+        this.vertex_shader_key = 'styles/points/points_vertex';
+        this.fragment_shader_key = 'styles/points/points_fragment';
 
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
@@ -42,7 +42,7 @@ Object.assign(Sprites, {
         this.vertex_layout = new VertexLayout(attribs);
 
         if (this.texture) {
-            this.defines.TANGRAM_SPRITE_TEXTURE = true;
+            this.defines.TANGRAM_POINT_TEXTURE = true;
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
         }
@@ -61,7 +61,7 @@ Object.assign(Sprites, {
             style.sprite = style.sprite(context);
         }
 
-        // sprite style only supports sizes in pixel units, so unit conversion flag is off
+        // point style only supports sizes in pixel units, so unit conversion flag is off
         style.size = rule_style.size || [32, 32];
         style.size = StyleParser.parseDistance(style.size, context, false);
 
@@ -79,7 +79,7 @@ Object.assign(Sprites, {
             style.angle = style.angle(context);
         }
 
-        // factor by which sprites scales from current zoom level to next zoom level
+        // factor by which point scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;
 
         // to store bbox by tiles
