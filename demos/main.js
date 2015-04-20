@@ -1,6 +1,23 @@
 /*jslint browser: true*/
 /*global Tangram, gui */
 
+/* 
+
+Hello source-viewers!
+
+We're glad you're interested in how Tangram can be used to make amazing maps!
+
+This demo is meant to show off various visual styles, but it has a really complex setup - we had to jump through a lot of hoops to implement the style-switcher and rebuild the dat.gui interface on the fly, which are things you would probably never have to do in a real-world use case.
+
+So instead of rummaging through this rather confusing example, we recommend you check out our documentation, which is chock-full of specific, targeted demos highlighting all of the nifty features of the Tangram library:
+
+https://github.com/tangrams/tangram/wiki/
+
+Enjoy!
+- The Mapzen Tangram team
+
+*/
+
 (function () {
     'use strict';
 
@@ -206,17 +223,11 @@
             'None': '',
             'Water animation': 'water',
             'Elevator': 'elevator',
-            'Breathe': 'breathe',
             'Pop-up': 'popup',
-            'Dots': 'dots',
-            'Wood': 'wood',
-            'B&W Halftone': 'halftone',
-            'Color Halftone': 'colorhalftone',
+            'Halftone': 'halftone',
             'Windows': 'windows',
             'Environment Map': 'envmap',
-            'Color Bleed': 'colorbleed',
-            'Rainbow': 'rainbow',
-            'Icons': 'icons'
+            'Rainbow': 'rainbow'
         },
         saveInitial: function() {
             // Save settings to restore later
@@ -316,17 +327,6 @@
                     scene.config.layers.water.style.name = style;
                 }
             },
-            'colorbleed': {
-                setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-
-                    this.state.animated = scene.config.styles[style].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'];
-                    this.folder.add(this.state, 'animated').onChange(function(value) {
-                        scene.config.styles[style].shaders.defines['EFFECT_COLOR_BLEED_ANIMATED'] = value;
-                        scene.updateConfig();
-                    });
-                }
-            },
             'rainbow': {
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;
@@ -335,135 +335,11 @@
             'popup': {
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;
-
-                    this.state.popup_radius = this.uniforms().u_popup_radius;
-                    this.folder.add(this.state, 'popup_radius', 0, 500).onChange(function(value) {
-                        this.uniforms().u_popup_radius = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.popup_height = this.uniforms().u_popup_height;
-                    this.folder.add(this.state, 'popup_height', 0, 5).onChange(function(value) {
-                        this.uniforms().u_popup_height = value;
-                        scene.requestRedraw();
-                    }.bind(this));
                 }
             },
             'elevator': {
                 setup: function (style) {
                     scene.config.layers.buildings.style.name = style;
-                }
-            },
-            'breathe': {
-                setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-
-                    this.state.breathe_scale = this.uniforms().u_breathe_scale;
-                    this.folder.add(this.state, 'breathe_scale', 0, 50).onChange(function(value) {
-                        this.uniforms().u_breathe_scale = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.breathe_speed = this.uniforms().u_breathe_speed;
-                    this.folder.add(this.state, 'breathe_speed', 0, 3).onChange(function(value) {
-                        this.uniforms().u_breathe_speed = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-                }
-            },
-            'dots': {
-                setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-
-                    this.state.background = style_options.scaleColor(this.uniforms().u_dot_background_color, 255);
-                    this.folder.addColor(this.state, 'background').onChange(function(value) {
-                        this.uniforms().u_dot_background_color = style_options.scaleColor(value, 1 / 255);
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.dot_color = style_options.scaleColor(this.uniforms().u_dot_color, 255);
-                    this.folder.addColor(this.state, 'dot_color').onChange(function(value) {
-                        this.uniforms().u_dot_color = style_options.scaleColor(value, 1 / 255);
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.grid_scale = this.uniforms().u_dot_grid_scale;
-                    this.folder.add(this.state, 'grid_scale', 0, 0.1).onChange(function(value) {
-                        this.uniforms().u_dot_grid_scale = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.dot_scale = this.uniforms().u_dot_scale;
-                    this.folder.add(this.state, 'dot_scale', 0, 0.4).onChange(function(value) {
-                        this.uniforms().u_dot_scale = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-                }
-            },
-            'wood': {
-                setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-
-                    this.state.wood_color1 = style_options.scaleColor(this.uniforms().u_wood_color1, 255);
-                    this.folder.addColor(this.state, 'wood_color1').onChange(function(value) {
-                        this.uniforms().u_wood_color1 = style_options.scaleColor(value, 1 / 255);
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.wood_color2 = style_options.scaleColor(this.uniforms().u_wood_color2, 255);
-                    this.folder.addColor(this.state, 'wood_color2').onChange(function(value) {
-                        this.uniforms().u_wood_color2 = style_options.scaleColor(value, 1 / 255);
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.eccentricity = this.uniforms().u_wood_eccentricity;
-                    this.folder.add(this.state, 'eccentricity', -1, 1).onChange(function(value) {
-                        this.uniforms().u_wood_eccentricity = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.twist = this.uniforms().u_wood_twist / .0001;
-                    this.folder.add(this.state, 'twist', 0, 1).onChange(function(value) {
-                        this.uniforms().u_wood_twist = value * .0001;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.scale = this.uniforms().u_wood_scale / 100;
-                    this.folder.add(this.state, 'scale', 0, 1).onChange(function(value) {
-                        this.uniforms().u_wood_scale = value * 100;
-                        scene.requestRedraw();
-                    }.bind(this));
-                }
-            },
-            'colorhalftone': {
-                setup: function (style) {
-                    var layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
-                    layers.forEach(function(l) {
-                        scene.config.layers[l].style.name = style;
-                    });
-
-                    Object.keys(scene.config.layers).forEach(function(l) {
-                        if (layers.indexOf(l) === -1)
-                        scene.config.layers[l].style.visible = false;
-                    });
-
-                    this.state.dot_frequency = this.uniforms().dot_frequency;
-                    this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
-                        this.uniforms().dot_frequency = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.dot_scale = this.uniforms().dot_scale;
-                    this.folder.add(this.state, 'dot_scale', 0, 3).onChange(function(value) {
-                        this.uniforms().dot_scale = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-
-                    this.state.true_color = this.uniforms().true_color;
-                    this.folder.add(this.state, 'true_color').onChange(function(value) {
-                        this.uniforms().true_color = value;
-                        scene.requestRedraw();
-                    }.bind(this));
                 }
             },
             'halftone': {
@@ -502,19 +378,6 @@
                     this.state.envmap = scene.styles.envmap.material.emission.texture;
                     this.folder.add(this.state, 'envmap', envmaps).onChange(function(value) {
                         scene.styles.envmap.material.emission.texture = value;
-                        scene.requestRedraw();
-                    }.bind(this));
-                }
-            },
-            'icons': {
-                setup: function (style) {
-                    scene.config.layers.pois.style.name = 'icons';
-                    scene.config.layers.pois.style.sprite = 'tree';
-                    scene.config.layers.pois.style.size = [[13, '16px'], [14, '24px'], [15, '32px']];
-
-                    this.state.rotate = this.uniforms().rotate;
-                    this.folder.add(this.state, 'rotate').onChange(function(value) {
-                        this.uniforms().rotate = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }
@@ -569,49 +432,6 @@
             scene.updateConfig();
         });
 
-        // Lighting
-        // var lighting_presets = {
-        //     'None': {
-        //         type: null
-        //     },
-        //     'Point': {
-        //         type: 'point',
-        //         position: [0, 0, 200],
-        //         ambient: 0.5,
-        //         backlight: true
-        //     },
-        //     'Directional': {
-        //         type: 'directional',
-        //         direction: [-1, 0, -.5],
-        //         ambient: 0.5
-        //     },
-        //     'Spotlight': {
-        //         type: 'spotlight',
-        //         position: [0, 0, 500],
-        //         direction: [0, 0, -1],
-        //         inner_angle: 20,
-        //         outer_angle: 25,
-        //         ambient: 0.2
-        //     },
-        //     'Night': {
-        //         type: 'point',
-        //         position: [0, 0, 50],
-        //         ambient: 0,
-        //         backlight: false
-        //     }
-        // };
-        // // var lighting_options = Object.keys(lighting_presets);
-        // for (var k=0; k < lighting_options.length; k++) {
-        //     if (lighting_presets[lighting_options[k]].type === layer.scene.config.lighting.type) {
-        //         gui.lighting = lighting_options[k];
-        //         break;
-        //     }
-        // }
-        // gui.add(gui, 'lighting', lighting_options).onChange(function(value) {
-        //     layer.scene.config.lighting = lighting_presets[value];
-        //     layer.scene.updateConfig();
-        // });
-
         // Feature selection on hover
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
@@ -619,6 +439,7 @@
         // Screenshot
         gui.screenshot = function () {
             gui.queue_screenshot = true;
+            scene.requestRedraw();
         };
         gui.add(gui, 'screenshot');
 
@@ -691,13 +512,6 @@
                     if (feature.properties.name != null) {
                         label = feature.properties.name;
                     }
-
-                    // if (feature.properties.layer == 'buildings' && feature.properties.height) {
-                    //     if (label != '') {
-                    //         label += '<br>';
-                    //     }
-                    //     label += feature.properties.height + 'm';
-                    // }
 
                     if (label != '') {
                         selection_info.style.left = (pixel.x + 5) + 'px';
