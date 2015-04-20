@@ -9,8 +9,10 @@ uniform mat4 u_modelView;
 
 attribute vec3 a_position;
 attribute vec4 a_shape;
+attribute vec4 a_color;
 attribute vec2 a_texcoord;
 
+varying vec4 v_color;
 varying vec2 v_texcoord;
 
 #pragma tangram: globals
@@ -25,6 +27,7 @@ void main() {
     // Adds vertex shader support for feature selection
     #pragma tangram: feature-selection-vertex
 
+    v_color = a_color;
     v_texcoord = a_texcoord;
 
     // Position

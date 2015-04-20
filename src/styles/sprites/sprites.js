@@ -28,12 +28,14 @@ Object.assign(Sprites, {
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false } // TODO: pack into shorts
         ];
         this.vertex_layout = new VertexLayout(attribs);
 
         if (this.texture) {
+            this.defines.TANGRAM_SPRITE_TEXTURE = true;
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
         }
@@ -44,6 +46,7 @@ Object.assign(Sprites, {
 
         let tile = context.tile.key;
 
+        style.color = (rule_style.color && StyleParser.parseColor(rule_style.color, context)) || [1, 1, 1, 1];
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
 
         style.sprite = rule_style.sprite;
@@ -97,6 +100,9 @@ Object.assign(Sprites, {
             0, 0, style.z || 0,
             // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
             0, 0, 0, 0,
+            // color
+            // TODO: automate multiplication for normalized attribs?
+            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
             // selection color
             style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
             // texture coords

@@ -35,6 +35,10 @@ Object.assign(TextStyle, {
 
         this.max_priority = 0;
 
+        // Sprite style (parent class) requires texturing to be turned on
+        // (labels are always drawn with textures)
+        this.defines.TANGRAM_SPRITE_TEXTURE = true;
+
         // default font style
         this.font_style = {
             typeface: 'Helvetica 12px',
@@ -617,6 +621,10 @@ Object.assign(TextStyle, {
         this.subtext_size = text_info.subtext_size;
         style.text = text;
         style.labels = this.feature_labels.get(feature);
+
+        // TODO: sprite style (parent class) requires a color, setting it to white for now,
+        // but could be made conditional in the vertex layout to save space
+        style.color = [1, 1, 1, 1];
 
         return style;
     }
