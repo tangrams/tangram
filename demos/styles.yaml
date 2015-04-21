@@ -640,26 +640,37 @@ layers:
 
     places:
         data: { source: osm }
-
         filter: { name: true }
 
-        style:
-            order: 6
-            name: text
-            visible: false
-            # interactive: true
-            font:
-                typeface: Italic 25pt Courier
-                fill: black
-                stroke: { color: white, width: 3 }
+        # administrative:
+            # filter: { kind: administrative }
 
-        administrative:
-            filter: { kind: administrative }
+        states:
+            filter: { kind: state, $geometry: point }
             style:
                 order: 6
                 name: text
+                # name: points
+                # interactive: true
                 font:
-                    typeface: 1.5em Futura
+                    typeface: 14px Futura
                     fill: blue
                     stroke: white
 
+        # borders:
+        #     filter: { $geometry: polygon }
+        #     style:
+        #         name: lines
+        #         order: 10
+        #         interactive: true
+        #         width: 5px
+        #         color: red
+
+        # points:
+        #     filter: { $geometry: point }
+        #     style:
+        #         name: points
+        #         order: 10
+        #         interactive: true
+        #         size: 32px
+        #         color: yellow
