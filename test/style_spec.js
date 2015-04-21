@@ -36,7 +36,6 @@ describe('Styles:', () => {
         it('initializes built-in styles', () => {
             assert.equal(Styles.polygons.constructor, Style.constructor);
             assert.equal(Styles.points.constructor, Style.constructor);
-            assert.equal(Styles.sprites.constructor, Style.constructor);
             assert.equal(Styles.text.constructor, Style.constructor);
         });
 

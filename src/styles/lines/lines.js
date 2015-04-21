@@ -32,7 +32,8 @@ Object.assign(Lines, {
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
         ];
 
-        // Tell the shader we want to extrude lines
+        // Tell the shader we want an order attribute, and to extrude lines
+        this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
 
         // Optional texture UVs
