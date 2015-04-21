@@ -155,7 +155,7 @@ export default class FeatureSelection {
     // Workers independently create/modify selection colors in their own threads, but we also
     // need the main thread to know where each feature color originated. To accomplish this,
     // we partition the map by setting the 4th component (alpha channel) to the worker's id.
-    static makeEntry() {
+    static makeEntry(tile) {
         // 32-bit color key
         this.map_size++;
         var ir = this.map_size & 255;
@@ -172,14 +172,18 @@ export default class FeatureSelection {
             color: [r, g, b, a],
         };
 
+        this.tiles[tile.key] = this.tiles[tile.key] || [];
+        this.tiles[tile.key].push(key);
+
         return this.map[key];
     }
 
-    static makeColor(feature) {
-        var selector = this.makeEntry();
+    static makeColor(feature, tile) {
+        var selector = this.makeEntry(tile);
         selector.feature = {
             id: feature.id,
-            properties: feature.properties
+            properties: feature.properties,
+            tile: tile.key
         };
 
         return selector.color;
@@ -190,6 +194,17 @@ export default class FeatureSelection {
         this.map_size = 1;
     }
 
+    static clearTile(key) {
+        if (Array.isArray(this.tiles[key])) {
+            this.tiles[key].forEach(k => delete this.map[k]);
+            delete this.tiles[key];
+        }
+    }
+
+    static getMapSize() {
+        return Object.keys(this.map).length;
+    }
+
     static setPrefix(prefix) {
         this.map_prefix = prefix;
     }
@@ -197,7 +212,8 @@ export default class FeatureSelection {
 }
 
 // Static properties
-FeatureSelection.map = {}; // this will be unique per module instance (so unique per worker)
+FeatureSelection.map = {};   // this will be unique per module instance (so unique per worker)
+FeatureSelection.tiles = {}; // selection keys, by tile
 FeatureSelection.map_size = 1; // start at 1 since 1 will be divided by this
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
