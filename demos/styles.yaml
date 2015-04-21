@@ -179,19 +179,20 @@ styles:
     windows:
         url: demos/styles/windows.yaml
 
-    # points:
-    #     shaders:
-    #         defines:
-    #             FADE_RANGE: .4
-    #         blocks:
-    #             color:
-    #                 color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
-    #                 color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
+    gradient_points:
+        base: points
+        shaders:
+            defines:
+                FADE_RANGE: .4
+            blocks:
+                color:
+                    color.rgb *= (1. - smoothstep(.25, 1., dist)) + 0.5;
+                    color.rgb += vec3(gl_FragCoord.x / u_resolution.x, 0.0, gl_FragCoord.y / u_resolution.y);
 
     icons:
-        base: sprites
+        base: points
         # animated: true
-        # blend: multiply
+        # blend: opaque
         # texture: pois
         # texture: demos/images/sunset.jpg
         texture:
@@ -222,26 +223,6 @@ styles:
                     //if (color.a < .5) {
                     //    color.rgb = vec3(1);
                     //}
-
-    # text:
-    #     selection: true
-    #     animated: true
-    #     shaders:
-    #         blocks:
-    #             position: |
-    #                 shape.z = (shape.z + 0.01) * u_time * .75;
-    #             # color: |
-    #             #     color.rgb = vec3(v_texcoord.xy, 0.);
-
-    # uv_test:
-    #     base: polygons
-    #     texcoords: true
-    #     shaders:
-    #         blocks:
-    #             color: |
-    #                 color.rgb = vec3(v_texcoord.xy, 0.);
-    #                 //color.rgb = vec3(v_texcoord.x, mod(v_texcoord.y + u_time/2., 1.), 0.);
-    #                 //color.rgb = texture2D(u_texture, uv).rgb;
 
     # transparent:
     #     base: polygons
@@ -275,12 +256,6 @@ styles:
     #                     (gl_DepthRange.far - gl_DepthRange.near);
     #                 float clipDepth = ndcDepth / gl_FragCoord.w;
     #                 color = vec4((clipDepth * 0.5) + 0.5);*/
-
-    # lines:
-    #     animated: true
-    #     shaders:
-    #         blocks:
-    #             width: width *= (sin(u_time) + 1.) * 2. + 1.;
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -601,9 +576,9 @@ layers:
 
         style:
             pois:
-                # name: points
-                # size: [[12, 6px], [13, 10px]]
-                # order: 3400
+                # name: gradient_points
+                # color: grey
+                # order: 250
 
                 name: text
                 # text_source: kind
@@ -616,9 +591,9 @@ layers:
                 # name: icons
                 # sprite: tree
                 # size: [32px, 32px]
-                # size: [[13, 16px], [14, 24px], [15, 32px]]
+                size: [[13, 16px], [14, 24px], [15, 32px]]
                 # size: function() { return (parseInt(feature.id, 16) % 100); }
-                color: white
+                # color: white
 
                 angle: 0
                 # angle: function() { return (parseInt(feature.id, 16) % 360); }
@@ -653,6 +628,7 @@ layers:
                     name: icons
                     size: 32px
                     sprite: museum
+                    color: white
 
     building_labels:
         data: { source: osm, layer: buildings }
@@ -687,28 +663,38 @@ layers:
 
     places:
         data: { source: osm }
-
         filter: { name: true }
 
-        style:
-            text:
-                name: text
-                order: 6
-                visible: false
-                # interactive: true
-                font:
-                    typeface: Italic 25pt Courier
-                    fill: black
-                    stroke: { color: white, width: 3 }
+        # administrative:
+            # filter: { kind: administrative }
 
-        administrative:
-            filter: { kind: administrative }
+        states:
+            filter: { kind: state, $geometry: point }
             style:
                 text:
                     name: text
                     order: 6
+                    # name: points
+                    # interactive: true
                     font:
-                        typeface: 1.5em Futura
+                        typeface: 14px Futura
                         fill: blue
                         stroke: white
 
+        # borders:
+        #     filter: { $geometry: polygon }
+        #     style:
+        #         name: lines
+        #         order: 10
+        #         interactive: true
+        #         width: 5px
+        #         color: red
+
+        # points:
+        #     filter: { $geometry: point }
+        #     style:
+        #         name: points
+        #         order: 10
+        #         interactive: true
+        #         size: 32px
+        #         color: yellow

@@ -141,6 +141,7 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
         feature,
         tile,
         zoom: tile.coords.z,
+        geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
         units_per_meter: Geo.units_per_meter[tile.coords.z]
     };

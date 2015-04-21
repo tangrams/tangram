@@ -22,6 +22,7 @@ import WorkerBroker from './utils/worker_broker';
 import {ruleCache} from './styles/rule';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
+import FeatureSelection from './selection';
 
 import glMatrix from 'gl-matrix';
 
@@ -43,7 +44,8 @@ var debug = {
     WorkerBroker,
     ruleCache,
     StyleManager,
-    StyleParser
+    StyleParser,
+    FeatureSelection
 };
 
 // Window can only be set in main thread

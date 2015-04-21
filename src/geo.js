@@ -134,3 +134,16 @@ Geo.findBoundingBox = function (polygon) {
 
     return [min_x, min_y, max_x, max_y];
 };
+
+// Convert geometry type to one of: 'point', 'line', 'polygon'
+Geo.geometryType = function(type) {
+    if (type === 'Polygon' || type === 'MultiPolygon') {
+        return 'polygon';
+    }
+    else if (type === 'LineString' || type === 'MultiLineString') {
+        return 'line';
+    }
+    if (type === 'Point' || type === 'MultiPoint') {
+        return 'point';
+    }
+}

@@ -148,7 +148,7 @@ if (Utils.isWorkerThread) {
                             resolve({
                                 tile: SceneWorker.sliceTile(tile, keys),
                                 worker_id: SceneWorker.worker_id,
-                                selection_map_size: FeatureSelection.map_size
+                                selection_map_size: FeatureSelection.getMapSize()
                             });
                         });
                     }).catch((error) => {
@@ -160,7 +160,7 @@ if (Utils.isWorkerThread) {
                         resolve({
                             tile: SceneWorker.sliceTile(tile),
                             worker_id: SceneWorker.worker_id,
-                            selection_map_size: FeatureSelection.map_size
+                            selection_map_size: FeatureSelection.getMapSize()
                         });
                     });
                 });
@@ -174,7 +174,7 @@ if (Utils.isWorkerThread) {
                     return {
                         tile: SceneWorker.sliceTile(tile, keys),
                         worker_id: SceneWorker.worker_id,
-                        selection_map_size: FeatureSelection.map_size
+                        selection_map_size: FeatureSelection.getMapSize()
                     };
                 });
             }
@@ -195,6 +195,7 @@ if (Utils.isWorkerThread) {
             Tile.cancel(tile);
 
             // Remove from cache
+            FeatureSelection.clearTile(key);
             delete SceneWorker.tiles[key];
             SceneWorker.log('trace', `remove tile from cache for ${key}`);
         }
