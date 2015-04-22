@@ -173,6 +173,10 @@ styles:
     halftone:
         url: demos/styles/halftone.yaml
 
+    halftone-lines:
+        base: lines
+        mix: halftone
+
     colorhalftone:
         url: demos/styles/halftone.yaml
 
@@ -270,14 +274,14 @@ layers:
 
     earth:
         data: { source: osm }
-        style:
+        draw:
             polygons:
                 order: 0
                 color: [0.175, 0.175, 0.175]
 
     landuse:
         data: { source: osm }
-        style:
+        draw:
             polygons:
                 order: 1
                 interactive: true
@@ -286,45 +290,41 @@ layers:
         pitch:
             filter:
                 kind: [pitch, garden, playground]
-            style:
+            draw:
                 polygons:
                     color: [0.3, 0.675, 0.3]
                     order: 1
 
         airports:
             filter: { kind: apron }
-            style:
+            draw:
                 polygons:
                     color: lightyellow
                     order: 1
 
     water:
         data: { source: osm }
-        style:
+        draw:
             polygons:
-                # name: water
+                # style: water
                 order: 3
                 interactive: true
                 color: [0.5, 0.5, 0.875]
-            lines:
-                name: lines
-                order: 4
-                color: [0.6, 0.6, 0.975]
-                width: function() { return 2.5 * Math.log(zoom); }
 
-        # outlines:
-        #     filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
-        #     style:
-        #         polygons:
-        #             outline:
-        #                 color: [0.6, 0.6, 0.975]
-        #                 width: function() { return 2.5 * Math.log(zoom); }
+        outlines:
+            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+            draw:
+                lines:
+                    style: lines
+                    order: 1
+                    color: [0.6, 0.6, 0.975]
+                    width: function() { return 2.5 * Math.log(zoom); }
 
     # water_outlines:
     #     data: { source: osm, layer: water }
     #     filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
-    #     style:
-    #         name: lines
+    #     draw:
+    #         style: lines
     #         order: 4
     #         color: [0.6, 0.6, 0.975]
     #         width: function() { return 2.5 * Math.log(zoom); }
@@ -334,9 +334,9 @@ layers:
 
     roads:
         data: { source: osm }
-        style:
+        draw:
             lines:
-                name: lines # TODO: assume style name from key and allow override
+                style: lines # TODO: assume style name from key and allow override
                 order: |
                     function () {
                         function reduceSortKey(key) {
@@ -353,45 +353,33 @@ layers:
                 interactive: function () { return (zoom >= 18); }
                 color: white
 
+        outlines:
+            filter: { aeroway: false, $zoom: { min: 15 } }
+            draw:
+                outlines:
+                    style: lines
+                    order: 4 # road outlines underneath all roads
+
         airports:
             filter: { aeroway: true }
             taxiways:
                 filter: { aeroway: taxiway }
-                style:
+                draw:
                     lines:
                         width: [[12, 1px], [13, 2px], [17, 10px]]
                         color: darkorange
                         cap: round
             runways:
                 filter: { aeroway: runway }
-                style:
+                draw:
                     lines:
                         width: [[12, 5px], [13, 10px], [15, 30px], [17, 150px]]
                         color: orange
                         # order: 1
 
-        outlines:
-            filter: { aeroway: false, $zoom: { min: 15 } }
-            style:
-                outlines:
-                    name: lines
-                    order: 4 # road outlines underneath all roads
-                    # order: | # interleave road outlines with roads
-                    #     function () {
-                    #         function reduceSortKey(key) {
-                    #             return 30 * Math.floor((key % 10000) / 1000) +
-                    #                    10 * Math.floor((key % 1000) / 100) +
-                    #                    1  * (key % 10);
-                    #         }
-
-                    #         var min = reduceSortKey(-3109);
-                    #         var order = 4.5 + reduceSortKey(feature.sort_key) - min;
-                    #         return order;
-                    #     }
-
             z17:
                 filter: { $zoom: { min: 17 } }
-                style:
+                draw:
                     outlines:
                         cap: round
                         join: round
@@ -400,14 +388,14 @@ layers:
             filter: { aeroway: false }
             rounded:
                 filter: { $zoom: { min: 17 }, is_bridge: no }
-                style:
+                draw:
                     lines:
                         cap: round
                         join: round
 
             highway:
                 filter: { kind: highway }
-                style:
+                draw:
                     lines:
                         color: [1.0, 1.0, 1.0]
                         width: function () { return 3 * Math.log(zoom); }
@@ -417,7 +405,7 @@ layers:
 
                 tunnel:
                     filter: { is_tunnel: yes }
-                    style:
+                    draw:
                         lines:
                             color: '#333'
                             width: function () { return 2 * Math.log(zoom); }
@@ -427,56 +415,56 @@ layers:
 
             major_road:
                 filter: { kind: major_road }
-                style:
+                draw:
                     lines:
                         color: [0.5, 0.5, 0.5]
                         width: function () { return 2.5 * Math.log(zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
-                    style:
+                    draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
                             width: function () { return (2.5 + 2 * 3/8) * Math.log(zoom); }
 
             minor_road:
                 filter: { kind: minor_road, $zoom: { min: 13 } }
-                style:
+                draw:
                     lines:
                         color: [0.65, 0.65, 0.65]
                         width: function () { return 2 * Math.log(zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
-                    style:
+                    draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
                             width: function () { return (2 + 2 * 2.5/8) * Math.log(zoom); }
 
             path:
                 filter: { kind: path, $zoom: { min: 15 } }
-                style:
+                draw:
                     lines:
                         color: [0.8, 0.8, 0.8]
                         width: function () { return 1 * Math.log(zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
-                    style:
+                    draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
                             width: function () { return (1 + 2 * 2/8) * Math.log(zoom); }
 
             rail:
                 filter: { kind: rail }
-                style:
+                draw:
                     lines:
                         color: [0.5, 0.0, 0.0]
                         width: function () { return 2 * Math.log(zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
-                    style:
+                    draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
                             width: function () { return (2 + 2 * 2/8) * Math.log(zoom); }
@@ -490,7 +478,7 @@ layers:
         # filter: function () { return Math.random() < 0.25; }
         # filter: function () { return true; }
 
-        style:
+        draw:
             polygons:
                 order: 250
                 interactive: true
@@ -508,26 +496,26 @@ layers:
 
         # blend:
         #     filter: { height: { min: 100 } }
-        #     style: { name: transparent, color: yellow }
+        #     draw: { style: transparent, color: yellow }
 
         colors:
             name:
                 filter: { name: true, kind: false }
-                style: { polygons: { color: [.6, .2, .2] } }
+                draw: { polygons: { color: [.6, .2, .2] } }
 
             kind:
                 filter: { name: false, kind: true }
-                style: { polygons: { color: [.2, .2, .6] } }
+                draw: { polygons: { color: [.2, .2, .6] } }
 
             name-kind:
                 filter: { name: true, kind: true }
-                style: { polygons: { color: [.6, .2, .6] } }
+                draw: { polygons: { color: [.6, .2, .6] } }
 
     building_outlines:
         data: { source: osm, layer: buildings }
-        style:
+        draw:
             lines:
-                name: lines
+                style: lines
                 visible: false
                 order: 251
                 color: white
@@ -538,9 +526,9 @@ layers:
         data: { source: osm, layer: roads }
 
         filter: { name: true, $zoom: { min: 14 } }
-        style:
+        draw:
             text:
-                name: text
+                style: text
                 # visible: false
                 order: 5
                 interactive: true
@@ -552,7 +540,7 @@ layers:
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
-            style:
+            draw:
                 text:
                     font:
                         typeface: 12px Futura
@@ -560,7 +548,7 @@ layers:
                         stroke: white
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-            style:
+            draw:
                 text:
                     font:
                         typeface: 11px Futura
@@ -574,13 +562,13 @@ layers:
 
         filter: { name: true, $zoom: { min: 17 } }
 
-        style:
+        draw:
             pois:
-                # name: gradient_points
+                # style: gradient_points
                 # color: grey
                 # order: 250
 
-                name: text
+                style: text
                 # text_source: kind
                 # text_source: function() { return (Math.random() * 100).toFixed(); }
                 font:
@@ -588,7 +576,7 @@ layers:
                     fill: [.9, .9, .1]
                     stroke: black
 
-                # name: icons
+                # style: icons
                 # sprite: tree
                 # size: [32px, 32px]
                 size: [[13, 16px], [14, 24px], [15, 32px]]
@@ -603,7 +591,7 @@ layers:
 
         z18:
             filter: { $zoom: { min: 18 } }
-            style:
+            draw:
                 pois:
                     font:
                         typeface: 12px Helvetica
@@ -611,30 +599,30 @@ layers:
         # examples of different icons mapped to feature properties
         restaurant:
             filter: { kind: restaurant }
-            style:
+            draw:
                 pois:
                     sprite: restaurant
 
         cafe:
             filter: { kind: cafe }
-            style:
+            draw:
                 pois:
                     sprite: cafe
 
         culture:
             filter: { kind: [museum, library] }
-            style:
+            draw:
                 pois:
-                    name: icons
+                    style: icons
                     size: 32px
                     sprite: museum
                     color: white
 
     building_labels:
         data: { source: osm, layer: buildings }
-        style:
+        draw:
             text:
-                name: text
+                style: text
                 visible: false
                 order: 10
                 # text_source: |
@@ -655,7 +643,7 @@ layers:
 
         # high:
         #     filter: { height: { min: 100 } }
-        #     style:
+        #     draw:
         #         text:
         #             font:
         #                 fill: red
@@ -670,11 +658,11 @@ layers:
 
         states:
             filter: { kind: state, $geometry: point }
-            style:
+            draw:
                 text:
-                    name: text
+                    style: text
                     order: 6
-                    # name: points
+                    # style: points
                     # interactive: true
                     font:
                         typeface: 14px Futura
@@ -683,8 +671,8 @@ layers:
 
         # borders:
         #     filter: { $geometry: polygon }
-        #     style:
-        #         name: lines
+        #     draw:
+        #         style: lines
         #         order: 10
         #         interactive: true
         #         width: 5px
@@ -692,8 +680,8 @@ layers:
 
         # points:
         #     filter: { $geometry: point }
-        #     style:
-        #         name: points
+        #     draw:
+        #         style: points
         #         order: 10
         #         interactive: true
         #         size: 32px

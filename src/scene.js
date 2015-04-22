@@ -1126,16 +1126,16 @@ export default class Scene {
     }
 
     updateActiveStyles() {
-        // Make a set of currently active styles (used in a style rule)
+        // Make a set of currently active styles (used in a draw rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
         let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule.style) {
-                for (let rule_style of Utils.values(rule.style)) {
-                    if (rule_style.visible !== false) {
-                        let sname = rule_style.name || StyleParser.defaults.style.name;
+            if (rule.draw) {
+                for (let draw of Utils.values(rule.draw)) {
+                    if (draw.visible !== false) {
+                        let sname = draw.style || StyleParser.defaults.draw.style; // TODO: deprecate default
                         let style = this.styles[sname];
 
                         if (style) {
@@ -1145,7 +1145,7 @@ export default class Scene {
                             }
                         }
                         else {
-                            rule_style.name = undefined;
+                            draw.style = undefined;
                         }
                     }
                 }

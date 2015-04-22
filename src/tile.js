@@ -136,7 +136,6 @@ export default class Tile {
         tile.debug.rendering = +new Date();
 
         let tile_data = {};
-        let rule;
 
         for (let source_name in tile.sources) {
             let source = tile.sources[source_name];
@@ -168,34 +167,33 @@ export default class Tile {
                     let feature = geom.features[f];
                     let context = StyleParser.getFeatureParseContext(feature, tile);
 
-                    // Find matching rules
+                    // Get draw groups for this feature
                     let layer_rules = rules[layer_name];
-                    let style_sets = layer_rules.findMatchingRules(context, true);
-
-                    if (!style_sets) {
+                    let draw_groups = layer_rules.buildDrawGroups(context, true);
+                    if (!draw_groups) {
                         continue;
                     }
 
-                    // Render styles
-                    for (let r in style_sets) {
-                        let rule = style_sets[r];
-                        if (!rule.visible) {
+                    // Render draw groups
+                    for (let g in draw_groups) {
+                        let group = draw_groups[g];
+                        if (!group.visible) {
                             continue;
                         }
 
                         // Add to style
-                        rule.name = rule.name || StyleParser.defaults.style.name;
-                        let style = styles[rule.name];
+                        group.style = group.style || StyleParser.defaults.draw.style;
+                        let style = styles[group.style];
 
-                        if (!tile_data[rule.name]) {
-                            tile_data[rule.name] = style.startData();
+                        if (!tile_data[group.style]) {
+                            tile_data[group.style] = style.startData();
                         }
 
-                        context.properties = rule.properties; // add rule-specific properties to context
+                        context.properties = group.properties; // add rule-specific properties to context
 
-                        style.addFeature(feature, rule, context, tile_data[rule.name]);
+                        style.addFeature(feature, group, context, tile_data[group.style]);
 
-                        context.properties = null; // clear rule-specific properties
+                        context.properties = null; // clear group-specific properties
                     }
 
                     source.debug.features++;

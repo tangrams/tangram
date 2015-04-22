@@ -3,21 +3,27 @@
         "filter": {
             "kind": "highway"
         },
-        "style": {
-            "color": [255, 255, 255]
+        "draw": {
+            "group": {
+                "color": [255, 255, 255]
+            }
         },
 
         "fill": {
             "filter": {
                 "name": "FDR"
             },
-            "style": {
-                "color": [1, 1, 0]
+            "draw": {
+                "group": {
+                    "color": [1, 1, 0]
+                }
             },
             "b": {
-                "style": {
-                    "a": "b",
-                    "color": [3.14, 3.14, 3.14]
+                "draw": {
+                    "group": {
+                        "a": "b",
+                        "color": [3.14, 3.14, 3.14]
+                    }
                 }
             }
         },

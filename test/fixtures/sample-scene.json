@@ -15,46 +15,56 @@
                 "data": {
                     "source": "osm"
                 },
-                "style": {
-                    "color": [0.175, 0.175, 0.175],
-                    "order": 0
+                "draw": {
+                    "polygons": {
+                        "color": [0.175, 0.175, 0.175],
+                        "order": 0
+                    }
                 }
             },
             "landuse": {
                 "data": {
                     "source": "osm"
                 },
-                "style": {
-                    "color": [0.5, 0.875, 0.5],
-                    "order": 1
+                "draw": {
+                    "polygons": {
+                        "color": [0.5, 0.875, 0.5],
+                        "order": 1
+                    }
                 }
             },
             "water": {
                 "data": {
                     "source": "osm"
                 },
-                "style": {
-                    "color": [0.5, 0.5, 0.875],
-                    "order": 2
+                "draw": {
+                    "polygons": {
+                        "color": [0.5, 0.5, 0.875],
+                        "order": 2
+                    }
                 }
             },
             "roads": {
                 "data": {
                     "source": "osm"
                 },
-                "style": {
-                    "color": [0.4, 0.4, 0.4],
-                    "order": 3
+                "draw": {
+                    "lines": {
+                        "color": [0.4, 0.4, 0.4],
+                        "order": 3
+                    }
                 }
             },
             "buildings": {
                 "data": {
                     "source": "osm"
                 },
-                "style": {
-                    "name": "rainbow",
-                    "color": [0.6, 0.6, 0.6],
-                    "order": 4
+                "draw": {
+                    "polygons": {
+                        "style": "rainbow",
+                        "color": [0.6, 0.6, 0.6],
+                        "order": 4
+                    }
                 }
             }
         },
