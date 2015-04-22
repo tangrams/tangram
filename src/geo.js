@@ -146,4 +146,4 @@ Geo.geometryType = function(type) {
     if (type === 'Point' || type === 'MultiPoint') {
         return 'point';
     }
-}
+};

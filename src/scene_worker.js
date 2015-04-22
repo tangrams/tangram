@@ -142,6 +142,14 @@ if (Utils.isWorkerThread) {
                     tile.error = null;
 
                     Promise.all(Object.keys(SceneWorker.sources.tiles).map(x => SceneWorker.sources.tiles[x].load(tile))).then(() => {
+                        // Any errors? Warn and continue
+                        let e = Object.keys(tile.sources).
+                            map(s => tile.sources[s].error && `[source '${s}': ${tile.sources[s].error}]`).
+                            filter(x => x);
+                        if (e.length > 0) {
+                            SceneWorker.log('warn', `tile load error(s) for ${tile.key}: ${e.join(', ')}`);
+                        }
+
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {

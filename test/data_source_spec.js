@@ -169,14 +169,17 @@ describe('DataSource', () => {
                     mockTile = getMockTile();
                     sinon.stub(Utils, 'io').returns(Promise.resolve(getMockJSONResponse()));
                     subject = new GeoJSONTileSource(options);
+                    return subject.load(mockTile);
                 });
+
                 afterEach(() => {
                     Utils.io.restore();
                     subject = undefined;
                 });
 
                 it('calls back with the tile object', () => {
-                    return assert.isFulfilled(subject.load(mockTile));
+                    assert(Object.keys(mockTile.sources).map(s => mockTile.sources[s].error).filter(x => x).length === 0);
+                    assert.isFulfilled(subject.load(mockTile));
                 });
             });
 
@@ -186,6 +189,7 @@ describe('DataSource', () => {
                     mockTile = getMockTile();
                     sinon.stub(Utils, 'io').returns(Promise.reject(new Error('I am an error')));
                     subject = new GeoJSONTileSource(options);
+                    return subject.load(mockTile);
                 });
 
                 afterEach(() => {
@@ -193,8 +197,8 @@ describe('DataSource', () => {
                     subject = undefined;
                 });
 
-                it('is rejects the promise', () => {
-                    return assert.isRejected(subject.load(mockTile));
+                it('is resolves the promise but includes an error', () => {
+                    assert(Object.keys(mockTile.sources).map(s => mockTile.sources[s].error).filter(x => x).length > 0);
                 });
             });
         });
