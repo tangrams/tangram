@@ -237,7 +237,10 @@
             var layer_styles = scene.config.layers;
             for (var l in layer_styles) {
                 if (this.initial.layers[l]) {
-                    layer_styles[l].style = Object.assign({}, this.initial.layers[l].style);
+                    layer_styles[l].style = {};
+                    for (var s in this.initial.layers[l].style) {
+                        layer_styles[l].style[s] = Object.assign({}, this.initial.layers[l].style[s]);
+                    }
                 }
             };
 
@@ -439,7 +442,9 @@
                 setup: function (style) {
                     var layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
                     layers.forEach(function(l) {
-                        scene.config.layers[l].style.polygons.name = style; // TODO: fix for multiple styles
+                        if (scene.config.layers[l].style.polygons) {
+                            scene.config.layers[l].style.polygons.name = style;
+                        }
                     });
 
                     Object.keys(scene.config.layers).forEach(function(l) {
@@ -472,7 +477,9 @@
 
                     var layers = ['landuse', 'water', 'roads', 'buildings'];
                     layers.forEach(function(l) {
-                        scene.config.layers[l].style.polygons.name = style; // TODO: fix for multiple styles
+                        if (scene.config.layers[l].style.polygons) {
+                            scene.config.layers[l].style.polygons.name = style;
+                        }
                     });
 
                     Object.keys(scene.config.layers).forEach(function(l) {
