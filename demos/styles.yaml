@@ -17,22 +17,35 @@ cameras:
 lights:
     directional1:
         type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .4
-        ambient: .8
-
-    night:
-        type: directional
-        direction: [.5, 0, -1] #[0.1, 0.1, -1]
-        diffuse: .4
-        ambient: .8
-        visible: false
+        direction: [.1, .5, -1] #[0.1, 0.1, -1]
+        diffuse: .2
+        ambient: 1.1
 
 background:
-    color: [.62, .85, 1.0]
+    color: '#9dc3de'
+
+textures:
+    pois:
+        url: demos/images/poi_icons_32.png
+        filtering: mipmap
+        sprites:
+            # each sprite is defined as: [x origin, y origin, width, height]
+            plane: [0, 0, 32, 32]
+            tree: [0, 185, 32, 32]
+            sunburst: [0, 629, 32, 32]
+            restaurant: [0, 777, 32, 32]
+            cafe: [0, 814, 32, 32]
+            museum: [0, 518, 32, 32]
+            bar: [0, 887, 32, 32]
+            train: [0, 74, 32, 32]
+            bus: [0, 148, 32, 32]
+            hospital: [0, 444, 32, 32]
+            parking: [0, 1073, 32, 32]
+            info: [0, 1110, 32, 32]
+            hotel: [0, 259, 32, 32]
+            bookstore: [0, 333, 32, 32]
 
 styles:
-
     water:
         base: polygons
         animated: true
@@ -95,11 +108,26 @@ styles:
     windows:
         url: demos/styles/windows.yaml
 
+    flat:
+        base: polygons
+        lighting: false
+
+    buildings:
+        base: polygons
+        shaders:
+            blocks:
+                color: |
+                    color.rgb = vec3(min((v_world_position.z*.0005 + .65),.8));
+
+    icons:
+        base: points
+        texture: pois
+
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
-    # osm:
-    #     type: GeoJSONTiles
-    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+    osm:
+        type: GeoJSONTiles
+        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
     # schools:
     #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
@@ -108,30 +136,60 @@ layers:
     earth:
         data: { source: osm }
         style:
+            name: flat
             order: 0
-            color: '#ddd'
+            color: '#f0ebeb'
 
     landuse:
         data: { source: osm }
-        filter: { kind: [park, graveyard] }
+
+        # filter: { $zoom: { min: 11 }, area: { min: 10000000 } }
+        filter:
+            any:
+                - { $zoom: { min: 9 }, area: { min: 10000000 } }
+                - { $zoom: { min: 10 }, area: { min: 3300000 } }
+                - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                - { $zoom: { min: 13 }, area: { min: 10000 } }
+                - { $zoom: { min: 15 } }
         style:
+            name: flat
             order: 1
-            color: '#A0DC99'
             interactive: true
+            style:
+                color: red
+        green:
+            filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
+            style:
+                color: '#bddec5'
+        blue:
+            filter: { kind: [commercial, industrial] }
+            style:
+                # color: '#6ea0a4'
+                color: '#C0CDCD'
+        orange:
+            filter: { kind: [university] }
+            style:
+                color: '#D9CFC3'
 
     water:
         data: { source: osm }
         style:
+            name: flat
             order: 2
-            color: '#88bbee'
+            color: '#9dc3de'
 
     roads:
         data: { source: osm }
         filter:
             not: { kind: ["path", "rail"] }
         style:
-            # name: lines
-            color: lightgrey
+            name: flat
+            color: white
+            width: 1px
+            join: round
+            outline:
+                color: [[16, '#999'], [18, '#ccc']]
+                width: [[14, 0], [15, 1]]
             order: |
                 function () {
                     function reduceSortKey(key) {
@@ -141,42 +199,51 @@ layers:
                     }
 
                     var min = reduceSortKey(-3109);
-                    var order = 3 + reduceSortKey(feature.sort_key) - min;
+                    //console.log('min:', min);
+                    //console.log('reduceSortKey(feature.sort_key):', reduceSortKey(feature.sort_key));
+                    var order;
+                    if (feature.sort_key < 10) { order = 3; }
+                    else { order = 3 + reduceSortKey(feature.sort_key) - min; }
+                    //if (order < 1000) { order = 10; }
                     return order;
                 }
-            interactive: function () { return (zoom >= 18); }
-            width: 5
+            # interactive: function () { return (zoom >= 18); }
+            interactive: true
 
         highway:
             filter: { kind: highway }
             style:
-                color: '#cc6666'
-                width: 12
+                color: '#D16768'
+                width: [[14, 2px], [15, 12]]
                 outline:
-                    color: grey
-                    width: 3
+                    width: 2
             link:
                 filter: { is_link: yes }
                 style:
                     color: '#aaa'
-                    outline:
-                        width: 0
+                    width: [[13, 0], [14, 12]]
         major_road:
-            filter:
-                kind: major_road
+            filter: { kind: major_road, $zoom: { min: 10 } }
             style:
-                width: 8
-
+                width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
+                outline:
+                    width: [[12, 0], [13, .5px], [15, 2]]
+        minor_road:
+            filter: { kind: minor_road }
+            style:
+                width: [[13, 0px], [14, 1px], [15, 8]]
+                outline:
+                    width: [[14, 0], [15, 2]]
         airports:
             filter: { aeroway: true }
             style:
-                color: '#ccc'
+                color: '#ddd'
+                outline: none
 
             taxiways:
                 filter: { aeroway: taxiway }
                 style:
                     width: [[13, 0px], [14, 2px], [17, 10px]]
-                    color: '#ddd'
 
             runways:
                 filter: { aeroway: runway }
@@ -187,48 +254,59 @@ layers:
 
     buildings:
         data: { source: osm }
+        filter: { $zoom: { min: 14 } }
         style:
+            name: buildings
             order: 1000
-            color: |
-                function () {
-                    var h = feature.height || 20;
-                    h = Math.min((h + 50)/ 250, .8);
-                    h = Math.max(h, .8);
-                    return [h, h, h];
-                }
-            extrude: true
+            color: '#bbb'
+            extrude: function() { return zoom > 14 }
 
+    highway_labels:
+        data: { source: osm, layer: roads }
+        filter: { name: true, kind: highway, tunnel: false }
+        style:
+            name: text
+            interactive: true
+        highway:
+            filter: { kind: highway, $zoom: { min: 7 } }
+            style:
+                font:
+                    fill: '#666'
+                    typeface: 100 12px Lucida Grande
+                    stroke: { color: white, width: 4 }    
     road_labels:
         data: { source: osm, layer: roads }
 
         filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false }
         style:
             name: text
-            # visible: false
-            order: 6
             interactive: true
             font:
-                typeface: 12px Lucida Grande
-                fill: '#333'
-                stroke: white
-
+                fill: '#666'
+                stroke: { color: white, width: 2 }
+                typeface: 100 10px Lucida Grande
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
+            style:
+                font:
+                    typeface: 100 12px Lucida Grande
+                    stroke: { color: white, width: 4 }
+
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    typeface: 11px Lucida Grande
-
+                    typeface: 100 10px Lucida Grande
+    
     pois:
         data: { source: osm }
         filter: { name: true, $zoom: { min: 17 } }
         style:
             name: text
             font:
-                typeface: bold 11px Lucida Grande
+                typeface: 11px Lucida Grande
                 fill: dark red
-                stroke: white
+                stroke: { color: white, width: 2 }
             interactive: true
 
         z18:
@@ -237,12 +315,58 @@ layers:
                 font:
                     typeface: 12px Lucida Grande
 
+    poi-icons:
+        data: { source: osm, layer: pois }
+        filter: { name: true, not: { kind: peak }, $zoom: { min: 15 } }
+        style:
+            name: icons
+            size: [[13, 16px], [15, 24px]]
+            interactive: true
+            sprite: info
+
+        # examples of different icons mapped to feature properties
+        restaurant:
+            filter: { kind: [restaurant] }
+            style: { sprite: restaurant }
+        cafe:
+            filter: { kind: [cafe, convenience] }
+            style: { sprite: cafe }
+        bar:
+            filter: { kind: [bar, pub] }
+            style: { sprite: bar }
+        culture:
+            filter: { kind: [museum, library, church, place_of_worship, bank] }
+            style: { sprite: museum }
+        station:
+            filter: { kind: [station] }
+            style: { sprite: train }
+        hospital:
+            filter: { kind: [hospital, pharmacy] }
+            style: { sprite: hospital }
+        parking:
+            filter: { kind: [parking] }
+            style: { sprite: parking }
+        hotel:
+            filter: { kind: [hotel, hostel] }
+            style: { sprite: hotel }
+        bus_stop:
+            filter: { kind: [bus_stop] }
+            style: { sprite: bus }
+        bookstore:
+            filter: { kind: [bookstore] }
+            style: { sprite: bookstore }
+
     places:
         data: { source: osm }
-        filter: { name: true }
+        filter: { name: true, not: { kind: [county, state, island] } }
         style:
             name: text
+            interactive: true
             font:
                 typeface: Italic 15pt Lucida Grande
                 fill: black
                 stroke: { color: white, width: 3 }
+        small:
+            filter:
+                kind: [hamlet, neighbourhood]
+                $zoom: { min: 13 }

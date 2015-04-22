@@ -8,7 +8,6 @@ import {Style} from './style';
 import {Polygons} from './polygons/polygons';
 import {Lines} from './lines/lines';
 import {Points} from './points/points';
-import {Sprites} from './sprites/sprites';
 import {TextStyle} from './text/text';
 
 import log from 'loglevel';
@@ -316,5 +315,4 @@ StyleManager.compile = function (keys) {
 StyleManager.register(Polygons);
 StyleManager.register(Lines);
 StyleManager.register(Points);
-StyleManager.register(Sprites);
 StyleManager.register(TextStyle);
