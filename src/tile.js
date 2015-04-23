@@ -175,14 +175,14 @@ export default class Tile {
                     }
 
                     // Render draw groups
-                    for (let g in draw_groups) {
-                        let group = draw_groups[g];
+                    for (let group_name in draw_groups) {
+                        let group = draw_groups[group_name];
                         if (!group.visible) {
                             continue;
                         }
 
                         // Add to style
-                        group.style = group.style || StyleParser.defaults.draw.style;
+                        group.style = group.style || group_name;
                         let style = styles[group.style];
 
                         if (!tile_data[group.style]) {

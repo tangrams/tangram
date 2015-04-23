@@ -315,7 +315,6 @@ layers:
             filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
             draw:
                 lines:
-                    style: lines
                     order: 1
                     color: [0.6, 0.6, 0.975]
                     width: function() { return 2.5 * Math.log(zoom); }
@@ -324,7 +323,6 @@ layers:
     #     data: { source: osm, layer: water }
     #     filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
     #     draw:
-    #         style: lines
     #         order: 4
     #         color: [0.6, 0.6, 0.975]
     #         width: function() { return 2.5 * Math.log(zoom); }
@@ -336,7 +334,6 @@ layers:
         data: { source: osm }
         draw:
             lines:
-                style: lines # TODO: assume style name from key and allow override
                 order: |
                     function () {
                         function reduceSortKey(key) {
@@ -496,7 +493,7 @@ layers:
 
         # blend:
         #     filter: { height: { min: 100 } }
-        #     draw: { style: transparent, color: yellow }
+        #     draw: { polygons: { style: transparent, color: yellow } }
 
         colors:
             name:
@@ -515,7 +512,6 @@ layers:
         data: { source: osm, layer: buildings }
         draw:
             lines:
-                style: lines
                 visible: false
                 order: 251
                 color: white
@@ -528,7 +524,6 @@ layers:
         filter: { name: true, $zoom: { min: 14 } }
         draw:
             text:
-                style: text
                 # visible: false
                 order: 5
                 interactive: true
@@ -622,7 +617,6 @@ layers:
         data: { source: osm, layer: buildings }
         draw:
             text:
-                style: text
                 visible: false
                 order: 10
                 # text_source: |
@@ -660,7 +654,6 @@ layers:
             filter: { kind: state, $geometry: point }
             draw:
                 text:
-                    style: text
                     order: 6
                     # style: points
                     # interactive: true
@@ -668,21 +661,3 @@ layers:
                         typeface: 14px Futura
                         fill: blue
                         stroke: white
-
-        # borders:
-        #     filter: { $geometry: polygon }
-        #     draw:
-        #         style: lines
-        #         order: 10
-        #         interactive: true
-        #         width: 5px
-        #         color: red
-
-        # points:
-        #     filter: { $geometry: point }
-        #     draw:
-        #         style: points
-        #         order: 10
-        #         interactive: true
-        #         size: 32px
-        #         color: yellow

@@ -1133,19 +1133,18 @@ export default class Scene {
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.draw) {
-                for (let draw of Utils.values(rule.draw)) {
-                    if (draw.visible !== false) {
-                        let sname = draw.style || StyleParser.defaults.draw.style; // TODO: deprecate default
-                        let style = this.styles[sname];
-
+                for (let [name, group] of Utils.entries(rule.draw)) {
+                    if (group.visible !== false) {
+                        let style_name = group.style || name;
+                        let style = this.styles[style_name];
                         if (style) {
-                            this.active_styles[sname] = true;
+                            this.active_styles[style_name] = true;
                             if (style.animated) {
                                 animated = true;
                             }
                         }
                         else {
-                            draw.style = undefined;
+                            group.style = undefined;
                         }
                     }
                 }
