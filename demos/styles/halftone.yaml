@@ -2,7 +2,7 @@
 halftone:
     shaders:
         blocks:
-            globals: |
+            global: |
                 float dot_frequency = 100.4748637184972;
 
                 // Antialiasing
@@ -57,7 +57,7 @@ color_halftone:
             true_color: false
 
         blocks:
-            globals: |
+            global: |
 
                 // Antialiasing
                 float aastep(float threshold, const float freq, float value) {

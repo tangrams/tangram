@@ -25,13 +25,13 @@ StyleManager.init = function () {
         return;
     }
 
-    ShaderProgram.removeBlock('globals');
+    ShaderProgram.removeBlock('global');
 
     // Layer re-ordering function
-    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/layer_order']);
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/layer_order']);
 
-    // Feature selection globals
-    ShaderProgram.addBlock('globals', shaderSources['gl/shaders/selection_globals']);
+    // Feature selection global
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
 
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);

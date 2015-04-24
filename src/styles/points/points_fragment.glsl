@@ -21,7 +21,7 @@ varying vec2 v_texcoord;
 #endif
 #define FADE_START (1. - FADE_RANGE)
 
-#pragma tangram: globals
+#pragma tangram: global
 
 void main (void) {
     vec4 color = v_color;
