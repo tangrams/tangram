@@ -95,7 +95,7 @@ styles:
                     color.rgb *=
                         abs(pnoise(
                             (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
-                            vec3(WORLD_POSITION_WRAP / 10.0))
+                            vec3(TANGRAM_WORLD_POSITION_WRAP / 10.0))
                         ) / 4. + .75;
 
     colorbleed:
