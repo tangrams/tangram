@@ -16,10 +16,10 @@ varying vec2 v_texcoord;
 #endif
 
 // Alpha fade range for edges of points
-#ifndef FADE_RANGE
-#define FADE_RANGE .15
+#ifndef TANGRAM_FADE_RANGE
+#define TANGRAM_FADE_RANGE .15
 #endif
-#define FADE_START (1. - FADE_RANGE)
+#define TANGRAM_FADE_START (1. - TANGRAM_FADE_RANGE)
 
 #pragma tangram: global
 
@@ -34,7 +34,7 @@ void main (void) {
         // Fade alpha near circle edge
         vec2 uv = v_texcoord * 2. - 1.;
         float dist = length(uv);
-        color.a = clamp(1. - (smoothstep(0., FADE_RANGE, (dist - FADE_START)) / FADE_RANGE), 0., 1.);
+        color.a = clamp(1. - (smoothstep(0., TANGRAM_FADE_RANGE, (dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., 1.);
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute

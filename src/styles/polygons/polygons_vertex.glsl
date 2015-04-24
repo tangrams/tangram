@@ -33,15 +33,15 @@ varying vec4 v_color;
 varying vec4 v_world_position;
 
 // Optional texture UVs
-#if defined(TEXTURE_COORDS)
+#ifdef TANGRAM_TEXTURE_COORDS
     attribute vec2 a_texcoord;
     varying vec2 v_texcoord;
 #endif
 
 // Define a wrap value for world coordinates (allows more precision at higher zooms)
 // e.g. at wrap 1000, the world space will wrap every 1000 meters
-#if defined(WORLD_POSITION_WRAP)
-    vec2 world_position_anchor = vec2(floor(u_tile_origin / WORLD_POSITION_WRAP) * WORLD_POSITION_WRAP);
+#if defined(TANGRAM_WORLD_POSITION_WRAP)
+    vec2 world_position_anchor = vec2(floor(u_tile_origin / TANGRAM_WORLD_POSITION_WRAP) * TANGRAM_WORLD_POSITION_WRAP);
 
     // Convert back to absolute world position if needed
     vec4 absoluteWorldPosition () {
@@ -67,13 +67,13 @@ void main() {
     #pragma tangram: feature-selection-vertex
 
     // Texture UVs
-    #if defined(TEXTURE_COORDS)
+    #ifdef TANGRAM_TEXTURE_COORDS
         v_texcoord = a_texcoord;
     #endif
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * vec4(a_position, 1.);
-    #if defined(WORLD_POSITION_WRAP)
+    #if defined(TANGRAM_WORLD_POSITION_WRAP)
         v_world_position.xy -= world_position_anchor;
     #endif
 

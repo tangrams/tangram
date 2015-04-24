@@ -20,7 +20,7 @@ Object.assign(Polygons, {
         this.fragment_shader_key = 'styles/polygons/polygons_fragment';
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines.WORLD_POSITION_WRAP = 100000;
+        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
 
         // Turn feature selection on
         this.selection = true;
@@ -43,7 +43,7 @@ Object.assign(Polygons, {
 
         // Optional texture UVs
         if (this.texcoords) {
-            this.defines.TEXTURE_COORDS = true;
+            this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
