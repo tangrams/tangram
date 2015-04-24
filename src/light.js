@@ -79,7 +79,7 @@ export default class Light {
                 lights[light_name].inject();
 
                 // Add the calculation function to the list
-                calculateLights += `calculateLight(g_${light_name}, _eyeToPoint, _normal);\n`;
+                calculateLights += `calculateLight(${light_name}, _eyeToPoint, _normal);\n`;
             }
         }
         else {
@@ -137,7 +137,7 @@ export default class Light {
     inject () {
         let instance =  `
             uniform ${this.struct_name} u_${this.name};
-            ${this.struct_name} g_${this.name} = u_${this.name};\n`;
+            ${this.struct_name} ${this.name} = u_${this.name};\n`;
 
         ShaderProgram.addBlock(Light.block, instance);
     }
