@@ -106,6 +106,10 @@ StyleParser.wrapFunction = function (func) {
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;
+
+                // TODO: remove once tile feature ids are normalized
+                feature.osm_id = feature.osm_id || feature.uid || context.feature.id;
+
                 return (${func}());
             }`;
     return f;
