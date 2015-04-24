@@ -267,12 +267,16 @@ layers:
         style:
             name: text
             interactive: true
+            font:
+                # typeface: 100 12pt Lucida Grande
+                typeface: 100 12pt Helvetica
+
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             style:
                 font:
                     fill: '#666'
-                    typeface: 100 12px Lucida Grande
+                    size: 12pt
                     stroke: { color: white, width: 4 }    
     road_labels:
         data: { source: osm, layer: roads }
@@ -284,19 +288,19 @@ layers:
             font:
                 fill: '#666'
                 stroke: { color: white, width: 2 }
-                typeface: 100 10px Lucida Grande
+                typeface: 100 10pt Helvetica
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             style:
                 font:
-                    typeface: 100 12px Lucida Grande
+                    typeface: 100 14pt Helvetica
                     stroke: { color: white, width: 4 }
 
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             style:
                 font:
-                    typeface: 100 10px Lucida Grande
+                    typeface: 100 10pt Helvetica
     
     pois:
         data: { source: osm }
@@ -304,7 +308,7 @@ layers:
         style:
             name: text
             font:
-                typeface: 11px Lucida Grande
+                size: 11pt
                 fill: dark red
                 stroke: { color: white, width: 2 }
             interactive: true
@@ -313,7 +317,7 @@ layers:
             filter: { $zoom: { min: 18 } }
             style:
                 font:
-                    typeface: 12px Lucida Grande
+                    size: 12pt
 
     poi-icons:
         data: { source: osm, layer: pois }
@@ -363,7 +367,8 @@ layers:
             name: text
             interactive: true
             font:
-                typeface: Italic 15pt Lucida Grande
+                # typeface: italic 15pt Lucida Grande
+                typeface: italic 15pt Helvetica
                 fill: black
                 stroke: { color: white, width: 3 }
         small:
