@@ -198,7 +198,7 @@ export var Style = {
         var defines = this.buildDefineList();
         if (this.selection) {
             var selection_defines = Object.assign({}, defines);
-            selection_defines['FEATURE_SELECTION'] = true;
+            selection_defines.TANGRAM_FEATURE_SELECTION = true;
         }
 
         // Get any custom code blocks, uniform dependencies, etc.

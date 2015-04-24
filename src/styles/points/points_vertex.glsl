@@ -18,8 +18,8 @@ attribute vec2 a_texcoord;
 varying vec4 v_color;
 varying vec2 v_texcoord;
 
-#pragma tangram: globals
 #pragma tangram: camera
+#pragma tangram: global
 
 vec2 rotate2D(vec2 _st, float _angle) {
     return mat2(cos(_angle),-sin(_angle),

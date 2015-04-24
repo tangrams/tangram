@@ -1,7 +1,7 @@
 import {match} from 'match-feature';
 import log from 'loglevel';
 
-export const whiteList = ['filter', 'style', 'data', 'properties'];
+export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
 
 export let ruleCache = {};
 
@@ -9,16 +9,16 @@ function cacheKey (rules) {
     return rules.map(r => r.id).join('/');
 }
 
-export function mergeTrees(matchingTrees, context) {
-    var style = {},
-        styles,
+export function mergeTrees(matchingTrees, key, context) {
+    var draw = {},
+        draws,
         order = [],
-        order_styles = [],
+        order_draws = [],
         treeDepth = 0,
         i, x, t;
 
     // Visible by default
-    style.visible = true;
+    draw.visible = true;
 
     // Find deepest tree
     for (t = 0; t < matchingTrees.length; t++) {
@@ -34,29 +34,32 @@ export function mergeTrees(matchingTrees, context) {
 
     // Iterate trees in parallel
     for (x = 0; x < treeDepth; x++) {
-        styles = matchingTrees.map(tree => tree[x]);
+        draws = matchingTrees.map(tree => tree[x] && tree[x][key]);
+        if (draws.length === 0) {
+            continue;
+        }
 
         // Property-specific logic
-        for (i=0; i < styles.length; i++) {
-            if (!styles[i]) {
+        for (i=0; i < draws.length; i++) {
+            if (!draws[i]) {
                 continue;
             }
 
-            // Collect unique orders (don't add the order multiple times for the smae style rule)
-            if (styles[i].order !== undefined) {
-                if (order_styles.indexOf(styles[i]) === -1) {
-                    order.push(styles[i].order);
-                    order_styles.push(styles[i]);
+            // Collect unique orders (don't add the order multiple times for the smae draw rule)
+            if (draws[i].order !== undefined) {
+                if (order_draws.indexOf(draws[i]) === -1) {
+                    order.push(draws[i].order);
+                    order_draws.push(draws[i]);
                 }
             }
         }
 
-        // Merge remaining style objects
-        mergeObjects(style, ...styles);
+        // Merge remaining draw objects
+        mergeObjects(draw, ...draws);
     }
 
     // Short-circuit if not visible
-    if (style.visible === false) {
+    if (draw.visible === false) {
         return null;
     }
 
@@ -69,34 +72,42 @@ export function mergeTrees(matchingTrees, context) {
         else if (order.every(v => typeof v === 'number')) {
             order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
         }
-        style.order = order;
+        draw.order = order;
     }
 
-    return style;
+    return draw;
 }
 
 
 class Rule {
 
-    constructor(name, parent, style, filter, properties) {
+    constructor({name, parent, draw, visible, filter, properties}) {
         this.id = Rule.id++;
-        this.name = name;
-        this.style = style;
-        this.filter = filter;
-        this.properties = properties;
         this.parent = parent;
+        this.name = name;
+        this.draw = draw;
+        this.filter = filter;
+        this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
+        this.properties = properties !== undefined ? properties : (this.parent && this.parent.properties);
 
-        // Add properties to style
-        if (this.style && this.properties) {
-            this.style.properties = this.properties;
+        // Denormalize properties to draw groups
+        if (this.draw) {
+            for (let group in this.draw) {
+                if (this.visible !== undefined) {
+                    this.draw[group].visible = this.visible;
+                }
+                if (this.properties !== undefined) {
+                    this.draw[group].properties = this.properties;
+                }
+            }
         }
 
         this.buildFilter();
-        this.buildStyle();
+        this.buildDraw();
     }
 
-    buildStyle() {
-        this.calculatedStyle = calculateStyle(this);
+    buildDraw() {
+        this.calculatedDraw = calculateDraw(this);
     }
 
     buildFilter() {
@@ -109,7 +120,7 @@ class Rule {
     toJSON() {
         return {
             name: this.name,
-            sytle: this.style
+            draw: this.draw
         };
     }
 
@@ -119,15 +130,15 @@ Rule.id = 0;
 
 
 export class RuleLeaf extends Rule {
-    constructor({name, parent, style, filter, properties}) {
-        super(name, parent, style, filter, properties);
+    constructor({name, parent, draw, visible, filter, properties}) {
+        super({name, parent, draw, visible, filter, properties});
     }
 
 }
 
 export class RuleTree extends Rule {
-    constructor({name, parent, style, rules, filter, properties}) {
-        super(name, parent, style, filter, properties);
+    constructor({name, parent, draw, visible, rules, filter, properties}) {
+        super({name, parent, draw, visible, filter, properties});
         this.rules = rules || [];
     }
 
@@ -135,20 +146,49 @@ export class RuleTree extends Rule {
         this.rules.push(rule);
     }
 
-    findMatchingRules(context) {
+    buildDrawGroups(context) {
         let rules  = [];
         //TODO, should this function take a RuleTree
         matchFeature(context, [this], rules);
 
         if (rules.length > 0) {
-            let key = cacheKey(rules);
+            let cache_key = cacheKey(rules);
 
             // Only evaluate each rule combination once (undefined means not yet evaluated,
-            // null means evaluated with no style object)
-            if (ruleCache[key] === undefined) {
-                ruleCache[key] = mergeTrees(rules.map(x => x && x.calculatedStyle), context);
+            // null means evaluated with no draw object)
+            if (ruleCache[cache_key] === undefined) {
+                // Find all the unique draw blocks for this rule tree
+                let draw_rules = rules.map(x => x && x.calculatedDraw);
+                let draw_keys = {};
+
+                for (let rule of draw_rules) {
+                    if (!rule) {
+                        continue;
+                    }
+                    for (let group of rule) {
+                        for (let key in group) {
+                            draw_keys[key] = true;
+                        }
+                    }
+                }
+
+                // Calculate each draw group
+                for (let draw_key in draw_keys) {
+                    ruleCache[cache_key] = ruleCache[cache_key] || {};
+                    ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key, context);
+
+                    // Only save the ones that weren't null
+                    if (!ruleCache[cache_key][draw_key]) {
+                        delete ruleCache[cache_key][draw_key];
+                    }
+                }
+
+                // No rules evaluated
+                if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
+                    ruleCache[cache_key] = null;
+                }
             }
-            return ruleCache[key];
+            return ruleCache[cache_key];
         }
     }
 
@@ -195,17 +235,17 @@ export function groupProps(obj) {
     return [whiteListed, nonWhiteListed];
 }
 
-export function calculateStyle(rule) {
+export function calculateDraw(rule) {
 
-    let styles  = [];
+    let draw  = [];
 
     if (rule.parent) {
-        let cs = rule.parent.calculatedStyle || [];
-        styles.push(...cs);
+        let cs = rule.parent.calculatedDraw || [];
+        draw.push(...cs);
     }
 
-    styles.push(rule.style);
-    return styles;
+    draw.push(rule.draw);
+    return draw;
 }
 
 export function mergeObjects(newObj, ...sources) {

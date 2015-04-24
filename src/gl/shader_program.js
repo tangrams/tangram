@@ -81,7 +81,7 @@ export default class ShaderProgram {
         // Inject user-defined blocks (arbitrary code points matching named #pragmas)
         // Replace according to this pattern:
         // #pragma tangram: [key]
-        // e.g. #pragma tangram: globals
+        // e.g. #pragma tangram: global
 
         // Gather all block code snippets
         var blocks = this.buildShaderBlockList();

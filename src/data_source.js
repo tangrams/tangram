@@ -122,7 +122,7 @@ export class NetworkSource extends DataSource {
                 resolve(dest);
             }).catch((error) => {
                 source.error = error.toString();
-                reject(error);
+                resolve(dest); // resolve request but pass along error
             });
         });
     }

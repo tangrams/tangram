@@ -20,7 +20,7 @@ Object.assign(Lines, {
         Style.init.apply(this, arguments);
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines.WORLD_POSITION_WRAP = 100000;
+        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
@@ -38,7 +38,7 @@ Object.assign(Lines, {
 
         // Optional texture UVs
         if (this.texcoords) {
-            this.defines.TEXTURE_COORDS = true;
+            this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
@@ -162,32 +162,34 @@ Object.assign(Lines, {
         }
 
         // Outline
-        if (style.outline && style.outline.color && style.outline.width) {
-            // Replace color in vertex template
-            var color_index = this.vertex_layout.index.a_color;
-            vertex_template[color_index + 0] = style.outline.color[0] * 255;
-            vertex_template[color_index + 1] = style.outline.color[1] * 255;
-            vertex_template[color_index + 2] = style.outline.color[2] * 255;
+        // TODO: for now, outlines can be drawn with multiple draw groups, but can consider restoring
+        // some outline capabilities in the future
+        // if (style.outline && style.outline.color && style.outline.width) {
+        //     // Replace color in vertex template
+        //     var color_index = this.vertex_layout.index.a_color;
+        //     vertex_template[color_index + 0] = style.outline.color[0] * 255;
+        //     vertex_template[color_index + 1] = style.outline.color[1] * 255;
+        //     vertex_template[color_index + 2] = style.outline.color[2] * 255;
 
-            // Line outlines sit underneath current layer but above the one below
-            vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
+        //     // Line outlines sit underneath current layer but above the one below
+        //     vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
 
-            Builders.buildPolylines(
-                lines,
-                style.width + 2 * style.outline.width,
-                vertex_data,
-                vertex_template,
-                {
-                    cap: style.outline.cap,
-                    join: style.outline.join,
-                    scaling_index: this.vertex_layout.index.a_extrude,
-                    texcoord_index: this.vertex_layout.index.a_texcoord,
-                    texcoord_scale: this.texcoord_scale,
-                    closed_polygon: options.closed_polygon,
-                    remove_tile_edges: !style.tile_edges && options.remove_tile_edges
-                }
-            );
-        }
+        //     Builders.buildPolylines(
+        //         lines,
+        //         style.width + 2 * style.outline.width,
+        //         vertex_data,
+        //         vertex_template,
+        //         {
+        //             cap: style.outline.cap,
+        //             join: style.outline.join,
+        //             scaling_index: this.vertex_layout.index.a_extrude,
+        //             texcoord_index: this.vertex_layout.index.a_texcoord,
+        //             texcoord_scale: this.texcoord_scale,
+        //             closed_polygon: options.closed_polygon,
+        //             remove_tile_edges: !style.tile_edges && options.remove_tile_edges
+        //         }
+        //     );
+        // }
     },
 
     buildPolygons(polygons, style, vertex_data) {

@@ -20,7 +20,7 @@ Object.assign(Polygons, {
         this.fragment_shader_key = 'styles/polygons/polygons_fragment';
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines.WORLD_POSITION_WRAP = 100000;
+        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
 
         // Turn feature selection on
         this.selection = true;
@@ -43,7 +43,7 @@ Object.assign(Polygons, {
 
         // Optional texture UVs
         if (this.texcoords) {
-            this.defines.TEXTURE_COORDS = true;
+            this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
@@ -155,101 +155,6 @@ Object.assign(Polygons, {
                 );
             }
         }
-
-        // Polygon outlines
-        if (style.outline && style.outline.color && style.outline.width) {
-            // Replace color in vertex template
-            var color_index = this.vertex_layout.index.a_color;
-            vertex_template[color_index + 0] = style.outline.color[0] * 255;
-            vertex_template[color_index + 1] = style.outline.color[1] * 255;
-            vertex_template[color_index + 2] = style.outline.color[2] * 255;
-
-            // Polygon outlines sit over current layer but underneath the one above
-            // TODO: address inconsistency with line outlines
-            vertex_template[this.vertex_layout.index.a_layer] += 0.5; // 0.0001 0.05
-
-            for (var mpc=0; mpc < polygons.length; mpc++) {
-                Builders.buildPolylines(
-                    polygons[mpc],
-                    style.outline.width,
-                    vertex_data,
-                    vertex_template,
-                    {
-                        join: style.outline.join,
-                        texcoord_index: this.vertex_layout.index.a_texcoord,
-                        texcoord_scale: this.texcoord_scale,
-                        closed_polygon: true,
-                        remove_tile_edges: !style.outline.tile_edges
-                    }
-                );
-            }
-        }
-    },
-
-    buildLines(lines, style, vertex_data) {
-        var vertex_template = this.makeVertexTemplate(style);
-
-        // Main line
-        if (style.color && style.width) {
-            Builders.buildPolylines(
-                lines,
-                style.width,
-                vertex_data,
-                vertex_template,
-                {
-                    cap: style.cap,
-                    join: style.join,
-                    texcoord_index: this.vertex_layout.index.a_texcoord,
-                    texcoord_scale: this.texcoord_scale
-                }
-            );
-        }
-
-        // Outline
-        if (style.outline && style.outline.color && style.outline.width) {
-            // Replace color in vertex template
-            var color_index = this.vertex_layout.index.a_color;
-            vertex_template[color_index + 0] = style.outline.color[0] * 255;
-            vertex_template[color_index + 1] = style.outline.color[1] * 255;
-            vertex_template[color_index + 2] = style.outline.color[2] * 255;
-
-            // Line outlines sit underneath current layer but above the one below
-            // TODO: address inconsistency with polygon outlines
-            // TODO: need more fine-grained styling controls for outlines
-            // (see complex road interchanges where casing outlines should be interleaved by road type)
-            vertex_template[this.vertex_layout.index.a_layer] -= 0.5; // 0.0001 0.05
-
-            Builders.buildPolylines(
-                lines,
-                style.width + 2 * style.outline.width,
-                vertex_data,
-                vertex_template,
-                {
-                    cap: style.outline.cap,
-                    join: style.outline.join,
-                    texcoord_index: this.vertex_layout.index.a_texcoord,
-                    texcoord_scale: this.texcoord_scale
-                }
-            );
-        }
-    },
-
-    buildPoints(points, style, vertex_data) {
-        if (!style.color || !style.size) {
-            return;
-        }
-
-        var vertex_template = this.makeVertexTemplate(style);
-
-        Builders.buildQuadsForPoints(
-            points,
-            style.size[0] || style.size,
-            style.size[1] || style.size,
-            vertex_data,
-            vertex_template,
-            { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
-        );
-
     }
 
 });

@@ -89,24 +89,27 @@ Style.color = {
 // The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
 Style.pixels = function (p) {
     var f;
-    /* jshint ignore:start */
-    // eval('f = function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }');
-    /* jshint ignore:end */
-    f = 'function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * meters_per_pixel; }';
+    f = 'function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * $meters_per_pixel; }';
     return f;
 };
 
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
-// - zoom: the current map zoom level
-// - meters_per_pixel: conversion for meters/pixels at current map zoom
+// - $zoom: the current map zoom level
+// - $geometry: the type of geometry, 'point', 'line', or 'polygon'
+// - $meters_per_pixel: conversion for meters/pixels at current map zoom
 // - properties: user-defined properties on the style-rule object in the stylesheet
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
-                var zoom = context.zoom;
-                var meters_per_pixel = context.meters_per_pixel;
+                var $zoom = context.zoom;
+                var $geometry = context.geometry;
+                var $meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;
+
+                // TODO: remove once tile feature ids are normalized
+                feature.osm_id = feature.osm_id || feature.uid || context.feature.id;
+
                 return (${func}());
             }`;
     return f;
@@ -125,9 +128,6 @@ StyleParser.defaults = {
     min_height: 0,
     order: 0,
     z: 0,
-    style: {
-        name: 'polygons'
-    },
     material: {
         ambient: 1,
         diffuse: 1

@@ -1,7 +1,7 @@
 /*jslint browser: true*/
 /*global Tangram, gui */
 
-/* 
+/*
 
 Hello source-viewers!
 
@@ -230,55 +230,17 @@ Enjoy!
             'Rainbow': 'rainbow'
         },
         saveInitial: function() {
-            // Save settings to restore later
-            if (!this.initial.layers[l]) {
-                var layer_styles = scene.config.layers;
-                for (var l in layer_styles) {
-                    this.initial.layers[l] = {
-                        style: Object.assign({}, layer_styles[l].style)
-                    };
-                }
-            }
-
-            this.initial.camera = this.initial.camera || scene.getActiveCamera();
-            this.initial.background = this.initial.background || Object.assign({}, scene.config.background);
+            this.initial = { config: JSON.stringify(scene.config) };
         },
         setup: function (style) {
             // Restore initial state
-            var layer_styles = scene.config.layers;
-            for (var l in layer_styles) {
-                if (this.initial.layers[l]) {
-                    layer_styles[l].style = Object.assign({}, this.initial.layers[l].style);
-                }
-            };
-
-            if (this.initial.camera) {
-                scene.setActiveCamera(this.initial.camera);
-            }
-            gui.camera = scene.getActiveCamera();
-
-            if (this.initial.background) {
-                scene.config.background = Object.assign({}, this.initial.background);
-            }
+            scene.config = JSON.parse(this.initial.config);
 
             // Remove existing style-specific controls
             gui.removeFolder(this.folder);
 
             // Style-specific settings
             if (style != '') {
-                // Save settings to restore later
-                for (l in layer_styles) {
-                    if (this.initial.layers[l] == null) {
-                        this.initial.layers[l] = {
-                            style: Object.assign({}, layer_styles[l].style)
-                        };
-                    }
-                }
-                this.initial.camera = this.initial.camera || scene.getActiveCamera();
-
-                // Remove existing style-specific controls
-                gui.removeFolder(this.folder);
-
                 if (this.settings[style] != null) {
                     var settings = this.settings[style] || {};
 
@@ -286,10 +248,6 @@ Enjoy!
                     if (settings.camera) {
                         scene.setActiveCamera(settings.camera);
                     }
-                    else if (this.initial.camera) {
-                        scene.setActiveCamera(this.initial.camera);
-                    }
-                    gui.camera = this.initial.camera = scene.getActiveCamera();
 
                     // Style-specific setup function
                     if (settings.setup) {
@@ -324,49 +282,54 @@ Enjoy!
         settings: {
             'water': {
                 setup: function (style) {
-                    scene.config.layers.water.style.name = style;
+                    scene.config.layers.water.draw.polygons.style = style;
                 }
             },
             'rainbow': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.draw.polygons.style = style;
                 }
             },
             'popup': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.draw.polygons.style = style;
                 }
             },
             'elevator': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.draw.polygons.style = style;
                 }
             },
             'halftone': {
                 setup: function (style) {
                     scene.config.background.color = 'black';
 
-                    var layers = ['landuse', 'water', 'roads', 'buildings'];
-                    layers.forEach(function(l) {
-                        scene.config.layers[l].style.name = style;
-                    });
+                    var layers = scene.config.layers;
+                    layers.earth.draw.polygons.style = 'halftone_polygons';
+                    layers.water.draw.polygons.style = 'halftone_polygons';
+                    layers.water.outlines.draw.lines.style = 'halftone_lines';
+                    layers.landuse.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.draw.polygons.style = 'halftone_polygons';
+                    layers.roads.draw.lines.style = 'halftone_lines';
 
-                    Object.keys(scene.config.layers).forEach(function(l) {
-                        if (layers.indexOf(l) === -1)
-                        scene.config.layers[l].style.visible = false;
+                    var visible_layers = ['landuse', 'water', 'roads', 'buildings'];
+                    Object.keys(layers).forEach(function(l) {
+                        if (visible_layers.indexOf(l) === -1) {
+                            layers[l].visible = false;
+                        }
                     });
                 }
             },
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
-                    // scene.config.layers.pois.style.visible = false;
+                    scene.config.layers.buildings.draw.polygons.style = style;
+                    // scene.config.layers.pois.visible = false;
                 }
             },
             'envmap': {
                 setup: function (style) {
-                    scene.config.layers.buildings.style.name = style;
+                    scene.config.layers.buildings.draw.polygons.style = style;
 
                     var envmaps = {
                         'Chrome': 'demos/images/LitSphere_test_02.jpg',
@@ -383,10 +346,6 @@ Enjoy!
                 }
             }
         },
-        initial: { // initial state to restore to on style switch
-            layers: {}
-        },
-        folder: null, // set to current (if any) DAT.gui folder name, cleared on style switch
         scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
             if ((typeof c == 'string' || c instanceof String) && c[0].charAt(0) == "#") {
                 // convert from hex to rgb
@@ -451,12 +410,11 @@ Enjoy!
                 return;
             }
 
-            layer.scene.config.layers[l].style = layer.scene.config.layers[l].style || { visible: true };
-            layer_controls[l] = !(layer.scene.config.layers[l].style.visible == false);
+            layer_controls[l] = !(layer.scene.config.layers[l].visible == false);
             layer_gui.
                 add(layer_controls, l).
                 onChange(function(value) {
-                    layer.scene.config.layers[l].style.visible = value;
+                    layer.scene.config.layers[l].visible = value;
                     layer.scene.rebuildGeometry();
                 });
         });

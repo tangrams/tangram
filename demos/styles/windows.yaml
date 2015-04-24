@@ -14,7 +14,7 @@ windows:
             u_buildingColor: [.8, .8, .7]
             u_roofColor: [.5, .4, .5]
         blocks:
-            globals: |
+            global: |
 
                 // 3d noise
                 vec4 v_mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}

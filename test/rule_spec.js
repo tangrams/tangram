@@ -26,10 +26,10 @@ describe('RuleGroup', () => {
 
 describe('.mergeTrees()', () => {
     let subject = [
-        [ { a: 0.001 }, { b: 2 }, { c: 3 }, { d: 4 } ],
-        [ { a: 3.14 }, { d: 3 }, { a: 1 }, { b: 2 }],
-        [ { b: 'y' }, { a: 'x' }, { b: 0.0003 }, { c: 10 }],
-        [ { b: 3.14 }, { a: 2.71828 }, { b: 0.0001 }, { d: 'x' }]
+        [ { group: { a: 0.001 } }, { group: { b: 2 } }, { group: { c: 3 } }, { group: { d: 4 } } ],
+        [ { group: { a: 3.14 } }, { group: { d: 3 } }, { group: { a: 1 } }, { group: { b: 2 } } ],
+        [ { group: { b: 'y' } }, { group: { a: 'x' } }, { group:{ b: 0.0003 } }, { group: { c: 10 } } ],
+        [ { group: { b: 3.14 } }, { group: { a: 2.71828 } }, { group:{ b: 0.0001 } }, { group: { d: 'x' } } ]
     ];
 
     const {mergeTrees} = require('../src/styles/rule');
@@ -37,45 +37,52 @@ describe('.mergeTrees()', () => {
     describe('when given an array of arrays to merged', () => {
 
         it('returns a single object', () => {
-            let result = mergeTrees(subject);
-            assert.deepEqual(result, {
+            let result = mergeTrees(subject, 'group', {});
+            let compare = {
                 visible: true,
                 a: 1,
                 b: 2,
                 c: 10,
                 d: 'x'
-            });
+            };
+            assert.deepEqual(result, compare);
         });
     });
 
     describe('when given a array that is similar to real data', () => {
         const parent = {
-            "width": 10,
-            "order": 1,
-            "color": [1, 2, 3],
-            "a": "x"
+            group: {
+                "width": 10,
+                "order": 1,
+                "color": [1, 2, 3],
+                "a": "x"
+            }
         };
 
         const subject = [
             [
                 parent,
                 {
-                    "order": 3,
-                    "a": "y"
+                    group: {
+                        "order": 3,
+                        "a": "y"
+                    }
                 }
             ],
             [
                 parent,
                 {
-                    "order": 1,
-                    "b": "z",
-                    "color": [7, 8, 9]
+                    group: {
+                        "order": 1,
+                        "b": "z",
+                        "color": [7, 8, 9]
+                    }
                 }
             ]
         ];
 
         it('returns the correct object', () => {
-            assert.deepEqual(mergeTrees(subject), {
+            assert.deepEqual(mergeTrees(subject, 'group', {}), {
                 visible: true,
                 width: 10,
                 order: 5,
@@ -118,7 +125,7 @@ describe('.groupProps()', () => {
 
     describe('given an object ', () => {
         let subject = {
-            style: { a: 1 },
+            draw: { group: { a: 1 } },
             filter: 'I am a filter',
             a: 'b',
             b: 'c'
@@ -128,7 +135,7 @@ describe('.groupProps()', () => {
             assert.deepEqual(groupProps(subject),
                 [
                     {
-                        style: { a: 1 },
+                        draw: { group: { a: 1 } },
                         filter: 'I am a filter'
                     },
                     {
@@ -140,34 +147,36 @@ describe('.groupProps()', () => {
     });
 });
 
-describe('.calculateStyle()', () => {
-    const {calculateStyle} = require('../src/styles/rule');
+describe('.calculateDraw()', () => {
+    const {calculateDraw} = require('../src/styles/rule');
 
 
     let b = {
-        calculatedStyle: [
-            { a: true },
-            { b: true }
+        calculatedDraw: [
+            { group: { a: true } },
+            { group: { b: true } }
         ]
     };
 
     let c = {
         parent: b,
-        style: {
-            c: true
+        draw: {
+            group: {
+                c: true
+            }
         }
     };
 
-    it('calculates a rules inherited style', () => {
+    it('calculates a rules inherited draw group', () => {
         assert.deepEqual(
-            calculateStyle(c),
-            [{ a: true }, { b: true }, { c: true }]
+            calculateDraw(c),
+            [{ group: { a: true } }, { group: { b: true } }, { group: { c: true } }]
         );
     });
 });
 
 
-describe('RuleTree.findMatchingRules(context)', () => {
+describe('RuleTree.buildDrawGroups(context)', () => {
     let subject;
     const {parseRules} = require('../src/styles/rule');
     const {RuleTree}   = require('../src/styles/rule');
@@ -179,25 +188,31 @@ describe('RuleTree.findMatchingRules(context)', () => {
                     filter: {
                         kind: 'highway'
                     },
-                    style: {
-                        width: 10,
-                        color: [1, 2, 3]
+                    draw: {
+                        group: {
+                            width: 10,
+                            color: [1, 2, 3]
+                        }
                     },
                     fillA: {
                         filter: {
                             name: 'FDR'
                         },
-                        style: {
-                            order: 1,
-                            color: [3.14, 3.14, 3.14]
+                        draw: {
+                            group: {
+                                order: 1,
+                                color: [3.14, 3.14, 3.14]
+                            }
                         },
                         a: {
                             filter: {
                                 name: 'FDR'
                             },
-                            style: {
-                                width: 20,
-                                color: [2.71828, 2.71828, 2.71828]
+                            draw: {
+                                group: {
+                                    width: 20,
+                                    color: [2.71828, 2.71828, 2.71828]
+                                }
                             }
                         }
                     },
@@ -205,23 +220,29 @@ describe('RuleTree.findMatchingRules(context)', () => {
                         filter: {
                             '$zoom': { min: 3}
                         },
-                        style: {
-                            width: 10,
-                            color: [7, 8, 9]
+                        draw: {
+                            group: {
+                                width: 10,
+                                color: [7, 8, 9]
+                            }
                         },
                         fillB: {
                             filter: {
                                 id: 10
                              },
-                            style: {
-                                color: [10, 11, 12]
+                            draw: {
+                                group: {
+                                    color: [10, 11, 12]
+                                }
                             },
                             b: {
                                 filter: {
                                     id: 10
                                 },
-                                style: {
-                                    color: [1, 2, 3]
+                                draw: {
+                                    group: {
+                                        color: [1, 2, 3]
+                                    }
                                 }
                             }
 
@@ -250,14 +271,16 @@ describe('RuleTree.findMatchingRules(context)', () => {
         };
 
         it('returns a single object', () => {
-            let rule = subject.root.findMatchingRules(context);
+            let rule = subject.root.buildDrawGroups(context);
             assert.deepEqual(
                 rule,
                 {
-                    color: [1, 2, 3],
-                    visible: true,
-                    width: 20,
-                    order: 1,
+                    group: {
+                        color: [1, 2, 3],
+                        visible: true,
+                        width: 20,
+                        order: 1
+                    }
                 }
             );
         });
@@ -276,12 +299,14 @@ describe('RuleTree.findMatchingRules(context)', () => {
         };
 
         it('returns the correct number of matching rules', () => {
-            let rule = subject.root.findMatchingRules(context);
+            let rule = subject.root.buildDrawGroups(context);
             assert.deepEqual(rule, {
-                color: [1, 2, 3],
-                order: 1,
-                visible: true,
-                width: 20
+                group: {
+                    color: [1, 2, 3],
+                    order: 1,
+                    visible: true,
+                    width: 20
+                }
             });
         });
     });
@@ -296,7 +321,7 @@ describe('RuleTree.findMatchingRules(context)', () => {
         };
 
         it('returns undefined', () => {
-            const rule = subject.root.findMatchingRules(context);
+            const rule = subject.root.buildDrawGroups(context);
             assert.isUndefined(rule);
         });
     });
@@ -310,15 +335,17 @@ describe('RuleTree.findMatchingRules(context)', () => {
                     filter: {
                         id: 10
                     },
-                    style: {
-                        color: [3.14, 3.14, 3.14]
+                    draw: {
+                        group: {
+                            color: [3.14, 3.14, 3.14]
+                        }
                     }
                 }
             });
             assert.instanceOf(subject.root, RuleTree);
         });
 
-        describe('when there no style on the parent', () => {
+        describe('when there no draw groups on the parent', () => {
             let subject = parseRules({
                 root: {
                     filter: {
@@ -328,8 +355,10 @@ describe('RuleTree.findMatchingRules(context)', () => {
                         filter: {
                             id: 10
                         },
-                        style: {
-                            color: [1, 2, 3]
+                        draw: {
+                            group: {
+                                color: [1, 2, 3]
+                            }
                         }
                     }
                 }
@@ -343,12 +372,14 @@ describe('RuleTree.findMatchingRules(context)', () => {
                 }
             };
 
-            it('returns only the child\'s style', () => {
-                let results = subject.root.findMatchingRules(context);
+            it('returns only the child\'s draw', () => {
+                let results = subject.root.buildDrawGroups(context);
 
                 assert.deepEqual(results, {
-                    color: [1, 2, 3],
-                    visible: true
+                    group: {
+                        color: [1, 2, 3],
+                        visible: true
+                    }
                 });
 
             });

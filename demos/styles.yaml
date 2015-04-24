@@ -53,13 +53,13 @@ styles:
             defines:
                 EFFECT_NOISE_ANIMATED: true
             blocks:
-                globals:
+                global:
                     url: demos/shaders/glsl-noise-periodic-3d.glsl
                 color: |
                     color.rgb *=
                         abs(pnoise(
                             (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
-                            vec3(WORLD_POSITION_WRAP / 10.0))
+                            vec3(TANGRAM_WORLD_POSITION_WRAP / 10.0))
                         ) / 4. + .75;
 
     rainbow:
@@ -68,7 +68,7 @@ styles:
         lighting: false
         shaders:
             blocks:
-                globals: |
+                global: |
                     vec3 hsv2rgb(vec3 c) {
                         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -102,7 +102,10 @@ styles:
                 texture: demos/images/sunset.jpg
                 mapping: spheremap
 
-    halftone:
+    halftone_polygons:
+        url: demos/styles/halftone.yaml
+
+    halftone_lines:
         url: demos/styles/halftone.yaml
 
     windows:
@@ -125,9 +128,9 @@ styles:
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
-    osm:
-        type: GeoJSONTiles
-        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+    # osm:
+    #     type: GeoJSONTiles
+    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
     # schools:
     #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
@@ -135,10 +138,11 @@ sources:
 layers:
     earth:
         data: { source: osm }
-        style:
-            name: flat
-            order: 0
-            color: '#f0ebeb'
+        draw:
+            polygons:
+                style: flat
+                order: 0
+                color: '#f0ebeb'
 
     landuse:
         data: { source: osm }
@@ -151,227 +155,244 @@ layers:
                 - { $zoom: { min: 12 }, area: { min: 1000000 } }
                 - { $zoom: { min: 13 }, area: { min: 10000 } }
                 - { $zoom: { min: 15 } }
-        style:
-            name: flat
-            order: 1
-            interactive: true
-            style:
-                color: red
+        draw:
+            polygons:
+                order: 1
+                interactive: true
         green:
             filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
-            style:
-                color: '#bddec5'
+            draw:
+                polygons:
+                    color: '#bddec5'
         blue:
             filter: { kind: [commercial, industrial] }
-            style:
-                # color: '#6ea0a4'
-                color: '#C0CDCD'
+            draw:
+                polygons:
+                    # color: '#6ea0a4'
+                    color: '#C0CDCD'
         orange:
             filter: { kind: [university] }
-            style:
-                color: '#D9CFC3'
+            draw:
+                polygons:
+                    color: '#D9CFC3'
 
     water:
         data: { source: osm }
-        style:
-            name: flat
-            order: 2
-            color: '#9dc3de'
+        draw:
+            polygons:
+                style: flat
+                order: 2
+                color: '#9dc3de'
 
     roads:
         data: { source: osm }
         filter:
             not: { kind: ["path", "rail"] }
-        style:
-            name: flat
-            color: white
-            width: 1px
-            join: round
-            outline:
-                color: [[16, '#999'], [18, '#ccc']]
-                width: [[14, 0], [15, 1]]
-            order: |
-                function () {
-                    function reduceSortKey(key) {
-                        return 30 * Math.floor((key % 10000) / 1000) +
-                               10 * Math.floor((key % 1000) / 100) +
-                               1  * (key % 10);
-                    }
+        draw:
+            lines:
+                style: flat_lines
+                color: white
+                width: 1px
+                join: round
+                outline:
+                    color: [[16, '#999'], [18, '#ccc']]
+                    width: [[14, 0], [15, 1]]
+                order: |
+                    function () {
+                        function reduceSortKey(key) {
+                            return 30 * Math.floor((key % 10000) / 1000) +
+                                   10 * Math.floor((key % 1000) / 100) +
+                                   1  * (key % 10);
+                        }
 
-                    var min = reduceSortKey(-3109);
-                    //console.log('min:', min);
-                    //console.log('reduceSortKey(feature.sort_key):', reduceSortKey(feature.sort_key));
-                    var order;
-                    if (feature.sort_key < 10) { order = 3; }
-                    else { order = 3 + reduceSortKey(feature.sort_key) - min; }
-                    //if (order < 1000) { order = 10; }
-                    return order;
-                }
-            # interactive: function () { return (zoom >= 18); }
-            interactive: true
+                        var min = reduceSortKey(-3109);
+                        var order;
+                        if (feature.sort_key < 10) { order = 3; }
+                        else { order = 3 + reduceSortKey(feature.sort_key) - min; }
+                        //if (order < 1000) { order = 10; }
+                        return order;
+                    }
+                # interactive: function () { return ($zoom >= 18); }
+                interactive: true
 
         highway:
             filter: { kind: highway }
-            style:
-                color: '#D16768'
-                width: [[14, 2px], [15, 12]]
-                outline:
-                    width: 2
+            draw:
+                lines:
+                    color: '#D16768'
+                    width: [[14, 2px], [15, 12]]
+                    # TODO: fix outline
+                    outline:
+                        width: 2
             link:
                 filter: { is_link: yes }
-                style:
-                    color: '#aaa'
-                    width: [[13, 0], [14, 12]]
+                draw:
+                    lines:
+                        color: '#aaa'
+                        width: [[13, 0], [14, 12]]
         major_road:
             filter: { kind: major_road, $zoom: { min: 10 } }
-            style:
-                width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
-                outline:
-                    width: [[12, 0], [13, .5px], [15, 2]]
+            draw:
+                lines:
+                    width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
+                    # TODO: fix outline
+                    outline:
+                        width: [[12, 0], [13, .5px], [15, 2]]
         minor_road:
             filter: { kind: minor_road }
-            style:
-                width: [[13, 0px], [14, 1px], [15, 8]]
-                outline:
-                    width: [[14, 0], [15, 2]]
+            draw:
+                lines:
+                    width: [[13, 0px], [14, 1px], [15, 8]]
+                    # TODO: fix outline
+                    outline:
+                        width: [[14, 0], [15, 2]]
         airports:
             filter: { aeroway: true }
-            style:
-                color: '#ddd'
-                outline: none
+            draw:
+                lines:
+                    color: '#ddd'
+                    outline: none # TODO: fix outline
 
             taxiways:
                 filter: { aeroway: taxiway }
-                style:
-                    width: [[13, 0px], [14, 2px], [17, 10px]]
+                draw:
+                    lines:
+                        width: [[13, 0px], [14, 2px], [17, 10px]]
 
             runways:
                 filter: { aeroway: runway }
-                style:
-                    width: [[12, 5px], [13, 10px], [15, 75]]
-                    order: 1
+                draw:
+                    lines:
+                        width: [[12, 5px], [13, 10px], [15, 75]]
+                        order: 1
 
 
     buildings:
         data: { source: osm }
         filter: { $zoom: { min: 14 } }
-        style:
-            name: buildings
-            order: 1000
-            color: '#bbb'
-            extrude: function() { return zoom > 14 }
+        draw:
+            polygons:
+                style: buildings
+                order: 1000
+                color: '#bbb'
+                # extrude: function() { return $zoom > 14 }
+                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
     highway_labels:
         data: { source: osm, layer: roads }
         filter: { name: true, kind: highway, tunnel: false }
-        style:
-            name: text
-            interactive: true
-            font:
-                # typeface: 100 12pt Lucida Grande
-                typeface: 100 12pt Helvetica
-
+        draw:
+            text:
+                interactive: true
+                font:
+                    # typeface: 100 12pt Lucida Grande
+                    typeface: 100 12pt Helvetica
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
-            style:
-                font:
-                    fill: '#666'
-                    size: 12pt
-                    stroke: { color: white, width: 4 }    
+            draw:
+                text:
+                    font:
+                        fill: '#666'
+                        size: 12pt
+                        stroke: { color: white, width: 4 }
+
     road_labels:
         data: { source: osm, layer: roads }
 
         filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false }
-        style:
-            name: text
-            interactive: true
-            font:
-                fill: '#666'
-                stroke: { color: white, width: 2 }
-                typeface: 100 10pt Helvetica
+        draw:
+            text:
+                interactive: true
+                font:
+                    fill: '#666'
+                    stroke: { color: white, width: 2 }
+                    typeface: 100 10pt Helvetica
+
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
-            style:
-                font:
-                    typeface: 100 14pt Helvetica
-                    stroke: { color: white, width: 4 }
-
+            draw:
+                text:
+                    font:
+                        typeface: 100 14pt Helvetica
+                        stroke: { color: white, width: 4 }
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-            style:
-                font:
-                    typeface: 100 10pt Helvetica
-    
+            draw:
+                text:
+                    font:
+                        typeface: 100 10pt Helvetica
+
     pois:
         data: { source: osm }
         filter: { name: true, $zoom: { min: 17 } }
-        style:
-            name: text
-            font:
-                size: 11pt
-                fill: dark red
-                stroke: { color: white, width: 2 }
-            interactive: true
+        draw:
+            text:
+                font:
+                    size: 11pt
+                    fill: dark red
+                    stroke: { color: white, width: 2 }
+                interactive: true
 
         z18:
             filter: { $zoom: { min: 18 } }
-            style:
-                font:
-                    size: 12pt
+            draw:
+                text:
+                    font:
+                        size: 12pt
 
     poi-icons:
         data: { source: osm, layer: pois }
         filter: { name: true, not: { kind: peak }, $zoom: { min: 15 } }
-        style:
-            name: icons
-            size: [[13, 16px], [15, 24px]]
-            interactive: true
-            sprite: info
+        draw:
+            icons:
+                size: [[13, 16px], [15, 24px]]
+                interactive: true
+                sprite: info
 
         # examples of different icons mapped to feature properties
         restaurant:
             filter: { kind: [restaurant] }
-            style: { sprite: restaurant }
+            draw: { icons: { sprite: restaurant } }
         cafe:
             filter: { kind: [cafe, convenience] }
-            style: { sprite: cafe }
+            draw: { icons: { sprite: cafe } }
         bar:
             filter: { kind: [bar, pub] }
-            style: { sprite: bar }
+            draw: { icons: { sprite: bar } }
         culture:
             filter: { kind: [museum, library, church, place_of_worship, bank] }
-            style: { sprite: museum }
+            draw: { icons: { sprite: museum } }
         station:
             filter: { kind: [station] }
-            style: { sprite: train }
+            draw: { icons: { sprite: train } }
         hospital:
             filter: { kind: [hospital, pharmacy] }
-            style: { sprite: hospital }
+            draw: { icons: { sprite: hospital } }
         parking:
             filter: { kind: [parking] }
-            style: { sprite: parking }
+            draw: { icons: { sprite: parking } }
         hotel:
             filter: { kind: [hotel, hostel] }
-            style: { sprite: hotel }
+            draw: { icons: { sprite: hotel } }
         bus_stop:
             filter: { kind: [bus_stop] }
-            style: { sprite: bus }
+            draw: { icons: { sprite: bus } }
         bookstore:
             filter: { kind: [bookstore] }
-            style: { sprite: bookstore }
+            draw: { icons: { sprite: bookstore } }
 
     places:
         data: { source: osm }
         filter: { name: true, not: { kind: [county, state, island] } }
-        style:
-            name: text
-            interactive: true
-            font:
-                # typeface: italic 15pt Lucida Grande
-                typeface: italic 15pt Helvetica
-                fill: black
-                stroke: { color: white, width: 3 }
-        small:
-            filter:
-                kind: [hamlet, neighbourhood]
-                $zoom: { min: 13 }
+        draw:
+            text:
+                interactive: true
+                font:
+                    # typeface: italic 15pt Lucida Grande
+                    typeface: italic 15pt Helvetica
+                    fill: black
+                    stroke: { color: white, width: 3 }
+        # small:
+        #     filter:
+        #         kind: [hamlet, neighbourhood]
+        #         $zoom: { min: 13 }

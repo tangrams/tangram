@@ -1,9 +1,8 @@
 # Halftone shaders adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
 halftone:
-    base: polygons
     shaders:
         blocks:
-            globals: |
+            global: |
                 float dot_frequency = 100.4748637184972;
 
                 // Antialiasing
@@ -49,9 +48,16 @@ halftone:
                 // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, zoom_frequency, dist));
                 color.rgb = mix(black, white, aastep(radius, zoom_frequency, dist));
 
-# Color version simulating CMYK printing process
-colorhalftone:
+halftone_polygons:
     base: polygons
+    mix: halftone
+
+halftone_lines:
+    base: lines
+    mix: halftone
+
+# Color version simulating CMYK printing process
+color_halftone:
     shaders:
         uniforms:
             dot_frequency: 100.
@@ -59,7 +65,7 @@ colorhalftone:
             true_color: false
 
         blocks:
-            globals: |
+            global: |
 
                 // Antialiasing
                 float aastep(float threshold, const float freq, float value) {
@@ -123,3 +129,10 @@ colorhalftone:
 
                 color.rgb = rgbscreen;
 
+color_halftone_polygons:
+    base: polygons
+    mix: color_halftone
+
+color_halftone_lines:
+    base: lines
+    mix: color_halftone
