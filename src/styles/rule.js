@@ -83,12 +83,12 @@ class Rule {
 
     constructor({name, parent, draw, visible, filter, properties}) {
         this.id = Rule.id++;
+        this.parent = parent;
         this.name = name;
         this.draw = draw;
-        this.visible = visible;
         this.filter = filter;
-        this.properties = properties;
-        this.parent = parent;
+        this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
+        this.properties = properties !== undefined ? properties : (this.parent && this.parent.properties);
 
         // Denormalize properties to draw groups
         if (this.draw) {
