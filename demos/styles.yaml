@@ -367,6 +367,9 @@ layers:
                         width: [[12, 1px], [13, 2px], [17, 10px]]
                         color: darkorange
                         cap: round
+                    outlines:
+                        cap: round
+
             runways:
                 filter: { aeroway: runway }
                 draw:
@@ -375,19 +378,16 @@ layers:
                         color: orange
                         # order: 1
 
-            z17:
-                filter: { $zoom: { min: 17 } }
-                draw:
-                    outlines:
-                        cap: round
-                        join: round
-
         not-airports:
             filter: { aeroway: false }
+
             rounded:
-                filter: { $zoom: { min: 17 }, is_bridge: no }
+                filter: { $zoom: { min: 17 } }
                 draw:
                     lines:
+                        cap: round
+                        join: round
+                    outlines:
                         cap: round
                         join: round
 
@@ -478,19 +478,27 @@ layers:
 
         draw:
             polygons:
-                order: 250
+                style: points
+                size: 10px
+                centroid: false
+                order: 251
                 interactive: true
 
                 # color: function () { var h = feature.height || 20; h = Math.min((h + 50) / 250, 1.0); return [h, h, h]; } // shade based on height
                 # color: Style.color.randomColor()
                 # color: Style.color.pseudoRandomColor()
                 # color: Style.color.pseudoRandomGrayscale()
-                color: [.6, .6, .6]
+                # color: [.6, .6, .6]
                 # color: white
+                color: lightgreen
                 extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
                 # outline:
                 #     color: white
                 #     width: 2px
+            lines:
+                width: 2px
+                color: white
+                order: 250
 
         # blend:
         #     filter: { height: { min: 100 } }
