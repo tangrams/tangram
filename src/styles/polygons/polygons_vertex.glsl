@@ -71,12 +71,6 @@ void main() {
         v_texcoord = a_texcoord;
     #endif
 
-    // World coordinates for 3d procedural textures
-    v_world_position = u_model * vec4(a_position, 1.);
-    #if defined(TANGRAM_WORLD_POSITION_WRAP)
-        v_world_position.xy -= world_position_anchor;
-    #endif
-
     // Position
     vec4 position = vec4(a_position, 1.);
 
@@ -102,6 +96,13 @@ void main() {
         position.xy += extrude * width;
     #endif
 
+    // World coordinates for 3d procedural textures
+    v_world_position = u_model * position;
+    #if defined(TANGRAM_WORLD_POSITION_WRAP)
+        v_world_position.xy -= world_position_anchor;
+    #endif
+
+    // Adjust for tile and view position
     position = u_modelView * position;
 
     // Modify position before camera projection
