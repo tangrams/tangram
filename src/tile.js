@@ -167,28 +167,40 @@ export default class Tile {
                     let feature = geom.features[f];
                     let context = StyleParser.getFeatureParseContext(feature, tile);
 
-                    // Find matching rules
+                    // Get draw groups for this feature
                     let layer_rules = rules[layer_name];
-                    let rule = layer_rules.findMatchingRules(context, true);
-
-                    // Parse & render styles
-                    if (!rule || !rule.visible) {
+                    let draw_groups = layer_rules.buildDrawGroups(context, true);
+                    if (!draw_groups) {
                         continue;
                     }
 
-                    // Add to style
-                    rule.name = rule.name || StyleParser.defaults.style.name;
-                    let style = styles[rule.name];
+                    // Render draw groups
+                    for (let group_name in draw_groups) {
+                        let group = draw_groups[group_name];
+                        if (!group.visible) {
+                            continue;
+                        }
 
-                    if (!tile_data[rule.name]) {
-                        tile_data[rule.name] = style.startData();
+                        // Add to style
+                        let style_name = group.style || group_name;
+                        let style = styles[style_name];
+
+                        if (!style) {
+                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group);
+                            continue;
+                        }
+
+                        if (!tile_data[style_name]) {
+                            tile_data[style_name] = style.startData();
+                        }
+
+                        context.properties = group.properties; // add rule-specific properties to context
+
+                        style.addFeature(feature, group, context, tile_data[style_name]);
+
+                        context.properties = null; // clear group-specific properties
                     }
 
-                    context.properties = rule.properties; // add rule-specific properties to context
-
-                    style.addFeature(feature, rule, context, tile_data[rule.name]);
-
-                    context.properties = null; // clear rule-specific properties
                     source.debug.features++;
                 }
 

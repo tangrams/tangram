@@ -361,7 +361,7 @@ describe('Scene', function () {
             });
 
             it('does compile if the style is referenced by a style rule', () => {
-                subject.config.layers.buildings.style.name = 'elevator';
+                subject.config.layers.buildings.draw.polygons.style = 'elevator';
                 subject.updateStyles();
                 assert.isTrue(subject.styles.elevator.compiled);
                 assert.ok(subject.styles.elevator.program);

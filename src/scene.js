@@ -1019,10 +1019,10 @@ export default class Scene {
     // Reload scene config and rebuild tiles
     reload() {
         if (!this.initialized) {
-            return;
+            return Promise.resolve(this);
         }
 
-        this.loadScene().then(() => {
+        return this.loadScene().then(() => {
             this.updateStyles();
             this.syncConfigToWorker();
             return this.rebuildGeometry();
@@ -1126,24 +1126,27 @@ export default class Scene {
     }
 
     updateActiveStyles() {
-        // Make a set of currently active styles (used in a style rule)
+        // Make a set of currently active styles (used in a draw rule)
         // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
         let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule.style && rule.style.visible !== false) {
-                let sname = rule.style.name || StyleParser.defaults.style.name;
-                let style = this.styles[sname];
-
-                if (style) {
-                    this.active_styles[sname] = true;
-                    if (style.animated) {
-                        animated = true;
+            if (rule.draw) {
+                for (let [name, group] of Utils.entries(rule.draw)) {
+                    if (group.visible !== false) {
+                        let style_name = group.style || name;
+                        let style = this.styles[style_name];
+                        if (style) {
+                            this.active_styles[style_name] = true;
+                            if (style.animated) {
+                                animated = true;
+                            }
+                        }
+                        else {
+                            group.style = undefined;
+                        }
                     }
-                }
-                else {
-                    rule.style.name = undefined;
                 }
             }
         }

@@ -1,6 +1,5 @@
 # Halftone shaders adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
 halftone:
-    base: polygons
     shaders:
         blocks:
             globals: |
@@ -50,8 +49,7 @@ halftone:
                 color.rgb = mix(black, white, aastep(radius, zoom_frequency, dist));
 
 # Color version simulating CMYK printing process
-colorhalftone:
-    base: polygons
+color_halftone:
     shaders:
         uniforms:
             dot_frequency: 100.
@@ -122,4 +120,3 @@ colorhalftone:
                 //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
 
                 color.rgb = rgbscreen;
-

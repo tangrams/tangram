@@ -125,8 +125,8 @@ StyleParser.defaults = {
     min_height: 0,
     order: 0,
     z: 0,
-    style: {
-        name: 'polygons'
+    draw: {
+        style: 'polygons'
     },
     material: {
         ambient: 1,
