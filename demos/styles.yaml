@@ -173,12 +173,24 @@ styles:
     halftone:
         url: demos/styles/halftone.yaml
 
-    halftone-lines:
+    halftone_polygons:
+        base: polygons
+        mix: halftone
+
+    halftone_lines:
         base: lines
         mix: halftone
 
-    colorhalftone:
+    color_halftone:
         url: demos/styles/halftone.yaml
+
+    color_halftone_polygons:
+        base: polygons
+        mix: color_halftone
+
+    color_halftone_lines:
+        base: lines
+        mix: color_halftone
 
     windows:
         url: demos/styles/windows.yaml
@@ -312,23 +324,12 @@ layers:
                 color: [0.5, 0.5, 0.875]
 
         outlines:
-            filter: { not: { kind: [ocean, riverbank, dock] }, $zoom: { min: 15 } }
+            filter: { not: { kind: [ocean, river, riverbank, dock] }, $zoom: { min: 15 } }
             draw:
                 lines:
                     order: 1
                     color: [0.6, 0.6, 0.975]
                     width: function() { return 2.5 * Math.log(zoom); }
-
-    # water_outlines:
-    #     data: { source: osm, layer: water }
-    #     filter: { $zoom: { min: 15 }, not: { kind: [ocean, river, riverbank, dock] } }
-    #     draw:
-    #         order: 4
-    #         color: [0.6, 0.6, 0.975]
-    #         width: function() { return 2.5 * Math.log(zoom); }
-    #         # outline:
-    #         #     color: white
-    #         #     width: function () { return 3/8 * Math.log(zoom); }
 
     roads:
         data: { source: osm }

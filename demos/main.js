@@ -211,7 +211,7 @@
             'Dots': 'dots',
             'Wood': 'wood',
             'B&W Halftone': 'halftone',
-            'Color Halftone': 'colorhalftone',
+            'Color Halftone': 'color_halftone',
             'Windows': 'windows',
             'Environment Map': 'envmap',
             'Color Bleed': 'colorbleed',
@@ -219,58 +219,17 @@
             'Icons': 'icons'
         },
         saveInitial: function() {
-            // Save settings to restore later
-            if (!this.initial.layers[l]) {
-                var layer_groups = scene.config.layers;
-                for (var l in layer_groups) {
-                    this.initial.layers[l] = {
-                        draw: Object.assign({}, layer_groups[l].draw)
-                    };
-                }
-            }
-
-            this.initial.camera = this.initial.camera || scene.getActiveCamera();
-            this.initial.background = this.initial.background || Object.assign({}, scene.config.background);
+            this.initial = { config: JSON.stringify(scene.config) };
         },
         setup: function (style) {
             // Restore initial state
-            var layer_groups = scene.config.layers;
-            for (var l in layer_groups) {
-                if (this.initial.layers[l]) {
-                    layer_groups[l].draw = {};
-                    for (var s in this.initial.layers[l].draw) {
-                        layer_groups[l].draw[s] = Object.assign({}, this.initial.layers[l].draw[s]);
-                    }
-                }
-            };
-
-            if (this.initial.camera) {
-                scene.setActiveCamera(this.initial.camera);
-            }
-            gui.camera = scene.getActiveCamera();
-
-            if (this.initial.background) {
-                scene.config.background = Object.assign({}, this.initial.background);
-            }
+            scene.config = JSON.parse(this.initial.config);
 
             // Remove existing style-specific controls
             gui.removeFolder(this.folder);
 
             // Style-specific settings
             if (style != '') {
-                // Save settings to restore later
-                for (l in layer_groups) {
-                    if (this.initial.layers[l] == null) {
-                        this.initial.layers[l] = {
-                            draw: Object.assign({}, layer_groups[l].draw)
-                        };
-                    }
-                }
-                this.initial.camera = this.initial.camera || scene.getActiveCamera();
-
-                // Remove existing style-specific controls
-                gui.removeFolder(this.folder);
-
                 if (this.settings[style] != null) {
                     var settings = this.settings[style] || {};
 
@@ -278,10 +237,6 @@
                     if (settings.camera) {
                         scene.setActiveCamera(settings.camera);
                     }
-                    else if (this.initial.camera) {
-                        scene.setActiveCamera(this.initial.camera);
-                    }
-                    gui.camera = this.initial.camera = scene.getActiveCamera();
 
                     // Style-specific setup function
                     if (settings.setup) {
@@ -438,35 +393,41 @@
                     }.bind(this));
                 }
             },
-            'colorhalftone': {
+            'color_halftone': {
                 setup: function (style) {
-                    var layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
-                    layers.forEach(function(l) {
-                        if (scene.config.layers[l].draw.polygons) {
-                            scene.config.layers[l].draw.polygons.style = style;
+                    var layers = scene.config.layers;
+                    layers.earth.draw.polygons.style = 'color_halftone_polygons';
+                    layers.water.draw.polygons.style = 'color_halftone_polygons';
+                    layers.water.outlines.draw.lines.style = 'color_halftone_lines';
+                    layers.landuse.draw.polygons.style = 'color_halftone_polygons';
+                    layers.buildings.draw.polygons.style = 'color_halftone_polygons';
+                    layers.roads.draw.lines.style = 'color_halftone_lines';
+
+                    var visible_layers = ['earth', 'landuse', 'water', 'roads', 'buildings'];
+                    Object.keys(layers).forEach(function(l) {
+                        if (visible_layers.indexOf(l) === -1) {
+                            layers[l].visible = false;
                         }
                     });
 
-                    Object.keys(scene.config.layers).forEach(function(l) {
-                        if (layers.indexOf(l) === -1)
-                        scene.config.layers[l].draw.visible = false;
-                    });
-
-                    this.state.dot_frequency = this.uniforms().dot_frequency;
+                    this.state.dot_frequency = scene.styles.color_halftone_polygons.shaders.uniforms.dot_frequency;
                     this.folder.add(this.state, 'dot_frequency', 0, 200).onChange(function(value) {
-                        this.uniforms().dot_frequency = value;
+                        scene.styles.color_halftone_polygons.shaders.uniforms.dot_frequency = value;
+                        scene.styles.color_halftone_lines.shaders.uniforms.dot_frequency = value;
                         scene.requestRedraw();
                     }.bind(this));
 
-                    this.state.dot_scale = this.uniforms().dot_scale;
+                    this.state.dot_scale = scene.styles.color_halftone_polygons.shaders.uniforms.dot_scale;
                     this.folder.add(this.state, 'dot_scale', 0, 3).onChange(function(value) {
-                        this.uniforms().dot_scale = value;
+                        scene.styles.color_halftone_polygons.shaders.uniforms.dot_scale = value;
+                        scene.styles.color_halftone_lines.shaders.uniforms.dot_scale = value;
                         scene.requestRedraw();
                     }.bind(this));
 
-                    this.state.true_color = this.uniforms().true_color;
+                    this.state.true_color = scene.styles.color_halftone_polygons.shaders.uniforms.true_color;
                     this.folder.add(this.state, 'true_color').onChange(function(value) {
-                        this.uniforms().true_color = value;
+                        scene.styles.color_halftone_polygons.shaders.uniforms.true_color = value;
+                        scene.styles.color_halftone_lines.shaders.uniforms.true_color = value;
                         scene.requestRedraw();
                     }.bind(this));
                 }
@@ -475,18 +436,19 @@
                 setup: function (style) {
                     scene.config.background.color = 'black';
 
-                    var layers = ['landuse', 'water', 'roads', 'buildings'];
-                    layers.forEach(function(l) {
-                        if (scene.config.layers[l].draw.polygons) {
-                            scene.config.layers[l].draw.polygons.style = style;
+                    var layers = scene.config.layers;
+                    layers.earth.draw.polygons.style = 'halftone_polygons';
+                    layers.water.draw.polygons.style = 'halftone_polygons';
+                    layers.water.outlines.draw.lines.style = 'halftone_lines';
+                    layers.landuse.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.draw.polygons.style = 'halftone_polygons';
+                    layers.roads.draw.lines.style = 'halftone_lines';
+
+                    var visible_layers = ['landuse', 'water', 'roads', 'buildings'];
+                    Object.keys(layers).forEach(function(l) {
+                        if (visible_layers.indexOf(l) === -1) {
+                            layers[l].visible = false;
                         }
-                    });
-
-                    scene.config.layers.roads.draw.lines.style = 'halftone-lines';
-
-                    Object.keys(scene.config.layers).forEach(function(l) {
-                        if (layers.indexOf(l) === -1)
-                        scene.config.layers[l].draw.visible = false;
                     });
                 }
             },
@@ -494,7 +456,7 @@
                 camera: 'isometric', // force isometric
                 setup: function (style) {
                     scene.config.layers.buildings.draw.polygons.style = style;
-                    // scene.config.layers.pois.draw.visible = false;
+                    // scene.config.layers.pois.visible = false;
                 }
             },
             'envmap': {
@@ -529,10 +491,6 @@
                 }
             }
         },
-        initial: { // initial state to restore to on style switch
-            layers: {}
-        },
-        folder: null, // set to current (if any) DAT.gui folder name, cleared on style switch
         scaleColor: function (c, factor) { // convenience for converting between uniforms (0-1) and DAT colors (0-255)
             if ((typeof c == 'string' || c instanceof String) && c[0].charAt(0) == "#") {
                 // convert from hex to rgb
@@ -578,49 +536,6 @@
             scene.updateConfig();
         });
 
-        // Lighting
-        // var lighting_presets = {
-        //     'None': {
-        //         type: null
-        //     },
-        //     'Point': {
-        //         type: 'point',
-        //         position: [0, 0, 200],
-        //         ambient: 0.5,
-        //         backlight: true
-        //     },
-        //     'Directional': {
-        //         type: 'directional',
-        //         direction: [-1, 0, -.5],
-        //         ambient: 0.5
-        //     },
-        //     'Spotlight': {
-        //         type: 'spotlight',
-        //         position: [0, 0, 500],
-        //         direction: [0, 0, -1],
-        //         inner_angle: 20,
-        //         outer_angle: 25,
-        //         ambient: 0.2
-        //     },
-        //     'Night': {
-        //         type: 'point',
-        //         position: [0, 0, 50],
-        //         ambient: 0,
-        //         backlight: false
-        //     }
-        // };
-        // // var lighting_options = Object.keys(lighting_presets);
-        // for (var k=0; k < lighting_options.length; k++) {
-        //     if (lighting_presets[lighting_options[k]].type === layer.scene.config.lighting.type) {
-        //         gui.lighting = lighting_options[k];
-        //         break;
-        //     }
-        // }
-        // gui.add(gui, 'lighting', lighting_options).onChange(function(value) {
-        //     layer.scene.config.lighting = lighting_presets[value];
-        //     layer.scene.updateConfig();
-        // });
-
         // Feature selection on hover
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
@@ -639,12 +554,11 @@
                 return;
             }
 
-            layer.scene.config.layers[l].style = layer.scene.config.layers[l].style || { visible: true };
-            layer_controls[l] = !(layer.scene.config.layers[l].style.visible == false);
+            layer_controls[l] = !(layer.scene.config.layers[l].visible == false);
             layer_gui.
                 add(layer_controls, l).
                 onChange(function(value) {
-                    layer.scene.config.layers[l].style.visible = value;
+                    layer.scene.config.layers[l].visible = value;
                     layer.scene.rebuildGeometry();
                 });
         });
