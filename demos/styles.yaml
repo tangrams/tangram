@@ -329,7 +329,7 @@ layers:
                 lines:
                     order: 1
                     color: [0.6, 0.6, 0.975]
-                    width: function() { return 2.5 * Math.log(zoom); }
+                    width: function() { return 2.5 * Math.log($zoom); }
 
     roads:
         data: { source: osm }
@@ -348,7 +348,7 @@ layers:
                         return order;
                     }
                 # order: 5
-                interactive: function () { return (zoom >= 18); }
+                interactive: function () { return ($zoom >= 18); }
                 color: white
 
         airports:
@@ -393,76 +393,76 @@ layers:
                 draw:
                     lines:
                         color: [1.0, 1.0, 1.0]
-                        width: function () { return 3 * Math.log(zoom); }
+                        width: function () { return 3 * Math.log($zoom); }
                     outlines:
                         color: [0.7, 0.7, 0.7]
-                        width: function () { return (3 + 2 * 3/8) * Math.log(zoom); }
+                        width: function () { return (3 + 2 * 3/8) * Math.log($zoom); }
 
                 tunnel:
                     filter: { is_tunnel: yes }
                     draw:
                         lines:
                             color: '#333'
-                            width: function () { return 2 * Math.log(zoom); }
+                            width: function () { return 2 * Math.log($zoom); }
                         outlines:
                             color: white
-                            width: function () { return (2 + 2) * Math.log(zoom); }
+                            width: function () { return (2 + 2) * Math.log($zoom); }
 
             major_road:
                 filter: { kind: major_road }
                 draw:
                     lines:
                         color: [0.5, 0.5, 0.5]
-                        width: function () { return 2.5 * Math.log(zoom); }
+                        width: function () { return 2.5 * Math.log($zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
                     draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
-                            width: function () { return (2.5 + 2 * 3/8) * Math.log(zoom); }
+                            width: function () { return (2.5 + 2 * 3/8) * Math.log($zoom); }
 
             minor_road:
                 filter: { kind: minor_road, $zoom: { min: 13 } }
                 draw:
                     lines:
                         color: [0.65, 0.65, 0.65]
-                        width: function () { return 2 * Math.log(zoom); }
+                        width: function () { return 2 * Math.log($zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
                     draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
-                            width: function () { return (2 + 2 * 2.5/8) * Math.log(zoom); }
+                            width: function () { return (2 + 2 * 2.5/8) * Math.log($zoom); }
 
             path:
                 filter: { kind: path, $zoom: { min: 15 } }
                 draw:
                     lines:
                         color: [0.8, 0.8, 0.8]
-                        width: function () { return 1 * Math.log(zoom); }
+                        width: function () { return 1 * Math.log($zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
                     draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
-                            width: function () { return (1 + 2 * 2/8) * Math.log(zoom); }
+                            width: function () { return (1 + 2 * 2/8) * Math.log($zoom); }
 
             rail:
                 filter: { kind: rail }
                 draw:
                     lines:
                         color: [0.5, 0.0, 0.0]
-                        width: function () { return 2 * Math.log(zoom); }
+                        width: function () { return 2 * Math.log($zoom); }
 
                 outlines:
                     filter: { $zoom: { min: 18 } }
                     draw:
                         outlines:
                             color: [0.7, 0.7, 0.7]
-                            width: function () { return (2 + 2 * 2/8) * Math.log(zoom); }
+                            width: function () { return (2 + 2 * 2/8) * Math.log($zoom); }
 
     buildings:
         data: { source: osm }
@@ -484,7 +484,7 @@ layers:
                 # color: Style.color.pseudoRandomGrayscale()
                 color: [.6, .6, .6]
                 # color: white
-                extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
                 # outline:
                 #     color: white
                 #     width: 2px
@@ -514,7 +514,7 @@ layers:
                 order: 251
                 color: white
                 width: 2px
-                extrude: function () { return ((zoom >= 15 && feature.height > 20) || zoom >= 16) }
+                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
     road_labels:
         data: { source: osm, layer: roads }
@@ -625,7 +625,7 @@ layers:
             any:
                 - { $zoom: { min: 18 } }
                 # - { height: { min: 100 } }
-                - function() { return feature.height > ((17 - zoom) * 100); }
+                - function() { return feature.height > ((17 - $zoom) * 100); }
 
         # high:
         #     filter: { height: { min: 100 } }
