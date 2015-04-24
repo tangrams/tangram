@@ -351,13 +351,6 @@ layers:
                 interactive: function () { return (zoom >= 18); }
                 color: white
 
-        outlines:
-            filter: { aeroway: false }
-            draw:
-                outlines:
-                    style: lines
-                    order: 4 # road outlines underneath all roads
-
         airports:
             filter: { aeroway: true }
             taxiways:
@@ -366,8 +359,6 @@ layers:
                     lines:
                         width: [[12, 1px], [13, 2px], [17, 10px]]
                         color: darkorange
-                        cap: round
-                    outlines:
                         cap: round
 
             runways:
@@ -380,6 +371,12 @@ layers:
 
         not-airports:
             filter: { aeroway: false }
+
+            outlines:
+                draw:
+                    outlines:
+                        style: lines
+                        order: 4 # road outlines underneath all roads
 
             rounded:
                 filter: { $zoom: { min: 17 } }
