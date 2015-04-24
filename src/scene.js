@@ -1019,10 +1019,10 @@ export default class Scene {
     // Reload scene config and rebuild tiles
     reload() {
         if (!this.initialized) {
-            return;
+            return Promise.resolve(this);
         }
 
-        this.loadScene().then(() => {
+        return this.loadScene().then(() => {
             this.updateStyles();
             this.syncConfigToWorker();
             return this.rebuildGeometry();

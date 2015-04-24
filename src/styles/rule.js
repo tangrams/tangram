@@ -1,7 +1,7 @@
 import {match} from 'match-feature';
 import log from 'loglevel';
 
-export const whiteList = ['filter', 'draw', 'data', 'properties'];
+export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
 
 export let ruleCache = {};
 
@@ -81,17 +81,25 @@ export function mergeTrees(matchingTrees, key, context) {
 
 class Rule {
 
-    constructor(name, parent, draw, filter, properties) {
+    constructor({name, parent, draw, visible, filter, properties}) {
         this.id = Rule.id++;
         this.name = name;
         this.draw = draw;
+        this.visible = visible;
         this.filter = filter;
         this.properties = properties;
         this.parent = parent;
 
-        // Add properties to draw groups
-        if (this.draw && this.properties) {
-            this.draw.properties = this.properties;
+        // Denormalize properties to draw groups
+        if (this.draw) {
+            for (let group in this.draw) {
+                if (this.visible !== undefined) {
+                    this.draw[group].visible = this.visible;
+                }
+                if (this.properties !== undefined) {
+                    this.draw[group].properties = this.properties;
+                }
+            }
         }
 
         this.buildFilter();
@@ -122,15 +130,15 @@ Rule.id = 0;
 
 
 export class RuleLeaf extends Rule {
-    constructor({name, parent, draw, filter, properties}) {
-        super(name, parent, draw, filter, properties);
+    constructor({name, parent, draw, visible, filter, properties}) {
+        super({name, parent, draw, visible, filter, properties});
     }
 
 }
 
 export class RuleTree extends Rule {
-    constructor({name, parent, draw, rules, filter, properties}) {
-        super(name, parent, draw, filter, properties);
+    constructor({name, parent, draw, visible, rules, filter, properties}) {
+        super({name, parent, draw, visible, filter, properties});
         this.rules = rules || [];
     }
 

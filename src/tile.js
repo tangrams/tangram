@@ -182,16 +182,21 @@ export default class Tile {
                         }
 
                         // Add to style
-                        group.style = group.style || group_name;
-                        let style = styles[group.style];
+                        let style_name = group.style || group_name;
+                        let style = styles[style_name];
 
-                        if (!tile_data[group.style]) {
-                            tile_data[group.style] = style.startData();
+                        if (!style) {
+                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group);
+                            continue;
+                        }
+
+                        if (!tile_data[style_name]) {
+                            tile_data[style_name] = style.startData();
                         }
 
                         context.properties = group.properties; // add rule-specific properties to context
 
-                        style.addFeature(feature, group, context, tile_data[group.style]);
+                        style.addFeature(feature, group, context, tile_data[style_name]);
 
                         context.properties = null; // clear group-specific properties
                     }

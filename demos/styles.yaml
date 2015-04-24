@@ -351,7 +351,7 @@ layers:
                 color: white
 
         outlines:
-            filter: { aeroway: false, $zoom: { min: 15 } }
+            filter: { aeroway: false }
             draw:
                 outlines:
                     style: lines
@@ -510,9 +510,9 @@ layers:
 
     building_outlines:
         data: { source: osm, layer: buildings }
+        visible: false
         draw:
             lines:
-                visible: false
                 order: 251
                 color: white
                 width: 2px
@@ -524,14 +524,8 @@ layers:
         filter: { name: true, $zoom: { min: 14 } }
         draw:
             text:
-                # visible: false
                 order: 5
                 interactive: true
-                # font:
-                #     typeface: Helvetica
-                #     size: 12px
-                #     fill: white
-                #     stroke: black
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
@@ -615,9 +609,9 @@ layers:
 
     building_labels:
         data: { source: osm, layer: buildings }
+        visible: false
         draw:
             text:
-                visible: false
                 order: 10
                 # text_source: |
                     # function() { return feature.height > 100 ? 'high' : 'low';  }

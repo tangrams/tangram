@@ -156,6 +156,14 @@ StyleManager.loadShaderBlocks = function (styles) {
     return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
+StyleManager.setStyleForDrawGroup = function (_rule, _group, _style) {
+    for (let rule of Utils.recurseValues(_rule)) {
+        if (rule.draw && rule.draw[_group]) {
+            rule.draw[_group].style = _style;
+        }
+    }
+};
+
 StyleManager.mix = function (dest, ...sources) {
     // Flags - OR'd, true if any style has it set
     dest.animated = sources.some(x => x && x.animated);
