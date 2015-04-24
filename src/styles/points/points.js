@@ -85,6 +85,10 @@ Object.assign(Points, {
         // to store bbox by tiles
         style.tile = tile;
 
+        // polygons rendering as points will render each individual polygon point by default, but
+        // rendering a single point at the polygon's centroid can be enabled
+        style.centroid = rule_style.centroid;
+
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
         if (this.texture && style.sprite) {
             this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, style.sprite);
@@ -133,10 +137,9 @@ Object.assign(Points, {
 
         let size = style.size;
         let angle = style.angle;
-        let position = points[0];
 
         Builders.buildSpriteQuadsForPoints(
-            [ position ],
+            points,
             Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),
             Utils.scaleInt16(style.scale, 256),
@@ -148,9 +151,19 @@ Object.assign(Points, {
     },
 
     buildPolygons(polygons, style, vertex_data) {
-        // Render polygons as centroids
-        let centroid = Utils.multiCentroid(polygons);
-        this.buildPoints([centroid], style, vertex_data);
+        // Render polygons as individual points, or centroid
+        if (!style.centroid) {
+            for (let poly=0; poly < polygons.length; poly++) {
+                let polygon = polygons[poly];
+                for (let r=0; r < polygon.length; r++) {
+                    this.buildPoints(polygon[r], style, vertex_data);
+                }
+            }
+        }
+        else {
+            let centroid = Utils.multiCentroid(polygons);
+            this.buildPoints([centroid], style, vertex_data);
+        }
     },
 
     buildLines(lines, style, vertex_data) {
