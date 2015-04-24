@@ -100,6 +100,12 @@ StyleManager.loadRemoteStyles = function (styles) {
     return Promise.all(Object.keys(urls).map(url => {
         return new Promise((resolve, reject) => {
             Utils.loadResource(url).then((data) => {
+                // Mixin remote styles, within each remote file
+                for (var source_style in data) {
+                    StyleManager.mix(data[source_style], data);
+                }
+
+                // Add remote styles to local styles
                 for (var target of urls[url]) {
                     if (data && data[target.source_name]) {
                         styles[target.target_name] = data[target.source_name];
@@ -156,18 +162,36 @@ StyleManager.loadShaderBlocks = function (styles) {
     return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
 };
 
-StyleManager.mix = function (dest, ...sources) {
+StyleManager.mix = function (style, styles) {
+    // Exit early if we have already applied mixins to this style
+    if (style.mixed) {
+        return style;
+    }
+
+    // Mixin sources, in order
+    let sources = [];
+    if (style.mix) {
+        if (Array.isArray(style.mix)) {
+            sources.push(...style.mix);
+        }
+        else {
+            sources.push(style.mix);
+        }
+        sources = sources.map(x => styles[x]).filter(x => x);
+    }
+    sources.push(style);
+
     // Flags - OR'd, true if any style has it set
-    dest.animated = sources.some(x => x && x.animated);
-    dest.texcoords = sources.some(x => x && x.texcoords);
+    style.animated = sources.some(x => x && x.animated);
+    style.texcoords = sources.some(x => x && x.texcoords);
 
     // Overwrites - last definition wins
-    dest.base = sources.map(x => x.base).filter(x => x).pop();
-    dest.texture = sources.map(x => x.texture).filter(x => x).pop();
+    style.base = sources.map(x => x.base).filter(x => x).pop();
+    style.texture = sources.map(x => x.texture).filter(x => x).pop();
 
     // Merges - property-specific rules for merging values
-    dest.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x));
-    dest.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
+    style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x));
+    style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
 
     let merge = sources.map(x => x.shaders).filter(x => x);
     let shaders = {};
@@ -189,9 +213,10 @@ StyleManager.mix = function (dest, ...sources) {
         }
     });
 
-    dest.shaders = shaders;
+    style.shaders = shaders;
+    style.mixed = true; // track that we already applied mixins (avoid dupe work later)
 
-    return dest;
+    return style;
 };
 
 // Create a new style
@@ -203,21 +228,7 @@ StyleManager.create = function (name, config, styles = {}) {
     style.name = name;
 
     // Style mixins
-    let mixes = [];
-    if (style.mix) {
-        if (Array.isArray(style.mix)) {
-            mixes.push(...style.mix);
-        }
-        else {
-            mixes.push(style.mix);
-        }
-        mixes = mixes.map(x => styles[x]).filter(x => x);
-    }
-
-    // Always call mix(), even if there are no other mixins, so that style properties are copied
-    // (mix() does a deep copy, otherwise we get undesired shared references between styles)
-    mixes.push(style);
-    StyleManager.mix(style, ...mixes);
+    StyleManager.mix(style, styles);
 
     // Has base style?
     // Only renderable (instantiated) styles should be included for run-time use

@@ -170,27 +170,17 @@ styles:
             # specular: 1
             # shininess: 8
 
-    halftone:
+    halftone_polygons:
         url: demos/styles/halftone.yaml
 
-    halftone_polygons:
-        base: polygons
-        mix: halftone
-
     halftone_lines:
-        base: lines
-        mix: halftone
-
-    color_halftone:
         url: demos/styles/halftone.yaml
 
     color_halftone_polygons:
-        base: polygons
-        mix: color_halftone
+        url: demos/styles/halftone.yaml
 
     color_halftone_lines:
-        base: lines
-        mix: color_halftone
+        url: demos/styles/halftone.yaml
 
     windows:
         url: demos/styles/windows.yaml
