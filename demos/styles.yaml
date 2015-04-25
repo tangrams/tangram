@@ -115,6 +115,10 @@ styles:
         base: polygons
         lighting: false
 
+    flat_lines:
+        base: lines
+        mix: flat
+
     buildings:
         base: polygons
         shaders:
@@ -187,16 +191,11 @@ layers:
     roads:
         data: { source: osm }
         filter:
-            not: { kind: ["path", "rail"] }
+            not: { kind: [path, rail] }
         draw:
             lines:
                 style: flat_lines
                 color: white
-                width: 1px
-                # TODO: fix outline
-                # outline:
-                #     color: [[16, '#999'], [18, '#ccc']]
-                #     width: [[14, 0], [15, 1]]
                 order: |
                     function () {
                         function reduceSortKey(key) {
@@ -207,13 +206,17 @@ layers:
 
                         var min = reduceSortKey(-3109);
                         var order;
-                        if (feature.sort_key < 10) { order = 3; }
-                        else { order = 3 + reduceSortKey(feature.sort_key) - min; }
+                        if (feature.sort_key < 10) { order = 4; }
+                        else { order = 4 + reduceSortKey(feature.sort_key) - min; }
                         //if (order < 1000) { order = 10; }
                         return order;
                     }
                 # interactive: function () { return ($zoom >= 18); }
                 interactive: true
+            outlines:
+                style: flat_lines
+                order: 3
+                color: [[16, '#999'], [18, '#aaa']]
 
         rounded:
             filter: { $zoom: { min: 17 } }
@@ -225,9 +228,8 @@ layers:
                 lines:
                     color: '#D16768'
                     width: [[14, 2px], [15, 12]]
-                    # TODO: fix outline
-                    outline:
-                        width: 2
+                outlines:
+                    width: [[14, 0], [15, 16]]
             link:
                 filter: { is_link: yes }
                 draw:
@@ -239,23 +241,22 @@ layers:
             draw:
                 lines:
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
-                    # TODO: fix outline
-                    outline:
-                        width: [[12, 0], [13, .5px], [15, 2]]
+                outlines:
+                    width: [[16, 0], [17, 16]]
         minor_road:
             filter: { kind: minor_road }
             draw:
                 lines:
                     width: [[13, 0px], [14, 1px], [15, 8]]
-                    # TODO: fix outline
-                    outline:
-                        width: [[14, 0], [15, 2]]
+                outlines:
+                    width: [[17, 0], [18, 12]]
         airports:
             filter: { aeroway: true }
             draw:
                 lines:
                     color: '#ddd'
-                    outline: none # TODO: fix outline
+                outlines:
+                    width: 0
 
             taxiways:
                 filter: { aeroway: taxiway }
@@ -277,7 +278,7 @@ layers:
         draw:
             polygons:
                 style: buildings
-                order: 1000
+                order: 300
                 color: '#bbb'
                 # extrude: function() { return $zoom > 14 }
                 extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
@@ -290,7 +291,7 @@ layers:
                 interactive: true
                 font:
                     # typeface: 100 12pt Lucida Grande
-                    typeface: 100 12pt Helvetica
+                    typeface: 100 14px Helvetica
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
@@ -310,41 +311,42 @@ layers:
                 font:
                     fill: '#666'
                     stroke: { color: white, width: 2 }
-                    typeface: 100 10pt Helvetica
+                    typeface: 100 12px Helvetica
 
         major_road:
             filter: { kind: major_road, $zoom: { min: 14 } }
             draw:
                 text:
                     font:
-                        typeface: 100 14pt Helvetica
+                        typeface: 100 16px Helvetica
                         stroke: { color: white, width: 4 }
         minor_road:
             filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
             draw:
                 text:
                     font:
-                        typeface: 100 10pt Helvetica
+                        typeface: 100 12px Helvetica
+                        stroke: { color: white, width: 4 }
 
-    pois:
-        data: { source: osm }
-        filter: { name: true, $zoom: { min: 17 } }
-        draw:
-            text:
-                font:
-                    size: 11pt
-                    fill: dark red
-                    stroke: { color: white, width: 2 }
-                interactive: true
+    # pois_labels:
+    #     data: { source: osm, layer: pois }
+    #     filter: { name: true, $zoom: { min: 17 } }
+    #     draw:
+    #         text:
+    #             font:
+    #                 typeface: 11pt Helvetica
+    #                 fill: dark red
+    #                 stroke: { color: white, width: 2 }
+    #             interactive: true
 
-        z18:
-            filter: { $zoom: { min: 18 } }
-            draw:
-                text:
-                    font:
-                        size: 12pt
+    #     z18:
+    #         filter: { $zoom: { min: 18 } }
+    #         draw:
+    #             text:
+    #                 font:
+    #                     size: 12pt
 
-    poi-icons:
+    poi_icons:
         data: { source: osm, layer: pois }
         filter: { name: true, not: { kind: peak }, $zoom: { min: 15 } }
         draw:
@@ -352,38 +354,42 @@ layers:
                 size: [[13, 16px], [15, 24px]]
                 interactive: true
                 sprite: info
+        visible: false
 
-        # examples of different icons mapped to feature properties
-        restaurant:
-            filter: { kind: [restaurant] }
-            draw: { icons: { sprite: restaurant } }
-        cafe:
-            filter: { kind: [cafe, convenience] }
-            draw: { icons: { sprite: cafe } }
-        bar:
-            filter: { kind: [bar, pub] }
-            draw: { icons: { sprite: bar } }
-        culture:
-            filter: { kind: [museum, library, church, place_of_worship, bank] }
-            draw: { icons: { sprite: museum } }
-        station:
-            filter: { kind: [station] }
-            draw: { icons: { sprite: train } }
-        hospital:
-            filter: { kind: [hospital, pharmacy] }
-            draw: { icons: { sprite: hospital } }
-        parking:
-            filter: { kind: [parking] }
-            draw: { icons: { sprite: parking } }
-        hotel:
-            filter: { kind: [hotel, hostel] }
-            draw: { icons: { sprite: hotel } }
-        bus_stop:
-            filter: { kind: [bus_stop] }
-            draw: { icons: { sprite: bus } }
-        bookstore:
-            filter: { kind: [bookstore] }
-            draw: { icons: { sprite: bookstore } }
+        icons:
+            visible: true
+
+            # examples of different icons mapped to feature properties
+            restaurant:
+                filter: { kind: [restaurant] }
+                draw: { icons: { sprite: restaurant } }
+            cafe:
+                filter: { kind: [cafe, convenience] }
+                draw: { icons: { sprite: cafe } }
+            bar:
+                filter: { kind: [bar, pub] }
+                draw: { icons: { sprite: bar } }
+            culture:
+                filter: { kind: [museum, library, church, place_of_worship, bank] }
+                draw: { icons: { sprite: museum } }
+            station:
+                filter: { kind: [station] }
+                draw: { icons: { sprite: train } }
+            hospital:
+                filter: { kind: [hospital, pharmacy] }
+                draw: { icons: { sprite: hospital } }
+            parking:
+                filter: { kind: [parking] }
+                draw: { icons: { sprite: parking } }
+            hotel:
+                filter: { kind: [hotel, hostel] }
+                draw: { icons: { sprite: hotel } }
+            bus_stop:
+                filter: { kind: [bus_stop] }
+                draw: { icons: { sprite: bus } }
+            bookstore:
+                filter: { kind: [bookstore] }
+                draw: { icons: { sprite: bookstore } }
 
     places:
         data: { source: osm }
