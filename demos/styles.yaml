@@ -193,10 +193,10 @@ layers:
                 style: flat_lines
                 color: white
                 width: 1px
-                join: round
-                outline:
-                    color: [[16, '#999'], [18, '#ccc']]
-                    width: [[14, 0], [15, 1]]
+                # TODO: fix outline
+                # outline:
+                #     color: [[16, '#999'], [18, '#ccc']]
+                #     width: [[14, 0], [15, 1]]
                 order: |
                     function () {
                         function reduceSortKey(key) {
@@ -214,6 +214,10 @@ layers:
                     }
                 # interactive: function () { return ($zoom >= 18); }
                 interactive: true
+
+        rounded:
+            filter: { $zoom: { min: 17 } }
+            draw: { lines: { join: round } }
 
         highway:
             filter: { kind: highway }
