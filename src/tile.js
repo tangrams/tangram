@@ -186,7 +186,7 @@ export default class Tile {
                         let style = styles[style_name];
 
                         if (!style) {
-                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group);
+                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
                             continue;
                         }
 

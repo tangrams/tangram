@@ -1134,7 +1134,8 @@ export default class Scene {
         for (var rule of Utils.recurseValues(this.config.layers)) {
             if (rule.draw) {
                 for (let [name, group] of Utils.entries(rule.draw)) {
-                    if (group.visible !== false) {
+                    // TODO: warn on non-object draw group
+                    if (typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
                         let style = this.styles[style_name];
                         if (style) {
@@ -1142,9 +1143,6 @@ export default class Scene {
                             if (style.animated) {
                                 animated = true;
                             }
-                        }
-                        else {
-                            group.style = undefined;
                         }
                     }
                 }
