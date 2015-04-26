@@ -43,12 +43,12 @@ LabelBuilder.labelsFromGeometry = function (geometry, { text, size }, label_styl
         let centroid = Utils.centroid(geometry.coordinates[0]);
         let area = Utils.polygonArea(geometry.coordinates[0]);
 
-        labels.push(new LabelPoint(text, centroid, size, area, false, false));
+        labels.push(new LabelPoint(text, centroid, size, area, false, true));
     } else if (geometry.type === "MultiPolygon") {
         let centroid = Utils.multiCentroid(geometry.coordinates);
         let area = Utils.multiPolygonArea(geometry.coordinates);
 
-        labels.push(new LabelPoint(text, centroid, size, area, false, false));
+        labels.push(new LabelPoint(text, centroid, size, area, false, true));
     }
 
     return labels;
