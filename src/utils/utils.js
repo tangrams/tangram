@@ -402,9 +402,7 @@ Utils.toPixelSize = function (size, kind) {
 };
 
 Utils.pointInTile = function (point) {
-    let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
-
-    return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
+    return point[0] > 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] < 0;
 };
 
 Utils.pixelToMercator = function (size) {
