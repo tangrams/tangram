@@ -307,7 +307,7 @@ Enjoy!
                     var layers = scene.config.layers;
                     layers.earth.draw.polygons.style = 'halftone_polygons';
                     layers.water.draw.polygons.style = 'halftone_polygons';
-                    layers.water.outlines.draw.lines.style = 'halftone_lines';
+                    // layers.water.outlines.draw.lines.style = 'halftone_lines';
                     layers.landuse.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.style = 'halftone_polygons';
                     layers.roads.draw.lines.style = 'halftone_lines';
