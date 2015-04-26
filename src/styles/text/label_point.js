@@ -27,7 +27,7 @@ export default class LabelPoint extends Label {
 
     moveInTile (in_tile) {
         let width = this.bbox[2] - this.bbox[0];
-        let height = -this.bbox[3] - -this.bbox[1];
+        let height = -this.bbox[3] - (-this.bbox[1]);
 
         // Move point labels to tile edges (only if mostly in this tile)
         if (this.position[0] - width/2 < 0 && this.position[0] > 0) {
