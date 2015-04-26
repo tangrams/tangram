@@ -12,8 +12,8 @@ export default class LabelPoint extends Label {
     }
 
     computeBBox () {
-        let half_merc_width = Utils.pixelToMercator(this.size.text_size[0]) * 0.5;
-        let half_merc_height = Utils.pixelToMercator(this.size.text_size[1]) * 0.5;
+        let half_merc_width = Utils.pixelToMercator(this.size.text_size[0]) * 0.5 + this.buffer;
+        let half_merc_height = Utils.pixelToMercator(this.size.text_size[1]) * 0.5 + this.buffer;
 
         let bbox = [
             this.position[0] - half_merc_width,
