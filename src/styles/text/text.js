@@ -336,7 +336,7 @@ Object.assign(TextStyle, {
                     let feature = this.features[tile][style][text][f];
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
-                            { text: text, size: text_info.size },
+                            { text, size: text_info.size },
                             this.label_style
                     );
 

@@ -4,8 +4,8 @@ import Label from './label';
 import Utils from '../../utils/utils';
 
 export default class LabelLine extends Label {
-    constructor (text, size, lines, style, move_in_tile, keep_in_tile) {
-        super(text, size, move_in_tile, keep_in_tile);
+    constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
+        super(text, size, { move_in_tile, keep_in_tile });
 
         this.segment_index = 0;
         this.lines = lines;

@@ -1,9 +1,10 @@
 import Label from './label';
 import Utils from '../../utils/utils';
+import Geo from '../../geo';
 
 export default class LabelPoint extends Label {
-    constructor (text, position, size, area, move_in_tile, keep_in_tile) {
-        super(text, size, move_in_tile, keep_in_tile);
+    constructor (text, position, size, area, { move_in_tile, keep_in_tile }) {
+        super(text, size, { move_in_tile, keep_in_tile });
 
         this.area = area;
         this.position = position;
