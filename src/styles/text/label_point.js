@@ -26,7 +26,28 @@ export default class LabelPoint extends Label {
     }
 
     moveInTile (in_tile) {
-        return false;
+        let width = this.bbox[2] - this.bbox[0];
+        let height = -this.bbox[3] - -this.bbox[1];
+
+        // Move point labels to tile edges (only if mostly in this tile)
+        if (this.position[0] - width/2 < 0 && this.position[0] > 0) {
+            this.position[0] = width/2 + 1;
+        }
+        else if (this.position[0] + width/2 > Geo.tile_scale && this.position[0] < Geo.tile_scale) {
+            this.position[0] = Geo.tile_scale - (width/2 + 1);
+        }
+
+        this.position[1] *= -1; // just doing this so Y coord is positive
+        if (this.position[1] - height/2 < 0 && this.position[1] > 0) {
+            this.position[1] = height/2 + 1;
+        }
+        else if (this.position[1] + height/2 > Geo.tile_scale && this.position[1] < Geo.tile_scale) {
+            this.position[1] = Geo.tile_scale - (height/2 + 1);
+        }
+        this.position[1] *= -1;
+
+        this.bbox = this.computeBBox();
+        return !this.inTileBounds();
     }
 
     static explode (text, position, size, max_width, padding, move_in_tile, keep_in_tile) {
