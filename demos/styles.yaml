@@ -152,12 +152,12 @@ layers:
         data: { source: osm }
         filter:
             name: true
-            # any:
-            #     - { $zoom: { min: 9 }, area: { min: 10000000 } }
-            #     - { $zoom: { min: 10 }, area: { min: 3300000 } }
-            #     - { $zoom: { min: 12 }, area: { min: 1000000 } }
-            #     - { $zoom: { min: 13 }, area: { min: 10000 } }
-            #     - { $zoom: { min: 15 } }
+            any:
+                - { $zoom: { min: 9 }, area: { min: 10000000 } }
+                - { $zoom: { min: 10 }, area: { min: 3300000 } }
+                - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                - { $zoom: { min: 13 }, area: { min: 10000 } }
+                - { $zoom: { min: 15 } }
         draw:
             polygons:
                 order: 1
@@ -182,8 +182,16 @@ layers:
 
     water:
         data: { source: osm }
+        filter:
+            any:
+                - { $zoom: { min: 9 }, area: { min: 10000000 } }
+                - { $zoom: { min: 10 }, area: { min: 1000000 } }
+                - { $zoom: { min: 12 }, area: { min: 100000 } }
+                - { $zoom: { min: 15 }, area: { min: 1000 } }
+                - { $zoom: { min: 18 } }
         draw:
             polygons:
+                interactive: true
                 style: flat
                 order: 2
                 color: '#9dc3de'
@@ -304,7 +312,7 @@ layers:
     road_labels:
         data: { source: osm, layer: roads }
 
-        filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false }
+        filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false, not: { kind: [path, rail] } }
         draw:
             text:
                 interactive: true
@@ -358,8 +366,6 @@ layers:
 
         icons:
             visible: true
-            # filter: $geometry: 
-            # examples of different icons mapped to feature properties
 
             # draw:
             #     icons: 
@@ -368,42 +374,20 @@ layers:
             #             mapping:
             #                 input: kind
             #                 values:
-            #                     - restaurant
-            #                     - [[cafe, convenience], cafe]
-            #                     - [[bar, pub], bar]
-            #                     - [[museum, library, church, place_of_worship, bank], museum]
-            #                     - [station, train]
-            #                     - [[hospital, pharmacy], hospital]
-            #                     - parking
-            #                     - [[hotel, hostel], hotel]
-            #                     - [bus_stop, bus]
-            #                     - bookstore
-
-            #                 values:
-            #                     - parking
-            #                     - bookstore
-            #                     - restaurant
-            #                     - bus: bus_stop
-            #                     - train: station
-            #                     - bar: [bar, pub]
-            #                     - hotel: [hotel, hostel]
-            #                     - cafe: [cafe, convenience]
-            #                     - hospital: [hospital, pharmacy]
-            #                     - museum: [museum, library, church, place_of_worship, bank]
-                                
-
-            # small:
-            #     filter: { kind: [x, y, z] }
-            #     draw:
-            #         icons:
-            #             size: 16px
-            #  large:
-            #     filter: { kind: [p, q] }
-            #     draw:
-            #         icons:
-            #             size: 32px            
+                                # - restaurant
+                                # - [[cafe, convenience], cafe]
+                                # - [[bar, pub], bar]
+                                # - { key: [bar, pub], value: bar}
+                                # - [[museum, library, church, place_of_worship, bank], museum]
+                                # - [station, train]
+                                # - [[hospital, pharmacy], hospital]
+                                # - parking
+                                # - [[hotel, hostel], hotel]
+                                # - [bus_stop, bus]
+                                # - bookstore
 
 
+            # examples of different icons mapped to feature properties
             restaurant:
                 filter: { kind: [restaurant] }
                 draw: { icons: { sprite: restaurant } }
@@ -412,7 +396,7 @@ layers:
                 draw: { icons: { sprite: cafe } }
             bar:
                 filter: { kind: [bar, pub] }
-                draw: { icons: { sprite: bar, size: 32px } }
+                draw: { icons: { sprite: bar } }
             culture:
                 filter: { kind: [museum, library, church, place_of_worship, bank] }
                 draw: { icons: { sprite: museum } }
@@ -438,37 +422,41 @@ layers:
     places:
         data: { source: osm }
         filter: { name: true, not: { kind: [county, state, island] } }
-        draw:
-            text:
-                interactive: true
-                font:
-                    # typeface: italic 15pt Lucida Grande
-                    typeface: italic 15pt Helvetica
-                    fill: black
-                    stroke: { color: white, width: 3 }
-
+        other:
+            # filter: {not: { kind: [hamlet, neighbourhood] } }
+            draw:
+                text:
+                    font:
+                        typeface: italic 12pt Helvetica
+                        fill: black
+                        stroke: { color: white, width: 3 }
+            small:
+                filter: { kind: [hamlet, neighbourhood] }
+                z13-and-up:
+                    filter: { $zoom: { max: 13 } }
+                    visible: false # broken?
+                    # draw:
+                    #     text:
+                    #         font:
+                    #             typeface: italic 0px Helvetica
+                    #             fill: red
+                    #             stroke: { color: white, width: 0 }
 
     landuse-labels:
         data: { source: osm, layer: landuse }
         filter:
             name: true
-        #     kind: [park, forest, cemetery, graveyard]
-        #     not: { kind: [county, state, island] }
-        #     any:
-        #         - { $zoom: { min: 9 }, area: { min: 10000000 } }
-        #         - { $zoom: { min: 10 }, area: { min: 3300000 } }
-        #         - { $zoom: { min: 12 }, area: { min: 1000000 } }
-        #         - { $zoom: { min: 15 }, area: { min: 10000 } }
-        #         - { $zoom: { min: 18 } }
-        style:
-            name: text
-            interactive: true
-            font:
-                typeface: Italic 10pt Lucida Grande
-                fill: darkgreen
-                stroke: { color: white, width: 3 }
-
-        # small:
-        #     filter:
-        #         kind: [hamlet, neighbourhood]
-        #         $zoom: { min: 13 }
+            kind: [park, forest, cemetery, graveyard]
+            # not: { kind: [county, state, island, quarry] }
+            any:
+                - { $zoom: { min: 9 }, area: { min: 100000000 } }
+                - { $zoom: { min: 10 }, area: { min: 10000000 } }
+                - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                - { $zoom: { min: 15 }, area: { min: 10000 } }
+                - { $zoom: { min: 18 } }
+        draw:
+            text:
+                font:
+                    typeface: Italic 10pt Lucida Grande
+                    fill: darkgreen
+                    stroke: { color: white, width: 3 }
