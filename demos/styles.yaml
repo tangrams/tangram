@@ -545,7 +545,7 @@ layers:
                 # color: grey
                 # order: 250
 
-                style: text
+                # style: text
                 # text_source: kind
                 # text_source: function() { return (Math.random() * 100).toFixed(); }
                 font:
@@ -553,7 +553,8 @@ layers:
                     fill: [.9, .9, .1]
                     stroke: black
 
-                # style: icons
+                style: icons
+                require_sprite: true
                 # sprite: tree
                 # size: [32px, 32px]
                 size: [[13, 16px], [14, 24px], [15, 32px]]
