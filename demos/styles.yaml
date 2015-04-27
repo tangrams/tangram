@@ -228,7 +228,9 @@ layers:
 
         rounded:
             filter: { $zoom: { min: 17 } }
-            draw: { lines: { join: round } }
+            draw:
+                lines: { join: round }
+                outlines: { join: round }
 
         highway:
             filter: { kind: highway }
