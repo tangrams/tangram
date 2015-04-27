@@ -18,18 +18,17 @@ let array_types = {
 // Used to construct a mesh/VBO for rendering
 export default class VertexData {
 
-    constructor (vertex_layout) {
+    constructor (vertex_layout, { prealloc } = {}) {
         this.vertex_layout = vertex_layout;
-        this.block_size = 50000;     // block size in which to allocate
-        this.block_num = 1;         // initial # of allocated blocks
-        this.buffer_offset = 0;      // byte offset into currently allocated buffer
-        this.buffer = new ArrayBuffer(this.vertex_layout.stride * this.block_size * this.block_num);
-        // this.components = [for (component of this.vertex_layout.components) [...component]]; // TODO: turn on array comprehension in traceur?
+        this.buffer_size = prealloc || 5000; // # of vertices to allocate
+        this.buffer_offset = 0;              // byte offset into currently allocated buffer
+        this.buffer = new ArrayBuffer(this.vertex_layout.stride * this.buffer_size);
         this.components = [];
         for (var component of this.vertex_layout.components) {
             this.components.push([...component]);
         }
         this.vertex_count = 0;
+        this.realloc_count = 0;
         this.setBufferViews();
     }
 
@@ -51,19 +50,18 @@ export default class VertexData {
     }
 
     // Check allocated buffer size, expand/realloc buffer if needed
-    // checkBufferSize (num = 1) {
-    //     if ((this.buffer_offset + (num * this.vertex_layout.stride)) > this.buffer.byteLength) {
-    //         this.block_num += Math.ceil(num / this.block_size);
     checkBufferSize () {
         if ((this.buffer_offset + this.vertex_layout.stride) > this.buffer.byteLength) {
-            this.block_num++;
-            var new_block = new ArrayBuffer(this.vertex_layout.stride * this.block_size * this.block_num);
+            this.buffer_size = Math.floor(this.buffer_size * 1.5);
+            this.buffer_size -= this.buffer_size % 4;
+            var new_block = new ArrayBuffer(this.vertex_layout.stride * this.buffer_size);
             var new_view = new Uint8Array(new_block);
             new_view.set(new Uint8Array(this.buffer)); // copy existing data to new buffer
 
             this.buffer = new_block;
             this.setBufferViews();
-            log.info(`VertexData: expanded vertex block to ${this.block_size * this.block_num} vertices`);
+            this.realloc_count++;
+            // log.info(`VertexData: expanded vertex block to ${this.buffer_size} vertices`);
         }
     }
 
@@ -74,10 +72,6 @@ export default class VertexData {
     addVertex (vertex) {
         this.checkBufferSize();
         var i=0;
-
-        // ES6-style destructuring and iteration - cool but noticeably slower (at least w/traceur compiled code)
-        // for (var [, buffer, shift, offset] of this.components) {
-        //     buffer[(this.buffer_offset >> shift) + offset] = vertex[i++];
 
         var clen = this.components.length;
         for (var c=0; c < clen; c++) {
@@ -100,6 +94,7 @@ export default class VertexData {
             this.buffer_views = null;
             this.components = null;
         }
+        log.debug(`VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
         return this;
     }
 
