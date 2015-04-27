@@ -20,8 +20,8 @@ export default class VertexData {
 
     constructor (vertex_layout, { prealloc } = {}) {
         this.vertex_layout = vertex_layout;
-        this.buffer_size = prealloc || 5000; // # of vertices to allocate
-        this.buffer_offset = 0;              // byte offset into currently allocated buffer
+        this.buffer_size = prealloc || 500; // # of vertices to allocate
+        this.buffer_offset = 0;             // byte offset into currently allocated buffer
         this.buffer = new ArrayBuffer(this.vertex_layout.stride * this.buffer_size);
         this.components = [];
         for (var component of this.vertex_layout.components) {
