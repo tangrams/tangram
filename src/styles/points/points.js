@@ -95,6 +95,8 @@ Object.assign(Points, {
             if (!this.texcoord_scale) {
                 log.warn(`Style: in style '${this.name}', could not find sprite '${style.sprite}' for texture '${this.texture}'`);
             }
+        } else {
+            this.texcoord_scale = null;
         }
 
         return style;
