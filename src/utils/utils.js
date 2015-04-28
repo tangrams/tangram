@@ -174,13 +174,19 @@ Utils.log = function (level, ...msg) {
     }
 };
 
+// Default to allowing high pixel density
+Utils.use_high_density_display = true;
+Utils.updateDevicePixelRatio = function () {
+    Utils.device_pixel_ratio = (Utils.use_high_density_display && window.devicePixelRatio) || 1;
+};
+
 // Mark thread as main or worker
 (function() {
     try {
         if (window.document !== undefined) {
             Utils.isWorkerThread = false;
             Utils.isMainThread   = true;
-            Utils.device_pixel_ratio = window.devicePixelRatio || 1;
+            Utils.updateDevicePixelRatio();
         }
     }
     catch (e) {

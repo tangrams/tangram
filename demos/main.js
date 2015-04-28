@@ -80,6 +80,7 @@ Enjoy!
             scene: scene_url,
             preUpdate: preUpdate,
             postUpdate: postUpdate,
+            // highDensityDisplay: false,
             logLevel: 'debug',
             attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
         });

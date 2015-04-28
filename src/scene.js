@@ -44,6 +44,9 @@ export default class Scene {
             VertexArrayObject.disabled = true;
         }
 
+        Utils.use_high_density_display = options.highDensityDisplay !== undefined ? options.highDensityDisplay : true;
+        Utils.updateDevicePixelRatio();
+
         this.config = null;
         this.config_source = config_source;
         this.config_serialized = null;
