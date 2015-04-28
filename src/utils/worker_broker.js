@@ -60,7 +60,6 @@
 //
 // TODO: add documentation for invoking main thread methods from a worker (basically same API, but in reverse)
 import Utils from './utils';
-import log from 'loglevel';
 
 var WorkerBroker;
 export default WorkerBroker = {};
@@ -266,9 +265,10 @@ function setupWorkerThread () {
         }
 
         // Call the requested worker method and save the return value
-        var method = (typeof self[event.data.method] === 'function') && self[event.data.method];
+        var method_name = event.data.method;
+        var method = (typeof self[method_name] === 'function') && self[method_name];
         if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${event.data.method} because worker has no method with that name`);
+            throw Error(`Worker broker could not dispatch message type ${method_name} because worker has no method with that name`);
         }
 
         var result, error;
@@ -294,7 +294,7 @@ function setupWorkerThread () {
                 }, transferables);
 
                 if (transferables.length > 0) {
-                    log.trace(`WorkerBroker call to '${method}' transferred ${transferables.length} objects to main thread`);
+                    Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
                 }
             }, (error) => {
                 self.postMessage({
@@ -316,7 +316,7 @@ function setupWorkerThread () {
             }, transferables);
 
             if (transferables.length > 0) {
-                log.trace(`WorkerBroker call to '${method}' transferred ${transferables.length} objects to main thread`);
+                Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
             }
         }
     });

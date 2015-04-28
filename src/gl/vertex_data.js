@@ -1,7 +1,7 @@
 /* global VertexData */
 
 import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
-import log from 'loglevel';
+import {log} from '../utils/utils';
 
 // Maps GL types to JS array types
 let array_types = {
@@ -94,7 +94,7 @@ export default class VertexData {
             this.buffer_views = null;
             this.components = null;
         }
-        log.debug(`VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
+        log('trace', `VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
         return this;
     }
 
