@@ -60,6 +60,8 @@
 //
 // TODO: add documentation for invoking main thread methods from a worker (basically same API, but in reverse)
 import Utils from './utils';
+import log from 'loglevel';
+
 var WorkerBroker;
 export default WorkerBroker = {};
 
@@ -279,14 +281,21 @@ function setupWorkerThread () {
         }
 
         // Send return value to main thread
+        let transferables;
         // Async result
         if (result instanceof Promise) {
             result.then((value) => {
+                transferables = findTransferables(value);
+
                 self.postMessage({
                     type: 'worker_reply',
                     message_id: id,
                     message: value
-                });
+                }, transferables);
+
+                if (transferables.length > 0) {
+                    log.trace(`WorkerBroker call to '${method}' transferred ${transferables.length} objects to main thread`);
+                }
             }, (error) => {
                 self.postMessage({
                     type: 'worker_reply',
@@ -297,15 +306,51 @@ function setupWorkerThread () {
         }
         // Immediate result
         else {
+            transferables = findTransferables(result);
+
             self.postMessage({
                 type: 'worker_reply',
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-            });
+            }, transferables);
+
+            if (transferables.length > 0) {
+                log.trace(`WorkerBroker call to '${method}' transferred ${transferables.length} objects to main thread`);
+            }
         }
     });
 
+}
+
+// Build a list of transferable objects from a source object
+// TODO: add option in case you DON'T want to transfer objects
+function findTransferables(source, list = []) {
+    if (!source) {
+         return list;
+    }
+
+    if (Array.isArray(source)) {
+        // Check each array element
+        source.forEach(x => findTransferables(x, list));
+    }
+    else if (typeof source === 'object') {
+        // Is the object a transferable array buffer?
+        if (source instanceof ArrayBuffer) {
+            list.push(source);
+        }
+        // Or looks like a typed array (has an array buffer property)?
+        else if (source.buffer instanceof ArrayBuffer) {
+            list.push(source.buffer);
+        }
+        // Otherwise check each property
+        else {
+            for (let p in source) {
+                findTransferables(source[p], list);
+            }
+        }
+    }
+    return list;
 }
 
 // Setup this thread as appropriate
