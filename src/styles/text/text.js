@@ -550,8 +550,8 @@ Object.assign(TextStyle, {
         return style;
     },
 
-    constructStyleKey ({ typeface, fill, stroke, stroke_width }) {
-        return `${typeface}/${fill}/${stroke}/${stroke_width}`;
+    constructStyleKey ({ font, fill, stroke, stroke_width }) {
+        return `${font}/${fill}/${stroke}/${stroke_width}`;
     },
 
     buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
