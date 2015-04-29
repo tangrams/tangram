@@ -43,11 +43,7 @@ Object.assign(TextStyle, {
         this.font_style = {
             typeface: 'Helvetica 12px',
             fill: 'white',
-            capitalized: false,
-            stroke: {
-                color: 'black',
-                width: 3
-            }
+            capitalized: false
         };
 
         // default label style
@@ -79,21 +75,26 @@ Object.assign(TextStyle, {
         this.bboxes = {};
         this.features = {};
         this.feature_labels = new Map();
+        this.feature_style_key = new Map();
     },
 
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
         this.px_size = parseInt(px_size);
         this.px_logical_size = parseInt(px_logical_size);
-        this.buffer = 6; // pixel padding around text
+        this.text_buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
         ctx.font = font;
         if (stroke) {
             ctx.strokeStyle = stroke;
+            ctx.lineWidth = stroke_width;
+        }
+        else {
+            ctx.strokeStyle = null;
+            ctx.lineWidth = 0;
         }
         ctx.fillStyle = fill;
-        ctx.lineWidth = stroke_width;
         ctx.miterLimit = 2;
     },
 
@@ -104,7 +105,7 @@ Object.assign(TextStyle, {
         let split = str.split(' ');
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
-        let buffer = this.buffer * Utils.device_pixel_ratio;
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
         let split_size = {
             " ": this.canvas[tile].context.measureText(" ").width / Utils.device_pixel_ratio
         };
@@ -131,7 +132,7 @@ Object.assign(TextStyle, {
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
-        let buffer = this.buffer * Utils.device_pixel_ratio;
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
@@ -214,7 +215,7 @@ Object.assign(TextStyle, {
                     continue;
                 }
 
-                let width = this.buffer;
+                let width = this.text_buffer;
                 let dists = [];
                 let space_size = info.size.split_size[' '];
 
@@ -481,10 +482,7 @@ Object.assign(TextStyle, {
             }
 
             let style_key = this.constructStyleKey(style);
-
-            // Save font style info on feature for later use during geometry construction
-            feature.font_style = style;
-            feature.font_style_key = style_key;
+            this.feature_style_key.set(feature, style_key)
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
@@ -519,23 +517,21 @@ Object.assign(TextStyle, {
         let style;
 
         if (rule.font) {
-            rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
+            style = {};
 
-            if (rule.font.stroke) {
-                let color = rule.font.stroke.color || rule.font.stroke;
-                rule.font.stroke = {
-                    color: StyleParser.parseColor(color, context),
-                    width: rule.font.stroke.width
-                };
+            // Use fill if specified, or default
+            style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) ||
+                         this.font_style.fill;
+
+            // Use stroke if specified
+            if (rule.font.stroke && rule.font.stroke.color) {
+                style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
+                style.stroke_width = rule.font.stroke.width || this.font_style.stroke.width;
             }
 
-            style = {
-                font: rule.font.typeface || this.font_style.typeface,
-                fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: !rule.font.stroke.color ? this.font_style.stroke.color : Utils.toCanvasColor(rule.font.stroke.color),
-                stroke_width: rule.font.stroke.width || this.font_style.stroke.width,
-                capitalized: rule.font.capitalized || this.font_style.capitalized
-            };
+            // Use default typeface
+            style.font = rule.font.typeface || this.font_style.typeface;
+            style.capitalized = rule.font.capitalized || this.font_style.capitalized;
 
             let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
             let ft_size = style.font.match(size_regex)[0];
@@ -604,12 +600,11 @@ Object.assign(TextStyle, {
     },
 
     _parseFeature (feature, rule_style, context) {
-        // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
         let text = feature.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
-        let style_key = feature.font_style_key;
+        let style_key = this.feature_style_key.get(feature);
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
         if (!text_info || !this.feature_labels.has(feature)) {
