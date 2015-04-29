@@ -446,9 +446,9 @@ layers:
             hospital:
                 filter: { kind: [hospital, pharmacy] }
                 draw: { icons: { sprite: hospital } }
-            parking:
-                filter: { kind: [parking] }
-                draw: { icons: { sprite: parking } }
+            # parking:
+            #     filter: { kind: [parking] }
+            #     draw: { icons: { sprite: parking } }
             hotel:
                 filter: { kind: [hotel, hostel] }
                 draw: { icons: { sprite: hotel } }
