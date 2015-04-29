@@ -482,7 +482,7 @@ Object.assign(TextStyle, {
             }
 
             let style_key = this.constructStyleKey(style);
-            this.feature_style_key.set(feature, style_key)
+            this.feature_style_key.set(feature, style_key);
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
