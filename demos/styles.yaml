@@ -117,7 +117,7 @@ styles:
 
     flat_lines:
         base: lines
-        mix: flat
+        lighting: false
 
     buildings:
         base: polygons
@@ -138,6 +138,9 @@ sources:
     # schools:
     #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
+    osm:
+        type: MVT
+        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt
 
 layers:
     earth:
@@ -199,11 +202,12 @@ layers:
     roads:
         data: { source: osm }
         filter:
-            not: { kind: [path, rail] }
+            not: { kind: [rail] }
         draw:
             lines:
                 style: flat_lines
                 color: white
+                width: 12
                 order: |
                     function () {
                         function reduceSortKey(key) {
@@ -216,21 +220,36 @@ layers:
                         var order;
                         if (feature.sort_key < 10) { order = 4; }
                         else { order = 4 + reduceSortKey(feature.sort_key) - min; }
-                        //if (order < 1000) { order = 10; }
+                        //order = 4 + reduceSortKey(feature.sort_key) - min;
                         return order;
                     }
-                # interactive: function () { return ($zoom >= 18); }
-                interactive: true
+                # interactive: true
             outlines:
                 style: flat_lines
-                order: 3
                 color: [[16, '#999'], [18, '#aaa']]
+                width: [[15, 0], [16, 14]]
+                order: |
+                    function () {
+                        function reduceSortKey(key) {
+                            return 30 * Math.floor((key % 10000) / 1000) +
+                                   10 * Math.floor((key % 1000) / 100) +
+                                   1  * (key % 10);
+                        }
 
-        rounded:
+                        var min = reduceSortKey(-3109);
+                        var order;
+                        if (feature.sort_key < 10) { order = 3; }
+                        else { order = 3 + reduceSortKey(feature.sort_key) - min; }
+                        //order = 3 + reduceSortKey(feature.sort_key) - min;
+                        return order;
+                    }
+
+        rounded:    
             filter: { $zoom: { min: 17 } }
             draw:
-                lines: { join: round }
-                outlines: { join: round }
+                lines:
+                    style: flat_lines
+                    join: round
 
         highway:
             filter: { kind: highway }
@@ -246,24 +265,37 @@ layers:
                     lines:
                         color: '#aaa'
                         width: [[13, 0], [14, 12]]
+            z13:
+                filter: { zoom: { max: 13 } }
+                order: 1001
         major_road:
             filter: { kind: major_road, $zoom: { min: 10 } }
             draw:
                 lines:
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
                 outlines:
-                    width: [[16, 0], [17, 16]]
+                    width: [[16, 0], [17, 14]]
         minor_road:
             filter: { kind: minor_road }
             draw:
                 lines:
                     width: [[13, 0px], [14, 1px], [15, 8]]
                 outlines:
-                    width: [[17, 0], [18, 12]]
+                    width: [[17, 0], [18, 10]]
+        paths:
+            filter: { kind: path }
+            draw:
+                lines:
+                    color: '#bbb'
+                    width: [[15, 0px], [18, 2px]]
+                    order: -2
+                outlines:
+                    width: 0
         airports:
             filter: { aeroway: true }
             draw:
                 lines:
+                    style: flat_lines
                     color: '#ddd'
                 outlines:
                     width: 0
@@ -278,20 +310,43 @@ layers:
                 filter: { aeroway: runway }
                 draw:
                     lines:
-                        width: [[12, 5px], [13, 10px], [15, 75]]
-                        order: 1
-
+                        style: flat_lines
+                        # color: [[13, [255, 209, 160]], [16, [255, 255, 255]]]
+                        color: [[13, '#FFE4B5'], [16, white]]
+                        width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
+                        order: 2
+                        cap: square
+                    outlines:
+                        style: flat_lines
+                        color: orange
+                        width: [[11, 4px], [12, 7px], [13, 12px], [15, 100]]
+                        order: 2
+                        cap: square
 
     buildings:
         data: { source: osm }
         filter: { $zoom: { min: 14 } }
-        draw:
-            polygons:
-                style: buildings
-                order: 300
-                color: '#bbb'
-                # extrude: function() { return $zoom > 14 }
-                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+        # filter: { $zoom: { min: 14 }, not: { uid: "37054313" } }
+        # filter: { $zoom: { min: 14 }, not: { osm_id: "37054313" } }
+        most:
+            filter: { not: { uid: "37054313" } }
+            draw:
+                polygons:
+                    interactive: true
+                    style: buildings
+                    order: 300
+                    color: '#bbb'
+                    # extrude: function() { return $zoom > 14 }
+                    extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+        high-line:
+            filter: { uid: "37054313" }
+            draw:
+                polygons:
+                    interactive: true
+                    style: flat
+                    order: 300
+                    color: '#bddec5'
+                    extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
     highway_labels:
         data: { source: osm, layer: roads }
@@ -300,7 +355,6 @@ layers:
             text:
                 interactive: true
                 font:
-                    # typeface: 100 12pt Lucida Grande
                     typeface: 100 14px Helvetica
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
@@ -314,7 +368,7 @@ layers:
     road_labels:
         data: { source: osm, layer: roads }
 
-        filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false, not: { kind: [path, rail] } }
+        filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false, not: { kind: [highway, path, rail] } }
         draw:
             text:
                 interactive: true
@@ -337,38 +391,22 @@ layers:
                     font:
                         typeface: 100 12px Helvetica
                         stroke: { color: white, width: 4 }
-
-    # pois_labels:
-    #     data: { source: osm, layer: pois }
-    #     filter: { name: true, $zoom: { min: 17 } }
-    #     draw:
-    #         text:
-    #             font:
-    #                 typeface: 11pt Helvetica
-    #                 fill: dark red
-    #                 stroke: { color: white, width: 2 }
-    #             interactive: true
-
-    #     z18:
-    #         filter: { $zoom: { min: 18 } }
-    #         draw:
-    #             text:
-    #                 font:
-    #                     size: 12pt
+        small:
+            filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
+            visible: false
 
     poi_icons:
         data: { source: osm, layer: pois }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             icons:
-                size: [[13, 16px], [15, 24px]]
+                size: [[13, 12px], [15, 18px]]
                 interactive: true
                 sprite: info
         visible: false
 
         icons:
             visible: true
-
             # draw:
             #     icons: 
             #         size: 32px
@@ -424,32 +462,21 @@ layers:
     places:
         data: { source: osm }
         filter: { name: true, not: { kind: [county, state, island] } }
-        other:
-            # filter: {not: { kind: [hamlet, neighbourhood] } }
-            draw:
-                text:
-                    font:
-                        typeface: italic 12pt Helvetica
-                        fill: black
-                        stroke: { color: white, width: 3 }
-            small:
-                filter: { kind: [hamlet, neighbourhood] }
-                z13-and-up:
-                    filter: { $zoom: { max: 13 } }
-                    visible: false # broken?
-                    # draw:
-                    #     text:
-                    #         font:
-                    #             typeface: italic 0px Helvetica
-                    #             fill: red
-                    #             stroke: { color: white, width: 0 }
+        draw:
+            text:
+                font:
+                    typeface: italic 12pt Helvetica
+                    fill: black
+                    stroke: { color: white, width: 3 }
+        minor-places:
+            filter: { kind: [hamlet, neighbourhood, locality, town, village], $zoom: { max: 13 } }
+            visible: false
 
     landuse-labels:
         data: { source: osm, layer: landuse }
         filter:
             name: true
             kind: [park, forest, cemetery, graveyard]
-            # not: { kind: [county, state, island, quarry] }
             any:
                 - { $zoom: { min: 9 }, area: { min: 100000000 } }
                 - { $zoom: { min: 10 }, area: { min: 10000000 } }
