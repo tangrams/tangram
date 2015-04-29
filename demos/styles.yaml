@@ -244,7 +244,7 @@ layers:
                         return order;
                     }
 
-        rounded:    
+        rounded:
             filter: { $zoom: { min: 17 } }
             draw:
                 lines:
@@ -265,9 +265,6 @@ layers:
                     lines:
                         color: '#aaa'
                         width: [[13, 0], [14, 12]]
-            z13:
-                filter: { zoom: { max: 13 } }
-                order: 1001
         major_road:
             filter: { kind: major_road, $zoom: { min: 10 } }
             draw:
@@ -348,52 +345,46 @@ layers:
                     color: '#bddec5'
                     extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
-    highway_labels:
+    road_labels:
         data: { source: osm, layer: roads }
-        filter: { name: true, kind: highway, tunnel: false }
-        draw:
-            text:
-                interactive: true
-                font:
-                    typeface: 100 14px Helvetica
+        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail } }
+
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
                 text:
                     font:
                         fill: '#666'
-                        size: 12pt
-                        stroke: { color: white, width: 4 }
-
-    road_labels:
-        data: { source: osm, layer: roads }
-
-        filter: { name: true, $zoom: { min: 13 }, aeroway: false, tunnel: false, railway: false, not: { kind: [highway, path, rail] } }
-        draw:
-            text:
-                interactive: true
-                font:
-                    fill: '#666'
-                    stroke: { color: white, width: 2 }
-                    typeface: 100 12px Helvetica
-
-        major_road:
-            filter: { kind: major_road, $zoom: { min: 14 } }
-            draw:
-                text:
-                    font:
-                        typeface: 100 16px Helvetica
-                        stroke: { color: white, width: 4 }
-        minor_road:
-            filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-            draw:
-                text:
-                    font:
+                        # size: 12pt
                         typeface: 100 12px Helvetica
                         stroke: { color: white, width: 4 }
-        small:
-            filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
-            visible: false
+
+        not_highway:
+            filter: { not: { kind: highway }, $zoom: { min: 13 } }
+            draw:
+                text:
+                    font:
+                        fill: '#666'
+                        stroke: { color: white, width: 4 }
+                        typeface: 100 12px Helvetica
+
+            major_road:
+                filter: { kind: major_road, $zoom: { min: 14 } }
+                draw:
+                    text:
+                        font:
+                            typeface: 100 16px Helvetica
+                            stroke: { color: white, width: 4 }
+            minor_road:
+                filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
+                draw:
+                    text:
+                        font:
+                            typeface: 100 12px Helvetica
+                            stroke: { color: white, width: 4 }
+            small:
+                filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
+                visible: false
 
     poi_icons:
         data: { source: osm, layer: pois }
@@ -408,7 +399,7 @@ layers:
         icons:
             visible: true
             # draw:
-            #     icons: 
+            #     icons:
             #         size: 32px
             #         sprite:
             #             mapping:
