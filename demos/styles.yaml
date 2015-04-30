@@ -184,7 +184,7 @@ layers:
         data: { source: osm }
         filter:
             any:
-                - { $zoom: { min: 9 }, area: { min: 10000000 } }
+                - { $zoom: { min: 0 }, area: { min: 10000000 } }
                 - { $zoom: { min: 10 }, area: { min: 1000000 } }
                 - { $zoom: { min: 12 }, area: { min: 100000 } }
                 - { $zoom: { min: 15 }, area: { min: 1000 } }
@@ -202,6 +202,7 @@ layers:
             not: { kind: [rail] }
         draw:
             lines:
+                interactive: true
                 style: flat_lines
                 color: white
                 width: 12
