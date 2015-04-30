@@ -138,9 +138,6 @@ sources:
     # schools:
     #     type: GeoJSON
     #     url: demos/data/school-districts-polygon.geojson
-    osm:
-        type: MVT
-        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt
 
 layers:
     earth:
@@ -323,27 +320,22 @@ layers:
     buildings:
         data: { source: osm }
         filter: { $zoom: { min: 14 } }
-        # filter: { $zoom: { min: 14 }, not: { uid: "37054313" } }
-        # filter: { $zoom: { min: 14 }, not: { osm_id: "37054313" } }
-        most:
-            filter: { not: { uid: "37054313" } }
-            draw:
-                polygons:
-                    interactive: true
-                    style: buildings
-                    order: 300
-                    color: '#bbb'
-                    # extrude: function() { return $zoom > 14 }
-                    extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+
+        draw:
+            polygons:
+                interactive: true
+                style: buildings
+                order: 300
+                color: '#bbb'
+                # extrude: function() { return $zoom > 14 }
+                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+
         high-line:
             filter: { uid: "37054313" }
             draw:
                 polygons:
-                    interactive: true
                     style: flat
-                    order: 300
                     color: '#bddec5'
-                    extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
     road_labels:
         data: { source: osm, layer: roads }
