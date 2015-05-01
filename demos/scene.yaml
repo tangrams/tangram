@@ -383,6 +383,7 @@ layers:
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
                 sprite: info
+                require_sprite: true
 
         icons:
             # examples of different icons mapped to feature properties
