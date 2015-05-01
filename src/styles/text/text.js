@@ -27,12 +27,6 @@ Object.assign(TextStyle, {
             WorkerBroker.addTarget('TextStyle', this);
         }
 
-        this.texts = {}; // unique texts, keyed by tile
-        this.textures = {};
-        this.canvas = {};
-        this.bboxes = {};
-        this.features = {};
-
         this.max_priority = 0;
 
         // Point style (parent class) requires texturing to be turned on
@@ -70,13 +64,25 @@ Object.assign(TextStyle, {
     clear() {
         this.super.init.apply(this, arguments);
         this.texts = {}; // unique texts, keyed by tile
-        this.texture = {};
+        this.textures = {};
         this.canvas = {};
         this.bboxes = {};
         this.features = {};
-        this.feature_labels = new Map();
-        this.feature_style_key = new Map();
+        this.feature_labels = {};
+        this.feature_style_key = {};
     },
+
+    // Called on main thread to release tile-specific resources
+    freeTile (tile) {
+        delete this.texts[tile];
+        delete this.textures[tile];
+        delete this.canvas[tile];
+        delete this.bboxes[tile];
+        delete this.features[tile];
+        delete this.feature_labels[tile];
+        delete this.feature_style_key[tile];
+    },
+
 
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
@@ -187,12 +193,6 @@ Object.assign(TextStyle, {
         return Promise.resolve(texts);
     },
 
-    // Called on main thread to release tile-specific resources
-    freeTile (tile) {
-        delete this.canvas[tile];
-        delete this.textures[tile];
-    },
-
     rasterize (tile, texts, texture_size) {
         let pixel_scale = Utils.device_pixel_ratio;
 
@@ -299,8 +299,10 @@ Object.assign(TextStyle, {
         this.rasterize(tile, texts, texture_size);
 
         this.textures[tile].setCanvas(this.canvas[tile].canvas);
+
+        // we don't need tile canvas/texture once it has been copied to to GPU
         delete this.textures[tile];
-        delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
+        delete this.canvas[tile];
 
         return Promise.resolve({ texts: this.texts[tile], texture });
     },
@@ -376,6 +378,7 @@ Object.assign(TextStyle, {
 
     discardLabels (tile, labels, texts) {
         this.bboxes[tile] = [];
+        this.feature_labels[tile] = new Map();
 
         for (let priority = this.max_priority; priority >= 0; priority--) {
             if (!labels[priority]) {
@@ -386,10 +389,10 @@ Object.assign(TextStyle, {
                 let { style, feature, label } = labels[priority][i];
 
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!this.feature_labels.has(feature)) {
-                        this.feature_labels.set(feature, []);
+                    if (!this.feature_labels[tile].has(feature)) {
+                        this.feature_labels[tile].set(feature, []);
                     }
-                    this.feature_labels.get(feature).push(label);
+                    this.feature_labels[tile].get(feature).push(label);
                     texts[style][label.text].ref++;
                 }
             }
@@ -433,6 +436,7 @@ Object.assign(TextStyle, {
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
+                this.freeTile(tile);
                 WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
                 // early exit
                 return;
@@ -449,7 +453,7 @@ Object.assign(TextStyle, {
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
-                delete this.texts[tile];
+                this.freeTile(tile);
 
                 return this.super.endData.call(this, tile_data);
             });
@@ -482,7 +486,8 @@ Object.assign(TextStyle, {
             }
 
             let style_key = this.constructStyleKey(style);
-            this.feature_style_key.set(feature, style_key);
+            this.feature_style_key[tile] = this.feature_style_key[tile] || new Map();
+            this.feature_style_key[tile].set(feature, style_key);
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
@@ -604,10 +609,10 @@ Object.assign(TextStyle, {
 
         let style = this.feature_style;
         let tile = context.tile.key;
-        let style_key = this.feature_style_key.get(feature);
+        let style_key = this.feature_style_key[tile].get(feature);
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !this.feature_labels.has(feature)) {
+        if (!text_info || !this.feature_labels[tile].has(feature)) {
             return;
         }
 
@@ -615,7 +620,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.labels = this.feature_labels.get(feature);
+        style.labels = this.feature_labels[tile].get(feature);
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
         // but could be made conditional in the vertex layout to save space
