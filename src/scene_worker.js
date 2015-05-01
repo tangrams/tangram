@@ -35,10 +35,10 @@ if (Utils.isWorkerThread) {
 
     // Initialize worker
     SceneWorker.worker.init = function (worker_id, num_workers, device_pixel_ratio) {
-        SceneWorker.worker_id = worker_id;
+        self._worker_id = worker_id;
         SceneWorker.num_workers = num_workers;
         Utils.device_pixel_ratio = device_pixel_ratio;
-        FeatureSelection.setPrefix(SceneWorker.worker_id);
+        FeatureSelection.setPrefix(self._worker_id);
         return worker_id;
     };
 
@@ -55,7 +55,7 @@ if (Utils.isWorkerThread) {
             }
             else {
                 // Distribute object sources across workers
-                if (source.id % SceneWorker.num_workers === SceneWorker.worker_id) {
+                if (source.id % SceneWorker.num_workers === self._worker_id) {
                     // Load source if not cached
                     SceneWorker.sources.objects[name] = source;
                     if (!SceneWorker.objects[source.name]) {
@@ -86,7 +86,7 @@ if (Utils.isWorkerThread) {
 
         // Return promise for when config refresh finishes
         SceneWorker.configuring = SceneWorker.syncing_textures.then(() => {
-            SceneWorker.log('debug', `updated config`);
+            Utils.log('debug', `updated config`);
         });
     };
 
@@ -147,7 +147,7 @@ if (Utils.isWorkerThread) {
                             map(s => tile.sources[s].error && `[source '${s}': ${tile.sources[s].error}]`).
                             filter(x => x);
                         if (e.length > 0) {
-                            SceneWorker.log('warn', `tile load error(s) for ${tile.key}: ${e.join(', ')}`);
+                            Utils.log('warn', `tile load error(s) for ${tile.key}: ${e.join(', ')}`);
                         }
 
                         tile.loading = false;
@@ -155,7 +155,7 @@ if (Utils.isWorkerThread) {
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
                             resolve({
                                 tile: SceneWorker.sliceTile(tile, keys),
-                                worker_id: SceneWorker.worker_id,
+                                worker_id: self._worker_id,
                                 selection_map_size: FeatureSelection.getMapSize()
                             });
                         });
@@ -163,11 +163,11 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-                        SceneWorker.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
                         resolve({
                             tile: SceneWorker.sliceTile(tile),
-                            worker_id: SceneWorker.worker_id,
+                            worker_id: self._worker_id,
                             selection_map_size: FeatureSelection.getMapSize()
                         });
                     });
@@ -175,13 +175,13 @@ if (Utils.isWorkerThread) {
             }
             // Tile already loaded, just rebuild
             else {
-                SceneWorker.log('trace', `used worker cache for tile ${tile.key}`);
+                Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
                 return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
                     return {
                         tile: SceneWorker.sliceTile(tile, keys),
-                        worker_id: SceneWorker.worker_id,
+                        worker_id: self._worker_id,
                         selection_map_size: FeatureSelection.getMapSize()
                     };
                 });
@@ -196,7 +196,7 @@ if (Utils.isWorkerThread) {
         if (tile != null) {
             // Cancel if loading
             if (tile.loading === true) {
-                SceneWorker.log('trace', `cancel tile load for ${key}`);
+                Utils.log('trace', `cancel tile load for ${key}`);
                 tile.loading = false;
             }
 
@@ -205,7 +205,7 @@ if (Utils.isWorkerThread) {
             // Remove from cache
             FeatureSelection.clearTile(key);
             delete SceneWorker.tiles[key];
-            SceneWorker.log('trace', `remove tile from cache for ${key}`);
+            Utils.log('trace', `remove tile from cache for ${key}`);
         }
     };
 
@@ -237,30 +237,20 @@ if (Utils.isWorkerThread) {
             }
         }
 
-        SceneWorker.log('trace', 'sync textures to worker:', textures);
+        Utils.log('trace', 'sync textures to worker:', textures);
         if (textures.length > 0) {
             return Texture.syncTexturesToWorker(textures);
         }
         return Promise.resolve();
     };
 
-    // Log wrapper, sends message to main thread for display, and includes worker id #
-    SceneWorker.log = function (level, ...msg) {
-        SceneWorker.worker.postMessage({
-            type: 'log',
-            level: level || 'info',
-            worker_id: SceneWorker.worker_id,
-            msg: msg
-        });
-    };
-
     // Profiling helpers
     SceneWorker.worker.profile = function (name) {
-        console.profile(`worker ${SceneWorker.worker_id}: ${name}`);
+        console.profile(`worker ${self._worker_id}: ${name}`);
     };
 
     SceneWorker.worker.profileEnd = function (name) {
-        console.profileEnd(`worker ${SceneWorker.worker_id}: ${name}`);
+        console.profileEnd(`worker ${self._worker_id}: ${name}`);
     };
 
 }

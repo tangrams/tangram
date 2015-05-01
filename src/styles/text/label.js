@@ -2,23 +2,23 @@
 
 import boxIntersect from 'box-intersect';
 import Utils from '../../utils/utils';
+import Geo from '../../geo';
 
 export default class Label {
-    constructor (text, size, move_in_tile, keep_in_tile) {
+    constructor (text, size, { move_in_tile, keep_in_tile }) {
         Object.assign(this, {
-            text: "",
+            text,
+            size,
             position: [],
-            size: [],
             bbox: [],
-            move_in_tile: false,
-            keep_in_tile: false
+            move_in_tile,
+            keep_in_tile
         });
 
-        this.move_in_tile = move_in_tile;
-        this.keep_in_tile = keep_in_tile;
         this.id = Label.id++;
-        this.text = text;
-        this.size = size;
+
+        this.buffer = this.buffer || 2; // TODO: make configurable
+        this.buffer *= Geo.units_per_pixel;
     }
 
     isComposite () {

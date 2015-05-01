@@ -60,6 +60,7 @@
 //
 // TODO: add documentation for invoking main thread methods from a worker (basically same API, but in reverse)
 import Utils from './utils';
+
 var WorkerBroker;
 export default WorkerBroker = {};
 
@@ -264,9 +265,10 @@ function setupWorkerThread () {
         }
 
         // Call the requested worker method and save the return value
-        var method = (typeof self[event.data.method] === 'function') && self[event.data.method];
+        var method_name = event.data.method;
+        var method = (typeof self[method_name] === 'function') && self[method_name];
         if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${event.data.method} because worker has no method with that name`);
+            throw Error(`Worker broker could not dispatch message type ${method_name} because worker has no method with that name`);
         }
 
         var result, error;
@@ -279,14 +281,21 @@ function setupWorkerThread () {
         }
 
         // Send return value to main thread
+        let transferables;
         // Async result
         if (result instanceof Promise) {
             result.then((value) => {
+                transferables = findTransferables(value);
+
                 self.postMessage({
                     type: 'worker_reply',
                     message_id: id,
                     message: value
-                });
+                }, transferables);
+
+                if (transferables.length > 0) {
+                    Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+                }
             }, (error) => {
                 self.postMessage({
                     type: 'worker_reply',
@@ -297,15 +306,51 @@ function setupWorkerThread () {
         }
         // Immediate result
         else {
+            transferables = findTransferables(result);
+
             self.postMessage({
                 type: 'worker_reply',
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-            });
+            }, transferables);
+
+            if (transferables.length > 0) {
+                Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+            }
         }
     });
 
+}
+
+// Build a list of transferable objects from a source object
+// TODO: add option in case you DON'T want to transfer objects
+function findTransferables(source, list = []) {
+    if (!source) {
+         return list;
+    }
+
+    if (Array.isArray(source)) {
+        // Check each array element
+        source.forEach(x => findTransferables(x, list));
+    }
+    else if (typeof source === 'object') {
+        // Is the object a transferable array buffer?
+        if (source instanceof ArrayBuffer) {
+            list.push(source);
+        }
+        // Or looks like a typed array (has an array buffer property)?
+        else if (source.buffer instanceof ArrayBuffer) {
+            list.push(source.buffer);
+        }
+        // Otherwise check each property
+        else {
+            for (let p in source) {
+                findTransferables(source[p], list);
+            }
+        }
+    }
+    return list;
 }
 
 // Setup this thread as appropriate

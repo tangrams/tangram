@@ -4,8 +4,8 @@ import Label from './label';
 import Utils from '../../utils/utils';
 
 export default class LabelLine extends Label {
-    constructor (text, size, lines, style, move_in_tile, keep_in_tile) {
-        super(text, size, move_in_tile, keep_in_tile);
+    constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
+        super(text, size, { move_in_tile, keep_in_tile });
 
         this.segment_index = 0;
         this.lines = lines;
@@ -101,7 +101,7 @@ export default class LabelLine extends Label {
         let x = merc_width * c - merc_height * s;
         let y = merc_width * s + merc_height * c;
 
-        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5;
+        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5 + this.buffer;
 
         let bbox = [
             this.position[0] - max,

@@ -27,12 +27,6 @@ Object.assign(TextStyle, {
             WorkerBroker.addTarget('TextStyle', this);
         }
 
-        this.texts = {}; // unique texts, keyed by tile
-        this.textures = {};
-        this.canvas = {};
-        this.bboxes = {};
-        this.features = {};
-
         this.max_priority = 0;
 
         // Point style (parent class) requires texturing to be turned on
@@ -43,11 +37,7 @@ Object.assign(TextStyle, {
         this.font_style = {
             typeface: 'Helvetica 12px',
             fill: 'white',
-            capitalized: false,
-            stroke: {
-                color: 'black',
-                width: 3
-            }
+            capitalized: false
         };
 
         // default label style
@@ -74,26 +64,43 @@ Object.assign(TextStyle, {
     clear() {
         this.super.init.apply(this, arguments);
         this.texts = {}; // unique texts, keyed by tile
-        this.texture = {};
+        this.textures = {};
         this.canvas = {};
         this.bboxes = {};
         this.features = {};
-        this.feature_labels = new Map();
+        this.feature_labels = {};
+        this.feature_style_key = {};
     },
+
+    // Called on main thread to release tile-specific resources
+    freeTile (tile) {
+        delete this.texts[tile];
+        delete this.textures[tile];
+        delete this.canvas[tile];
+        delete this.bboxes[tile];
+        delete this.features[tile];
+        delete this.feature_labels[tile];
+        delete this.feature_style_key[tile];
+    },
+
 
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
         this.px_size = parseInt(px_size);
         this.px_logical_size = parseInt(px_logical_size);
-        this.buffer = 6; // pixel padding around text
+        this.text_buffer = 6; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
         ctx.font = font;
         if (stroke) {
             ctx.strokeStyle = stroke;
+            ctx.lineWidth = stroke_width;
+        }
+        else {
+            ctx.strokeStyle = null;
+            ctx.lineWidth = 0;
         }
         ctx.fillStyle = fill;
-        ctx.lineWidth = stroke_width;
         ctx.miterLimit = 2;
     },
 
@@ -104,7 +111,7 @@ Object.assign(TextStyle, {
         let split = str.split(' ');
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
-        let buffer = this.buffer * Utils.device_pixel_ratio;
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
         let split_size = {
             " ": this.canvas[tile].context.measureText(" ").width / Utils.device_pixel_ratio
         };
@@ -131,7 +138,7 @@ Object.assign(TextStyle, {
     // Draw text at specified location, adjusting for buffer and baseline
     drawText (text, [x, y], tile, stroke, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
-        let buffer = this.buffer * Utils.device_pixel_ratio;
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
         }
@@ -186,12 +193,6 @@ Object.assign(TextStyle, {
         return Promise.resolve(texts);
     },
 
-    // Called on main thread to release tile-specific resources
-    freeTile (tile) {
-        delete this.canvas[tile];
-        delete this.textures[tile];
-    },
-
     rasterize (tile, texts, texture_size) {
         let pixel_scale = Utils.device_pixel_ratio;
 
@@ -214,7 +215,7 @@ Object.assign(TextStyle, {
                     continue;
                 }
 
-                let width = this.buffer;
+                let width = this.text_buffer;
                 let dists = [];
                 let space_size = info.size.split_size[' '];
 
@@ -298,8 +299,10 @@ Object.assign(TextStyle, {
         this.rasterize(tile, texts, texture_size);
 
         this.textures[tile].setCanvas(this.canvas[tile].canvas);
+
+        // we don't need tile canvas/texture once it has been copied to to GPU
         delete this.textures[tile];
-        delete this.canvas[tile]; // we don't need canvas once it has been copied to GPU texture
+        delete this.canvas[tile];
 
         return Promise.resolve({ texts: this.texts[tile], texture });
     },
@@ -336,7 +339,7 @@ Object.assign(TextStyle, {
                     let feature = this.features[tile][style][text][f];
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
-                            { text: text, size: text_info.size },
+                            { text, size: text_info.size },
                             this.label_style
                     );
 
@@ -375,6 +378,7 @@ Object.assign(TextStyle, {
 
     discardLabels (tile, labels, texts) {
         this.bboxes[tile] = [];
+        this.feature_labels[tile] = new Map();
 
         for (let priority = this.max_priority; priority >= 0; priority--) {
             if (!labels[priority]) {
@@ -385,10 +389,10 @@ Object.assign(TextStyle, {
                 let { style, feature, label } = labels[priority][i];
 
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!this.feature_labels.has(feature)) {
-                        this.feature_labels.set(feature, []);
+                    if (!this.feature_labels[tile].has(feature)) {
+                        this.feature_labels[tile].set(feature, []);
                     }
-                    this.feature_labels.get(feature).push(label);
+                    this.feature_labels[tile].get(feature).push(label);
                     texts[style][label.text].ref++;
                 }
             }
@@ -432,6 +436,7 @@ Object.assign(TextStyle, {
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
+                this.freeTile(tile);
                 WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
                 // early exit
                 return;
@@ -448,7 +453,7 @@ Object.assign(TextStyle, {
                 // Build queued features
                 tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
                 tile_data.queue = [];
-                delete this.texts[tile];
+                this.freeTile(tile);
 
                 return this.super.endData.call(this, tile_data);
             });
@@ -481,10 +486,8 @@ Object.assign(TextStyle, {
             }
 
             let style_key = this.constructStyleKey(style);
-
-            // Save font style info on feature for later use during geometry construction
-            feature.font_style = style;
-            feature.font_style_key = style_key;
+            this.feature_style_key[tile] = this.feature_style_key[tile] || new Map();
+            this.feature_style_key[tile].set(feature, style_key);
 
             if (!this.texts[tile][style_key]) {
                 this.texts[tile][style_key] = {};
@@ -519,23 +522,21 @@ Object.assign(TextStyle, {
         let style;
 
         if (rule.font) {
-            rule.font.fill = rule.font.fill && StyleParser.parseColor(rule.font.fill, context);
+            style = {};
 
-            if (rule.font.stroke) {
-                let color = rule.font.stroke.color || rule.font.stroke;
-                rule.font.stroke = {
-                    color: StyleParser.parseColor(color, context),
-                    width: rule.font.stroke.width
-                };
+            // Use fill if specified, or default
+            style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) ||
+                         this.font_style.fill;
+
+            // Use stroke if specified
+            if (rule.font.stroke && rule.font.stroke.color) {
+                style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
+                style.stroke_width = rule.font.stroke.width || this.font_style.stroke.width;
             }
 
-            style = {
-                font: rule.font.typeface || this.font_style.typeface,
-                fill: !rule.font.fill ? this.font_style.fill : Utils.toCanvasColor(rule.font.fill),
-                stroke: !rule.font.stroke.color ? this.font_style.stroke.color : Utils.toCanvasColor(rule.font.stroke.color),
-                stroke_width: rule.font.stroke.width || this.font_style.stroke.width,
-                capitalized: rule.font.capitalized || this.font_style.capitalized
-            };
+            // Use default typeface
+            style.font = rule.font.typeface || this.font_style.typeface;
+            style.capitalized = rule.font.capitalized || this.font_style.capitalized;
 
             let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
             let ft_size = style.font.match(size_regex)[0];
@@ -550,8 +551,8 @@ Object.assign(TextStyle, {
         return style;
     },
 
-    constructStyleKey ({ typeface, fill, stroke, stroke_width }) {
-        return `${typeface}/${fill}/${stroke}/${stroke_width}`;
+    constructStyleKey ({ font, fill, stroke, stroke_width }) {
+        return `${font}/${fill}/${stroke}/${stroke_width}`;
     },
 
     buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
@@ -604,15 +605,14 @@ Object.assign(TextStyle, {
     },
 
     _parseFeature (feature, rule_style, context) {
-        // console.log(`label ${feature.properties.name} tile ${context.tile.key}`, feature, context.tile);
         let text = feature.text;
 
         let style = this.feature_style;
         let tile = context.tile.key;
-        let style_key = feature.font_style_key;
+        let style_key = this.feature_style_key[tile].get(feature);
         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
 
-        if (!text_info || !this.feature_labels.has(feature)) {
+        if (!text_info || !this.feature_labels[tile].has(feature)) {
             return;
         }
 
@@ -620,7 +620,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
-        style.labels = this.feature_labels.get(feature);
+        style.labels = this.feature_labels[tile].get(feature);
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
         // but could be made conditional in the vertex layout to save space

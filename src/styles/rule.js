@@ -93,9 +93,6 @@ class Rule {
         // Denormalize properties to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                if (this.visible !== undefined) {
-                    this.draw[group].visible = this.visible;
-                }
                 if (this.properties !== undefined) {
                     this.draw[group].properties = this.properties;
                 }
@@ -157,35 +154,41 @@ export class RuleTree extends Rule {
             // Only evaluate each rule combination once (undefined means not yet evaluated,
             // null means evaluated with no draw object)
             if (ruleCache[cache_key] === undefined) {
-                // Find all the unique draw blocks for this rule tree
-                let draw_rules = rules.map(x => x && x.calculatedDraw);
-                let draw_keys = {};
+                // Visible?
+                if (rules.some(x => x.visible === false)) {
+                    ruleCache[cache_key] = null;
+                }
+                else {
+                    // Find all the unique draw blocks for this rule tree
+                    let draw_rules = rules.map(x => x && x.calculatedDraw);
+                    let draw_keys = {};
 
-                for (let rule of draw_rules) {
-                    if (!rule) {
-                        continue;
-                    }
-                    for (let group of rule) {
-                        for (let key in group) {
-                            draw_keys[key] = true;
+                    for (let rule of draw_rules) {
+                        if (!rule) {
+                            continue;
+                        }
+                        for (let group of rule) {
+                            for (let key in group) {
+                                draw_keys[key] = true;
+                            }
                         }
                     }
-                }
 
-                // Calculate each draw group
-                for (let draw_key in draw_keys) {
-                    ruleCache[cache_key] = ruleCache[cache_key] || {};
-                    ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key, context);
+                    // Calculate each draw group
+                    for (let draw_key in draw_keys) {
+                        ruleCache[cache_key] = ruleCache[cache_key] || {};
+                        ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key, context);
 
-                    // Only save the ones that weren't null
-                    if (!ruleCache[cache_key][draw_key]) {
-                        delete ruleCache[cache_key][draw_key];
+                        // Only save the ones that weren't null
+                        if (!ruleCache[cache_key][draw_key]) {
+                            delete ruleCache[cache_key][draw_key];
+                        }
                     }
-                }
 
-                // No rules evaluated
-                if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
-                    ruleCache[cache_key] = null;
+                    // No rules evaluated
+                    if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
+                        ruleCache[cache_key] = null;
+                    }
                 }
             }
             return ruleCache[cache_key];

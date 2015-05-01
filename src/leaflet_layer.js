@@ -48,6 +48,7 @@ if (Utils.isMainThread) {
                     preUpdate: this.options.preUpdate,
                     postUpdate: this.options.postUpdate,
                     continuousZoom: (LeafletLayer.leafletVersion === '1.x'),
+                    highDensityDisplay: this.options.highDensityDisplay,
                     logLevel: this.options.logLevel,
                     // advanced option, app will have to manually called scene.update() per frame
                     disableRenderLoop: this.options.disableRenderLoop,

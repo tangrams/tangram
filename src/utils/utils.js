@@ -158,13 +158,35 @@ Utils.stringsToFunctions = function(obj, wrap) {
     return obj;
 };
 
+// Log wrapper, sends message to main thread for display, and includes worker id #
+Utils.log = function (level, ...msg) {
+    level = level || 'info';
+    if (Utils.isWorkerThread) {
+        self.postMessage({
+            type: 'log',
+            level: level,
+            worker_id: self._worker_id,
+            msg: msg
+        });
+    }
+    else if (typeof log[level] === 'function') {
+        log[level](...msg);
+    }
+};
+
+// Default to allowing high pixel density
+Utils.use_high_density_display = true;
+Utils.updateDevicePixelRatio = function () {
+    Utils.device_pixel_ratio = (Utils.use_high_density_display && window.devicePixelRatio) || 1;
+};
+
 // Mark thread as main or worker
 (function() {
     try {
         if (window.document !== undefined) {
             Utils.isWorkerThread = false;
             Utils.isMainThread   = true;
-            Utils.device_pixel_ratio = window.devicePixelRatio || 1;
+            Utils.updateDevicePixelRatio();
         }
     }
     catch (e) {
@@ -402,9 +424,7 @@ Utils.toPixelSize = function (size, kind) {
 };
 
 Utils.pointInTile = function (point) {
-    let tile_pixel_size = Geo.units_per_pixel * Geo.tile_size;
-
-    return point[0] > 0 && point[1] > -tile_pixel_size && point[0] < tile_pixel_size && point[1] < 0;
+    return point[0] > 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] < 0;
 };
 
 Utils.pixelToMercator = function (size) {
