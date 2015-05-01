@@ -135,7 +135,7 @@ export default class Tile {
     static buildGeometry (tile, layers, rules, styles) {
         tile.debug.rendering = +new Date();
 
-        let tile_data = {};
+        let tile_styles = {}; // track styles used in tile
 
         for (let source_name in tile.sources) {
             let source = tile.sources[source_name];
@@ -190,13 +190,13 @@ export default class Tile {
                             continue;
                         }
 
-                        if (!tile_data[style_name]) {
-                            tile_data[style_name] = style.startData();
-                        }
-
                         context.properties = group.properties; // add rule-specific properties to context
 
-                        style.addFeature(feature, group, context, tile_data[style_name]);
+                        style.addFeature(feature, group, tile.key, context);
+
+                        if (!tile_styles[style_name]) {
+                            tile_styles[style_name] = true;
+                        }
 
                         context.properties = null; // clear group-specific properties
                     }
@@ -212,9 +212,9 @@ export default class Tile {
         // Finalize array buffer for each render style
         tile.mesh_data = {};
         let queue = [];
-        for (let style_name in tile_data) {
+        for (let style_name in tile_styles) {
             let style = styles[style_name];
-            queue.push(style.endData(tile_data[style_name]).then((style_data) => {
+            queue.push(style.endData(tile.key).then((style_data) => {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,

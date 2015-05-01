@@ -306,8 +306,8 @@ Object.assign(TextStyle, {
     },
 
     // Override
-    startData () {
-        let tile_data = this.super.startData.apply(this);
+    startData (tile) {
+        let tile_data = this.super.startData.apply(this, arguments);
         tile_data.queue = [];
         return tile_data;
     },
@@ -414,11 +414,12 @@ Object.assign(TextStyle, {
     },
 
     // Override
-    endData (tile_data) {
+    endData (tile) {
         // Count collected text
-        let tile, count;
+        let count;
+        let tile_data = this.tile_data[tile];
+
         if (tile_data.queue.length > 0) {
-            tile = tile_data.queue[0][2].tile.key;
             count = Object.keys(this.texts[tile]||{}).length;
             log.trace(`# texts for tile ${tile}: ${count}`);
         }
@@ -453,13 +454,13 @@ Object.assign(TextStyle, {
                 tile_data.queue = [];
                 this.freeTile(tile);
 
-                return this.super.endData.call(this, tile_data);
+                return this.super.endData.apply(this, arguments);
             });
         });
     },
 
     // Override to queue features instead of processing immediately
-    addFeature (feature, rule, context, tile_data) {
+    addFeature (feature, rule, tile, context) {
         // Collect text
         let text;
         let source = rule.text_source || 'name';
@@ -473,7 +474,6 @@ Object.assign(TextStyle, {
         if (text) {
             feature.text = text;
 
-            let tile = context.tile.key;
             if (!this.texts[tile]) {
                 this.texts[tile] = {};
             }
@@ -512,7 +512,10 @@ Object.assign(TextStyle, {
             this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
             this.features[tile][style_key][text].push(feature);
 
-            tile_data.queue.push([feature, rule, context, tile_data]);
+            if (!this.tile_data[tile]) {
+                this.startData(tile);
+            }
+            this.tile_data[tile].queue.push([feature, rule, tile, context]);
         }
     },
 
