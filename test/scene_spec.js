@@ -177,7 +177,6 @@ describe('Scene', function () {
         let height = 100;
         let width = 200;
         let devicePixelRatio = 2;
-        Utils.device_pixel_ratio = devicePixelRatio;
         let computedHeight = Math.round(height * devicePixelRatio);
         let computedWidth  = Math.round(width * devicePixelRatio);
 
@@ -186,6 +185,7 @@ describe('Scene', function () {
             return subject.init().then(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
+                Utils.device_pixel_ratio = devicePixelRatio;
                 subject.resizeMap(width, height);
             });
         });
