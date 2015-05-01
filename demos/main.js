@@ -288,6 +288,9 @@ Enjoy!
             },
             'rainbow': {
                 setup: function (style) {
+                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.roads.draw.lines.color = '#777';
+                    scene.config.layers.poi_icons.visible = false;
                     scene.config.layers.buildings.draw.polygons.style = style;
                 }
             },
@@ -311,7 +314,10 @@ Enjoy!
                     // layers.water.outlines.draw.lines.style = 'halftone_lines';
                     layers.landuse.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.draw.polygons.color = 'Style.color.pseudoRandomColor()';
                     layers.roads.draw.lines.style = 'halftone_lines';
+                    layers.roads.draw.outlines.style = 'halftone_lines';
+                    layers.poi_icons.visible = false;
 
                     var visible_layers = ['landuse', 'water', 'roads', 'buildings'];
                     Object.keys(layers).forEach(function(l) {
@@ -324,12 +330,19 @@ Enjoy!
             'windows': {
                 camera: 'isometric', // force isometric
                 setup: function (style) {
+                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.roads.draw.lines.color = '#777';
+                    scene.config.layers.poi_icons.visible = false;
+
                     scene.config.layers.buildings.draw.polygons.style = style;
                     // scene.config.layers.pois.visible = false;
                 }
             },
             'envmap': {
                 setup: function (style) {
+                    scene.config.layers.earth.draw.polygons.color = '#333';
+                    scene.config.layers.roads.draw.lines.color = '#777';
+
                     scene.config.layers.buildings.draw.polygons.style = style;
 
                     var envmaps = {

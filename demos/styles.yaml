@@ -246,7 +246,6 @@ layers:
             filter: { $zoom: { min: 17 } }
             draw:
                 lines:
-                    style: flat_lines
                     join: round
 
         highway:
@@ -290,7 +289,6 @@ layers:
             filter: { aeroway: true }
             draw:
                 lines:
-                    style: flat_lines
                     color: '#ddd'
                 outlines:
                     width: 0
@@ -305,14 +303,12 @@ layers:
                 filter: { aeroway: runway }
                 draw:
                     lines:
-                        style: flat_lines
                         # color: [[13, [255, 209, 160]], [16, [255, 255, 255]]]
                         color: [[13, '#FFE4B5'], [16, white]]
                         width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
                         order: 2
                         cap: square
                     outlines:
-                        style: flat_lines
                         color: orange
                         width: [[11, 4px], [12, 7px], [13, 12px], [15, 100]]
                         order: 2
@@ -387,30 +383,8 @@ layers:
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
                 sprite: info
-        visible: false
 
         icons:
-            visible: true
-            # draw:
-            #     icons:
-            #         size: 32px
-            #         sprite:
-            #             mapping:
-            #                 input: kind
-            #                 values:
-                                # - restaurant
-                                # - [[cafe, convenience], cafe]
-                                # - [[bar, pub], bar]
-                                # - { key: [bar, pub], value: bar}
-                                # - [[museum, library, church, place_of_worship, bank], museum]
-                                # - [station, train]
-                                # - [[hospital, pharmacy], hospital]
-                                # - parking
-                                # - [[hotel, hostel], hotel]
-                                # - [bus_stop, bus]
-                                # - bookstore
-
-
             # examples of different icons mapped to feature properties
             restaurant:
                 filter: { kind: [restaurant] }
