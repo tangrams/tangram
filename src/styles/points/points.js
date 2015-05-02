@@ -62,7 +62,8 @@ Object.assign(Points, {
         }
 
         // require sprite to draw?
-        if (rule_style.require_sprite && !style.sprite) {
+        if (this.texture && !style.sprite &&
+            Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
             return; // skip feature
         }
 
