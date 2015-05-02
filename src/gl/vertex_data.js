@@ -54,11 +54,9 @@ export default class VertexData {
         if ((this.buffer_offset + this.vertex_layout.stride) > this.buffer.byteLength) {
             this.buffer_size = Math.floor(this.buffer_size * 1.5);
             this.buffer_size -= this.buffer_size % 4;
-            var new_block = new ArrayBuffer(this.vertex_layout.stride * this.buffer_size);
-            var new_view = new Uint8Array(new_block);
+            var new_view = new Uint8Array(this.vertex_layout.stride * this.buffer_size);
             new_view.set(new Uint8Array(this.buffer)); // copy existing data to new buffer
-
-            this.buffer = new_block;
+            this.buffer = new_view.buffer;
             this.setBufferViews();
             this.realloc_count++;
             // log.info(`VertexData: expanded vertex block to ${this.buffer_size} vertices`);
