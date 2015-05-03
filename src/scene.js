@@ -67,7 +67,7 @@ export default class Scene {
         this.center = null;
 
         this.zooming = false;
-        this.preserve_tiles_within_zoom = 2;
+        this.preserve_tiles_within_zoom = 1;
         this.panning = false;
         this.container = options.container;
 
