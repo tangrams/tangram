@@ -20,10 +20,20 @@ export default class VertexData {
 
     constructor (vertex_layout, { prealloc } = {}) {
         this.vertex_layout = vertex_layout;
-        this.buffer_size = prealloc || 500; // # of vertices to allocate
+
+        if (VertexData.array_pool.length > 0) {
+            this.buffer = VertexData.array_pool.pop();
+            this.buffer_length = this.buffer.byteLength;
+            this.buffer_size = Math.floor(this.buffer_length / this.vertex_layout.stride);
+            log('trace', `VertexData: reused buffer of bytes ${this.buffer_length}, ${this.buffer_size} vertices`);
+        }
+        else {
+            this.buffer_size = prealloc || 500; // # of vertices to allocate
+            this.buffer_length = this.vertex_layout.stride * this.buffer_size;
+            this.buffer = new Uint8Array(this.buffer_length);
+        }
         this.buffer_offset = 0;             // byte offset into currently allocated buffer
-        this.buffer_length = this.vertex_layout.stride * this.buffer_size;
-        this.buffer = new ArrayBuffer(this.buffer_length);
+
         this.components = [];
         for (var component of this.vertex_layout.components) {
             this.components.push([...component]);
@@ -36,11 +46,12 @@ export default class VertexData {
     // (Re-)allocate typed views into the main buffer - only create the types we need for this layout
     setBufferViews () {
         this.buffer_views = {};
+        this.buffer_views[gl.UNSIGNED_BYTE] = this.buffer;
         for (var attrib of this.vertex_layout.attribs) {
             // Need view for this type?
             if (this.buffer_views[attrib.type] == null) {
                 var array_type = array_types[attrib.type];
-                this.buffer_views[attrib.type] = new array_type(this.buffer);
+                this.buffer_views[attrib.type] = new array_type(this.buffer.buffer);
             }
         }
 
@@ -57,8 +68,9 @@ export default class VertexData {
             this.buffer_size -= this.buffer_size % 4;
             this.buffer_length = this.vertex_layout.stride * this.buffer_size;
             var new_view = new Uint8Array(this.buffer_length);
-            new_view.set(new Uint8Array(this.buffer)); // copy existing data to new buffer
-            this.buffer = new_view.buffer;
+            new_view.set(this.buffer); // copy existing data to new buffer
+            VertexData.array_pool.push(this.buffer); // save previous buffer for use by next tile
+            this.buffer = new_view;
             this.setBufferViews();
             this.realloc_count++;
             // log.info(`VertexData: expanded vertex block to ${this.buffer_size} vertices`);
@@ -85,17 +97,12 @@ export default class VertexData {
 
     // Finalize vertex buffer for use in constructing a mesh
     end () {
-        // Clip the allocated block to free unused memory
-        if (this.buffer_offset < this.buffer_length) {
-            var new_block = new ArrayBuffer(this.buffer_offset);
-            var new_view = new Uint8Array(new_block);
-            new_view.set(new Uint8Array(this.buffer, 0, this.buffer_offset));
-            this.buffer = new_block;
-            this.buffer_views = null;
-            this.components = null;
-        }
+        // Clip the buffer to size used for this VBO
+        this.buffer = this.buffer.subarray(0, this.buffer_offset);
         log('trace', `VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
         return this;
     }
 
 }
+
+VertexData.array_pool = []; // pool of currently available (previously used) buffers (uint8)

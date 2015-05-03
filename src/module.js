@@ -15,6 +15,7 @@ import Geo from './geo';
 import DataSource from './data_source';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
+import VertexData from './gl/vertex_data';
 import Texture from './gl/texture';
 import Material from './material';
 import Light from './light';
@@ -37,6 +38,7 @@ var debug = {
     DataSource,
     GLSL,
     ShaderProgram,
+    VertexData,
     Texture,
     Material,
     Light,
