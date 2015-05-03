@@ -278,8 +278,6 @@ Object.assign(TextStyle, {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     addTexts (tile, texts) {
-        this.texts[tile] = texts;
-
         let texture_size = this.setTextureTextPositions(texts);
         let context = this.canvas[tile].context;
 
@@ -304,7 +302,7 @@ Object.assign(TextStyle, {
         delete this.textures[tile];
         delete this.canvas[tile];
 
-        return Promise.resolve({ texts: this.texts[tile], texture });
+        return Promise.resolve({ texts, texture });
     },
 
     // Override
