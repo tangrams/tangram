@@ -376,6 +376,9 @@ export default class Scene {
             this.loadTile(this.visible_tiles[key]);
         }
 
+        // Remove tiles too far outside of view
+        this.removeTilesOutsideView();
+
         // Update tile visible flags
         for (let key in this.tiles) {
             this.tiles[key].update(this);
@@ -404,6 +407,32 @@ export default class Scene {
             }
         }
         return tiles;
+    }
+
+    removeTilesOutsideView(border_buffer = 2) {
+        // Remove tiles that are a specified # of tiles outside of the viewport border
+        let border_tiles = [
+            Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
+            Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
+        ];
+        let base = this.baseZoom(this.zoom);
+
+        this.removeTiles(tile => {
+            // Ignore visible tiles and those at other zooms
+            if (tile.visible || this.baseZoom(tile.coords.z) !== base) {
+                return false;
+            }
+
+            if (Math.abs(tile.coords.x - this.center_tile.x) - border_tiles[0] > border_buffer) {
+                console.log(`*** remove tile ${tile.key} for being too far out of visible area ***`);
+                return true;
+            }
+            else if (Math.abs(tile.coords.y - this.center_tile.y) - border_tiles[1] > border_buffer) {
+                console.log(`*** remove tile ${tile.key} for being too far out of visible area ***`);
+                return true;
+            }
+            return false;
+        });
     }
 
     removeTilesOutsideZoomRange(below, above) {
