@@ -272,16 +272,15 @@ describe('Scene', function () {
     describe('.setZoom(zoom)', () => {
 
         beforeEach(() => {
-            sinon.spy(subject, 'removeTilesOutsideZoomRange');
             subject.setZoom(10);
-        });
-
-        it('calls the removeTilesOutsideZoomRange method', () =>  {
-            assert.isTrue(subject.removeTilesOutsideZoomRange.called);
         });
 
         it('marks the scene as dirty', () => {
             assert.isTrue(subject.dirty);
+        });
+
+        it('updates the zoom level', () => {
+            assert.equal(subject.zoom, 10);
         });
 
     });
