@@ -157,10 +157,10 @@ export default class FeatureSelection {
     // we partition the map by setting the 4th component (alpha channel) to the worker's id.
     static makeEntry(tile) {
         // 32-bit color key
-        this.map_size++;
-        var ir = this.map_size & 255;
-        var ig = (this.map_size >> 8) & 255;
-        var ib = (this.map_size >> 16) & 255;
+        this.map_entry++;
+        var ir = this.map_entry & 255;
+        var ig = (this.map_entry >> 8) & 255;
+        var ib = (this.map_entry >> 16) & 255;
         var ia = this.map_prefix;
         var r = ir / 255;
         var g = ig / 255;
@@ -171,6 +171,7 @@ export default class FeatureSelection {
         this.map[key] = {
             color: [r, g, b, a],
         };
+        this.map_size++;
 
         this.tiles[tile.key] = this.tiles[tile.key] || [];
         this.tiles[tile.key].push(key);
@@ -191,18 +192,20 @@ export default class FeatureSelection {
 
     static reset() {
         this.map = {};
-        this.map_size = 1;
+        this.map_size = 0;
+        this.map_entry = 0;
     }
 
     static clearTile(key) {
         if (Array.isArray(this.tiles[key])) {
             this.tiles[key].forEach(k => delete this.map[k]);
+            this.map_size -= this.tiles[key].length;
             delete this.tiles[key];
         }
     }
 
     static getMapSize() {
-        return Object.keys(this.map).length;
+        return this.map_size;
     }
 
     static setPrefix(prefix) {
@@ -214,6 +217,7 @@ export default class FeatureSelection {
 // Static properties
 FeatureSelection.map = {};   // this will be unique per module instance (so unique per worker)
 FeatureSelection.tiles = {}; // selection keys, by tile
-FeatureSelection.map_size = 1; // start at 1 since 1 will be divided by this
+FeatureSelection.map_size = 0;
+FeatureSelection.map_entry = 0;
 FeatureSelection.map_prefix = 0; // set by worker to worker id #
 FeatureSelection.defaultColor = [0, 0, 0, 1];
