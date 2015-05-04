@@ -207,24 +207,28 @@ StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'string') {
         val = parseCSSColor.parseCSSColor(val);
         if (val && val.length === 4) {
-            val = val.slice(0, 3).map(c => { return c / 255; });
+            val[0] /= 255;
+            val[1] /= 255;
+            val[2] /= 255;
         }
         else {
             val = null;
         }
     }
-    else if (Array.isArray(val) && val.every(v => { return Array.isArray(v); })) {
+    else if (Array.isArray(val) && Array.isArray(val[0])) {
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
-        val = val.map(v => {
+        for (let i=0; i < val.length; i++) {
+            let v = val[i];
             if (typeof v[1] === 'string') {
                 var vc = parseCSSColor.parseCSSColor(v[1]);
                 if (vc && vc.length === 4) {
-                    vc = vc.slice(0, 3).map(c => { return c / 255; });
+                    vc[0] /= 255;
+                    vc[1] /= 255;
+                    vc[2] /= 255;
+                    v[1] = vc;
                 }
-                return [v[0], vc];
             }
-            return v;
-        });
+        }
     }
 
     if (context.zoom) {

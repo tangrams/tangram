@@ -245,7 +245,7 @@ Utils.nextPowerOf2 = function(value) {
 //
 Utils.interpolate = function(x, points) {
     // If this doesn't resemble a list of control points, just return the original value
-    if (!Array.isArray(points) || points.some(v => { return !Array.isArray(v); })) {
+    if (!Array.isArray(points) || !Array.isArray(points[0])) {
         return points;
     }
     else if (points.length < 1) {
