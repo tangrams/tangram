@@ -104,31 +104,40 @@ Object.assign(Polygons, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-        // Placeholder values
         var color = style.color || [0, 0, 0, 1];
 
-        // Basic attributes, others can be added (see texture UVs below)
-        var template = [
-            // position - x & y coords will be filled in per-vertex below
-            0, 0, style.z || 0,
-            // normal
-            0, 0, 1,
-            // color
-            // TODO: automate multiplication for normalized attribs?
-            color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255,
-            // selection color
-            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // draw order
-            style.order
-        ];
+        // position - x & y coords will be filled in per-vertex below
+        this.vertex_template[0] = 0;
+        this.vertex_template[1] = 0;
+        this.vertex_template[2] = style.z || 0;
+
+        // normal
+        this.vertex_template[3] = 0;
+        this.vertex_template[4] = 0;
+        this.vertex_template[5] = 1;
+
+        // color
+        this.vertex_template[6] = color[0] * 255;
+        this.vertex_template[7] = color[1] * 255;
+        this.vertex_template[8] = color[2] * 255;
+        this.vertex_template[9] = color[3] * 255;
+
+        // selection color
+        this.vertex_template[10] = style.selection_color[0] * 255;
+        this.vertex_template[11] = style.selection_color[1] * 255;
+        this.vertex_template[12] = style.selection_color[2] * 255;
+        this.vertex_template[13] = style.selection_color[3] * 255;
+
+        // layer order
+        this.vertex_template[14] = style.order;
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {
-            template.push(0, 0);
+            this.vertex_template[15] = 0;
+            this.vertex_template[16] = 0;
         }
 
-        return template;
-
+        return this.vertex_template;
     },
 
     buildPolygons(polygons, style, vertex_data) {

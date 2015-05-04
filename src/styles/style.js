@@ -27,6 +27,7 @@ export var Style = {
         this.program = null;                        // GL program reference (for main render pass)
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
+        this.vertex_template = [];                  // shared single-vertex template, filled out by each style
 
         // Blending
         this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending

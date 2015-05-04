@@ -113,27 +113,39 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-        // Basic attributes, others can be added (see texture UVs below)
-        var template = [
-            // position - (x, y) coords will be filled in per-vertex below
-            0, 0, style.z || 0,
-            // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
-            0, 0, 0, 0,
-            // color
-            // TODO: automate multiplication for normalized attribs?
-            style.color[0] * 255, style.color[1] * 255, style.color[2] * 255, style.color[3] * 255,
-            // selection color
-            style.selection_color[0] * 255, style.selection_color[1] * 255, style.selection_color[2] * 255, style.selection_color[3] * 255,
-            // texture coords
-            0, 0
-        ];
+        // position - x & y coords will be filled in per-vertex below
+        this.vertex_template[0] = 0;
+        this.vertex_template[1] = 0;
+        this.vertex_template[2] = style.z || 0;
+
+        // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
+        this.vertex_template[3] = 0;
+        this.vertex_template[4] = 0;
+        this.vertex_template[5] = 0;
+        this.vertex_template[6] = 0;
+
+        // color
+        this.vertex_template[7] = style.color[0] * 255;
+        this.vertex_template[8] = style.color[1] * 255;
+        this.vertex_template[9] = style.color[2] * 255;
+        this.vertex_template[10] = style.color[3] * 255;
+
+        // selection color
+        this.vertex_template[11] = style.selection_color[0] * 255;
+        this.vertex_template[12] = style.selection_color[1] * 255;
+        this.vertex_template[13] = style.selection_color[2] * 255;
+        this.vertex_template[14] = style.selection_color[3] * 255;
+
+        // texture coords
+        this.vertex_template[15] = 0;
+        this.vertex_template[16] = 0;
 
         // Add layer attribute if needed
         if (this.defines.TANGRAM_ORDER_ATTRIBUTE) {
-            template.push(style.order);
+            this.vertex_template[17] = style.order;
         }
 
-        return template;
+        return this.vertex_template;
     },
 
     buildPoints (points, style, vertex_data) {
