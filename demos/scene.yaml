@@ -167,6 +167,7 @@ layers:
             filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
             draw:
                 polygons:
+                    order: 1
                     color: '#bddec5'
         blue:
             filter: { kind: [commercial, industrial] }
@@ -193,7 +194,7 @@ layers:
             polygons:
                 interactive: true
                 style: flat
-                order: 2
+                order: 3
                 color: '#9dc3de'
 
     roads:
@@ -216,9 +217,9 @@ layers:
 
                         var min = reduceSortKey(-3109);
                         var order;
-                        if (feature.sort_key < 10) { order = 4; }
-                        else { order = 4 + reduceSortKey(feature.sort_key) - min; }
-                        //order = 4 + reduceSortKey(feature.sort_key) - min;
+                        if (feature.sort_key < 10) { order = 5; }
+                        else { order = 5 + reduceSortKey(feature.sort_key) - min; }
+                        //order = 5 + reduceSortKey(feature.sort_key) - min;
                         return order;
                     }
                 # interactive: true
@@ -236,9 +237,9 @@ layers:
 
                         var min = reduceSortKey(-3109);
                         var order;
-                        if (feature.sort_key < 10) { order = 3; }
-                        else { order = 3 + reduceSortKey(feature.sort_key) - min; }
-                        //order = 3 + reduceSortKey(feature.sort_key) - min;
+                        if (feature.sort_key < 10) { order = 4; }
+                        else { order = 4 + reduceSortKey(feature.sort_key) - min; }
+                        //order = 4 + reduceSortKey(feature.sort_key) - min;
                         return order;
                     }
 
