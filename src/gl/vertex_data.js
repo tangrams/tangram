@@ -22,7 +22,8 @@ export default class VertexData {
         this.vertex_layout = vertex_layout;
         this.buffer_size = prealloc || 500; // # of vertices to allocate
         this.buffer_offset = 0;             // byte offset into currently allocated buffer
-        this.buffer = new ArrayBuffer(this.vertex_layout.stride * this.buffer_size);
+        this.buffer_length = this.vertex_layout.stride * this.buffer_size;
+        this.buffer = new ArrayBuffer(this.buffer_length);
         this.components = [];
         for (var component of this.vertex_layout.components) {
             this.components.push([...component]);
@@ -51,10 +52,11 @@ export default class VertexData {
 
     // Check allocated buffer size, expand/realloc buffer if needed
     checkBufferSize () {
-        if ((this.buffer_offset + this.vertex_layout.stride) > this.buffer.byteLength) {
+        if ((this.buffer_offset + this.vertex_layout.stride) > this.buffer_length) {
             this.buffer_size = Math.floor(this.buffer_size * 1.5);
             this.buffer_size -= this.buffer_size % 4;
-            var new_view = new Uint8Array(this.vertex_layout.stride * this.buffer_size);
+            this.buffer_length = this.vertex_layout.stride * this.buffer_size;
+            var new_view = new Uint8Array(this.buffer_length);
             new_view.set(new Uint8Array(this.buffer)); // copy existing data to new buffer
             this.buffer = new_view.buffer;
             this.setBufferViews();
@@ -84,7 +86,7 @@ export default class VertexData {
     // Finalize vertex buffer for use in constructing a mesh
     end () {
         // Clip the allocated block to free unused memory
-        if (this.buffer_offset < this.buffer.byteLength) {
+        if (this.buffer_offset < this.buffer_length) {
             var new_block = new ArrayBuffer(this.buffer_offset);
             var new_view = new Uint8Array(new_block);
             new_view.set(new Uint8Array(this.buffer, 0, this.buffer_offset));
