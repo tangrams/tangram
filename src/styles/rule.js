@@ -6,7 +6,11 @@ export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
 export let ruleCache = {};
 
 function cacheKey (rules) {
-    return rules.map(r => r.id).join('/');
+    var k = '';
+    for (var i=0; i < rules.length; i++) {
+        k += rules[i].id + '/';
+    }
+    return k;
 }
 
 export function mergeTrees(matchingTrees, key, context) {
