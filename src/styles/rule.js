@@ -187,8 +187,9 @@ export class RuleTree extends Rule {
                         if (!ruleCache[cache_key][draw_key]) {
                             delete ruleCache[cache_key][draw_key];
                         }
-
-                        ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                        else {
+                            ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                        }
                     }
 
                     // No rules evaluated
