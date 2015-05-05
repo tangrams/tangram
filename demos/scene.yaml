@@ -203,7 +203,6 @@ layers:
             not: { kind: [rail] }
         draw:
             lines:
-                interactive: true
                 style: flat_lines
                 color: white
                 width: 12
@@ -321,10 +320,15 @@ layers:
 
         draw:
             polygons:
-                interactive: true
                 order: 300
                 color: [.65, .65, .65]
 
+        # turn interactive feature selection on for buildings with names
+        interactive:
+            filter: { name: true }
+            draw: { polygons: { interactive: true } }
+
+        # extrude 3d buildings
         extruded:
             filter: { $zoom: { min: 15 } }
             draw:
