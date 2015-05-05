@@ -24,7 +24,7 @@ Enjoy!
     var tile_sources = {
         'mapzen': {
             type: 'MVT',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mapbox'
+            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt'
         },
         'mapzen-geojson': {
             type: 'GeoJSONTiles',
