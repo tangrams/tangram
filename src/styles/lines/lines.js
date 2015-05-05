@@ -69,6 +69,7 @@ Object.assign(Lines, {
         style.next_width = StyleParser.cacheDistance(rule_style.width, context);
         style.next_width = Utils.scaleInt16(style.next_width / style.width, 256);
         context.zoom--;
+        context.units_per_meter /= 2;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
