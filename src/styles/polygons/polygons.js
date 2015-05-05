@@ -56,8 +56,7 @@ Object.assign(Polygons, {
         var style = this.feature_style;
 
         style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
-        // style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
-        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.height = feature.properties.height || StyleParser.defaults.height;
