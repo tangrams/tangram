@@ -50,7 +50,7 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
+        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
         style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
 
         // Smoothly interpolate line width between zooms: get scale factors to previous and next zooms
@@ -90,19 +90,26 @@ Object.assign(Lines, {
         style.join = rule_style.join;
         style.tile_edges = rule_style.tile_edges;
 
-        style.outline = style.outline || {};
-        if (rule_style.outline) {
-            style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
-            style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
-            style.outline.cap = rule_style.outline.cap || rule_style.cap;
-            style.outline.join = rule_style.outline.join || rule_style.join;
-        }
-        else {
-            style.outline.color = null;
-            style.outline.width = null;
-        }
+        // style.outline = style.outline || {};
+        // if (rule_style.outline) {
+        //     style.outline.color = rule_style.outline.color && StyleParser.cacheColor(rule_style.outline.color, context);
+        //     style.outline.width = rule_style.outline.width && StyleParser.parseDistance(rule_style.outline.width, context);
+        //     style.outline.cap = rule_style.outline.cap || rule_style.cap;
+        //     style.outline.join = rule_style.outline.join || rule_style.join;
+        // }
+        // else {
+        //     style.outline.color = null;
+        //     style.outline.width = null;
+        // }
 
         return style;
+    },
+
+    preprocess (draw) {
+        draw.color = draw.color && { value: draw.color };
+        // if (draw.outline) {
+        //     draw.outline.color = draw.outline.color && { value: draw.outline.color };
+        // }
     },
 
     /**

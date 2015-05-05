@@ -197,6 +197,65 @@ StyleParser.parseDistance = function(val, context, convert = true) {
     return val;
 };
 
+// Takes a color cache object and returns a color value for this zoom
+// (caching the result for future use)
+// { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] } }
+StyleParser.cacheColor = function(val, context = {}) {
+    if (val.static) {
+        return val.static;
+    }
+    else if (val.zoom && val.zoom[context.zoom]) {
+        return val.zoom[context.zoom];
+    }
+    else {
+        // Single string color
+        if (typeof val.value === 'string') {
+            val.static = parseCSSColor.parseCSSColor(val.value);
+            if (val.static && val.static.length === 4) {
+                val.static[0] /= 255;
+                val.static[1] /= 255;
+                val.static[2] /= 255;
+            }
+            else {
+                val.static = [0, 0, 0, 1];
+            }
+            return val.static;
+        }
+        // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
+        else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
+            if (!val.zoom) {
+                val.zoom = {};
+                if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
+                    // Parse any string colors inside stops
+                    for (let i=0; i < val.value.length; i++) {
+                        let v = val.value[i];
+                        if (typeof v[1] === 'string') {
+                            var vc = parseCSSColor.parseCSSColor(v[1]);
+                            if (vc && vc.length === 4) {
+                                vc[0] /= 255;
+                                vc[1] /= 255;
+                                vc[2] /= 255;
+                                v[1] = vc;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate color for current zoom
+            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
+            val.zoom[context.zoom][3] = val.zoom[context.zoom][3] || 1;
+            return val.zoom[context.zoom];
+        }
+        // Single array color
+        else {
+            val.static = val.value;
+            val.static[3] = val.static[3] || 1;
+            return val.static;
+        }
+    }
+};
+
 StyleParser.parseColor = function(val, context = {}) {
     if (typeof val === 'function') {
         val = val(context);

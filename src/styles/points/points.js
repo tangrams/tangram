@@ -53,7 +53,7 @@ Object.assign(Points, {
 
         let tile = context.tile.key;
 
-        style.color = (rule_style.color && StyleParser.parseColor(rule_style.color, context)) || [1, 1, 1, 1];
+        style.color = (rule_style.color && StyleParser.cacheColor(rule_style.color, context)) || [1, 1, 1, 1];
         style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
 
         style.sprite = rule_style.sprite;
@@ -106,6 +106,10 @@ Object.assign(Points, {
         }
 
         return style;
+    },
+
+    preprocess (draw) {
+        draw.color = draw.color && { value: draw.color };
     },
 
     /**
