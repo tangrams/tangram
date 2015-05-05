@@ -199,17 +199,25 @@ StyleParser.parseDistance = function(val, context, convert = true) {
 
 // Takes a color cache object and returns a color value for this zoom
 // (caching the result for future use)
-// { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] } }
+// { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.cacheColor = function(val, context = {}) {
-    if (val.static) {
+    if (val.dynamic) {
+        return val.dynamic(context);
+    }
+    else if (val.static) {
         return val.static;
     }
     else if (val.zoom && val.zoom[context.zoom]) {
         return val.zoom[context.zoom];
     }
     else {
+        // Dynamic function-based color
+        if (typeof val.value === 'function') {
+            val.dynamic = val.value;
+            return val.dynamic(context);
+        }
         // Single string color
-        if (typeof val.value === 'string') {
+        else if (typeof val.value === 'string') {
             val.static = parseCSSColor.parseCSSColor(val.value);
             if (val.static && val.static.length === 4) {
                 val.static[0] /= 255;
