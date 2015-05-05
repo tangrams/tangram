@@ -272,17 +272,10 @@ describe('RuleTree.buildDrawGroups(context)', () => {
 
         it('returns a single object', () => {
             let rule = subject.root.buildDrawGroups(context);
-            assert.deepEqual(
-                rule,
-                {
-                    group: {
-                        color: [1, 2, 3],
-                        visible: true,
-                        width: 20,
-                        order: 1
-                    }
-                }
-            );
+            assert.equal(Object.keys(rule).length, 1);
+            assert.deepEqual(rule.group.color, [1, 2, 3]);
+            assert.equal(rule.group.width, 20);
+            assert.equal(rule.group.order, 1);
         });
     });
 
@@ -300,14 +293,10 @@ describe('RuleTree.buildDrawGroups(context)', () => {
 
         it('returns the correct number of matching rules', () => {
             let rule = subject.root.buildDrawGroups(context);
-            assert.deepEqual(rule, {
-                group: {
-                    color: [1, 2, 3],
-                    order: 1,
-                    visible: true,
-                    width: 20
-                }
-            });
+            assert.equal(Object.keys(rule).length, 1);
+            assert.deepEqual(rule.group.color, [1, 2, 3]);
+            assert.equal(rule.group.width, 20);
+            assert.equal(rule.group.order, 1);
         });
     });
 
@@ -373,15 +362,9 @@ describe('RuleTree.buildDrawGroups(context)', () => {
             };
 
             it('returns only the child\'s draw', () => {
-                let results = subject.root.buildDrawGroups(context);
-
-                assert.deepEqual(results, {
-                    group: {
-                        color: [1, 2, 3],
-                        visible: true
-                    }
-                });
-
+                let rule = subject.root.buildDrawGroups(context);
+                assert.equal(Object.keys(rule).length, 1);
+                assert.deepEqual(rule.group.color, [1, 2, 3]);
             });
 
         });
