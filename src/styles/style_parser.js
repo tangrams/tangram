@@ -197,6 +197,28 @@ StyleParser.parseDistance = function(val, context, convert = true) {
     return val;
 };
 
+// Cache previously parsed color strings
+StyleParser.string_colors = {};
+StyleParser.colorForString = function(string) {
+    // Cached
+    if (StyleParser.string_colors[string]) {
+        return StyleParser.string_colors[string];
+    }
+
+    // Calculate and cache
+    let color = parseCSSColor.parseCSSColor(string);
+    if (color && color.length === 4) {
+        color[0] /= 255;
+        color[1] /= 255;
+        color[2] /= 255;
+    }
+    else {
+        color = [0, 0, 0, 1];
+    }
+    StyleParser.string_colors[string] = color;
+    return color;
+};
+
 // Takes a color cache object and returns a color value for this zoom
 // (caching the result for future use)
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
@@ -218,15 +240,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         }
         // Single string color
         else if (typeof val.value === 'string') {
-            val.static = parseCSSColor.parseCSSColor(val.value);
-            if (val.static && val.static.length === 4) {
-                val.static[0] /= 255;
-                val.static[1] /= 255;
-                val.static[2] /= 255;
-            }
-            else {
-                val.static = [0, 0, 0, 1];
-            }
+            val.static = StyleParser.colorForString(val.value);
             return val.static;
         }
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
@@ -238,13 +252,7 @@ StyleParser.cacheColor = function(val, context = {}) {
                     for (let i=0; i < val.value.length; i++) {
                         let v = val.value[i];
                         if (typeof v[1] === 'string') {
-                            var vc = parseCSSColor.parseCSSColor(v[1]);
-                            if (vc && vc.length === 4) {
-                                vc[0] /= 255;
-                                vc[1] /= 255;
-                                vc[2] /= 255;
-                                v[1] = vc;
-                            }
+                            v[1] = StyleParser.colorForString(v[1]);
                         }
                     }
                 }
@@ -258,7 +266,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Single array color
         else {
             val.static = val.value;
-            val.static[3] = val.static[3] || 1;
+            val.static[3] = val.static[3] || 1; // default alpha
             return val.static;
         }
     }
