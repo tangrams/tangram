@@ -322,11 +322,15 @@ layers:
         draw:
             polygons:
                 interactive: true
-                style: buildings
                 order: 300
-                color: '#bbb'
-                # extrude: function() { return $zoom > 14 }
-                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+                color: [.65, .65, .65]
+
+        extruded:
+            filter: { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    style: buildings
+                    extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
 
         high-line:
             filter: { uid: "37054313" }
