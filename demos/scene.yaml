@@ -203,7 +203,6 @@ layers:
             not: { kind: [rail] }
         draw:
             lines:
-                interactive: true
                 style: flat_lines
                 color: white
                 width: 12
@@ -304,7 +303,6 @@ layers:
                 filter: { aeroway: runway }
                 draw:
                     lines:
-                        # color: [[13, [255, 209, 160]], [16, [255, 255, 255]]]
                         color: [[13, '#FFE4B5'], [16, white]]
                         width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
                         order: 2
@@ -321,15 +319,25 @@ layers:
 
         draw:
             polygons:
-                interactive: true
-                style: buildings
                 order: 300
-                color: '#bbb'
-                # extrude: function() { return $zoom > 14 }
-                extrude: function () { return (($zoom >= 15 && feature.height > 20) || $zoom >= 16) }
+                color: [.65, .65, .65]
+
+        # turn interactive feature selection on for buildings with names
+        interactive:
+            filter: { name: true }
+            draw: { polygons: { interactive: true } }
+
+        # extrude 3d buildings
+        extruded:
+            filter: { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    style: buildings
+                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
         high-line:
-            filter: { uid: "37054313" }
+            # filter: { uid: "37054313" }
+            filter: { roof_material: grass }
             draw:
                 polygons:
                     style: flat
@@ -383,10 +391,14 @@ layers:
             icons:
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
-                # sprite: info
 
+        # add generic icon at high zoom
+        generic:
+            filter: { $zoom: { min: 18 } }
+            draw: { icons: { sprite: info } }
+
+        # examples of different icons mapped to feature properties
         icons:
-            # examples of different icons mapped to feature properties
             restaurant:
                 filter: { kind: [restaurant] }
                 draw: { icons: { sprite: restaurant } }
@@ -405,9 +417,6 @@ layers:
             hospital:
                 filter: { kind: [hospital, pharmacy] }
                 draw: { icons: { sprite: hospital } }
-            # parking:
-            #     filter: { kind: [parking] }
-            #     draw: { icons: { sprite: parking } }
             hotel:
                 filter: { kind: [hotel, hostel] }
                 draw: { icons: { sprite: hotel } }

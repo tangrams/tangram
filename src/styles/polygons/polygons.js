@@ -55,11 +55,8 @@ Object.assign(Polygons, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
-        style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
-        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
-
-        style.size = rule_style.size && StyleParser.parseDistance(rule_style.size, context);
+        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.height = feature.properties.height || StyleParser.defaults.height;
@@ -79,24 +76,26 @@ Object.assign(Polygons, {
             }
         }
 
-        style.cap = rule_style.cap;
-        style.join = rule_style.join;
-
-        style.outline = style.outline || {};
-        if (rule_style.outline) {
-            style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
-            style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
-            style.outline.tile_edges = rule_style.outline.tile_edges;
-            style.outline.cap = rule_style.outline.cap || rule_style.cap;
-            style.outline.join = rule_style.outline.join || rule_style.join;
-        }
-        else {
-            style.outline.color = null;
-            style.outline.width = null;
-            style.outline.tile_edges = false;
-        }
+        // style.outline = style.outline || {};
+        // if (rule_style.outline) {
+        //     style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
+        //     style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
+        //     style.outline.tile_edges = rule_style.outline.tile_edges;
+        //     style.outline.cap = rule_style.outline.cap || rule_style.cap;
+        //     style.outline.join = rule_style.outline.join || rule_style.join;
+        // }
+        // else {
+        //     style.outline.color = null;
+        //     style.outline.width = null;
+        //     style.outline.tile_edges = false;
+        // }
 
         return style;
+    },
+
+    preprocess (draw) {
+        draw.color = draw.color && { value: draw.color };
+        draw.z = draw.z && { value: draw.z };
     },
 
     /**

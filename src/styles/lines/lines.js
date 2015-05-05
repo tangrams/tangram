@@ -50,22 +50,29 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        style.color = rule_style.color && StyleParser.parseColor(rule_style.color, context);
-        style.width = rule_style.width && StyleParser.parseDistance(rule_style.width, context);
+        style.width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context);
+        if (!style.width) {
+            return;
+        }
+
+        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
 
         // Smoothly interpolate line width between zooms: get scale factors to previous and next zooms
         // Adjust by factor of 2 because tile units are zoom-dependent (a given value is twice as
         // big in world space at the next zoom than at the previous)
         context.zoom--;
-        style.prev_width = StyleParser.parseDistance(rule_style.width, context) / 2;
+        context.units_per_meter /= 2;
+        style.prev_width = StyleParser.cacheDistance(rule_style.width, context);
         style.prev_width = Utils.scaleInt16(style.prev_width / style.width, 256);
         context.zoom += 2;
-        style.next_width = StyleParser.parseDistance(rule_style.width, context) * 2;
+        context.units_per_meter *= 4; // undo previous divide by 2, then multiply by 2
+        style.next_width = StyleParser.cacheDistance(rule_style.width, context);
         style.next_width = Utils.scaleInt16(style.next_width / style.width, 256);
         context.zoom--;
+        context.units_per_meter /= 2;
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.extrude = rule_style.extrude;
         if (style.extrude) {
@@ -90,19 +97,29 @@ Object.assign(Lines, {
         style.join = rule_style.join;
         style.tile_edges = rule_style.tile_edges;
 
-        style.outline = style.outline || {};
-        if (rule_style.outline) {
-            style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
-            style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
-            style.outline.cap = rule_style.outline.cap || rule_style.cap;
-            style.outline.join = rule_style.outline.join || rule_style.join;
-        }
-        else {
-            style.outline.color = null;
-            style.outline.width = null;
-        }
+        // style.outline = style.outline || {};
+        // if (rule_style.outline) {
+        //     style.outline.color = rule_style.outline.color && StyleParser.cacheColor(rule_style.outline.color, context);
+        //     style.outline.width = rule_style.outline.width && StyleParser.parseDistance(rule_style.outline.width, context);
+        //     style.outline.cap = rule_style.outline.cap || rule_style.cap;
+        //     style.outline.join = rule_style.outline.join || rule_style.join;
+        // }
+        // else {
+        //     style.outline.color = null;
+        //     style.outline.width = null;
+        // }
 
         return style;
+    },
+
+    preprocess (draw) {
+        draw.color = draw.color && { value: draw.color };
+        draw.width = draw.width && { value: draw.width };
+        draw.z = draw.z && { value: draw.z };
+
+        // if (draw.outline) {
+        //     draw.outline.color = draw.outline.color && { value: draw.outline.color };
+        // }
     },
 
     /**

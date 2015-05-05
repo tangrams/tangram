@@ -128,6 +128,12 @@ export var Style = {
         try {
             var style = this.feature_style;
 
+            // Preprocess first time
+            if (!rule_style.preprocessed) {
+                this.preprocess(rule_style);
+                rule_style.preprocessed = true;
+            }
+
             // Calculate order if it was not cached
             style.order = rule_style.order;
             if (typeof style.order !== 'number') {
@@ -167,6 +173,8 @@ export var Style = {
     _parseFeature (feature, rule_style, context) {
         throw new MethodNotImplemented('_parseFeature');
     },
+
+    preprocess () {},
 
     // Build functions are no-ops until overriden
     buildPolygons () {},

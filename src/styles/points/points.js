@@ -53,8 +53,8 @@ Object.assign(Points, {
 
         let tile = context.tile.key;
 
-        style.color = (rule_style.color && StyleParser.parseColor(rule_style.color, context)) || [1, 1, 1, 1];
-        style.z = (rule_style.z && StyleParser.parseDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+        style.color = (rule_style.color && StyleParser.cacheColor(rule_style.color, context)) || [1, 1, 1, 1];
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         style.sprite = rule_style.sprite;
         if (typeof style.sprite === 'function') {
@@ -68,8 +68,8 @@ Object.assign(Points, {
         }
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = rule_style.size || [32, 32];
-        style.size = StyleParser.parseDistance(style.size, context, false);
+        style.size = rule_style.size || { value: [32, 32] };
+        style.size = StyleParser.cacheDistance(style.size, context, false);
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [
@@ -106,6 +106,12 @@ Object.assign(Points, {
         }
 
         return style;
+    },
+
+    preprocess (draw) {
+        draw.color = draw.color && { value: draw.color };
+        draw.z = draw.z && { value: draw.z };
+        draw.size = draw.size && { value: draw.size };
     },
 
     /**
