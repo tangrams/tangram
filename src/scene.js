@@ -1049,7 +1049,7 @@ export default class Scene {
         this.config_source = config_source || this.config_source;
 
         return this.loadScene().then(() => {
-            this.updateStyles();
+            this.updateConfig();
             this.syncConfigToWorker();
             return this.rebuildGeometry();
         }, (error) => {
