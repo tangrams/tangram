@@ -85,6 +85,7 @@ export default class Texture {
 
                 resolve(this);
             };
+            this.image.crossOrigin = 'anonymous';
             this.image.src = url;
             // TODO: error/promise reject
         });
