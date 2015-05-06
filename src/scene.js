@@ -1040,10 +1040,13 @@ export default class Scene {
     }
 
     // Reload scene config and rebuild tiles
-    reload() {
+    // Optionally specify new scene file URL
+    reload(config_source = null) {
         if (!this.initialized) {
             return Promise.resolve(this);
         }
+
+        this.config_source = config_source || this.config_source;
 
         return this.loadScene().then(() => {
             this.updateStyles();
