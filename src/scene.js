@@ -284,7 +284,7 @@ export default class Scene {
 
     // Choose the base zoom level to use for a given fractional zoom
     baseZoom(zoom) {
-        return Math.round(zoom);
+        return Math.floor(zoom);
     }
 
     setZoom(zoom) {
