@@ -1174,7 +1174,10 @@ export default class Scene {
                 }
             }
         }
-        this.animated = animated;
+
+        // Use explicitly set scene animation flag if defined, otherwise turn on animation
+        // if there are any animated styles
+        this.animated = this.config.scene.animated !== undefined ? this.config.scene.animated : animated;
 
         // Compile newly active styles
         return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
@@ -1238,7 +1241,7 @@ export default class Scene {
 
     // Set background color
     setBackground() {
-        let bg = this.config.background;
+        let bg = this.config.scene.background;
         this.background = {};
         if (bg && bg.color) {
             this.background.color = StyleParser.parseColor(bg.color);
@@ -1250,6 +1253,7 @@ export default class Scene {
 
     // Update scene config
     updateConfig() {
+        this.config.scene = this.config.scene || {};
         this.createCamera();
         this.createLights();
         this.loadDataSources();

@@ -21,8 +21,9 @@ lights:
         diffuse: .2
         ambient: 1.1
 
-background:
-    color: '#9dc3de'
+scene:
+    background:
+        color: '#9dc3de'
 
 textures:
     pois:
