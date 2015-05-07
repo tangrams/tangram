@@ -182,36 +182,43 @@ StyleParser.convertUnits = function(val, context, convert = 'meters') {
 
 // Takes a distance cache object and returns a distance value for this zoom
 // (caching the result for future use)
-// { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
+// { value: original, zoom: { z: meters }, dynamic: function(){...} }
 StyleParser.cacheDistance = function(val, context, convert = 'units') {
     if (val.dynamic) {
-        return val.dynamic(context);
+        let v = val.dynamic(context);
+        if (convert === 'units') {
+            v *= context.units_per_meter;
+        }
+        return v;
     }
-    else if (val.static) {
-        return val.static;
-    }
-    else if (val.zoom && val.zoom[context.zoom]) {
-        return val.zoom[context.zoom];
+    else if (val.zoom && val.zoom[convert] && val.zoom[convert][context.zoom]) {
+        return val.zoom[convert][context.zoom];
     }
     else {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            return val.dynamic(context);
+            let v = val.dynamic(context);
+            if (convert === 'units') {
+                v *= context.units_per_meter;
+            }
+            return v;
         }
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
         else {
             // Calculate color for current zoom
             val.zoom = val.zoom || {};
-            val.zoom[context.zoom] = StyleParser.convertUnits(val.value, context,
+            let zunits = val.zoom[convert] = val.zoom[convert] || {};
+
+            zunits[context.zoom] = StyleParser.convertUnits(val.value, context,
                 (convert === 'units' || convert === 'meters') && 'meters'); // convert to meters
-            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.zoom[context.zoom]);
+            zunits[context.zoom] = Utils.interpolate(context.zoom, zunits[context.zoom]);
 
             // Convert to tile units
             if (convert === 'units') {
-                val.zoom[context.zoom] *= context.units_per_meter;
+                zunits[context.zoom] *= context.units_per_meter;
             }
-            return val.zoom[context.zoom];
+            return zunits[context.zoom];
         }
     }
 };
