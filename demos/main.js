@@ -24,23 +24,23 @@ Enjoy!
     var tile_sources = {
         'mapzen': {
             type: 'MVT',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt'
+            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt'
         },
         'mapzen-geojson': {
             type: 'GeoJSONTiles',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-dev': {
             type: 'GeoJSONTiles',
-            url: window.location.protocol + '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url: '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json'
         },
         'mapzen-local': {
             type: 'GeoJSONTiles',
-            url: window.location.protocol + '//localhost:8080/all/{z}/{x}/{y}.json'
+            url: '//localhost:8080/all/{z}/{x}/{y}.json'
         },
         'mapzen-topojson': {
             type: 'TopoJSONTiles',
-            url: window.location.protocol + '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
+            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson'
         },
 
         // 'osm': {
