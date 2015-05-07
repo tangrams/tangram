@@ -73,7 +73,6 @@ describe('.mergeTrees()', () => {
                 parent,
                 {
                     group: {
-                        "order": 1,
                         "b": "z",
                         "color": [7, 8, 9]
                     }
@@ -85,7 +84,7 @@ describe('.mergeTrees()', () => {
             assert.deepEqual(mergeTrees(subject, 'group', {}), {
                 visible: true,
                 width: 10,
-                order: 5,
+                order: 3,
                 a: 'y',
                 b: 'z',
                 color: [7, 8, 9]
