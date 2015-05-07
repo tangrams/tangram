@@ -292,16 +292,17 @@ Enjoy!
                     scene.config.layers.roads.draw.lines.color = '#777';
                     scene.config.layers.poi_icons.visible = false;
                     scene.config.layers.buildings.draw.polygons.style = style;
+                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
                 }
             },
             'popup': {
                 setup: function (style) {
-                    scene.config.layers.buildings.draw.polygons.style = style;
+                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
                 }
             },
             'elevator': {
                 setup: function (style) {
-                    scene.config.layers.buildings.draw.polygons.style = style;
+                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
                 }
             },
             'halftone': {
@@ -314,6 +315,7 @@ Enjoy!
                     // layers.water.outlines.draw.lines.style = 'halftone_lines';
                     layers.landuse.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.style = 'halftone_polygons';
+                    layers.buildings.extruded.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.color = 'Style.color.pseudoRandomColor()';
                     layers.roads.draw.lines.style = 'halftone_lines';
                     layers.roads.draw.outlines.style = 'halftone_lines';
@@ -335,6 +337,7 @@ Enjoy!
                     scene.config.layers.poi_icons.visible = false;
 
                     scene.config.layers.buildings.draw.polygons.style = style;
+                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
                     // scene.config.layers.pois.visible = false;
                 }
             },
@@ -344,6 +347,7 @@ Enjoy!
                     scene.config.layers.roads.draw.lines.color = '#777';
 
                     scene.config.layers.buildings.draw.polygons.style = style;
+                    scene.config.layers.buildings.extruded.draw.polygons.style = style;
 
                     var envmaps = {
                         'Chrome': 'demos/images/LitSphere_test_02.jpg',
