@@ -167,7 +167,7 @@ layers:
             filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
             draw:
                 polygons:
-                    order: 1
+                    order: 2
                     color: '#bddec5'
         blue:
             filter: { kind: [commercial, industrial] }
@@ -282,7 +282,7 @@ layers:
                 lines:
                     color: '#bbb'
                     width: [[15, 0px], [18, 2px]]
-                    order: -2
+                    order: 3 # -2
                 outlines:
                     width: 0
         airports:
