@@ -108,27 +108,27 @@ export var Style = {
             this.tile_data[tile].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data);
+        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data, {context});
     },
 
-    buildGeometry (geometry, style, vertex_data) {
+    buildGeometry (geometry, style, vertex_data, options) {
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data);
+            this.buildPolygons([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data);
+            this.buildPolygons(geometry.coordinates, style, vertex_data, options);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data);
+            this.buildLines([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data);
+            this.buildLines(geometry.coordinates, style, vertex_data, options);
         }
         else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data);
+            this.buildPoints([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data);
+            this.buildPoints(geometry.coordinates, style, vertex_data, options);
         }
     },
 
