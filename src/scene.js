@@ -1033,7 +1033,7 @@ export default class Scene {
        @return {Promise}
     */
     loadScene() {
-        this.config_path = Utils.pathForURL(this.config_source);
+        this.config_path = (typeof this.config_source === 'string') && Utils.pathForURL(this.config_source);
         Texture.base_url = this.config_path;
 
         return Utils.loadResource(this.config_source).then((config) => {
