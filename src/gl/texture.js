@@ -73,6 +73,10 @@ export default class Texture {
             return;
         }
 
+        if (Texture.base_url) {
+            url = Utils.addBaseURL(url, Texture.base_url);
+        }
+
         this.loading = new Promise((resolve, reject) => {
             this.image = new Image();
             this.image.onload = () => {
@@ -325,5 +329,7 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+
+Texture.base_url = null; // optional base URL to add to textures
 
 subscribeMixin(Texture);

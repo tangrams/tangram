@@ -70,13 +70,13 @@ StyleManager.remove = function (name) {
 };
 
 // Preloads network resources in the stylesheet (shaders, textures, etc.)
-StyleManager.preload = function (styles) {
+StyleManager.preload = function (styles, base) {
     // First load remote styles, then load shader blocks from remote URLs
-    return StyleManager.loadRemoteStyles(styles).then(StyleManager.loadShaderBlocks);
+    return StyleManager.loadRemoteStyles(styles, base).then(styles => StyleManager.loadShaderBlocks(styles, base));
 };
 
 // Load style definitions from external URLs
-StyleManager.loadRemoteStyles = function (styles) {
+StyleManager.loadRemoteStyles = function (styles, base) {
     // Collect URLs and modes to import from them
     // This is done as a separate step becuase it is possible to import multiple modes from a single
     // URL, and we want to avoid duplicate calls for the same file.
@@ -84,12 +84,17 @@ StyleManager.loadRemoteStyles = function (styles) {
     for (var name in styles) {
         var style = styles[name];
         if (style.url) {
-            if (!urls[style.url]) {
-                urls[style.url] = [];
+            let url = style.url;
+            if (base) {
+                url = Utils.addBaseURL(url, base);
+            }
+
+            if (!urls[url]) {
+                urls[url] = [];
             }
 
             // Make a list of the styles to import for this URL
-            urls[style.url].push({
+            urls[url].push({
                 target_name: name,
                 source_name: style.name || name
             });
@@ -126,7 +131,7 @@ StyleManager.loadRemoteStyles = function (styles) {
 };
 
 // Preload shader blocks from external URLs
-StyleManager.loadShaderBlocks = function (styles) {
+StyleManager.loadShaderBlocks = function (styles, base) {
     var queue = [];
     for (var style of Utils.values(styles)) {
         if (style.shaders && style.shaders.blocks) {
@@ -140,7 +145,12 @@ StyleManager.loadShaderBlocks = function (styles) {
                     for (let b=0; b < block.length; b++) {
                         if (typeof block[b] === 'object' && block[b].url) {
                             let _index = b;
-                            queue.push(Utils.io(Utils.cacheBusterForUrl(block[b].url)).then((data) => {
+                            let url = block[b].url;
+                            if (base) {
+                                url = Utils.addBaseURL(url, base);
+                            }
+
+                            queue.push(Utils.io(Utils.cacheBusterForUrl(url)).then((data) => {
                                 _blocks[_key][_index] = data;
                             }).catch((error) => {
                                 log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, _index, error);
@@ -150,7 +160,12 @@ StyleManager.loadShaderBlocks = function (styles) {
                 }
                 // Single block
                 else if (typeof block === 'object' && block.url) {
-                    queue.push(Utils.io(Utils.cacheBusterForUrl(block.url)).then((data) => {
+                    let url = block.url;
+                    if (base) {
+                        url = Utils.addBaseURL(url, base);
+                    }
+
+                    queue.push(Utils.io(Utils.cacheBusterForUrl(url)).then((data) => {
                         _blocks[_key] = data;
                     }).catch((error) => {
                         log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, error);
