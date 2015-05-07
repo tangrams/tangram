@@ -73,7 +73,8 @@ Enjoy!
             maxZoom: 20,
             trackResize: true,
             inertia: false,
-            keyboard: false
+            keyboard: false,
+            wheelDebounceTime: 20
         }),
 
         layer = Tangram.leafletLayer({

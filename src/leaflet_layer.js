@@ -114,6 +114,9 @@ if (Utils.isMainThread) {
             // Force leaflet zoom animations off
             map._zoomAnimated = false;
 
+            // Modify default leaflet scroll wheel behavior
+            this.modifyScrollWheelBehavior(map);
+
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
             this.scene.container = map.getContainer();
@@ -179,6 +182,39 @@ if (Utils.isMainThread) {
             }
 
             return div;
+        },
+
+        // Modify leaflet's default scroll wheel behavior to have a much more sensitve/continuous zoom
+        // Note: this should be deprecated once leaflet continuous zoom is more widely used and the
+        // default behavior is presumably improved
+        modifyScrollWheelBehavior: function (map) {
+            if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
+                map.scrollWheelZoom._performZoom = function () {
+                    var map = this._map,
+                        delta = this._delta,
+                        zoom = map.getZoom();
+
+                    map.stop(); // stop panning and fly animations if any
+
+                    // NOTE: this is the only real modification to default leaflet behavior
+                    delta /= 40;
+
+                    delta = Math.max(Math.min(delta, 4), -4);
+                    delta = map._limitZoom(zoom + delta) - zoom;
+
+                    this._delta = 0;
+                    this._startTime = null;
+
+                    if (!delta) { return; }
+
+                    if (map.options.scrollWheelZoom === 'center') {
+                        map.setZoom(zoom + delta);
+                    } else {
+                        map.setZoomAround(this._lastMousePos, zoom + delta);
+                    }
+                    return false;
+                };
+            }
         },
 
         onTangramViewUpdate: function () {
