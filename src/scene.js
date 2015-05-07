@@ -1033,6 +1033,9 @@ export default class Scene {
        @return {Promise}
     */
     loadScene() {
+        this.config_path = Utils.pathForURL(this.config_source);
+        Texture.base_url = this.config_path;
+
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
             return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
@@ -1102,7 +1105,7 @@ export default class Scene {
         this.config.lights = this.config.lights || {}; // ensure lights object
         this.config.styles = this.config.styles || {}; // ensure styles object
 
-        return StyleManager.preload(this.config.styles);
+        return StyleManager.preload(this.config.styles, this.config_path);
     }
 
     // Load all textures in the scene definition

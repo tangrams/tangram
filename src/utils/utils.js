@@ -8,9 +8,10 @@ import Geo from '../geo';
 var Utils;
 export default Utils = {};
 
-// Add the current base URL for schemeless or protocol-less URLs
+// Add a base URL for schemeless or protocol-less URLs
+// Defaults to adding current window protocol and base, or adds a custom base if specified
 // Maybe use https://github.com/medialize/URI.js if more robust functionality is needed
-Utils.addBaseURL = function (url) {
+Utils.addBaseURL = function (url, base) {
     if (!url) {
         return;
     }
@@ -21,9 +22,23 @@ Utils.addBaseURL = function (url) {
     }
     // No http(s) or data, add base
     else if (url.search(/(http|https|data):\/\//) < 0) {
-        url = window.location.origin + window.location.pathname + url;
+        var relative = (url[0] !== '/');
+        var base_info;
+        if (base) {
+            base_info = document.createElement('a'); // use a temporary element to parse URL
+            base_info.href = base;
+        }
+        else {
+            base_info = window.location;
+        }
+
+        url = base_info.origin + (relative ? base_info.pathname : '') + url;
     }
     return url;
+};
+
+Utils.pathForURL = function (url) {
+    return url.substr(0, url.lastIndexOf('/') + 1);
 };
 
 Utils.cacheBusterForUrl = function (url) {

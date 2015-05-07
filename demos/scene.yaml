@@ -27,7 +27,7 @@ scene:
 
 textures:
     pois:
-        url: demos/images/poi_icons_32.png
+        url: images/poi_icons_32.png
         filtering: mipmap
         sprites:
             # each sprite is defined as: [x origin, y origin, width, height]
@@ -55,7 +55,7 @@ styles:
                 EFFECT_NOISE_ANIMATED: true
             blocks:
                 global:
-                    url: demos/shaders/glsl-noise-periodic-3d.glsl
+                    url: shaders/glsl-noise-periodic-3d.glsl
                 color: |
                     color.rgb *=
                         abs(pnoise(
@@ -80,7 +80,7 @@ styles:
                     color.rgb = hsv2rgb(c);
 
     popup:
-        url: demos/styles/popup.yaml
+        url: styles/popup.yaml
 
     elevator:
         base: polygons
@@ -100,17 +100,17 @@ styles:
             ambient: 0
             diffuse: 0
             emission:
-                texture: demos/images/sunset.jpg
+                texture: images/sunset.jpg
                 mapping: spheremap
 
     halftone_polygons:
-        url: demos/styles/halftone.yaml
+        url: styles/halftone.yaml
 
     halftone_lines:
-        url: demos/styles/halftone.yaml
+        url: styles/halftone.yaml
 
     windows:
-        url: demos/styles/windows.yaml
+        url: styles/windows.yaml
 
     flat:
         base: polygons
