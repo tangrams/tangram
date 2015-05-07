@@ -3,18 +3,15 @@
 import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
-
 import {Style} from './style';
-import {Polygons} from './polygons/polygons';
-import {Lines} from './lines/lines';
-import {Points} from './points/points';
-import {TextStyle} from './text/text';
 
 import log from 'loglevel';
 
 export var StyleManager = {};
 export var Styles = {};
 export var BaseStyles = {};
+
+StyleManager.styles = Styles;
 
 // Set the base object used to instantiate styles
 StyleManager.baseStyle = Style;
@@ -336,9 +333,3 @@ StyleManager.compile = function (keys) {
 
     log.debug(`StyleManager.compile(): compiled all styles`);
 };
-
-// Add built-in rendering styles
-StyleManager.register(Polygons);
-StyleManager.register(Lines);
-StyleManager.register(Points);
-StyleManager.register(TextStyle);
