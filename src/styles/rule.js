@@ -16,8 +16,8 @@ function cacheKey (rules) {
 export function mergeTrees(matchingTrees, key, context) {
     var draw = {},
         draws,
-        order = [],
-        order_draws = [],
+        // order = [],
+        // order_draws = [],
         treeDepth = 0,
         i, x, t;
 
@@ -50,12 +50,12 @@ export function mergeTrees(matchingTrees, key, context) {
             }
 
             // Collect unique orders (don't add the order multiple times for the smae draw rule)
-            if (draws[i].order !== undefined) {
-                if (order_draws.indexOf(draws[i]) === -1) {
-                    order.push(draws[i].order);
-                    order_draws.push(draws[i]);
-                }
-            }
+            // if (draws[i].order !== undefined) {
+            //     if (order_draws.indexOf(draws[i]) === -1) {
+            //         order.push(draws[i].order);
+            //         order_draws.push(draws[i]);
+            //     }
+            // }
         }
 
         // Merge remaining draw objects
@@ -68,16 +68,17 @@ export function mergeTrees(matchingTrees, key, context) {
     }
 
     // Sum all orders
-    if (order.length > 0) {
-        // Order can be cached if it is all numeric
-        if (order.length === 1 && typeof order[0] === 'number') {
-            order = order[0];
-        }
-        else if (order.every(v => typeof v === 'number')) {
-            order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
-        }
-        draw.order = order;
-    }
+    // Note: temporarily commenting out, will revisit with new scene file syntax
+    // if (order.length > 0) {
+    //     // Order can be cached if it is all numeric
+    //     if (order.length === 1 && typeof order[0] === 'number') {
+    //         order = order[0];
+    //     }
+    //     else if (order.every(v => typeof v === 'number')) {
+    //         order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
+    //     }
+    //     draw.order = order;
+    // }
 
     return draw;
 }
