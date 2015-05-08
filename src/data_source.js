@@ -3,7 +3,9 @@
 import Geo from './geo';
 import {MethodNotImplemented} from './utils/errors';
 import Utils from './utils/utils';
-import log from 'loglevel';
+
+// For TopoJSON tiles
+import topojson from 'topojson';
 
 export default class DataSource {
 
@@ -216,23 +218,6 @@ DataSource.register(GeoJSONTileSource);
 
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
 export class TopoJSONTileSource extends NetworkTileSource {
-
-    constructor (source) {
-        super(source);
-
-        // Loads TopoJSON library from official D3 source on demand
-        // Not including in base library to avoid the extra weight
-        // Only loaded in worker since that is where data is processed
-        if (Utils.isWorkerThread && typeof topojson === 'undefined') {
-            try {
-                importScripts('http://d3js.org/topojson.v1.min.js');
-                log.info('TopoJSONTileSource: loaded topojson library');
-            }
-            catch (e) {
-                log.error('TopoJSONTileSource: failed to load TopoJSON library!');
-            }
-        }
-    }
 
     parseSourceData (tile, source, response) {
         if (typeof topojson === 'undefined') {
