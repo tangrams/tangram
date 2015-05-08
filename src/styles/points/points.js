@@ -69,7 +69,7 @@ Object.assign(Points, {
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
         style.size = rule_style.size || { value: [32, 32] };
-        style.size = StyleParser.cacheDistance(style.size, context, false);
+        style.size = StyleParser.cacheDistance(style.size, context, 'pixels');
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [

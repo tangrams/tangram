@@ -24,7 +24,7 @@ attribute float a_layer;
 // Optional dynamic line extrusion
 #ifdef TANGRAM_EXTRUDE_LINES
     attribute vec3 a_extrude;
-    attribute vec2 a_scale;
+    attribute float a_scale;
 #endif
 
 varying vec4 v_position;
@@ -83,12 +83,7 @@ void main() {
         width *= pow(2., zscale);
 
         // Smoothly interpolate line width between zooms
-        if (zscale >= 0.) {
-            width = mix(width, width * a_scale.x * 256., zscale);
-        }
-        else {
-            width = mix(width, width * a_scale.y * 256., -zscale);
-        }
+        width = mix(width, width * a_scale * 256., -zscale);
 
         // Modify line width before extrusion
         #pragma tangram: width

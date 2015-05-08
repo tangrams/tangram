@@ -147,7 +147,7 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
     };
 };
 
-StyleParser.convertUnits = function(val, context, convert = true) {
+StyleParser.convertUnits = function(val, context, convert = 'meters') {
     if (typeof val === 'string') {
         var units = val.match(/([0-9.-]+)([a-z]+)/);
         if (units && units.length === 3) {
@@ -155,7 +155,8 @@ StyleParser.convertUnits = function(val, context, convert = true) {
             units = units[2];
         }
 
-        if (convert) {
+        // Convert to meters
+        if (convert === 'meters') {
             // Convert from pixels
             if (units === 'px') {
                 val *= Geo.metersPerPixel(context.zoom);
@@ -181,45 +182,57 @@ StyleParser.convertUnits = function(val, context, convert = true) {
 
 // Takes a distance cache object and returns a distance value for this zoom
 // (caching the result for future use)
-// { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
-StyleParser.cacheDistance = function(val, context, convert = true) {
+// { value: original, zoom: { z: meters }, dynamic: function(){...} }
+StyleParser.cacheDistance = function(val, context, convert = 'units') {
     if (val.dynamic) {
-        return val.dynamic(context);
+        let v = val.dynamic(context);
+        if (convert === 'units') {
+            v *= context.units_per_meter;
+        }
+        return v;
     }
-    else if (val.static) {
-        return val.static;
-    }
-    else if (val.zoom && val.zoom[context.zoom]) {
-        return val.zoom[context.zoom];
+    else if (val.zoom && val.zoom[convert] && val.zoom[convert][context.zoom]) {
+        return val.zoom[convert][context.zoom];
     }
     else {
         // Dynamic function-based
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            return val.dynamic(context);
+            let v = val.dynamic(context);
+            if (convert === 'units') {
+                v *= context.units_per_meter;
+            }
+            return v;
         }
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
         else {
             // Calculate color for current zoom
             val.zoom = val.zoom || {};
-            val.zoom[context.zoom] = StyleParser.convertUnits(val.value, context, convert);
-            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.zoom[context.zoom]);
-            if (convert) {
-                val.zoom[context.zoom] *= context.units_per_meter;
+            let zunits = val.zoom[convert] = val.zoom[convert] || {};
+
+            zunits[context.zoom] = StyleParser.convertUnits(val.value, context,
+                (convert === 'units' || convert === 'meters') && 'meters'); // convert to meters
+            zunits[context.zoom] = Utils.interpolate(context.zoom, zunits[context.zoom]);
+
+            // Convert to tile units
+            if (convert === 'units') {
+                zunits[context.zoom] *= context.units_per_meter;
             }
-            return val.zoom[context.zoom];
+            return zunits[context.zoom];
         }
     }
 };
 
-StyleParser.parseDistance = function(val, context, convert = true) {
+StyleParser.parseDistance = function(val, context, convert = 'units') {
     if (typeof val === 'function') {
         val = val(context);
     }
-    val = StyleParser.convertUnits(val, context, convert);
+    val = StyleParser.convertUnits(val, context,
+        (convert === 'units' || convert === 'meters') && 'meters'); // convert to meters
     val = Utils.interpolate(context.zoom, val);
 
-    if (convert) {
+    // Convert to tile units
+    if (convert === 'units') {
         if (typeof val === 'number') {
             val *= context.units_per_meter;
         }

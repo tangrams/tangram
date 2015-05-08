@@ -16,6 +16,17 @@ import Tile from './tile';
 import DataSource from './data_source';
 import FeatureSelection from './selection';
 
+import {Polygons} from './styles/polygons/polygons';
+import {Lines} from './styles/lines/lines';
+import {Points} from './styles/points/points';
+import {TextStyle} from './styles/text/text';
+
+// Add built-in rendering styles
+StyleManager.register(Polygons);
+StyleManager.register(Lines);
+StyleManager.register(Points);
+StyleManager.register(TextStyle);
+
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';
 let mat4 = glMatrix.mat4;
@@ -1166,13 +1177,22 @@ export default class Scene {
                     // TODO: warn on non-object draw group
                     if (typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
-                        let style = this.styles[style_name];
-                        if (style) {
-                            this.active_styles[style_name] = true;
-                            if (style.animated) {
-                                animated = true;
-                            }
+                        let styles = [style_name];
+
+                        // optional additional outline style
+                        if (group.outline && group.outline.style) {
+                            styles.push(group.outline.style);
                         }
+
+                        styles = styles.filter(x => this.styles[x]).forEach(style_name => {
+                            let style = this.styles[style_name];
+                            if (style) {
+                                this.active_styles[style_name] = true;
+                                if (style.animated) {
+                                    animated = true;
+                                }
+                            }
+                        });
                     }
                 }
             }

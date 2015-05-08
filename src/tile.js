@@ -1,6 +1,7 @@
 /*global Tile */
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
+import {StyleManager} from './styles/style_manager';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
@@ -135,8 +136,6 @@ export default class Tile {
     static buildGeometry (tile, layers, rules, styles) {
         tile.debug.rendering = +new Date();
 
-        let tile_data = {};
-
         for (let source_name in tile.sources) {
             let source = tile.sources[source_name];
             source.debug.rendering = +new Date();
@@ -190,13 +189,9 @@ export default class Tile {
                             continue;
                         }
 
-                        if (!tile_data[style_name]) {
-                            tile_data[style_name] = style.startData();
-                        }
-
                         context.properties = group.properties; // add rule-specific properties to context
 
-                        style.addFeature(feature, group, context, tile_data[style_name]);
+                        style.addFeature(feature, group, tile.key, context);
 
                         context.properties = null; // clear group-specific properties
                     }
@@ -210,11 +205,12 @@ export default class Tile {
         }
 
         // Finalize array buffer for each render style
+        let tile_styles = StyleManager.stylesForTile(tile.key);
         tile.mesh_data = {};
         let queue = [];
-        for (let style_name in tile_data) {
+        for (let style_name of tile_styles) {
             let style = styles[style_name];
-            queue.push(style.endData(tile_data[style_name]).then((style_data) => {
+            queue.push(style.endData(tile.key).then((style_data) => {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,

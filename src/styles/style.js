@@ -28,6 +28,7 @@ export var Style = {
         this.selection_program = null;              // GL program reference for feature selection render pass
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
+        this.tile_data = {};
 
         // Blending
         this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
@@ -70,24 +71,36 @@ export var Style = {
     /*** Style parsing and geometry construction ***/
 
     // Returns an object to hold feature data (for a tile or other object)
-    startData () {
-        return {
+    startData (tile) {
+        this.tile_data[tile] = {
             vertex_data: null,
             uniforms: null
         };
+        return this.tile_data[tile];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
-    endData (tile_data) {
-        if (tile_data.vertex_data) {
+    endData (tile) {
+        var tile_data = this.tile_data[tile];
+        if (tile_data && tile_data.vertex_data) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
             tile_data.vertex_data = tile_data.vertex_data.buffer;
         }
+        this.tile_data[tile] = null;
         return Promise.resolve(tile_data);
     },
 
-    addFeature (feature, rule, context, tile_data) {
+    // Has mesh data for a given tile?
+    hasDataForTile (tile) {
+        return this.tile_data[tile] != null;
+    },
+
+    addFeature (feature, rule, tile, context) {
+        if (!this.tile_data[tile]) {
+            this.startData(tile);
+        }
+
         let style = this.parseFeature(feature, rule, context);
 
         // Skip feature?
@@ -96,31 +109,31 @@ export var Style = {
         }
 
         // First feature in this render style?
-        if (!tile_data.vertex_data) {
-            tile_data.vertex_data = this.vertex_layout.createVertexData();
+        if (!this.tile_data[tile].vertex_data) {
+            this.tile_data[tile].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, tile_data.vertex_data);
+        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data, {context});
     },
 
-    buildGeometry (geometry, style, vertex_data) {
+    buildGeometry (geometry, style, vertex_data, options) {
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data);
+            this.buildPolygons([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data);
+            this.buildPolygons(geometry.coordinates, style, vertex_data, options);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data);
+            this.buildLines([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data);
+            this.buildLines(geometry.coordinates, style, vertex_data, options);
         }
         else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data);
+            this.buildPoints([geometry.coordinates], style, vertex_data, options);
         }
         else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data);
+            this.buildPoints(geometry.coordinates, style, vertex_data, options);
         }
     },
 
