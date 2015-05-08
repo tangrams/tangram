@@ -7,6 +7,10 @@ import Utils from './utils/utils';
 // For TopoJSON tiles
 import topojson from 'topojson';
 
+// For MVT tiles
+import Pbf from 'pbf';
+import {VectorTile, VectorTileFeature} from 'vector-tile';
+
 export default class DataSource {
 
     constructor (source) {
@@ -258,18 +262,14 @@ export class MVTSource extends NetworkTileSource {
     constructor (source) {
         super(source);
         this.response_type = "arraybuffer"; // binary data
-        this.Protobuf = require('pbf');
-        this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib
-        this.VectorTileFeature = require('vector-tile').VectorTileFeature;
-
         this.pad_scale = source.pad_scale || 0.001; // scale tile up by this factor (0.1%) to cover seams
     }
 
     parseSourceData (tile, source, response) {
         // Convert Mapbox vector tile to GeoJSON
         var data = new Uint8Array(response);
-        var buffer = new this.Protobuf(data);
-        source.data = new this.VectorTile(buffer);
+        var buffer = new Pbf(data);
+        source.data = new VectorTile(buffer);
         source.layers = this.toGeoJSON(source.data);
         delete source.data; // comment out to save raw data for debugging
 
@@ -324,11 +324,11 @@ export class MVTSource extends NetworkTileSource {
                 }
                 geometry.coordinates = coordinates;
 
-                if (this.VectorTileFeature.types[feature.type] === 'Point') {
+                if (VectorTileFeature.types[feature.type] === 'Point') {
                     geometry.type = 'Point';
                     geometry.coordinates = geometry.coordinates[0][0];
                 }
-                else if (this.VectorTileFeature.types[feature.type] === 'LineString') {
+                else if (VectorTileFeature.types[feature.type] === 'LineString') {
                     if (coordinates.length === 1) {
                         geometry.type = 'LineString';
                         geometry.coordinates = geometry.coordinates[0];
@@ -337,7 +337,7 @@ export class MVTSource extends NetworkTileSource {
                         geometry.type = 'MultiLineString';
                     }
                 }
-                else if (this.VectorTileFeature.types[feature.type] === 'Polygon') {
+                else if (VectorTileFeature.types[feature.type] === 'Polygon') {
                     geometry.type = 'Polygon';
                 }
 
