@@ -13,6 +13,7 @@ dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
+	gzip dist/tangram.min.js -c | wc -c | awk '{ printf "%.0fk minified+gzipped\n", $$1 / 1024 }'
 
 # Process shaders into strings and export as a module
 src/gl/shader_sources.js: $(shell find src/ -name '*.glsl')

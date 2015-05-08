@@ -3,7 +3,13 @@
 import Geo from './geo';
 import {MethodNotImplemented} from './utils/errors';
 import Utils from './utils/utils';
-import log from 'loglevel';
+
+// For TopoJSON tiles
+import topojson from 'topojson';
+
+// For MVT tiles
+import Pbf from 'pbf';
+import {VectorTile, VectorTileFeature} from 'vector-tile';
 
 export default class DataSource {
 
@@ -217,23 +223,6 @@ DataSource.register(GeoJSONTileSource);
 /*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
 export class TopoJSONTileSource extends NetworkTileSource {
 
-    constructor (source) {
-        super(source);
-
-        // Loads TopoJSON library from official D3 source on demand
-        // Not including in base library to avoid the extra weight
-        // Only loaded in worker since that is where data is processed
-        if (Utils.isWorkerThread && typeof topojson === 'undefined') {
-            try {
-                importScripts('http://d3js.org/topojson.v1.min.js');
-                log.info('TopoJSONTileSource: loaded topojson library');
-            }
-            catch (e) {
-                log.error('TopoJSONTileSource: failed to load TopoJSON library!');
-            }
-        }
-    }
-
     parseSourceData (tile, source, response) {
         if (typeof topojson === 'undefined') {
             tile.layers = {};
@@ -273,18 +262,14 @@ export class MVTSource extends NetworkTileSource {
     constructor (source) {
         super(source);
         this.response_type = "arraybuffer"; // binary data
-        this.Protobuf = require('pbf');
-        this.VectorTile = require('vector-tile').VectorTile; // Mapbox vector tile lib
-        this.VectorTileFeature = require('vector-tile').VectorTileFeature;
-
         this.pad_scale = source.pad_scale || 0.001; // scale tile up by this factor (0.1%) to cover seams
     }
 
     parseSourceData (tile, source, response) {
         // Convert Mapbox vector tile to GeoJSON
         var data = new Uint8Array(response);
-        var buffer = new this.Protobuf(data);
-        source.data = new this.VectorTile(buffer);
+        var buffer = new Pbf(data);
+        source.data = new VectorTile(buffer);
         source.layers = this.toGeoJSON(source.data);
         delete source.data; // comment out to save raw data for debugging
 
@@ -339,11 +324,11 @@ export class MVTSource extends NetworkTileSource {
                 }
                 geometry.coordinates = coordinates;
 
-                if (this.VectorTileFeature.types[feature.type] === 'Point') {
+                if (VectorTileFeature.types[feature.type] === 'Point') {
                     geometry.type = 'Point';
                     geometry.coordinates = geometry.coordinates[0][0];
                 }
-                else if (this.VectorTileFeature.types[feature.type] === 'LineString') {
+                else if (VectorTileFeature.types[feature.type] === 'LineString') {
                     if (coordinates.length === 1) {
                         geometry.type = 'LineString';
                         geometry.coordinates = geometry.coordinates[0];
@@ -352,7 +337,7 @@ export class MVTSource extends NetworkTileSource {
                         geometry.type = 'MultiLineString';
                     }
                 }
-                else if (this.VectorTileFeature.types[feature.type] === 'Polygon') {
+                else if (VectorTileFeature.types[feature.type] === 'Polygon') {
                     geometry.type = 'Polygon';
                 }
 
