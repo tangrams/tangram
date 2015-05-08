@@ -1177,13 +1177,22 @@ export default class Scene {
                     // TODO: warn on non-object draw group
                     if (typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
-                        let style = this.styles[style_name];
-                        if (style) {
-                            this.active_styles[style_name] = true;
-                            if (style.animated) {
-                                animated = true;
-                            }
+                        let styles = [style_name];
+
+                        // optional additional outline style
+                        if (group.outline && group.outline.style) {
+                            styles.push(group.outline.style);
                         }
+
+                        styles = styles.filter(x => this.styles[x]).forEach(style_name => {
+                            let style = this.styles[style_name];
+                            if (style) {
+                                this.active_styles[style_name] = true;
+                                if (style.animated) {
+                                    animated = true;
+                                }
+                            }
+                        });
                     }
                 }
             }

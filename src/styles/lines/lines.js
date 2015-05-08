@@ -2,6 +2,7 @@
 
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
+import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
@@ -50,26 +51,27 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        style.width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context);
-        if (!style.width) {
+        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context, 'meters');
+        if (!inner_width) {
             return;
         }
-
-        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
+        style.width = inner_width * context.units_per_meter;
 
         // Smoothly interpolate line width between zooms: get scale factors to previous and next zooms
         // Adjust by factor of 2 because tile units are zoom-dependent (a given value is twice as
         // big in world space at the next zoom than at the previous)
         context.zoom--;
         context.units_per_meter /= 2;
-        style.prev_width = StyleParser.cacheDistance(rule_style.width, context);
-        style.prev_width = Utils.scaleInt16(style.prev_width / style.width, 256);
+        let prev_width = StyleParser.cacheDistance(rule_style.prev_width, context, 'meters');
+        style.prev_width = Utils.scaleInt16(prev_width * context.units_per_meter / style.width, 256);
         context.zoom += 2;
         context.units_per_meter *= 4; // undo previous divide by 2, then multiply by 2
-        style.next_width = StyleParser.cacheDistance(rule_style.width, context);
-        style.next_width = Utils.scaleInt16(style.next_width / style.width, 256);
+        let next_width = StyleParser.cacheDistance(rule_style.next_width, context, 'meters');
+        style.next_width = Utils.scaleInt16(next_width * context.units_per_meter / style.width, 256);
         context.zoom--;
-        context.units_per_meter /= 2;
+        context.units_per_meter /= 2; // reset to original scale
+
+        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
@@ -97,17 +99,36 @@ Object.assign(Lines, {
         style.join = rule_style.join;
         style.tile_edges = rule_style.tile_edges;
 
-        // style.outline = style.outline || {};
-        // if (rule_style.outline) {
-        //     style.outline.color = rule_style.outline.color && StyleParser.cacheColor(rule_style.outline.color, context);
-        //     style.outline.width = rule_style.outline.width && StyleParser.parseDistance(rule_style.outline.width, context);
-        //     style.outline.cap = rule_style.outline.cap || rule_style.cap;
-        //     style.outline.join = rule_style.outline.join || rule_style.join;
-        // }
-        // else {
-        //     style.outline.color = null;
-        //     style.outline.width = null;
-        // }
+        // Construct an outline style
+        style.outline = style.outline || {};
+        if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
+            let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context, 'meters') * 2;
+
+            context.zoom--;
+            context.units_per_meter /= 2;
+            let outline_prev_width = StyleParser.cacheDistance(rule_style.outline.prev_width, context, 'meters') * 2;
+            context.zoom += 2;
+            context.units_per_meter *= 4; // undo previous divide by 2, then multiply by 2
+            let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context, 'meters') * 2;
+            context.zoom--;
+            context.units_per_meter /= 2; // reset to original scale
+
+            // Maintain consistent outline width around the inner line
+            style.outline.width = { value: outline_width + inner_width };
+            style.outline.prev_width = { value: outline_prev_width + prev_width };
+            style.outline.next_width = { value: outline_next_width + next_width };
+
+            style.outline.color = rule_style.outline.color;
+            style.outline.cap = rule_style.outline.cap || rule_style.cap;
+            style.outline.join = rule_style.outline.join || rule_style.join;
+            style.outline.style = rule_style.outline.style || this.name;
+            style.outline.order = style.order - 0.5;
+            style.outline.preprocessed = true;
+        }
+        else {
+            style.outline.color = null;
+            style.outline.width = null;
+        }
 
         return style;
     },
@@ -115,11 +136,16 @@ Object.assign(Lines, {
     preprocess (draw) {
         draw.color = draw.color && { value: draw.color };
         draw.width = draw.width && { value: draw.width };
+        draw.prev_width = draw.width && { value: draw.width.value };
+        draw.next_width = draw.width && { value: draw.width.value };
         draw.z = draw.z && { value: draw.z };
 
-        // if (draw.outline) {
-        //     draw.outline.color = draw.outline.color && { value: draw.outline.color };
-        // }
+        if (draw.outline) {
+            draw.outline.color = draw.outline.color && { value: draw.outline.color };
+            draw.outline.width = draw.outline.width && { value: draw.outline.width };
+            draw.outline.prev_width = draw.outline.width && { value: draw.outline.width.value };
+            draw.outline.next_width = draw.outline.width && { value: draw.outline.width.value };
+        }
     },
 
     /**
@@ -190,34 +216,12 @@ Object.assign(Lines, {
         }
 
         // Outline
-        // TODO: for now, outlines can be drawn with multiple draw groups, but can consider restoring
-        // some outline capabilities in the future
-        // if (style.outline && style.outline.color && style.outline.width) {
-        //     // Replace color in vertex template
-        //     var color_index = this.vertex_layout.index.a_color;
-        //     vertex_template[color_index + 0] = style.outline.color[0] * 255;
-        //     vertex_template[color_index + 1] = style.outline.color[1] * 255;
-        //     vertex_template[color_index + 2] = style.outline.color[2] * 255;
-
-        //     // Line outlines sit underneath current layer but above the one below
-        //     vertex_template[this.vertex_layout.index.a_layer] -= 0.5;
-
-        //     Builders.buildPolylines(
-        //         lines,
-        //         style.width + 2 * style.outline.width,
-        //         vertex_data,
-        //         vertex_template,
-        //         {
-        //             cap: style.outline.cap,
-        //             join: style.outline.join,
-        //             scaling_index: this.vertex_layout.index.a_extrude,
-        //             texcoord_index: this.vertex_layout.index.a_texcoord,
-        //             texcoord_scale: this.texcoord_scale,
-        //             closed_polygon: options.closed_polygon,
-        //             remove_tile_edges: !style.tile_edges && options.remove_tile_edges
-        //         }
-        //     );
-        // }
+         if (style.outline && style.outline.color && style.outline.width) {
+            var outline_style = StyleManager.styles[style.outline.style];
+            if (outline_style) {
+                outline_style.addFeature(options.context.feature, style.outline, options.context.tile.key, options.context);
+            }
+        }
     },
 
     buildPolygons(polygons, style, vertex_data) {
