@@ -308,7 +308,7 @@ Enjoy!
             },
             'halftone': {
                 setup: function (style) {
-                    scene.config.background.color = 'black';
+                    scene.config.scene.background.color = 'black';
 
                     var layers = scene.config.layers;
                     layers.earth.draw.polygons.style = 'halftone_polygons';
