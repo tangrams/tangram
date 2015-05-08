@@ -49,6 +49,7 @@ export default class Scene {
         this.queued_tiles = [];
         this.num_workers = options.numWorkers || 2;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
+        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
@@ -298,18 +299,28 @@ export default class Scene {
         return Math.floor(zoom);
     }
 
+    // For a given view zoom, what tile zoom should be loaded?
+    tileZoom(view_zoom) {
+        return this.baseZoom(view_zoom) - this.tile_simplification_level;
+    }
+
+    // For a given tile zoom, what style zoom should be used?
+    styleZoom(tile_zoom) {
+        return this.baseZoom(tile_zoom) + this.tile_simplification_level;
+    }
+
     setZoom(zoom) {
         this.zooming = false;
-        let base = this.baseZoom(zoom);
+        let base = this.tileZoom(zoom);
 
         if (!this.continuous_zoom) {
             zoom = base;
         }
 
-        if (base !== this.baseZoom(this.last_zoom)) {
+        if (base !== this.tileZoom(this.last_zoom)) {
             // Remove tiles outside current zoom that are still loading
             this.removeTiles(tile => {
-                if (tile.loading && this.baseZoom(tile.coords.z) !== base) {
+                if (tile.loading && this.tileZoom(tile.coords.z) !== base) {
                     log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
                     return true;
                 }
@@ -350,7 +361,7 @@ export default class Scene {
         let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
         this.center_meters = { x, y };
 
-        let z = this.baseZoom(this.zoom);
+        let z = this.tileZoom(this.zoom);
         let max_zoom = this.findMaxZoom();
         if (z > max_zoom) {
             z = max_zoom;
@@ -387,7 +398,7 @@ export default class Scene {
     }
 
     findVisibleTiles({ buffer } = {}) {
-        let z = this.baseZoom(this.zoom);
+        let z = this.tileZoom(this.zoom);
         let max_zoom = this.findMaxZoom();
         if (z > max_zoom) {
             z = max_zoom;
@@ -414,7 +425,7 @@ export default class Scene {
             Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
             Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
         ];
-        let base = this.baseZoom(this.zoom);
+        let base = this.tileZoom(this.zoom);
 
         this.removeTiles(tile => {
             // Ignore visible tiles
@@ -837,7 +848,8 @@ export default class Scene {
             tile = Tile.create({
                 coords: coords,
                 max_zoom: this.findMaxZoom(),
-                worker: this.nextWorker()
+                worker: this.nextWorker(),
+                style_zoom: this.styleZoom(coords.z)
             });
 
             this.cacheTile(tile);
