@@ -107,6 +107,10 @@ export default class Scene {
             }
         };
 
+        this.initialized = false;
+        this.initializing = false;
+        this.updating = 0;
+
         this.logLevel = options.logLevel || 'info';
         log.setLevel(this.logLevel);
     }
@@ -527,7 +531,12 @@ export default class Scene {
         this.loadQueuedTiles();
 
         // Render on demand
-        var will_render = !(this.dirty === false || this.initialized === false || this.viewReady() === false);
+        var will_render = !(
+            this.dirty === false ||
+            this.initialized === false ||
+            this.updating > 0 ||
+            this.viewReady() === false
+        );
 
         // Pre-render loop hook
         if (typeof this.preUpdate === 'function') {
@@ -890,6 +899,7 @@ export default class Scene {
         return max_zoom;
     }
 
+    // Rebuild geometry, without re-parsing the config or re-compiling styles
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
     rebuild() {
         return this.rebuildGeometry();
@@ -897,9 +907,7 @@ export default class Scene {
 
     // Rebuild all tiles
     rebuildGeometry() {
-        if (!this.initialized) {
-            return Promise.reject(new Error('Scene.rebuildGeometry: scene is not initialized'));
-        }
+        this.updating++;
 
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
@@ -914,6 +922,7 @@ export default class Scene {
                 // Save queued request
                 this.building.queued = { resolve, reject };
                 log.trace(`Scene.rebuildGeometry(): queuing request`);
+                this.updating--;
                 return;
             }
 
@@ -960,6 +969,7 @@ export default class Scene {
             if (this.debug.profile.geometry_build) {
                 this._profileEnd('rebuildGeometry');
             }
+            this.updating--;
         });
     }
 
@@ -1071,13 +1081,19 @@ export default class Scene {
         if (!this.initialized) {
             return Promise.resolve(this);
         }
+        this.initialized = false;
+        this.initializing = true;
 
         this.config_source = config_source || this.config_source;
 
         return this.loadScene().then(() => {
             this.updateConfig();
             this.syncConfigToWorker();
-            return this.rebuildGeometry();
+            return this.rebuildGeometry().then(() => {
+                this.initialized = true;
+                this.initializing = false;
+                return this;
+            });
         }, (error) => {
             throw error;
         });
@@ -1286,8 +1302,9 @@ export default class Scene {
         }
     }
 
-    // Update scene config
-    updateConfig() {
+    // Update scene config, and optionally rebuild geometry
+    updateConfig({ rebuild } = {}) {
+        this.updating++;
         this.config.scene = this.config.scene || {};
         this.createCamera();
         this.createLights();
@@ -1299,6 +1316,10 @@ export default class Scene {
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
         this.syncConfigToWorker();
+        if (rebuild) {
+            this.rebuildGeometry();
+        }
+        this.updating--;
     }
 
     // Serialize config and send to worker

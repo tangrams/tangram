@@ -272,8 +272,7 @@ Enjoy!
             }
 
             // Recompile/rebuild
-            scene.updateConfig();
-            scene.rebuildGeometry();
+            scene.updateConfig({ rebuild: true });
             updateURL();
 
             // Force-update dat.gui
