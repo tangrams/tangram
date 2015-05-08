@@ -350,10 +350,10 @@ Enjoy!
                     scene.config.layers.buildings.extruded.draw.polygons.style = style;
 
                     var envmaps = {
-                        'Chrome': 'demos/images/LitSphere_test_02.jpg',
-                        'Sunset': 'demos/images/sunset.jpg',
-                        'Matte Red': 'demos/images/matball01.jpg',
-                        'Color Wheel': 'demos/images/wheel.png'
+                        'Chrome': window.location.origin+window.location.pathname+'demos/images/LitSphere_test_02.jpg',
+                        'Sunset': window.location.origin+window.location.pathname+'demos/images/sunset.jpg',
+                        'Matte Red': window.location.origin+window.location.pathname+'demos/images/matball01.jpg',
+                        'Color Wheel': window.location.origin+window.location.pathname+'demos/images/wheel.png'
                     };
 
                     this.state.envmap = scene.styles.envmap.material.emission.texture;
