@@ -114,7 +114,14 @@ Object.assign(Lines, {
             style.outline.cap = rule_style.outline.cap || rule_style.cap;
             style.outline.join = rule_style.outline.join || rule_style.join;
             style.outline.style = rule_style.outline.style || this.name;
-            style.outline.order = style.order - 0.5;
+
+            if (rule_style.outline.order) {
+                style.outline.order = this.parseOrder(rule_style.outline.order, context);
+            }
+            if (!style.outline.order) {
+                style.outline.order = style.order - 0.5;
+            }
+
             style.outline.preprocessed = true;
         }
         else {

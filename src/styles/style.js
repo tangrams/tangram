@@ -148,10 +148,7 @@ export var Style = {
             }
 
             // Calculate order if it was not cached
-            style.order = rule_style.order;
-            if (typeof style.order !== 'number') {
-                style.order = StyleParser.calculateOrder(style.order, context);
-            }
+            style.order = this.parseOrder(rule_style.order, context);
 
             // Feature selection (only if style supports it)
             var selectable = false;
@@ -188,6 +185,15 @@ export var Style = {
     },
 
     preprocess () {},
+
+    // Parse an order value
+    parseOrder (order, context) {
+        // Calculate order if it was not cached
+        if (typeof order !== 'number') {
+            return StyleParser.calculateOrder(order, context);
+        }
+        return order;
+    },
 
     // Build functions are no-ops until overriden
     buildPolygons () {},
