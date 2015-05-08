@@ -19,9 +19,6 @@ Object.assign(Polygons, {
         this.vertex_shader_key = 'styles/polygons/polygons_vertex';
         this.fragment_shader_key = 'styles/polygons/polygons_fragment';
 
-        // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
-
         // Turn feature selection on
         this.selection = true;
 

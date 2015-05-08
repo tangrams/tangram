@@ -30,6 +30,9 @@ StyleManager.init = function () {
     // Feature selection global
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
 
+    // World position wrapping
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/world_position_wrap']);
+
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);
 

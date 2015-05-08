@@ -20,9 +20,6 @@ Object.assign(Lines, {
     init() {
         Style.init.apply(this, arguments);
 
-        // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
-        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
-
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },

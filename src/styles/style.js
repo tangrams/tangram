@@ -30,6 +30,9 @@ export var Style = {
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
 
+        // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
+        this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
+
         // Blending
         this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
         this.defines[`TANGRAM_BLEND_${this.blend.toUpperCase()}`] = true;
