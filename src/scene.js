@@ -111,7 +111,7 @@ export default class Scene {
         this.initializing = false;
         this.updating = 0;
 
-        this.logLevel = options.logLevel || 'info';
+        this.logLevel = options.logLevel || 'warn';
         log.setLevel(this.logLevel);
     }
 
