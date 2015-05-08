@@ -91,6 +91,11 @@ export var Style = {
         return Promise.resolve(tile_data);
     },
 
+    // Has mesh data for a given tile?
+    hasDataForTile (tile) {
+        return this.tile_data[tile] != null;
+    },
+
     addFeature (feature, rule, tile, context) {
         if (!this.tile_data[tile]) {
             this.startData(tile);

@@ -1,6 +1,7 @@
 /*global Tile */
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
+import {StyleManager} from './styles/style_manager';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
@@ -135,8 +136,6 @@ export default class Tile {
     static buildGeometry (tile, layers, rules, styles) {
         tile.debug.rendering = +new Date();
 
-        let tile_styles = {}; // track styles used in tile
-
         for (let source_name in tile.sources) {
             let source = tile.sources[source_name];
             source.debug.rendering = +new Date();
@@ -194,10 +193,6 @@ export default class Tile {
 
                         style.addFeature(feature, group, tile.key, context);
 
-                        if (!tile_styles[style_name]) {
-                            tile_styles[style_name] = true;
-                        }
-
                         context.properties = null; // clear group-specific properties
                     }
 
@@ -210,9 +205,10 @@ export default class Tile {
         }
 
         // Finalize array buffer for each render style
+        let tile_styles = StyleManager.stylesForTile(tile.key);
         tile.mesh_data = {};
         let queue = [];
-        for (let style_name in tile_styles) {
+        for (let style_name of tile_styles) {
             let style = styles[style_name];
             queue.push(style.endData(tile.key).then((style_data) => {
                 if (style_data) {

@@ -333,3 +333,14 @@ StyleManager.compile = function (keys) {
 
     log.debug(`StyleManager.compile(): compiled all styles`);
 };
+
+// Get all styles with mesh data for a given tile
+StyleManager.stylesForTile = function (tile) {
+    let styles = [];
+    for (let s in Styles) {
+        if (Styles[s].hasDataForTile(tile)) {
+            styles.push(s);
+        }
+    }
+    return styles;
+};
