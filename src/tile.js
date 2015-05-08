@@ -16,7 +16,7 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, worker, max_zoom }) {
+    constructor({ coords, worker, max_zoom, style_zoom }) {
         Object.assign(this, {
             coords: {
                 x: null,
@@ -42,6 +42,7 @@ export default class Tile {
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+        this.style_zoom = style_zoom || this.coords.z; // zoom level to be used for styling
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.textures = []; // textures that the tile owns (labels, etc.)
@@ -110,6 +111,7 @@ export default class Tile {
             coords: this.coords,
             min: this.min,
             max: this.max,
+            style_zoom: this.style_zoom,
             debug: this.debug
         };
     }
