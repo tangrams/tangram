@@ -27,7 +27,7 @@ Object.assign(Lines, {
         var attribs = [
             { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_extrude', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_scale', size: 2, type: gl.SHORT, normalized: true },
+            { name: 'a_scale', size: 1, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
@@ -57,15 +57,11 @@ Object.assign(Lines, {
         }
         style.width = inner_width * context.units_per_meter;
 
-        // Smoothly interpolate line width between zooms: get scale factors to previous and next zooms
+        // Smoothly interpolate line width between zooms: get scale factor to next zoom
         // Adjust by factor of 2 because tile units are zoom-dependent (a given value is twice as
         // big in world space at the next zoom than at the previous)
-        context.zoom--;
-        context.units_per_meter /= 2;
-        let prev_width = StyleParser.cacheDistance(rule_style.prev_width, context, 'meters');
-        style.prev_width = Utils.scaleInt16(prev_width * context.units_per_meter / style.width, 256);
-        context.zoom += 2;
-        context.units_per_meter *= 4; // undo previous divide by 2, then multiply by 2
+        context.zoom ++;
+        context.units_per_meter *= 2;
         let next_width = StyleParser.cacheDistance(rule_style.next_width, context, 'meters');
         style.next_width = Utils.scaleInt16(next_width * context.units_per_meter / style.width, 256);
         context.zoom--;
@@ -104,18 +100,14 @@ Object.assign(Lines, {
         if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
             let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context, 'meters') * 2;
 
-            context.zoom--;
-            context.units_per_meter /= 2;
-            let outline_prev_width = StyleParser.cacheDistance(rule_style.outline.prev_width, context, 'meters') * 2;
-            context.zoom += 2;
-            context.units_per_meter *= 4; // undo previous divide by 2, then multiply by 2
+            context.zoom ++;
+            context.units_per_meter *= 2;
             let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context, 'meters') * 2;
             context.zoom--;
             context.units_per_meter /= 2; // reset to original scale
 
             // Maintain consistent outline width around the inner line
             style.outline.width = { value: outline_width + inner_width };
-            style.outline.prev_width = { value: outline_prev_width + prev_width };
             style.outline.next_width = { value: outline_next_width + next_width };
 
             style.outline.color = rule_style.outline.color;
@@ -136,14 +128,12 @@ Object.assign(Lines, {
     preprocess (draw) {
         draw.color = draw.color && { value: draw.color };
         draw.width = draw.width && { value: draw.width };
-        draw.prev_width = draw.width && { value: draw.width.value };
         draw.next_width = draw.width && { value: draw.width.value };
         draw.z = draw.z && { value: draw.z };
 
         if (draw.outline) {
             draw.outline.color = draw.outline.color && { value: draw.outline.color };
             draw.outline.width = draw.outline.width && { value: draw.outline.width };
-            draw.outline.prev_width = draw.outline.width && { value: draw.outline.width.value };
             draw.outline.next_width = draw.outline.width && { value: draw.outline.width.value };
         }
     },
@@ -166,28 +156,27 @@ Object.assign(Lines, {
         this.vertex_template[5] = 1;
 
         // scaling to previous and next zoom
-        this.vertex_template[6] = style.prev_width;
-        this.vertex_template[7] = style.next_width;
+        this.vertex_template[6] = style.next_width;
 
         // color
-        this.vertex_template[8] = color[0] * 255;
-        this.vertex_template[9] = color[1] * 255;
-        this.vertex_template[10] = color[2] * 255;
-        this.vertex_template[11] = color[3] * 255;
+        this.vertex_template[7] = color[0] * 255;
+        this.vertex_template[8] = color[1] * 255;
+        this.vertex_template[9] = color[2] * 255;
+        this.vertex_template[10] = color[3] * 255;
 
         // selection color
-        this.vertex_template[12] = style.selection_color[0] * 255;
-        this.vertex_template[13] = style.selection_color[1] * 255;
-        this.vertex_template[14] = style.selection_color[2] * 255;
-        this.vertex_template[15] = style.selection_color[3] * 255;
+        this.vertex_template[11] = style.selection_color[0] * 255;
+        this.vertex_template[12] = style.selection_color[1] * 255;
+        this.vertex_template[13] = style.selection_color[2] * 255;
+        this.vertex_template[14] = style.selection_color[3] * 255;
 
         // layer order
-        this.vertex_template[16] = style.order;
+        this.vertex_template[15] = style.order;
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {
+            this.vertex_template[16] = 0;
             this.vertex_template[17] = 0;
-            this.vertex_template[18] = 0;
         }
 
         return this.vertex_template;
