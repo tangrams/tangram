@@ -319,7 +319,6 @@ Enjoy!
                     layers.buildings.extruded.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.color = 'Style.color.pseudoRandomColor()';
                     layers.roads.draw.lines.style = 'halftone_lines';
-                    layers.roads.draw.outlines.style = 'halftone_lines';
                     layers.poi_icons.visible = false;
 
                     var visible_layers = ['landuse', 'water', 'roads', 'buildings'];

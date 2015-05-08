@@ -222,26 +222,24 @@ layers:
                         //order = 5 + reduceSortKey(feature.sort_key) - min;
                         return order;
                     }
-                # interactive: true
-            outlines:
-                style: flat_lines
-                color: [[16, '#999'], [18, '#aaa']]
-                width: [[15, 0], [16, 14]]
-                order: |
-                    function () {
-                        function reduceSortKey(key) {
-                            return 30 * Math.floor((key % 10000) / 1000) +
-                                   10 * Math.floor((key % 1000) / 100) +
-                                   1  * (key % 10);
-                        }
+                outline:
+                    color: [[16, '#999'], [18, '#aaa']]
+                    width: [[15, 0], [16, 2]]
+                    order: |
+                        function () {
+                            function reduceSortKey(key) {
+                                return 30 * Math.floor((key % 10000) / 1000) +
+                                       10 * Math.floor((key % 1000) / 100) +
+                                       1  * (key % 10);
+                            }
 
-                        var min = reduceSortKey(-3109);
-                        var order;
-                        if (feature.sort_key < 10) { order = 4; }
-                        else { order = 4 + reduceSortKey(feature.sort_key) - min; }
-                        //order = 4 + reduceSortKey(feature.sort_key) - min;
-                        return order;
-                    }
+                            var min = reduceSortKey(-3109);
+                            var order;
+                            if (feature.sort_key < 10) { order = 4; }
+                            else { order = 4 + reduceSortKey(feature.sort_key) - min; }
+                            //order = 4 + reduceSortKey(feature.sort_key) - min;
+                            return order;
+                        }
 
         rounded:
             filter: { $zoom: { min: 17 } }
@@ -255,8 +253,8 @@ layers:
                 lines:
                     color: '#D16768'
                     width: [[14, 2px], [15, 12]]
-                outlines:
-                    width: [[14, 0], [15, 16]]
+                    outline:
+                        width: [[14, 0], [15, 2]]
             link:
                 filter: { is_link: yes }
                 draw:
@@ -268,15 +266,15 @@ layers:
             draw:
                 lines:
                     width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
-                outlines:
-                    width: [[16, 0], [17, 14]]
+                    outline:
+                        width: [[16, 0], [17, 1]]
         minor_road:
             filter: { kind: minor_road }
             draw:
                 lines:
                     width: [[13, 0px], [14, 1px], [15, 8]]
-                outlines:
-                    width: [[17, 0], [18, 10]]
+                    outline:
+                        width: [[17, 0], [18, 1]]
         paths:
             filter: { kind: path }
             draw:
@@ -284,15 +282,15 @@ layers:
                     color: '#bbb'
                     width: [[15, 0px], [18, 2px]]
                     order: 3 # -2
-                outlines:
-                    width: 0
+                    outline:
+                        width: 0
         airports:
             filter: { aeroway: true }
             draw:
                 lines:
                     color: '#ddd'
-                outlines:
-                    width: 0
+                    outline:
+                        width: 0
 
             taxiways:
                 filter: { aeroway: taxiway }
@@ -306,13 +304,12 @@ layers:
                     lines:
                         color: [[13, '#FFE4B5'], [16, white]]
                         width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
-                        order: 2
+                        order: 39
                         cap: square
-                    outlines:
-                        color: orange
-                        width: [[11, 4px], [12, 7px], [13, 12px], [15, 100]]
-                        order: 2
-                        cap: square
+                        outline:
+                            color: orange
+                            width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
+                            order: 38
 
     buildings:
         data: { source: osm }
