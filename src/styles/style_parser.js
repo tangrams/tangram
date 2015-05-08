@@ -120,7 +120,7 @@ StyleParser.wrapFunction = function (func) {
 
 // Style defaults
 StyleParser.defaults = {
-    color: [1.0, 0, 0],
+    color: [1, 1, 1, 1],
     width: 1,
     size: 1,
     extrude: false,

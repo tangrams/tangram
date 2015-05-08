@@ -195,6 +195,17 @@ export var Style = {
         return order;
     },
 
+    // Parse a color of choose a default if acceptable, return undefined if color missing
+    parseColor(color, context) {
+        // Need either a color, or a shader block for 'color' or 'filter'
+        if (color) {
+            return StyleParser.cacheColor(color, context);
+        }
+        else if (this.shaders.blocks.color || this.shaders.blocks.filter) {
+            return StyleParser.defaults.color;
+        }
+    },
+
     // Build functions are no-ops until overriden
     buildPolygons () {},
     buildLines () {},

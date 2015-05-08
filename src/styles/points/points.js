@@ -50,11 +50,14 @@ Object.assign(Points, {
 
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
-
         let tile = context.tile.key;
 
-        style.color = (rule_style.color && StyleParser.cacheColor(rule_style.color, context)) || [1, 1, 1, 1];
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
+        style.color = this.parseColor(rule_style.color, context);
+
+        // require color or texture
+        if (!style.color && !this.texture) {
+            return null;
+        }
 
         style.sprite = rule_style.sprite;
         if (typeof style.sprite === 'function') {
@@ -66,6 +69,8 @@ Object.assign(Points, {
             Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
             return; // skip feature
         }
+
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
         style.size = rule_style.size || { value: [32, 32] };
@@ -119,6 +124,8 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
+        var color = style.color || StyleParser.defaults.color;
+
         // position - x & y coords will be filled in per-vertex below
         this.vertex_template[0] = 0;
         this.vertex_template[1] = 0;
@@ -131,10 +138,10 @@ Object.assign(Points, {
         this.vertex_template[6] = 0;
 
         // color
-        this.vertex_template[7] = style.color[0] * 255;
-        this.vertex_template[8] = style.color[1] * 255;
-        this.vertex_template[9] = style.color[2] * 255;
-        this.vertex_template[10] = style.color[3] * 255;
+        this.vertex_template[7] = color[0] * 255;
+        this.vertex_template[8] = color[1] * 255;
+        this.vertex_template[9] = color[2] * 255;
+        this.vertex_template[10] = color[3] * 255;
 
         // selection color
         this.vertex_template[11] = style.selection_color[0] * 255;

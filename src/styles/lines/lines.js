@@ -67,7 +67,10 @@ Object.assign(Lines, {
         context.zoom--;
         context.units_per_meter /= 2; // reset to original scale
 
-        style.color = rule_style.color && StyleParser.cacheColor(rule_style.color, context);
+        style.color = this.parseColor(rule_style.color, context);
+        if (!style.color) {
+            return null;
+        }
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
@@ -150,8 +153,6 @@ Object.assign(Lines, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-       var color = style.color || [0, 0, 0, 1];
-
         // position - x & y coords will be filled in per-vertex below
         this.vertex_template[0] = 0;
         this.vertex_template[1] = 0;
@@ -166,10 +167,10 @@ Object.assign(Lines, {
         this.vertex_template[6] = style.next_width;
 
         // color
-        this.vertex_template[7] = color[0] * 255;
-        this.vertex_template[8] = color[1] * 255;
-        this.vertex_template[9] = color[2] * 255;
-        this.vertex_template[10] = color[3] * 255;
+        this.vertex_template[7] = style.color[0] * 255;
+        this.vertex_template[8] = style.color[1] * 255;
+        this.vertex_template[9] = style.color[2] * 255;
+        this.vertex_template[10] = style.color[3] * 255;
 
         // selection color
         this.vertex_template[11] = style.selection_color[0] * 255;
