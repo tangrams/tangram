@@ -394,10 +394,12 @@ StyleParser.calculateOrder = function(order, context) {
         }, 0);
     }
     else if (typeof order === 'string') {
-        order = context.feature.properties[order];
-    }
-    else {
-        order = parseFloat(order);
+        if (context.feature.properties[order]) {
+            order = context.feature.properties[order];
+        }
+        else {
+            order = parseFloat(order);
+        }
     }
 
     return order;
