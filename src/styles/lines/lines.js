@@ -115,14 +115,23 @@ Object.assign(Lines, {
             style.outline.join = rule_style.outline.join || rule_style.join;
             style.outline.style = rule_style.outline.style || this.name;
 
+            // Explicitly defined outline order, or inherited from inner line
             if (rule_style.outline.order) {
                 style.outline.order = this.parseOrder(rule_style.outline.order, context);
             }
-            if (!style.outline.order) {
-                style.outline.order = style.order - 0.5;
+            else {
+                style.outline.order = style.order;
             }
 
-            style.outline.preprocessed = true;
+            // Don't let outline be above inner line
+            if (style.outline.order <= style.order) {
+                style.outline.order = style.order;
+            }
+
+            // Outlines are always at half-layer intervals to avoid conflicting with inner lines
+            style.outline.order -= 0.5;
+
+            style.outline.preprocessed = true; // signal that we've already wrapped properties in cache objects
         }
         else {
             style.outline.color = null;
