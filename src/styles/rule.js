@@ -44,19 +44,19 @@ export function mergeTrees(matchingTrees, key, context) {
         }
 
         // Property-specific logic
-        for (i=0; i < draws.length; i++) {
-            if (!draws[i]) {
-                continue;
-            }
+        // for (i=0; i < draws.length; i++) {
+        //     if (!draws[i]) {
+        //         continue;
+        //     }
 
-            // Collect unique orders (don't add the order multiple times for the smae draw rule)
-            // if (draws[i].order !== undefined) {
-            //     if (order_draws.indexOf(draws[i]) === -1) {
-            //         order.push(draws[i].order);
-            //         order_draws.push(draws[i]);
-            //     }
-            // }
-        }
+        //     // Collect unique orders (don't add the order multiple times for the smae draw rule)
+        //     if (draws[i].order !== undefined) {
+        //         if (order_draws.indexOf(draws[i]) === -1) {
+        //             order.push(draws[i].order);
+        //             order_draws.push(draws[i]);
+        //         }
+        //     }
+        // }
 
         // Merge remaining draw objects
         mergeObjects(draw, ...draws);
