@@ -19,7 +19,7 @@ export function mergeTrees(matchingTrees, key, context) {
         // order = [],
         // order_draws = [],
         treeDepth = 0,
-        i, x, t;
+        x, t;
 
     // Visible by default
     draw.visible = true;
