@@ -196,7 +196,7 @@ Object.assign(Lines, {
         return this.vertex_template;
     },
 
-    buildLines(lines, style, vertex_data, options = {}) {
+    buildLines(lines, style, vertex_data, context, options) {
         var vertex_template = this.makeVertexTemplate(style);
 
         // Main line
@@ -212,8 +212,8 @@ Object.assign(Lines, {
                     scaling_index: this.vertex_layout.index.a_extrude,
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale,
-                    closed_polygon: options.closed_polygon,
-                    remove_tile_edges: !style.tile_edges && options.remove_tile_edges
+                    closed_polygon: options && options.closed_polygon,
+                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges
                 }
             );
         }
@@ -222,15 +222,15 @@ Object.assign(Lines, {
          if (style.outline && style.outline.color && style.outline.width) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
-                outline_style.addFeature(options.context.feature, style.outline, options.context.tile.key, options.context);
+                outline_style.addFeature(context.feature, style.outline, context.tile.key, context);
             }
         }
     },
 
-    buildPolygons(polygons, style, vertex_data) {
+    buildPolygons(polygons, style, vertex_data, context) {
         // Render polygons as individual lines
         for (let p=0; p < polygons.length; p++) {
-            this.buildLines(polygons[p], style, vertex_data, { closed_polygon: true, remove_tile_edges: true });
+            this.buildLines(polygons[p], style, vertex_data, context, { closed_polygon: true, remove_tile_edges: true });
         }
     }
 
