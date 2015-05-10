@@ -226,10 +226,13 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
+        this.prepareGeoJSON(data, tile, source);
+    }
 
+    prepareGeoJSON (data, tile, source) {
         // Apply optional data transform
         if (typeof this.transform === 'function') {
-            data = this.transform(data, source, response);
+            data = this.transform(data, source);
         }
 
         // Single layer or multi-layers?
@@ -249,32 +252,31 @@ GeoJSONTileSource.type = 'GeoJSONTiles';
 DataSource.register(GeoJSONTileSource);
 
 
-/*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
-export class TopoJSONTileSource extends NetworkTileSource {
+/**
+ Mapzen/OSM.US-style TopoJSON vector tiles
+ @class TopoJSONTileSource
+*/
+export class TopoJSONTileSource extends GeoJSONTileSource {
 
     parseSourceData (tile, source, response) {
-        if (typeof topojson === 'undefined') {
-            tile.layers = {};
-            return;
-        }
-
-        source.layers = JSON.parse(response);
+        let data = JSON.parse(response);
 
         // Single layer
-        if (source.layers.objects.vectiles != null) {
-            source.layers = { _default: topojson.feature(source.layers, source.layers.objects.vectiles) };
+        if (data.objects &&
+            Object.keys(data.objects).length === 1 &&
+            data.objects.vectile != null) {
+            data = topojson.feature(data, data.objects.vectile);
         }
         // Multiple layers
         else {
-            var layers = {};
-            for (var t in source.layers.objects) {
-                layers[t] = topojson.feature(source.layers, source.layers.objects[t]);
+            let layers = {};
+            for (let key in data.objects) {
+                layers[key] = topojson.feature(data, data.objects[key]);
             }
-            source.layers = layers;
+            data = layers;
         }
 
-        DataSource.projectData(source); // mercator projection
-        DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
+        this.prepareGeoJSON(data, tile, source);
     }
 
 }
@@ -284,8 +286,10 @@ DataSource.register(TopoJSONTileSource);
 
 
 
-/*** Mapbox vector tiles ***/
-
+/**
+ Mapbox Vector Tile format
+ @class MVTSource
+*/
 export class MVTSource extends NetworkTileSource {
 
     constructor (source) {
