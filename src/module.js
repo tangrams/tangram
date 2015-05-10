@@ -10,6 +10,7 @@ import {LeafletLayer, leafletLayer} from './leaflet_layer';
 import {SceneWorker} from '../src/scene_worker';
 
 // Additional modules are exposed for debugging
+import version from './utils/version';
 import log from 'loglevel';
 import Geo from './geo';
 import DataSource from './data_source';
@@ -58,17 +59,28 @@ if (Utils.isMainThread) {
     window.Tangram = module.exports = {
         LeafletLayer,
         leafletLayer,
-        debug
+        debug,
+        version: version.string
     };
 
 }
 
 if (Utils.isWorkerThread) {
     self.Tangram = {
-        debug
+        debug,
+        version: version.string
     };
 }
 
 if (Utils.isMainThread) {
     Utils.requestAnimationFramePolyfill();
 }
+
+// Setup logging to prefix with Tangram version
+var originalFactory = log.methodFactory;
+log.methodFactory = function (methodName, logLevel) {
+    var rawMethod = originalFactory(methodName, logLevel);
+    return function (message) {
+        rawMethod(`Tangram ${version.string}: ${message}`);
+    };
+};
