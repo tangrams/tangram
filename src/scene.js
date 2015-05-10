@@ -124,7 +124,6 @@ export default class Scene {
         // Load scene definition (sources, styles, etc.), then create styles & workers
         return new Promise((resolve, reject) => {
             this.loadScene().then(() => {
-
                 this.createWorkers().then(() => {
                     this.createCanvas();
                     this.selection = new FeatureSelection(this.gl, this.workers);
@@ -142,8 +141,8 @@ export default class Scene {
                     if (this.render_loop !== false) {
                         this.setupRenderLoop();
                     }
-                }).catch(e => { throw e; });
-            }).catch(e => { reject(e); });
+                }).catch(e => reject(e));
+            }).catch(e => reject(e));
         });
     }
 
@@ -192,7 +191,20 @@ export default class Scene {
         this.canvas.style.zIndex = -1;
         this.container.appendChild(this.canvas);
 
-        this.gl = Context.getContext(this.canvas, { alpha: false /*premultipliedAlpha: false*/ });
+        try {
+            this.gl = Context.getContext(this.canvas, {
+                alpha: false /*premultipliedAlpha: false*/,
+                device_pixel_ratio: Utils.device_pixel_ratio
+            });
+        }
+        catch(e) {
+            throw new Error(
+                "Couldn't create WebGL context. " +
+                "Your browser may not support WebGL, or it's turned off? " +
+                "Visit http://webglreport.com/ for more info."
+            );
+        }
+
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
     }
@@ -495,8 +507,10 @@ export default class Scene {
             this.canvas.width = this.device_size.width;
             this.canvas.height = this.device_size.height;
 
-            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            if (this.gl) {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
         }
     }
 
@@ -1072,7 +1086,9 @@ export default class Scene {
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
             return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
-        }).catch(e => { throw e; });
+        }).catch(e => {
+            throw new Error(`Error loading scene file '${this.config_source}': ${e.message}`);
+        });
     }
 
     // Reload scene config and rebuild tiles

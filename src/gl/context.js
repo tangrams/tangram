@@ -23,12 +23,10 @@ Context.getContext = function getContext (canvas, options)
 
     var gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
     if (!gl) {
-        log.error("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
-        alert("Couldn't create WebGL context. Your browser probably doesn't support WebGL or it's turned off?");
-        throw "Couldn't create WebGL context";
+        throw new Error("Couldn't create WebGL context.");
     }
 
-    Context.resize(gl, window.innerWidth, window.innerHeight);
+    Context.resize(gl, window.innerWidth, window.innerHeight, options.device_pixel_ratio);
     if (fullscreen === true) {
         window.addEventListener('resize', function () {
             Context.resize(gl, window.innerWidth, window.innerHeight);
@@ -38,9 +36,9 @@ Context.getContext = function getContext (canvas, options)
     return gl;
 };
 
-Context.resize = function (gl, width, height)
+Context.resize = function (gl, width, height, device_pixel_ratio)
 {
-    var device_pixel_ratio = window.devicePixelRatio || 1;
+    var device_pixel_ratio = device_pixel_ratio || window.devicePixelRatio || 1;
     gl.canvas.style.width = width + 'px';
     gl.canvas.style.height = height + 'px';
     gl.canvas.width = Math.round(gl.canvas.style.width * device_pixel_ratio);
