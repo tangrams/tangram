@@ -137,6 +137,7 @@ if (Utils.isMainThread) {
                 this.fire('init');
             }).catch(error => {
                 log.error(`Scene.init() failed: ${error.message}`, error);
+                this.fire('error', error);
             });
         },
 
