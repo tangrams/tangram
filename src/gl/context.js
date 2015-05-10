@@ -1,7 +1,5 @@
 // WebGL context wrapper
 
-import log from 'loglevel';
-
 var Context;
 export default Context = {};
 
@@ -9,7 +7,6 @@ export default Context = {};
 // If no canvas element is provided, one is created and added to the document body
 Context.getContext = function getContext (canvas, options)
 {
-
     var fullscreen = false;
     if (canvas == null) {
         canvas = document.createElement('canvas');
@@ -38,7 +35,7 @@ Context.getContext = function getContext (canvas, options)
 
 Context.resize = function (gl, width, height, device_pixel_ratio)
 {
-    var device_pixel_ratio = device_pixel_ratio || window.devicePixelRatio || 1;
+    device_pixel_ratio = device_pixel_ratio || window.devicePixelRatio || 1;
     gl.canvas.style.width = width + 'px';
     gl.canvas.style.height = height + 'px';
     gl.canvas.width = Math.round(gl.canvas.style.width * device_pixel_ratio);
