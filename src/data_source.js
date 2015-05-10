@@ -34,11 +34,11 @@ export default class DataSource {
             source.scripts.forEach(function(s, si) {
                 try {
                     importScripts(s);
-                    log.info('DataSource: loaded library: ' + s);
+                    Utils.log('info', 'DataSource: loaded library: ' + s);
                 }
                 catch (e) {
-                    log.error('DataSource: failed to load library: ' + s);
-                    log.error(e);
+                    Utils.log('error', 'DataSource: failed to load library: ' + s);
+                    Utils.log('error', e);
                 }
             });
         }
