@@ -17,12 +17,6 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
-
-        // Get alter data.  Comes in as string when a web worker
-        if (typeof source.alter_data === 'string' && source.alter_data.indexOf('function') !== -1) {
-            source.alter_data = Utils.stringsToFunctions({ a: source.alter_data });
-            source.alter_data = source.alter_data.a;
-        }
         this.alter_data = source.alter_data;
 
         // Since this process is done in a web worker, we can't actually

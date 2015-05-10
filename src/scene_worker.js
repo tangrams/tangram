@@ -48,6 +48,14 @@ if (Utils.isWorkerThread) {
         SceneWorker.styles = null;
         config = JSON.parse(config);
 
+        // Data block functions are not macro'ed and wrapped like the rest of the style functions are
+        // TODO: probably want a cleaner way to exclude these
+        for (var layer in config.layers) {
+            config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
+        }
+
+        // Create data sources
+        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
             if (source.tiled) {
@@ -64,12 +72,6 @@ if (Utils.isWorkerThread) {
                     }
                 }
             }
-        }
-
-        // Data block functions are not macro'ed and wrapped like the rest of the style functions are
-        // TODO: probably want a cleaner way to exclude these
-        for (var layer in config.layers) {
-            config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
         }
 
         // Expand styles
