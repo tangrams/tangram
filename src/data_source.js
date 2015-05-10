@@ -17,13 +17,17 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
-        this.alter_data = source.alter_data;
 
-        // Since this process is done in a web worker, we can't actually
-        // pass data at time of processing, so handle it here.
+        // Optional function to transform source data
+        this.transform = source.transform;
+        if (typeof this.transform === 'function') {
+            this.transform.bind(this);
+        }
+
+        // Optional additional data to pass to the transform function
         this.extra_data = source.extra_data;
 
-        // Import any extra scripts
+        // Optional additional scripts made available to the transform function
         if (typeof importScripts === 'function' && source.scripts) {
             source.scripts.forEach(function(s, si) {
                 try {
@@ -223,10 +227,9 @@ export class GeoJSONTileSource extends NetworkTileSource {
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
 
-        // Edit response if provided
-        if (typeof this.alter_data === 'function') {
-            this.alter_data.bind(this);
-            data = this.alter_data(data, source, response);
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            data = this.transform(data, source, response);
         }
 
         // Single layer or multi-layers?
