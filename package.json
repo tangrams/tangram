@@ -23,11 +23,11 @@
     "email": "tangram@mapzen.com"
   },
   "contributors": [
-    { name: "Brett Camper" },
-    { name: "Peter Richardson" },
-    { name: "Patricio Gonzalez Vivo" },
-    { name: "Karim Naaji" },
-    { name: "Ivan Willig" }
+    { "name": "Brett Camper" },
+    { "name": "Peter Richardson" },
+    { "name": "Patricio Gonzalez Vivo" },
+    { "name": "Karim Naaji" },
+    { "name": "Ivan Willig" }
   ],
   "license": "MIT",
   "dependencies": {
