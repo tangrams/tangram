@@ -1,12 +1,12 @@
 {
   "name": "tangram",
-  "version": "0.0.1",
-  "description": "WebGL for OpenStreetMap",
+  "version": "0.1.0",
+  "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
-    "url": "git://github.com/bcamper/tangram.git"
+    "url": "git://github.com/tangrams/tangram.git"
   },
-  "homepage": "https://github.com/bcamper/tangram",
+  "homepage": "https://github.com/tangrams/tangram",
   "keywords": [
     "maps",
     "graphics",
@@ -19,9 +19,16 @@
     "test": "make test-ci"
   },
   "author": {
-    "name": "Brett Camper",
-    "email": "bcamper@alum.mit.edu"
+    "name": "Mapzen",
+    "email": "tangram@mapzen.com"
   },
+  "contributors": [
+    { "name": "Brett Camper" },
+    { "name": "Peter Richardson" },
+    { "name": "Patricio Gonzalez Vivo" },
+    { "name": "Karim Naaji" },
+    { "name": "Ivan Willig" }
+  ],
   "license": "MIT",
   "dependencies": {
     "box-intersect": "^1.0.0",
