@@ -42,10 +42,24 @@ http://mapzen.com/tangram
     <!-- Tangram demo code -->
     <script src="demos/main.js"></script>
 
-  </body>
-
   <!-- Adding a script block to post message to the parent container (think iframed demos) -->
     <script type="text/javascript">
       window.addEventListener("hashchange",function(){parent.postMessage(window.location.hash, "*")});
   </script>
+
+
+    <!-- Mapzen bug -->
+    <script src='//s3.amazonaws.com/assets-staging.mapzen.com/ui/components/bug/bug.min.js'></script>
+    <script>
+    var mzBug = new MapzenBug({
+      name: 'Tangram',
+      link: 'https://mapzen.com/projects/tangram',
+      tweet: 'Tangram highways-rendering demo from @mapzen',
+      repo: 'https://github.com/tangrams/highways-demo/'
+    });
+    console.log("bug:", mzBug);
+    </script>
+
+  </body>
+
 </html>
