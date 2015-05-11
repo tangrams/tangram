@@ -124,7 +124,7 @@ Object.assign(Lines, {
             }
 
             // Don't let outline be above inner line
-            if (style.outline.order <= style.order) {
+            if (style.outline.order > style.order) {
                 style.outline.order = style.order;
             }
 
