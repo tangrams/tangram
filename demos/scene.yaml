@@ -207,39 +207,11 @@ layers:
                 style: flat_lines
                 color: white
                 width: 12
-                order: |
-                    function () {
-                        function reduceSortKey(key) {
-                            return 30 * Math.floor((key % 10000) / 1000) +
-                                   10 * Math.floor((key % 1000) / 100) +
-                                   1  * (key % 10);
-                        }
-
-                        var min = reduceSortKey(-3109);
-                        var order;
-                        if (feature.sort_key < 10) { order = 5; }
-                        else { order = 5 + reduceSortKey(feature.sort_key) - min; }
-                        //order = 5 + reduceSortKey(feature.sort_key) - min;
-                        return order;
-                    }
+                order: function () { return feature.sort_key + 5; }
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
                     width: [[15, 0], [16, 2]]
-                    order: |
-                        function () {
-                            function reduceSortKey(key) {
-                                return 30 * Math.floor((key % 10000) / 1000) +
-                                       10 * Math.floor((key % 1000) / 100) +
-                                       1  * (key % 10);
-                            }
-
-                            var min = reduceSortKey(-3109);
-                            var order;
-                            if (feature.sort_key < 10) { order = 4; }
-                            else { order = 4 + reduceSortKey(feature.sort_key) - min; }
-                            //order = 4 + reduceSortKey(feature.sort_key) - min;
-                            return order;
-                        }
+                    order: 4 # put all outlines below all roads (for now)
 
         rounded:
             filter: { $zoom: { min: 17 } }
@@ -281,7 +253,7 @@ layers:
                 lines:
                     color: '#bbb'
                     width: [[15, 0px], [18, 2px]]
-                    order: 3 # -2
+                    order: 3
                     outline:
                         width: 0
         airports:
@@ -317,7 +289,7 @@ layers:
 
         draw:
             polygons:
-                order: 300
+                order: 50
                 color: [.65, .65, .65]
 
         # turn interactive feature selection on for buildings with names
@@ -435,11 +407,11 @@ layers:
                     fill: black
                     stroke: { color: white, width: 3 }
         minor-places:
-            filter: { kind: [hamlet, neighbourhood, locality, town, village], $zoom: { max: 13 } }
+            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
             visible: false
 
-    landuse-labels:
-        data: { source: osm, layer: landuse }
+    landuse_labels:
+        data: { source: osm }
         filter:
             name: true
             kind: [park, forest, cemetery, graveyard]
