@@ -29,6 +29,7 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
+        this.feature_options = {};
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -116,27 +117,27 @@ export var Style = {
             this.tile_data[tile].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data, {context});
+        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data, context);
     },
 
-    buildGeometry (geometry, style, vertex_data, options) {
+    buildGeometry (geometry, style, vertex_data, context) {
         if (geometry.type === 'Polygon') {
-            this.buildPolygons([geometry.coordinates], style, vertex_data, options);
+            this.buildPolygons([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPolygon') {
-            this.buildPolygons(geometry.coordinates, style, vertex_data, options);
+            this.buildPolygons(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data, options);
+            this.buildLines([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiLineString') {
-            this.buildLines(geometry.coordinates, style, vertex_data, options);
+            this.buildLines(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'Point') {
-            this.buildPoints([geometry.coordinates], style, vertex_data, options);
+            this.buildPoints([geometry.coordinates], style, vertex_data, context);
         }
         else if (geometry.type === 'MultiPoint') {
-            this.buildPoints(geometry.coordinates, style, vertex_data, options);
+            this.buildPoints(geometry.coordinates, style, vertex_data, context);
         }
     },
 

@@ -28,7 +28,16 @@ Enjoy!
         },
         'mapzen-geojson': {
             type: 'GeoJSONTiles',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'
+            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json'//,
+            // transform: function(data) {
+            //     // You can edit the tile data here before it gets projected
+            //     // and rendered
+            //     return data;
+            // },
+            // scripts: [
+            //     // importScripts doesn't like the agnostic //example.com proto
+            //     'http://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js'
+            // ]
         },
         'mapzen-dev': {
             type: 'GeoJSONTiles',

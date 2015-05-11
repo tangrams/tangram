@@ -17,6 +17,30 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
+
+        // Optional function to transform source data
+        this.transform = source.transform;
+        if (typeof this.transform === 'function') {
+            this.transform.bind(this);
+        }
+
+        // Optional additional data to pass to the transform function
+        this.extra_data = source.extra_data;
+
+        // Optional additional scripts made available to the transform function
+        if (typeof importScripts === 'function' && source.scripts) {
+            source.scripts.forEach(function(s, si) {
+                try {
+                    importScripts(s);
+                    Utils.log('info', 'DataSource: loaded library: ' + s);
+                }
+                catch (e) {
+                    Utils.log('error', 'DataSource: failed to load library: ' + s);
+                    Utils.log('error', e);
+                }
+            });
+        }
+
         // overzoom will apply for zooms higher than this
         this.max_zoom = source.max_zoom || Geo.max_zoom;
     }
@@ -202,6 +226,14 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
+        this.prepareGeoJSON(data, tile, source);
+    }
+
+    prepareGeoJSON (data, tile, source) {
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            data = this.transform(data, source);
+        }
 
         // Single layer or multi-layers?
         if (data.type === 'Feature' || data.type === 'FeatureCollection') {
@@ -220,32 +252,31 @@ GeoJSONTileSource.type = 'GeoJSONTiles';
 DataSource.register(GeoJSONTileSource);
 
 
-/*** Mapzen/OSM.US-style TopoJSON vector tiles ***/
-export class TopoJSONTileSource extends NetworkTileSource {
+/**
+ Mapzen/OSM.US-style TopoJSON vector tiles
+ @class TopoJSONTileSource
+*/
+export class TopoJSONTileSource extends GeoJSONTileSource {
 
     parseSourceData (tile, source, response) {
-        if (typeof topojson === 'undefined') {
-            tile.layers = {};
-            return;
-        }
-
-        source.layers = JSON.parse(response);
+        let data = JSON.parse(response);
 
         // Single layer
-        if (source.layers.objects.vectiles != null) {
-            source.layers = { _default: topojson.feature(source.layers, source.layers.objects.vectiles) };
+        if (data.objects &&
+            Object.keys(data.objects).length === 1 &&
+            data.objects.vectile != null) {
+            data = topojson.feature(data, data.objects.vectile);
         }
         // Multiple layers
         else {
-            var layers = {};
-            for (var t in source.layers.objects) {
-                layers[t] = topojson.feature(source.layers, source.layers.objects[t]);
+            let layers = {};
+            for (let key in data.objects) {
+                layers[key] = topojson.feature(data, data.objects[key]);
             }
-            source.layers = layers;
+            data = layers;
         }
 
-        DataSource.projectData(source); // mercator projection
-        DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
+        this.prepareGeoJSON(data, tile, source);
     }
 
 }
@@ -255,8 +286,10 @@ DataSource.register(TopoJSONTileSource);
 
 
 
-/*** Mapbox vector tiles ***/
-
+/**
+ Mapbox Vector Tile format
+ @class MVTSource
+*/
 export class MVTSource extends NetworkTileSource {
 
     constructor (source) {
