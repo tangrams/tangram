@@ -54,12 +54,12 @@ Enjoy!
 
         // 'osm': {
         //     type: 'GeoJSONTiles',
-        //     url: window.location.protocol + '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
+        //     url: '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         // },
 
         'mapbox': {
             type: 'MVT',
-            url: 'http://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+            url: '//{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }
 
@@ -92,7 +92,7 @@ Enjoy!
             postUpdate: postUpdate,
             // highDensityDisplay: false,
             logLevel: 'debug',
-            attribution: 'Map data &copy; OpenStreetMap contributors | <a href="https://github.com/tangrams/tangram" target="_blank">Source Code</a>'
+            attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
         });
 
     layer.scene.subscribe({
