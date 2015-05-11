@@ -278,6 +278,10 @@ Object.assign(TextStyle, {
 
     // Called on main thread from worker, to create atlas of labels for a tile
     addTexts (tile, texts) {
+        if (!this.canvas[tile]) {
+            return Promise.resolve({});
+        }
+
         let texture_size = this.setTextureTextPositions(texts);
         let context = this.canvas[tile].context;
 
@@ -429,6 +433,11 @@ Object.assign(TextStyle, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
+            if (!texts) {
+                this.freeTile(tile);
+                return this.super.endData.apply(this, arguments);
+            }
+
             let labels = this.createLabels(tile, texts);
 
             this.discardLabels(tile, labels, texts);
@@ -443,17 +452,19 @@ Object.assign(TextStyle, {
 
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(({ texts, texture }) => {
-                this.texts[tile] = texts;
+                if (texts) {
+                    this.texts[tile] = texts;
 
-                // Attach tile-specific label atlas to mesh as a texture uniform
-                tile_data.uniforms = { u_texture: texture };
-                tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
+                    // Attach tile-specific label atlas to mesh as a texture uniform
+                    tile_data.uniforms = { u_texture: texture };
+                    tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
-                // Build queued features
-                tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
-                tile_data.queue = [];
+                    // Build queued features
+                    tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
+                    tile_data.queue = [];
+                }
+
                 this.freeTile(tile);
-
                 return this.super.endData.apply(this, arguments);
             });
         });

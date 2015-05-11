@@ -1097,6 +1097,13 @@ export default class Scene {
         if (!this.initialized) {
             return Promise.resolve(this);
         }
+
+        // Remove tiles before rebuilding
+        this.updating++;
+        for (let key in this.tiles) {
+            this.removeTile(key);
+        }
+
         this.initialized = false;
         this.initializing = true;
 
@@ -1106,6 +1113,7 @@ export default class Scene {
             this.updateConfig();
             this.syncConfigToWorker();
             return this.rebuildGeometry().then(() => {
+                this.updating--;
                 this.initialized = true;
                 this.initializing = false;
                 return this;
