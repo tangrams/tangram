@@ -135,10 +135,7 @@ sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
     #     type: GeoJSONTiles
-    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
-    # schools:
-    #     type: GeoJSON
-    #     url: demos/data/school-districts-polygon.geojson
+    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw
 
 layers:
     earth:
