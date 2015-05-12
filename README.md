@@ -9,9 +9,17 @@ Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser
 
 ## Quickstart
 
-Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/tangram-demo)) with a basic example of a Tangram map. The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
+Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/tangram-demo)) with a basic example of a Tangram map. 
 
-Data sources, layers, and styling rules are written in a *scene file* ([here's an example](https://github.com/tangrams/simple-demo/blob/gh-pages/scene.yaml)). Armed with a scene file, you can create a Tangram scene and add it to a Leaflet like so:
+The current version of Tangram can be included in your page with:
+
+```
+<script src="https://mapzen.com/tangram/0.1/tangram.min.js"></script>
+```
+
+The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
+
+Data sources, layers, and styling rules are written in a *scene file* ([here's an example](https://github.com/tangrams/simple-demo/blob/gh-pages/scene.yaml)). Armed with a scene file like `scene.yaml`, you can create a Tangram scene and add it to a Leaflet like so:
 
 ```
 var map = L.map('map');
