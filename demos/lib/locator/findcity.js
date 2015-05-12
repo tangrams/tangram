@@ -50,6 +50,14 @@
                 placeholder: 'Search'
             });
 
+            // When the search field is open, prevent key presses from
+            // interfering with dat.gui
+            $select.on('select2:open', function (e) {
+                $('.select2-search__field').on('keydown', function (e) {
+                    e.stopPropagation()
+                })
+            })
+
             $select.on('select2:select', function (e) {
                 /* global map */
                 var el = e.params.data.element
