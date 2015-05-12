@@ -1101,7 +1101,9 @@ export default class Scene {
         // Remove tiles before rebuilding
         this.updating++;
         for (let key in this.tiles) {
-            this.removeTile(key);
+            if (!this.tiles[key].visible) {
+                this.removeTile(key);
+            }
         }
 
         this.initialized = false;
@@ -1119,6 +1121,7 @@ export default class Scene {
                 return this;
             });
         }, (error) => {
+            this.updating--;
             throw error;
         });
     }
