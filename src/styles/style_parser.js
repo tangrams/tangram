@@ -253,9 +253,10 @@ StyleParser.colorForString = function(string) {
         color[0] /= 255;
         color[1] /= 255;
         color[2] /= 255;
+        color[3] = 1;
     }
     else {
-        color = [0, 0, 0, 1];
+        color = StyleParser.defaults.color;
     }
     StyleParser.string_colors[string] = color;
     return color;
@@ -266,7 +267,9 @@ StyleParser.colorForString = function(string) {
 // { value: original, static: [r,g,b,a], zoom: { z: [r,g,b,a] }, dynamic: function(){...} }
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
-        return val.dynamic(context);
+        let v = val.dynamic(context);
+        v[3] = v[3] || 1; // default alpha
+        return v;
     }
     else if (val.static) {
         return val.static;
@@ -278,7 +281,9 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Dynamic function-based color
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
-            return val.dynamic(context);
+            let v = val.dynamic(context);
+            v[3] = v[3] || 1; // default alpha
+            return v;
         }
         // Single string color
         else if (typeof val.value === 'string') {
