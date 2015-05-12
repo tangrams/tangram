@@ -358,8 +358,8 @@ Enjoy!
                     scene.config.layers.buildings.extruded.draw.polygons.style = style;
 
                     var envmaps = {
-                        'Chrome': window.location.origin+window.location.pathname+'demos/images/LitSphere_test_02.jpg',
                         'Sunset': window.location.origin+window.location.pathname+'demos/images/sunset.jpg',
+                        'Chrome': window.location.origin+window.location.pathname+'demos/images/LitSphere_test_02.jpg',
                         'Matte Red': window.location.origin+window.location.pathname+'demos/images/matball01.jpg',
                         'Color Wheel': window.location.origin+window.location.pathname+'demos/images/wheel.png'
                     };
