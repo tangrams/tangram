@@ -211,10 +211,10 @@ layers:
                     order: 4 # put all outlines below all roads (for now)
 
         rounded:
-            filter: { $zoom: { min: 17 } }
+            filter: { $zoom: { min: 18 } }
             draw:
                 lines:
-                    join: round
+                    cap: round
 
         highway:
             filter: { kind: highway }
