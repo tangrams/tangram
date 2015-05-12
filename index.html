@@ -12,10 +12,29 @@ http://mapzen.com/tangram
     <title>Tangram: WebGL for OpenStreetMap</title>
     <link rel="stylesheet" href="demos/css/main.css" />
     <link rel="stylesheet" href="demos/lib/leaflet/leaflet.css" />
+
+    <link href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css" rel="stylesheet" />
+    <style>
+        #ui-locator {
+            display: none;
+        }
+    </style>
   </head>
 
   <body>
     <div id="map"></div>
+    <div id="ui-locator">
+        <div id="citylocator">
+            <div class="citylocate-input-container">
+                <select class="js-citylocate-select2">
+                    <option disabled selected>Search</option>
+                </select>
+            </div>
+        </div>
+        <div id="geolocator">
+            <div class="geolocate-button" title="Get current location"><span class="geolocate-icon"></span></div>
+        </div>
+    </div>
 
     <!-- Use leaflet 0.7.x (continuous zoom will be disabled) -->
     <!-- <script src="demos/lib/leaflet/leaflet-0.7.3.js"></script> -->
@@ -47,6 +66,11 @@ http://mapzen.com/tangram
       window.addEventListener("hashchange",function(){parent.postMessage(window.location.hash, "*")});
   </script>
 
+    <!-- Locator js -->
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/js/select2.min.js"></script>
+    <script src="demos/lib/locator/geolocate.js"></script>
+    <script src="demos/lib/locator/findcity.js"></script>
 
     <!-- Mapzen bug -->
     <script src='//s3.amazonaws.com/assets-staging.mapzen.com/ui/components/bug/bug.min.js'></script>
