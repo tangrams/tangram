@@ -330,12 +330,24 @@ Object.assign(TextStyle, {
     createLabels (tile, texts) {
         let labels_priorities = [];
 
+        if (!this.features[tile]) {
+            return;
+        }
+
         for (let style in texts) {
             let text_infos = texts[style];
+
+            if (!this.features[tile][style]) {
+                return;
+            }
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
                 text_info.ref = 0;
+
+                if (!this.features[tile][style][text]) {
+                    return;
+                }
 
                 for (let f = 0; f < this.features[tile][style][text].length; f++) {
                     let feature = this.features[tile][style][text][f];
@@ -439,6 +451,10 @@ Object.assign(TextStyle, {
             }
 
             let labels = this.createLabels(tile, texts);
+            if (!labels) {
+                this.freeTile(tile);
+                return this.super.endData.apply(this, arguments);
+            }
 
             this.discardLabels(tile, labels, texts);
 
