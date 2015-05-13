@@ -67,6 +67,7 @@
 }
 .select2-container {
     font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+    display: block;
 }
 .select2-container .select2-selection--single {
     height: 32px;
