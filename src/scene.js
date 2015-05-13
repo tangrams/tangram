@@ -191,7 +191,7 @@ export default class Scene {
 
         // Force tangram canvas underneath all leaflet layers, and set background to transparent
         this.canvas.style.zIndex = -1;
-        this.container.style.cssText += 'background:transparent;'
+        this.container.style.cssText += 'background: transparent;';
         this.container.appendChild(this.canvas);
 
         try {
