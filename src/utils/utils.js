@@ -31,7 +31,9 @@ Utils.addBaseURL = function (url, base) {
         else {
             base_info = window.location;
         }
-
+        if (!base_info.origin) {
+            base_info.origin = base_info.protocol + "//" + base_info.hostname + (base_info.port ? ':' + base_info.port: '') + '/';
+        }
         url = base_info.origin + (relative ? base_info.pathname : '') + url;
     }
     return url;
