@@ -106,7 +106,7 @@ if (Utils.isWorkerThread) {
         keys.key = true;
         keys.loading = true;
         keys.loaded = true;
-        keys.order = true;
+        keys.session = true;
         keys.error = true;
         keys.debug = true;
 

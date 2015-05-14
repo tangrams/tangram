@@ -120,17 +120,11 @@ export default class Tile {
         return WorkerBroker.postMessage(this.worker, ...message);
     }
 
-    // TODO: remove scene dependency
-    build(scene) {
-        scene.trackTileBuildStart(this.key);
-        this.workerMessage(
-            'buildTile',
-            { tile: this.buildAsMessage() })
-        .then(message => {
-            scene.buildTileCompleted(message);
-        }).catch(error => {
-            throw error;
-        });
+    build() {
+        if (!this.loaded) {
+            this.loading = true;
+        }
+        return this.workerMessage('buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e });
     }
 
     // Process geometry for tile - called by web worker
@@ -277,7 +271,12 @@ export default class Tile {
        Called on main thread when a web worker completes processing
        for a single tile.
     */
-    finalizeBuild(styles) {
+    buildMeshes(styles) {
+        if (this.error) {
+            log.error(`main thread tile load error for ${this.key}: ${this.error}`);
+            return;
+        }
+
         // Cleanup existing VBOs
         this.freeResources();
 
@@ -309,6 +308,7 @@ export default class Tile {
 
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+        this.printDebug();
     }
 
     /**
@@ -352,14 +352,6 @@ export default class Tile {
         else {
             this.center_dist = Infinity;
         }
-    }
-
-    load(scene) {
-        scene.trackTileSetLoadStart();
-
-        this.loading = true;
-        this.build(scene);
-        this.update(scene);
     }
 
     /**
