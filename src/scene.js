@@ -110,6 +110,7 @@ export default class Scene {
         this.initialized = false;
         this.initializing = false;
         this.updating = 0;
+        this.session = 0; // an id that is incremented each time the scene config is loaded/invalidated
 
         this.logLevel = options.logLevel || 'warn';
         log.setLevel(this.logLevel);
@@ -891,7 +892,7 @@ export default class Scene {
         this.trackTileSetLoadStart(tile);
         this.tileBuildStart(tile.key);
         tile.update(this);
-        tile.build().then(message => this.buildTileCompleted(message));
+        tile.build(this.session).then(message => this.buildTileCompleted(message));
     }
 
     // tile manager
@@ -931,6 +932,7 @@ export default class Scene {
 
     // Rebuild all tiles
     rebuildGeometry() {
+        // this.session++;
         this.updating++;
 
         return new Promise((resolve, reject) => {
@@ -1009,6 +1011,12 @@ export default class Scene {
         // Removed this tile during load?
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
+            Tile.abortBuild(tile);
+        }
+        // Built with an outdated scene configuration?
+        else if (tile.session !== this.session) {
+            log.warn(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with outdated scene config`);
+            this.forgetTile(tile.key);
             Tile.abortBuild(tile);
         }
         else {
@@ -1101,6 +1109,7 @@ export default class Scene {
         }
 
         // Remove tiles before rebuilding
+        // this.session++;
         this.updating++;
         // for (let key in this.tiles) {
         //     if (!this.tiles[key].visible) {
@@ -1334,6 +1343,7 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     updateConfig({ rebuild } = {}) {
+        this.session++;
         this.updating++;
         this.config.scene = this.config.scene || {};
         this.createCamera();
