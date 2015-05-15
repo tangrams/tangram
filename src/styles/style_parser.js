@@ -45,8 +45,7 @@ StyleParser.expandMacros = function expandMacros (obj) {
 // List of macros
 StyleParser.macros = [
     'Style.color.pseudoRandomColor',
-    'Style.color.randomColor',
-    'Style.pixels'
+    'Style.color.randomColor'
 ];
 
 
@@ -83,14 +82,6 @@ Style.color = {
         }`;
         return func;
     }
-};
-
-// Returns a function (that can be used as a dynamic style) that converts pixels to meters for the current zoom level.
-// The provided pixel value ('p') can itself be a function, in which case it is wrapped by this one.
-Style.pixels = function (p) {
-    var f;
-    f = 'function() { return ' + (typeof p === 'function' ? '(' + (p.toString() + '())') : p) + ' * $meters_per_pixel; }';
-    return f;
 };
 
 // Wraps style functions and provides a scope of commonly accessible data:
