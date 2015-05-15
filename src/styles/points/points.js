@@ -171,7 +171,7 @@ Object.assign(Points, {
         let size = style.size;
         let angle = style.angle;
 
-        Builders.buildSpriteQuadsForPoints(
+        Builders.buildQuadsForPoints(
             points,
             Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256),
             Utils.scaleInt16(Utils.radToDeg(angle), 360),

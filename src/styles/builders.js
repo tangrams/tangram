@@ -542,57 +542,10 @@ function indexPairs (constants) {
     }
 }
 
-// Build a quad centered on a point
-Builders.buildQuadsForPoints = function (
-    points, width, height,
-    vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale }) {
-
-    if (texcoord_index) {
-        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
-        var texcoords = [
-            [min_u, min_v],
-            [max_u, min_v],
-            [max_u, max_v],
-
-            [min_u, min_v],
-            [max_u, max_v],
-            [min_u, max_v]
-        ];
-    }
-
-    var num_points = points.length;
-    for (var p=0; p < num_points; p++) {
-        var point = points[p];
-
-        var positions = [
-            [point[0] - width/2, point[1] - height/2],
-            [point[0] + width/2, point[1] - height/2],
-            [point[0] + width/2, point[1] + height/2],
-
-            [point[0] - width/2, point[1] - height/2],
-            [point[0] + width/2, point[1] + height/2],
-            [point[0] - width/2, point[1] + height/2]
-        ];
-
-        for (var pos=0; pos < 6; pos++) {
-            // Add texcoords
-            if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[pos][0];
-                vertex_template[texcoord_index + 1] = texcoords[pos][1];
-            }
-
-            vertex_template[0] = positions[pos][0];
-            vertex_template[1] = positions[pos][1];
-            vertex_data.addVertex(vertex_template);
-        }
-    }
-};
-
 // Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
-Builders.buildSpriteQuadsForPoints = function (
+Builders.buildQuadsForPoints = function (
     points,
     width, height, angle, scale,
     vertex_data, vertex_template,
