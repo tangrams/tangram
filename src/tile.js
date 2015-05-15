@@ -236,9 +236,7 @@ export default class Tile {
             }
 
             // Return keys to be transfered to main thread
-            return {
-                mesh_data: true
-            };
+            return ['mesh_data'];
         });
     }
 
@@ -355,6 +353,30 @@ export default class Tile {
         else {
             this.center_dist = Infinity;
         }
+    }
+
+    // Slice a subset of keys out of a tile
+    // Includes a minimum set of pre-defined keys for load state, debug. etc.
+    // We use this to send a subset of the tile back to the main thread, to minimize unnecessary data transfer
+    // (e.g. very large items like feature geometry are not needed on the main thread)
+    static slice (tile, keys) {
+        let keep = [
+            'key',
+            'loading',
+            'loaded',
+            'generation',
+            'error',
+            'debug'
+        ];
+        keep.push(...keys);
+
+        // Build the tile subset
+        var tile_subset = {};
+        for (let key of keep) {
+            tile_subset[key] = tile[key];
+        }
+
+        return tile_subset;
     }
 
     /**

@@ -99,28 +99,6 @@ if (Utils.isWorkerThread) {
         return SceneWorker.configuring;
     };
 
-    // Slice a subset of keys out of a tile
-    // Includes a minimum set of pre-defined keys for load state, debug. etc.
-    // We use this to send a subset of the tile back to the main thread, to minimize unnecessary data transfer
-    // (e.g. very large items like feature geometry are not needed on the main thread)
-    SceneWorker.sliceTile = function (tile, keys) {
-        keys = keys || {};
-        keys.key = true;
-        keys.loading = true;
-        keys.loaded = true;
-        keys.generation = true;
-        keys.error = true;
-        keys.debug = true;
-
-        // Build the tile subset
-        var tile_subset = {};
-        for (var k in keys) {
-            tile_subset[k] = tile[k];
-        }
-
-        return tile_subset;
-    };
-
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     SceneWorker.worker.buildTile = function ({ tile }) {
         // Tile cached?
@@ -157,14 +135,14 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
-                            resolve({ tile: SceneWorker.sliceTile(tile, keys) }); });
+                            resolve({ tile: Tile.slice(tile, keys) }); });
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
                         Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
-                        resolve({ tile: SceneWorker.sliceTile(tile) });
+                        resolve({ tile: Tile.slice(tile) });
                     });
                 });
             }
@@ -174,7 +152,7 @@ if (Utils.isWorkerThread) {
 
                 // Build geometry
                 return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
-                    return { tile: SceneWorker.sliceTile(tile, keys) };
+                    return { tile: Tile.slice(tile, keys) };
                 });
             }
         });
