@@ -906,26 +906,7 @@ export default class Scene {
 
     forgetTile(key) {
         delete this.tiles[key];
-
-        if (this.building && this.building.tiles) {
-            delete this.building.tiles[key];
-
-            // TODO: de-dupe this code
-            if (Object.keys(this.building.tiles).length === 0) {
-
-                if (this.building.resolve) {
-                    this.building.resolve(true);
-                }
-
-                // Another rebuild queued?
-                var queued = this.building.queued;
-                this.building = null;
-                if (queued) {
-                    log.debug(`Scene: starting queued rebuildGeometry() request`);
-                    this.rebuildGeometry().then(queued.resolve, queued.reject);
-                }
-            }
-        }
+        this.tileBuildStop(key);
     }
 
     findMaxZoom() {
@@ -1031,7 +1012,7 @@ export default class Scene {
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.generation) {
-            log.warn(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with outdated scene config`);
+            log.warn(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with outdated scene config generation ${tile.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
         }
@@ -1066,6 +1047,7 @@ export default class Scene {
         if (this.building) {
             log.trace(`tileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
             delete this.building.tiles[key];
+
             if (Object.keys(this.building.tiles).length === 0) {
                 log.info(`Scene: build geometry finished`);
                 log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
