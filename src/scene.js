@@ -929,7 +929,6 @@ export default class Scene {
 
     // Rebuild all tiles
     rebuildGeometry() {
-        // this.generation++;
         this.updating++;
 
         return new Promise((resolve, reject) => {
@@ -945,7 +944,6 @@ export default class Scene {
                 // Save queued request
                 this.building.queued = { resolve, reject };
                 log.trace(`Scene.rebuildGeometry(): queuing request`);
-                this.updating--;
                 return;
             }
 
@@ -1012,7 +1010,8 @@ export default class Scene {
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.generation) {
-            log.warn(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with outdated scene config generation ${tile.generation}`);
+            log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with ` +
+                `scene config gen ${tile.generation}, current ${this.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
         }
