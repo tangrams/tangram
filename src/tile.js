@@ -28,7 +28,7 @@ export default class Tile {
             loaded: false,
             error: null,
             worker: null,
-            session: null,
+            generation: null,
             visible: false,
             center_dist: 0
         });
@@ -113,7 +113,7 @@ export default class Tile {
             min: this.min,
             max: this.max,
             style_zoom: this.style_zoom,
-            session: this.session,
+            generation: this.generation,
             debug: this.debug
         };
     }
@@ -122,8 +122,8 @@ export default class Tile {
         return WorkerBroker.postMessage(this.worker, ...message);
     }
 
-    build(session) {
-        this.session = session;
+    build(generation) {
+        this.generation = generation;
         if (!this.loaded) {
             this.loading = true;
         }
