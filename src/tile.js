@@ -368,7 +368,9 @@ export default class Tile {
             'error',
             'debug'
         ];
-        keep.push(...keys);
+        if (Array.isArray(keys)) {
+            keep.push(...keys);
+        }
 
         // Build the tile subset
         var tile_subset = {};
