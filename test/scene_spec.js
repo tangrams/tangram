@@ -61,20 +61,6 @@ describe('Scene', function () {
         });
     });
 
-    // describe('.loadTile(tile)', () => {
-    //     let subject;
-    //     let tile = { coords: null };
-
-    //     beforeEach(() => {
-    //         subject.loadTile(tile);
-    //     });
-
-    //     it('appends the queued_tiles array', () => {
-    //         assert.include(subject.queued_tiles[0], tile);
-    //     });
-
-    // });
-
     describe('._loadTile(coords, options)', () => {
 
         let coords = midtownTile;
@@ -105,17 +91,17 @@ describe('Scene', function () {
                 subject._loadTile(coords);
                 sinon.spy(subject, 'cacheTile');
                 tile = subject._loadTile(coords);
-                sinon.spy(tile, 'load');
+                sinon.spy(tile, 'build');
             });
 
             afterEach(() => {
                 subject.cacheTile.restore();
-                tile.load.restore();
+                tile.build.restore();
                 subject.tiles[key] = undefined;
             });
 
-            it('does not load the tile', () => {
-                assert.isFalse(tile.load.called);
+            it('does not build the tile', () => {
+                assert.isFalse(tile.build.called);
             });
 
             it('does not cache the tile', () => {

@@ -1,7 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
-import samples from './fixtures/samples';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
@@ -52,7 +51,7 @@ describe('Tile', function() {
         });
     });
 
-    describe('.build(scene)', () => {
+    describe('.build(generation)', () => {
         beforeEach(() => {
             sinon.spy(subject, 'workerMessage');
         });
@@ -62,34 +61,9 @@ describe('Tile', function() {
         });
 
         it('calls .workerMessage()', () => {
-            subject.build(scene);
+            subject.build();
             sinon.assert.called(subject.workerMessage);
         });
-    });
-
-    describe('.load(scene)', () => {
-
-        beforeEach(() => {
-            subject = Tile.create({tile_source: scene.tile_source, coords: _.clone(samples.nyc_coords), worker: scene.nextWorker()});
-
-            sinon.stub(subject, 'build');
-            sinon.spy(subject,  'update');
-
-            subject.load(scene);
-        });
-
-        afterEach(() => {
-            subject.update.restore();
-        });
-
-        it('sets the key value', () => {
-            assert.propertyVal(subject, 'key', '150/192/9');
-        });
-
-        it('updates relative to scene', () => {
-            sinon.assert.called(subject.update);
-        });
-
     });
 
     describe('sets visibility', () => {

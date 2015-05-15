@@ -127,7 +127,7 @@ export default class Tile {
         if (!this.loaded) {
             this.loading = true;
         }
-        return this.workerMessage('buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e });
+        return this.workerMessage('buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
     // Process geometry for tile - called by web worker

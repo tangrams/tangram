@@ -4,7 +4,6 @@ import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
-import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
 import {StyleManager} from './styles/style_manager';
@@ -1459,7 +1458,3 @@ export default class Scene {
 Scene.create = function (config, options = {}) {
     return new Scene(config, options);
 };
-
-
-ShaderProgram.defines.TILE_SCALE = Geo.tile_scale;
-
