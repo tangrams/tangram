@@ -28,6 +28,7 @@ export var SceneWorker = {
 
 if (Utils.isWorkerThread) {
 
+    self.SceneWorker = SceneWorker;
     SceneWorker.worker = self;
 
     // TODO: sync render style state between main thread and worker
@@ -123,7 +124,7 @@ if (Utils.isWorkerThread) {
                     tile.loaded = false;
                     tile.error = null;
 
-                    Promise.all(Object.keys(SceneWorker.sources.tiles).map(x => SceneWorker.sources.tiles[x].load(tile))).then(() => {
+                    SceneWorker.loadSourcesIntoTile(tile).then(() => {
                         // Any errors? Warn and continue
                         let e = Object.keys(tile.sources).
                             map(s => tile.sources[s].error && `[source '${s}': ${tile.sources[s].error}]`).
@@ -135,7 +136,8 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
-                            resolve({ tile: Tile.slice(tile, keys) }); });
+                            resolve({ tile: Tile.slice(tile, keys) });
+                        });
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
@@ -156,6 +158,14 @@ if (Utils.isWorkerThread) {
                 });
             }
         });
+    };
+
+    // Load all data sources into a tile
+    SceneWorker.loadSourcesIntoTile = function (tile) {
+        return Promise.all(
+            Object.keys(SceneWorker.sources.tiles)
+                .map(x => SceneWorker.sources.tiles[x].load(tile))
+        );
     };
 
     // Remove tile
