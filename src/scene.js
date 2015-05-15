@@ -4,7 +4,6 @@ import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
-import Builders from './styles/builders';
 import ShaderProgram from './gl/shader_program';
 import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
@@ -720,7 +719,7 @@ export default class Scene {
                 // Model matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(this.modelMatrix);
                 mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Scene.tile_scale, -1 * tile.span.y / Scene.tile_scale, 1)); // scale tile local coords to meters
+                mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
                 mat4.copy(this.modelMatrix32, this.modelMatrix);
                 program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
 
@@ -1462,8 +1461,5 @@ Scene.create = function (config, options = {}) {
 };
 
 
-Scene.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
-Geo.setTileScale(Scene.tile_scale);
-Builders.setTileScale(Scene.tile_scale);
-ShaderProgram.defines.TILE_SCALE = Scene.tile_scale;
+ShaderProgram.defines.TILE_SCALE = Geo.tile_scale;
 

@@ -10,6 +10,11 @@ export default Builders = {};
 
 Builders.debug = false;
 
+Builders.tile_bounds = [
+    { x: 0, y: 0},
+    { x: Geo.tile_scale, y: -Geo.tile_scale } // TODO: correct for flipped y-axis?
+];
+
 // Re-scale UVs from [0, 1] range to a smaller area within the image
 Builders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_size) {
     var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
@@ -678,13 +683,6 @@ Builders.isOnTileEdge = function (pa, pb, options) {
         edge = 'bottom';
     }
     return edge;
-};
-
-Builders.setTileScale = function (scale) {
-    Builders.tile_bounds = [
-        { x: 0, y: 0},
-        { x: scale, y: -scale } // TODO: correct for flipped y-axis?
-    ];
 };
 
 Builders.valuesWithinTolerance = function (a, b, tolerance) {

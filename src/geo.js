@@ -19,14 +19,12 @@ Geo.metersPerPixel = function (zoom) {
 
 // Conversion functions based on an defined tile scale
 Geo.units_per_meter = [];
-Geo.setTileScale = function(scale) {
-    Geo.tile_scale = scale;
-    Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
+Geo.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
+Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
 
-    for (var z=0; z <= Geo.max_zoom; z++) {
-        Geo.units_per_meter[z] = Geo.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
-    }
-};
+for (let z=0; z <= Geo.max_zoom; z++) {
+    Geo.units_per_meter[z] = Geo.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
+}
 
 // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
 Geo.metersForTile = function (tile) {
