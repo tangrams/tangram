@@ -43,10 +43,12 @@ if (Utils.isWorkerThread) {
     };
 
     // Starts a config refresh
-    SceneWorker.worker.updateConfig = function ({ config }) {
+    SceneWorker.worker.updateConfig = function ({ config, generation }) {
         SceneWorker.config = null;
-        SceneWorker.styles = null;
         config = JSON.parse(config);
+
+        SceneWorker.generation = generation;
+        SceneWorker.styles = null;
 
         // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
@@ -76,12 +78,12 @@ if (Utils.isWorkerThread) {
 
         // Expand styles
         SceneWorker.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles);
+        SceneWorker.styles = StyleManager.build(SceneWorker.config.styles, { generation: SceneWorker.generation });
 
         // Parse each top-level layer as a separate rule tree
         // TODO: find a more graceful way to incorporate this
 
-        SceneWorker.rules =  parseRules(SceneWorker.config.layers);
+        SceneWorker.rules = parseRules(SceneWorker.config.layers);
 
         // Sync tetxure info from main thread
         SceneWorker.syncing_textures = SceneWorker.syncTextures();

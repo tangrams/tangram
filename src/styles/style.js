@@ -14,11 +14,12 @@ import log from 'loglevel';
 // Base class
 
 export var Style = {
-    init () {
+    init ({ generation }) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
+        this.generation = generation;               // scene generation id this style was created for
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -68,6 +69,9 @@ export var Style = {
         this.initialized = false;
     },
 
+    reset () {
+    },
+
     isBuiltIn () {
         return this.hasOwnProperty('built_in') && this.built_in;
     },
@@ -100,9 +104,14 @@ export var Style = {
         return this.tile_data[tile] != null;
     },
 
-    addFeature (feature, rule, tile, context) {
-        if (!this.tile_data[tile]) {
-            this.startData(tile);
+    addFeature (feature, rule, context) {
+        let tile = context.tile;
+        if (tile.generation !== this.generation) {
+            return;
+        }
+
+        if (!this.tile_data[tile.key]) {
+            this.startData(tile.key);
         }
 
         let style = this.parseFeature(feature, rule, context);
@@ -113,11 +122,11 @@ export var Style = {
         }
 
         // First feature in this render style?
-        if (!this.tile_data[tile].vertex_data) {
-            this.tile_data[tile].vertex_data = this.vertex_layout.createVertexData();
+        if (!this.tile_data[tile.key].vertex_data) {
+            this.tile_data[tile.key].vertex_data = this.vertex_layout.createVertexData();
         }
 
-        this.buildGeometry(feature.geometry, style, this.tile_data[tile].vertex_data, context);
+        this.buildGeometry(feature.geometry, style, this.tile_data[tile.key].vertex_data, context);
     },
 
     buildGeometry (geometry, style, vertex_data, context) {

@@ -190,7 +190,7 @@ export default class Tile {
 
                         context.properties = group.properties; // add rule-specific properties to context
 
-                        style.addFeature(feature, group, tile.key, context);
+                        style.addFeature(feature, group, context);
 
                         context.properties = null; // clear group-specific properties
                     }

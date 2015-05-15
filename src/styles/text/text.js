@@ -58,11 +58,11 @@ Object.assign(TextStyle, {
             }
         };
 
-        this.clear();
+        this.reset();
     },
 
-    clear() {
-        this.super.init.apply(this, arguments);
+    reset() {
+        this.super.reset.call(this);
         this.texts = {}; // unique texts, keyed by tile
         this.textures = {};
         this.canvas = {};
@@ -487,7 +487,12 @@ Object.assign(TextStyle, {
     },
 
     // Override to queue features instead of processing immediately
-    addFeature (feature, rule, tile, context) {
+    addFeature (feature, rule, context) {
+        let tile = context.tile;
+        if (tile.generation !== this.generation) {
+            return;
+        }
+
         // Collect text
         let text;
         let source = rule.text_source || 'name';
@@ -501,8 +506,8 @@ Object.assign(TextStyle, {
         if (text) {
             feature.text = text;
 
-            if (!this.texts[tile]) {
-                this.texts[tile] = {};
+            if (!this.texts[tile.key]) {
+                this.texts[tile.key] = {};
             }
 
             let style = this.constructFontStyle(rule, context);
@@ -511,11 +516,11 @@ Object.assign(TextStyle, {
             }
 
             let style_key = this.constructStyleKey(style);
-            this.feature_style_key[tile] = this.feature_style_key[tile] || new Map();
-            this.feature_style_key[tile].set(feature, style_key);
+            this.feature_style_key[tile.key] = this.feature_style_key[tile.key] || new Map();
+            this.feature_style_key[tile.key].set(feature, style_key);
 
-            if (!this.texts[tile][style_key]) {
-                this.texts[tile][style_key] = {};
+            if (!this.texts[tile.key][style_key]) {
+                this.texts[tile.key][style_key] = {};
             }
 
             let priority = 0;
@@ -525,8 +530,8 @@ Object.assign(TextStyle, {
 
             this.max_priority = Math.max(priority, this.max_priority);
 
-            if (!this.texts[tile][style_key][text]) {
-                this.texts[tile][style_key][text] = {
+            if (!this.texts[tile.key][style_key][text]) {
+                this.texts[tile.key][style_key][text] = {
                     text_style: style,
                     priority: priority,
                     ref: 0
@@ -534,15 +539,15 @@ Object.assign(TextStyle, {
             }
 
             this.features = this.features || {};
-            this.features[tile] = this.features[tile] || {};
-            this.features[tile][style_key] = this.features[tile][style_key] || {};
-            this.features[tile][style_key][text] = this.features[tile][style_key][text] || [];
-            this.features[tile][style_key][text].push(feature);
+            this.features[tile.key] = this.features[tile.key] || {};
+            this.features[tile.key][style_key] = this.features[tile.key][style_key] || {};
+            this.features[tile.key][style_key][text] = this.features[tile.key][style_key][text] || [];
+            this.features[tile.key][style_key][text].push(feature);
 
-            if (!this.tile_data[tile]) {
-                this.startData(tile);
+            if (!this.tile_data[tile.key]) {
+                this.startData(tile.key);
             }
-            this.tile_data[tile].queue.push([feature, rule, tile, context]);
+            this.tile_data[tile.key].queue.push([feature, rule, context]);
         }
     },
 

@@ -222,7 +222,7 @@ Object.assign(Lines, {
          if (style.outline && style.outline.color && style.outline.width) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
-                outline_style.addFeature(context.feature, style.outline, context.tile.key, context);
+                outline_style.addFeature(context.feature, style.outline, context);
             }
         }
     },

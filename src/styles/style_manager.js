@@ -267,6 +267,9 @@ StyleManager.build = function (styles, scene = {}) {
         if (!BaseStyles[sname]) {
             delete Styles[sname];
         }
+        else {
+            Styles[sname].reset();
+        }
     }
 
     // Working set of styles being built
@@ -275,15 +278,15 @@ StyleManager.build = function (styles, scene = {}) {
         ws[sname] = StyleManager.create(sname, styles[sname], ws);
     }
 
-    StyleManager.initStyles();
+    StyleManager.initStyles(scene);
     return Styles;
 };
 
 // Initialize all styles
-StyleManager.initStyles = function () {
+StyleManager.initStyles = function (scene) {
     // Initialize all
     for (let sname in Styles) {
-        Styles[sname].init();
+        Styles[sname].init(scene);
     }
 };
 

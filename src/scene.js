@@ -1362,7 +1362,8 @@ export default class Scene {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.workers.forEach(worker => {
             WorkerBroker.postMessage(worker, 'updateConfig', {
-                config: this.config_serialized
+                config: this.config_serialized,
+                generation: this.generation
             });
         });
     }
