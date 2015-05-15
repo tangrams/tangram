@@ -273,8 +273,6 @@ export default class Scene {
         }
 
         this.next_worker = 0;
-        this.selection_map_worker_size = {};
-
         return Promise.all(queue);
     }
 
@@ -629,7 +627,9 @@ export default class Scene {
         }
 
         if (this.render_count !== this.last_render_count) {
-            log.info(`Scene: rendered ${this.render_count} primitives`);
+            this.getFeatureSelectionMapSize().then(size => {
+                log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+            });
         }
         this.last_render_count = this.render_count;
 
@@ -995,14 +995,7 @@ export default class Scene {
     }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-    buildTileCompleted({ tile, worker_id, selection_map_size }) {
-        // Track selection map size (for stats/debug) - update per worker and sum across workers
-        this.selection_map_worker_size[worker_id] = selection_map_size;
-        this.selection_map_size = 0;
-        for (var wid in this.selection_map_worker_size) {
-            this.selection_map_size += this.selection_map_worker_size[wid];
-        }
-
+    buildTileCompleted({ tile }) {
         // Removed this tile during load?
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
@@ -1049,8 +1042,6 @@ export default class Scene {
 
             if (Object.keys(this.building.tiles).length === 0) {
                 log.info(`Scene: build geometry finished`);
-                log.debug(`Scene: updated selection map: ${this.selection_map_size} features`);
-
                 if (this.building.resolve) {
                     this.building.resolve(true);
                 }
@@ -1357,9 +1348,8 @@ export default class Scene {
 
     // Serialize config and send to worker
     syncConfigToWorker() {
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
-        this.selection_map_worker_size = {};
         // Tell workers we're about to rebuild (so they can update styles, etc.)
+        this.config_serialized = Utils.serializeWithFunctions(this.config);
         this.workers.forEach(worker => {
             WorkerBroker.postMessage(worker, 'updateConfig', {
                 config: this.config_serialized,
@@ -1370,6 +1360,13 @@ export default class Scene {
 
     resetFeatureSelection() {
         this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+    }
+
+    // Gets the current feature selection map size across all workers. Returns a promise.
+    getFeatureSelectionMapSize() {
+        return Promise
+            .all(this.workers.map(worker => WorkerBroker.postMessage(worker, 'getFeatureSelectionMapSize')))
+            .then(sizes => sizes.reduce((a, b) => a + b));
     }
 
     // Reset internal clock, mostly useful for consistent experience when changing styles/debugging

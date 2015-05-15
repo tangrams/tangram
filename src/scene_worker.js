@@ -157,23 +157,14 @@ if (Utils.isWorkerThread) {
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
-                            resolve({
-                                tile: SceneWorker.sliceTile(tile, keys),
-                                worker_id: self._worker_id,
-                                selection_map_size: FeatureSelection.getMapSize()
-                            });
-                        });
+                            resolve({ tile: SceneWorker.sliceTile(tile, keys) }); });
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
                         Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
 
-                        resolve({
-                            tile: SceneWorker.sliceTile(tile),
-                            worker_id: self._worker_id,
-                            selection_map_size: FeatureSelection.getMapSize()
-                        });
+                        resolve({ tile: SceneWorker.sliceTile(tile) });
                     });
                 });
             }
@@ -183,11 +174,7 @@ if (Utils.isWorkerThread) {
 
                 // Build geometry
                 return Tile.buildGeometry(tile, SceneWorker.config.layers, SceneWorker.rules, SceneWorker.styles).then(keys => {
-                    return {
-                        tile: SceneWorker.sliceTile(tile, keys),
-                        worker_id: self._worker_id,
-                        selection_map_size: FeatureSelection.getMapSize()
-                    };
+                    return { tile: SceneWorker.sliceTile(tile, keys) };
                 });
             }
         });
@@ -226,6 +213,11 @@ if (Utils.isWorkerThread) {
     // Resets the feature selection state
     SceneWorker.worker.resetFeatureSelection = function () {
         FeatureSelection.reset();
+    };
+
+    // Selection map size for this worker
+    SceneWorker.worker.getFeatureSelectionMapSize = function () {
+        return FeatureSelection.getMapSize();
     };
 
     // Texture info needs to be synced from main thread
