@@ -909,6 +909,22 @@ export default class Scene {
 
         if (this.building && this.building.tiles) {
             delete this.building.tiles[key];
+
+            // TODO: de-dupe this code
+            if (Object.keys(this.building.tiles).length === 0) {
+
+                if (this.building.resolve) {
+                    this.building.resolve(true);
+                }
+
+                // Another rebuild queued?
+                var queued = this.building.queued;
+                this.building = null;
+                if (queued) {
+                    log.debug(`Scene: starting queued rebuildGeometry() request`);
+                    this.rebuildGeometry().then(queued.resolve, queued.reject);
+                }
+            }
         }
     }
 
@@ -1109,16 +1125,11 @@ export default class Scene {
         }
 
         // Remove tiles before rebuilding
-        // this.session++;
-        this.updating++;
-        // for (let key in this.tiles) {
-        //     if (!this.tiles[key].visible) {
-        //         this.removeTile(key);
-        //     }
-        // }
+        this.removeTiles(tile => !tile.visible);
 
-        // this.initialized = false;
-        // this.initializing = true;
+        this.updating++;
+        this.initialized = false;
+        this.initializing = true;
 
         this.config_source = config_source || this.config_source;
 
@@ -1127,11 +1138,13 @@ export default class Scene {
             this.syncConfigToWorker();
             return this.rebuildGeometry().then(() => {
                 this.updating--;
-                // this.initialized = true;
-                // this.initializing = false;
+                this.initialized = true;
+                this.initializing = false;
                 return this;
             });
         }, (error) => {
+            this.initialized = true;
+            this.initializing = false;
             this.updating--;
             throw error;
         });
@@ -1288,7 +1301,6 @@ export default class Scene {
     // Set active camera and recompile - for public API
     setActiveCamera(name) {
         this._active_camera = name;
-        // this.updateConfig();
         this.createCamera();
         return this._active_camera;
     }
