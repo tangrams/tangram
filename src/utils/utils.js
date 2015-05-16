@@ -145,34 +145,40 @@ Utils.deserializeWithFunctions = function(serialized, wrap) {
 
 // Recursively parse an object, attempting to convert string properties that look like functions back into functions
 Utils.stringsToFunctions = function(obj, wrap) {
-    for (var p in obj) {
-        var val = obj[p];
-
-        // Loop through object properties
-        if (typeof val === 'object') {
-            obj[p] = Utils.stringsToFunctions(val, wrap);
-        }
-        // Convert strings back into functions
-        // TODO: make function matching tolerant of whitespace and multilines
-        else if (typeof val === 'string' && val.match(/^function.*\(.*\)/) != null) {
-            var f;
-            try {
-                if (typeof wrap === 'function') {
-                    eval('f = ' + wrap(val)); // jshint ignore:line
-                }
-                else {
-                    eval('f = ' + val); // jshint ignore:line
-                }
-                obj[p] = f;
-            }
-            catch (e) {
-                // fall-back to original value if parsing failed
-                obj[p] = val;
-            }
+    // Convert string
+    if (typeof obj === 'string') {
+        obj = Utils.stringToFunction(obj, wrap);
+    }
+    // Loop through object properties
+    else if (typeof obj === 'object') {
+        for (let p in obj) {
+            obj[p] = Utils.stringsToFunctions(obj[p], wrap);
         }
     }
-
     return obj;
+};
+
+// Convert string back into a function
+// TODO: make function matching tolerant of whitespace and multilines
+Utils.stringToFunction = function(val, wrap) {
+    // Convert strings back into functions
+    if (val.match(/^\s*function\s*\w*\s*\([\s\S]*\)\s*\{[\s\S]*\}/m) != null) {
+        var f;
+        try {
+            if (typeof wrap === 'function') {
+                eval('f = ' + wrap(val)); // jshint ignore:line
+            }
+            else {
+                eval('f = ' + val); // jshint ignore:line
+            }
+            return f;
+        }
+        catch (e) {
+            // fall-back to original value if parsing failed
+            return val;
+        }
+    }
+    return val;
 };
 
 // Log wrapper, sends message to main thread for display, and includes worker id #
