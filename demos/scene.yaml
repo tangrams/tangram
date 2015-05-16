@@ -250,7 +250,6 @@ layers:
                 lines:
                     color: '#bbb'
                     width: [[15, 0px], [18, 2px]]
-                    order: 3
                     outline:
                         width: 0
         airports:
