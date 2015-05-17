@@ -294,7 +294,7 @@ export default class Scene {
         }
 
         // Set zoom
-        if (zoom) {
+        if (typeof zoom === 'number') {
             changed = changed || zoom !== this.zoom;
             this.setZoom(zoom);
         }
