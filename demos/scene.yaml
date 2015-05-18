@@ -30,7 +30,7 @@ textures:
         url: images/poi_icons_32.png
         filtering: mipmap
         sprites:
-            # each sprite is defined as: [x origin, y origin, width, height]
+            # define sprites: [x origin, y origin, width, height]
             plane: [0, 0, 32, 32]
             tree: [0, 185, 32, 32]
             sunburst: [0, 629, 32, 32]
@@ -70,12 +70,14 @@ styles:
         shaders:
             blocks:
                 global: |
+                    // hue-saturation-value to RBG color space converter
                     vec3 hsv2rgb(vec3 c) {
                         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
                 color: |
+                    // modulate hue by z-position and time, then convert to RGB and set pixel color
                     vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
@@ -150,6 +152,7 @@ layers:
         data: { source: osm }
         filter:
             name: true
+            # show smaller landuse areas at higher zooms
             any:
                 - { $zoom: { min: 9 }, area: { min: 10000000 } }
                 - { $zoom: { min: 10 }, area: { min: 3300000 } }
@@ -171,7 +174,6 @@ layers:
             filter: { kind: [commercial, industrial] }
             draw:
                 polygons:
-                    # color: '#6ea0a4'
                     color: '#C0CDCD'
         orange:
             filter: { kind: [university] }
@@ -183,6 +185,7 @@ layers:
         data: { source: osm }
         filter:
             any:
+                # show smaller water areas at higher zooms
                 - { $zoom: { min: 0 }, area: { min: 10000000 } }
                 - { $zoom: { min: 10 }, area: { min: 1000000 } }
                 - { $zoom: { min: 12 }, area: { min: 100000 } }
@@ -302,7 +305,6 @@ layers:
                     extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
         high-line:
-            # filter: { uid: "37054313" }
             filter: { roof_material: grass }
             draw:
                 polygons:
@@ -319,7 +321,6 @@ layers:
                 text:
                     font:
                         fill: '#666'
-                        # size: 12pt
                         typeface: 100 12px Helvetica
                         stroke: { color: white, width: 4 }
 
@@ -412,6 +413,7 @@ layers:
             name: true
             kind: [park, forest, cemetery, graveyard]
             any:
+                # show labels for smaller landuse areas at higher zooms
                 - { $zoom: { min: 9 }, area: { min: 100000000 } }
                 - { $zoom: { min: 10 }, area: { min: 10000000 } }
                 - { $zoom: { min: 12 }, area: { min: 1000000 } }
