@@ -53,7 +53,7 @@ Object.assign(TextStyle, {
                 offset: 0
             },
             points: {
-                max_width: 100,
+                max_width: 150,
                 line_height: 100 // percentage
             }
         };
