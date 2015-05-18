@@ -199,7 +199,7 @@ class TextLine {
     }
 
     wordInfoIndex (position) {
-        if (position > this.line_length) {
+        if (position > this.line_length || this.words[this.words.length - 1].end < position) {
             return this.words.length - 1;
         } else if (position < 0) {
             return 0;
