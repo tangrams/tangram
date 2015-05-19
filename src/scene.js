@@ -927,8 +927,6 @@ export default class Scene {
 
     // Rebuild all tiles
     rebuildGeometry() {
-        this.updating++;
-
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -988,7 +986,6 @@ export default class Scene {
             if (this.debug.profile.geometry_build) {
                 this._profileEnd('rebuildGeometry');
             }
-            this.updating--;
         });
     }
 
@@ -1339,9 +1336,12 @@ export default class Scene {
         this.updateStyles();
         this.syncConfigToWorker();
         if (rebuild) {
-            this.rebuildGeometry();
+            return this.rebuildGeometry().then(() => this.updating--);
         }
-        this.updating--;
+        else {
+            this.updating--;
+            return Promise.resolve();
+        }
     }
 
     // Serialize config and send to worker
