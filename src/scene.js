@@ -1271,7 +1271,7 @@ export default class Scene {
     // Set active camera and recompile - for public API
     setActiveCamera(name) {
         this._active_camera = name;
-        this.createCamera();
+        this.updateConfig();
         return this._active_camera;
     }
 
