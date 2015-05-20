@@ -80,7 +80,7 @@ if (Utils.isMainThread) {
 var originalFactory = log.methodFactory;
 log.methodFactory = function (methodName, logLevel) {
     var rawMethod = originalFactory(methodName, logLevel);
-    return function (message) {
-        rawMethod(`Tangram ${version.string}: ${message}`);
+    return function (...message) {
+        rawMethod(`Tangram ${version.string}: `, ...message);
     };
 };
