@@ -14,6 +14,7 @@ import version from './utils/version';
 import log from 'loglevel';
 import Geo from './geo';
 import DataSource from './data_source';
+import TileManager from './tile_manager';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
 import VertexData from './gl/vertex_data';
@@ -37,6 +38,7 @@ var debug = {
     Utils,
     Geo,
     DataSource,
+    TileManager,
     GLSL,
     ShaderProgram,
     VertexData,
