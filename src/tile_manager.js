@@ -88,7 +88,7 @@ export default TileManager = {
     },
 
     updateVisibility(tile) {
-        tile.visible = (this.visible_tiles[tile.key] && (tile.coords.z === this.scene.tile_zoom)) ? true : false;
+        tile.visible = (this.visible_tiles[tile.key] && (tile.coords.z === this.scene.center_tile.z)) ? true : false;
     },
 
     getRenderableTiles() {

@@ -340,7 +340,7 @@ export default class Tile {
 
     update(scene) {
         // TODO: handle tiles of mismatching zoom levels
-        if (this.coords.z === scene.tile_zoom) {
+        if (this.coords.z === scene.center_tile.z) {
             this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
         }
         else {

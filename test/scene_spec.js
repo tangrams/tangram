@@ -1,13 +1,10 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Scene from '../src/scene';
-import Tile from '../src/tile';
 import Utils from '../src/utils/utils';
 import sampleScene from './fixtures/sample-scene';
 
 let nycLatLng = { lng: -73.97229, lat: 40.76456, zoom: 17 };
-let midtownTile = { x: 38603, y: 49255, z: 17 };
-let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
 describe('Scene', function () {
 
@@ -38,75 +35,6 @@ describe('Scene', function () {
             assert.equal(subject.config_source, sampleScene.config);
         });
 
-
-    });
-
-    describe('.loadTile(coords)', () => {
-
-        let coords = midtownTile;
-
-        beforeEach(() => {
-            sinon.spy(subject, '_loadTile');
-
-            return subject.init().then(() => {
-                subject.loadTile(coords);
-                subject.loadQueuedTiles();
-            });
-        });
-
-        it('calls _loadTile with the queued tile', () => {
-            sinon.assert.calledWith(subject._loadTile, coords);
-        });
-    });
-
-    describe('._loadTile(coords, options)', () => {
-
-        let coords = midtownTile;
-
-        beforeEach(() => {
-            return subject.init();
-        });
-
-        describe('when the scene has not loaded the tile', () => {
-
-            it('loads the tile', () => {
-                let tile = subject._loadTile(coords);
-                assert.instanceOf(tile, Tile);
-            });
-
-            it('caches the result in the scene object', () => {
-                let tile = subject._loadTile(coords);
-                let tiles = subject.tiles;
-                assert.instanceOf(tiles[tile.key], Tile);
-            });
-        });
-
-        describe('when the scene already has the tile', () => {
-            let key = midtownTileKey;
-            let tile;
-
-            beforeEach(() => {
-                subject._loadTile(coords);
-                sinon.spy(subject, 'cacheTile');
-                tile = subject._loadTile(coords);
-                sinon.spy(tile, 'build');
-            });
-
-            afterEach(() => {
-                subject.cacheTile.restore();
-                tile.build.restore();
-                subject.tiles[key] = undefined;
-            });
-
-            it('does not build the tile', () => {
-                assert.isFalse(tile.build.called);
-            });
-
-            it('does not cache the tile', () => {
-                assert.isFalse(subject.cacheTile.called);
-            });
-
-        });
 
     });
 
@@ -272,16 +200,10 @@ describe('Scene', function () {
     describe('.update()', () => {
 
         beforeEach(() => {
-            sinon.spy(subject, 'loadQueuedTiles');
             sinon.spy(subject, 'render');
 
             subject.setView(nycLatLng);
             return subject.init();
-        });
-
-        it('calls the loadQueuedTiles method', () => {
-            subject.update();
-            assert.isTrue(subject.loadQueuedTiles.called);
         });
 
         describe('when the scene is not dirty', () => {
@@ -365,101 +287,5 @@ describe('Scene', function () {
             assert.deepPropertyVal(subject, 'styles.rainbow.defines.TEST', true);
         });
     });
-
-    // describe.skip('.rebuildGeometry()', () => {
-    //     let subject;
-    //     let div = document.createElement('div');
-
-    //     beforeEach((done) => {
-    //         subject = makeScene({});
-    //         subject.setView(nycLatLng);
-    //         subject.init().then(() => {
-    //             subject.loadTile(midtownTile, div);
-    //             subject.loadQueuedTiles();
-
-    //             var tile = subject.tiles['38603/49255/17'];
-    //             var check = setInterval(() => {
-    //                 if (tile.loaded) {
-    //                     clearInterval(check);
-    //                     done();
-    //                 }
-    //             }, 50);
-    //         });
-    //     });
-
-    //     afterEach(() => {
-    //         subject.destroy();
-    //         subject = undefined;
-    //     });
-
-    //     it('calls back', (done) => {
-    //         subject.rebuildGeometry().then(done);
-    //     });
-
-    //     it('queues the second call & then runs it when the first call is complete', (done) => {
-    //         subject.rebuildGeometry();
-    //         subject.rebuildGeometry().then(done);
-    //     });
-
-    //     it('runs first call, queues second call, then rejects second call when third call is made', (done) => {
-    //         let rejectedSecond;
-    //         subject.rebuildGeometry();
-    //         subject.rebuildGeometry().catch((error) => {
-    //             rejectedSecond = (error.message === 'Scene.rebuildGeometry: request superceded by a newer call');
-    //         });
-    //         subject.rebuildGeometry().then(() => {
-    //             assert.isTrue(rejectedSecond);
-    //             done();
-    //         });
-    //     });
-    // });
-
-    // describe.skip('.createWorkers()', () => {
-    //     let subject;
-    //     beforeEach(() => {
-    //         subject = makeScene({num_workers: 2});
-    //         sinon.spy(subject, 'makeWorkers');
-    //     });
-
-    //     afterEach(() => {
-    //         subject.destroy();
-    //         subject = null;
-    //     });
-
-    //     it('calls the makeWorkers method', (done) => {
-    //         subject.createWorkers().then(() => {
-    //             sinon.assert.called(subject.makeWorkers);
-    //             done();
-    //         });
-    //     });
-
-    // });
-
-    // describe.skip('.makeWorkers(url)', () => {
-    //     let subject,
-    //         numWorkers = 2,
-    //         url = '/tangram-worker.debug.js';
-
-    //     beforeEach(() => {
-    //         subject = makeScene({numWorkers});
-    //         subject.makeWorkers(url);
-    //     });
-
-    //     afterEach(() => {
-    //         subject.destroy();
-    //         subject = null;
-    //     });
-
-    //     describe('when given a url', () => {
-
-    //         it('creates the correct number of workers', () => {
-    //             assert.equal(subject.workers.length, 2);
-    //         });
-
-    //         it('creates the correct type of workers', () => {
-    //             assert.instanceOf(subject.workers[0], Worker);
-    //         });
-    //     });
-    // });
 
 });
