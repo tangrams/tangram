@@ -21,8 +21,7 @@ export default TileManager = {
         this.queued_tiles = [];
     },
 
-    // tile manager
-    cacheTile(tile) {
+    keepTile(tile) {
         this.tiles[tile.key] = tile;
     },
 
@@ -32,7 +31,7 @@ export default TileManager = {
 
     forgetTile(key) {
         delete this.tiles[key];
-        this.tileBuildStop(key); // ???
+        this.tileBuildStop(key);
     },
 
     // Remove a single tile
@@ -75,7 +74,7 @@ export default TileManager = {
         // Find visible tiles and load new ones
         this.visible_tiles = this.scene.findVisibleTiles();
         for (let key in this.visible_tiles) {
-            this.loadTile(this.visible_tiles[key]);
+            this.queueTile(this.visible_tiles[key]);
         }
 
         // Remove tiles too far outside of view
@@ -103,7 +102,7 @@ export default TileManager = {
     },
 
     // Queue a tile for load
-    loadTile(coords) {
+    queueTile(coords) {
         this.queued_tiles[this.queued_tiles.length] = coords;
     },
 
@@ -119,12 +118,12 @@ export default TileManager = {
             let bd = Math.abs(this.scene.center_tile.x - b.x) + Math.abs(this.scene.center_tile.y - b.y);
             return (bd > ad ? -1 : (bd === ad ? 0 : 1));
         });
-        this.queued_tiles.forEach(coords => this._loadTile(coords));
+        this.queued_tiles.forEach(coords => this.loadTile(coords));
         this.queued_tiles = [];
     },
 
     // Load a single tile
-    _loadTile(coords) {
+    loadTile(coords) {
         // Skip if not at current scene zoom
         if (coords.z !== this.scene.center_tile.z) {
             return;
@@ -140,7 +139,7 @@ export default TileManager = {
                 style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
             });
 
-            this.cacheTile(tile);
+            this.keepTile(tile);
             this.buildTile(tile);
         }
         else {
@@ -156,9 +155,7 @@ export default TileManager = {
     },
 
     buildTile(tile) {
-        this.scene.trackTileSetLoadStart(tile); // ???
         this.tileBuildStart(tile.key);
-
         this.updateVisibility(tile);
         tile.update(this.scene);
         tile.build(this.scene.generation).then(message => this.buildTileCompleted(message));
@@ -190,7 +187,6 @@ export default TileManager = {
             this.scene.requestRedraw();
         }
 
-        this.scene.trackTileSetLoadStop(); // ???
         this.tileBuildStop(tile.key);
     },
 

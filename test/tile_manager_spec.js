@@ -24,25 +24,25 @@ describe('TileManager', function () {
         scene = null;
     });
 
-    describe('.loadTile(coords)', () => {
+    describe('.queueTile(coords)', () => {
 
         let coords = midtownTile;
 
         beforeEach(() => {
-            sinon.spy(TileManager, '_loadTile');
+            sinon.spy(TileManager, 'loadTile');
 
             return scene.init().then(() => {
-                TileManager.loadTile(coords);
+                TileManager.queueTile(coords);
                 TileManager.loadQueuedTiles();
             });
         });
 
-        it('calls _loadTile with the queued tile', () => {
-            sinon.assert.calledWith(TileManager._loadTile, coords);
+        it('calls loadTile with the queued tile', () => {
+            sinon.assert.calledWith(TileManager.loadTile, coords);
         });
     });
 
-    describe('._loadTile(coords, options)', () => {
+    describe('.loadTile(coords, options)', () => {
 
         let coords = midtownTile;
 
@@ -53,12 +53,12 @@ describe('TileManager', function () {
         describe('when the tile manager has not loaded the tile', () => {
 
             it('loads the tile', () => {
-                let tile = TileManager._loadTile(coords);
+                let tile = TileManager.loadTile(coords);
                 assert.instanceOf(tile, Tile);
             });
 
-            it('caches the result', () => {
-                let tile = TileManager._loadTile(coords);
+            it('keeps the tile', () => {
+                let tile = TileManager.loadTile(coords);
                 let tiles = TileManager.tiles;
                 assert.instanceOf(tiles[tile.key], Tile);
             });
@@ -69,14 +69,14 @@ describe('TileManager', function () {
             let tile;
 
             beforeEach(() => {
-                TileManager._loadTile(coords);
-                sinon.spy(TileManager, 'cacheTile');
-                tile = TileManager._loadTile(coords);
+                TileManager.loadTile(coords);
+                sinon.spy(TileManager, 'keepTile');
+                tile = TileManager.loadTile(coords);
                 sinon.spy(tile, 'build');
             });
 
             afterEach(() => {
-                TileManager.cacheTile.restore();
+                TileManager.keepTile.restore();
                 tile.build.restore();
                 TileManager.tiles[key] = undefined;
             });
@@ -85,8 +85,8 @@ describe('TileManager', function () {
                 assert.isFalse(tile.build.called);
             });
 
-            it('does not cache the tile', () => {
-                assert.isFalse(TileManager.cacheTile.called);
+            it('does not keep the tile', () => {
+                assert.isFalse(TileManager.keepTile.called);
             });
 
         });

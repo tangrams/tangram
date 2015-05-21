@@ -1198,39 +1198,6 @@ export default class Scene {
 
     // Stats/debug/profiling methods
 
-    // Profiling methods used to track when sets of tiles start/stop loading together
-    // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
-    trackTileSetLoadStart(tile) {
-        if (tile.loaded) {
-            return;
-        }
-
-        // Start tracking new tile set if no other tiles already loading
-        if (this.tile_set_loading == null) {
-            this.tile_set_loading = +new Date();
-            log.info('Scene: tile set load start');
-        }
-    }
-
-    trackTileSetLoadStop() {
-        // No more tiles actively loading?
-        if (this.tile_set_loading != null) {
-            var end_tile_set = true;
-            for (var t in this.tiles) {
-                if (this.tiles[t].loading === true) {
-                    end_tile_set = false;
-                    break;
-                }
-            }
-
-            if (end_tile_set === true) {
-                this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
-                this.tile_set_loading = null;
-                log.info(`Scene: tile set load finished in ${this.last_tile_set_load}ms`);
-            }
-        }
-    }
-
     // Sum of a debug property across tiles
     getDebugSum(prop, filter) {
         var sum = 0;
