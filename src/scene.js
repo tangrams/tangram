@@ -44,7 +44,6 @@ export default class Scene {
         this.sources = {};
 
         this.tile_manager = TileManager;
-        this.tile_manager.init(this);
         this.num_workers = options.numWorkers || 2;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
@@ -122,6 +121,7 @@ export default class Scene {
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         return new Promise((resolve, reject) => {
+            this.tile_manager.init(this);
             this.loadScene().then(() => {
                 this.createWorkers().then(() => {
                     this.createCanvas();

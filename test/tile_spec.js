@@ -13,6 +13,7 @@ describe('Tile', function() {
 
     beforeEach(() => {
         scene = makeScene({});
+        TileManager.init(scene);
         sinon.stub(scene, 'findVisibleTiles').returns([]);
         scene.setView(nycLatLng);
         return scene.init().then(() => {
