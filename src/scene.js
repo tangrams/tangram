@@ -288,7 +288,7 @@ export default class Scene {
         var changed = false;
 
         // Set center
-        if (lng && lat) {
+        if (typeof lng === 'number' && typeof lat === 'number') {
             changed = changed || !this.center || lng !== this.center.lng || lat !== this.center.lat;
             this.center = { lng, lat };
         }
