@@ -5,11 +5,9 @@ import Tile from '../src/tile';
 import Utils from '../src/utils/utils';
 import sampleScene from './fixtures/sample-scene';
 
-
-let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
+let nycLatLng = { lng: -73.97229, lat: 40.76456, zoom: 17 };
 let midtownTile = { x: 38603, y: 49255, z: 17 };
 let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
-
 
 describe('Scene', function () {
 
@@ -225,7 +223,7 @@ describe('Scene', function () {
             subject.setView(nycLatLng);
         });
 
-        it('sets the scene center and zoom', () => {
+        it('sets the scene center', () => {
             assert.deepEqual(subject.center, {lng, lat});
         });
 
