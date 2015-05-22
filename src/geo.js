@@ -6,11 +6,14 @@ export default Geo = {};
 // Projection constants
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
-Geo.min_zoom_meters_per_pixel = Geo.half_circumference_meters * 2 / Geo.tile_size; // min zoom draws world as 2 tiles wide
+Geo.circumference_meters = Geo.half_circumference_meters * 2;
+Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
+Geo.meters_per_tile = [];
 Geo.max_zoom = 20;
 for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
+    Geo.meters_per_tile[z] = Geo.circumference_meters / Math.pow(2, z);
 }
 
 Geo.metersPerPixel = function (zoom) {
@@ -29,8 +32,8 @@ for (let z=0; z <= Geo.max_zoom; z++) {
 // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
 Geo.metersForTile = function (tile) {
     return {
-        x: tile.x * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters,
-        y: -(tile.y * Geo.half_circumference_meters * 2 / Math.pow(2, tile.z) - Geo.half_circumference_meters)
+        x: tile.x * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters,
+        y: -(tile.y * Geo.circumference_meters / Math.pow(2, tile.z) - Geo.half_circumference_meters)
     };
 };
 
@@ -39,10 +42,23 @@ Geo.metersForTile = function (tile) {
 */
 Geo.tileForMeters = function ([x, y], zoom) {
     return {
-        x: Math.floor((x + Geo.half_circumference_meters) / (Geo.half_circumference_meters * 2 / Math.pow(2, zoom))),
-        y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.half_circumference_meters * 2 / Math.pow(2, zoom))),
+        x: Math.floor((x + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
+        y: Math.floor((-y + Geo.half_circumference_meters) / (Geo.circumference_meters / Math.pow(2, zoom))),
         z: zoom
     };
+};
+
+// Wrap a tile to positive #s for zoom
+// Optionally specify the axes to wrap
+Geo.wrapTile = function({ x, y, z }, mask = { x: true, y: false }) {
+    var m = (1 << z) - 1;
+    if (mask.x) {
+        x = x & m;
+    }
+    if (mask.y) {
+        y = y & m;
+    }
+    return { x, y, z };
 };
 
 /**
@@ -74,6 +90,10 @@ Geo.latLngToMeters = function([x, y]) {
     x *= Geo.half_circumference_meters / 180;
 
     return [x, y];
+};
+
+Geo.wrapLng = function(x) {
+    return ((x + 180) % 360 + 360) % 360 - 180;
 };
 
 // Run an in-place transform function on each cooordinate in a GeoJSON geometry
