@@ -135,9 +135,9 @@ styles:
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
-    # osm:
-    #     type: GeoJSONTiles
-    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw
+    osm:
+        type: TopoJSONTiles
+        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
 
 layers:
     earth:
@@ -313,8 +313,7 @@ layers:
 
     road_labels:
         data: { source: osm, layer: roads }
-        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail } }
-
+        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
@@ -396,13 +395,52 @@ layers:
 
     places:
         data: { source: osm }
-        filter: { name: true, not: { kind: [county, state, island] } }
+        filter:
+            name: true
+            not: { kind: [county, state, island] }
+            any:
+                - { $zoom: { min: 1 }, kind: ocean }
+                - { $zoom: { min: 2, max: 5 }, kind: continent }
+                # important countries
+                - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
+                # unimportant countries
+                - { $zoom: { min: 5 }, kind: country }
+                # this function matches the "cities" sublayer
+                - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
             text:
                 font:
-                    typeface: italic 12pt Helvetica
+                    typeface: italic 11pt Helvetica
                     fill: black
                     stroke: { color: white, width: 3 }
+        continents:
+            filter: { kind: continent }
+            draw:
+                text:
+                    font:
+                        fill: red
+                        capitalized: true
+        countries:
+            filter: { kind: country }
+            draw:
+                text:
+                    font:
+                        capitalized: true
+        oceans:
+            filter: { kind: ocean }
+            draw:
+                text:
+                    font:
+                        typeface: italic 14pt Baskerville
+        cities:
+            # this filter shows lower scaleranks at higher zooms, starting at z4
+            filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
+            draw:
+                text:
+                    font:
+                        typeface: italic 12pt Helvetica
+                        fill: black
+                        stroke: { color: white, width: 3 }
         minor-places:
             filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
             visible: false
