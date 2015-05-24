@@ -244,8 +244,14 @@ export class GeoJSONTileSource extends NetworkTileSource {
             source.layers = data;
         }
 
+        // A "synthetic" tile that adjusts the tile min anchor to account for tile longitude wrapping
+        let anchor = {
+            coords: tile.coords,
+            min: Geo.metersForTile(Geo.wrapTile(tile.coords, { x: true }))
+        };
+
         DataSource.projectData(source); // mercator projection
-        DataSource.scaleData(source, tile); // re-scale from meters to local tile coords
+        DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
     }
 }
 
