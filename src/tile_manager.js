@@ -19,6 +19,7 @@ export default TileManager = {
         this.tiles = {};
         this.visible_tiles = {};
         this.queued_tiles = [];
+        this.scene = null;
     },
 
     keepTile(tile) {

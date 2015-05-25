@@ -44,6 +44,7 @@ export default class Scene {
         this.sources = {};
 
         this.tile_manager = TileManager;
+        this.tile_manager.init(this);
         this.num_workers = options.numWorkers || 2;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
@@ -172,7 +173,6 @@ export default class Scene {
         }
 
         this.sources = {};
-        this.tile_manager.destroy();
 
         if (Array.isArray(this.workers)) {
             this.workers.forEach((worker) => {
@@ -180,6 +180,8 @@ export default class Scene {
             });
             this.workers = null;
         }
+
+        this.tile_manager.destroy();
     }
 
     createCanvas() {
@@ -404,6 +406,10 @@ export default class Scene {
     }
 
     findVisibleTiles({ buffer } = {}) {
+        if (this.initialized !== true) {
+            return;
+        }
+
         let z = this.tileZoom(this.zoom);
         let max_zoom = this.findMaxZoom();
         if (z > max_zoom) {
@@ -426,6 +432,10 @@ export default class Scene {
 
     // Remove tiles too far outside of view
     pruneTilesForView(border_buffer = 2) {
+        if (!this.viewReady()) {
+            return;
+        }
+
         // Remove tiles that are a specified # of tiles outside of the viewport border
         let border_tiles = [
             Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),

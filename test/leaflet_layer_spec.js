@@ -18,7 +18,6 @@ let makeOne = () => {
         workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
 
-    sinon.stub(layer.scene, 'findVisibleTiles').returns([]);
     return layer;
 };
 
@@ -109,7 +108,7 @@ describe('Leaflet plugin', () => {
         });
     });
 
-    describe.skip('removing and then re-adding to a map', () => {
+    describe('removing and then re-adding to a map', () => {
         let subject, scene;
 
         beforeEach((done) => {
