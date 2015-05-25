@@ -11,6 +11,7 @@ import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Light from './light';
 import Tile from './tile';
+import TileManager from './tile_manager';
 import DataSource from './data_source';
 import FeatureSelection from './selection';
 
@@ -42,9 +43,8 @@ export default class Scene {
         this.initializing = false;
         this.sources = {};
 
-        this.tiles = {};
-        this.visible_tiles = {};
-        this.queued_tiles = [];
+        this.tile_manager = TileManager;
+        this.tile_manager.init(this);
         this.num_workers = options.numWorkers || 2;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
@@ -122,6 +122,7 @@ export default class Scene {
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         return new Promise((resolve, reject) => {
+            this.tile_manager.init(this);
             this.loadScene().then(() => {
                 this.createWorkers().then(() => {
                     this.createCanvas();
@@ -171,14 +172,16 @@ export default class Scene {
             this.gl = null;
         }
 
+        this.sources = {};
+
         if (Array.isArray(this.workers)) {
             this.workers.forEach((worker) => {
                 worker.terminate();
             });
             this.workers = null;
         }
-        this.sources = {};
-        this.tiles = {}; // TODO: probably destroy each tile separately too
+
+        this.tile_manager.destroy();
     }
 
     createCanvas() {
@@ -327,16 +330,16 @@ export default class Scene {
 
     setZoom(zoom) {
         this.zooming = false;
-        let base = this.tileZoom(zoom);
+        let tile_zoom = this.tileZoom(zoom);
 
         if (!this.continuous_zoom) {
-            zoom = base;
+            zoom = tile_zoom;
         }
 
-        if (base !== this.tileZoom(this.last_zoom)) {
+        if (tile_zoom !== this.tileZoom(this.last_zoom)) {
             // Remove tiles outside current zoom that are still loading
-            this.removeTiles(tile => {
-                if (tile.loading && this.tileZoom(tile.coords.z) !== base) {
+            this.tile_manager.removeTiles(tile => {
+                if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
                     log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
                     return true;
                 }
@@ -345,6 +348,7 @@ export default class Scene {
 
         this.last_zoom = this.zoom;
         this.zoom = zoom;
+        this.tile_zoom = tile_zoom;
 
         this.updateBounds();
 
@@ -395,25 +399,17 @@ export default class Scene {
             }
         };
 
-        // Find visible tiles and load new ones
-        this.visible_tiles = this.findVisibleTiles();
-        for (let key in this.visible_tiles) {
-            this.loadTile(this.visible_tiles[key]);
-        }
-
-        // Remove tiles too far outside of view
-        this.pruneTilesForView();
-
-        // Update tile visible flags
-        for (let key in this.tiles) {
-            this.tiles[key].update(this);
-        }
+        this.tile_manager.updateTilesForView();
 
         this.trigger('move');
         this.dirty = true;
     }
 
     findVisibleTiles({ buffer } = {}) {
+        if (this.initialized !== true) {
+            return;
+        }
+
         let z = this.tileZoom(this.zoom);
         let max_zoom = this.findMaxZoom();
         if (z > max_zoom) {
@@ -436,6 +432,10 @@ export default class Scene {
 
     // Remove tiles too far outside of view
     pruneTilesForView(border_buffer = 2) {
+        if (!this.viewReady()) {
+            return;
+        }
+
         // Remove tiles that are a specified # of tiles outside of the viewport border
         let border_tiles = [
             Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
@@ -443,7 +443,7 @@ export default class Scene {
         ];
         let base = this.tileZoom(this.zoom);
 
-        this.removeTiles(tile => {
+        this.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
             if (tile.visible) {
                 return false;
@@ -473,21 +473,6 @@ export default class Scene {
             }
             return false;
         });
-    }
-
-    // Remove tiles that pass a filter condition
-    removeTiles(filter) {
-        let remove_tiles = [];
-        for (let t in this.tiles) {
-            let tile = this.tiles[t];
-            if (filter(tile)) {
-                remove_tiles.push(t);
-            }
-        }
-        for (let r=0; r < remove_tiles.length; r++) {
-            let key = remove_tiles[r];
-            this.removeTile(key);
-        }
     }
 
     resizeMap(width, height) {
@@ -542,7 +527,7 @@ export default class Scene {
     }
 
     update() {
-        this.loadQueuedTiles();
+        this.tile_manager.loadQueuedTiles();
 
         // Render on demand
         var will_render = !(
@@ -595,13 +580,7 @@ export default class Scene {
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
         // Renderable tile list
-        this.renderable_tiles = [];
-        for (var t in this.tiles) {
-            var tile = this.tiles[t];
-            if (tile.visible && tile.loaded) {
-                this.renderable_tiles.push(tile);
-            }
-        }
+        this.renderable_tiles = this.tile_manager.getRenderableTiles();
         this.renderable_tiles_count = this.renderable_tiles.length;
 
         // Render main pass
@@ -835,78 +814,6 @@ export default class Scene {
         return this.selection.getFeatureAt(point);
     }
 
-    // Queue a tile for load
-    loadTile(coords) {
-        this.queued_tiles[this.queued_tiles.length] = coords;
-    }
-
-    // Load all queued tiles
-    loadQueuedTiles() {
-        if (!this.initialized) {
-            return;
-        }
-
-        if (this.queued_tiles.length === 0) {
-            return;
-        }
-
-        // Sort queued tiles from center tile
-        this.queued_tiles.sort((a, b) => {
-            let ad = Math.abs(this.center_tile.x - a.x) + Math.abs(this.center_tile.y - a.y);
-            let bd = Math.abs(this.center_tile.x - b.x) + Math.abs(this.center_tile.y - b.y);
-            return (bd > ad ? -1 : (bd === ad ? 0 : 1));
-        });
-        this.queued_tiles.forEach(coords => this._loadTile(coords));
-        this.queued_tiles = [];
-    }
-
-    // Load a single tile
-    _loadTile(coords) {
-        // Skip if not at current scene zoom
-        if (coords.z !== this.center_tile.z) {
-            return;
-        }
-
-        let key = Tile.key(coords);
-        let tile;
-        if (!this.hasTile(key)) {
-            tile = Tile.create({
-                coords: coords,
-                max_zoom: this.findMaxZoom(),
-                worker: this.nextWorker(),
-                style_zoom: this.styleZoom(coords.z)
-            });
-
-            this.cacheTile(tile);
-            this.buildTile(tile);
-        }
-        else {
-            tile = this.tiles[key];
-        }
-        return tile;
-    }
-
-    buildTile(tile) {
-        this.trackTileSetLoadStart(tile);
-        this.tileBuildStart(tile.key);
-        tile.update(this);
-        tile.build(this.generation).then(message => this.buildTileCompleted(message));
-    }
-
-    // tile manager
-    cacheTile(tile) {
-        this.tiles[tile.key] = tile;
-    }
-
-    hasTile(key) {
-        return this.tiles[key] !== undefined;
-    }
-
-    forgetTile(key) {
-        delete this.tiles[key];
-        this.tileBuildStop(key);
-    }
-
     findMaxZoom() {
         var max_zoom = this.max_zoom || Geo.max_zoom;
 
@@ -944,7 +851,7 @@ export default class Scene {
             }
 
             // Track tile build state
-            this.building = { resolve, reject, tiles: {} };
+            this.building = { resolve, reject };
 
             // Profiling
             if (this.debug.profile.geometry_build) {
@@ -959,28 +866,15 @@ export default class Scene {
 
             // Rebuild visible tiles, sorted from center
             let build = [];
-            for (let tile of Utils.values(this.tiles)) {
+            this.tile_manager.forEachTile((tile) => {
                 if (tile.visible) {
                     build.push(tile);
                 }
                 else {
-                    this.removeTile(tile.key);
+                    this.tile_manager.removeTile(tile.key);
                 }
-            }
-            Tile.sort(build).forEach(tile => this.buildTile(tile));
-
-            // Edge case: if nothing is being rebuilt, immediately resolve promise and don't lock further rebuilds
-            if (this.building && Object.keys(this.building.tiles).length === 0) {
-                resolve(false);
-
-                // Another rebuild queued?
-                var queued = this.building.queued;
-                this.building = null;
-                if (queued) {
-                    log.debug(`Scene: starting queued rebuildGeometry() request`);
-                    this.rebuildGeometry().then(queued.resolve, queued.reject);
-                }
-            }
+            });
+            this.tile_manager.buildTiles(build);
         }).then(() => {
             // Profiling
             if (this.debug.profile.geometry_build) {
@@ -989,83 +883,22 @@ export default class Scene {
         });
     }
 
-    // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
-    buildTileCompleted({ tile }) {
-        // Removed this tile during load?
-        if (this.tiles[tile.key] == null) {
-            log.trace(`discarded tile ${tile.key} in Scene.buildTileCompleted because previously removed`);
-            Tile.abortBuild(tile);
-        }
-        // Built with an outdated scene configuration?
-        else if (tile.generation !== this.generation) {
-            log.debug(`discarded tile ${tile.key} in Scene.buildTileCompleted because built with ` +
-                `scene config gen ${tile.generation}, current ${this.generation}`);
-            this.forgetTile(tile.key);
-            Tile.abortBuild(tile);
-        }
-        else {
-            // Update tile with properties from worker
-            if (this.tiles[tile.key]) {
-                tile = this.tiles[tile.key].merge(tile);
-            }
-
-            tile.update(this);
-            tile.buildMeshes(this.styles);
-            this.dirty = true;
-        }
-
-        this.trackTileSetLoadStop();
-        this.tileBuildStop(tile.key);
-    }
-
-    // Track tile build state
-    tileBuildStart(key) {
-        if (!this.building) {
-            this.building = {
-                tiles: {}
-            };
-        }
-        this.building.tiles[key] = true;
-        log.trace(`tileBuildStart for ${key}: ${Object.keys(this.building.tiles).length}`);
-    }
-
-    tileBuildStop(key) {
-        // Done building?
+    // Tile manager finished building tiles
+    tileManagerBuildDone() {
         if (this.building) {
-            log.trace(`tileBuildStop for ${key}: ${Object.keys(this.building.tiles).length}`);
-            delete this.building.tiles[key];
+            log.info(`Scene: build geometry finished`);
+            if (this.building.resolve) {
+                this.building.resolve(true);
+            }
 
-            if (Object.keys(this.building.tiles).length === 0) {
-                log.info(`Scene: build geometry finished`);
-                if (this.building.resolve) {
-                    this.building.resolve(true);
-                }
-
-                // Another rebuild queued?
-                var queued = this.building.queued;
-                this.building = null;
-                if (queued) {
-                    log.debug(`Scene: starting queued rebuildGeometry() request`);
-                    this.rebuildGeometry().then(queued.resolve, queued.reject);
-                }
+            // Another rebuild queued?
+            var queued = this.building.queued;
+            this.building = null;
+            if (queued) {
+                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                this.rebuildGeometry().then(queued.resolve, queued.reject);
             }
         }
-    }
-
-    removeTile(key) {
-        if (!this.initialized) {
-            return;
-        }
-        log.trace(`tile unload for ${key}`);
-
-        var tile = this.tiles[key];
-
-        if (tile != null) {
-            tile.destroy();
-        }
-
-        this.forgetTile(tile.key);
-        this.dirty = true;
     }
 
     /**
@@ -1092,7 +925,7 @@ export default class Scene {
         }
 
         // Remove tiles before rebuilding
-        this.removeTiles(tile => !tile.visible);
+        this.tile_manager.removeTiles(tile => !tile.visible);
 
         this.updating++;
         this.initialized = false;
@@ -1374,39 +1207,6 @@ export default class Scene {
 
 
     // Stats/debug/profiling methods
-
-    // Profiling methods used to track when sets of tiles start/stop loading together
-    // e.g. initial page load is one set of tiles, new sets of tile loads are then initiated by a map pan or zoom
-    trackTileSetLoadStart(tile) {
-        if (tile.loaded) {
-            return;
-        }
-
-        // Start tracking new tile set if no other tiles already loading
-        if (this.tile_set_loading == null) {
-            this.tile_set_loading = +new Date();
-            log.info('Scene: tile set load start');
-        }
-    }
-
-    trackTileSetLoadStop() {
-        // No more tiles actively loading?
-        if (this.tile_set_loading != null) {
-            var end_tile_set = true;
-            for (var t in this.tiles) {
-                if (this.tiles[t].loading === true) {
-                    end_tile_set = false;
-                    break;
-                }
-            }
-
-            if (end_tile_set === true) {
-                this.last_tile_set_load = (+new Date()) - this.tile_set_loading;
-                this.tile_set_loading = null;
-                log.info(`Scene: tile set load finished in ${this.last_tile_set_load}ms`);
-            }
-        }
-    }
 
     // Sum of a debug property across tiles
     getDebugSum(prop, filter) {

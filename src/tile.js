@@ -339,13 +339,6 @@ export default class Tile {
     }
 
     update(scene) {
-        if (this.coords.z === scene.center_tile.z && scene.visible_tiles[this.key]) {
-            this.visible = true;
-        }
-        else {
-            this.visible = false;
-        }
-
         // TODO: handle tiles of mismatching zoom levels
         if (this.coords.z === scene.center_tile.z) {
             this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);

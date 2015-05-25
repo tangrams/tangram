@@ -18,7 +18,6 @@ let makeOne = () => {
         workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
 
-    sinon.stub(layer.scene, 'findVisibleTiles').returns([]);
     return layer;
 };
 

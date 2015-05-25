@@ -1,6 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
+import TileManager from '../src/tile_manager';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
@@ -12,6 +13,7 @@ describe('Tile', function() {
 
     beforeEach(() => {
         scene = makeScene({});
+        TileManager.init(scene);
         sinon.stub(scene, 'findVisibleTiles').returns([]);
         scene.setView(nycLatLng);
         return scene.init().then(() => {
@@ -70,25 +72,25 @@ describe('Tile', function() {
 
         beforeEach(() => {
             scene.findVisibleTiles.restore();
-            scene.visible_tiles = scene.findVisibleTiles();
+            scene.tile_manager.visible_tiles = scene.findVisibleTiles();
         });
 
         describe('without a max_zoom', () => {
 
             it('is visible when scene is at same zoom as tile zoom', () => {
-                subject.update(scene);
+                TileManager.updateVisibility(subject);
                 assert.isTrue(subject.visible);
             });
 
             it('is NOT visible when scene is lower than tile zoom', () => {
                 scene.setZoom(16);
-                subject.update(scene);
+                TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
 
             it('is NOT visible when scene is higher than tile zoom', () => {
                 scene.setZoom(18);
-                subject.update(scene);
+                TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
 
@@ -108,7 +110,7 @@ describe('Tile', function() {
 
             it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
                 scene.setZoom(18);
-                subject.update(scene);
+                TileManager.updateVisibility(subject);
                 assert.isTrue(subject.visible);
             });
 
@@ -116,7 +118,7 @@ describe('Tile', function() {
                 subject.max_zoom = 16;
                 scene.max_zoom = 16;
                 scene.setZoom(18);
-                subject.update(scene);
+                TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
 
