@@ -406,8 +406,8 @@ export default class Scene {
     }
 
     findVisibleTiles({ buffer } = {}) {
-        if (this.initialized !== true) {
-            return;
+        if (!this.bounds_meters) {
+            return [];
         }
 
         let z = this.tileZoom(this.zoom);
@@ -956,7 +956,6 @@ export default class Scene {
             source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
         }
-        this.updateBounds();
     }
 
     setSourceMax() {
@@ -1164,6 +1163,7 @@ export default class Scene {
         this.setSourceMax();
         this.loadTextures();
         this.setBackground();
+        this.updateBounds();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
