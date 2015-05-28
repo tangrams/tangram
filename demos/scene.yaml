@@ -141,7 +141,7 @@ sources:
 
 layers:
     earth:
-        data: { source: osm }
+        data: { source: osm, layer: earth }
         draw:
             polygons:
                 style: flat
@@ -199,7 +199,9 @@ layers:
                 color: '#9dc3de'
 
     roads:
-        data: { source: osm }
+        data:
+            source: osm
+            layer: roads
         filter:
             not: { kind: [rail] }
         draw:
@@ -217,6 +219,7 @@ layers:
             filter: { $zoom: { min: 18 } }
             draw:
                 lines:
+                    color: red
                     cap: round
 
         highway:
@@ -418,7 +421,6 @@ layers:
             draw:
                 text:
                     font:
-                        fill: red
                         capitalized: true
         countries:
             filter: { kind: country }
