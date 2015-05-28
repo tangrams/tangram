@@ -291,13 +291,15 @@ export default class Scene {
 
         // Set center
         if (typeof lng === 'number' && typeof lat === 'number') {
-            changed = changed || !this.center || lng !== this.center.lng || lat !== this.center.lat;
-            this.center = { lng: Geo.wrapLng(lng), lat };
+            if (!this.center || lng !== this.center.lng || lat !== this.center.lat) {
+                changed = true;
+                this.center = { lng: Geo.wrapLng(lng), lat };
+            }
         }
 
         // Set zoom
-        if (typeof zoom === 'number') {
-            changed = changed || zoom !== this.zoom;
+        if (typeof zoom === 'number' && zoom !== this.zoom) {
+            changed = true;
             this.setZoom(zoom);
         }
 

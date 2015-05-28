@@ -82,10 +82,8 @@ if (Utils.isMainThread) {
                 var view = map.getCenter();
                 view.zoom = map.getZoom();
 
-                var changed = this.scene.setView(view);
-                if (changed) {
-                    this.scene.immediateRedraw();
-                }
+                this.scene.setView(view);
+                this.scene.immediateRedraw();
                 this._updating_tangram = false;
             };
             map.on('move', this.hooks.move);
