@@ -141,7 +141,7 @@ sources:
 
 layers:
     earth:
-        data: { source: osm, layer: earth }
+        data: { source: osm }
         draw:
             polygons:
                 style: flat
@@ -199,9 +199,7 @@ layers:
                 color: '#9dc3de'
 
     roads:
-        data:
-            source: osm
-            layer: roads
+        data: { source: osm }
         filter:
             not: { kind: [rail] }
         draw:
