@@ -219,7 +219,6 @@ layers:
             filter: { $zoom: { min: 18 } }
             draw:
                 lines:
-                    color: red
                     cap: round
 
         highway:
