@@ -71,7 +71,7 @@ Enjoy!
         'London': [51.508, -0.105, 15],
         'New York': [40.70531887544228, -74.00976419448853, 16],
         'Seattle': [47.609722, -122.333056, 15]
-    }, rS, url_hash, map_start_location, url_ui, url_style;
+    }, rS, url_hash, map_start_location, url_ui, url_style, mobile_mode;
 
 
     getValuesFromUrl();
@@ -118,6 +118,10 @@ Enjoy!
     function getValuesFromUrl() {
 
         url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
+        if (url_hash == "mobile") {
+            url_hash = "";
+            mobile_mode = true;
+        }
 
         // Get tile source from URL
         if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
@@ -180,6 +184,7 @@ Enjoy!
     window.map = map;
     var scene = layer.scene;
     window.scene = scene;
+
 
     // Update URL hash on move
     map.attributionControl.setPrefix('');
@@ -387,7 +392,7 @@ Enjoy!
     };
 
     // Create dat GUI
-    var gui = new dat.GUI({ autoPlace: true });
+    if (!mobile_mode) var gui = new dat.GUI({ autoPlace: true });
     function addGUI () {
         gui.domElement.parentNode.style.zIndex = 5;
         window.gui = gui;
@@ -477,7 +482,7 @@ Enjoy!
 
         // Show selected feature on hover
         scene.container.addEventListener('mousemove', function (event) {
-            if (gui['feature info'] == false) {
+            if (!mobile_mode && gui['feature info'] == false) {
                 if (selection_info.parentNode != null) {
                     selection_info.parentNode.removeChild(selection_info);
                 }
@@ -555,7 +560,7 @@ Enjoy!
         }
 
         // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
-        if (gui.queue_screenshot == true) {
+        if (!mobile_mode && gui.queue_screenshot == true) {
             gui.queue_screenshot = false;
             screenshot();
         }
@@ -564,8 +569,20 @@ Enjoy!
     /***** Render loop *****/
     window.addEventListener('load', function () {
         // Scene initialized
+
+        // mode to hide ui
+        if (mobile_mode) {
+            document.getElementById("mz-bug").style.display = "none";
+            document.getElementById("mz-citysearch").style.display = "none";
+            document.getElementById("mz-geolocator").style.display = "none";
+            document.getElementsByClassName("leaflet-control-container")[0].style.display = "none";
+        }
+
+
         layer.on('init', function() {
-            addGUI();
+            if (!mobile_mode) {
+                addGUI();
+            }
 
             style_options.saveInitial();
             if (url_style) {
