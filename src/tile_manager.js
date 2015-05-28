@@ -1,4 +1,5 @@
 import Tile from './tile';
+import Utils from './utils/utils';
 
 import log from 'loglevel';
 
@@ -9,16 +10,16 @@ export default TileManager = {
     init(scene) {
         this.scene = scene;
         this.tiles = {};
-        this.visible_tiles = {};
-        this.queued_tiles = [];
+        this.visible_coords = {};
+        this.queued_coords = [];
         this.building_tiles = null;
     },
 
     destroy() {
         this.forEachTile(tile => tile.destroy());
         this.tiles = {};
-        this.visible_tiles = {};
-        this.queued_tiles = [];
+        this.visible_coords = {};
+        this.queued_coords = [];
         this.scene = null;
     },
 
@@ -73,13 +74,15 @@ export default TileManager = {
 
     updateTilesForView() {
         // Find visible tiles and load new ones
-        this.visible_tiles = this.scene.findVisibleTiles();
-        for (let key in this.visible_tiles) {
-            this.queueTile(this.visible_tiles[key]);
+        this.visible_coords = {};
+        let tile_coords = this.scene.findVisibleTileCoordinates();
+        for (let coords of tile_coords) {
+            this.queueCoordinate(coords);
+            this.visible_coords[Tile.coordKey(coords)] = coords;
         }
 
         // Remove tiles too far outside of view
-        this.scene.pruneTilesForView(); // TODO: return list to prune?
+        this.scene.pruneTileCoordinatesForView(); // TODO: return list to prune?
 
         this.forEachTile(tile => {
             this.updateVisibility(tile);
@@ -88,7 +91,25 @@ export default TileManager = {
     },
 
     updateVisibility(tile) {
-        tile.visible = (this.visible_tiles[tile.key] && (tile.coords.z === this.scene.center_tile.z)) ? true : false;
+        if (tile.style_zoom !== this.scene.tile_zoom) {
+            tile.visible = false;
+            return;
+        }
+
+        if (this.visible_coords[tile.coord_key]) {
+            tile.visible = true;
+        }
+        else {
+            // brute force
+            for (let key in this.visible_coords) {
+                if (Tile.isChild(tile.coords, this.visible_coords[key])) {
+                    tile.visible = true;
+                    return;
+                }
+            }
+
+            tile.visible = false;
+        }
     },
 
     getRenderableTiles() {
@@ -103,50 +124,49 @@ export default TileManager = {
     },
 
     // Queue a tile for load
-    queueTile(coords) {
-        this.queued_tiles[this.queued_tiles.length] = coords;
+    queueCoordinate(coords) {
+        this.queued_coords[this.queued_coords.length] = coords;
     },
 
     // Load all queued tiles
-    loadQueuedTiles() {
-        if (this.queued_tiles.length === 0) {
+    loadQueuedCoordinates() {
+        if (this.queued_coords.length === 0) {
             return;
         }
 
         // Sort queued tiles from center tile
-        this.queued_tiles.sort((a, b) => {
+        this.queued_coords.sort((a, b) => {
             let ad = Math.abs(this.scene.center_tile.x - a.x) + Math.abs(this.scene.center_tile.y - a.y);
             let bd = Math.abs(this.scene.center_tile.x - b.x) + Math.abs(this.scene.center_tile.y - b.y);
             return (bd > ad ? -1 : (bd === ad ? 0 : 1));
         });
-        this.queued_tiles.forEach(coords => this.loadTile(coords));
-        this.queued_tiles = [];
+        this.queued_coords.forEach(coords => this.loadCoordinate(coords));
+        this.queued_coords = [];
     },
 
-    // Load a single tile
-    loadTile(coords) {
+    // Load all tiles to cover a given logical tile coordinate
+    loadCoordinate(coords) {
         // Skip if not at current scene zoom
         if (coords.z !== this.scene.center_tile.z) {
             return;
         }
 
-        let key = Tile.key(coords);
-        let tile;
-        if (!this.hasTile(key)) {
-            tile = Tile.create({
-                coords: coords,
-                max_zoom: this.scene.findMaxZoom(), // TODO: replace with better max zoom handling
-                worker: this.scene.nextWorker(),
-                style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
-            });
+        // Determine necessary tiles for each source
+        for (let source of Utils.values(this.scene.sources)) {
+            let key = Tile.key(coords, source, this.scene.tile_zoom);
+            if (!this.hasTile(key)) {
+                let tile = Tile.create({
+                    source,
+                    coords,
+                    // max_zoom: this.scene.findMaxZoom(), // TODO: replace with better max zoom handling
+                    worker: this.scene.nextWorker(),
+                    style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
+                });
 
-            this.keepTile(tile);
-            this.buildTile(tile);
+                this.keepTile(tile);
+                this.buildTile(tile);
+            }
         }
-        else {
-            tile = this.tiles[key];
-        }
-        return tile;
     },
 
     // Sort and build a list of tiles
@@ -159,7 +179,12 @@ export default TileManager = {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
         tile.update(this.scene);
-        tile.build(this.scene.generation).then(message => this.buildTileCompleted(message));
+        tile.build(this.scene.generation)
+            .then(message => this.buildTileCompleted(message))
+            .catch(() => {
+                this.forgetTile(tile.key);
+                Tile.abortBuild(tile);
+            });
     },
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)

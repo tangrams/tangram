@@ -12,7 +12,7 @@ describe('Scene', function () {
 
     beforeEach(() => {
         subject = makeScene({});
-        sinon.stub(subject, 'findVisibleTiles').returns([]);
+        sinon.stub(subject, 'findVisibleTileCoordinates').returns([]);
         subject.setView(nycLatLng);
     });
 

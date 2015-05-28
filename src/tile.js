@@ -16,7 +16,7 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, worker, max_zoom, style_zoom }) {
+    constructor({ coords, source, worker, style_zoom }) {
         Object.assign(this, {
             coords: {
                 x: null,
@@ -34,16 +34,17 @@ export default class Tile {
         });
 
         this.worker = worker;
-        this.max_zoom = max_zoom;
+        this.source = source;
+        this.style_zoom = style_zoom; // zoom level to be used for styling
 
         this.coords = coords;
-        this.coords = Tile.calculateOverZoom(this.coords, this.max_zoom);
-        this.key = Tile.key(this.coords);
+        this.coords = Tile.overZoomedCoordinate(this.coords, this.source.max_zoom);
+        this.coord_key = Tile.coordKey(this.coords);
+        this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
-        this.style_zoom = style_zoom || this.coords.z; // zoom level to be used for styling
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.textures = []; // textures that the tile owns (labels, etc.)
@@ -53,21 +54,36 @@ export default class Tile {
         return new Tile(spec);
     }
 
-    static key({x, y, z}) {
+    static coordKey({x, y, z}) {
         return [x, y, z].join('/');
     }
 
-    static calculateOverZoom({x, y, z}, max_zoom) {
-        max_zoom = max_zoom || z;
+    static key (coords, source, style_zoom) {
+        coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
+    }
 
-        if (z > max_zoom) {
-            let zdiff = z - max_zoom;
-
-            x = Math.floor(x >> zdiff);
-            y = Math.floor(y >> zdiff);
-            z -= zdiff;
+    static coordinateAtZoom({x, y, z}, zoom) {
+        if (z !== zoom) {
+            let zscale = Math.pow(2, z - zoom);
+            x = Math.floor(x / zscale);
+            y = Math.floor(y / zscale);
         }
+        return {x, y, z: zoom};
+    }
 
+    static isChild(parent, child) {
+        if (child.z > parent.z) {
+            let {x, y} = Tile.coordinateAtZoom(child, parent.z);
+            return (parent.x === x && parent.y === y);
+        }
+        return false;
+    }
+
+    static overZoomedCoordinate({x, y, z}, max_zoom) {
+        if (z > max_zoom) {
+            return Tile.coordinateAtZoom({x, y, z}, max_zoom);
+        }
         return {x, y, z};
     }
 
@@ -109,6 +125,8 @@ export default class Tile {
     buildAsMessage() {
         return {
             key: this.key,
+            coord_key: this.coord_key,
+            source: this.source.name,
             coords: this.coords,
             min: this.min,
             max: this.max,
@@ -134,74 +152,69 @@ export default class Tile {
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
     static buildGeometry (tile, layers, rules, styles) {
         tile.debug.rendering = +new Date();
+        tile.debug.features = 0;
 
-        for (let source_name in tile.sources) {
-            let source = tile.sources[source_name];
-            source.debug.rendering = +new Date();
-            source.debug.features = 0;
+        let data = tile.source_data;
 
-            // Treat top-level style rules as 'layers'
-            for (let layer_name in layers) {
-                let layer = layers[layer_name];
-                // Skip layers with no data source defined
-                if (!layer.data) {
-                    log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
+        // Treat top-level style rules as 'layers'
+        for (let layer_name in layers) {
+            let layer = layers[layer_name];
+            // Skip layers with no data source defined
+            if (!layer.data) {
+                log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
+                continue;
+            }
+
+            // Source names don't match
+            if (layer.data.source !== tile.source) {
+                continue;
+            }
+
+            let geom = Tile.getDataForSource(data, layer.data, layer_name);
+            if (!geom) {
+                continue;
+            }
+
+            // Render features in layer
+            let num_features = geom.features.length;
+            for (let f = num_features-1; f >= 0; f--) {
+                let feature = geom.features[f];
+                let context = StyleParser.getFeatureParseContext(feature, tile);
+
+                // Get draw groups for this feature
+                let layer_rules = rules[layer_name];
+                let draw_groups = layer_rules.buildDrawGroups(context, true);
+                if (!draw_groups) {
                     continue;
                 }
 
-                // Source names don't match
-                if (layer.data.source !== source_name) {
-                    continue;
-                }
-
-                let geom = Tile.getDataForSource(source, layer.data, layer_name);
-                if (!geom) {
-                    continue;
-                }
-
-                // Render features in layer
-                let num_features = geom.features.length;
-                for (let f = num_features-1; f >= 0; f--) {
-                    let feature = geom.features[f];
-                    let context = StyleParser.getFeatureParseContext(feature, tile);
-
-                    // Get draw groups for this feature
-                    let layer_rules = rules[layer_name];
-                    let draw_groups = layer_rules.buildDrawGroups(context, true);
-                    if (!draw_groups) {
+                // Render draw groups
+                for (let group_name in draw_groups) {
+                    let group = draw_groups[group_name];
+                    if (!group.visible) {
                         continue;
                     }
 
-                    // Render draw groups
-                    for (let group_name in draw_groups) {
-                        let group = draw_groups[group_name];
-                        if (!group.visible) {
-                            continue;
-                        }
+                    // Add to style
+                    let style_name = group.style || group_name;
+                    let style = styles[style_name];
 
-                        // Add to style
-                        let style_name = group.style || group_name;
-                        let style = styles[style_name];
-
-                        if (!style) {
-                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
-                            continue;
-                        }
-
-                        context.properties = group.properties; // add rule-specific properties to context
-
-                        style.addFeature(feature, group, context);
-
-                        context.properties = null; // clear group-specific properties
+                    if (!style) {
+                        log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
+                        continue;
                     }
 
-                    source.debug.features++;
+                    context.properties = group.properties; // add rule-specific properties to context
+
+                    style.addFeature(feature, group, context);
+
+                    context.properties = null; // clear group-specific properties
                 }
 
+                tile.debug.features++;
             }
-
-            source.debug.rendering = +new Date() - source.debug.rendering;
         }
+        tile.debug.rendering = +new Date() - tile.debug.rendering;
 
         // Finalize array buffer for each render style
         let tile_styles = StyleManager.stylesForTile(tile.key);
@@ -221,20 +234,6 @@ export default class Tile {
         }
 
         return Promise.all(queue).then(() => {
-            // Aggregate debug info
-            tile.debug.rendering = +new Date() - tile.debug.rendering;
-            tile.debug.projection = 0;
-            tile.debug.features = 0;
-            tile.debug.network = 0;
-            tile.debug.parsing = 0;
-
-            for (let i in tile.sources) {
-                tile.debug.features  += tile.sources[i].debug.features;
-                tile.debug.projection += tile.sources[i].debug.projection;
-                tile.debug.network += tile.sources[i].debug.network;
-                tile.debug.parsing += tile.sources[i].debug.parsing;
-            }
-
             // Return keys to be transfered to main thread
             return ['mesh_data'];
         });
@@ -274,7 +273,6 @@ export default class Tile {
     */
     buildMeshes(styles) {
         if (this.error) {
-            log.error(`main thread tile load error for ${this.key}: ${this.error}`);
             return;
         }
 
@@ -339,13 +337,11 @@ export default class Tile {
     }
 
     update(scene) {
-        // TODO: handle tiles of mismatching zoom levels
-        if (this.coords.z === scene.center_tile.z) {
-            this.center_dist = Math.abs(scene.center_tile.x - this.coords.x) + Math.abs(scene.center_tile.y - this.coords.y);
+        let coords = this.coords;
+        if (coords.z !== scene.center_tile.z) {
+            coords = Tile.coordinateAtZoom(coords, scene.center_tile.z);
         }
-        else {
-            this.center_dist = Infinity;
-        }
+        this.center_dist = Math.abs(scene.center_tile.x - coords.x) + Math.abs(scene.center_tile.y - coords.y);
     }
 
     // Slice a subset of keys out of a tile
@@ -380,11 +376,8 @@ export default class Tile {
         tile instance created yet.
     */
     static cancel(tile) {
-        if (tile && tile.sources) {
-            Object.keys(tile.sources).
-                map(s => tile.sources[s].request).
-                filter(s => s).
-                forEach(s => s.abort());
+        if (tile && tile.source_data && tile.source_data.request) {
+            tile.source_data.request.abort();
         }
     }
 

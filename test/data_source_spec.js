@@ -178,7 +178,7 @@ describe('DataSource', () => {
                 });
 
                 it('calls back with the tile object', () => {
-                    assert(Object.keys(mockTile.sources).map(s => mockTile.sources[s].error).filter(x => x).length === 0);
+                    assert(!mockTile.source_data.error);
                     assert.isFulfilled(subject.load(mockTile));
                 });
             });
@@ -197,8 +197,8 @@ describe('DataSource', () => {
                     subject = undefined;
                 });
 
-                it('is resolves the promise but includes an error', () => {
-                    assert(Object.keys(mockTile.sources).map(s => mockTile.sources[s].error).filter(x => x).length > 0);
+                it('resolves the promise but includes an error', () => {
+                    assert(mockTile.source_data.error);
                 });
             });
         });

@@ -10,7 +10,6 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Light from './light';
-import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './data_source';
 import FeatureSelection from './selection';
@@ -382,10 +381,6 @@ export default class Scene {
         this.center_meters = { x, y };
 
         let z = this.tileZoom(this.zoom);
-        let max_zoom = this.findMaxZoom();
-        if (z > max_zoom) {
-            z = max_zoom;
-        }
         this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], z);
 
         this.bounds_meters = {
@@ -405,33 +400,27 @@ export default class Scene {
         this.dirty = true;
     }
 
-    findVisibleTiles({ buffer } = {}) {
+    findVisibleTileCoordinates({ buffer } = {}) {
         if (!this.bounds_meters) {
             return [];
         }
 
         let z = this.tileZoom(this.zoom);
-        let max_zoom = this.findMaxZoom();
-        if (z > max_zoom) {
-            z = max_zoom;
-        }
-
         let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
         let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
         buffer = buffer || 0;
 
-        let tiles = {};
+        let coords = [];
         for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
             for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
-                let coords = { x, y, z };
-                tiles[Tile.key(coords)] = coords;
+                coords.push({ x, y, z });
             }
         }
-        return tiles;
+        return coords;
     }
 
     // Remove tiles too far outside of view
-    pruneTilesForView(border_buffer = 2) {
+    pruneTileCoordinatesForView(border_buffer = 2) {
         if (!this.viewReady()) {
             return;
         }
@@ -441,7 +430,7 @@ export default class Scene {
             Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
             Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
         ];
-        let base = this.tileZoom(this.zoom);
+        let style_zoom = this.tileZoom(this.zoom);
 
         this.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
@@ -450,7 +439,7 @@ export default class Scene {
             }
 
             // Discard if too far from current zoom
-            let zdiff = tile.coords.z - base;
+            let zdiff = tile.coords.z - style_zoom;
             if (Math.abs(zdiff) > this.preserve_tiles_within_zoom) {
                 return true;
             }
@@ -464,11 +453,11 @@ export default class Scene {
 
             // Discard tiles outside an area surrounding the viewport
             if (Math.abs(coords.x - this.center_tile.x) - border_tiles[0] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${base}) for being too far out of visible area ***`);
+                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             else if (Math.abs(coords.y - this.center_tile.y) - border_tiles[1] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${base}) for being too far out of visible area ***`);
+                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             return false;
@@ -527,7 +516,7 @@ export default class Scene {
     }
 
     update() {
-        this.tile_manager.loadQueuedTiles();
+        this.tile_manager.loadQueuedCoordinates();
 
         // Render on demand
         var will_render = !(
@@ -606,7 +595,7 @@ export default class Scene {
         if (this.render_count !== this.last_render_count) {
             this.getFeatureSelectionMapSize().then(size => {
                 log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
-            });
+            }, () => {}); // no op when promise rejects (only print last response)
         }
         this.last_render_count = this.render_count;
 
@@ -692,7 +681,7 @@ export default class Scene {
                 // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
 
                 // Tile origin
-                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.coords.z);
+                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
 
                 // Model matrix - transform tile space into world space (meters, absolute mercator position)
                 mat4.identity(this.modelMatrix);
@@ -812,18 +801,6 @@ export default class Scene {
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
         return this.selection.getFeatureAt(point);
-    }
-
-    findMaxZoom() {
-        var max_zoom = this.max_zoom || Geo.max_zoom;
-
-        for (var name in this.sources) {
-            let source = this.sources[name];
-            if (source.max_zoom < max_zoom) {
-                max_zoom = source.max_zoom;
-            }
-        }
-        return max_zoom;
     }
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
@@ -956,16 +933,6 @@ export default class Scene {
             source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
         }
-    }
-
-    setSourceMax() {
-        let max_zoom = this.findMaxZoom();
-
-        for (var name in this.sources) {
-            let source = this.sources[name];
-            source.max_zoom = max_zoom;
-        }
-        return max_zoom;
     }
 
     // Normalize some settings that may not have been explicitly specified in the scene definition
@@ -1160,7 +1127,6 @@ export default class Scene {
         this.createCamera();
         this.createLights();
         this.loadDataSources();
-        this.setSourceMax();
         this.loadTextures();
         this.setBackground();
         this.updateBounds();
@@ -1195,9 +1161,17 @@ export default class Scene {
 
     // Gets the current feature selection map size across all workers. Returns a promise.
     getFeatureSelectionMapSize() {
+        if (this.fetching_selection_map) {
+            return Promise.reject();
+        }
+        this.fetching_selection_map = true;
+
         return Promise
             .all(this.workers.map(worker => WorkerBroker.postMessage(worker, 'getFeatureSelectionMapSize')))
-            .then(sizes => sizes.reduce((a, b) => a + b));
+            .then(sizes => {
+                this.fetching_selection_map = false;
+                return sizes.reduce((a, b) => a + b);
+            });
     }
 
     // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
