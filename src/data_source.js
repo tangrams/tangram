@@ -126,14 +126,13 @@ export class NetworkSource extends DataSource {
             dest.sources = {};
         }
 
-        var source = dest.sources[this.name] = {};
-
-        source.url = url;
-        source.debug = {};
-        source.debug.network = +new Date();
+        let source_data = dest.source_data = {};
+        source_data.url = url;
+        dest.debug = dest.debug || {};
+        dest.debug.network = +new Date();
 
         return new Promise((resolve, reject) => {
-            source.error = null;
+            source_data.error = null;
             // For testing network errors
             // var promise = Utils.io(url, 60 * 100, this.response_type);
             // if (Math.random() < .7) {
@@ -141,17 +140,17 @@ export class NetworkSource extends DataSource {
             // }
             // promise.then((body) => {
             let promise = Utils.io(url, 60 * 1000, this.response_type);
-            source.request = promise.request;
+            source_data.request = promise.request;
 
             promise.then((body) => {
-                source.debug.response_size = body.length || body.byteLength;
-                source.debug.network = +new Date() - source.debug.network;
-                source.debug.parsing = +new Date();
-                this.parseSourceData(dest, source, body);
-                source.debug.parsing = +new Date() - source.debug.parsing;
+                dest.debug.response_size = body.length || body.byteLength;
+                dest.debug.network = +new Date() - dest.debug.network;
+                dest.debug.parsing = +new Date();
+                this.parseSourceData(dest, source_data, body);
+                dest.debug.parsing = +new Date() - dest.debug.parsing;
                 resolve(dest);
             }).catch((error) => {
-                source.error = error.toString();
+                source_data.error = error.toString();
                 resolve(dest); // resolve request but pass along error
             });
         });

@@ -115,13 +115,10 @@ Utils.isWorkerThread && Object.assign(self, {
                     tile.loaded = false;
                     tile.error = null;
 
-                    self.loadSourcesIntoTile(tile).then(() => {
-                        // Any errors? Warn and continue
-                        let e = Object.keys(tile.sources).
-                            map(s => tile.sources[s].error && `[source '${s}': ${tile.sources[s].error}]`).
-                            filter(x => x);
-                        if (e.length > 0) {
-                            Utils.log('warn', `tile load error(s) for ${tile.key}: ${e.join(', ')}`);
+                    self.loadTileSourceData(tile).then(() => {
+                        // Warn and continue on data source error
+                        if (tile.source_data.error) {
+                            Utils.log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
                         }
 
                         tile.loading = false;
@@ -151,12 +148,9 @@ Utils.isWorkerThread && Object.assign(self, {
         });
     },
 
-    // Load all data sources into a tile
-    loadSourcesIntoTile (tile) {
-        return Promise.all(
-            Object.keys(self.sources.tiles)
-                .map(x => self.sources.tiles[x].load(tile))
-        );
+    // Load this tile's data source
+    loadTileSourceData (tile) {
+        return self.sources.tiles[tile.source].load(tile);
     },
 
     // Remove tile

@@ -16,7 +16,7 @@ describe('TileManager', function () {
     beforeEach(() => {
         scene = makeScene({});
         TileManager.init(scene);
-        sinon.stub(scene, 'findVisibleTiles').returns([]);
+        sinon.stub(scene, 'findVisibleTileCoordinates').returns([]);
         scene.setView(nycLatLng);
     });
 
@@ -25,25 +25,25 @@ describe('TileManager', function () {
         scene = null;
     });
 
-    describe('.queueTile(coords)', () => {
+    describe('.queueCoordinate(coords)', () => {
 
         let coords = midtownTile;
 
         beforeEach(() => {
-            sinon.spy(TileManager, 'loadTile');
+            sinon.spy(TileManager, 'queueCoordinate');
 
             return scene.init().then(() => {
-                TileManager.queueTile(coords);
-                TileManager.loadQueuedTiles();
+                TileManager.queueCoordinate(coords);
+                TileManager.loadQueuedCoordinates();
             });
         });
 
-        it('calls loadTile with the queued tile', () => {
-            sinon.assert.calledWith(TileManager.loadTile, coords);
+        it('calls queueCoordinate with the queued tile', () => {
+            sinon.assert.calledWith(TileManager.queueCoordinate, coords);
         });
     });
 
-    describe('.loadTile(coords, options)', () => {
+    describe('.loadCoordinate(coords)', () => {
 
         let coords = midtownTile;
 
@@ -53,27 +53,36 @@ describe('TileManager', function () {
 
         describe('when the tile manager has not loaded the tile', () => {
 
-            it('loads the tile', () => {
-                let tile = TileManager.loadTile(coords);
+            let tile, tiles;
+
+            beforeEach(() => {
+                TileManager.loadCoordinate(coords);
+                tiles = TileManager.tiles;
+                tile = tiles[Object.keys(tiles)[0]];
+            });
+
+            it('loads and keeps the tile', () => {
+                TileManager.loadCoordinate(coords);
+                assert.isTrue(Object.keys(tiles).length === 1);
                 assert.instanceOf(tile, Tile);
             });
 
-            it('keeps the tile', () => {
-                let tile = TileManager.loadTile(coords);
-                let tiles = TileManager.tiles;
-                assert.instanceOf(tiles[tile.key], Tile);
-            });
         });
 
         describe('when the tile manager already has the tile', () => {
             let key = midtownTileKey;
-            let tile;
+            let tile, tiles;
 
             beforeEach(() => {
-                TileManager.loadTile(coords);
+                TileManager.loadCoordinate(coords);
+
+                tiles = TileManager.tiles;
+                tile = tiles[Object.keys(tiles)[0]];
+
                 sinon.spy(TileManager, 'keepTile');
-                tile = TileManager.loadTile(coords);
                 sinon.spy(tile, 'build');
+
+                TileManager.loadCoordinate(coords);
             });
 
             afterEach(() => {
