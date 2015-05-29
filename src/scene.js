@@ -792,7 +792,8 @@ export default class Scene {
     // Request feature selection at given pixel. Runs async and returns results via a promise.
     getFeatureAt(pixel) {
         if (!this.initialized) {
-            return Promise.reject(new Error("Scene.getFeatureAt() called before scene was initialized"));
+            log.debug("Scene.getFeatureAt() called before scene was initialized");
+            return Promise.resolve();
         }
 
         // Point scaled to [0..1] range

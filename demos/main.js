@@ -488,6 +488,9 @@ Enjoy!
             var pixel = { x: event.clientX, y: event.clientY };
 
             scene.getFeatureAt(pixel).then(function(selection) {
+                if (!selection) {
+                    return;
+                }
                 var feature = selection.feature;
                 if (feature != null) {
                     // console.log("selection map: " + JSON.stringify(feature));
