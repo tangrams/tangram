@@ -21,7 +21,7 @@ Utils.addBaseURL = function (url, base) {
         url = window.location.protocol + url;
     }
     // No http(s) or data, add base
-    else if (url.search(/(http|https|data):\/\//) < 0) {
+    else if (url.search(/^(http|https|data|blob):/) < 0) {
         var relative = (url[0] !== '/');
         var base_info;
         if (base) {
@@ -44,6 +44,9 @@ Utils.pathForURL = function (url) {
 };
 
 Utils.cacheBusterForUrl = function (url) {
+    if (url.search(/^(data|blob):/) > -1) {
+        return url; // no cache-busting on object or data URLs
+    }
     return url + '?' + (+new Date());
 };
 
