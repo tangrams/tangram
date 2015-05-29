@@ -59,7 +59,7 @@ The scene file is written in YAML, which is a data-serialization format like JSO
 
 ## Documentation
 
-For documentation, see the [Tangram Documentation](https://github.com/tangrams/tangram-docs).
+👉 [Tangram Documentation](https://github.com/tangrams/tangram-docs) 👈.
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
 
