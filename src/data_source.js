@@ -94,7 +94,10 @@ export default class DataSource {
         }
     }
 
-    load(dest) { throw new MethodNotImplemented('load'); }
+    load(dest) {
+        dest.source_data = {};
+        dest.source_data.layers = {};
+    }
 
     // Register a new data source type
     static register(type_class) {
@@ -120,13 +123,15 @@ export class NetworkSource extends DataSource {
     }
 
     load (dest) {
+        super.load(dest);
+
         let url = this.formatUrl(dest);
 
         if (dest.sources == null) {
             dest.sources = {};
         }
 
-        let source_data = dest.source_data = {};
+        let source_data = dest.source_data;
         source_data.url = url;
         dest.debug = dest.debug || {};
         dest.debug.network = +new Date();
