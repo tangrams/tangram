@@ -53,18 +53,6 @@ describe('DataSource', () => {
         });
     });
 
-    describe('.load(tile)', () => {
-        let subject = new DataSource(options);
-        describe('when the .load method is not overridden', () => {
-            it('throws a MethodNotImplemented error', () => {
-                assert.throws(
-                    () => { subject.load({}, () => {}); },
-                    MethodNotImplemented
-                );
-            });
-        });
-    });
-
     describe('DataSource.create(type, url_template, options)', () => {
 
         describe('when I ask for a GeoJSONTileSource', () => {
