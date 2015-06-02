@@ -113,26 +113,40 @@ export default class Scene {
         log.setLevel(this.logLevel);
     }
 
-    init() {
-        if (this.initialized) {
+    // Load (or reload) scene config
+    // Optionally specify new scene file URL
+    load(config_source = null) {
+        if (this.initializing) {
             return Promise.resolve();
         }
+
+        // Remove tiles before rebuilding
+        this.tile_manager.removeTiles(tile => !tile.visible);
+
+        this.updating++;
+        this.initialized = false;
         this.initializing = true;
+
+        this.config_source = config_source || this.config_source;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
         return new Promise((resolve, reject) => {
             this.tile_manager.init(this);
-            this.loadScene().then(() => {
-                this.createWorkers().then(() => {
+            this.loadScene()
+                .then(() => this.createWorkers())
+                .then(() => {
                     this.createCanvas();
-                    this.selection = new FeatureSelection(this.gl, this.workers);
+                    this.resetFeatureSelection();
 
-                    this.texture_listener = { update: () => this.dirty = true };
-                    Texture.subscribe(this.texture_listener);
+                    if (!this.texture_listener) {
+                        this.texture_listener = { update: () => this.dirty = true };
+                        Texture.subscribe(this.texture_listener);
+                    }
 
                     // Loads rendering styles from config, sets GL context and compiles programs
                     this.updateConfig();
 
+                    this.updating--;
                     this.initializing = false;
                     this.initialized = true;
                     resolve();
@@ -141,8 +155,17 @@ export default class Scene {
                         this.setupRenderLoop();
                     }
                 }).catch(e => reject(e));
-            }).catch(e => reject(e));
+        }).catch(e => {
+            this.initializing = false;
+            this.updating = 0;
+            // return reject(e);
+            throw e;
         });
+    }
+
+    // For API compatibility
+    reload(config_source = null) {
+        return this.load(config_source);
     }
 
     destroy() {
@@ -160,10 +183,11 @@ export default class Scene {
         }
         this.container = null;
 
-        if (this.gl) {
-            this.gl.deleteFramebuffer(this.fbo);
-            this.fbo = null;
+        if (this.selection) {
+            this.selection.destroy();
+        }
 
+        if (this.gl) {
             Texture.destroy(this.gl);
             StyleManager.destroy(this.gl);
             this.styles = {};
@@ -184,6 +208,10 @@ export default class Scene {
     }
 
     createCanvas() {
+        if (this.canvas) {
+            return;
+        }
+
         this.container = this.container || document.body;
         this.canvas = document.createElement('canvas');
         this.canvas.style.position = 'absolute';
@@ -213,37 +241,33 @@ export default class Scene {
         VertexArrayObject.init(this.gl);
     }
 
+    // Polyfill (for Safari compatibility)
     createObjectURL() {
         return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
     }
 
-    loadWorkerUrl(scene) {
-        var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
-            createObjectURL = scene.createObjectURL();
+    // Get the URL to load the web worker from
+    getWorkerUrl() {
+        let worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
+            createObjectURL = this.createObjectURL();
 
-        return new Promise((resolve, reject) => {
-            if (!worker_url) {
-                reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
-                return;
-            }
+        if (!worker_url) {
+            throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
+        }
 
-            if (createObjectURL && scene.allow_cross_domain_workers) {
-                var body = `importScripts('${worker_url}');`;
-                var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-                resolve(worker_local_url);
-            } else {
-                resolve(worker_url);
-            }
-        });
+        if (createObjectURL && this.allow_cross_domain_workers) {
+            let body = `importScripts('${worker_url}');`;
+            return createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        }
+        return worker_url;
     }
 
     // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
     createWorkers() {
-        return new Promise((resolve, reject) => {
-            this.loadWorkerUrl(this).then((worker_url) => {
-                this.makeWorkers(worker_url).then(resolve, reject);
-            });
-        });
+        if (!this.workers) {
+            return this.makeWorkers(this.getWorkerUrl());
+        }
+        return Promise.resolve();
     }
 
     // Instantiate workers from URL, init event handlers
@@ -500,7 +524,7 @@ export default class Scene {
     // such as other, non-WebGL map layers (e.g. Leaflet raster layers, markers, etc.)
     immediateRedraw() {
         this.dirty = true;
-        this.render();
+        this.update();
     }
 
     // Setup the render loop
@@ -897,39 +921,6 @@ export default class Scene {
         });
     }
 
-    // Reload scene config and rebuild tiles
-    // Optionally specify new scene file URL
-    reload(config_source = null) {
-        if (!this.initialized) {
-            return Promise.resolve(this);
-        }
-
-        // Remove tiles before rebuilding
-        this.tile_manager.removeTiles(tile => !tile.visible);
-
-        this.updating++;
-        this.initialized = false;
-        this.initializing = true;
-
-        this.config_source = config_source || this.config_source;
-
-        return this.loadScene().then(() => {
-            this.updateConfig();
-            this.syncConfigToWorker();
-            return this.rebuildGeometry().then(() => {
-                this.updating--;
-                this.initialized = true;
-                this.initializing = false;
-                return this;
-            });
-        }, (error) => {
-            this.initialized = true;
-            this.initializing = false;
-            this.updating--;
-            throw error;
-        });
-    }
-
     loadDataSources() {
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
@@ -1159,7 +1150,12 @@ export default class Scene {
     }
 
     resetFeatureSelection() {
-        this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+        if (!this.selection) {
+            this.selection = new FeatureSelection(this.gl, this.workers);
+        }
+        else if (this.workers) {
+            this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+        }
     }
 
     // Gets the current feature selection map size across all workers. Returns a promise.

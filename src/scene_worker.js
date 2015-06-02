@@ -14,6 +14,8 @@ export var SceneWorker = self;
 // Worker functionality will only be defined in worker thread
 Utils.isWorkerThread && Object.assign(self, {
 
+    FeatureSelection,
+
     sources: {
         tiles: {},
         objects: {}

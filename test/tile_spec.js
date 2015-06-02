@@ -16,7 +16,7 @@ describe('Tile', function() {
         TileManager.init(scene);
         sinon.stub(scene, 'findVisibleTileCoordinates').returns([]);
         scene.setView(nycLatLng);
-        return scene.init().then(() => {
+        return scene.load().then(() => {
             subject = Tile.create({coords, style_zoom: coords.z, source: scene.sources.osm, worker: scene.nextWorker()});
         });
     });

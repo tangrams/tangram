@@ -130,11 +130,11 @@ if (Utils.isMainThread) {
             });
 
             // Use leaflet's existing event system as the callback mechanism
-            this.scene.init().then(() => {
-                log.debug('Scene.init() succeeded');
+            this.scene.load().then(() => {
+                log.debug('Scene.load() completed');
                 this.fire('init');
             }).catch(error => {
-                log.error(`Scene.init() failed: ${error.message}`, error);
+                log.error(`Scene.load() failed: ${error.message}`, error);
                 this.fire('error', error);
             });
         },
