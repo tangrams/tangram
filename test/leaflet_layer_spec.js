@@ -51,7 +51,7 @@ describe('Leaflet plugin', () => {
             sinon.spy(map, 'getContainer');
             sinon.spy(subject.scene, 'load');
 
-            subject.on('load', () => {
+            subject.on('init', () => {
                 done();
             });
 
