@@ -59,6 +59,7 @@ export default class Scene {
         this.config = null;
         this.config_source = config_source;
         this.config_serialized = null;
+        this.last_config_source = null;                 // last valid config
 
         this.styles = null;
         this.active_styles = {};
@@ -120,13 +121,14 @@ export default class Scene {
             return Promise.resolve();
         }
 
-        // Remove tiles before rebuilding
-        this.tile_manager.removeTiles(tile => !tile.visible);
-
         this.updating++;
         this.initialized = false;
         this.initializing = true;
 
+        // Remove tiles before rebuilding
+        this.tile_manager.removeTiles(tile => !tile.visible);
+
+        this.last_config_source = this.config_source;
         this.config_source = config_source || this.config_source;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
@@ -143,9 +145,8 @@ export default class Scene {
                         Texture.subscribe(this.texture_listener);
                     }
 
-                    // Loads rendering styles from config, sets GL context and compiles programs
-                    this.updateConfig();
-
+                    return this.updateConfig({ rebuild: true });
+                }).then(() => {
                     this.updating--;
                     this.initializing = false;
                     this.initialized = true;
@@ -158,8 +159,18 @@ export default class Scene {
         }).catch(e => {
             this.initializing = false;
             this.updating = 0;
-            // return reject(e);
-            throw e;
+
+            let msg = `Scene.load() failed to load config ${this.config_source}, error:`;
+
+            // Revert to last valid config if available
+            if (this.last_config_source) {
+                log.warn(msg, e);
+                log.info(`Scene.load() reverting to last valid configuration`);
+                return this.load(this.last_config_source);
+            }
+            else {
+                log.error(msg, e);
+            }
         });
     }
 
