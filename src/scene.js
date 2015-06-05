@@ -59,7 +59,7 @@ export default class Scene {
         this.config = null;
         this.config_source = config_source;
         this.config_serialized = null;
-        this.last_config_source = null;                 // last valid config
+        this.last_valid_config_source = null;
 
         this.styles = null;
         this.active_styles = {};
@@ -125,52 +125,43 @@ export default class Scene {
         this.initialized = false;
         this.initializing = true;
 
-        // Remove tiles before rebuilding
-        this.tile_manager.removeTiles(tile => !tile.visible);
-
-        this.last_config_source = this.config_source;
-        this.config_source = config_source || this.config_source;
-
         // Load scene definition (sources, styles, etc.), then create styles & workers
-        return new Promise((resolve, reject) => {
-            this.tile_manager.init(this);
-            this.loadScene()
-                .then(() => this.createWorkers())
-                .then(() => {
-                    this.createCanvas();
-                    this.resetFeatureSelection();
+        return this.loadScene(config_source)
+            .then(() => this.createWorkers())
+            .then(() => {
+                this.createCanvas();
+                this.resetFeatureSelection();
 
-                    if (!this.texture_listener) {
-                        this.texture_listener = { update: () => this.dirty = true };
-                        Texture.subscribe(this.texture_listener);
-                    }
+                if (!this.texture_listener) {
+                    this.texture_listener = { update: () => this.dirty = true };
+                    Texture.subscribe(this.texture_listener);
+                }
 
-                    return this.updateConfig({ rebuild: true });
-                }).then(() => {
-                    this.updating--;
-                    this.initializing = false;
-                    this.initialized = true;
-                    resolve();
+                // Remove tiles before rebuilding
+                this.tile_manager.removeTiles(tile => !tile.visible);
+                return this.updateConfig({ rebuild: true });
+            }).then(() => {
+                this.updating--;
+                this.initializing = false;
+                this.initialized = true;
+                this.last_valid_config_source = this.config_source;
 
-                    if (this.render_loop !== false) {
-                        this.setupRenderLoop();
-                    }
-                }).catch(e => reject(e));
-        }).catch(e => {
+                if (this.render_loop !== false) {
+                    this.setupRenderLoop();
+                }
+        }).catch(error => {
             this.initializing = false;
             this.updating = 0;
 
-            let msg = `Scene.load() failed to load config ${this.config_source}, error:`;
-
             // Revert to last valid config if available
-            if (this.last_config_source) {
-                log.warn(msg, e);
+            let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+            if (this.last_valid_config_source) {
+                log.warn(msg, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_config_source);
+                return this.load(this.last_valid_config_source);
             }
-            else {
-                log.error(msg, e);
-            }
+            log.error(msg, error);
+            throw error;
         });
     }
 
@@ -252,23 +243,17 @@ export default class Scene {
         VertexArrayObject.init(this.gl);
     }
 
-    // Polyfill (for Safari compatibility)
-    createObjectURL() {
-        return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
-    }
-
     // Get the URL to load the web worker from
     getWorkerUrl() {
-        let worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
-            createObjectURL = this.createObjectURL();
+        let worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
 
         if (!worker_url) {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
         }
 
-        if (createObjectURL && this.allow_cross_domain_workers) {
+        if (this.allow_cross_domain_workers) {
             let body = `importScripts('${worker_url}');`;
-            return createObjectURL(new Blob([body], { type: 'application/javascript' }));
+            return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
         }
         return worker_url;
     }
@@ -920,15 +905,19 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene() {
-        this.config_path = (typeof this.config_source === 'string') && Utils.pathForURL(this.config_source);
+    loadScene(config_source = null) {
+        this.config_source = config_source || this.config_source;
+
+        // If config was passed as object, create an internal URL to it
+        if (typeof this.config_source === 'object') {
+            this.config_source = Utils.createObjectURL(new Blob([JSON.stringify(this.config_source)]));
+        }
+        this.config_path = Utils.pathForURL(this.config_source);
         Texture.base_url = this.config_path;
 
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
             return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
-        }).catch(e => {
-            throw new Error(`Error loading scene file '${this.config_source}': ${e.message}`);
         });
     }
 
@@ -1058,10 +1047,13 @@ export default class Scene {
 
     // Create camera
     createCamera() {
-        this.camera = Camera.create(this._active_camera, this, this.config.cameras[this._active_camera]);
+        let active_camera = this._active_camera;
+        if (active_camera) {
+            this.camera = Camera.create(active_camera, this, this.config.cameras[this._active_camera]);
 
-        // TODO: replace this and move all position info to camera
-        this.camera.updateScene();
+            // TODO: replace this and move all position info to camera
+            this.camera.updateScene();
+        }
     }
 
     // Get active camera - for public API
@@ -1078,9 +1070,11 @@ export default class Scene {
 
     // Internal management of active camera
     get _active_camera() {
-        for (var name in this.config.cameras) {
-            if (this.config.cameras[name].active) {
-                return name;
+        if (this.config && this.config.cameras) {
+            for (var name in this.config.cameras) {
+                if (this.config.cameras[name].active) {
+                    return name;
+                }
             }
         }
     }
@@ -1103,6 +1097,9 @@ export default class Scene {
     createLights() {
         this.lights = {};
         for (let i in this.config.lights) {
+            if (!this.config.lights[i] || typeof this.config.lights[i] !== 'object') {
+                continue;
+            }
             this.config.lights[i].name = i;
             this.config.lights[i].visible = (this.config.lights[i].visible === false) ? false : true;
             if (this.config.lights[i].visible) {
