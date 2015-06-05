@@ -1,8 +1,6 @@
 import Utils from './utils/utils';
 import Scene from './scene';
 
-import log from 'loglevel';
-
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
 export function leafletLayer(options) {
