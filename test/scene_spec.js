@@ -38,12 +38,12 @@ describe('Scene', function () {
 
     });
 
-    describe('.init()', () => {
+    describe('.load()', () => {
 
-        describe('when the scene is not initialized', () => {
+        describe('when the scene is not loaded', () => {
 
             beforeEach(() => {
-                return subject.init();
+                return subject.load();
             });
 
             it('correctly sets the value of the data source', () => {
@@ -76,9 +76,9 @@ describe('Scene', function () {
 
         describe('when the scene is already initialized', () => {
 
-            it('handles second init() call', () => {
-                return subject.init().then(() => {
-                    return subject.init();
+            it('handles second load() call', () => {
+                return subject.load().then(() => {
+                    return subject.load();
                 });
             });
 
@@ -94,7 +94,7 @@ describe('Scene', function () {
 
         beforeEach(() => {
             subject.device_pixel_ratio = devicePixelRatio;
-            return subject.init().then(() => {
+            return subject.load().then(() => {
                 sinon.spy(subject.gl, 'bindFramebuffer');
                 sinon.spy(subject.gl, 'viewport');
                 Utils.device_pixel_ratio = devicePixelRatio;
@@ -203,7 +203,7 @@ describe('Scene', function () {
             sinon.spy(subject, 'render');
 
             subject.setView(nycLatLng);
-            return subject.init();
+            return subject.load();
         });
 
         describe('when the scene is not dirty', () => {
@@ -243,7 +243,7 @@ describe('Scene', function () {
     describe('.updateStyles()', () => {
 
         beforeEach(() => {
-            return subject.init();
+            return subject.load();
         });
 
         describe('when a new style is added', () => {

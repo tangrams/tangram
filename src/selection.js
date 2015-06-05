@@ -40,6 +40,16 @@ export default class FeatureSelection {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
+    destroy() {
+        if (this.gl && this.fbo) {
+            this.gl.deleteFramebuffer(this.fbo);
+            this.fbo = null;
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        }
+
+        // TODO: free texture?
+    }
+
     bind() {
         // Switch to FBO
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbo);

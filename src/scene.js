@@ -59,6 +59,7 @@ export default class Scene {
         this.config = null;
         this.config_source = config_source;
         this.config_serialized = null;
+        this.last_valid_config_source = null;
 
         this.styles = null;
         this.active_styles = {};
@@ -113,36 +114,60 @@ export default class Scene {
         log.setLevel(this.logLevel);
     }
 
-    init() {
-        if (this.initialized) {
+    // Load (or reload) scene config
+    // Optionally specify new scene file URL
+    load(config_source = null) {
+        if (this.initializing) {
             return Promise.resolve();
         }
+
+        this.updating++;
+        this.initialized = false;
         this.initializing = true;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
-        return new Promise((resolve, reject) => {
-            this.tile_manager.init(this);
-            this.loadScene().then(() => {
-                this.createWorkers().then(() => {
-                    this.createCanvas();
-                    this.selection = new FeatureSelection(this.gl, this.workers);
+        return this.loadScene(config_source)
+            .then(() => this.createWorkers())
+            .then(() => {
+                this.createCanvas();
+                this.resetFeatureSelection();
 
+                if (!this.texture_listener) {
                     this.texture_listener = { update: () => this.dirty = true };
                     Texture.subscribe(this.texture_listener);
+                }
 
-                    // Loads rendering styles from config, sets GL context and compiles programs
-                    this.updateConfig();
+                // Remove tiles before rebuilding
+                this.tile_manager.removeTiles(tile => !tile.visible);
+                return this.updateConfig({ rebuild: true });
+            }).then(() => {
+                this.updating--;
+                this.initializing = false;
+                this.initialized = true;
+                this.last_valid_config_source = this.config_source;
 
-                    this.initializing = false;
-                    this.initialized = true;
-                    resolve();
+                if (this.render_loop !== false) {
+                    this.setupRenderLoop();
+                }
+        }).catch(error => {
+            this.initializing = false;
+            this.updating = 0;
 
-                    if (this.render_loop !== false) {
-                        this.setupRenderLoop();
-                    }
-                }).catch(e => reject(e));
-            }).catch(e => reject(e));
+            // Revert to last valid config if available
+            let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+            if (this.last_valid_config_source) {
+                log.warn(msg, error);
+                log.info(`Scene.load() reverting to last valid configuration`);
+                return this.load(this.last_valid_config_source);
+            }
+            log.error(msg, error);
+            throw error;
         });
+    }
+
+    // For API compatibility
+    reload(config_source = null) {
+        return this.load(config_source);
     }
 
     destroy() {
@@ -160,10 +185,11 @@ export default class Scene {
         }
         this.container = null;
 
-        if (this.gl) {
-            this.gl.deleteFramebuffer(this.fbo);
-            this.fbo = null;
+        if (this.selection) {
+            this.selection.destroy();
+        }
 
+        if (this.gl) {
             Texture.destroy(this.gl);
             StyleManager.destroy(this.gl);
             this.styles = {};
@@ -184,6 +210,10 @@ export default class Scene {
     }
 
     createCanvas() {
+        if (this.canvas) {
+            return;
+        }
+
         this.container = this.container || document.body;
         this.canvas = document.createElement('canvas');
         this.canvas.style.position = 'absolute';
@@ -213,37 +243,27 @@ export default class Scene {
         VertexArrayObject.init(this.gl);
     }
 
-    createObjectURL() {
-        return (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
-    }
+    // Get the URL to load the web worker from
+    getWorkerUrl() {
+        let worker_url = this.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js');
 
-    loadWorkerUrl(scene) {
-        var worker_url = scene.worker_url || Utils.findCurrentURL('tangram.debug.js', 'tangram.min.js'),
-            createObjectURL = scene.createObjectURL();
+        if (!worker_url) {
+            throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
+        }
 
-        return new Promise((resolve, reject) => {
-            if (!worker_url) {
-                reject(new Error("Can't load worker because couldn't find base URL that library was loaded from"));
-                return;
-            }
-
-            if (createObjectURL && scene.allow_cross_domain_workers) {
-                var body = `importScripts('${worker_url}');`;
-                var worker_local_url = createObjectURL(new Blob([body], { type: 'application/javascript' }));
-                resolve(worker_local_url);
-            } else {
-                resolve(worker_url);
-            }
-        });
+        if (this.allow_cross_domain_workers) {
+            let body = `importScripts('${worker_url}');`;
+            return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
+        }
+        return worker_url;
     }
 
     // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
     createWorkers() {
-        return new Promise((resolve, reject) => {
-            this.loadWorkerUrl(this).then((worker_url) => {
-                this.makeWorkers(worker_url).then(resolve, reject);
-            });
-        });
+        if (!this.workers) {
+            return this.makeWorkers(this.getWorkerUrl());
+        }
+        return Promise.resolve();
     }
 
     // Instantiate workers from URL, init event handlers
@@ -500,7 +520,7 @@ export default class Scene {
     // such as other, non-WebGL map layers (e.g. Leaflet raster layers, markers, etc.)
     immediateRedraw() {
         this.dirty = true;
-        this.render();
+        this.update();
     }
 
     // Setup the render loop
@@ -885,48 +905,19 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene() {
-        this.config_path = (typeof this.config_source === 'string') && Utils.pathForURL(this.config_source);
+    loadScene(config_source = null) {
+        this.config_source = config_source || this.config_source;
+
+        // If config was passed as object, create an internal URL to it
+        if (typeof this.config_source === 'object') {
+            this.config_source = Utils.createObjectURL(new Blob([JSON.stringify(this.config_source)]));
+        }
+        this.config_path = Utils.pathForURL(this.config_source);
         Texture.base_url = this.config_path;
 
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
             return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
-        }).catch(e => {
-            throw new Error(`Error loading scene file '${this.config_source}': ${e.message}`);
-        });
-    }
-
-    // Reload scene config and rebuild tiles
-    // Optionally specify new scene file URL
-    reload(config_source = null) {
-        if (!this.initialized) {
-            return Promise.resolve(this);
-        }
-
-        // Remove tiles before rebuilding
-        this.tile_manager.removeTiles(tile => !tile.visible);
-
-        this.updating++;
-        this.initialized = false;
-        this.initializing = true;
-
-        this.config_source = config_source || this.config_source;
-
-        return this.loadScene().then(() => {
-            this.updateConfig();
-            this.syncConfigToWorker();
-            return this.rebuildGeometry().then(() => {
-                this.updating--;
-                this.initialized = true;
-                this.initializing = false;
-                return this;
-            });
-        }, (error) => {
-            this.initialized = true;
-            this.initializing = false;
-            this.updating--;
-            throw error;
         });
     }
 
@@ -1056,10 +1047,13 @@ export default class Scene {
 
     // Create camera
     createCamera() {
-        this.camera = Camera.create(this._active_camera, this, this.config.cameras[this._active_camera]);
+        let active_camera = this._active_camera;
+        if (active_camera) {
+            this.camera = Camera.create(active_camera, this, this.config.cameras[this._active_camera]);
 
-        // TODO: replace this and move all position info to camera
-        this.camera.updateScene();
+            // TODO: replace this and move all position info to camera
+            this.camera.updateScene();
+        }
     }
 
     // Get active camera - for public API
@@ -1076,9 +1070,11 @@ export default class Scene {
 
     // Internal management of active camera
     get _active_camera() {
-        for (var name in this.config.cameras) {
-            if (this.config.cameras[name].active) {
-                return name;
+        if (this.config && this.config.cameras) {
+            for (var name in this.config.cameras) {
+                if (this.config.cameras[name].active) {
+                    return name;
+                }
             }
         }
     }
@@ -1101,6 +1097,9 @@ export default class Scene {
     createLights() {
         this.lights = {};
         for (let i in this.config.lights) {
+            if (!this.config.lights[i] || typeof this.config.lights[i] !== 'object') {
+                continue;
+            }
             this.config.lights[i].name = i;
             this.config.lights[i].visible = (this.config.lights[i].visible === false) ? false : true;
             if (this.config.lights[i].visible) {
@@ -1159,7 +1158,12 @@ export default class Scene {
     }
 
     resetFeatureSelection() {
-        this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+        if (!this.selection) {
+            this.selection = new FeatureSelection(this.gl, this.workers);
+        }
+        else if (this.workers) {
+            this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+        }
     }
 
     // Gets the current feature selection map size across all workers. Returns a promise.

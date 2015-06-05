@@ -49,7 +49,7 @@ describe('Leaflet plugin', () => {
         beforeEach(function (done) {
             subject = makeOne();
             sinon.spy(map, 'getContainer');
-            sinon.spy(subject.scene, 'init');
+            sinon.spy(subject.scene, 'load');
 
             subject.on('init', () => {
                 done();
@@ -69,7 +69,7 @@ describe('Leaflet plugin', () => {
         });
 
         it('initializes the scene', () => {
-            sinon.assert.called(subject.scene.init);
+            sinon.assert.called(subject.scene.load);
         });
 
     });

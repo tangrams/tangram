@@ -40,7 +40,10 @@ Utils.addBaseURL = function (url, base) {
 };
 
 Utils.pathForURL = function (url) {
-    return url.substr(0, url.lastIndexOf('/') + 1);
+    if (url.search(/^(data|blob):/) === -1) {
+        return url.substr(0, url.lastIndexOf('/') + 1);
+    }
+    return '';
 };
 
 Utils.cacheBusterForUrl = function (url) {
@@ -48,6 +51,26 @@ Utils.cacheBusterForUrl = function (url) {
         return url; // no cache-busting on object or data URLs
     }
     return url + '?' + (+new Date());
+};
+
+// Polyfill (for Safari compatibility)
+Utils._createObjectURL = undefined;
+Utils.createObjectURL = function (url) {
+    if (Utils._createObjectURL === undefined) {
+        Utils._createObjectURL = (window.URL && window.URL.createObjectURL) || (window.webkitURL && window.webkitURL.createObjectURL);
+
+        if (typeof Utils._createObjectURL !== 'function') {
+            Utils._createObjectURL = null;
+            log.warn(`window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+        }
+    }
+
+    if (Utils._createObjectURL) {
+        return Utils._createObjectURL(url);
+    }
+    else {
+        return url;
+    }
 };
 
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}) {
@@ -92,7 +115,6 @@ Utils.parseResource = function (body) {
         try {
             data = yaml.safeLoad(body);
         } catch (e) {
-            log.error('Utils.parseResource: failed to parse', e);
             throw e;
         }
     }
@@ -103,8 +125,13 @@ Utils.loadResource = function (source) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
             Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
-                var data = Utils.parseResource(body);
-                resolve(data);
+                try {
+                    let data = Utils.parseResource(body);
+                    resolve(data);
+                }
+                catch(e) {
+                    reject(e);
+                }
             }, reject);
         } else {
             resolve(source);

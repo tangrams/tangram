@@ -32,7 +32,7 @@ describe('TileManager', function () {
         beforeEach(() => {
             sinon.spy(TileManager, 'queueCoordinate');
 
-            return scene.init().then(() => {
+            return scene.load().then(() => {
                 TileManager.queueCoordinate(coords);
                 TileManager.loadQueuedCoordinates();
             });
@@ -48,7 +48,7 @@ describe('TileManager', function () {
         let coords = midtownTile;
 
         beforeEach(() => {
-            return scene.init();
+            return scene.load();
         });
 
         describe('when the tile manager has not loaded the tile', () => {

@@ -1,8 +1,6 @@
 import Utils from './utils/utils';
 import Scene from './scene';
 
-import log from 'loglevel';
-
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
 export function leafletLayer(options) {
@@ -130,11 +128,9 @@ if (Utils.isMainThread) {
             });
 
             // Use leaflet's existing event system as the callback mechanism
-            this.scene.init().then(() => {
-                log.debug('Scene.init() succeeded');
+            this.scene.load().then(() => {
                 this.fire('init');
             }).catch(error => {
-                log.error(`Scene.init() failed: ${error.message}`, error);
                 this.fire('error', error);
             });
         },

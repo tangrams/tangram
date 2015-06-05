@@ -31,9 +31,9 @@ function loadWorkerContent(url) {
 
 let workerBody = loadWorkerContent(worker_url);
 
-sinon.stub(Scene.prototype, 'loadWorkerUrl').returns(Promise.resolve(
+sinon.stub(Scene.prototype, 'getWorkerUrl').returns(
     URL.createObjectURL(new Blob([workerBody], { type: 'application/javascript' }))
-));
+);
 
 let container = document.createElement('div');
 container.style.width = '250px';
