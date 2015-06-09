@@ -907,12 +907,7 @@ export default class Scene {
     */
     loadScene(config_source = null) {
         this.config_source = config_source || this.config_source;
-
-        // If config was passed as object, create an internal URL to it
-        if (typeof this.config_source === 'object') {
-            this.config_source = Utils.createObjectURL(new Blob([JSON.stringify(this.config_source)]));
-        }
-        this.config_path = Utils.pathForURL(this.config_source);
+        this.config_path = typeof this.config_source === 'string' && Utils.pathForURL(this.config_source);
         Texture.base_url = this.config_path;
 
         return Utils.loadResource(this.config_source).then((config) => {
