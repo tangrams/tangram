@@ -256,6 +256,7 @@ export var Style = {
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
         var uniforms = (this.shaders && this.shaders.uniforms);
+        var extensions = (this.shaders && this.shaders.extensions);
 
         // Create shaders
         try {
@@ -267,7 +268,8 @@ export var Style = {
                     name: this.name,
                     defines,
                     uniforms,
-                    blocks
+                    blocks,
+                    extensions
                 }
             );
             this.program.compile();
@@ -281,7 +283,8 @@ export var Style = {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
                         uniforms,
-                        blocks
+                        blocks,
+                        extensions
                     }
                 );
                 this.selection_program.compile();

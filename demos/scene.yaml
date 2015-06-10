@@ -133,6 +133,25 @@ styles:
         base: points
         texture: pois
 
+    grid:
+        base: polygons
+        lighting: false
+        shaders:
+            extensions: [OES_standard_derivatives]
+            blocks:
+                color: |
+                    // From: http://madebyevan.com/shaders/grid/
+                    // Pick a coordinate to visualize in a grid
+                    vec3 coord = v_world_position.xyz / 10.;
+
+                    // Compute anti-aliased world-space grid lines
+                    vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+                    float line = min(min(grid.x, grid.y), grid.z);
+
+                    // Just visualize the grid lines directly
+                    color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
+
+
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:

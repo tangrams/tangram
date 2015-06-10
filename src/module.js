@@ -17,6 +17,7 @@ import DataSource from './data_source';
 import TileManager from './tile_manager';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
+import Extensions from './gl/extensions';
 import VertexData from './gl/vertex_data';
 import Texture from './gl/texture';
 import Material from './material';
@@ -41,6 +42,7 @@ var debug = {
     TileManager,
     GLSL,
     ShaderProgram,
+    Extensions,
     VertexData,
     Texture,
     Material,

@@ -213,6 +213,13 @@ StyleManager.mix = function (style, styles) {
     shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
     shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
 
+    // Build a list of unique extensions
+    shaders.extensions = Object.keys(merge
+        .map(x => x.extensions)
+        .filter(x => x)
+        .reduce((prev, cur) => { cur.forEach(x => prev[x] = true); return prev; }, {}) || {}
+    );
+
     merge.map(x => x.blocks).filter(x => x).forEach(blocks => {
         shaders.blocks = shaders.blocks || {};
 

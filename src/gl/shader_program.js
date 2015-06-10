@@ -4,6 +4,7 @@
 
 import GLSL from './glsl';
 import Texture from './texture';
+import Extensions from './extensions';
 
 import log from 'loglevel';
 import strip from 'strip-comments';
@@ -24,6 +25,9 @@ export default class ShaderProgram {
 
         // key/values for blocks that can be injected into shaders at compile-time
         this.blocks = Object.assign({}, options.blocks||{});
+
+        // list of extensions to activate
+        this.extensions = options.extensions || [];
 
         // JS-object uniforms that are expected by this program
         // If they are not found in the existing shader source, their types will be inferred and definitions
@@ -78,6 +82,9 @@ export default class ShaderProgram {
         // Make list of defines to be injected later
         var defines = this.buildDefineList();
 
+        // Check for extension availability
+        this.checkExtensions();
+
         // Inject user-defined blocks (arbitrary code points matching named #pragmas)
         // Replace according to this pattern:
         // #pragma tangram: [key]
@@ -127,23 +134,22 @@ export default class ShaderProgram {
         this.computed_vertex_source = this.computed_vertex_source.replace(regexp, '');
         this.computed_fragment_source = this.computed_fragment_source.replace(regexp, '');
 
-        // Build & inject defines
-        // This is done *after* code injection so that we can add defines for which code points were injected
-        defines['TANGRAM_VERTEX_SHADER'] = true;
-        defines['TANGRAM_FRAGMENT_SHADER'] = false;
-        this.computed_vertex_source = ShaderProgram.buildDefineString(defines) + this.computed_vertex_source;
-
-        defines['TANGRAM_VERTEX_SHADER'] = false;
-        defines['TANGRAM_FRAGMENT_SHADER'] = true;
-        this.computed_fragment_source = ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
-
         // Detect uniform definitions, inject any missing ones
         this.ensureUniforms(this.dependent_uniforms);
 
-        // Include program info useful for debugging
-        var info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-        this.computed_vertex_source = '// Program: ' + info + '\n' + this.computed_vertex_source;
-        this.computed_fragment_source = '// Program: ' + info + '\n' + this.computed_fragment_source;
+        // Build & inject extensions & defines
+        // This is done *after* code injection so that we can add defines for which code points were injected
+        let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
+        let header = `// Program: ${info}\n` +
+            ShaderProgram.buildExtensionString(this.extensions);
+
+        defines['TANGRAM_VERTEX_SHADER'] = true;
+        defines['TANGRAM_FRAGMENT_SHADER'] = false;
+        this.computed_vertex_source = header + ShaderProgram.buildDefineString(defines) + this.computed_vertex_source;
+
+        defines['TANGRAM_VERTEX_SHADER'] = false;
+        defines['TANGRAM_FRAGMENT_SHADER'] = true;
+        this.computed_fragment_source = header + ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
 
         // Compile & set uniforms to cached values
         try {
@@ -390,6 +396,17 @@ export default class ShaderProgram {
         return attrib;
     }
 
+    // Check availability of extensions
+    checkExtensions() {
+        for (let ext of this.extensions) {
+            if (!Extensions.getExtension(this.gl, ext)) {
+                log.warn(`Could not enable extension '${ext}'`);
+                return false;
+            }
+        }
+        return true;
+    }
+
 }
 
 
@@ -421,6 +438,16 @@ ShaderProgram.buildDefineString = function (defines) {
         }
     }
     return define_str;
+};
+
+// Turn a list of extension names into single string of #extension statements
+ShaderProgram.buildExtensionString = function (extensions) {
+    extensions = extensions || [];
+    let str = "";
+    for (let ext of extensions) {
+        str += `#extension GL_${ext} : enable\n`;
+    }
+    return str;
 };
 
 ShaderProgram.addBlock = function (key, ...blocks) {
