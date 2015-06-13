@@ -153,6 +153,10 @@ export default TileManager = {
 
         // Determine necessary tiles for each source
         for (let source of Utils.values(this.scene.sources)) {
+            if (!source.tiled) {
+                continue;
+            }
+
             let key = Tile.key(coords, source, this.scene.tile_zoom);
             if (!this.hasTile(key)) {
                 let tile = Tile.create({
