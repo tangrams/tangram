@@ -127,10 +127,6 @@ export class NetworkSource extends DataSource {
 
         let url = this.formatUrl(dest);
 
-        if (dest.sources == null) {
-            dest.sources = {};
-        }
-
         let source_data = dest.source_data;
         source_data.url = url;
         dest.debug = dest.debug || {};
