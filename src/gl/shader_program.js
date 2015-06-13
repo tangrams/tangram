@@ -4,7 +4,7 @@
 
 import GLSL from './glsl';
 import Texture from './texture';
-import Extensions from './extensions';
+import getExtension from './extensions';
 
 import log from 'loglevel';
 import strip from 'strip-comments';
@@ -79,11 +79,11 @@ export default class ShaderProgram {
         this.computed_vertex_source = this.vertex_source;
         this.computed_fragment_source = this.fragment_source;
 
+        // Check for extension availability
+        let extensions = this.checkExtensions();
+
         // Make list of defines to be injected later
         var defines = this.buildDefineList();
-
-        // Check for extension availability
-        this.checkExtensions();
 
         // Inject user-defined blocks (arbitrary code points matching named #pragmas)
         // Replace according to this pattern:
@@ -141,7 +141,7 @@ export default class ShaderProgram {
         // This is done *after* code injection so that we can add defines for which code points were injected
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
         let header = `// Program: ${info}\n` +
-            ShaderProgram.buildExtensionString(this.extensions);
+            ShaderProgram.buildExtensionString(extensions);
 
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
@@ -396,15 +396,24 @@ export default class ShaderProgram {
         return attrib;
     }
 
-    // Check availability of extensions
+    // Returns list of available extensions from those requested
+    // Sets internal #defines indicating availability of each requested extension
     checkExtensions() {
-        for (let ext of this.extensions) {
-            if (!Extensions.getExtension(this.gl, ext)) {
-                log.warn(`Could not enable extension '${ext}'`);
-                return false;
+        let exts = [];
+        for (let name of this.extensions) {
+            let ext = getExtension(this.gl, name);
+            let def = `TANGRAM_EXTENSION_${name}`;
+
+            this.defines[def] = (ext != null);
+
+            if (ext) {
+                exts.push(name);
+            }
+            else {
+                log.debug(`Could not enable extension '${name}'`);
             }
         }
-        return true;
+        return exts;
     }
 
 }
