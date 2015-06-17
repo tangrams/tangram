@@ -31,10 +31,22 @@ Utils.addBaseURL = function (url, base) {
         else {
             base_info = window.location;
         }
-        if (!base_info.origin) {
-            base_info.origin = base_info.protocol + "//" + base_info.hostname + (base_info.port ? ':' + base_info.port: '') + '/';
+
+        if (relative) {
+            url = base_info.href + url;
         }
-        url = base_info.origin + (relative ? base_info.pathname : '') + url;
+        else {
+            // Easy way
+            if (base_info.origin) {
+                url = base_info.origin + url;
+            }
+            // Hard way (IE11)
+            else {
+                var origin = url.match(/^((http|https|data|blob):\/\/[^\/]*\/)/);
+                origin = (origin && origin.length > 1) ? origin[0] : '';
+                url = origin + url;
+            }
+        }
     }
     return url;
 };
