@@ -33,12 +33,14 @@ Utils.addBaseURL = function (url, base) {
         }
 
         if (relative) {
-            url = base_info.href + url;
+            let path = base_info.href.match(/([^\#]+)/); // strip hash
+            path = (path && path.length > 1) ? path[0] : '';
+            url = path + url;
         }
         else {
             // Easy way
             if (base_info.origin) {
-                url = base_info.origin + url;
+                url = base_info.origin + '/' + url;
             }
             // Hard way (IE11)
             else {
