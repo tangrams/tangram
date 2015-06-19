@@ -318,34 +318,31 @@ layers:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
                 text:
+                    priority: 2
                     font:
                         fill: '#666'
-                        typeface: 100 12px Helvetica
+                        typeface: 12px Helvetica
                         stroke: { color: white, width: 4 }
 
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
                 text:
+                    priority: 5
                     font:
                         fill: '#666'
                         stroke: { color: white, width: 4 }
-                        typeface: 100 12px Helvetica
+                        typeface: 12px Helvetica
 
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
                 draw:
                     text:
+                        priority: 3
                         font:
-                            typeface: 100 16px Helvetica
+                            typeface: 16px Helvetica
                             stroke: { color: white, width: 4 }
-            minor_road:
-                filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-                draw:
-                    text:
-                        font:
-                            typeface: 100 12px Helvetica
-                            stroke: { color: white, width: 4 }
+
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
@@ -409,6 +406,7 @@ layers:
                 - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
             text:
+                priority: 1
                 font:
                     typeface: italic 11pt Helvetica
                     fill: black
@@ -458,6 +456,7 @@ layers:
                 - { $zoom: { min: 18 } }
         draw:
             text:
+                priority: 4
                 font:
                     typeface: Italic 10pt Lucida Grande
                     fill: darkgreen

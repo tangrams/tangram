@@ -27,8 +27,6 @@ Object.assign(TextStyle, {
             WorkerBroker.addTarget('TextStyle', this);
         }
 
-        this.max_priority = 0;
-
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
@@ -42,12 +40,6 @@ Object.assign(TextStyle, {
 
         // default label style
         this.label_style = {
-            priorities: {
-                administrative: 4,
-                major_road: 3,
-                minor_road: 2,
-                restaurant: 1,
-            },
             lines: {
                 exceed: 80,
                 offset: 0
@@ -328,7 +320,7 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = [];
+        let labels_priorities = {};
 
         if (!this.features[tile]) {
             return;
@@ -394,7 +386,9 @@ Object.assign(TextStyle, {
         this.bboxes[tile] = [];
         this.feature_labels[tile] = new Map();
 
-        for (let priority = this.max_priority; priority >= 0; priority--) {
+        // Process labels by priority
+        let priorities = Object.keys(labels).sort((a, b) => a - b);
+        for (let priority of priorities) {
             if (!labels[priority]) {
                 continue;
             }
@@ -523,12 +517,7 @@ Object.assign(TextStyle, {
                 this.texts[tile.key][style_key] = {};
             }
 
-            let priority = 0;
-            if (this.label_style.priorities[feature.properties.kind]) {
-                priority = this.label_style.priorities[feature.properties.kind];
-            }
-
-            this.max_priority = Math.max(priority, this.max_priority);
+            let priority = (rule.priority !== undefined) ? parseFloat(rule.priority) : -1 >>> 0;
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
