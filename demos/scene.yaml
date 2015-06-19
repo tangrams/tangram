@@ -461,3 +461,18 @@ layers:
                     typeface: Italic 10pt Lucida Grande
                     fill: darkgreen
                     stroke: { color: white, width: 3 }
+
+    # building_labels:
+    #     data: { source: osm, layer: buildings }
+    #     filter:
+    #         name: true
+    #         any:
+    #             - { $zoom: { min: 17 }, height: { min: 50 } }
+    #             - $zoom: { min: 18 }
+    #     draw:
+    #         text:
+    #             priority: 6
+    #             font:
+    #                 typeface: 8pt Lucida Grande
+    #                 fill: darkred
+    #                 stroke: { color: white, width: 3 }
