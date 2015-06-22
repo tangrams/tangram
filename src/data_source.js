@@ -316,7 +316,7 @@ export class GeoJSONSource extends NetworkSource {
         let polys = [];
         let poly = [];
         for (let ring of geom) {
-            let winding = Utils.ringWinding(ring);
+            let winding = Geo.ringWinding(ring);
             if (winding === 'CCW' && poly.length > 0) {
                 polys.push(poly);
                 poly = [];

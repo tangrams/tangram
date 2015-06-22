@@ -6,6 +6,7 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
 import Texture from '../../gl/texture';
+import Geo from '../../geo';
 import Utils from '../../utils/utils';
 
 import log from 'loglevel';
@@ -204,7 +205,7 @@ Object.assign(Points, {
             }
         }
         else {
-            let centroid = Utils.multiCentroid(polygons);
+            let centroid = Geo.multiCentroid(polygons);
             this.buildPoints([centroid], style, vertex_data);
         }
     },
