@@ -277,7 +277,7 @@ export class GeoJSONSource extends NetworkSource {
                     type = 'MultiLineString';
                 }
                 else if (feature.type === 3) {
-                    type = 'Polygon'; // TODO: detect MultiPolygons from ring order flip?
+                    type = 'MultiPolygon';
                 }
                 else {
                     continue;
@@ -287,6 +287,11 @@ export class GeoJSONSource extends NetworkSource {
                 let geom = feature.geometry.map(ring =>
                     ring.map(coord => [coord[0], -coord[1]])
                 );
+
+                // Decode multipolygon
+                if (type === 'MultiPolygon') {
+                    geom = this.decodeMultiPolygon(geom);
+                }
 
                 let f = {
                     type: 'Feature',
@@ -302,6 +307,26 @@ export class GeoJSONSource extends NetworkSource {
         }
 
         return collection;
+    }
+
+    // Decode multipolygons, which are encoded as a single set of rings
+    // Outer rings are wound CCW, inner are CW
+    // A CCW ring indicates the start of a new polygon
+    decodeMultiPolygon (geom) {
+        let polys = [];
+        let poly = [];
+        for (let ring of geom) {
+            let winding = Utils.ringWinding(ring);
+            if (winding === 'CCW' && poly.length > 0) {
+                polys.push(poly);
+                poly = [];
+            }
+            poly.push(ring);
+        }
+        if (poly.length > 0) {
+            polys.push(poly);
+        }
+        return polys;
     }
 
     formatUrl (dest) {
