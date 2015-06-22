@@ -10,6 +10,8 @@ import {
     NetworkTileSource,
     GeoJSONTileSource,
     TopoJSONTileSource,
+    GeoJSONSource,
+    TopoJSONSource,
     MVTSource
 } from '../src/data_source';
 
@@ -31,7 +33,7 @@ function getMockTopoResponse() {
 
 describe('DataSource', () => {
 
-    let url      = 'http://localhost:8080/stuff';
+    let url      = 'http://localhost:8080/{z}/{y}/{x}';
     let max_zoom = 12;
     let name     = 'test-source';
     let options  = {url, max_zoom, name};
@@ -55,17 +57,45 @@ describe('DataSource', () => {
 
     describe('DataSource.create(type, url_template, options)', () => {
 
-        describe('when I ask for a GeoJSONTileSource', () => {
+        describe('when I ask for a GeoJSON source with a tile template URL', () => {
+            let subject = DataSource.create(_.merge({type: 'GeoJSON'}, options));
+            it('returns a new GeoJSONTileSource', () => {
+                assert.instanceOf(subject, GeoJSONTileSource);
+            });
+        });
+
+        describe('when I ask for a TopoJSON source with a tile template URL', () => {
+            let subject = DataSource.create(_.merge({type: 'TopoJSON'}, options));
+            it('returns a new TopoJSONTileSource', () => {
+                assert.instanceOf(subject, TopoJSONTileSource);
+            });
+        });
+
+        describe('when I ask for a GeoJSONTiles source (backwards compatibility', () => {
             let subject = DataSource.create(_.merge({type: 'GeoJSONTiles'}, options));
             it('returns a new GeoJSONTileSource', () => {
                 assert.instanceOf(subject, GeoJSONTileSource);
             });
         });
 
-        describe('when I ask for a TopoJSONTileSource', () => {
+        describe('when I ask for a TopoJSONTiles source (backwards compatibility', () => {
             let subject = DataSource.create(_.merge({type: 'TopoJSONTiles'}, options));
             it('returns a new TopoJSONTileSource', () => {
                 assert.instanceOf(subject, TopoJSONTileSource);
+            });
+        });
+
+        describe('when I ask for a GeoJSON source without a tile template URL', () => {
+            let subject = DataSource.create(_.merge({type: 'GeoJSON'}, options, {url: 'http://localhost:8080/'}));
+            it('returns a new GeoJSONSource', () => {
+                assert.instanceOf(subject, GeoJSONSource);
+            });
+        });
+
+        describe('when I ask for a TopoJSON source without a tile template URL', () => {
+            let subject = DataSource.create(_.merge({type: 'TopoJSON'}, options, {url: 'http://localhost:8080/'}));
+            it('returns a new TopoJSONSource', () => {
+                assert.instanceOf(subject, TopoJSONSource);
             });
         });
 
