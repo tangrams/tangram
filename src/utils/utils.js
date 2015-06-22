@@ -454,7 +454,7 @@ Utils.multiCentroid = function (polygons) {
     return centroid;
 };
 
-Utils.polygonArea = function (polygon) {
+Utils.signedPolygonAreaSum = function (polygon) {
     let area = 0;
     let n = polygon.length;
 
@@ -466,8 +466,12 @@ Utils.polygonArea = function (polygon) {
     }
 
     area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+    return area;
+};
 
-    return Math.abs(area) / 2;
+// TODO: subtract inner ring areas
+Utils.polygonArea = function (polygon) {
+    return math.abs(Utils.signedPolygonAreaSum(polygon)) / 2;
 };
 
 Utils.multiPolygonArea = function (polygons) {
@@ -479,6 +483,10 @@ Utils.multiPolygonArea = function (polygons) {
     }
 
     return area;
+};
+
+Utils.ringWinding = function (ring) {
+    return Utils.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
 };
 
 Utils.toPixelSize = function (size, kind) {
