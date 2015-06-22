@@ -11,6 +11,9 @@ import topojson from 'topojson';
 import Pbf from 'pbf';
 import {VectorTile, VectorTileFeature} from 'vector-tile';
 
+// For tiling GeoJSON client-side
+import geojsonvt from 'geojson-vt';
+
 export default class DataSource {
 
     constructor (source) {
@@ -42,7 +45,7 @@ export default class DataSource {
         }
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = source.max_zoom || Geo.max_zoom;
+        this.max_zoom = source.max_zoom;
     }
 
     // Create a tile source by type, factory-style
@@ -99,13 +102,13 @@ export default class DataSource {
         dest.source_data.layers = {};
     }
 
-    // Register a new data source type
-    static register(type_class) {
-        if (!type_class || !type_class.type) {
+    // Register a new data source type, under a type name
+    static register(type_class, type_name) {
+        if (!type_class || !type_name) {
             return;
         }
 
-        DataSource.types[type_class.type] = type_class;
+        DataSource.types[type_name] = type_class;
     }
 
 }
@@ -196,78 +199,146 @@ export class NetworkTileSource extends NetworkSource {
         return url;
     }
 
+    // Checks for the x/y/z tile pattern in URL template
+    urlHasTilePattern(url) {
+        return url &&
+            url.search('{x}') > -1 &&
+            url.search('{y}') > -1 &&
+            url.search('{z}') > -1;
+    }
+
 }
 
 
 /**
  GeoJSON standalone (non-tiled) source
+ Uses geojson-vt split into tiles client-side
 */
 
 export class GeoJSONSource extends NetworkSource {
+
+    constructor(source) {
+        super(source);
+        this.tiled = true;
+        this.load_data = null;
+        this.tile_indexes = {}; // geojson-vt tile indices, by layer name
+        this.max_zoom = this.max_zoom || 14;
+    }
+
+    load(dest) {
+        if (!this.load_data) {
+            this.load_data = super.load({}).then(data => {
+                let layers = data.source_data.layers;
+                for (let layer_name in layers) {
+                    this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
+                        maxZoom: this.max_zoom,  // max zoom to preserve detail on
+                        tolerance: 3, // simplification tolerance (higher means simpler)
+                        extent: 4096, // tile extent (both width and height)
+                        buffer: 0     // tile buffer on each side
+                    });
+                }
+
+                this.loaded = true;
+                return data;
+            });
+        }
+
+        return this.load_data.then(() => {
+            dest.source_data = { layers: {} };
+
+            for (let layer_name in this.tile_indexes) {
+                dest.source_data.layers[layer_name] = this.getTileFeatures(dest, layer_name);
+            }
+
+            return dest;
+        });
+    }
+
+    getTileFeatures(tile, layer_name) {
+        let coords = Geo.wrapTile(tile.coords, { x: true });
+
+        // request a particular tile
+        let t = this.tile_indexes[layer_name].getTile(coords.z, coords.x, coords.y);
+
+        // Convert from MVT-style JSON struct to GeoJSON
+        let collection;
+        if (t && t.features) {
+            collection = {
+                type: 'FeatureCollection',
+                features: []
+            };
+
+            for (let feature of t.features) {
+                let type;
+                if (feature.type === 1) {
+                    type = 'MultiPoint';
+                }
+                else if (feature.type === 2) {
+                    type = 'MultiLineString';
+                }
+                else if (feature.type === 3) {
+                    type = 'Polygon'; // TODO: detect MultiPolygons from ring order flip?
+                }
+                else {
+                    continue;
+                }
+
+                // Flip Y coords
+                let geom = feature.geometry.map(ring =>
+                    ring.map(coord => [coord[0], -coord[1]])
+                );
+
+                let f = {
+                    type: 'Feature',
+                    geometry: {
+                        type,
+                        coordinates: geom
+                    },
+                    properties: feature.tags
+                };
+
+                collection.features.push(f);
+            }
+        }
+
+        return collection;
+    }
 
     formatUrl (dest) {
         return this.url;
     }
 
     parseSourceData (tile, source, response) {
-        source.layers = { _default: JSON.parse(response) };
-        DataSource.projectData(source); // mercator projection
-    }
-}
-
-GeoJSONSource.type = 'GeoJSON';
-DataSource.register(GeoJSONSource);
-
-
-/**
- Mapzen/OSM.US-style GeoJSON vector tiles
- @class GeoJSONTileSource
-*/
-export class GeoJSONTileSource extends NetworkTileSource {
-
-    parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
-        this.prepareGeoJSON(data, tile, source);
+        source.layers = this.getLayers(JSON.parse(response));
     }
 
-    prepareGeoJSON (data, tile, source) {
-        // Apply optional data transform
-        if (typeof this.transform === 'function') {
-            data = this.transform(data, source);
-        }
-
-        // Single layer or multi-layers?
+    // Detect single or multiple layers in returned data
+    getLayers (data) {
         if (data.type === 'Feature' || data.type === 'FeatureCollection') {
-            source.layers = { _default: data };
+            return { _default: data };
         }
         else {
-            source.layers = data;
+            return data;
         }
-
-        // A "synthetic" tile that adjusts the tile min anchor to account for tile longitude wrapping
-        let anchor = {
-            coords: tile.coords,
-            min: Geo.metersForTile(Geo.wrapTile(tile.coords, { x: true }))
-        };
-
-        DataSource.projectData(source); // mercator projection
-        DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
     }
-}
 
-GeoJSONTileSource.type = 'GeoJSONTiles';
-DataSource.register(GeoJSONTileSource);
+}
 
 
 /**
- Mapzen/OSM.US-style TopoJSON vector tiles
- @class TopoJSONTileSource
+ TopoJSON standalone (non-tiled) source
+ Uses geojson-vt split into tiles client-side
 */
-export class TopoJSONTileSource extends GeoJSONTileSource {
+
+export class TopoJSONSource extends GeoJSONSource {
 
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
+        data = this.toGeoJSON(data);
+        source.layers = this.getLayers(data);
+    }
 
+    toGeoJSON (data) {
         // Single layer
         if (data.objects &&
             Object.keys(data.objects).length === 1 &&
@@ -282,14 +353,83 @@ export class TopoJSONTileSource extends GeoJSONTileSource {
             }
             data = layers;
         }
+        return data;
+    }
 
+}
+
+/**
+ Mapzen/OSM.US-style GeoJSON vector tiles
+ @class GeoJSONTileSource
+*/
+export class GeoJSONTileSource extends NetworkTileSource {
+
+    constructor(source) {
+        super(source);
+
+        // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+        if (!this.urlHasTilePattern(this.url)) {
+            // Check instance as subclass first parent class will also match
+            if (this instanceof TopoJSONTileSource) {
+                return new TopoJSONSource(source);
+            }
+            else if (this instanceof GeoJSONTileSource) {
+                return new GeoJSONSource(source);
+            }
+            // else throw?
+        }
+    }
+
+    parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
+        this.prepareGeoJSON(data, tile, source);
+    }
+
+    prepareGeoJSON (data, tile, source) {
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            data = this.transform(data, source);
+        }
+
+        source.layers = GeoJSONSource.prototype.getLayers(data);
+
+        // A "synthetic" tile that adjusts the tile min anchor to account for tile longitude wrapping
+        let anchor = {
+            coords: tile.coords,
+            min: Geo.metersForTile(Geo.wrapTile(tile.coords, { x: true }))
+        };
+
+        DataSource.projectData(source); // mercator projection
+        DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
+    }
+
+}
+
+DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
+DataSource.register(GeoJSONTileSource, 'GeoJSONTiles'); // for backwards-compatibility
+
+
+/**
+ Mapzen/OSM.US-style TopoJSON vector tiles
+ @class TopoJSONTileSource
+*/
+export class TopoJSONTileSource extends GeoJSONTileSource {
+
+    constructor(source) {
+        // explicit return is needed since parent constructor can change instance class type
+        return super(source);
+    }
+
+    parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
+        data = TopoJSONSource.prototype.toGeoJSON(data);
         this.prepareGeoJSON(data, tile, source);
     }
 
 }
 
-TopoJSONTileSource.type = 'TopoJSONTiles';
-DataSource.register(TopoJSONTileSource);
+DataSource.register(TopoJSONTileSource, 'TopoJSON');        // prefered shorter name
+DataSource.register(TopoJSONTileSource, 'TopoJSONTiles');   // for backwards-compatibility
 
 
 
@@ -390,5 +530,4 @@ export class MVTSource extends NetworkTileSource {
 
 }
 
-MVTSource.type = 'MVT';
-DataSource.register(MVTSource);
+DataSource.register(MVTSource, 'MVT');
