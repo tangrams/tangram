@@ -185,6 +185,7 @@ Builders.buildPolylines = function (
         nPairs: 0
     };
 
+    // For each LINE in a POLYLINE
     for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
@@ -194,7 +195,7 @@ Builders.buildPolylines = function (
             continue;
         }
 
-        //  Initialize variables
+        //  Initialize variables 
         var coordPrev = [0, 0], // Previous point coordinates
             coordCurr = [0, 0], // Current point coordinates
             coordNext = [0, 0]; // Next point coordinates
@@ -206,11 +207,22 @@ Builders.buildPolylines = function (
         var isPrev = false,
             isNext = true;
 
-        // Add vertices to buffer acording their index
-        indexPairs(constants);
+        // NOTE:
+        //      - all this variables are created for each line
+        //      - memory whise, how expensive is to re allocate this variables over and over?
 
-        // Do this with the rest (except the last one)
+        // Add vertices to buffer acording their index
+        //  indexPairs(constants);
+
+        // NOTE:
+        //      - This meant to clear the buffer of vertices to be add before starting a new line 
+        //      - REDUNDANT ??
+
+        // For each LINE SEGMENT in a LINE
         for (let i = 0; i < lineSize ; i++) {
+
+            // PREPARATION OF DATA (prev, current and next vertices)
+            // -------------------------------------
 
             // There is a next one?
             isNext = i+1 < lineSize;
@@ -291,19 +303,33 @@ Builders.buildPolylines = function (
                 }
             }
 
+            //  ADDING DATA ( segments, caps and joins)
+            // -------------------------------------
             if (isPrev || isNext) {
+
                 // If is the BEGINING of a LINE
                 if (i === 0 && !isPrev && !closed_polygon) {
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
+                var thisJoin = trianglesOnJoin;
+                //  Check Miter limit according to 
+                //  https://github.com/tangrams/tangram/blob/5e7686d477bfc0069656157b3d46ba5bac5aab39/src/gl/gl_builders.js#L309
+                var len_sq = Vector.lengthSq(normCurr);
+                var miter_len_max = 3;
+                if (  len_sq > (miter_len_max * miter_len_max) ){
+                    thisJoin = 1; // add bevel
+                }
+
                 // If is a JOIN
-                if(trianglesOnJoin !== 0 && isPrev && isNext) {
+                if(thisJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
-                            i/lineSize, trianglesOnJoin,
+                            i/lineSize, thisJoin,
                             constants);
-                } else {
+                } 
+                // If is a SEGMENT (or regular join, that means miter)
+                else {
                     addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
 
@@ -367,14 +393,15 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
 
-    var angle_delta = Vector.dot(nA, nB);
-    if (angle_delta < -1) {
-        angle_delta = -1;
-    }
-    angle_delta = Math.acos(angle_delta)/numTriangles;
+    var angle_delta = Vector.getAngleBetween(nA, nB);
+    //  TODO:
+    //          - Adjust the number of triangles per join based on the angle (angle_delta)
+    //          - it should be aware of the width size of the extrusion.
+
+    var angle_step = angle_delta/numTriangles;
 
     if (!signed) {
-        angle_delta *= -1;
+        angle_step *= -1;
     }
 
     var uvCurr = Vector.set(uA);
@@ -390,7 +417,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     // Iterate through the rest of the coorners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
 
         if (numTriangles === 4 && (t === 0 || t === numTriangles - 2)) {
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
