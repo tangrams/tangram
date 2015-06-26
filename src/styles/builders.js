@@ -317,7 +317,7 @@ Builders.buildPolylines = function (
                 //  https://github.com/tangrams/tangram/blob/5e7686d477bfc0069656157b3d46ba5bac5aab39/src/gl/gl_builders.js#L309
                 var len_sq = Vector.lengthSq(normCurr);
                 var miter_len_max = 3;
-                if (  len_sq > (miter_len_max * miter_len_max) ){
+                if ( thisJoin === 0 && (len_sq > (miter_len_max * miter_len_max)) ){
                     thisJoin = 1; // add bevel
                 }
 
