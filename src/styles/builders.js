@@ -394,10 +394,16 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var normPrev = [0,0];
 
     var angle_delta = Vector.getAngleBetween(nA, nB);
-    //  TODO:
-    //          - Adjust the number of triangles per join based on the angle (angle_delta)
-    //          - it should be aware of the width size of the extrusion.
-
+    if ( numTriangles === 3 ){
+        var w = constants.halfWidth*2;
+        var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/Geo.units_per_pixel;
+        numTriangles = Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/Geo.units_per_pixel) );
+        if (numTriangles === 4 ){
+            numTriangles = 3;
+        } else if (numTriangles < 1){
+            numTriangles = 1;
+        }
+    }
     var angle_step = angle_delta/numTriangles;
 
     if (!signed) {
