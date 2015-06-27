@@ -70,6 +70,7 @@ export default class Scene {
         this.preUpdate = options.preUpdate;             // optional pre-render loop hook
         this.postUpdate = options.postUpdate;           // optional post-render loop hook
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
+        this.looping = false;
         this.frame = 0;
         this.resetTime();
 
@@ -523,18 +524,23 @@ export default class Scene {
         this.update();
     }
 
+    renderLoop () {
+        this.looping = true; // only let the render loop instantiate once
+
+        if (this.initialized) {
+            // Render the scene
+            this.update();
+        }
+
+        // Request the next frame
+        window.requestAnimationFrame(this.renderLoop.bind(this));
+    }
+
     // Setup the render loop
     setupRenderLoop({ pre_render, post_render } = {}) {
-        this.renderLoop = () => {
-            if (this.initialized) {
-                // Render the scene
-                this.update();
-            }
-
-            // Request the next frame
-            window.requestAnimationFrame(this.renderLoop);
-        };
-        setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+        if (!this.looping) {
+            setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+        }
     }
 
     update() {
