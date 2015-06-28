@@ -39,7 +39,7 @@ Object.assign(Lines, {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+            attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
 
         this.vertex_layout = new VertexLayout(attribs);
@@ -212,6 +212,7 @@ Object.assign(Lines, {
                     scaling_index: this.vertex_layout.index.a_extrude,
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale,
+                    texcoord_normalize: 65535,
                     closed_polygon: options && options.closed_polygon,
                     remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges
                 }

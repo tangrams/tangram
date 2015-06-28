@@ -166,6 +166,7 @@ Builders.buildPolylines = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
+        texcoord_normalize,
         scaling_index,
         join, cap
     }) {
@@ -174,6 +175,7 @@ Builders.buildPolylines = function (
     var trianglesOnJoin = (join === "bevel") ? 1 : ((join === "round") ? 3 : 0);  // Miter is the implicit default
 
     // Build variables
+    texcoord_normalize = texcoord_normalize || 1;
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Values that are constant for each line and are passed to helper functions
@@ -186,6 +188,7 @@ Builders.buildPolylines = function (
         scalingVecs: scaling_index && [],
         texcoord_index,
         texcoords: texcoord_index && [],
+        texcoord_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0
     };
@@ -495,7 +498,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -507,8 +510,8 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 
     // set UVs
     if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[index][0];
-        vertex_template[texcoord_index + 1] = texcoords[index][1];
+        vertex_template[texcoord_index + 0] = texcoords[index][0] * texcoord_normalize;
+        vertex_template[texcoord_index + 1] = texcoords[index][1] * texcoord_normalize;
     }
 
     // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
