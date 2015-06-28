@@ -558,7 +558,7 @@ Builders.buildQuadsForPoints = function (
     width, height, angle, scale,
     vertex_data, vertex_template,
     scaling_index,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     let w2 = width / 2;
     let h2 = height / 2;
@@ -572,9 +572,11 @@ Builders.buildQuadsForPoints = function (
         [-w2, h2]
     ];
 
-    let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     let texcoords;
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+
+        let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
@@ -593,8 +595,8 @@ Builders.buildQuadsForPoints = function (
         for (let pos=0; pos < 6; pos++) {
             // Add texcoords
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[pos][0];
-                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+                vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = texcoords[pos][1] * texcoord_normalize;
             }
 
             vertex_template[0] = point[0];

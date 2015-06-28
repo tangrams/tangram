@@ -590,7 +590,8 @@ Object.assign(TextStyle, {
             this.vertex_layout.index.a_shape,
             {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_scale: texcoord_scale
+                texcoord_scale: texcoord_scale,
+                texcoord_normalize: 65535
             }
         );
     },
