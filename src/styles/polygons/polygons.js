@@ -43,7 +43,7 @@ Object.assign(Polygons, {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+            attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
 
         this.vertex_layout = new VertexLayout(attribs);
@@ -138,7 +138,12 @@ Object.assign(Polygons, {
     },
 
     buildPolygons(polygons, style, vertex_data) {
-        var vertex_template = this.makeVertexTemplate(style);
+        let vertex_template = this.makeVertexTemplate(style);
+        let texcoords = {
+            texcoord_index: this.vertex_layout.index.a_texcoord,
+            texcoord_scale: this.texcoord_scale,
+            texcoord_normalize: 65535
+        };
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
@@ -147,7 +152,7 @@ Object.assign(Polygons, {
                 style.z, style.height, style.min_height,
                 vertex_data, vertex_template,
                 this.vertex_layout.index.a_normal,
-                { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
+                texcoords
             );
         }
         // Regular polygons
@@ -155,7 +160,7 @@ Object.assign(Polygons, {
             Builders.buildPolygons(
                 polygons,
                 vertex_data, vertex_template,
-                { texcoord_index: this.vertex_layout.index.a_texcoord, texcoord_scale: this.texcoord_scale }
+                texcoords
             );
         }
     }

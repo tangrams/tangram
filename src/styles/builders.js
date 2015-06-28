@@ -36,9 +36,13 @@ Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
 Builders.buildPolygons = function (
     polygons,
     vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    }
+
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -64,8 +68,8 @@ Builders.buildPolygons = function (
 
             // Add UVs
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) * scale_u + min_u;
-                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) * scale_v + min_v;
+                vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
             }
 
             vertex_data.addVertex(vertex_template);
@@ -79,18 +83,19 @@ Builders.buildExtrudedPolygons = function (
     z, height, min_height,
     vertex_data, vertex_template,
     normal_index,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     // Top
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
+    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
 
     // Walls
     // Fit UVs to wall quad
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -139,8 +144,8 @@ Builders.buildExtrudedPolygons = function (
                     vertex_template[2] = wall_vertices[wv][2];
 
                     if (texcoord_index) {
-                        vertex_template[texcoord_index + 0] = texcoords[wv][0];
-                        vertex_template[texcoord_index + 1] = texcoords[wv][1];
+                        vertex_template[texcoord_index + 0] = texcoords[wv][0] * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = texcoords[wv][1] * texcoord_normalize;
                     }
 
                     vertex_data.addVertex(vertex_template);
