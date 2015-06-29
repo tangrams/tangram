@@ -107,7 +107,7 @@ Vector.angle = function ([x, y]) {
 };
 
 // Get angle between two vectors
-Vector.getAngleBetween = function(A, B){
+Vector.angleBetween = function(A, B){
     var delta = Vector.dot(A, B);
     if (delta < -1) {
         delta = -1;

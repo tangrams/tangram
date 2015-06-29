@@ -162,11 +162,13 @@ Builders.buildPolylines = function (
         texcoord_index,
         texcoord_scale,
         scaling_index,
-        join, cap
+        join, cap,
+        miter_limit
     }) {
 
     var cornersOnCap = (cap === "square") ? 2 : ((cap === "round") ? 3 : 0);  // Butt is the implicit default
     var trianglesOnJoin = (join === "bevel") ? 1 : ((join === "round") ? 3 : 0);  // Miter is the implicit default
+    var miter_len_max = (miter_limit)? miter_limit : 3; // Miter limit distance
 
     // Build variables
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
@@ -185,7 +187,7 @@ Builders.buildPolylines = function (
         nPairs: 0
     };
 
-    // For each LINE in a POLYLINE
+    // For each LINE in a MULTI-LINE
     for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
@@ -210,13 +212,6 @@ Builders.buildPolylines = function (
         // NOTE:
         //      - all this variables are created for each line
         //      - memory whise, how expensive is to re allocate this variables over and over?
-
-        // Add vertices to buffer acording their index
-        //  indexPairs(constants);
-
-        // NOTE:
-        //      - This meant to clear the buffer of vertices to be add before starting a new line 
-        //      - REDUNDANT ??
 
         // For each LINE SEGMENT in a LINE
         for (let i = 0; i < lineSize ; i++) {
@@ -316,13 +311,12 @@ Builders.buildPolylines = function (
                 //  Check Miter limit according to 
                 //  https://github.com/tangrams/tangram/blob/5e7686d477bfc0069656157b3d46ba5bac5aab39/src/gl/gl_builders.js#L309
                 var len_sq = Vector.lengthSq(normCurr);
-                var miter_len_max = 3;
-                if ( thisJoin === 0 && (len_sq > (miter_len_max * miter_len_max)) ){
+                if (thisJoin === 0 && (len_sq > (miter_len_max * miter_len_max)) ){
                     thisJoin = 1; // add bevel
                 }
 
                 // If is a JOIN
-                if(thisJoin !== 0 && isPrev && isNext) {
+                if (thisJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
                             i/lineSize, thisJoin,
@@ -393,15 +387,15 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
 
-    var angle_delta = Vector.getAngleBetween(nA, nB);
+    var angle_delta = Vector.angleBetween(nA, nB);
     if ( numTriangles === 3 ){
+
         var w = constants.halfWidth*2;
         var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/Geo.units_per_pixel;
-        numTriangles = Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/Geo.units_per_pixel) );
-        if (numTriangles === 4 ){
-            numTriangles = 3;
-        } else if (numTriangles < 1){
-            numTriangles = 1;
+        numTriangles = Math.max(1, Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/Geo.units_per_pixel) ));
+        // the miter lenght of fans of four triangles are force to look like a square avoid that.
+        if (numTriangles === 4) {
+            numTriangles = 3; 
         }
     }
     var angle_step = angle_delta/numTriangles;
