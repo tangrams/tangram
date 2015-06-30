@@ -493,7 +493,7 @@ Object.assign(TextStyle, {
             return;
         }
 
-        // Collect text
+        // Collect text - default source is feature.properties.name
         let text;
         let source = rule.text_source || 'name';
 
@@ -507,6 +507,8 @@ Object.assign(TextStyle, {
             feature.text = text;
 
             if (!this.texts[tile.key]) {
+                // this is the first label in the tile, make a new tile entry
+                // eg "osm/15/9650/12319/15"
                 this.texts[tile.key] = {};
             }
 
@@ -520,9 +522,12 @@ Object.assign(TextStyle, {
             this.feature_style_key[tile.key].set(feature, style_key);
 
             if (!this.texts[tile.key][style_key]) {
+                // first label with this style in this tile, make a new style entry
+                // example: "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8"
                 this.texts[tile.key][style_key] = {};
             }
 
+            // check the feature against the pre-defined priorities list
             let priority = 0;
             if (this.label_style.priorities[feature.properties.kind]) {
                 priority = this.label_style.priorities[feature.properties.kind];
@@ -531,6 +536,7 @@ Object.assign(TextStyle, {
             this.max_priority = Math.max(priority, this.max_priority);
 
             if (!this.texts[tile.key][style_key][text]) {
+                // first label with this text/style/tile combination, make a new label entry
                 this.texts[tile.key][style_key][text] = {
                     text_style: style,
                     priority: priority,

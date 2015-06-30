@@ -47,6 +47,33 @@ textures:
             bookstore: [0, 333, 32, 32]
 
 styles:
+    grid:
+        base: polygons
+        shaders:
+            blocks:
+                global: |
+                    // GridTile
+                    //=============================
+                    varying vec3 v_pos;
+                    vec2 TileCoords(){return fract(v_pos.xy*0.0002445);}
+                    bool grid(vec2 st, float res, float press){
+                        vec2 grid = fract(st*res);
+                        return grid.x < res*press || grid.y < res*press;
+                    }
+                    float TileGrid(float res){
+                        vec2 st = TileCoords()*100.*res;
+                        float pct = 0.0;
+                        //float press = 0.4+(1.0-fract(u_map_position.z))*0.1;
+                        float press = 1.0+fract(u_map_position.z+.5);
+                        if (grid(st,0.01,press)) pct += 0.5;
+                        return pct;
+                    }
+                    float TileGrid(){
+                        return TileGrid(2.);
+                    }
+                position: v_pos = a_position;
+                filter: |
+                    color.rgb += vec3(.2)*TileGrid();
     water:
         base: polygons
         animated: true
@@ -144,42 +171,9 @@ layers:
         data: { source: osm }
         draw:
             polygons:
-                style: flat
+                style: grid
+                color: '#666'
                 order: 0
-                color: '#f0ebeb'
-
-    landuse:
-        data: { source: osm }
-        filter:
-            name: true
-            # show smaller landuse areas at higher zooms
-            any:
-                - { $zoom: { min: 9 }, area: { min: 10000000 } }
-                - { $zoom: { min: 10 }, area: { min: 3300000 } }
-                - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                - { $zoom: { min: 13 }, area: { min: 10000 } }
-                - { $zoom: { min: 15 } }
-        draw:
-            polygons:
-                order: 1
-                interactive: true
-                style: flat
-        green:
-            filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
-            draw:
-                polygons:
-                    order: 2
-                    color: '#bddec5'
-        blue:
-            filter: { kind: [commercial, industrial] }
-            draw:
-                polygons:
-                    color: '#C0CDCD'
-        orange:
-            filter: { kind: [university] }
-            draw:
-                polygons:
-                    color: '#D9CFC3'
 
     water:
         data: { source: osm }
@@ -193,10 +187,10 @@ layers:
                 - { $zoom: { min: 18 } }
         draw:
             polygons:
+                style: grid
+                color: '#333'
                 interactive: true
-                style: flat
                 order: 3
-                color: '#9dc3de'
 
     roads:
         data: { source: osm }
@@ -282,34 +276,34 @@ layers:
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
                             order: 38
 
-    buildings:
-        data: { source: osm }
-        filter: { $zoom: { min: 14 } }
+    # buildings:
+    #     data: { source: osm }
+    #     filter: { $zoom: { min: 14 } }
 
-        draw:
-            polygons:
-                order: 50
-                color: [.65, .65, .65]
+    #     draw:
+    #         polygons:
+    #             order: 50
+    #             color: [.65, .65, .65]
 
-        # turn interactive feature selection on for buildings with names
-        interactive:
-            filter: { name: true }
-            draw: { polygons: { interactive: true } }
+    #     # turn interactive feature selection on for buildings with names
+    #     interactive:
+    #         filter: { name: true }
+    #         draw: { polygons: { interactive: true } }
 
-        # extrude 3d buildings
-        extruded:
-            filter: { $zoom: { min: 15 } }
-            draw:
-                polygons:
-                    style: buildings
-                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
+    #     # extrude 3d buildings
+    #     extruded:
+    #         filter: { $zoom: { min: 15 } }
+    #         draw:
+    #             polygons:
+    #                 style: buildings
+    #                 extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
-        high-line:
-            filter: { roof_material: grass }
-            draw:
-                polygons:
-                    style: flat
-                    color: '#bddec5'
+    #     high-line:
+    #         filter: { roof_material: grass }
+    #         draw:
+    #             polygons:
+    #                 style: flat
+    #                 color: '#bddec5'
 
     road_labels:
         data: { source: osm, layer: roads }
@@ -446,16 +440,6 @@ layers:
 
     landuse_labels:
         data: { source: osm }
-        filter:
-            name: true
-            kind: [park, forest, cemetery, graveyard]
-            any:
-                # show labels for smaller landuse areas at higher zooms
-                - { $zoom: { min: 9 }, area: { min: 100000000 } }
-                - { $zoom: { min: 10 }, area: { min: 10000000 } }
-                - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                - { $zoom: { min: 15 }, area: { min: 10000 } }
-                - { $zoom: { min: 18 } }
         draw:
             text:
                 font:

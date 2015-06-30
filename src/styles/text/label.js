@@ -1,6 +1,6 @@
 /*global Label */
 
-import boxIntersect from 'box-intersect';
+import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
 
@@ -25,26 +25,30 @@ export default class Label {
         return false;
     }
 
+    // check for overlaps with other labels in the tile
     occluded (bboxes) {
         let intersect = false;
 
         if (bboxes.length > 0) {
             boxIntersect([this.bbox], bboxes, (i, j) => {
                 intersect = true;
+                // stop checking
                 return true;
             });
         }
 
         if (!intersect) {
+            // it's clean, add it to the list of bboxes
             bboxes.push(this.bbox);
         }
-
         return intersect;
     }
 
     inTileBounds () {
-        let min = [ this.bbox[0], this.bbox[1] ];
-        let max = [ this.bbox[2], this.bbox[3] ];
+        let diff = this.bbox[1] - this.bbox[0] / 2;
+        diff = 0;
+        let min = [ this.bbox[0] - diff, this.bbox[1] + diff ];
+        let max = [ this.bbox[2] - diff, this.bbox[3] + diff ];
 
         if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
             return false;
@@ -53,6 +57,8 @@ export default class Label {
         return true;
     }
 
+    // discard if the label crosses tile boundaries
+    // called from text.js
     discard (bboxes) {
         let discard = false;
 
