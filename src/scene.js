@@ -70,6 +70,8 @@ export default class Scene {
         this.preUpdate = options.preUpdate;             // optional pre-render loop hook
         this.postUpdate = options.postUpdate;           // optional post-render loop hook
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
+        this.render_loop_active = false;
+        this.render_loop_stop = false;
         this.frame = 0;
         this.resetTime();
 
@@ -172,7 +174,7 @@ export default class Scene {
 
     destroy() {
         this.initialized = false;
-        this.renderLoop = () => {}; // set to no-op because a null can cause requestAnimationFrame to throw
+        this.render_loop_stop = true; // schedule render loop to stop
 
         this.unsubscribeAll(); // clear all event listeners
 
@@ -523,18 +525,29 @@ export default class Scene {
         this.update();
     }
 
-    // Setup the render loop
-    setupRenderLoop({ pre_render, post_render } = {}) {
-        this.renderLoop = () => {
-            if (this.initialized) {
-                // Render the scene
-                this.update();
-            }
+    renderLoop () {
+        this.render_loop_active = true; // only let the render loop instantiate once
 
-            // Request the next frame
-            window.requestAnimationFrame(this.renderLoop);
-        };
-        setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+        if (this.initialized) {
+            // Render the scene
+            this.update();
+        }
+
+        // Request the next frame if not scheduled to stop
+        if (!this.render_loop_stop) {
+            window.requestAnimationFrame(this.renderLoop.bind(this));
+        }
+        else {
+            this.render_loop_stop = false;
+            this.render_loop_active = false;
+        }
+    }
+
+    // Setup the render loop
+    setupRenderLoop() {
+        if (!this.render_loop_active) {
+            setTimeout(() => { this.renderLoop(); }, 0); // delay start by one tick
+        }
     }
 
     update() {
@@ -1188,22 +1201,6 @@ export default class Scene {
 
 
     // Stats/debug/profiling methods
-
-    // Sum of a debug property across tiles
-    getDebugSum(prop, filter) {
-        var sum = 0;
-        for (var t in this.tiles) {
-            if (this.tiles[t].debug[prop] != null && (typeof filter !== 'function' || filter(this.tiles[t]) === true)) {
-                sum += this.tiles[t].debug[prop];
-            }
-        }
-        return sum;
-    }
-
-    // Average of a debug property across tiles
-    getDebugAverage(prop, filter) {
-        return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
-    }
 
     // Log messages pass through from web workers
     workerLogMessage(event) {
