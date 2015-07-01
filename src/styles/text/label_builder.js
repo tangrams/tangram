@@ -23,13 +23,16 @@ LabelBuilder.labelsFromGeometry = function (geometry, { text, size }, label_styl
     } else if (geometry.type === "Point") {
         let width = label_style.points.max_width;
 
+        //// split lines if they're too long
+
         // if (width && size.text_size[0] > width) {
         //     let line_height = (size.px_logical_size / 100) * label_style.points.line_height;
         //     line_height = Utils.pixelToMercator(line_height);
         //     let label = LabelPoint.explode(text, geometry.coordinates, size, width, line_height, { move_in_tile: true, keep_in_tile: true });
 
         //     labels.push(label);
-        // } else {
+        // } else if (!(width && size.text_size[0] > width)) {
+
         if (!(width && size.text_size[0] > width)) {
             labels.push(new LabelPoint(text, geometry.coordinates, size, null, { move_in_tile: true, keep_in_tile: true }));
         }

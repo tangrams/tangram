@@ -52,28 +52,23 @@ styles:
         shaders:
             blocks:
                 global: |
-                    // GridTile
+                    // GridTile - shows vector tile boundaries
                     //=============================
                     varying vec3 v_pos;
                     vec2 TileCoords(){return fract(v_pos.xy*0.0002445);}
-                    bool grid(vec2 st, float res, float press){
+                    bool grid(vec2 st, float res){
                         vec2 grid = fract(st*res);
-                        return grid.x < res*press || grid.y < res*press;
-                    }
-                    float TileGrid(float res){
-                        vec2 st = TileCoords()*100.*res;
-                        float pct = 0.0;
-                        //float press = 0.4+(1.0-fract(u_map_position.z))*0.1;
-                        float press = 1.0+fract(u_map_position.z+.5);
-                        if (grid(st,0.01,press)) pct += 0.5;
-                        return pct;
+                        return grid.x < res || grid.y < res;
                     }
                     float TileGrid(){
-                        return TileGrid(2.);
+                        vec2 st = TileCoords()*100.;
+                        float pct = 0.0;
+                        if (grid(st,0.001)) pct += .5;
+                        return pct;
                     }
                 position: v_pos = a_position;
                 filter: |
-                    color.rgb += vec3(.2)*TileGrid();
+                    color.rgb += vec3(TileGrid());
     water:
         base: polygons
         animated: true

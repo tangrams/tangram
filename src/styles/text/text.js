@@ -328,29 +328,61 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = [];
 
-        if (!this.features[tile]) {
+        // features holds all features, keyed by tile, then style, then text
+        if (!this.features[tile]) { // oops, no features in this tile, how was createLabels called?
             return;
         }
 
-        for (let style in texts) {
-            let text_infos = texts[style];
 
-            if (!this.features[tile][style]) {
+        let labels_priorities = []; // this will store all labels, sorted into objects by priority
+
+        // texts holds text_info objects, keyed by style
+        // Example:
+        // Object {
+        //     "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8": Object {
+        //         East 10th Street: Object,
+        //         East 12th Street: Object
+        //     },
+        //     "100 32px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8": Object {
+        //         3rd Avenue: Object
+        //     }
+        // }
+        
+        // for each style key
+        for (let style in texts) {
+
+            if (!this.features[tile][style]) { // oops, no features in this tile with this style, where did the style come from?
                 return;
             }
 
-            for (let text in text_infos) {
-                let text_info = text_infos[text];
-                text_info.ref = 0;
+            let text_infos = texts[style];
 
-                if (!this.features[tile][style][text]) {
+            // text_infos holds text objects, keyed by text
+            // Example:
+            // Object: {
+            //      "3rd Avenue": Object {
+            //          priority: 3,
+            //          ref: 1,
+            //          size: Object,
+            //          text_style: Object
+            //      }
+            // }
+
+            // for each text object:
+            for (let text in text_infos) {
+
+                if (!this.features[tile][style][text]) { // oops, no features in this tile with this style with this text, who put this text in here?
                     return;
                 }
 
+                let text_info = text_infos[text];
+                text_info.ref = 0;
+
+                // for each feature
                 for (let f = 0; f < this.features[tile][style][text].length; f++) {
                     let feature = this.features[tile][style][text][f];
+                    // build a label for each text_info object
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
                             { text, size: text_info.size },
@@ -391,19 +423,33 @@ Object.assign(TextStyle, {
     },
 
     discardLabels (tile, labels, texts) {
+        console.log("discardLabels", labels);
         this.bboxes[tile] = [];
         this.feature_labels[tile] = new Map();
 
+        // labels are grouped by priority
+        // start at max_priority and work our way down
         for (let priority = this.max_priority; priority >= 0; priority--) {
-            if (!labels[priority]) {
+            if (!labels[priority]) { // no labels at this priority, skip to next
                 continue;
             }
 
+            // i is a label object at the current priority level, example:
+            // Object: {
+            //  area: undefined,
+            //  feature: Object,
+            //  label: LabelLine,
+            //  style: "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8"
+            // }
+
             for (let i = 0; i < labels[priority].length; i++) {
+                // copy three variables out of the label
                 let { style, feature, label } = labels[priority][i];
 
+                // test the label for intersections with other labels in the tile
                 if (!label.discard(this.bboxes[tile])) {
-                    if (!this.feature_labels[tile].has(feature)) {
+                    // if it didn't collide (or won a collision)
+                    if (!this.feature_labels[tile].has(feature)) { // if for some reason 
                         this.feature_labels[tile].set(feature, []);
                     }
                     this.feature_labels[tile].get(feature).push(label);
@@ -614,6 +660,12 @@ Object.assign(TextStyle, {
 
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+
+        // when is there ever more than one?
+        // if (style.labels.length > 1) {
+        //     console.log("style", style);
+        //     console.log("style.labels", style.labels);
+        // }
 
         for (let i in style.labels) {
             let label = style.labels[i];
