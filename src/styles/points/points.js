@@ -26,7 +26,7 @@ Object.assign(Points, {
         this.fragment_shader_key = 'styles/points/points_fragment';
 
         var attribs = [
-            { name: 'a_position', size: 3, type: gl.SHORT, normalized: true },
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
@@ -35,8 +35,7 @@ Object.assign(Points, {
 
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
-            this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
-            attribs.push({ name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false });
+            this.defines.TANGRAM_LAYER_ORDER = true;
         }
 
         this.vertex_layout = new VertexLayout(attribs);
@@ -133,32 +132,35 @@ Object.assign(Points, {
         this.vertex_template[1] = 0;
         this.vertex_template[2] = style.z || 0;
 
+        // layer order (if needed) - w coord of 'position' attribute (for packing efficiency)
+        if (this.defines.TANGRAM_LAYER_ORDER) {
+            this.vertex_template[3] = style.order;
+        }
+        else {
+            this.vertex_template[3] = 0;
+        }
+
         // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
-        this.vertex_template[3] = 0;
         this.vertex_template[4] = 0;
         this.vertex_template[5] = 0;
         this.vertex_template[6] = 0;
+        this.vertex_template[7] = 0;
 
         // color
-        this.vertex_template[7] = color[0] * 255;
-        this.vertex_template[8] = color[1] * 255;
-        this.vertex_template[9] = color[2] * 255;
-        this.vertex_template[10] = color[3] * 255;
+        this.vertex_template[8] = color[0] * 255;
+        this.vertex_template[9] = color[1] * 255;
+        this.vertex_template[10] = color[2] * 255;
+        this.vertex_template[11] = color[3] * 255;
 
         // selection color
-        this.vertex_template[11] = style.selection_color[0] * 255;
-        this.vertex_template[12] = style.selection_color[1] * 255;
-        this.vertex_template[13] = style.selection_color[2] * 255;
-        this.vertex_template[14] = style.selection_color[3] * 255;
+        this.vertex_template[12] = style.selection_color[0] * 255;
+        this.vertex_template[13] = style.selection_color[1] * 255;
+        this.vertex_template[14] = style.selection_color[2] * 255;
+        this.vertex_template[15] = style.selection_color[3] * 255;
 
         // texture coords
-        this.vertex_template[15] = 0;
         this.vertex_template[16] = 0;
-
-        // Add layer attribute if needed
-        if (this.defines.TANGRAM_ORDER_ATTRIBUTE) {
-            this.vertex_template[17] = style.order;
-        }
+        this.vertex_template[17] = 0;
 
         return this.vertex_template;
     },

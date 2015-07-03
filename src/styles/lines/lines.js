@@ -22,16 +22,15 @@ Object.assign(Lines, {
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
-            { name: 'a_position', size: 3, type: gl.SHORT, normalized: true },
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_extrude', size: 3, type: gl.FLOAT, normalized: false },
             { name: 'a_scale', size: 1, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        // Tell the shader we want an order attribute, and to extrude lines
-        this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
+        // Tell the shader we want a order in vertex attributes, and to extrude lines
+        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
 
         // Optional texture UVs
@@ -164,28 +163,28 @@ Object.assign(Lines, {
         this.vertex_template[1] = 0;
         this.vertex_template[2] = style.z || 0;
 
+        // layer order - w coord of 'position' attribute (for packing efficiency)
+        this.vertex_template[3] = style.order;
+
         // extrusion vector
-        this.vertex_template[3] = 0;
         this.vertex_template[4] = 0;
-        this.vertex_template[5] = 1;
+        this.vertex_template[5] = 0;
+        this.vertex_template[6] = 1;
 
         // scaling to previous and next zoom
-        this.vertex_template[6] = style.next_width;
+        this.vertex_template[7] = style.next_width;
 
         // color
-        this.vertex_template[7] = style.color[0] * 255;
-        this.vertex_template[8] = style.color[1] * 255;
-        this.vertex_template[9] = style.color[2] * 255;
-        this.vertex_template[10] = style.color[3] * 255;
+        this.vertex_template[8] = style.color[0] * 255;
+        this.vertex_template[9] = style.color[1] * 255;
+        this.vertex_template[10] = style.color[2] * 255;
+        this.vertex_template[11] = style.color[3] * 255;
 
         // selection color
-        this.vertex_template[11] = style.selection_color[0] * 255;
-        this.vertex_template[12] = style.selection_color[1] * 255;
-        this.vertex_template[13] = style.selection_color[2] * 255;
-        this.vertex_template[14] = style.selection_color[3] * 255;
-
-        // layer order
-        this.vertex_template[15] = style.order;
+        this.vertex_template[12] = style.selection_color[0] * 255;
+        this.vertex_template[13] = style.selection_color[1] * 255;
+        this.vertex_template[14] = style.selection_color[2] * 255;
+        this.vertex_template[15] = style.selection_color[3] * 255;
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {

@@ -9,9 +9,8 @@ uniform mat4 u_model;
 uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 
-attribute vec3 a_position;
+attribute vec4 a_position;
 attribute vec4 a_color;
-attribute float a_layer;
 
 // Optional normal attribute, otherwise default to up
 #ifdef TANGRAM_NORMAL_ATTRIBUTE
@@ -57,7 +56,7 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position * 32767., 1.);
+    vec4 position = vec4(a_position.xyz * 32767., 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy;
@@ -110,7 +109,7 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(a_layer, position);
+    applyLayerOrder(a_position.w * 32767., position);
 
     gl_Position = position;
 }
