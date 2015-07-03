@@ -41,7 +41,7 @@ void main() {
     vec2 shape_offset = shape.xy * 256. * zscale;
 
     // Position
-    vec4 position = u_modelView * vec4(a_position, 1.);
+    vec4 position = u_modelView * vec4(a_position * 32767., 1.);
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * vec4(a_position, 1.);

@@ -26,7 +26,7 @@ Object.assign(Points, {
         this.fragment_shader_key = 'styles/points/points_fragment';
 
         var attribs = [
-            { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_position', size: 3, type: gl.SHORT, normalized: true },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },

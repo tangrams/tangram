@@ -57,7 +57,7 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position, 1.);
+    vec4 position = vec4(a_position * 32767., 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy;
