@@ -422,8 +422,10 @@ Object.assign(TextStyle, {
         return labels_priorities;
     },
 
+    // test all labels for collisions -
+    // when two collide, discard the lower-priority label
     discardLabels (tile, labels, texts) {
-        console.log("discardLabels", labels);
+        console.log("<<< discardLabels", labels);
         this.bboxes[tile] = [];
         this.feature_labels[tile] = new Map();
 
@@ -449,10 +451,15 @@ Object.assign(TextStyle, {
                 // test the label for intersections with other labels in the tile
                 if (!label.discard(this.bboxes[tile])) {
                     // if it didn't collide (or won a collision)
-                    if (!this.feature_labels[tile].has(feature)) { // if for some reason 
-                        this.feature_labels[tile].set(feature, []);
+                    if (!this.feature_labels[tile].has(feature)) { // if the label was just made...
+                        // make a new empty entry in this tile's feature_labels
+                        // using the feature as the key - the entry will be used as
+                        // the style.labels
+                        this.feature_labels[tile].set(feature, []); 
                     }
+                    // add the label to the entry's value
                     this.feature_labels[tile].get(feature).push(label);
+                    // increment a count of how many times this style is used in the tile
                     texts[style][label.text].ref++;
                 }
             }
@@ -460,8 +467,8 @@ Object.assign(TextStyle, {
 
         for (let style in texts) {
             for (let text in texts[style]) {
-                if (texts[style][text].ref < 1) {
-                    delete texts[style][text];
+                if (texts[style][text].ref < 1) { // if this style isn't being used
+                    delete texts[style][text]; // cleanup
                 }
             }
         }
@@ -484,6 +491,7 @@ Object.assign(TextStyle, {
         if (tile_data.queue.length > 0) {
             count = Object.keys(this.texts[tile]||{}).length;
             log.trace(`# texts for tile ${tile}: ${count}`);
+            console.log('# texts for tile', tile, ':', count);
         }
         if (!count) {
             return Promise.resolve();
@@ -711,6 +719,7 @@ Object.assign(TextStyle, {
         this.subtexcoord_scale = text_info.subtexcoords;
         this.subtext_size = text_info.subtext_size;
         style.text = text;
+        // add the labels from the feature_labels object for this tile
         style.labels = this.feature_labels[tile].get(feature);
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
