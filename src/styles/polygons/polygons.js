@@ -25,11 +25,8 @@ Object.assign(Polygons, {
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
-            { name: 'a_normal', size: 3, type: gl.FLOAT, normalized: false },
-            // { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // attrib isn't a multiple of 4!
-            // { name: 'a_color', size: 3, type: gl.FLOAT, normalized: false },
+            { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            // { name: 'a_selection_color', size: 4, type: gl.FLOAT, normalized: false },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -113,7 +110,7 @@ Object.assign(Polygons, {
         // normal
         this.vertex_template[4] = 0;
         this.vertex_template[5] = 0;
-        this.vertex_template[6] = 1;
+        this.vertex_template[6] = 1 * 127;
 
         // color
         this.vertex_template[7] = style.color[0] * 255;
@@ -141,7 +138,7 @@ Object.assign(Polygons, {
         let texcoords = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
             texcoord_scale: this.texcoord_scale,
-            texcoord_normalize: 65535
+            texcoord_normalize: 65535 // scale UVs to unsigned shorts
         };
 
         // Extruded polygons (e.g. 3D buildings)
@@ -151,6 +148,7 @@ Object.assign(Polygons, {
                 style.z, style.height, style.min_height,
                 vertex_data, vertex_template,
                 this.vertex_layout.index.a_normal,
+                127, // scale normals to signed bytes
                 texcoords
             );
         }

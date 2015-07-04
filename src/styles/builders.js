@@ -83,6 +83,7 @@ Builders.buildExtrudedPolygons = function (
     z, height, min_height,
     vertex_data, vertex_template,
     normal_index,
+    normal_normalize,
     { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     // Top
@@ -134,9 +135,9 @@ Builders.buildExtrudedPolygons = function (
                 );
 
                 // Update vertex template with current surface normal
-                vertex_template[normal_index + 0] = normal[0];
-                vertex_template[normal_index + 1] = normal[1];
-                vertex_template[normal_index + 2] = normal[2];
+                vertex_template[normal_index + 0] = normal[0] * normal_normalize;
+                vertex_template[normal_index + 1] = normal[1] * normal_normalize;
+                vertex_template[normal_index + 2] = normal[2] * normal_normalize;
 
                 for (var wv=0; wv < wall_vertices.length; wv++) {
                     vertex_template[0] = wall_vertices[wv][0];
