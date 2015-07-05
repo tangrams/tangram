@@ -23,8 +23,7 @@ Object.assign(Lines, {
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
-            { name: 'a_extrude', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_scale', size: 1, type: gl.SHORT, normalized: true },
+            { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
             { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
@@ -169,7 +168,7 @@ Object.assign(Lines, {
         // extrusion vector
         this.vertex_template[4] = 0;
         this.vertex_template[5] = 0;
-        this.vertex_template[6] = 1;
+        this.vertex_template[6] = 0;
 
         // scaling to previous and next zoom
         this.vertex_template[7] = style.next_width;
@@ -209,9 +208,10 @@ Object.assign(Lines, {
                     cap: style.cap,
                     join: style.join,
                     scaling_index: this.vertex_layout.index.a_extrude,
+                    scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale,
-                    texcoord_normalize: 65535,
+                    texcoord_normalize: 65535, // scale UVs to unsigned shorts
                     closed_polygon: options && options.closed_polygon,
                     remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges
                 }

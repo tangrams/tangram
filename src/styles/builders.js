@@ -169,6 +169,7 @@ Builders.buildPolylines = function (
         texcoord_scale,
         texcoord_normalize,
         scaling_index,
+        scaling_normalize,
         join, cap
     }) {
 
@@ -186,6 +187,7 @@ Builders.buildPolylines = function (
         halfWidth: width/2,
         vertices: [],
         scaling_index,
+        scaling_normalize,
         scalingVecs: scaling_index && [],
         texcoord_index,
         texcoords: texcoord_index && [],
@@ -499,7 +501,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -517,9 +519,9 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 
     // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
     if (scaling_index) {
-        vertex_template[scaling_index + 0] = scalingVecs[index][0];
-        vertex_template[scaling_index + 1] = scalingVecs[index][1];
-        vertex_template[scaling_index + 2] = halfWidth;
+        vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
+        vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;
+        vertex_template[scaling_index + 2] = halfWidth * scaling_normalize;
     }
 
     //  Add vertex to VBO
