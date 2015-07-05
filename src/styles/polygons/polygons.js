@@ -11,28 +11,28 @@ export var Polygons = Object.create(Style);
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
+    vertex_shader_key: 'styles/polygons/polygons_vertex',
+    fragment_shader_key: 'styles/polygons/polygons_fragment',
+    selection: true, // turn feature selection on
 
     init() {
         Style.init.apply(this, arguments);
-
-        // Base shaders
-        this.vertex_shader_key = 'styles/polygons/polygons_vertex';
-        this.fragment_shader_key = 'styles/polygons/polygons_fragment';
-
-        // Turn feature selection on
-        this.selection = true;
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
         // Tell the shader we have a normal and order attributes
         this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
         this.defines.TANGRAM_LAYER_ORDER = true;
+
+        // Optional feature selection
+        if (this.selection) {
+            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+        }
 
         // Optional texture UVs
         if (this.texcoords) {
@@ -99,35 +99,39 @@ Object.assign(Polygons, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
+        let i = 0;
+
         // position - x & y coords will be filled in per-vertex below
-        this.vertex_template[0] = 0;
-        this.vertex_template[1] = 0;
-        this.vertex_template[2] = style.z || 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.z || 0;
 
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.vertex_template[3] = style.order;
+        this.vertex_template[i++] = style.order;
 
         // normal
-        this.vertex_template[4] = 0;
-        this.vertex_template[5] = 0;
-        this.vertex_template[6] = 1 * 127;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 1 * 127;
 
         // color
-        this.vertex_template[7] = style.color[0] * 255;
-        this.vertex_template[8] = style.color[1] * 255;
-        this.vertex_template[9] = style.color[2] * 255;
-        this.vertex_template[10] = style.color[3] * 255;
+        this.vertex_template[i++] = style.color[0] * 255;
+        this.vertex_template[i++] = style.color[1] * 255;
+        this.vertex_template[i++] = style.color[2] * 255;
+        this.vertex_template[i++] = style.color[3] * 255;
 
         // selection color
-        this.vertex_template[11] = style.selection_color[0] * 255;
-        this.vertex_template[12] = style.selection_color[1] * 255;
-        this.vertex_template[13] = style.selection_color[2] * 255;
-        this.vertex_template[14] = style.selection_color[3] * 255;
+        if (this.selection) {
+            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[1] * 255;
+            this.vertex_template[i++] = style.selection_color[2] * 255;
+            this.vertex_template[i++] = style.selection_color[3] * 255;
+        }
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {
-            this.vertex_template[15] = 0;
-            this.vertex_template[16] = 0;
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
         }
 
         return this.vertex_template;

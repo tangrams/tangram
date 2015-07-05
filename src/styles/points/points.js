@@ -15,7 +15,7 @@ export var Points = Object.create(Style);
 Object.assign(Points, {
     name: 'points',
     built_in: true,
-    selection: true,
+    selection: true, // turn feature selection on
     blend: 'overlay', // overlays drawn on top of all other styles, with blending
 
     init(options = {}) {
@@ -28,10 +28,14 @@ Object.assign(Points, {
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true }
+            { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
+
+        // Optional feature selection
+        if (this.selection) {
+            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+        }
 
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
@@ -125,42 +129,40 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-        var color = style.color || StyleParser.defaults.color;
+        let i = 0;
+        let color = style.color || StyleParser.defaults.color;
 
         // position - x & y coords will be filled in per-vertex below
-        this.vertex_template[0] = 0;
-        this.vertex_template[1] = 0;
-        this.vertex_template[2] = style.z || 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.z || 0;
 
-        // layer order (if needed) - w coord of 'position' attribute (for packing efficiency)
-        if (this.defines.TANGRAM_LAYER_ORDER) {
-            this.vertex_template[3] = style.order;
-        }
-        else {
-            this.vertex_template[3] = 0;
-        }
+        // layer order - w coord of 'position' attribute (for packing efficiency)
+        this.vertex_template[i++] = style.order || 0;
 
         // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
-        this.vertex_template[4] = 0;
-        this.vertex_template[5] = 0;
-        this.vertex_template[6] = 0;
-        this.vertex_template[7] = 0;
-
-        // color
-        this.vertex_template[8] = color[0] * 255;
-        this.vertex_template[9] = color[1] * 255;
-        this.vertex_template[10] = color[2] * 255;
-        this.vertex_template[11] = color[3] * 255;
-
-        // selection color
-        this.vertex_template[12] = style.selection_color[0] * 255;
-        this.vertex_template[13] = style.selection_color[1] * 255;
-        this.vertex_template[14] = style.selection_color[2] * 255;
-        this.vertex_template[15] = style.selection_color[3] * 255;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
 
         // texture coords
-        this.vertex_template[16] = 0;
-        this.vertex_template[17] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+
+        // color
+        this.vertex_template[i++] = color[0] * 255;
+        this.vertex_template[i++] = color[1] * 255;
+        this.vertex_template[i++] = color[2] * 255;
+        this.vertex_template[i++] = color[3] * 255;
+
+        // selection color
+        if (this.selection) {
+            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[1] * 255;
+            this.vertex_template[i++] = style.selection_color[2] * 255;
+            this.vertex_template[i++] = style.selection_color[3] * 255;
+        }
 
         return this.vertex_template;
     },

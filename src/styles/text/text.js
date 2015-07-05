@@ -16,7 +16,7 @@ Object.assign(TextStyle, {
     name: 'text',
     super: Points,
     built_in: true,
-    selection: false,
+    selection: false, // no feature selection for text by default
 
     init() {
 
