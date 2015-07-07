@@ -36,9 +36,13 @@ Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
 Builders.buildPolygons = function (
     polygons,
     vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    }
+
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -64,8 +68,8 @@ Builders.buildPolygons = function (
 
             // Add UVs
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) * scale_u + min_u;
-                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) * scale_v + min_v;
+                vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
             }
 
             vertex_data.addVertex(vertex_template);
@@ -79,18 +83,20 @@ Builders.buildExtrudedPolygons = function (
     z, height, min_height,
     vertex_data, vertex_template,
     normal_index,
-    { texcoord_index, texcoord_scale }) {
+    normal_normalize,
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     // Top
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
+    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
 
     // Walls
     // Fit UVs to wall quad
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -129,9 +135,9 @@ Builders.buildExtrudedPolygons = function (
                 );
 
                 // Update vertex template with current surface normal
-                vertex_template[normal_index + 0] = normal[0];
-                vertex_template[normal_index + 1] = normal[1];
-                vertex_template[normal_index + 2] = normal[2];
+                vertex_template[normal_index + 0] = normal[0] * normal_normalize;
+                vertex_template[normal_index + 1] = normal[1] * normal_normalize;
+                vertex_template[normal_index + 2] = normal[2] * normal_normalize;
 
                 for (var wv=0; wv < wall_vertices.length; wv++) {
                     vertex_template[0] = wall_vertices[wv][0];
@@ -139,8 +145,8 @@ Builders.buildExtrudedPolygons = function (
                     vertex_template[2] = wall_vertices[wv][2];
 
                     if (texcoord_index) {
-                        vertex_template[texcoord_index + 0] = texcoords[wv][0];
-                        vertex_template[texcoord_index + 1] = texcoords[wv][1];
+                        vertex_template[texcoord_index + 0] = texcoords[wv][0] * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = texcoords[wv][1] * texcoord_normalize;
                     }
 
                     vertex_data.addVertex(vertex_template);
@@ -161,7 +167,9 @@ Builders.buildPolylines = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
+        texcoord_normalize,
         scaling_index,
+        scaling_normalize,
         join, cap
     }) {
 
@@ -169,6 +177,7 @@ Builders.buildPolylines = function (
     var trianglesOnJoin = (join === "bevel") ? 1 : ((join === "round") ? 3 : 0);  // Miter is the implicit default
 
     // Build variables
+    texcoord_normalize = texcoord_normalize || 1;
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Values that are constant for each line and are passed to helper functions
@@ -178,9 +187,11 @@ Builders.buildPolylines = function (
         halfWidth: width/2,
         vertices: [],
         scaling_index,
+        scaling_normalize,
         scalingVecs: scaling_index && [],
         texcoord_index,
         texcoords: texcoord_index && [],
+        texcoord_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0
     };
@@ -490,7 +501,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -502,15 +513,15 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 
     // set UVs
     if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[index][0];
-        vertex_template[texcoord_index + 1] = texcoords[index][1];
+        vertex_template[texcoord_index + 0] = texcoords[index][0] * texcoord_normalize;
+        vertex_template[texcoord_index + 1] = texcoords[index][1] * texcoord_normalize;
     }
 
     // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
     if (scaling_index) {
-        vertex_template[scaling_index + 0] = scalingVecs[index][0];
-        vertex_template[scaling_index + 1] = scalingVecs[index][1];
-        vertex_template[scaling_index + 2] = halfWidth;
+        vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
+        vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;
+        vertex_template[scaling_index + 2] = halfWidth * scaling_normalize;
     }
 
     //  Add vertex to VBO
@@ -550,7 +561,7 @@ Builders.buildQuadsForPoints = function (
     width, height, angle, scale,
     vertex_data, vertex_template,
     scaling_index,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     let w2 = width / 2;
     let h2 = height / 2;
@@ -564,9 +575,11 @@ Builders.buildQuadsForPoints = function (
         [-w2, h2]
     ];
 
-    let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     let texcoords;
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+
+        let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
@@ -585,8 +598,8 @@ Builders.buildQuadsForPoints = function (
         for (let pos=0; pos < 6; pos++) {
             // Add texcoords
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[pos][0];
-                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+                vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = texcoords[pos][1] * texcoord_normalize;
             }
 
             vertex_template[0] = point[0];

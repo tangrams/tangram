@@ -7,13 +7,10 @@ uniform float u_meters_per_pixel;
 uniform mat4 u_model;
 uniform mat4 u_modelView;
 
-attribute vec3 a_position;
+attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
-#ifdef TANGRAM_ORDER_ATTRIBUTE
-    attribute float a_layer;
-#endif
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -41,10 +38,10 @@ void main() {
     vec2 shape_offset = shape.xy * 256. * zscale;
 
     // Position
-    vec4 position = u_modelView * vec4(a_position, 1.);
+    vec4 position = u_modelView * vec4(a_position.xyz * 32767., 1.);
 
     // World coordinates for 3d procedural textures
-    v_world_position = u_model * vec4(a_position, 1.);
+    v_world_position = u_model * position;
     v_world_position.xy += shape_offset * u_meters_per_pixel;
     #if defined(TANGRAM_WORLD_POSITION_WRAP)
         v_world_position.xy -= world_position_anchor;
@@ -55,8 +52,8 @@ void main() {
 
     cameraProjection(position);
 
-    #ifdef TANGRAM_ORDER_ATTRIBUTE
-        applyLayerOrder(a_layer, position);
+    #ifdef TANGRAM_LAYER_ORDER
+        applyLayerOrder(a_position.w * 32767., position);
     #endif
 
     position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution;

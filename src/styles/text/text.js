@@ -16,7 +16,7 @@ Object.assign(TextStyle, {
     name: 'text',
     super: Points,
     built_in: true,
-    selection: false,
+    selection: false, // no feature selection for text by default
 
     init() {
 
@@ -590,7 +590,8 @@ Object.assign(TextStyle, {
             this.vertex_layout.index.a_shape,
             {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_scale: texcoord_scale
+                texcoord_scale: texcoord_scale,
+                texcoord_normalize: 65535
             }
         );
     },
