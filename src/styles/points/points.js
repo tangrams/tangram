@@ -67,7 +67,6 @@ Object.assign(Points, {
         // if point has texture and sprites, require a valid sprite to draw
         if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
             if (!style.sprite) {
-                log.warn(`Style: in style '${this.name}', a sprite must be specified for texture '${this.texture}'`);
                 return;
             }
             else if (!Texture.textures[this.texture].sprites[style.sprite]) {
