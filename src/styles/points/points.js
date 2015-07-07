@@ -64,10 +64,16 @@ Object.assign(Points, {
             style.sprite = style.sprite(context);
         }
 
-        // require sprite to draw?
-        if (this.texture && !style.sprite &&
-            Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
-            return; // skip feature
+        // if point has texture and sprites, require a valid sprite to draw
+        if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
+            if (!style.sprite) {
+                log.warn(`Style: in style '${this.name}', a sprite must be specified for texture '${this.texture}'`);
+                return;
+            }
+            else if (!Texture.textures[this.texture].sprites[style.sprite]) {
+                log.warn(`Style: in style '${this.name}', could not find sprite '${style.sprite}' for texture '${this.texture}'`);
+                return;
+            }
         }
 
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
@@ -103,9 +109,6 @@ Object.assign(Points, {
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
         if (this.texture && style.sprite) {
             this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, style.sprite);
-            if (!this.texcoord_scale) {
-                log.warn(`Style: in style '${this.name}', could not find sprite '${style.sprite}' for texture '${this.texture}'`);
-            }
         } else {
             this.texcoord_scale = null;
         }
