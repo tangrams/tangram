@@ -5,15 +5,16 @@ chai.use(chaiAsPromised);
 
 import Geo from '../src/geo';
 import sampleTile from './fixtures/sample-tile';
-import DataSource from '../src/data_source';
+import DataSource, {NetworkTileSource} from '../src/sources/data_source';
 import {
-    NetworkTileSource,
     GeoJSONTileSource,
+    GeoJSONSource
+} from '../src/sources/geojson';
+import {
     TopoJSONTileSource,
-    GeoJSONSource,
-    TopoJSONSource,
-    MVTSource
-} from '../src/data_source';
+    TopoJSONSource
+} from '../src/sources/topojson';
+import {MVTSource} from '../src/sources/mvt';
 
 import Utils from '../src/utils/utils';
 import {MethodNotImplemented} from '../src/utils/errors';
