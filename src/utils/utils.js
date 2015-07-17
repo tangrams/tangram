@@ -422,65 +422,6 @@ Utils.toCanvasColor = function (color) {
     return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
 };
 
-Utils.centroid = function (polygon) {
-    let n = polygon.length;
-    let centroid = [0, 0];
-
-    for (let p=0; p < polygon.length; p++) {
-        centroid[0] += polygon[p][0];
-        centroid[1] += polygon[p][1];
-    }
-
-    centroid[0] /= n;
-    centroid[1] /= n;
-
-    return centroid;
-};
-
-Utils.multiCentroid = function (polygons) {
-    let n = polygons.length;
-    let centroid = [0, 0];
-
-    for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        let c = Utils.centroid(polygon);
-        centroid[0] += c[0];
-        centroid[1] += c[1];
-    }
-
-    centroid[0] /= n;
-    centroid[1] /= n;
-
-    return centroid;
-};
-
-Utils.polygonArea = function (polygon) {
-    let area = 0;
-    let n = polygon.length;
-
-    for (let i = 0; i < n - 1; i++) {
-        let p0 = polygon[i];
-        let p1 = polygon[i+1];
-
-        area += p0[0] * p1[1] - p1[0] * p0[1];
-    }
-
-    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
-
-    return Math.abs(area) / 2;
-};
-
-Utils.multiPolygonArea = function (polygons) {
-    let area = 0;
-
-    for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        area += Utils.polygonArea(polygon);
-    }
-
-    return area;
-};
-
 Utils.toPixelSize = function (size, kind) {
     if (kind === "px") {
         return size;

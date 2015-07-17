@@ -81,7 +81,7 @@ export default class Tile {
     }
 
     static overZoomedCoordinate({x, y, z}, max_zoom) {
-        if (z > max_zoom) {
+        if (max_zoom !== undefined && z > max_zoom) {
             return Tile.coordinateAtZoom({x, y, z}, max_zoom);
         }
         return {x, y, z};

@@ -11,7 +11,7 @@ import {StyleParser} from './styles/style_parser';
 import Camera from './camera';
 import Light from './light';
 import TileManager from './tile_manager';
-import DataSource from './data_source';
+import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 
 import {Polygons} from './styles/polygons/polygons';

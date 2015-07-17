@@ -168,3 +168,70 @@ Geo.geometryType = function(type) {
         return 'point';
     }
 };
+
+Geo.centroid = function (polygon) {
+    let n = polygon.length;
+    let centroid = [0, 0];
+
+    for (let p=0; p < polygon.length; p++) {
+        centroid[0] += polygon[p][0];
+        centroid[1] += polygon[p][1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Geo.multiCentroid = function (polygons) {
+    let n = polygons.length;
+    let centroid = [0, 0];
+
+    for (let p=0; p < polygons.length; p++) {
+        let polygon = polygons[p][0];
+        let c = Geo.centroid(polygon);
+        centroid[0] += c[0];
+        centroid[1] += c[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Geo.signedPolygonAreaSum = function (polygon) {
+    let area = 0;
+    let n = polygon.length;
+
+    for (let i = 0; i < n - 1; i++) {
+        let p0 = polygon[i];
+        let p1 = polygon[i+1];
+
+        area += p0[0] * p1[1] - p1[0] * p0[1];
+    }
+
+    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+    return area;
+};
+
+// TODO: subtract inner ring areas
+Geo.polygonArea = function (polygon) {
+    return Math.abs(Geo.signedPolygonAreaSum(polygon)) / 2;
+};
+
+Geo.multiPolygonArea = function (polygons) {
+    let area = 0;
+
+    for (let p=0; p < polygons.length; p++) {
+        let polygon = polygons[p][0];
+        area += Geo.polygonArea(polygon);
+    }
+
+    return area;
+};
+
+Geo.ringWinding = function (ring) {
+    return Geo.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
+};

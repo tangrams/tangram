@@ -136,10 +136,17 @@ styles:
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
-    #     type: TopoJSONTiles
+    #     type: TopoJSON
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
+    # schools:
+    #     type: GeoJSON
+    #     url: demos/data/school-districts-polygon.geojson
+    # counties:
+    #     type: TopoJSON
+    #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
 
 layers:
+
     earth:
         data: { source: osm }
         draw:
@@ -476,3 +483,27 @@ layers:
     #                 typeface: 8pt Lucida Grande
     #                 fill: darkred
     #                 stroke: { color: white, width: 3 }
+
+    # schools:
+    #     data: { source: schools }
+    #     draw:
+    #         lines:
+    #             order: 100
+    #             color: red
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true
+    #         text:
+    #             text_source: schoolDistrict
+    #             font:
+    #                 fill: white
+    #                 typeface: 16px Futura
+    #                 stroke: { color: black, width: 4 }
+
+    # counties:
+    #     data: { source: counties }
+    #     draw:
+    #         lines:
+    #             order: 101
+    #             color: purple
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true

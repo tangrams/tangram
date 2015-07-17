@@ -1,6 +1,6 @@
 import LabelPoint from './label_point';
 import LabelLine from './label_line';
-import Utils from '../../utils/utils';
+import Geo from '../../geo';
 
 var LabelBuilder;
 export default LabelBuilder = {};
@@ -41,13 +41,13 @@ LabelBuilder.labelsFromGeometry = function (geometry, { text, size }, label_styl
             labels.push(new LabelPoint(text, point, size, null, { move_in_tile: true, keep_in_tile: true }));
         }
     } else if (geometry.type === "Polygon") {
-        let centroid = Utils.centroid(geometry.coordinates[0]);
-        let area = Utils.polygonArea(geometry.coordinates[0]);
+        let centroid = Geo.centroid(geometry.coordinates[0]);
+        let area = Geo.polygonArea(geometry.coordinates[0]);
 
         labels.push(new LabelPoint(text, centroid, size, area, { move_in_tile: true, keep_in_tile: true }));
     } else if (geometry.type === "MultiPolygon") {
-        let centroid = Utils.multiCentroid(geometry.coordinates);
-        let area = Utils.multiPolygonArea(geometry.coordinates);
+        let centroid = Geo.multiCentroid(geometry.coordinates);
+        let area = Geo.multiPolygonArea(geometry.coordinates);
 
         labels.push(new LabelPoint(text, centroid, size, area, { move_in_tile: true, keep_in_tile: true }));
     }
