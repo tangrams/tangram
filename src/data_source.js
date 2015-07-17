@@ -76,22 +76,16 @@ export default class DataSource {
     }
 
     /**
-     Re-scale geometries within each source to the range [0, scale]
-     TODO: clip vertices at edges? right now vertices can have
-     values outside [0, scale] (over or under bounds); this would
-     pose a problem if we wanted to binary encode the vertices in
-     fewer bits (e.g. 12 bits each for scale of 4096)
+     Re-scale geometries within each source to internal tile units
     */
-    static scaleData (source, {coords: {z}, min}) {
+    static scaleData (source, {coords: {z}, min, max}) {
         for (var t in source.layers) {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
                 Geo.transformGeometry(feature.geometry, coord => {
                     coord[0] = (coord[0] - min.x) * Geo.units_per_meter[z];
-                    // TODO: this will create negative y-coords, force positive as below instead? or, if later storing positive coords in bit-packed values, flip to negative in post-processing?
-                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z];
-                    // coord[1] = (coord[1] - tile.max.y) * Geo.units_per_meter[tile.coords.z]; // alternate to force y-coords to be positive, subtract tile max instead of min
+                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z] * -1; // flip coords positive
                 });
             }
         }
@@ -100,6 +94,25 @@ export default class DataSource {
     load(dest) {
         dest.source_data = {};
         dest.source_data.layers = {};
+
+        return this._load(dest).then((dest) => {
+            // Flip Y coords
+            for (let layer in dest.source_data.layers) {
+                let data = dest.source_data.layers[layer];
+                if (data && data.features) {
+                    data.features.forEach(feature => {
+                        Geo.transformGeometry(feature.geometry, coord => {
+                            coord[1] = -coord[1];
+                        });
+                    });
+                }
+            }
+        });
+    }
+
+    // Sub-classes must implement
+    _load(dest) {
+        throw new MethodNotImplemented('_load');
     }
 
     // Register a new data source type, under a type name
@@ -125,8 +138,8 @@ export class NetworkSource extends DataSource {
         this.response_type = ""; // use to set explicit XHR type
     }
 
-    load (dest) {
-        super.load(dest);
+    _load (dest) {
+        // super.load(dest);
 
         let url = this.formatUrl(dest);
 
@@ -225,9 +238,9 @@ export class GeoJSONSource extends NetworkSource {
         this.max_zoom = this.max_zoom || 14;
     }
 
-    load(dest) {
+    _load(dest) {
         if (!this.load_data) {
-            this.load_data = super.load({}).then(data => {
+            this.load_data = super._load({ source_data: { layers: {} } }).then(data => {
                 let layers = data.source_data.layers;
                 for (let layer_name in layers) {
                     this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
@@ -244,12 +257,9 @@ export class GeoJSONSource extends NetworkSource {
         }
 
         return this.load_data.then(() => {
-            dest.source_data = { layers: {} };
-
             for (let layer_name in this.tile_indexes) {
                 dest.source_data.layers[layer_name] = this.getTileFeatures(dest, layer_name);
             }
-
             return dest;
         });
     }
@@ -269,6 +279,12 @@ export class GeoJSONSource extends NetworkSource {
             };
 
             for (let feature of t.features) {
+
+                // Copy geometry (don't want to modify internal geojson-vt data)
+                let geom = feature.geometry.map(ring =>
+                    ring.map(coord => [coord[0], coord[1]])
+                );
+
                 let type;
                 if (feature.type === 1) {
                     type = 'MultiPoint';
@@ -278,19 +294,10 @@ export class GeoJSONSource extends NetworkSource {
                 }
                 else if (feature.type === 3) {
                     type = 'MultiPolygon';
+                    geom = this.decodeMultiPolygon(geom); // un-flatten rings
                 }
                 else {
                     continue;
-                }
-
-                // Flip Y coords
-                let geom = feature.geometry.map(ring =>
-                    ring.map(coord => [coord[0], -coord[1]])
-                );
-
-                // Decode multipolygon
-                if (type === 'MultiPolygon') {
-                    geom = this.decodeMultiPolygon(geom);
                 }
 
                 let f = {
@@ -489,9 +496,6 @@ export class MVTSource extends NetworkTileSource {
                     // Slightly scale up tile to cover seams
                     coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
                     coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
-
-                    // Flip Y coord
-                    coord[1] = -coord[1];
                 });
             }
         }
