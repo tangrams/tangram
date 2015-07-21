@@ -517,7 +517,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
         vertex_template[texcoord_index + 1] = texcoords[index][1] * texcoord_normalize;
     }
 
-    // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
+    // set Scaling vertex (X, Y normal direction + Z halfwidth as attribute)
     if (scaling_index) {
         vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
         vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;

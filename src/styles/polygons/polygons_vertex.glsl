@@ -62,7 +62,7 @@ void main() {
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy * 255.;
-        float width = a_extrude.z * 255.;
+        float width = a_extrude.z * 32767.;
         float scale = a_extrude.w * 255.;
 
         // Keep line width constant in screen-space
