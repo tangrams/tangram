@@ -521,7 +521,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
     if (scaling_index) {
         vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
         vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;
-        vertex_template[scaling_index + 2] = halfWidth * scaling_normalize;
+        vertex_template[scaling_index + 2] = halfWidth;
     }
 
     //  Add vertex to VBO
