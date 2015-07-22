@@ -217,7 +217,17 @@ StyleManager.mix = function (style, styles) {
     shaders.extensions = Object.keys(merge
         .map(x => x.extensions)
         .filter(x => x)
-        .reduce((prev, cur) => { cur.forEach(x => prev[x] = true); return prev; }, {}) || {}
+        .reduce((prev, cur) => {
+            // single extension
+            if (typeof cur === 'string') {
+                prev[cur] = true;
+            }
+            // array of extensions
+            else {
+                cur.forEach(x => prev[x] = true);
+            }
+            return prev;
+        }, {}) || {}
     );
 
     merge.map(x => x.blocks).filter(x => x).forEach(blocks => {

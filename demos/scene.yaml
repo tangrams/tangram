@@ -137,7 +137,8 @@ styles:
         base: polygons
         lighting: false
         shaders:
-            extensions: [OES_standard_derivatives]
+            extensions: OES_standard_derivatives
+            # extensions: [OES_standard_derivatives, EXT_frag_depth]
             blocks:
                 color: |
                     // From: http://madebyevan.com/shaders/grid/

@@ -256,7 +256,12 @@ export var Style = {
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
         var uniforms = (this.shaders && this.shaders.uniforms);
+
+        // accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
+        if (typeof extensions === 'string') {
+            extensions = [extensions];
+        }
 
         // Create shaders
         try {
