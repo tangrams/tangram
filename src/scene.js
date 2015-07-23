@@ -1118,10 +1118,11 @@ export default class Scene {
             if (!this.config.lights[i] || typeof this.config.lights[i] !== 'object') {
                 continue;
             }
-            this.config.lights[i].name = i;
-            this.config.lights[i].visible = (this.config.lights[i].visible === false) ? false : true;
-            if (this.config.lights[i].visible) {
-                this.lights[i] = Light.create(this, this.config.lights[i]);
+            let light = this.config.lights[i];
+            light.name = i.replace('-', '_'); // light names are injected in shaders, can't have hyphens
+            light.visible = (light.visible === false) ? false : true;
+            if (light.visible) {
+                this.lights[light.name] = Light.create(this, light);
             }
         }
         Light.inject(this.lights);
