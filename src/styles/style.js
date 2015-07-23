@@ -257,6 +257,12 @@ export var Style = {
         var blocks = (this.shaders && this.shaders.blocks);
         var uniforms = (this.shaders && this.shaders.uniforms);
 
+        // accept a single extension, or an array of extensions
+        var extensions = (this.shaders && this.shaders.extensions);
+        if (typeof extensions === 'string') {
+            extensions = [extensions];
+        }
+
         // Create shaders
         try {
             this.program = new ShaderProgram(
@@ -267,7 +273,8 @@ export var Style = {
                     name: this.name,
                     defines,
                     uniforms,
-                    blocks
+                    blocks,
+                    extensions
                 }
             );
             this.program.compile();
@@ -281,7 +288,8 @@ export var Style = {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
                         uniforms,
-                        blocks
+                        blocks,
+                        extensions
                     }
                 );
                 this.selection_program.compile();
