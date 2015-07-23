@@ -258,6 +258,15 @@ export default class Tile {
             else if (typeof source_config.layer === 'string') {
                 geom = source_data.layers[source_config.layer];
             }
+            // If multiple layers are specified by name, combine them
+            else if (Array.isArray(source_config.layer)) {
+                geom = { type: 'FeatureCollection', features: [] };
+                source_config.layer.forEach(layer => {
+                    if (source_data.layers[layer] && source_data.layers[layer].features) {
+                        geom.features.push(...source_data.layers[layer].features);
+                    }
+                });
+            }
             // Assemble a custom layer via a function, which is called with all source layers
             else if (typeof source_config.layer === 'function') {
                 geom = source_config.layer(source_data.layers);
