@@ -16,7 +16,7 @@ Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](htt
 The current version of Tangram can be included in your page with:
 
 ```
-<script src="https://mapzen.com/tangram/0.1/tangram.min.js"></script>
+<script src="https://mapzen.com/tangram/tangram.min.js"></script>
 ```
 
 The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.
