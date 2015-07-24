@@ -385,8 +385,11 @@ export default class Tile {
         tile instance created yet.
     */
     static cancel(tile) {
-        if (tile && tile.source_data && tile.source_data.request) {
-            tile.source_data.request.abort();
+        if (tile) {
+            if (tile.source_data && tile.source_data.request) {
+                tile.source_data.request.abort();
+            }
+            Tile.abortBuild(tile);
         }
     }
 
