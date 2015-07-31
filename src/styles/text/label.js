@@ -11,7 +11,7 @@ export default class Label {
             text,
             size,
             position: [],
-            bbox: [],
+            aabb: [],
             move_in_tile,
             keep_in_tile
         });
@@ -25,26 +25,30 @@ export default class Label {
         return false;
     }
 
-    occluded (bboxes) {
+    occluded (aabbs) {
         let intersect = false;
 
-        if (bboxes.length > 0) {
-            boxIntersect([this.bbox], bboxes, (i, j) => {
+        // Broadphase
+        if (aabbs.length > 0) {
+            boxIntersect([this.aabb], aabbs, (i, j) => {
                 intersect = true;
                 return true;
             });
         }
 
+        // No collision on aabb
         if (!intersect) {
-            bboxes.push(this.bbox);
+            aabbs.push(this.aabb);
+        } else {
+            // Narrow phase (OBB check)
         }
 
         return intersect;
     }
 
     inTileBounds () {
-        let min = [ this.bbox[0], this.bbox[1] ];
-        let max = [ this.bbox[2], this.bbox[3] ];
+        let min = [ this.aabb[0], this.aabb[1] ];
+        let max = [ this.aabb[2], this.aabb[3] ];
 
         if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
             return false;
@@ -53,7 +57,7 @@ export default class Label {
         return true;
     }
 
-    discard (bboxes) {
+    discard (aabbs) {
         let discard = false;
 
         // perform specific styling rule, should we keep the label in tile bounds?
@@ -71,7 +75,7 @@ export default class Label {
         }
 
         // should we discard? if not, just make occlusion test
-        return discard || this.occluded(bboxes);
+        return discard || this.occluded(aabbs);
     }
 }
 

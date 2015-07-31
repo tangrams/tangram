@@ -31,7 +31,8 @@ export default class LabelLine extends Label {
         let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
 
         this.position = Vector.add(this.middleSegment(segment), offset);
-        this.bbox = this.computeBBox();
+        this.aabb = this.computeAABB();
+        //this.obb = 
     }
 
     moveNextSegment () {
@@ -89,7 +90,7 @@ export default class LabelLine extends Label {
         return [ p1, p2 ];
     }
 
-    computeBBox (size) {
+    computeAABB (size) {
         let upp = Geo.units_per_pixel;
 
         let merc_width = this.size.text_size[0] * upp;
@@ -103,14 +104,14 @@ export default class LabelLine extends Label {
 
         let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5 + this.buffer;
 
-        let bbox = [
+        let aabb = [
             this.position[0] - max,
             this.position[1] - max,
             this.position[0] + max,
             this.position[1] + max
         ];
 
-        return bbox;
+        return aabb;
     }
 
     moveInTile () {
@@ -131,7 +132,7 @@ export default class LabelLine extends Label {
         return !in_tile || !fits_to_segment;
     }
 
-    discard (bboxes) {
+    discard (aabbs) {
         if (this.lines && !this.fitToSegment()) {
             while (!this.fitToSegment()) {
                 if (!this.moveNextSegment()) {
@@ -140,7 +141,7 @@ export default class LabelLine extends Label {
             }
         }
 
-        return super.discard(bboxes);
+        return super.discard(aabbs);
     }
 }
 

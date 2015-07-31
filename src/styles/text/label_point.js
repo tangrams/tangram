@@ -8,21 +8,21 @@ export default class LabelPoint extends Label {
 
         this.area = area;
         this.position = position;
-        this.bbox = this.computeBBox();
+        this.aabb = this.computeAABB();
     }
 
-    computeBBox () {
+    computeAABB () {
         let half_merc_width = Utils.pixelToMercator(this.size.text_size[0]) * 0.5 + this.buffer;
         let half_merc_height = Utils.pixelToMercator(this.size.text_size[1]) * 0.5 + this.buffer;
 
-        let bbox = [
+        let aabb = [
             this.position[0] - half_merc_width,
             this.position[1] - half_merc_height,
             this.position[0] + half_merc_width,
             this.position[1] + half_merc_height
         ];
 
-        return bbox;
+        return aabb;
     }
 
     moveInTile (in_tile) {
