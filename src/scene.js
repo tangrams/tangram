@@ -156,7 +156,10 @@ export default class Scene {
             this.initializing = false;
             this.updating = 0;
 
-            // Revert to last valid config if available
+            // Report and revert to last valid config if available
+            let type = error.name === 'YAMLException' ? 'yaml' : 'scene'; // split errors into YAML vs. Tangram errors
+            this.trigger('loadSceneError', { error, type, url: this.config_source });
+
             let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
             if (this.last_valid_config_source) {
                 log.warn(msg, error);
