@@ -89,9 +89,13 @@ export default class Texture {
 
                 resolve(this);
             };
+            this.image.onerror = e => {
+                // Warn and resolve on error
+                log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                resolve(this);
+            };
             this.image.crossOrigin = 'anonymous';
             this.image.src = url;
-            // TODO: error/promise reject
         });
         return this.loading;
     }
@@ -155,7 +159,7 @@ export default class Texture {
             return;
         }
 
-        options.filtering = options.filtering || this.filtering || 'linear'; // default to mipmaps for power-of-2 textures
+        options.filtering = options.filtering || this.filtering || 'linear';
 
         var gl = this.gl;
         this.bind();
