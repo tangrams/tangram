@@ -6,6 +6,7 @@ import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Geo from '../../geo';
 import Utils from '../../utils/utils';
 
 export var Lines = Object.create(Style);
@@ -221,7 +222,8 @@ Object.assign(Lines, {
                     texcoord_scale: this.texcoord_scale,
                     texcoord_normalize: 65535, // scale UVs to unsigned shorts
                     closed_polygon: options && options.closed_polygon,
-                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges
+                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
+                    tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
                 }
             );
         }

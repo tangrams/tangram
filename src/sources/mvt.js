@@ -13,7 +13,6 @@ export class MVTSource extends NetworkTileSource {
     constructor (source) {
         super(source);
         this.response_type = "arraybuffer"; // binary data
-        this.pad_scale = source.pad_scale || 0.001; // scale tile up by this factor (0.1%) to cover seams
     }
 
     parseSourceData (tile, source, response) {
@@ -29,13 +28,6 @@ export class MVTSource extends NetworkTileSource {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
-
-                // Copy OSM id
-                Geo.transformGeometry(feature.geometry, coord => {
-                    // Slightly scale up tile to cover seams
-                    coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
-                    coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
-                });
             }
         }
     }

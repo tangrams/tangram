@@ -9,6 +9,7 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
+        this.pad_scale = source.pad_scale || 0.001; // scale tile up by small factor to cover seams
 
         // Optional function to transform source data
         this.transform = source.transform;
@@ -83,15 +84,23 @@ export default class DataSource {
     load(dest) {
         dest.source_data = {};
         dest.source_data.layers = {};
+        dest.pad_scale = this.pad_scale;
 
         return this._load(dest).then((dest) => {
-            // Flip Y coords
+            // Post-processing
             for (let layer in dest.source_data.layers) {
                 let data = dest.source_data.layers[layer];
                 if (data && data.features) {
                     data.features.forEach(feature => {
                         Geo.transformGeometry(feature.geometry, coord => {
+                            // Flip Y coords
                             coord[1] = -coord[1];
+
+                            // Slightly scale up tile to cover seams
+                            if (this.pad_scale) {
+                                coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
+                                coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
+                            }
                         });
                     });
                 }
