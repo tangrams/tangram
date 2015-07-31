@@ -78,7 +78,7 @@ export class GeoJSONSource extends NetworkSource {
                     this.tile_indexes[layer_name] = geojsonvt(layers[layer_name], {
                         maxZoom: this.max_zoom,  // max zoom to preserve detail on
                         tolerance: 3, // simplification tolerance (higher means simpler)
-                        extent: 4096, // tile extent (both width and height)
+                        extent: Geo.tile_scale, // tile extent (both width and height)
                         buffer: 0     // tile buffer on each side
                     });
                 }

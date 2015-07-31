@@ -33,8 +33,8 @@ export class MVTSource extends NetworkTileSource {
                 // Copy OSM id
                 Geo.transformGeometry(feature.geometry, coord => {
                     // Slightly scale up tile to cover seams
-                    coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
-                    coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (4096 * this.pad_scale/2));
+                    coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
+                    coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
                 });
             }
         }
