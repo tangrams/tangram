@@ -202,6 +202,7 @@ StyleManager.mix = function (style, styles) {
 
     // Overwrites - last definition wins
     style.base = sources.map(x => x.base).filter(x => x).pop();
+    style.blend = sources.map(x => x.blend).filter(x => x).pop();
     style.lighting = sources.map(x => x.lighting).filter(x => x != null).pop();
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
 
