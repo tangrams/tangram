@@ -1,5 +1,4 @@
 import DataSource, {NetworkTileSource} from './data_source';
-import Geo from '../geo';
 
 import Pbf from 'pbf';
 import {VectorTile, VectorTileFeature} from 'vector-tile';
@@ -22,14 +21,6 @@ export class MVTSource extends NetworkTileSource {
         source.data = new VectorTile(buffer);
         source.layers = this.toGeoJSON(source.data);
         delete source.data; // comment out to save raw data for debugging
-
-        // Post-processing
-        for (var t in source.layers) {
-            var num_features = source.layers[t].features.length;
-            for (var f=0; f < num_features; f++) {
-                var feature = source.layers[t].features[f];
-            }
-        }
     }
 
     // Loop through layers/features using Mapbox lib API, convert to GeoJSON features
