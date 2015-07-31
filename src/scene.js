@@ -943,6 +943,12 @@ export default class Scene {
             let source = this.config.sources[name];
             source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+
+            if (!this.sources[name]) {
+                delete this.sources[name];
+                log.warn(`Scene: could not create data source`, source);
+                this.trigger('loadSceneWarning', { message: `Could not create data source`, source });
+            }
         }
     }
 
