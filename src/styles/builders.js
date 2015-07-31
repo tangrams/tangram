@@ -655,30 +655,3 @@ Builders.valuesWithinTolerance = function (a, b, tolerance) {
     tolerance = tolerance || 1;
     return (Math.abs(a - b) < tolerance);
 };
-
-// Build a zigzag line pattern for testing joins and caps
-Builders.buildZigzagLineTestPattern = function () {
-    var min = { x: 0, y: 0}; //  tile.min;
-    var max = { x: 4096, y: 4096 }; // tile.max;
-
-    var g = {
-        id: 123,
-        geometry: {
-            type: 'LineString',
-            coordinates: [
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
-                [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
-                [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
-                [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
-            ]
-        },
-        properties: {
-            kind: 'debug'
-        }
-    };
-    return g;
-};
