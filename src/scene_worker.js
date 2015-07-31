@@ -54,6 +54,10 @@ Utils.isWorkerThread && Object.assign(self, {
         config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
+            if (!source) {
+                continue;
+            }
+
             if (source.tiled) {
                 self.sources.tiles[name] = source;
             }
