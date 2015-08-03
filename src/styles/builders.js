@@ -217,7 +217,7 @@ Builders.buildPolylines = function (
         var isPrev = false,
             isNext = true;
 
-        // Add vertices to buffer acording their index
+        // Add vertices to buffer according to their index
         indexPairs(constants);
 
         // Do this with the rest (except the last one)
@@ -227,11 +227,11 @@ Builders.buildPolylines = function (
             isNext = i+1 < lineSize;
 
             if (isPrev) {
-                // If there is a previus one, copy the current (previous) values on *Prev
+                // If there is a previous one, copy the current (previous) values on *Prev
                 coordPrev = coordCurr;
                 normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
             } else if (i === 0 && closed_polygon === true) {
-                // If is the first point and is a close polygon
+                // If it's the first point and is a closed polygon
 
                 var needToClose = true;
                 if (remove_tile_edges) {
@@ -253,13 +253,13 @@ Builders.buildPolylines = function (
             if (isNext) {
                 coordNext = line[i+1];
             } else if (closed_polygon === true) {
-                // If is the last point a close polygon
+                // If it's the last point in a closed polygon
                 coordNext = line[1];
                 isNext = true;
             }
 
             if (isNext) {
-                // If is not the last one get next coordinates and calculate the right normal
+                // If it's not the last one get next coordinates and calculate the right normal
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
@@ -280,35 +280,35 @@ Builders.buildPolylines = function (
 
             //  Compute current normal
             if (isPrev) {
-                //  If there is a PREVIUS ...
+                //  If there is a PREVIOUS ...
                 if (isNext) {
-                    // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev)
+                    // ... and a NEXT ONE, compute previous and next normals (scaled by the angle with the last prev)
                     normCurr = Vector.normalize(Vector.add(normPrev, normNext));
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
                     normCurr = Vector.mult(normCurr,scale*scale);
                 } else {
-                    // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
+                    // ... and there is NOT a NEXT ONE, copy the previous next one (which is the current one)
                     normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                 }
             } else {
-                // If is NOT a PREVIUS ...
+                // If there is NO PREVIOUS ...
                 if (isNext) {
                     // ... and a NEXT ONE,
                     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                     normCurr = normNext;
                 } else {
-                    // ... and NOT a NEXT ONE, nothing to do (without prev or next one this is just a point)
+                    // ... and NO NEXT ONE, nothing to do (without prev or next one this is just a point)
                     continue;
                 }
             }
 
             if (isPrev || isNext) {
-                // If is the BEGINING of a LINE
+                // If it's the BEGINNING of a LINE
                 if (i === 0 && !isPrev && !closed_polygon) {
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
-                // If is a JOIN
+                // If it's a JOIN
                 if(trianglesOnJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
@@ -326,10 +326,10 @@ Builders.buildPolylines = function (
             }
         }
 
-        // Add vertices to buffer acording their index
+        // Add vertices to buffer according to their index
         indexPairs(constants);
 
-         // If is the END OF a LINE
+         // If it's the END of a LINE
         if(!closed_polygon) {
             addCap(coordCurr, normCurr, cornersOnCap , false, constants);
         }
@@ -339,16 +339,16 @@ Builders.buildPolylines = function (
 // Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
-        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
         scalingVecs.push(normal);
     } else {
-        //  b. Add the extruded vertexes
+        //  b. Add the extruded vertices
         vertices.push([coord[0] + normal[0] * halfWidth,
                        coord[1] + normal[1] * halfWidth]);
     }
 
-    // c) Add uv's if they are enable
+    // c) Add UVs if they are enabled
     if (texcoords) {
         texcoords.push(uv);
     }
@@ -371,8 +371,8 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         return;
     }
 
-    // Add previus vertices to buffer and clean the buffers and index pairs
-    // Because we are going to add more triangles.
+    // Add previous vertices to buffer and clear the buffers and index pairs
+    // because we are going to add more triangles.
     indexPairs(constants);
 
     var normCurr = Vector.set(nA);
@@ -391,14 +391,14 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var uvCurr = Vector.set(uA);
     var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
-    //  Add the first and CENTER vertex
-    //  The triangles will be composed on FAN style arround it
+    //  Add the FIRST and CENTER vertex
+    //  The triangles will be composed in a FAN style around it
     addVertex(coord, nC, uC, constants);
 
     //  Add first corner
     addVertex(coord, normCurr, uA, constants);
 
-    // Iterate through the rest of the coorners
+    // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
         normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
@@ -425,7 +425,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         }
     }
 
-    // Clean the buffer
+    // Clear the buffer
     constants.vertices = [];
     if (constants.scalingVecs) {
         constants.scalingVecs = [];
@@ -435,8 +435,8 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  Add speccials joins (not miter) tipes that require FAN tessalations
-//  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
+//  Add special joins (not miter) types that require FAN tessellations
+//  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
     var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
@@ -484,7 +484,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     }
 
     // UVs
-    var uvA = [constants.min_u,constants.min_v],                        // Begining angle UVs
+    var uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
         uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
 
