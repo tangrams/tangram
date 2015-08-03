@@ -3,7 +3,6 @@
 import boxIntersect from 'box-intersect';
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
-import OBB from '../../utils/obb';
 
 export default class Label {
     constructor (text, size, { move_in_tile, keep_in_tile }) {
@@ -39,8 +38,6 @@ export default class Label {
         // No collision on aabb
         if (!intersect) {
             aabbs.push(this.aabb);
-        } else {
-            // Narrow phase (OBB check)
         }
 
         return intersect;
