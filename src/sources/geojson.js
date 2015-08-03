@@ -114,7 +114,7 @@ export class GeoJSONSource extends NetworkSource {
 
                 // Copy geometry (don't want to modify internal geojson-vt data)
                 let geom = feature.geometry.map(ring =>
-                    ring.map(coord => [coord[0], coord[1]])
+                    ring.map(coord => [coord[0], -coord[1]]) // Y flip
                 );
 
                 let type;

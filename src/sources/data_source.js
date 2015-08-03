@@ -75,7 +75,7 @@ export default class DataSource {
                 var feature = source.layers[t].features[f];
                 Geo.transformGeometry(feature.geometry, coord => {
                     coord[0] = (coord[0] - min.x) * Geo.units_per_meter[z];
-                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z] * -1; // flip coords positive
+                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z];
                 });
             }
         }
@@ -93,9 +93,6 @@ export default class DataSource {
                 if (data && data.features) {
                     data.features.forEach(feature => {
                         Geo.transformGeometry(feature.geometry, coord => {
-                            // Flip Y coords
-                            coord[1] = -coord[1];
-
                             // Slightly scale up tile to cover seams
                             if (this.pad_scale) {
                                 coord[0] = Math.round(coord[0] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));

@@ -49,7 +49,7 @@ export class MVTSource extends NetworkTileSource {
                     for (var c=0; c < ring.length; c++) {
                         ring[c] = [
                             ring[c].x,
-                            ring[c].y
+                            -ring[c].y // Y flip
                         ];
                     }
                 }
