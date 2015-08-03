@@ -9,7 +9,7 @@ export default class DataSource {
         this.id = source.id;
         this.name = source.name;
         this.url = source.url;
-        this.pad_scale = source.pad_scale || 0.001; // scale tile up by small factor to cover seams
+        this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
 
         // Optional function to transform source data
         this.transform = source.transform;
