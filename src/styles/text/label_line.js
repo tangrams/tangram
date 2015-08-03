@@ -2,6 +2,7 @@ import Vector from '../../vector';
 import Geo from '../../geo';
 import Label from './label';
 import Utils from '../../utils/utils';
+import OBB from '../../utils/obb';
 
 export default class LabelLine extends Label {
     constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
@@ -32,7 +33,6 @@ export default class LabelLine extends Label {
 
         this.position = Vector.add(this.middleSegment(segment), offset);
         this.aabb = this.computeAABB();
-        //this.obb = 
     }
 
     moveNextSegment () {
@@ -96,20 +96,10 @@ export default class LabelLine extends Label {
         let merc_width = this.size.text_size[0] * upp;
         let merc_height = this.size.text_size[1] * upp;
 
-        let c = Math.cos(this.angle);
-        let s = Math.sin(this.angle);
-
-        let x = merc_width * c - merc_height * s;
-        let y = merc_width * s + merc_height * c;
-
-        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5 + this.buffer;
-
-        let aabb = [
-            this.position[0] - max,
-            this.position[1] - max,
-            this.position[0] + max,
-            this.position[1] + max
-        ];
+        // TODO : use buffer
+        let obb = new OBB(this.position[0], this.position[1], this.angle, merc_width, merc_height);
+        let aabb = obb.getExtent();
+        aabb.obb = obb;
 
         return aabb;
     }

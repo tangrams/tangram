@@ -23,10 +23,10 @@ export default class OBB {
     	let aabb = [inf, inf, -inf, -inf];
 
     	for (let i = 0; i < 4; ++i) {
-    		aabb[0] = Math.min(this.quad[i], aabb[0]);
-    		aabb[1] = Math.min(this.quad[i], aabb[1]);
-    		aabb[2] = Math.max(this.quad[i], aabb[2]);
-    		aabb[3] = Math.max(this.quad[i], aabb[3]);
+            aabb[0] = Math.min(this.quad[i][0], aabb[0]);
+            aabb[1] = Math.min(this.quad[i][1], aabb[1]);
+            aabb[2] = Math.max(this.quad[i][0], aabb[2]);
+            aabb[3] = Math.max(this.quad[i][1], aabb[3]);
     	}
 
     	return aabb;

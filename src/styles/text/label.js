@@ -3,6 +3,7 @@
 import boxIntersect from 'box-intersect';
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
+import OBB from '../../utils/obb';
 
 export default class Label {
     constructor (text, size, { move_in_tile, keep_in_tile }) {
@@ -26,12 +27,18 @@ export default class Label {
 
     occluded (aabbs) {
         let intersect = false;
+        let aabb = this.aabb;
 
         // Broadphase
-        if (aabbs.length > 0) {
+        if (aabbs.length > 1) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                intersect = true;
-                return true;
+                // TODO: find a better way to get the obb from aabb
+
+                // Narrow phase
+                if (OBB.intersect(aabb.obb, aabbs[j].obb)) {
+                    intersect = true;
+                    return true;
+                }
             });
         }
 

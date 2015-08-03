@@ -1,6 +1,7 @@
 import Label from './label';
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
+import OBB from '../../utils/obb';
 
 export default class LabelPoint extends Label {
     constructor (text, position, size, area, { move_in_tile, keep_in_tile }) {
@@ -12,22 +13,20 @@ export default class LabelPoint extends Label {
     }
 
     computeAABB () {
-        let half_merc_width = Utils.pixelToMercator(this.size.text_size[0]) * 0.5 + this.buffer;
-        let half_merc_height = Utils.pixelToMercator(this.size.text_size[1]) * 0.5 + this.buffer;
+        let merc_width = Utils.pixelToMercator(this.size.text_size[0]) + this.buffer;
+        let merc_height = Utils.pixelToMercator(this.size.text_size[1]) + this.buffer;
 
-        let aabb = [
-            this.position[0] - half_merc_width,
-            this.position[1] - half_merc_height,
-            this.position[0] + half_merc_width,
-            this.position[1] + half_merc_height
-        ];
+        // TODO : use buffer
+        let obb = new OBB(this.position[0], this.position[1], 0.0, merc_width, merc_height);
+        let aabb = obb.getExtent();
+        aabb.obb = obb;
 
         return aabb;
     }
 
     moveInTile (in_tile) {
-        let width = this.bbox[2] - this.bbox[0];
-        let height = -this.bbox[3] - (-this.bbox[1]);
+        let width = this.aabb[2] - this.aabb[0];
+        let height = -this.aabb[3] - (-this.aabb[1]);
 
         // Move point labels to tile edges
         if (this.position[0] - width/2 < 0) {
@@ -46,7 +45,7 @@ export default class LabelPoint extends Label {
         }
         this.position[1] *= -1;
 
-        this.bbox = this.computeBBox();
+        this.aabb = this.computeAABB();
         return !this.inTileBounds();
     }
 
@@ -81,7 +80,7 @@ class LabelComposite extends Label {
 
         this.position = position;
         this.labels = labels;
-        this.bbox = this.computeBBox();
+        this.aabb = this.computeAABB();
     }
 
     isComposite () {
@@ -92,19 +91,19 @@ class LabelComposite extends Label {
         return false;
     }
 
-    computeBBox () {
-        let bbox = [ Infinity, Infinity, -Infinity, -Infinity ];
+    computeAABB () {
+        let aabb = [ Infinity, Infinity, -Infinity, -Infinity ];
 
         for (let i in this.labels) {
-            let b = this.labels[i].bbox;
+            let b = this.labels[i].aabb;
 
-            bbox[0] = Math.min(b[0], bbox[0]);
-            bbox[1] = Math.min(b[1], bbox[1]);
-            bbox[2] = Math.max(b[2], bbox[2]);
-            bbox[3] = Math.max(b[3], bbox[3]);
+            aabb[0] = Math.min(b[0], aabb[0]);
+            aabb[1] = Math.min(b[1], aabb[1]);
+            aabb[2] = Math.max(b[2], aabb[2]);
+            aabb[3] = Math.max(b[3], aabb[3]);
         }
 
-        return bbox;
+        return aabb;
     }
 }
 
