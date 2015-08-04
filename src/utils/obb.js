@@ -59,11 +59,9 @@ export default class OBB {
 
     	let quad = obb.quad;
 
-    	// for each separated axis
+    	// for each axis, project obb quad to it and find min and max values
     	for (let i = 0; i < 4; ++i) {
-            let proj = Vector.mult(axis, Vector.dot(quad[i], axis));
-            let d = Vector.dot(proj, axis);
-
+            let d =  Vector.dot(quad[i], axis);
             min = Math.min(min, d);
             max = Math.max(max, d);
     	}
