@@ -35,7 +35,7 @@ export default class DataSource {
         }
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = source.max_zoom;
+        this.max_zoom = Math.min(source.max_zoom || Geo.max_zoom, Geo.max_zoom);
     }
 
     // Create a tile source by type, factory-style
