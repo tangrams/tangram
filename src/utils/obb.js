@@ -61,13 +61,11 @@ export default class OBB {
 
     	// for each separated axis
     	for (let i = 0; i < 4; ++i) {
-    		let l = Vector.length(axis);
-    		let l2 = l * l;
-    		let proj = Vector.mult(Vector.mult(axis, Vector.dot(quad[i], axis)), 1.0 / l2);
-    		let d = Vector.dot(proj, axis);
+            let proj = Vector.mult(axis, Vector.dot(quad[i], axis));
+            let d = Vector.dot(proj, axis);
 
-    		min = Math.min(min, d);
-    		max = Math.max(max, d);
+            min = Math.min(min, d);
+            max = Math.max(max, d);
     	}
 
     	return [min, max];
