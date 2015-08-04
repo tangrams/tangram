@@ -152,6 +152,9 @@ styles:
                     // Just visualize the grid lines directly
                     color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
 
+    mytext:
+        base: text
+        blend: inlay
 
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
@@ -234,11 +237,13 @@ layers:
                 style: flat_lines
                 color: white
                 width: 12
-                order: function () { return feature.sort_key + 5; }
-                outline:
-                    color: [[16, '#999'], [18, '#aaa']]
-                    width: [[15, 0], [16, 2]]
-                    order: 4 # put all outlines below all roads (for now)
+                # order: function () { return feature.sort_key + 5; }
+                order: 50
+                # outline:
+                #     color: [[16, '#999'], [18, '#aaa']]
+                #     width: [[15, 0], [16, 2]]
+                #     order: 4 # put all outlines below all roads (for now)
+                extrude: 100
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -344,7 +349,8 @@ layers:
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
-                text:
+                mytext:
+                    height: 100
                     priority: 2
                     font:
                         fill: '#666'
@@ -354,7 +360,7 @@ layers:
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
-                text:
+                mytext:
                     priority: 5
                     font:
                         fill: '#666'
@@ -364,7 +370,7 @@ layers:
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
                 draw:
-                    text:
+                    mytext:
                         priority: 3
                         font:
                             typeface: 16px Helvetica
@@ -432,7 +438,8 @@ layers:
                 # this function matches the "cities" sublayer
                 - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
-            text:
+            mytext:
+                order: 50
                 priority: 1
                 font:
                     typeface: italic 11pt Helvetica
@@ -441,19 +448,19 @@ layers:
         continents:
             filter: { kind: continent }
             draw:
-                text:
+                mytext:
                     font:
                         capitalized: true
         countries:
             filter: { kind: country }
             draw:
-                text:
+                mytext:
                     font:
                         capitalized: true
         oceans:
             filter: { kind: ocean }
             draw:
-                text:
+                mytext:
                     font:
                         typeface: italic 14pt Baskerville
         cities:
@@ -482,7 +489,7 @@ layers:
                 - { $zoom: { min: 15 }, area: { min: 10000 } }
                 - { $zoom: { min: 18 } }
         draw:
-            text:
+            mytext:
                 priority: 4
                 font:
                     typeface: Italic 10pt Lucida Grande

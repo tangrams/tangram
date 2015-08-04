@@ -85,7 +85,6 @@ Builders.buildExtrudedPolygons = function (
     normal_index,
     normal_normalize,
     { texcoord_index, texcoord_scale, texcoord_normalize }) {
-
     // Top
     var min_z = z + (min_height || 0);
     var max_z = z + height;
@@ -108,12 +107,15 @@ Builders.buildExtrudedPolygons = function (
         ];
     }
 
-    var num_polygons = polygons.length;
+    var num_polygons = polygons.length; // when is this ever more than 1?
+    if (num_polygons > 1) console.log('polys:', num_polygons);
+
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
 
         for (var q=0; q < polygon.length; q++) {
             var contour = polygon[q];
+            console.log(contour);
 
             for (var w=0; w < contour.length - 1; w++) {
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
@@ -139,6 +141,7 @@ Builders.buildExtrudedPolygons = function (
                 vertex_template[normal_index + 1] = normal[1] * normal_normalize;
                 vertex_template[normal_index + 2] = normal[2] * normal_normalize;
 
+                // first three indices in vertex_template are position
                 for (var wv=0; wv < wall_vertices.length; wv++) {
                     vertex_template[0] = wall_vertices[wv][0];
                     vertex_template[1] = wall_vertices[wv][1];
@@ -283,12 +286,14 @@ Builders.buildPolylines = function (
                 //  If there is a PREVIOUS ...
                 if (isNext) {
                     // ... and a NEXT ONE, compute previous and next normals (scaled by the angle with the last prev)
-                    normCurr = Vector.normalize(Vector.add(normPrev, normNext));
+                    normCurr = Vector.normalize(Vector.add(normPrev, normNext)); // normalization necessary?
+                    // normCurr = Vector.add(normPrev, normNext);
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
                     normCurr = Vector.mult(normCurr,scale*scale);
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previous next one (which is the current one)
-                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
+                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr)); // normalization necessary?
+                    // normCurr =Vector.perp(coordPrev, coordCurr);
                 }
             } else {
                 // If there is NO PREVIOUS ...
@@ -341,6 +346,8 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
+        // console.log('normal:', normal); // currently a unit vector eg [0, 1]
+
         scalingVecs.push(normal);
     } else {
         //  b. Add the extruded vertices

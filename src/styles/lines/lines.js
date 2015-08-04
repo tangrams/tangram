@@ -179,6 +179,7 @@ Object.assign(Lines, {
 
         // scaling to previous and next zoom
         this.vertex_template[i++] = style.next_width;
+        // console.log(style.width, style.next_width);
 
         // color
         this.vertex_template[i++] = style.color[0] * 255;
@@ -229,11 +230,15 @@ Object.assign(Lines, {
         }
 
         // Outline
-         if (style.outline && style.outline.color && style.outline.width) {
+        if (style.outline && style.outline.color && style.outline.width) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
                 outline_style.addFeature(context.feature, style.outline, context);
             }
+        }
+
+        if (style.z > 0) {
+            // console.log(style.z);
         }
     },
 
