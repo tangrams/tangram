@@ -30,10 +30,8 @@ export default class Label {
         let aabb = this.aabb;
 
         // Broadphase
-        if (aabbs.length > 1) {
+        if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                // TODO: find a better way to get the obb from aabb
-
                 // Narrow phase
                 if (OBB.intersect(aabb.obb, aabbs[j].obb)) {
                     intersect = true;

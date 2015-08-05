@@ -93,11 +93,11 @@ export default class LabelLine extends Label {
     computeAABB (size) {
         let upp = Geo.units_per_pixel;
 
-        let merc_width = this.size.text_size[0] * upp;
-        let merc_height = this.size.text_size[1] * upp;
+        let merc_width = this.size.text_size[0] * upp + this.buffer;
+        let merc_height = this.size.text_size[1] * upp + this.buffer;
 
-        // TODO : use buffer
-        let obb = new OBB(this.position[0], this.position[1], this.angle, merc_width, merc_height);
+        // the angle of the obb is negative since it's the tile system y axis is pointing down
+        let obb = new OBB(this.position[0], this.position[1], -this.angle, merc_width, merc_height);
         let aabb = obb.getExtent();
         aabb.obb = obb;
 
