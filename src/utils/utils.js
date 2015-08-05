@@ -122,15 +122,11 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
 };
 
 Utils.parseResource = function (body) {
-    var data = null;
+    var data;
     try {
-        eval('data = ' + body); // jshint ignore:line
+        data = yaml.safeLoad(body);
     } catch (e) {
-        try {
-            data = yaml.safeLoad(body);
-        } catch (e) {
-            throw e;
-        }
+        throw e;
     }
     return data;
 };
