@@ -652,26 +652,36 @@ export default class Scene {
 
         // Opaque styles: depth test on, depth write on, blending off
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
-        this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+        }
         count += this.renderStyles(styles, program_key);
 
         // Transparent styles: depth test off, depth write on, custom blending
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+        }
         count += this.renderStyles(styles, program_key);
 
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+        }    
         count += this.renderStyles(styles, program_key);
 
         // Inlay styles: depth test on, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'inlay');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
+        }
         count += this.renderStyles(styles, program_key);
 
         // Overlay styles: depth test off, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
-        this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+        }
         count += this.renderStyles(styles, program_key);
 
         return count;
