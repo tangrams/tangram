@@ -13,6 +13,7 @@ import Light from './light';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
+import RenderState from './gl/render_state';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -243,6 +244,7 @@ export default class Scene {
 
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
+        RenderState.initialize(this.gl);
     }
 
     // Get the URL to load the web worker from
@@ -788,42 +790,26 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        if (depth_test) {
-            gl.enable(gl.DEPTH_TEST);
-            gl.depthFunc(gl.LEQUAL);
-        }
-        else {
-            gl.disable(gl.DEPTH_TEST);
-        }
-
-        gl.depthMask(depth_write);
-
-        if (cull_face) {
-            gl.enable(gl.CULL_FACE);
-            gl.cullFace(gl.BACK);
-        }
-        else {
-            gl.disable(gl.CULL_FACE);
-        }
+        RenderState.depth_test.set({ depth_test: depth_test, depth_func: gl.LEQUAL });
+        RenderState.depth_write.set({ depth_write: depth_write });
+        RenderState.culling.set({ cull: cull_face, face: gl.BACK });
 
         if (alpha_blend) {
-            gl.enable(gl.BLEND);
-
             // Traditional blending
             if (alpha_blend === true) {
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                RenderState.blending.set({ blend: true, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA });
             }
             // Additive blending
             else if (alpha_blend === 'add') {
-                gl.blendFunc(gl.ONE, gl.ONE);
+                RenderState.blending.set({ blend: true, src: gl.ONE, dst: gl.ONE });
             }
             // Multiplicative blending
             else if (alpha_blend === 'multiply') {
-                gl.blendFunc(gl.ZERO, gl.SRC_COLOR);
+                RenderState.blending.set({ blend: true, src: gl.ZERO, dst: gl.SRC_COLOR });
             }
         }
         else {
-            gl.disable(gl.BLEND);
+            RenderState.blending.set({ blend: false, src: null, dst: null} );
         }
     }
 
