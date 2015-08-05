@@ -212,6 +212,7 @@ Object.assign(Lines, {
             Builders.buildPolylines(
                 lines,
                 style.width,
+                style.z,
                 vertex_data,
                 vertex_template,
                 {

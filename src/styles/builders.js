@@ -108,14 +108,14 @@ Builders.buildExtrudedPolygons = function (
     }
 
     var num_polygons = polygons.length; // when is this ever more than 1?
-    if (num_polygons > 1) console.log('polys:', num_polygons);
+    if (num_polygons > 1) console.log('polys:', num_polygons); // never seen it
 
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
 
         for (var q=0; q < polygon.length; q++) {
             var contour = polygon[q];
-            console.log(contour);
+            // console.log(contour);
 
             for (var w=0; w < contour.length - 1; w++) {
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
@@ -163,6 +163,7 @@ Builders.buildExtrudedPolygons = function (
 Builders.buildPolylines = function (
     lines,
     width,
+    z,
     vertex_data, vertex_template,
     {
         closed_polygon,
@@ -188,6 +189,7 @@ Builders.buildPolylines = function (
         vertex_data,
         vertex_template,
         halfWidth: width/2,
+        height : z,
         vertices: [],
         scaling_index,
         scaling_normalize,
@@ -201,9 +203,9 @@ Builders.buildPolylines = function (
 
     for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
-        var lineSize = line.length;
+        var lineSize = line.length; // number of vertices in the line
 
-        // Ignore non-lines
+        // Ignore non-lines - need at least two vertices to make a line
         if (lineSize < 2) {
             continue;
         }
@@ -220,8 +222,8 @@ Builders.buildPolylines = function (
         var isPrev = false,
             isNext = true;
 
-        // Add vertices to buffer according to their index
-        indexPairs(constants);
+        // Add the first vertex pair to buffer, using the current values in constants
+        addTrianglePairs(constants);
 
         // Do this with the rest (except the last one)
         for (let i = 0; i < lineSize ; i++) {
@@ -262,7 +264,7 @@ Builders.buildPolylines = function (
             }
 
             if (isNext) {
-                // If it's not the last one get next coordinates and calculate the right normal
+                // If it's not the last one get next coordinates and calculate the normal
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
@@ -272,8 +274,8 @@ Builders.buildPolylines = function (
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
                             constants.nPairs++;
 
-                            // Add vertices to buffer acording their index
-                            indexPairs(constants);
+                            // Add vertices to buffer at the appropriate index
+                            addTrianglePairs(constants);
                         }
                         isPrev = false;
                         continue;
@@ -286,14 +288,12 @@ Builders.buildPolylines = function (
                 //  If there is a PREVIOUS ...
                 if (isNext) {
                     // ... and a NEXT ONE, compute previous and next normals (scaled by the angle with the last prev)
-                    normCurr = Vector.normalize(Vector.add(normPrev, normNext)); // normalization necessary?
-                    // normCurr = Vector.add(normPrev, normNext);
+                    normCurr = Vector.normalize(Vector.add(normPrev, normNext));
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
                     normCurr = Vector.mult(normCurr,scale*scale);
                 } else {
                     // ... and there is NOT a NEXT ONE, copy the previous next one (which is the current one)
-                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr)); // normalization necessary?
-                    // normCurr =Vector.perp(coordPrev, coordCurr);
+                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                 }
             } else {
                 // If there is NO PREVIOUS ...
@@ -331,8 +331,8 @@ Builders.buildPolylines = function (
             }
         }
 
-        // Add vertices to buffer according to their index
-        indexPairs(constants);
+        // Add vertices to buffer at the appropriate index
+        addTrianglePairs(constants);
 
          // If it's the END of a LINE
         if(!closed_polygon) {
@@ -341,18 +341,27 @@ Builders.buildPolylines = function (
     }
 };
 
-// Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
+// Add a vertex to the appropriate buffers (internal method for polyline builder)
+function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
+        console.log('vertices:', vertices);
+        console.log('coord:', coord);
+
         vertices.push(coord);
-        // console.log('normal:', normal); // currently a unit vector eg [0, 1]
 
         scalingVecs.push(normal);
     } else {
-        //  b. Add the extruded vertices
-        vertices.push([coord[0] + normal[0] * halfWidth,
-                       coord[1] + normal[1] * halfWidth]);
+        if (coord.length == 2) {
+            //  b. Add the extruded vertices
+            vertices.push([coord[0] + normal[0] * halfWidth,
+                           coord[1] + normal[1] * halfWidth]);
+        } else if (coord.length == 3) {
+            //  b. Add the extruded vertices
+            vertices.push([coord[0] + normal[0] * halfWidth,
+                           coord[1] + normal[1] * halfWidth,
+                           coord[2] + normal[2] * halfWidth]);
+        }
     }
 
     // c) Add UVs if they are enabled
@@ -361,17 +370,25 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
     }
 }
 
-//  Add to equidistant pairs of vertices (internal method for polyline builder)
+//  Add equidistant pairs of vertices (internal method for polyline builder)
+//  The pairs of vertices are in opposite directions from the centerline - 
 function addVertexPair (coord, normal, v_pct, constants) {
     addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+
+    // if the polyline is elevated, make a duplicate pair on the ground plane
+    if (constants.height > 0) {
+        coord[2] = 0;
+        addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    }
 }
 
-//  Tessalate a FAN geometry between points A       B
-//  using their normals from a center        \ . . /
-//  and interpolating their UVs               \ p /
-//                                             \./
-//                                              C
+//  Tessellate a FAN geometry between points A       B
+//  using their normals from a center         \ . . /
+//  and interpolating their UVs                \ p /
+//                                              \./
+//                                               C
 function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants) {
 
     if (numTriangles < 1) {
@@ -380,7 +397,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
 
     // Add previous vertices to buffer and clear the buffers and index pairs
     // because we are going to add more triangles.
-    indexPairs(constants);
+    addTrianglePairs(constants);
 
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
@@ -422,13 +439,13 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
 
     for (var i = 0; i < numTriangles; i++) {
         if (signed) {
-            addIndex(i+2, constants);
-            addIndex(0, constants);
-            addIndex(i+1, constants);
+            addVertexAtIndex(i+2, constants);
+            addVertexAtIndex(0, constants);
+            addVertexAtIndex(i+1, constants);
         } else {
-            addIndex(i+1, constants);
-            addIndex(0, constants);
-            addIndex(i+2, constants);
+            addVertexAtIndex(i+1, constants);
+            addVertexAtIndex(0, constants);
+            addVertexAtIndex(i+2, constants);
         }
     }
 
@@ -507,8 +524,8 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
             isBeginning, numCorners*2, constants);
 }
 
-// Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
+// Add a vertex to the VBO at the specified index (internal method for polyline builder)
+function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -517,6 +534,7 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
+    // vertex_template[2] was already set as style.z || 0 in lines.js
 
     // set UVs
     if (texcoord_index) {
@@ -535,22 +553,66 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
     vertex_data.addVertex(vertex_template);
 }
 
-// Add the index vertex to the VBO and clean the buffers
-function indexPairs (constants) {
-    // Add vertices to buffer acording their index
-    for (var i = 0; i < constants.nPairs; i++) {
-        addIndex(2*i+2, constants);
-        addIndex(2*i+1, constants);
-        addIndex(2*i+0, constants);
-
-        addIndex(2*i+2, constants);
-        addIndex(2*i+3, constants);
-        addIndex(2*i+1, constants);
+// Add a pair of triangles to the VBO and clear the buffers
+// This constructs a quad for a given two-vertex line segment
+// based on the contents of the buffers in "constants"
+//
+// The two triangles make a quad -
+// The two vertices of the hypotenuse are shared
+//   unextruded   extruded top and sides
+//     0---1        0---1  2---3
+//     |  /|        |  /|  |   |
+//     | / |        | / |  |   |
+//     |/  |        |/  |  |   |
+//     2---3        4---5  6---7
+function addTrianglePairs (constants) {
+    // console.log('constants:', constants);
+    // Add vertices to buffer at the appropriate index
+    if (constants.height == 0) {
+        for (var i = 0; i < constants.nPairs; i++) {
+            // first triangle
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+0, constants);
+            // second triangle
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+3, constants);
+            addVertexAtIndex(2*i+1, constants);
+        }
+    } else {
+        for (var i = 0; i < constants.nPairs; i++) {
+            // first top triangle
+            addVertexAtIndex(2*i+4, constants);
+            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+0, constants);
+            // second top triangle
+            addVertexAtIndex(2*i+4, constants);
+            addVertexAtIndex(2*i+5, constants);
+            addVertexAtIndex(2*i+1, constants);
+            // first wall:
+            // first triangle
+            addVertexAtIndex(2*i+0, constants);
+            addVertexAtIndex(2*i+4, constants);
+            addVertexAtIndex(2*i+2, constants);
+            // second triangle
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+4, constants);
+            addVertexAtIndex(2*i+6, constants);
+            // second wall:
+            // first triangle
+            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+5, constants);
+            addVertexAtIndex(2*i+3, constants);
+            // second triangle
+            addVertexAtIndex(2*i+3, constants);
+            addVertexAtIndex(2*i+7, constants);
+            addVertexAtIndex(2*i+5, constants);
+        }
     }
 
     constants.nPairs = 0;
 
-    // Clean the buffer
+    // Clear the buffers
     constants.vertices = [];
     if (constants.scalingVecs) {
         constants.scalingVecs = [];
