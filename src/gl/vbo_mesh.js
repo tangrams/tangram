@@ -74,9 +74,9 @@ export default class VBOMesh  {
             VertexArrayObject.bind(vao);
         }
         else {
-            this.vaos.set(program, VertexArrayObject.create(() => {
+            this.vaos.set(program, VertexArrayObject.create((force) => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-                this.vertex_layout.enable(this.gl, program);
+                this.vertex_layout.enable(this.gl, program, force);
             }));
         }
     }

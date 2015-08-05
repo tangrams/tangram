@@ -37,7 +37,7 @@ VertexArrayObject.create = function (setup, teardown) {
         ext.bindVertexArrayOES(vao._vao);
     }
 
-    vao.setup();
+    vao.setup(true);
 
     return vao;
 };
@@ -50,7 +50,7 @@ VertexArrayObject.bind = function (vao) {
             VertexArrayObject.bound_vao = vao;
         }
         else {
-            vao.setup();
+            vao.setup(false);
         }
     }
     else {
