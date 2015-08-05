@@ -798,6 +798,7 @@ export default class Scene {
 
         gl.depthMask(depth_write);
 
+        // disable backface culling: gl.disable(gl.CULL_FACE);
         if (cull_face) {
             gl.enable(gl.CULL_FACE);
             gl.cullFace(gl.BACK);

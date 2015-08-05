@@ -115,7 +115,6 @@ Builders.buildExtrudedPolygons = function (
 
         for (var q=0; q < polygon.length; q++) {
             var contour = polygon[q];
-            // console.log(contour);
 
             for (var w=0; w < contour.length - 1; w++) {
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
@@ -344,27 +343,41 @@ Builders.buildPolylines = function (
 // Add a vertex to the appropriate buffers (internal method for polyline builder)
 function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
-        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
-        console.log('vertices:', vertices);
-        console.log('coord:', coord);
-
-        vertices.push(coord);
-
-        scalingVecs.push(normal);
-    } else {
+        // console.log('scalingvecs');
+        // If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
+        // vertices.push(coord);
         if (coord.length == 2) {
-            //  b. Add the extruded vertices
+            //  Add a simple coordinate pair
             vertices.push([coord[0] + normal[0] * halfWidth,
                            coord[1] + normal[1] * halfWidth]);
         } else if (coord.length == 3) {
-            //  b. Add the extruded vertices
+            // console.log('vec3 coord:', coord);
+            //  Add a vec3 coordinate
             vertices.push([coord[0] + normal[0] * halfWidth,
                            coord[1] + normal[1] * halfWidth,
-                           coord[2] + normal[2] * halfWidth]);
+                           coord[2]]);
         }
+
+        scalingVecs.push(normal);
+
+    } else {
+        console.log('NO scalingvecs');
+        // when does this happen? doesn't seem to matter if the lines are fixed-width or not
+        vertices.push([coord[0] + normal[0] * halfWidth,
+                       coord[1] + normal[1] * halfWidth]);
+        // if (coord.length == 2) {
+        //     //  Add a simple coordinate pair
+        //     vertices.push([coord[0] + normal[0] * halfWidth,
+        //                    coord[1] + normal[1] * halfWidth]);
+        // } else if (coord.length == 3) {
+        //     //  Add a vec3 coordinate
+        //     vertices.push([coord[0] + normal[0] * halfWidth,
+        //                    coord[1] + normal[1] * halfWidth,
+        //                    coord[2] + normal[2] * halfWidth]);
+        // }
     }
 
-    // c) Add UVs if they are enabled
+    // Add UVs if they are enabled
     if (texcoords) {
         texcoords.push(uv);
     }
@@ -373,11 +386,17 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
 //  Add equidistant pairs of vertices (internal method for polyline builder)
 //  The pairs of vertices are in opposite directions from the centerline - 
 function addVertexPair (coord, normal, v_pct, constants) {
+    // var constants = JSON.parse(JSON.stringify(constants1));
+
     addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
     // if the polyline is elevated, make a duplicate pair on the ground plane
+    // (i think this is wrong - the coord is expected to only ever be a vec2)
     if (constants.height > 0) {
+        // constants.vertex_template[2] = 0;
+        // console.log('2:', constants.vertex_template);
+        // console.log('now:', constants.vertex_template[2]);
         coord[2] = 0;
         addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
         addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
@@ -524,7 +543,8 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
             isBeginning, numCorners*2, constants);
 }
 
-// Add a vertex to the VBO at the specified index (internal method for polyline builder)
+// Add a vertex to the VBO - get it from vertices at the specified index
+// (internal method for polyline builder)
 function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
@@ -534,7 +554,11 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
-    // vertex_template[2] was already set as style.z || 0 in lines.js
+    if (vertices[index].length > 2 && height > 0) {
+        // most of the time vertex_template[2] has already been set as style.z || 0 in lines.js
+        // set this to 0 when it is for a ground-plane copy of an elevated, extruded polyline
+        vertex_template[2] = vertices[index][2]; // this never changes anything
+    }
 
     // set UVs
     if (texcoord_index) {
@@ -557,18 +581,18 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 // This constructs a quad for a given two-vertex line segment
 // based on the contents of the buffers in "constants"
 //
-// The two triangles make a quad -
-// The two vertices of the hypotenuse are shared
-//   unextruded   extruded top and sides
-//     0---1        0---1  2---3
-//     |  /|        |  /|  |   |
-//     | / |        | / |  |   |
-//     |/  |        |/  |  |   |
-//     2---3        4---5  6---7
+// The two triangles make a quad - the two vertices of the hypotenuse are shared
+//
 function addTrianglePairs (constants) {
-    // console.log('constants:', constants);
     // Add vertices to buffer at the appropriate index
-    if (constants.height == 0) {
+    if (constants.height == 0) { // will this also pick up outlines?
+    // if (true) {
+        //      top
+        //     0---1
+        //     |  /|
+        //     | / |
+        //     |/  |
+        //     2---3
         for (var i = 0; i < constants.nPairs; i++) {
             // first triangle
             addVertexAtIndex(2*i+2, constants);
@@ -578,16 +602,29 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(2*i+2, constants);
             addVertexAtIndex(2*i+3, constants);
             addVertexAtIndex(2*i+1, constants);
+            // third triangle, for fun
+            // addVertexAtIndex(2*i+2, constants);
+            // addVertexAtIndex(2*i+3, constants);
+            // addVertexAtIndex(2*i+1, constants);
         }
     } else {
+        // console.log('extruding');
+        //      top    walls
+        //     0---1   4---5
+        //     |  /|   |   |
+        //     | / |   |   |
+        //     |/  |   |   |
+        //     2---3   6---7
+        // not working - "vertices" isn't quite right
+        // may be winding order
         for (var i = 0; i < constants.nPairs; i++) {
             // first top triangle
-            addVertexAtIndex(2*i+4, constants);
+            addVertexAtIndex(2*i+2, constants);
             addVertexAtIndex(2*i+1, constants);
             addVertexAtIndex(2*i+0, constants);
             // second top triangle
-            addVertexAtIndex(2*i+4, constants);
-            addVertexAtIndex(2*i+5, constants);
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+3, constants);
             addVertexAtIndex(2*i+1, constants);
             // first wall:
             // first triangle
@@ -607,6 +644,7 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(2*i+3, constants);
             addVertexAtIndex(2*i+7, constants);
             addVertexAtIndex(2*i+5, constants);
+ 
         }
     }
 

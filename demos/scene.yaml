@@ -152,10 +152,6 @@ styles:
                     // Just visualize the grid lines directly
                     color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
 
-    mytext:
-        base: text
-        blend: inlay
-
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
@@ -178,38 +174,38 @@ layers:
                 order: 0
                 color: '#f0ebeb'
 
-    landuse:
-        data: { source: osm }
-        filter:
-            name: true
-            # show smaller landuse areas at higher zooms
-            any:
-                - { $zoom: { min: 9 }, area: { min: 10000000 } }
-                - { $zoom: { min: 10 }, area: { min: 3300000 } }
-                - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                - { $zoom: { min: 13 }, area: { min: 10000 } }
-                - { $zoom: { min: 15 } }
-        draw:
-            polygons:
-                order: 1
-                interactive: true
-                style: flat
-        green:
-            filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
-            draw:
-                polygons:
-                    order: 2
-                    color: '#bddec5'
-        blue:
-            filter: { kind: [commercial, industrial] }
-            draw:
-                polygons:
-                    color: '#C0CDCD'
-        orange:
-            filter: { kind: [university] }
-            draw:
-                polygons:
-                    color: '#D9CFC3'
+    # landuse:
+    #     data: { source: osm }
+    #     filter:
+    #         name: true
+    #         # show smaller landuse areas at higher zooms
+    #         any:
+    #             - { $zoom: { min: 9 }, area: { min: 10000000 } }
+    #             - { $zoom: { min: 10 }, area: { min: 3300000 } }
+    #             - { $zoom: { min: 12 }, area: { min: 1000000 } }
+    #             - { $zoom: { min: 13 }, area: { min: 10000 } }
+    #             - { $zoom: { min: 15 } }
+    #     draw:
+    #         polygons:
+    #             order: 1
+    #             interactive: true
+    #             style: flat
+    #     green:
+    #         filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
+    #         draw:
+    #             polygons:
+    #                 order: 2
+    #                 color: '#bddec5'
+    #     blue:
+    #         filter: { kind: [commercial, industrial] }
+    #         draw:
+    #             polygons:
+    #                 color: '#C0CDCD'
+    #     orange:
+    #         filter: { kind: [university] }
+    #         draw:
+    #             polygons:
+    #                 color: '#D9CFC3'
 
     water:
         data: { source: osm }
@@ -235,266 +231,266 @@ layers:
         draw:
             lines:
                 style: flat_lines
-                color: white
+                color: '#bbb'
                 width: 12
                 # order: function () { return feature.sort_key + 5; }
                 order: 50
-                # outline:
-                #     color: [[16, '#999'], [18, '#aaa']]
-                #     width: [[15, 0], [16, 2]]
-                #     order: 4 # put all outlines below all roads (for now)
+                outline:
+                    color: '#666'
+                    width: [[15, 0], [16, 2]]
+                    order: 4 # put all outlines below all roads (for now)
                 extrude: 100
 
-        rounded:
-            filter: { $zoom: { min: 18 } }
-            draw:
-                lines:
-                    cap: round
+        # rounded:
+        #     filter: { $zoom: { min: 18 } }
+        #     draw:
+        #         lines:
+        #             cap: round
 
-        highway:
-            filter: { kind: highway }
-            draw:
-                lines:
-                    color: '#D16768'
-                    width: [[14, 2px], [15, 12]]
-                    outline:
-                        width: [[14, 0], [15, 2]]
-            link:
-                filter: { is_link: yes }
-                draw:
-                    lines:
-                        color: '#aaa'
-                        width: [[13, 0], [14, 12]]
-        major_road:
-            filter: { kind: major_road, $zoom: { min: 10 } }
-            draw:
-                lines:
-                    width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
-                    outline:
-                        width: [[16, 0], [17, 1]]
-        minor_road:
-            filter: { kind: minor_road }
-            draw:
-                lines:
-                    width: [[13, 0px], [14, 1px], [15, 8]]
-                    outline:
-                        width: [[17, 0], [18, 1]]
-        paths:
-            filter: { kind: path }
-            draw:
-                lines:
-                    color: '#bbb'
-                    width: [[15, 0px], [18, 2px]]
-                    outline:
-                        width: 0
-        airports:
-            filter: { aeroway: true }
-            draw:
-                lines:
-                    color: '#ddd'
-                    outline:
-                        width: 0
+        # highway:
+        #     filter: { kind: highway }
+        #     draw:
+        #         lines:
+        #             color: '#D16768'
+        #             width: [[14, 2px], [15, 12]]
+        #             outline:
+        #                 width: [[14, 0], [15, 2]]
+        #     link:
+        #         filter: { is_link: yes }
+        #         draw:
+        #             lines:
+        #                 color: '#aaa'
+        #                 width: [[13, 0], [14, 12]]
+        # major_road:
+        #     filter: { kind: major_road, $zoom: { min: 10 } }
+        #     draw:
+        #         lines:
+        #             width: [[10, 0], [13, 2px], [14, 2px], [16, 12]]
+        #             outline:
+        #                 width: [[16, 0], [17, 1]]
+        # minor_road:
+        #     filter: { kind: minor_road }
+        #     draw:
+        #         lines:
+        #             width: [[13, 0px], [14, 1px], [15, 8]]
+        #             outline:
+        #                 width: [[17, 0], [18, 1]]
+        # paths:
+        #     filter: { kind: path }
+        #     draw:
+        #         lines:
+        #             color: '#bbb'
+        #             width: [[15, 0px], [18, 2px]]
+        #             outline:
+        #                 width: 0
+        # airports:
+        #     filter: { aeroway: true }
+        #     draw:
+        #         lines:
+        #             color: '#ddd'
+        #             outline:
+        #                 width: 0
 
-            taxiways:
-                filter: { aeroway: taxiway }
-                draw:
-                    lines:
-                        width: [[13, 0px], [14, 2px], [17, 10px]]
+        #     taxiways:
+        #         filter: { aeroway: taxiway }
+        #         draw:
+        #             lines:
+        #                 width: [[13, 0px], [14, 2px], [17, 10px]]
 
-            runways:
-                filter: { aeroway: runway }
-                draw:
-                    lines:
-                        color: [[13, '#FFE4B5'], [16, white]]
-                        width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
-                        order: 39
-                        cap: square
-                        outline:
-                            color: orange
-                            width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
-                            order: 38
+        #     runways:
+        #         filter: { aeroway: runway }
+        #         draw:
+        #             lines:
+        #                 color: [[13, '#FFE4B5'], [16, white]]
+        #                 width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
+        #                 order: 39
+        #                 cap: square
+        #                 outline:
+        #                     color: orange
+        #                     width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
+        #                     order: 38
 
-    buildings:
-        data: { source: osm }
-        filter: { $zoom: { min: 14 } }
+    # buildings:
+    #     data: { source: osm }
+    #     filter: { $zoom: { min: 14 } }
 
-        draw:
-            polygons:
-                order: 50
-                color: [.65, .65, .65]
+    #     draw:
+    #         polygons:
+    #             order: 50
+    #             color: [.65, .65, .65]
 
-        # turn interactive feature selection on for buildings with names
-        interactive:
-            filter: { name: true }
-            draw: { polygons: { interactive: true } }
+    #     # turn interactive feature selection on for buildings with names
+    #     interactive:
+    #         filter: { name: true }
+    #         draw: { polygons: { interactive: true } }
 
-        # extrude 3d buildings
-        extruded:
-            filter: { $zoom: { min: 15 } }
-            draw:
-                polygons:
-                    style: buildings
-                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
+    #     # extrude 3d buildings
+    #     extruded:
+    #         filter: { $zoom: { min: 15 } }
+    #         draw:
+    #             polygons:
+    #                 style: buildings
+    #                 extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
-        high-line:
-            filter: { roof_material: grass }
-            draw:
-                polygons:
-                    style: flat
-                    color: '#bddec5'
+    #     high-line:
+    #         filter: { roof_material: grass }
+    #         draw:
+    #             polygons:
+    #                 style: flat
+    #                 color: '#bddec5'
 
-    road_labels:
-        data: { source: osm, layer: roads }
-        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
-        highway:
-            filter: { kind: highway, $zoom: { min: 7 } }
-            draw:
-                mytext:
-                    height: 100
-                    priority: 2
-                    font:
-                        fill: '#666'
-                        typeface: 12px Helvetica
-                        stroke: { color: white, width: 4 }
+    # road_labels:
+    #     data: { source: osm, layer: roads }
+    #     filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
+    #     highway:
+    #         filter: { kind: highway, $zoom: { min: 7 } }
+    #         draw:
+    #             text:
+    #                 height: 100
+    #                 priority: 2
+    #                 font:
+    #                     fill: '#666'
+    #                     typeface: 12px Helvetica
+    #                     stroke: { color: white, width: 4 }
 
-        not_highway:
-            filter: { not: { kind: highway }, $zoom: { min: 13 } }
-            draw:
-                mytext:
-                    priority: 5
-                    font:
-                        fill: '#666'
-                        stroke: { color: white, width: 4 }
-                        typeface: 12px Helvetica
+    #     not_highway:
+    #         filter: { not: { kind: highway }, $zoom: { min: 13 } }
+    #         draw:
+    #             text:
+    #                 priority: 5
+    #                 font:
+    #                     fill: '#666'
+    #                     stroke: { color: white, width: 4 }
+    #                     typeface: 12px Helvetica
 
-            major_road:
-                filter: { kind: major_road, $zoom: { min: 14 } }
-                draw:
-                    mytext:
-                        priority: 3
-                        font:
-                            typeface: 16px Helvetica
-                            stroke: { color: white, width: 4 }
+    #         major_road:
+    #             filter: { kind: major_road, $zoom: { min: 14 } }
+    #             draw:
+    #                 text:
+    #                     priority: 3
+    #                     font:
+    #                         typeface: 16px Helvetica
+    #                         stroke: { color: white, width: 4 }
 
-            small:
-                filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
-                visible: false
+    #         small:
+    #             filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
+    #             visible: false
 
-    poi_icons:
-        data: { source: osm, layer: pois }
-        filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
-        draw:
-            icons:
-                size: [[13, 12px], [15, 18px]]
-                interactive: true
+    # poi_icons:
+    #     data: { source: osm, layer: pois }
+    #     filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
+    #     draw:
+    #         icons:
+    #             size: [[13, 12px], [15, 18px]]
+    #             interactive: true
 
-        # add generic icon at high zoom
-        generic:
-            filter: { $zoom: { min: 18 } }
-            draw: { icons: { sprite: info } }
+    #     # add generic icon at high zoom
+    #     generic:
+    #         filter: { $zoom: { min: 18 } }
+    #         draw: { icons: { sprite: info } }
 
-        # examples of different icons mapped to feature properties
-        icons:
-            restaurant:
-                filter: { kind: [restaurant] }
-                draw: { icons: { sprite: restaurant } }
-            cafe:
-                filter: { kind: [cafe, convenience] }
-                draw: { icons: { sprite: cafe } }
-            bar:
-                filter: { kind: [bar, pub] }
-                draw: { icons: { sprite: bar } }
-            culture:
-                filter: { kind: [museum, library, church, place_of_worship, bank] }
-                draw: { icons: { sprite: museum } }
-            station:
-                filter: { kind: [station] }
-                draw: { icons: { sprite: train } }
-            hospital:
-                filter: { kind: [hospital, pharmacy] }
-                draw: { icons: { sprite: hospital } }
-            hotel:
-                filter: { kind: [hotel, hostel] }
-                draw: { icons: { sprite: hotel } }
-            bus_stop:
-                filter: { kind: [bus_stop] }
-                draw: { icons: { sprite: bus } }
-            bookstore:
-                filter: { kind: [bookstore] }
-                draw: { icons: { sprite: bookstore } }
+    #     # examples of different icons mapped to feature properties
+    #     icons:
+    #         restaurant:
+    #             filter: { kind: [restaurant] }
+    #             draw: { icons: { sprite: restaurant } }
+    #         cafe:
+    #             filter: { kind: [cafe, convenience] }
+    #             draw: { icons: { sprite: cafe } }
+    #         bar:
+    #             filter: { kind: [bar, pub] }
+    #             draw: { icons: { sprite: bar } }
+    #         culture:
+    #             filter: { kind: [museum, library, church, place_of_worship, bank] }
+    #             draw: { icons: { sprite: museum } }
+    #         station:
+    #             filter: { kind: [station] }
+    #             draw: { icons: { sprite: train } }
+    #         hospital:
+    #             filter: { kind: [hospital, pharmacy] }
+    #             draw: { icons: { sprite: hospital } }
+    #         hotel:
+    #             filter: { kind: [hotel, hostel] }
+    #             draw: { icons: { sprite: hotel } }
+    #         bus_stop:
+    #             filter: { kind: [bus_stop] }
+    #             draw: { icons: { sprite: bus } }
+    #         bookstore:
+    #             filter: { kind: [bookstore] }
+    #             draw: { icons: { sprite: bookstore } }
 
-    places:
-        data: { source: osm }
-        filter:
-            name: true
-            not: { kind: [county, state, island] }
-            any:
-                - { $zoom: { min: 1 }, kind: ocean }
-                - { $zoom: { min: 2, max: 5 }, kind: continent }
-                # important countries
-                - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
-                # unimportant countries
-                - { $zoom: { min: 5 }, kind: country }
-                # this function matches the "cities" sublayer
-                - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
-        draw:
-            mytext:
-                order: 50
-                priority: 1
-                font:
-                    typeface: italic 11pt Helvetica
-                    fill: black
-                    stroke: { color: white, width: 3 }
-        continents:
-            filter: { kind: continent }
-            draw:
-                mytext:
-                    font:
-                        capitalized: true
-        countries:
-            filter: { kind: country }
-            draw:
-                mytext:
-                    font:
-                        capitalized: true
-        oceans:
-            filter: { kind: ocean }
-            draw:
-                mytext:
-                    font:
-                        typeface: italic 14pt Baskerville
-        cities:
-            # this filter shows lower scaleranks at higher zooms, starting at z4
-            filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
-            draw:
-                text:
-                    font:
-                        typeface: italic 12pt Helvetica
-                        fill: black
-                        stroke: { color: white, width: 3 }
-        minor-places:
-            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
-            visible: false
+    # places:
+    #     data: { source: osm }
+    #     filter:
+    #         name: true
+    #         not: { kind: [county, state, island] }
+    #         any:
+    #             - { $zoom: { min: 1 }, kind: ocean }
+    #             - { $zoom: { min: 2, max: 5 }, kind: continent }
+    #             # important countries
+    #             - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
+    #             # unimportant countries
+    #             - { $zoom: { min: 5 }, kind: country }
+    #             # this function matches the "cities" sublayer
+    #             - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
+    #     draw:
+    #         text:
+    #             order: 50
+    #             priority: 1
+    #             font:
+    #                 typeface: italic 11pt Helvetica
+    #                 fill: black
+    #                 stroke: { color: white, width: 3 }
+    #     continents:
+    #         filter: { kind: continent }
+    #         draw:
+    #             text:
+    #                 font:
+    #                     capitalized: true
+    #     countries:
+    #         filter: { kind: country }
+    #         draw:
+    #             text:
+    #                 font:
+    #                     capitalized: true
+    #     oceans:
+    #         filter: { kind: ocean }
+    #         draw:
+    #             text:
+    #                 font:
+    #                     typeface: italic 14pt Baskerville
+    #     cities:
+    #         # this filter shows lower scaleranks at higher zooms, starting at z4
+    #         filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
+    #         draw:
+    #             text:
+    #                 font:
+    #                     typeface: italic 12pt Helvetica
+    #                     fill: black
+    #                     stroke: { color: white, width: 3 }
+    #     minor-places:
+    #         filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
+    #         visible: false
 
-    landuse_labels:
-        data: { source: osm }
-        filter:
-            name: true
-            kind: [park, forest, cemetery, graveyard]
-            any:
-                # show labels for smaller landuse areas at higher zooms
-                - { $zoom: { min: 9 }, area: { min: 100000000 } }
-                - { $zoom: { min: 10 }, area: { min: 10000000 } }
-                - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                - { $zoom: { min: 15 }, area: { min: 10000 } }
-                - { $zoom: { min: 18 } }
-        draw:
-            mytext:
-                priority: 4
-                font:
-                    typeface: Italic 10pt Lucida Grande
-                    fill: darkgreen
-                    stroke: { color: white, width: 3 }
+    # landuse_labels:
+    #     data: { source: osm }
+    #     filter:
+    #         name: true
+    #         kind: [park, forest, cemetery, graveyard]
+    #         any:
+    #             # show labels for smaller landuse areas at higher zooms
+    #             - { $zoom: { min: 9 }, area: { min: 100000000 } }
+    #             - { $zoom: { min: 10 }, area: { min: 10000000 } }
+    #             - { $zoom: { min: 12 }, area: { min: 1000000 } }
+    #             - { $zoom: { min: 15 }, area: { min: 10000 } }
+    #             - { $zoom: { min: 18 } }
+    #     draw:
+    #         text:
+    #             priority: 4
+    #             font:
+    #                 typeface: Italic 10pt Lucida Grande
+    #                 fill: darkgreen
+    #                 stroke: { color: white, width: 3 }
 
     # building_labels:
     #     data: { source: osm, layer: buildings }
