@@ -75,7 +75,17 @@ export default class VertexLayout {
             location = program.attribute(attrib.name).location;
 
             if (location !== -1) {
-                gl.enableVertexAttribArray(location);
+                let enabled = false;
+                for (let enabled_location in VertexLayout.enabled_attribs) {
+                    if (location == enabled_location) {
+                        enabled = true;
+                        break;
+                    }
+                }
+
+                if (!enabled) {
+                    gl.enableVertexAttribArray(location);
+                }
                 gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
                 VertexLayout.enabled_attribs[location] = program;
             }

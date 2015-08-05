@@ -35,11 +35,9 @@ VertexArrayObject.create = function (setup, teardown) {
     if (ext != null) {
         vao._vao = ext.createVertexArrayOES();
         ext.bindVertexArrayOES(vao._vao);
-        vao.setup();
     }
-    else {
-        vao.setup();
-    }
+
+    vao.setup();
 
     return vao;
 };
