@@ -345,18 +345,7 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
     if (scalingVecs) {
         // console.log('scalingvecs');
         // If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
-        // vertices.push(coord);
-        if (coord.length == 2) {
-            //  Add a simple coordinate pair
-            vertices.push([coord[0] + normal[0] * halfWidth,
-                           coord[1] + normal[1] * halfWidth]);
-        } else if (coord.length == 3) {
-            // console.log('vec3 coord:', coord);
-            //  Add a vec3 coordinate
-            vertices.push([coord[0] + normal[0] * halfWidth,
-                           coord[1] + normal[1] * halfWidth,
-                           coord[2]]);
-        }
+        vertices.push(coord);
 
         scalingVecs.push(normal);
 
@@ -373,7 +362,7 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
         //     //  Add a vec3 coordinate
         //     vertices.push([coord[0] + normal[0] * halfWidth,
         //                    coord[1] + normal[1] * halfWidth,
-        //                    coord[2] + normal[2] * halfWidth]);
+        //                    coord[2]]);
         // }
     }
 
@@ -387,19 +376,19 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
 //  The pairs of vertices are in opposite directions from the centerline - 
 function addVertexPair (coord, normal, v_pct, constants) {
     // var constants = JSON.parse(JSON.stringify(constants1));
-
     addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
     // if the polyline is elevated, make a duplicate pair on the ground plane
     // (i think this is wrong - the coord is expected to only ever be a vec2)
+    // handled that part - but now this seems to override the previous addVertex calls?
+    // none are shown elevated. hmm
     if (constants.height > 0) {
-        // constants.vertex_template[2] = 0;
-        // console.log('2:', constants.vertex_template);
-        // console.log('now:', constants.vertex_template[2]);
-        coord[2] = 0;
-        addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // console.log(coord);
+        var coord2 = [coord[0],coord[1],constants.height];
+        // coord[2] = 100; // this doesn't do anything, hmm
+        addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     }
 }
 
@@ -554,11 +543,17 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
-    if (vertices[index].length > 2 && height > 0) {
-        // most of the time vertex_template[2] has already been set as style.z || 0 in lines.js
-        // set this to 0 when it is for a ground-plane copy of an elevated, extruded polyline
-        vertex_template[2] = vertices[index][2]; // this never changes anything
-    }
+    // add the z
+    vertex_template[2] = vertices[index][2];
+    // not sure anything else is necessary here
+    // if (vertices[index].length > 2 && height > 0) {
+    // if (vertices[index].length > 2) {
+    //     // most of the time vertex_template[2] has already been set as style.z || 0 in lines.js
+    //     // set this to 0 when it is for a ground-plane copy of an elevated, extruded polyline
+    //     console.log('vertices[index][2]:', vertices[index][2], 'vertex_template[2]:', vertex_template[2])
+        // vertex_template[2] = vertices[index][2];
+    //     vertex_template[2] = 0; // okay this was killing everything
+    // }
 
     // set UVs
     if (texcoord_index) {
@@ -602,10 +597,6 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(2*i+2, constants);
             addVertexAtIndex(2*i+3, constants);
             addVertexAtIndex(2*i+1, constants);
-            // third triangle, for fun
-            // addVertexAtIndex(2*i+2, constants);
-            // addVertexAtIndex(2*i+3, constants);
-            // addVertexAtIndex(2*i+1, constants);
         }
     } else {
         // console.log('extruding');
@@ -629,21 +620,21 @@ function addTrianglePairs (constants) {
             // first wall:
             // first triangle
             addVertexAtIndex(2*i+0, constants);
-            addVertexAtIndex(2*i+4, constants);
             addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+4, constants);
             // second triangle
             addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+4, constants);
             addVertexAtIndex(2*i+6, constants);
+            addVertexAtIndex(2*i+4, constants);
             // second wall:
             // first triangle
-            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+7, constants);
             addVertexAtIndex(2*i+5, constants);
             addVertexAtIndex(2*i+3, constants);
             // second triangle
-            addVertexAtIndex(2*i+3, constants);
-            addVertexAtIndex(2*i+7, constants);
             addVertexAtIndex(2*i+5, constants);
+            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+3, constants);
  
         }
     }
@@ -727,8 +718,7 @@ Builders.buildQuadsForPoints = function (
 
 // Triangulation using earcut
 // https://github.com/mapbox/earcut
-Builders.triangulatePolygon = function (contours)
-{
+Builders.triangulatePolygon = function (contours) {
     return earcut(contours);
 };
 

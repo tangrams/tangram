@@ -230,8 +230,8 @@ layers:
             not: { kind: [rail] }
         draw:
             lines:
-                style: flat_lines
-                color: '#bbb'
+                # style: flat_lines
+                color: '#999'
                 width: 12
                 # order: function () { return feature.sort_key + 5; }
                 order: 50
@@ -239,7 +239,7 @@ layers:
                     color: '#666'
                     width: [[15, 0], [16, 2]]
                     order: 4 # put all outlines below all roads (for now)
-                extrude: 100
+                extrude: 200
 
         # rounded:
         #     filter: { $zoom: { min: 18 } }
