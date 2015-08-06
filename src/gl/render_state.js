@@ -63,8 +63,3 @@ export default class RenderState {
     	);
     }
 }
-
-RenderState.culling = {};
-RenderState.blending = {};
-RenderState.depth_test = {};
-RenderState.depth_write = {};
