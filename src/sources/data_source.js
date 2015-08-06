@@ -10,6 +10,7 @@ export default class DataSource {
         this.name = source.name;
         this.url = source.url;
         this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
+        this.enforce_winding = source.enforce_winding || false; // whether to enforce winding order
 
         // Optional function to transform source data
         this.transform = source.transform;
@@ -102,6 +103,11 @@ export default class DataSource {
                                 coord[1] = Math.round(coord[1] * (1 + this.pad_scale) - (Geo.tile_scale * this.pad_scale/2));
                             }
                         });
+
+                        // Optionally enforce winding order since not all data sources guarantee it
+                        if (this.enforce_winding) {
+                            Geo.enforceWinding(feature.geometry, 'CCW');
+                        }
                     });
                 }
             }
