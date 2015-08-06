@@ -343,7 +343,6 @@ Builders.buildPolylines = function (
 // Add a vertex to the appropriate buffers (internal method for polyline builder)
 function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
-        // console.log('scalingvecs');
         // If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
 
@@ -354,16 +353,6 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
         // when does this happen? doesn't seem to matter if the lines are fixed-width or not
         vertices.push([coord[0] + normal[0] * halfWidth,
                        coord[1] + normal[1] * halfWidth]);
-        // if (coord.length == 2) {
-        //     //  Add a simple coordinate pair
-        //     vertices.push([coord[0] + normal[0] * halfWidth,
-        //                    coord[1] + normal[1] * halfWidth]);
-        // } else if (coord.length == 3) {
-        //     //  Add a vec3 coordinate
-        //     vertices.push([coord[0] + normal[0] * halfWidth,
-        //                    coord[1] + normal[1] * halfWidth,
-        //                    coord[2]]);
-        // }
     }
 
     // Add UVs if they are enabled
@@ -581,6 +570,8 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 function addTrianglePairs (constants) {
     // Add vertices to buffer at the appropriate index
     if (constants.height == 0) { // will this also pick up outlines?
+        // yeah not sure this is't the right factor -
+        // some of the others still show up at 0 z...
     // if (true) {
         //      top
         //     0---1
@@ -590,51 +581,53 @@ function addTrianglePairs (constants) {
         //     2---3
         for (var i = 0; i < constants.nPairs; i++) {
             // first triangle
-            addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+1, constants);
-            addVertexAtIndex(2*i+0, constants);
-            // second triangle
-            addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+3, constants);
-            addVertexAtIndex(2*i+1, constants);
+            // addVertexAtIndex(2*i+2, constants);
+            // addVertexAtIndex(2*i+1, constants);
+            // addVertexAtIndex(2*i+0, constants);
+            // // second triangle
+            // addVertexAtIndex(2*i+2, constants);
+            // addVertexAtIndex(2*i+3, constants);
+            // addVertexAtIndex(2*i+1, constants);
         }
     } else {
         // console.log('extruding');
         //      top    walls
-        //     0---1   4---5
+        //     2---3   0---1
         //     |  /|   |   |
         //     | / |   |   |
         //     |/  |   |   |
-        //     2---3   6---7
-        // not working - "vertices" isn't quite right
-        // may be winding order
+        //     6---7   4---5
         for (var i = 0; i < constants.nPairs; i++) {
+            // so sometimes this is at 0z and sometimes at the extrude height -
+            // shouldn't be both. why is that?
+            console.log('height:', constants.height, 'vertices:', constants.vertices[2*i+2]);
+            // sometimes the height is > 0 but no vertices.z gets set            
             // first top triangle
             addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+1, constants);
-            addVertexAtIndex(2*i+0, constants);
-            // second top triangle
-            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+6, constants);
             addVertexAtIndex(2*i+3, constants);
-            addVertexAtIndex(2*i+1, constants);
+            // second top triangle
+            // addVertexAtIndex(2*i+3, constants);
+            // addVertexAtIndex(2*i+6, constants);
+            // addVertexAtIndex(2*i+7, constants);
             // first wall:
             // first triangle
-            addVertexAtIndex(2*i+0, constants);
-            addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+4, constants);
-            // second triangle
-            addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+6, constants);
-            addVertexAtIndex(2*i+4, constants);
-            // second wall:
-            // first triangle
-            addVertexAtIndex(2*i+7, constants);
-            addVertexAtIndex(2*i+5, constants);
-            addVertexAtIndex(2*i+3, constants);
-            // second triangle
-            addVertexAtIndex(2*i+5, constants);
-            addVertexAtIndex(2*i+1, constants);
-            addVertexAtIndex(2*i+3, constants);
+            // addVertexAtIndex(2*i+2, constants);
+            // addVertexAtIndex(2*i+6, constants);
+            // addVertexAtIndex(2*i+0, constants);
+            // // second triangle
+            // addVertexAtIndex(2*i+0, constants);
+            // addVertexAtIndex(2*i+6, constants);
+            // addVertexAtIndex(2*i+4, constants);
+            // // second wall:
+            // // first triangle
+            // addVertexAtIndex(2*i+7, constants);
+            // addVertexAtIndex(2*i+5, constants);
+            // addVertexAtIndex(2*i+3, constants);
+            // // second triangle
+            // addVertexAtIndex(2*i+5, constants);
+            // addVertexAtIndex(2*i+1, constants);
+            // addVertexAtIndex(2*i+3, constants);
  
         }
     }
