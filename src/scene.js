@@ -885,7 +885,7 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
-            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
+            StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             this.resetFeatureSelection();
             this.resetTime();
 
@@ -1030,7 +1030,7 @@ export default class Scene {
 
         // Find & compile active styles
         this.updateActiveStyles();
-        StyleManager.compile(Object.keys(this.active_styles));
+        StyleManager.compile(Object.keys(this.active_styles), this);
 
         this.dirty = true;
     }
