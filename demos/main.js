@@ -96,7 +96,8 @@ Enjoy!
         });
 
     layer.scene.subscribe({
-        loadScene: function (config) {
+        load: function (msg) {
+            var config = msg.config;
             // If no source was set in scene definition, set one based on the URL
             if (!config.sources || !config.sources['osm']) {
                 config.sources = config.sources || {};

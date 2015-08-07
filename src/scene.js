@@ -157,16 +157,24 @@ export default class Scene {
             this.updating = 0;
 
             // Report and revert to last valid config if available
-            let type = error.name === 'YAMLException' ? 'yaml' : 'scene'; // split errors into YAML vs. Tangram errors
-            this.trigger('loadSceneError', { error, type, url: this.config_source });
+            let type, message;
+            if (error.name === 'YAMLException') {
+                type = 'yaml';
+                message = 'Error parsing scene YAML';
+            }
+            else {
+                // TODO: more error types
+                message = 'Error initializing scene';
+            }
+            this.trigger('error', { type, message, error, url: this.config_source });
 
-            let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+            message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
             if (this.last_valid_config_source) {
-                log.warn(msg, error);
+                log.warn(message, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
                 return this.load(this.last_valid_config_source);
             }
-            log.error(msg, error);
+            log.error(message, error);
             throw error;
         });
     }
@@ -934,7 +942,7 @@ export default class Scene {
 
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
-            return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
+            return this.preProcessConfig().then(() => { this.trigger('load', { config: this.config }); });
         });
     }
 
@@ -947,7 +955,7 @@ export default class Scene {
             if (!this.sources[name]) {
                 delete this.sources[name];
                 log.warn(`Scene: could not create data source`, source);
-                this.trigger('loadSceneWarning', { message: `Could not create data source`, source });
+                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
             }
         }
     }
