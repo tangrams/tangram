@@ -116,6 +116,8 @@ export default class ShaderProgram {
                 // Combine all blocks into one string
                 source = block.reduce((prev, cur) => `\n${prev}\n${cur}\n`);
             }
+            source = `// tangram-block-start: ${key}\n` + source; // mark start and end of block
+            source += `// tangram-block-end: ${key}`;
 
             // Inject
             if (inject_vertex != null) {
