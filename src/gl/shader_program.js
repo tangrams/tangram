@@ -153,6 +153,9 @@ export default class ShaderProgram {
         defines['TANGRAM_FRAGMENT_SHADER'] = true;
         this.computed_fragment_source = header + ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
 
+        // Add precision qualifier
+        this.computed_fragment_source = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + this.computed_fragment_source;
+
         // Compile & set uniforms to cached values
         try {
             this.program = ShaderProgram.updateProgram(this.gl, this.program, this.computed_vertex_source, this.computed_fragment_source);
@@ -481,7 +484,7 @@ ShaderProgram.replaceBlock = function (key, ...blocks) {
 ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragment_shader_source) {
     try {
         var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
-        var fragment_shader = ShaderProgram.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
+        var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
         log.error(err);
