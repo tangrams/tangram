@@ -103,6 +103,12 @@ Enjoy!
                 config.sources = config.sources || {};
                 config.sources['osm'] = tile_sources[default_tile_source];
             }
+        },
+        error: function (msg) {
+            // debugger;
+        },
+        warning: function (msg) {
+            // debugger;
         }
     });
 
