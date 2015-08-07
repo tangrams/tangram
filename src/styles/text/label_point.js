@@ -13,8 +13,8 @@ export default class LabelPoint extends Label {
     }
 
     computeAABB () {
-        let merc_width = Utils.pixelToMercator(this.size.text_size[0]) + this.buffer;
-        let merc_height = Utils.pixelToMercator(this.size.text_size[1]) + this.buffer;
+        let merc_width = Utils.pixelToMercator(this.size.text_size[0]);
+        let merc_height = Utils.pixelToMercator(this.size.text_size[1]);
 
         let obb = new OBB(this.position[0], this.position[1], 0.0, merc_width, merc_height);
         let aabb = obb.getExtent();
