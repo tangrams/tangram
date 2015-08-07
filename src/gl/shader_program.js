@@ -428,6 +428,41 @@ export default class ShaderProgram {
         }
     }
 
+    // Get info on which shader block (if any) a particular line number in a shader is in
+    // Returns an object with the following info if a block is found: { name, line, source }
+    //  name: shader block name (e.g. 'color', 'position', 'global')
+    //  line: line number *within* the shader block (not the whole shader program), useful for error highlighting
+    //  source: the code for the line
+    // NOTE: this does a bruteforce loop over the shader source and looks for shader block start/end markers
+    // We could track line ranges for shader blocks as they are inserted, but as this code is only used for
+    // error handling on compilation failure, it was simpler to keep it separate than to burden the core
+    // compilation path.
+    block(type, num) {
+        let lines = this.lines(type);
+        let block;
+        for (let i=0; i < num && i < lines.length; i++) {
+            let line = lines[i];
+            let match = line.match(/\/\/ tangram-block-start: (\w+)/);
+            if (match && match.length > 1) {
+                block = { name: match[1] }; // mark current block
+            }
+            else {
+                match = line.match(/\/\/ tangram-block-end: (\w+)/);
+                if (match && match.length > 1) {
+                    block = null; // clear current block
+                }
+            }
+
+            // update line # and content
+            if (block) {
+                // init to -1 so that line 0 is first actual line of block code, after comment marker
+                block.line = (block.line == null) ? -1 : block.line + 1;
+                block.source = line;
+            }
+        }
+        return block;
+    }
+
     // Returns list of available extensions from those requested
     // Sets internal #defines indicating availability of each requested extension
     checkExtensions() {
