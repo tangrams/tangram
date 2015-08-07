@@ -58,12 +58,12 @@ export default class Texture {
             return;
         }
         if (typeof unit === 'number') {
-            if (Texture.activeUnit != unit) {
+            if (Texture.activeUnit !== unit) {
                 this.gl.activeTexture(this.gl.TEXTURE0 + unit);
                 Texture.activeUnit = unit;
             }
         }
-        if (Texture.activeTexture != this.texture) {
+        if (Texture.activeTexture !== this.texture) {
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
             Texture.activeTexture = this.texture;
         }
