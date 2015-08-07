@@ -8,6 +8,7 @@ import getExtension from './extensions';
 
 import log from 'loglevel';
 import strip from 'strip-comments';
+import { default as parseShaderErrors } from 'gl-shader-errors';
 
 export default class ShaderProgram {
 
@@ -167,6 +168,16 @@ export default class ShaderProgram {
             this.compiled = false;
             this.compiling = false;
             this.error = error;
+
+            // shader error info
+            if (error.type === 'vertex' || error.type === 'fragment') {
+                this.shader_errors = error.errors;
+                for (let e of this.shader_errors) {
+                    e.type = error.type;
+                    e.block = this.block(error.type, e.line);
+                }
+            }
+
             throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
         }
 
@@ -549,7 +560,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
         var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
-        log.error(err);
+        log.error(err.message);
         throw err;
     }
 
@@ -576,7 +587,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        var program_error = new Error(
+        let message = new Error(
             `WebGL program error:
             VALIDATE_STATUS: ${gl.getProgramParameter(program, gl.VALIDATE_STATUS)}
             ERROR: ${gl.getError()}
@@ -584,8 +595,10 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
             ${vertex_shader_source}
             --- Fragment Shader ---
             ${fragment_shader_source}`);
-        log.error(program_error);
-        throw program_error;
+
+        let error = { type: 'program', message };
+        log.error(error.message);
+        throw error;
     }
 
     return program;
@@ -593,17 +606,16 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
 
 // Compile a vertex or fragment shader from provided source
 ShaderProgram.createShader = function (gl, source, type) {
-    var shader = gl.createShader(type);
+    let shader = gl.createShader(type);
 
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        var shader_error =
-            "WebGL shader error:\n" +
-            (type === gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " SHADER:\n" +
-            gl.getShaderInfoLog(shader);
-        throw shader_error;
+        let type = (type === gl.VERTEX_SHADER ? 'vertex' : 'fragment');
+        let message = gl.getShaderInfoLog(shader);
+        let errors = parseShaderErrors(message);
+        throw { type, message, errors };
     }
 
     return shader;
