@@ -401,6 +401,33 @@ export default class ShaderProgram {
         return attrib;
     }
 
+    // Get shader source as string
+    source(type) {
+        if (type === 'vertex') {
+            return this.computed_vertex_source;
+        }
+        else if (type === 'fragment') {
+            return this.computed_fragment_source;
+        }
+    }
+
+    // Get shader source as array of line strings
+    lines(type) {
+        let source = this.source(type);
+        if (source) {
+            return source.split('\n');
+        }
+        return [];
+    }
+
+    // Get a specific line from shader source
+    line(type, num) {
+        let source = this.lines(type);
+        if (source) {
+            return source[num];
+        }
+    }
+
     // Returns list of available extensions from those requested
     // Sets internal #defines indicating availability of each requested extension
     checkExtensions() {
