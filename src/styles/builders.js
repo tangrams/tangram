@@ -379,12 +379,13 @@ function addVertexPair (coord, normal, v_pct, constants) {
         // make one copy for the extruded faces
         addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
         addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        // // make one copy for the right-hand wall
-        // addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        // addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        // // make one copy for the left-hand wall
-        // addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        // addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // think i'll need extra copies eventually
+        // make one copy for the right-hand wall
+        addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // make one copy for the left-hand wall
+        addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
     }
 }
@@ -605,17 +606,14 @@ function addTrianglePairs (constants) {
         //     addVertexAtIndex(2*i+1, constants);
         // }
     } else {
-        // console.log('extruding');
-        //     bottom   top
-        //     0---1   2---3
-        //     |   |   |  /|
-        //     |   |   | / |
-        //     |   |   |/  |
-        //     4---5   6---7
-        // console.log('constants.nPairs:',constants.nPairs);
-        // console.log('constants.vertices:', constants.vertices);
-        // console.log('constants:', constants);
-
+        // not sure how many vertices I need here...
+        //     bottom   top    walls
+        //     0---1   2---3   4---5
+        //     |   |   |  /|   |   |
+        //     |   |   | / |   |   |
+        //     |   |   |/  |   |   |
+        //     6---7   8---9   10-11
+        //
         for (var i = 0; i < constants.nPairs; i++) {
             // first bottom triangle
             // addVertexAtIndex(4*i+0, constants);
@@ -628,52 +626,52 @@ function addTrianglePairs (constants) {
 
             // start cap
             // first cap triangle
-            addVertexAtIndex(4*i+1, constants);
-            addVertexAtIndex(4*i+0, constants);
-            addVertexAtIndex(4*i+3, constants);
-            // second cap triangle
-            addVertexAtIndex(4*i+3, constants);
-            addVertexAtIndex(4*i+0, constants);
-            addVertexAtIndex(4*i+2, constants);
+            // addVertexAtIndex(4*i+1, constants);
+            // addVertexAtIndex(4*i+0, constants);
+            // addVertexAtIndex(4*i+3, constants);
+            // // second cap triangle
+            // addVertexAtIndex(4*i+3, constants);
+            // addVertexAtIndex(4*i+0, constants);
+            // addVertexAtIndex(4*i+2, constants);
 
             // top
             // first top triangle
-            addVertexAtIndex(4*i+2, constants);
-            addVertexAtIndex(4*i+6, constants);
-            addVertexAtIndex(4*i+3, constants);
+            addVertexAtIndex(6*i+2, constants);
+            addVertexAtIndex(6*i+8, constants);
+            addVertexAtIndex(6*i+3, constants);
             // second top triangle
-            addVertexAtIndex(4*i+3, constants);
-            addVertexAtIndex(4*i+6, constants);
-            addVertexAtIndex(4*i+7, constants);
+            addVertexAtIndex(6*i+3, constants);
+            addVertexAtIndex(6*i+8, constants);
+            addVertexAtIndex(6*i+9, constants);
 
             // first wall:
             // first triangle
-            addVertexAtIndex(4*i+0, constants);
-            addVertexAtIndex(4*i+4, constants);
-            addVertexAtIndex(4*i+2, constants);
+            addVertexAtIndex(6*i+0, constants);
+            addVertexAtIndex(6*i+4, constants);
+            addVertexAtIndex(6*i+2, constants);
             // // second triangle
-            addVertexAtIndex(4*i+2, constants);
-            addVertexAtIndex(4*i+4, constants);
-            addVertexAtIndex(4*i+6, constants);
+            addVertexAtIndex(6*i+2, constants);
+            addVertexAtIndex(6*i+4, constants);
+            addVertexAtIndex(6*i+6, constants);
             // second wall:
             // first triangle
-            addVertexAtIndex(4*i+5, constants);
-            addVertexAtIndex(4*i+1, constants);
-            addVertexAtIndex(4*i+7, constants);
+            addVertexAtIndex(6*i+5, constants);
+            addVertexAtIndex(6*i+1, constants);
+            addVertexAtIndex(6*i+7, constants);
             // second triangle
-            addVertexAtIndex(4*i+7, constants);
-            addVertexAtIndex(4*i+1, constants);
-            addVertexAtIndex(4*i+3, constants);
+            addVertexAtIndex(6*i+7, constants);
+            addVertexAtIndex(6*i+1, constants);
+            addVertexAtIndex(6*i+3, constants);
  
             // end cap
             // first cap triangle
-            addVertexAtIndex(4*i+4, constants);
-            addVertexAtIndex(4*i+5, constants);
-            addVertexAtIndex(4*i+6, constants);
+            addVertexAtIndex(6*i+4, constants);
+            addVertexAtIndex(6*i+5, constants);
+            addVertexAtIndex(6*i+6, constants);
             // second cap triangle
-            addVertexAtIndex(4*i+6, constants);
-            addVertexAtIndex(4*i+5, constants);
-            addVertexAtIndex(4*i+7, constants);
+            addVertexAtIndex(6*i+6, constants);
+            addVertexAtIndex(6*i+5, constants);
+            addVertexAtIndex(6*i+7, constants);
 
 
         }
