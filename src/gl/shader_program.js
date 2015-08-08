@@ -605,14 +605,14 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
 };
 
 // Compile a vertex or fragment shader from provided source
-ShaderProgram.createShader = function (gl, source, type) {
-    let shader = gl.createShader(type);
+ShaderProgram.createShader = function (gl, source, stype) {
+    let shader = gl.createShader(stype);
 
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        let type = (type === gl.VERTEX_SHADER ? 'vertex' : 'fragment');
+        let type = (stype === gl.VERTEX_SHADER ? 'vertex' : 'fragment');
         let message = gl.getShaderInfoLog(shader);
         let errors = parseShaderErrors(message);
         throw { type, message, errors };
