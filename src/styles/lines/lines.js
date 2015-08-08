@@ -90,9 +90,10 @@ Object.assign(Lines, {
         }
 
         // Raise line height if extruded
-        if (style.extrude && style.height) {
-            style.z += style.height;
-        }
+        // ! do this in the builder now
+        // if (style.extrude && style.height) {
+        //     style.z += style.height;
+        // }
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
@@ -179,7 +180,6 @@ Object.assign(Lines, {
 
         // scaling to previous and next zoom
         this.vertex_template[i++] = style.next_width;
-        // console.log(style.width, style.next_width);
 
         // color
         this.vertex_template[i++] = style.color[0] * 255;
@@ -206,13 +206,12 @@ Object.assign(Lines, {
 
     buildLines(lines, style, vertex_data, context, options) {
         var vertex_template = this.makeVertexTemplate(style);
-
         // Main line
         if (style.color && style.width) {
             Builders.buildPolylines(
                 lines,
                 style.width,
-                style.z,
+                style.extrude || 0,
                 vertex_data,
                 vertex_template,
                 {
@@ -238,7 +237,7 @@ Object.assign(Lines, {
             }
         }
 
-        if (style.z > 0) {
+        if (style.extrude > 0) {
             // console.log(style.z);
         }
     },

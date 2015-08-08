@@ -162,7 +162,7 @@ Builders.buildExtrudedPolygons = function (
 Builders.buildPolylines = function (
     lines,
     width,
-    z,
+    height,
     vertex_data, vertex_template,
     {
         closed_polygon,
@@ -188,7 +188,7 @@ Builders.buildPolylines = function (
         vertex_data,
         vertex_template,
         halfWidth: width/2,
-        height : z,
+        height,
         vertices: [],
         scaling_index,
         scaling_normalize,
@@ -199,7 +199,6 @@ Builders.buildPolylines = function (
         min_u, min_v, max_u, max_v,
         nPairs: 0
     };
-
     for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
         var lineSize = line.length; // number of vertices in the line
@@ -365,19 +364,28 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
 //  The pairs of vertices are in opposite directions from the centerline - 
 function addVertexPair (coord, normal, v_pct, constants) {
     // var constants = JSON.parse(JSON.stringify(constants1));
-    addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-    addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
-    // if the polyline is elevated, make a duplicate pair on the ground plane
-    // (i think this is wrong - the coord is expected to only ever be a vec2)
-    // handled that part - but now this seems to override the previous addVertex calls?
-    // none are shown elevated. hmm
+    // make a pair of vertices on the ground
+    var coord2 = [coord[0], coord[1], 0];
+    addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+
+    // if the polyline is elevated, make an elevated duplicate pair
+    // may need to make multiple copies, hmm
     if (constants.height > 0) {
-        // console.log(coord);
-        var coord2 = [coord[0],coord[1],constants.height];
-        // coord[2] = 100; // this doesn't do anything, hmm
+        // coord[2] = constants.height; // this doesn't do anything :(
+        // have to make a copy of coord
+        var coord2 = [coord[0], coord[1], constants.height];
+        // make one copy for the extruded faces
         addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
         addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // // make one copy for the right-hand wall
+        // addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // // make one copy for the left-hand wall
+        // addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+
     }
 }
 
@@ -532,7 +540,6 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
-    // add the z
     vertex_template[2] = vertices[index][2];
     // not sure anything else is necessary here
     // if (vertices[index].length > 2 && height > 0) {
@@ -579,33 +586,43 @@ function addTrianglePairs (constants) {
         //     | / |
         //     |/  |
         //     2---3
-        for (var i = 0; i < constants.nPairs; i++) {
-            // first triangle
-            // addVertexAtIndex(2*i+2, constants);
-            // addVertexAtIndex(2*i+1, constants);
-            // addVertexAtIndex(2*i+0, constants);
-            // // second triangle
-            // addVertexAtIndex(2*i+2, constants);
-            // addVertexAtIndex(2*i+3, constants);
-            // addVertexAtIndex(2*i+1, constants);
-        }
+        // for (var i = 0; i < constants.nPairs; i++) {
+        //     // first triangle
+        //     addVertexAtIndex(2*i+2, constants);
+        //     addVertexAtIndex(2*i+1, constants);
+        //     addVertexAtIndex(2*i+0, constants);
+        //     // second triangle
+        //     addVertexAtIndex(2*i+2, constants);
+        //     addVertexAtIndex(2*i+3, constants);
+        //     addVertexAtIndex(2*i+1, constants);
+        // }
     } else {
         // console.log('extruding');
         //      top    walls
-        //     2---3   0---1
+        //     0---1   2---3
         //     |  /|   |   |
         //     | / |   |   |
         //     |/  |   |   |
-        //     6---7   4---5
+        //     4---5   6---7
+        console.log('constants.nPairs:',constants.nPairs);
+        console.log('constants.vertices:', constants.vertices);
         for (var i = 0; i < constants.nPairs; i++) {
-            // so sometimes this is at 0z and sometimes at the extrude height -
-            // shouldn't be both. why is that?
-            console.log('height:', constants.height, 'vertices:', constants.vertices[2*i+2]);
-            // sometimes the height is > 0 but no vertices.z gets set            
+            // this draws triangles on the ground *and* in the air - it's being drawn twice for some reason
+
+            // console.log('height:', constants.height, 'vertices:', constants.vertices[2*i+2]);
+            // sometimes the height is > 0 but no vertices[i].z gets set
+            // first bottom triangle
+            // addVertexAtIndex(4*i+0, constants);
+            // addVertexAtIndex(4*i+4, constants);
+            // addVertexAtIndex(4*i+1, constants);
             // first top triangle
-            addVertexAtIndex(2*i+2, constants);
-            addVertexAtIndex(2*i+6, constants);
-            addVertexAtIndex(2*i+3, constants);
+            addVertexAtIndex(4*i+2, constants);
+            addVertexAtIndex(4*i+6, constants);
+            addVertexAtIndex(4*i+3, constants);
+            // // first top triangle
+            // addVertexAtIndex(2*i+2, constants);
+            // addVertexAtIndex(2*i+6, constants);
+            // addVertexAtIndex(2*i+3, constants);
             // second top triangle
             // addVertexAtIndex(2*i+3, constants);
             // addVertexAtIndex(2*i+6, constants);

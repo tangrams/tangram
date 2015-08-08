@@ -239,7 +239,7 @@ layers:
                     color: '#666'
                     width: [[15, 0], [16, 2]]
                     order: 4 # put all outlines below all roads (for now)
-                extrude: 200
+                extrude: 50
 
         # rounded:
         #     filter: { $zoom: { min: 18 } }
