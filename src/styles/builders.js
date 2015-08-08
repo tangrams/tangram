@@ -551,6 +551,14 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     //     vertex_template[2] = 0; // okay this was killing everything
     // }
 
+    // set normals for extruded vertices
+    if (vertices[index][2] > 0) { // if the vertex height is > 0
+        // console.log('> 0:', vertices[index][2], 'scalingVecs:', scalingVecs);
+        vertex_template[4] = scalingVecs[index][0];
+        vertex_template[5] = scalingVecs[index][1];
+        vertex_template[6] = scalingVecs[index][2];
+    }
+
     // set UVs
     if (texcoord_index) {
         vertex_template[texcoord_index + 0] = texcoords[index][0] * texcoord_normalize;
@@ -598,54 +606,76 @@ function addTrianglePairs (constants) {
         // }
     } else {
         // console.log('extruding');
-        //      top    walls
+        //     bottom   top
         //     0---1   2---3
-        //     |  /|   |   |
-        //     | / |   |   |
-        //     |/  |   |   |
+        //     |   |   |  /|
+        //     |   |   | / |
+        //     |   |   |/  |
         //     4---5   6---7
-        console.log('constants.nPairs:',constants.nPairs);
-        console.log('constants.vertices:', constants.vertices);
-        for (var i = 0; i < constants.nPairs; i++) {
-            // this draws triangles on the ground *and* in the air - it's being drawn twice for some reason
+        // console.log('constants.nPairs:',constants.nPairs);
+        // console.log('constants.vertices:', constants.vertices);
+        // console.log('constants:', constants);
 
-            // console.log('height:', constants.height, 'vertices:', constants.vertices[2*i+2]);
-            // sometimes the height is > 0 but no vertices[i].z gets set
+        for (var i = 0; i < constants.nPairs; i++) {
             // first bottom triangle
             // addVertexAtIndex(4*i+0, constants);
             // addVertexAtIndex(4*i+4, constants);
             // addVertexAtIndex(4*i+1, constants);
+            // second bottom triangle
+            // addVertexAtIndex(4*i+1, constants);
+            // addVertexAtIndex(4*i+4, constants);
+            // addVertexAtIndex(4*i+5, constants);
+
+            // start cap
+            // first cap triangle
+            addVertexAtIndex(4*i+1, constants);
+            addVertexAtIndex(4*i+0, constants);
+            addVertexAtIndex(4*i+3, constants);
+            // second cap triangle
+            addVertexAtIndex(4*i+3, constants);
+            addVertexAtIndex(4*i+0, constants);
+            addVertexAtIndex(4*i+2, constants);
+
+            // top
             // first top triangle
             addVertexAtIndex(4*i+2, constants);
             addVertexAtIndex(4*i+6, constants);
             addVertexAtIndex(4*i+3, constants);
-            // // first top triangle
-            // addVertexAtIndex(2*i+2, constants);
-            // addVertexAtIndex(2*i+6, constants);
-            // addVertexAtIndex(2*i+3, constants);
             // second top triangle
-            // addVertexAtIndex(2*i+3, constants);
-            // addVertexAtIndex(2*i+6, constants);
-            // addVertexAtIndex(2*i+7, constants);
+            addVertexAtIndex(4*i+3, constants);
+            addVertexAtIndex(4*i+6, constants);
+            addVertexAtIndex(4*i+7, constants);
+
             // first wall:
             // first triangle
-            // addVertexAtIndex(2*i+2, constants);
-            // addVertexAtIndex(2*i+6, constants);
-            // addVertexAtIndex(2*i+0, constants);
+            addVertexAtIndex(4*i+0, constants);
+            addVertexAtIndex(4*i+4, constants);
+            addVertexAtIndex(4*i+2, constants);
             // // second triangle
-            // addVertexAtIndex(2*i+0, constants);
-            // addVertexAtIndex(2*i+6, constants);
-            // addVertexAtIndex(2*i+4, constants);
-            // // second wall:
-            // // first triangle
-            // addVertexAtIndex(2*i+7, constants);
-            // addVertexAtIndex(2*i+5, constants);
-            // addVertexAtIndex(2*i+3, constants);
-            // // second triangle
-            // addVertexAtIndex(2*i+5, constants);
-            // addVertexAtIndex(2*i+1, constants);
-            // addVertexAtIndex(2*i+3, constants);
+            addVertexAtIndex(4*i+2, constants);
+            addVertexAtIndex(4*i+4, constants);
+            addVertexAtIndex(4*i+6, constants);
+            // second wall:
+            // first triangle
+            addVertexAtIndex(4*i+5, constants);
+            addVertexAtIndex(4*i+1, constants);
+            addVertexAtIndex(4*i+7, constants);
+            // second triangle
+            addVertexAtIndex(4*i+7, constants);
+            addVertexAtIndex(4*i+1, constants);
+            addVertexAtIndex(4*i+3, constants);
  
+            // end cap
+            // first cap triangle
+            addVertexAtIndex(4*i+4, constants);
+            addVertexAtIndex(4*i+5, constants);
+            addVertexAtIndex(4*i+6, constants);
+            // second cap triangle
+            addVertexAtIndex(4*i+6, constants);
+            addVertexAtIndex(4*i+5, constants);
+            addVertexAtIndex(4*i+7, constants);
+
+
         }
     }
 
