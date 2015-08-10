@@ -20,7 +20,7 @@ export default class Label {
         this.id = Label.id++;
         this.buffer = this.buffer || 2; // TODO: make configurable
         this.buffer *= Geo.units_per_pixel;
-        this.keepMinDistance = true;
+        this.keep_min_distance = true;
     }
 
     isComposite () {
@@ -29,13 +29,12 @@ export default class Label {
 
     occluded (aabbs) {
         let intersect = false;
-        let aabb = this.aabb;
 
         // Broadphase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
                 // Narrow phase
-                if (OBB.intersect(aabb.obb, aabbs[j].obb)) {
+                if (OBB.intersect(this.aabb.obb, aabbs[j].obb)) {
                     intersect = true;
                     return true;
                 }
@@ -51,7 +50,7 @@ export default class Label {
     }
 
     // keep a minimal distance between the labels
-    minDistance (aabbs) {
+    checkMinDistance (aabbs) {
         let obb1 = this.aabb.obb;
         let w1 = Math.abs(obb1.quad[1][0] - obb1.quad[0][0]);
 
@@ -116,8 +115,8 @@ export default class Label {
             }
         }
 
-        if (this.keepMinDistance) {
-            discard |= this.minDistance(aabbs);
+        if (this.keep_min_distance) {
+            discard |= this.checkMinDistance(aabbs);
         }
 
         // should we discard? if not, just make occlusion test

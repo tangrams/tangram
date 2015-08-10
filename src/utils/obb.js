@@ -5,7 +5,7 @@ export default class OBB {
     constructor (x, y, a, w, h) {
         this.dimension = [w, h];
         this.angle = a;
-        this.centroid = [x, y]; 
+        this.centroid = [x, y];
         this.quad = [];
         this.axes = [];
 
@@ -85,5 +85,5 @@ export default class OBB {
     	return OBB.axisCollide(obb_a, obb_b, obb_a.axes) && OBB.axisCollide(obb_a, obb_b, obb_b.axes);
     }
 
-}	
+}
 
