@@ -58,13 +58,15 @@ export default class Texture {
             return;
         }
         if (typeof unit === 'number') {
-            this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+            if (Texture.activeUnit !== unit) {
+                this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+                Texture.activeUnit = unit;
+            }
         }
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-    }
-
-    unbind() {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+        if (Texture.activeTexture !== this.texture) {
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+            Texture.activeTexture = this.texture;
+        }
     }
 
     // Loads a texture from a URL
@@ -217,7 +219,6 @@ export default class Texture {
             }
         }
 
-        this.unbind();
         Texture.trigger('update', this);
     }
 
@@ -333,6 +334,8 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+Texture.boundTexture = -1;
+Texture.activeUnit = -1;
 
 Texture.base_url = null; // optional base URL to add to textures
 
