@@ -172,17 +172,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildPoints (points, style, vertex_data) {
-        if (!style.size) {
-            return;
-        }
-
-        var vertex_template = this.makeVertexTemplate(style);
-
-        let size = style.size;
-        let angle = style.angle;
-        let offset = [10, 10];
-
+    buildQuad (points, size, angle, vertex_data, vertex_template, offset) {
         Builders.buildQuadsForPoints(
             points,
             vertex_data,
@@ -196,12 +186,20 @@ Object.assign(Points, {
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
-                offset: [ offset[0], offset[1] ],
+                offset: offset,
                 angle: Utils.scaleInt16(Utils.radToDeg(angle), 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535
             }
         );
+    },
+
+    buildPoints (points, style, vertex_data) {
+        if (!style.size) {
+            return;
+        }
+
+        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), [10, 10]);
     },
 
     buildPolygons(polygons, style, vertex_data) {

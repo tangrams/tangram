@@ -577,32 +577,9 @@ Object.assign(TextStyle, {
         return `${font}/${fill}/${stroke}/${stroke_width}`;
     },
 
-    buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
-        let angle = label.angle || 0;
-        let offset = [10, 10];
-        Builders.buildQuadsForPoints(
-            [ label.position ], 
-            vertex_data, 
-            vertex_template, 
-            {
-                texcoord_index: this.vertex_layout.index.a_texcoord,
-                position_index: this.vertex_layout.index.a_position,
-                shape_index: this.vertex_layout.index.a_shape,
-                offset_index: this.vertex_layout.index.a_offset
-            },
-            {
-                quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
-                quad_scale: Utils.scaleInt16(1, 256),
-                offset: [ offset[0], offset[1] ],
-                angle: Utils.scaleInt16(Utils.radToDeg(angle), 360), 
-                texcoord_scale: texcoord_scale,
-                texcoord_normalize: 65535
-            }
-        );
-    },
-
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+        let offset = [10, 10];
 
         for (let i in style.labels) {
             let label = style.labels[i];
@@ -611,11 +588,10 @@ Object.assign(TextStyle, {
                 for (let j in label.labels) {
                     let l = label.labels[j];
                     let subtexcoord_scale = this.subtexcoord_scale[l.text];
-                    let size = this.subtext_size[l.text];
-                    this.buildLabel(l, size, vertex_data, vertex_template, subtexcoord_scale);
+                    this.buildQuad([ l.position ], this.subtext_size[l.text], l.angle || 0, vertex_data, vertex_template, offset);
                 }
             } else {
-                this.buildLabel(label, label.size.texture_text_size, vertex_data, vertex_template, this.texcoord_scale);
+                this.buildQuad([ label.position ], label.size.texture_text_size, label.angle || 0, vertex_data, vertex_template, offset);
             }
         }
     },
