@@ -417,6 +417,17 @@ layers:
                 filter: { kind: [bookstore] }
                 draw: { icons: { sprite: bookstore } }
 
+    poi_labels:
+        data: { source: osm, layer: pois }
+        filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
+        draw:
+            text:
+                offset: [10px, 10px]
+                priority: 1
+                font:
+                    typeface: italic 10pt Helvetica
+                    fill: black
+
     places:
         data: { source: osm }
         filter:
