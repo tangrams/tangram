@@ -268,11 +268,9 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
-            if (!Texture.textures[texname]) {
-                let texture = new Texture(gl, texname, config);
-                if (config.url) {
-                    loading.push(texture.load(config.url, config));
-                }
+            let texture = new Texture(gl, texname, config);
+            if (config.url) {
+                loading.push(texture.load(config.url, config));
             }
         }
     }
