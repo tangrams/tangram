@@ -80,18 +80,25 @@ export default class Texture {
         this.loading = new Promise((resolve, reject) => {
             this.image = new Image();
             this.image.onload = () => {
-                this.update(options);
-                this.setTextureFiltering(options);
-                this.calculateSprites();
+                try {
+                    this.update(options);
+                    this.setTextureFiltering(options);
+                    this.calculateSprites();
 
-                this.canvas = null; // mutually exclusive with other types
-                this.data = null;
+                    this.canvas = null; // mutually exclusive with other types
+                    this.data = null;
+                }
+                catch (e) {
+                    log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                    Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
+                }
 
                 resolve(this);
             };
             this.image.onerror = e => {
                 // Warn and resolve on error
                 log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
                 resolve(this);
             };
             this.image.crossOrigin = 'anonymous';

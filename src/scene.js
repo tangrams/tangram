@@ -136,7 +136,10 @@ export default class Scene {
                 this.resetFeatureSelection();
 
                 if (!this.texture_listener) {
-                    this.texture_listener = { update: () => this.dirty = true };
+                    this.texture_listener = {
+                        update: () => this.dirty = true,
+                        warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
+                    };
                     Texture.subscribe(this.texture_listener);
                 }
 
