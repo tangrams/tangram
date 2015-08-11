@@ -187,7 +187,12 @@ Object.assign(Points, {
             points,
             vertex_data,
             vertex_template,
-            this.vertex_layout.index,
+            {
+                texcoord_index: this.vertex_layout.index.a_texcoord,
+                position_index: this.vertex_layout.index.a_position,
+                shape_index: this.vertex_layout.index.a_shape,
+                offset_index: this.vertex_layout.index.a_offset
+            },
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
