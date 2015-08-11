@@ -579,17 +579,17 @@ Object.assign(TextStyle, {
 
     buildLabel (label, size, vertex_data, vertex_template, texcoord_scale) {
         let angle = label.angle || 0;
+        let offset = [10, 10];
         Builders.buildQuadsForPoints(
-            [ label.position ],
-            Utils.scaleInt16(size[0], 256),
-            Utils.scaleInt16(size[1], 256),
-            Utils.scaleInt16(Utils.radToDeg(angle), 360),
-            Utils.scaleInt16(1, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
+            [ label.position ], 
+            vertex_data, 
+            vertex_template, 
+            this.vertex_layout.index,
             {
-                texcoord_index: this.vertex_layout.index.a_texcoord,
+                quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
+                quad_scale: Utils.scaleInt16(1, 256),
+                offset: [ offset[0], offset[1] ],
+                angle: Utils.scaleInt16(Utils.radToDeg(angle), 360), 
                 texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535
             }

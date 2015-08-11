@@ -11,6 +11,7 @@ attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
+attribute vec2 a_offset;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -56,7 +57,7 @@ void main() {
         applyLayerOrder(a_position.w * 32767., position);
     #endif
 
-    position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
+    position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution + (a_offset * 32767.) * cos(u_time);
 
     gl_Position = position;
 }
