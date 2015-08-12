@@ -136,7 +136,10 @@ export default class Scene {
                 this.resetFeatureSelection();
 
                 if (!this.texture_listener) {
-                    this.texture_listener = { update: () => this.dirty = true };
+                    this.texture_listener = {
+                        update: () => this.dirty = true,
+                        warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
+                    };
                     Texture.subscribe(this.texture_listener);
                 }
 
@@ -156,14 +159,25 @@ export default class Scene {
             this.initializing = false;
             this.updating = 0;
 
-            // Revert to last valid config if available
-            let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+            // Report and revert to last valid config if available
+            let type, message;
+            if (error.name === 'YAMLException') {
+                type = 'yaml';
+                message = 'Error parsing scene YAML';
+            }
+            else {
+                // TODO: more error types
+                message = 'Error initializing scene';
+            }
+            this.trigger('error', { type, message, error, url: this.config_source });
+
+            message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
             if (this.last_valid_config_source) {
-                log.warn(msg, error);
+                log.warn(message, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
                 return this.load(this.last_valid_config_source);
             }
-            log.error(msg, error);
+            log.error(message, error);
             throw error;
         });
     }
@@ -875,7 +889,7 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
-            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
+            StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             this.resetFeatureSelection();
             this.resetTime();
 
@@ -932,7 +946,7 @@ export default class Scene {
 
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
-            return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
+            return this.preProcessConfig().then(() => { this.trigger('load', { config: this.config }); });
         });
     }
 
@@ -941,6 +955,12 @@ export default class Scene {
             let source = this.config.sources[name];
             source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+
+            if (!this.sources[name]) {
+                delete this.sources[name];
+                log.warn(`Scene: could not create data source`, source);
+                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+            }
         }
     }
 
@@ -1014,7 +1034,7 @@ export default class Scene {
 
         // Find & compile active styles
         this.updateActiveStyles();
-        StyleManager.compile(Object.keys(this.active_styles));
+        StyleManager.compile(Object.keys(this.active_styles), this);
 
         this.dirty = true;
     }
