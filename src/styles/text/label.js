@@ -5,7 +5,7 @@ import Utils from '../../utils/utils';
 import Geo from '../../geo';
 
 export default class Label {
-    constructor (text, size, { move_in_tile, keep_in_tile }) {
+    constructor (text, size, offset, { move_in_tile, keep_in_tile }) {
         Object.assign(this, {
             text,
             size,
@@ -17,6 +17,7 @@ export default class Label {
 
         this.id = Label.id++;
 
+        this.offset = offset;
         this.buffer = this.buffer || 2; // TODO: make configurable
         this.buffer *= Geo.units_per_pixel;
     }

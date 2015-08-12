@@ -3,8 +3,8 @@ import Utils from '../../utils/utils';
 import Geo from '../../geo';
 
 export default class LabelPoint extends Label {
-    constructor (text, position, size, area, { move_in_tile, keep_in_tile }) {
-        super(text, size, { move_in_tile, keep_in_tile });
+    constructor (text, position, size, area, offset, { move_in_tile, keep_in_tile }) {
+        super(text, size, offset, { move_in_tile, keep_in_tile });
 
         this.area = area;
         this.position = position;
@@ -16,10 +16,10 @@ export default class LabelPoint extends Label {
         let half_merc_height = Utils.pixelToMercator(this.size.text_size[1]) * 0.5 + this.buffer;
 
         let bbox = [
-            this.position[0] - half_merc_width,
-            this.position[1] - half_merc_height,
-            this.position[0] + half_merc_width,
-            this.position[1] + half_merc_height
+            this.position[0] + this.offset[0] - half_merc_width,
+            this.position[1] + this.offset[1] - half_merc_height,
+            this.position[0] + this.offset[0] + half_merc_width,
+            this.position[1] + this.offset[1] + half_merc_height
         ];
 
         return bbox;

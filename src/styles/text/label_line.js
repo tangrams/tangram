@@ -4,13 +4,13 @@ import Label from './label';
 import Utils from '../../utils/utils';
 
 export default class LabelLine extends Label {
-    constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
-        super(text, size, { move_in_tile, keep_in_tile });
+    constructor (text, size, lines, style, offset, { move_in_tile, keep_in_tile }) {
+        super(text, size, offset, { move_in_tile, keep_in_tile });
 
         this.segment_index = 0;
         this.lines = lines;
         this.exceed_heuristic = style.exceed;
-        this.offset = style.offset;
+        //this.offset = style.offset;
         this.update();
     }
 
@@ -27,10 +27,13 @@ export default class LabelLine extends Label {
         this.angle = this.computeAngle();
 
         let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
-        let dot = Vector.dot(perp, [0, 1]);
-        let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
 
-        this.position = Vector.add(this.middleSegment(segment), offset);
+        // old offset
+        //let dot = Vector.dot(perp, [0, 1]);
+        //let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
+        //this.position = Vector.add(this.middleSegment(segment), offset);
+
+        this.position = this.middleSegment(segment);
         this.bbox = this.computeBBox();
     }
 
@@ -104,10 +107,10 @@ export default class LabelLine extends Label {
         let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5 + this.buffer;
 
         let bbox = [
-            this.position[0] - max,
-            this.position[1] - max,
-            this.position[0] + max,
-            this.position[1] + max
+            this.position[0] + this.offset[0] - max,
+            this.position[1] + this.offset[1] - max,
+            this.position[0] + this.offset[0] + max,
+            this.position[1] + this.offset[1] + max
         ];
 
         return bbox;

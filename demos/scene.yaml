@@ -422,7 +422,7 @@ layers:
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             text:
-                offset: [10px, 10px]
+                offset: [0px, -35px]
                 priority: 1
                 font:
                     typeface: italic 10pt Helvetica

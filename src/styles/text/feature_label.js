@@ -1,5 +1,3 @@
-/*global Label */
-
 import Utils from '../../utils/utils';
 import {StyleParser} from '../style_parser';
 

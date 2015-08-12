@@ -57,7 +57,7 @@ void main() {
         applyLayerOrder(a_position.w * 32767., position);
     #endif
 
-    position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution + (a_offset * 32767.) * cos(u_time);
+    position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution + a_offset * 32767.;
 
     gl_Position = position;
 }

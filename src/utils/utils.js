@@ -440,7 +440,7 @@ Utils.pixelToMercator = function (size) {
 
 // http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 Utils.hashString = function(str) {
-    if (str.length == 0) {
+    if (str.length === 0) {
         return 0;
     }
     let hash = 0;

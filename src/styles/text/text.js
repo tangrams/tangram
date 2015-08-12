@@ -288,7 +288,6 @@ Object.assign(TextStyle, {
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
         this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
-        // this.textures[tile].owner = { tile };
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
@@ -341,10 +340,16 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
+                    let offset = [0, 0];
+
+                    if (text_info.offset) {
+                        offset[0] = parseInt(text_info.offset[0]);
+                        offset[1] = parseInt(text_info.offset[1]);
+                    }
 
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
-                            { text, size: text_info.size },
+                            { text, size: text_info.size, offset },
                             this.label_style
                     );
 
@@ -524,6 +529,7 @@ Object.assign(TextStyle, {
                 this.texts[tile.key][style_key][text] = {
                     text_style: label_feature.style,
                     priority: priority,
+                    offset: rule.offset,
                     ref: 0
                 };
             }
@@ -542,7 +548,6 @@ Object.assign(TextStyle, {
 
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        let offset = [10, 10];
 
         for (let i in style.labels) {
             let label = style.labels[i];
@@ -551,10 +556,10 @@ Object.assign(TextStyle, {
                 for (let j in label.labels) {
                     let l = label.labels[j];
                     let subtexcoord_scale = this.subtexcoord_scale[l.text];
-                    this.buildQuad([ l.position ], this.subtext_size[l.text], l.angle || 0, vertex_data, vertex_template, offset);
+                    this.buildQuad([ l.position ], this.subtext_size[l.text], l.angle || 0, vertex_data, vertex_template, l.offset);
                 }
             } else {
-                this.buildQuad([ label.position ], label.size.texture_text_size, label.angle || 0, vertex_data, vertex_template, offset);
+                this.buildQuad([ label.position ], label.size.texture_text_size, label.angle || 0, vertex_data, vertex_template, label.offset);
             }
         }
     },
