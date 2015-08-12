@@ -58,7 +58,7 @@ Object.assign(TextStyle, {
         this.texts = {}; // unique texts, keyed by tile
         this.textures = {};
         this.canvas = {};
-        this.bboxes = {};
+        this.aabbs = {};
         this.features = {};
         this.feature_labels = {};
         this.feature_style_key = {};
@@ -69,7 +69,7 @@ Object.assign(TextStyle, {
         delete this.texts[tile];
         delete this.textures[tile];
         delete this.canvas[tile];
-        delete this.bboxes[tile];
+        delete this.aabbs[tile];
         delete this.features[tile];
         delete this.feature_labels[tile];
         delete this.feature_style_key[tile];
@@ -383,7 +383,7 @@ Object.assign(TextStyle, {
     },
 
     discardLabels (tile, labels, texts) {
-        this.bboxes[tile] = [];
+        this.aabbs[tile] = [];
         this.feature_labels[tile] = new Map();
 
         // Process labels by priority
@@ -396,7 +396,7 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
-                if (!label.discard(this.bboxes[tile])) {
+                if (!label.discard(this.aabbs[tile])) {
                     if (!this.feature_labels[tile].has(feature)) {
                         this.feature_labels[tile].set(feature, []);
                     }
