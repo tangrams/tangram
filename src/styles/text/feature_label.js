@@ -5,18 +5,18 @@ import {StyleParser} from '../style_parser';
 
 export default class FeatureLabel {
 
-	constructor (feature, rule, context, text, tile, font_style) {
-		this.text = text;
-		this.feature = feature;
-		this.tile_key = tile.key;
+    constructor (feature, rule, context, text, tile, font_style) {
+        this.text = text;
+        this.feature = feature;
+        this.tile_key = tile.key;
         this.style = this.constructFontStyle(rule, context, font_style);
         this.style_key = this.constructStyleKey(this.style);
-	}
+    }
 
-	getHash () {
+    getHash () {
         let str = this.tile_key + this.style_key + this.text;
-		return Utils.hashString(str);
-	}
+        return Utils.hashString(str);
+    }
 
     constructFontStyle (rule, context, font_style) {
         let style = {};
