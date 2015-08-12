@@ -63,11 +63,20 @@ Object.assign(Points, {
             return null;
         }
 
-        let sprite = style.sprite = rule_style.sprite;
+        // specify sprite explicitly
+        let sprite = rule_style.sprite;
         if (typeof sprite === 'function') {
             sprite = sprite(context);
         }
-        style.sprite_default = rule_style.sprite_default; // optional fallback if 'sprite' not found
+
+        // specify sprite by field
+        if (!sprite) {
+            sprite = rule_style.sprite_source;
+            sprite = (typeof sprite === 'string') && feature.properties[sprite];
+        }
+
+        // fallback if 'sprite' not found
+        style.sprite_default = rule_style.sprite_default;
 
         // if point has texture and sprites, require a valid sprite to draw
         if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
