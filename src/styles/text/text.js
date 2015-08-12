@@ -7,6 +7,7 @@ import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
+import FeatureLabel from './feature_label';
 
 import log from 'loglevel';
 
@@ -70,7 +71,7 @@ Object.assign(TextStyle, {
         delete this.textures[tile];
         delete this.canvas[tile];
         delete this.bboxes[tile];
-        delete this.features[tile];
+        //delete this.features[tile];
         delete this.feature_labels[tile];
         delete this.feature_style_key[tile];
     },
@@ -322,27 +323,25 @@ Object.assign(TextStyle, {
     createLabels (tile, texts) {
         let labels_priorities = {};
 
-        if (!this.features[tile]) {
-            return;
-        }
-
         for (let style in texts) {
             let text_infos = texts[style];
-
-            if (!this.features[tile][style]) {
-                return;
-            }
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
                 text_info.ref = 0;
 
-                if (!this.features[tile][style][text]) {
-                    return;
+                let hash = Utils.hashString(tile + style + text);
+
+                if (!this.features[hash]) {
+                    continue;
                 }
 
-                for (let f = 0; f < this.features[tile][style][text].length; f++) {
-                    let feature = this.features[tile][style][text][f];
+                let label_features = this.features[hash];
+
+                for (let i = 0; i < label_features.length; ++i) {
+                    let label_feature = label_features[i];
+                    let feature = label_feature.feature;
+
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
                             { text, size: text_info.size },
@@ -501,15 +500,17 @@ Object.assign(TextStyle, {
             feature.text = text;
 
             if (!this.texts[tile.key]) {
-                this.texts[tile.key] = {};
+                this.texts[tile.key] = this.texts[tile.key] || {};
             }
 
-            let style = this.constructFontStyle(rule, context);
-            if (!style) {
+            let label_feature = new FeatureLabel(feature, rule, context, text, tile, this.font_style);
+            let feature_hash = label_feature.getHash();
+
+            if (!label_feature.style) {
                 return;
             }
 
-            let style_key = this.constructStyleKey(style);
+            let style_key = label_feature.style_key;
             this.feature_style_key[tile.key] = this.feature_style_key[tile.key] || new Map();
             this.feature_style_key[tile.key].set(feature, style_key);
 
@@ -521,60 +522,22 @@ Object.assign(TextStyle, {
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
-                    text_style: style,
+                    text_style: label_feature.style,
                     priority: priority,
                     ref: 0
                 };
             }
 
+            // add the label feature
             this.features = this.features || {};
-            this.features[tile.key] = this.features[tile.key] || {};
-            this.features[tile.key][style_key] = this.features[tile.key][style_key] || {};
-            this.features[tile.key][style_key][text] = this.features[tile.key][style_key][text] || [];
-            this.features[tile.key][style_key][text].push(feature);
+            this.features[feature_hash] = this.features[feature_hash] || [];
+            this.features[feature_hash].push(label_feature);
 
             if (!this.tile_data[tile.key]) {
                 this.startData(tile.key);
             }
             this.tile_data[tile.key].queue.push([feature, rule, context]);
         }
-    },
-
-    constructFontStyle (rule, context) {
-        let style;
-
-        if (rule.font) {
-            style = {};
-
-            // Use fill if specified, or default
-            style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) ||
-                         this.font_style.fill;
-
-            // Use stroke if specified
-            if (rule.font.stroke && rule.font.stroke.color) {
-                style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
-                style.stroke_width = rule.font.stroke.width || this.font_style.stroke.width;
-            }
-
-            // Use default typeface
-            style.font = rule.font.typeface || this.font_style.typeface;
-            style.capitalized = rule.font.capitalized || this.font_style.capitalized;
-
-            let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
-            let ft_size = style.font.match(size_regex)[0];
-            let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
-
-            style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
-            style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
-            style.stroke_width *= Utils.device_pixel_ratio;
-            style.font = style.font.replace(size_regex, style.px_size + "px");
-        }
-
-        return style;
-    },
-
-    constructStyleKey ({ font, fill, stroke, stroke_width }) {
-        return `${font}/${fill}/${stroke}/${stroke_width}`;
     },
 
     build (style, vertex_data) {
