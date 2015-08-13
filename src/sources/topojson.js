@@ -44,9 +44,9 @@ export class TopoJSONSource extends GeoJSONSource {
     toGeoJSON (data) {
         // Single layer
         if (data.objects &&
-            Object.keys(data.objects).length === 1 &&
-            data.objects.vectile != null) {
-            data = topojson.feature(data, data.objects.vectile);
+            Object.keys(data.objects).length === 1) {
+            let layer = Object.keys(data.objects)[0];
+            data = topojson.feature(data, data.objects[layer]);
         }
         // Multiple layers
         else {

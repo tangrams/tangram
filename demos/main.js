@@ -96,12 +96,19 @@ Enjoy!
         });
 
     layer.scene.subscribe({
-        loadScene: function (config) {
+        load: function (msg) {
+            var config = msg.config;
             // If no source was set in scene definition, set one based on the URL
             if (!config.sources || !config.sources['osm']) {
                 config.sources = config.sources || {};
                 config.sources['osm'] = tile_sources[default_tile_source];
             }
+        },
+        error: function (msg) {
+            // debugger;
+        },
+        warning: function (msg) {
+            // debugger;
         }
     });
 
@@ -552,8 +559,8 @@ Enjoy!
         if (rS != null) { // rstats
             rS('frame').end();
             rS('rendertiles').set(scene.renderable_tiles_count);
-            rS('glbuffers').set((scene.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
-            rS('features').set(scene.getDebugSum('features'));
+            rS('glbuffers').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
+            rS('features').set(scene.tile_manager.getDebugSum('features'));
             rS().update();
         }
 

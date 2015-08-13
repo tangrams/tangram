@@ -8,6 +8,7 @@ import getExtension from './extensions';
 
 import log from 'loglevel';
 import strip from 'strip-comments';
+import { default as parseShaderErrors } from 'gl-shader-errors';
 
 export default class ShaderProgram {
 
@@ -116,6 +117,8 @@ export default class ShaderProgram {
                 // Combine all blocks into one string
                 source = block.reduce((prev, cur) => `\n${prev}\n${cur}\n`);
             }
+            source = `// tangram-block-start: ${key}\n` + source; // mark start and end of block
+            source += `// tangram-block-end: ${key}`;
 
             // Inject
             if (inject_vertex != null) {
@@ -151,6 +154,9 @@ export default class ShaderProgram {
         defines['TANGRAM_FRAGMENT_SHADER'] = true;
         this.computed_fragment_source = header + ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
 
+        // Add precision qualifier
+        this.computed_fragment_source = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + this.computed_fragment_source;
+
         // Compile & set uniforms to cached values
         try {
             this.program = ShaderProgram.updateProgram(this.gl, this.program, this.computed_vertex_source, this.computed_fragment_source);
@@ -162,6 +168,16 @@ export default class ShaderProgram {
             this.compiled = false;
             this.compiling = false;
             this.error = error;
+
+            // shader error info
+            if (error.type === 'vertex' || error.type === 'fragment') {
+                this.shader_errors = error.errors;
+                for (let e of this.shader_errors) {
+                    e.type = error.type;
+                    e.block = this.block(error.type, e.line);
+                }
+            }
+
             throw(new Error(`ShaderProgram.compile(): program ${this.id} (${this.name}) error:`, error));
         }
 
@@ -396,6 +412,68 @@ export default class ShaderProgram {
         return attrib;
     }
 
+    // Get shader source as string
+    source(type) {
+        if (type === 'vertex') {
+            return this.computed_vertex_source;
+        }
+        else if (type === 'fragment') {
+            return this.computed_fragment_source;
+        }
+    }
+
+    // Get shader source as array of line strings
+    lines(type) {
+        let source = this.source(type);
+        if (source) {
+            return source.split('\n');
+        }
+        return [];
+    }
+
+    // Get a specific line from shader source
+    line(type, num) {
+        let source = this.lines(type);
+        if (source) {
+            return source[num];
+        }
+    }
+
+    // Get info on which shader block (if any) a particular line number in a shader is in
+    // Returns an object with the following info if a block is found: { name, line, source }
+    //  name: shader block name (e.g. 'color', 'position', 'global')
+    //  line: line number *within* the shader block (not the whole shader program), useful for error highlighting
+    //  source: the code for the line
+    // NOTE: this does a bruteforce loop over the shader source and looks for shader block start/end markers
+    // We could track line ranges for shader blocks as they are inserted, but as this code is only used for
+    // error handling on compilation failure, it was simpler to keep it separate than to burden the core
+    // compilation path.
+    block(type, num) {
+        let lines = this.lines(type);
+        let block;
+        for (let i=0; i < num && i < lines.length; i++) {
+            let line = lines[i];
+            let match = line.match(/\/\/ tangram-block-start: (\w+)/);
+            if (match && match.length > 1) {
+                block = { name: match[1] }; // mark current block
+            }
+            else {
+                match = line.match(/\/\/ tangram-block-end: (\w+)/);
+                if (match && match.length > 1) {
+                    block = null; // clear current block
+                }
+            }
+
+            // update line # and content
+            if (block) {
+                // init to -1 so that line 0 is first actual line of block code, after comment marker
+                block.line = (block.line == null) ? -1 : block.line + 1;
+                block.source = line;
+            }
+        }
+        return block;
+    }
+
     // Returns list of available extensions from those requested
     // Sets internal #defines indicating availability of each requested extension
     checkExtensions() {
@@ -479,10 +557,10 @@ ShaderProgram.replaceBlock = function (key, ...blocks) {
 ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragment_shader_source) {
     try {
         var vertex_shader = ShaderProgram.createShader(gl, vertex_shader_source, gl.VERTEX_SHADER);
-        var fragment_shader = ShaderProgram.createShader(gl, '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + fragment_shader_source, gl.FRAGMENT_SHADER);
+        var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
-        log.error(err);
+        log.error(err.message);
         throw err;
     }
 
@@ -509,7 +587,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        var program_error = new Error(
+        let message = new Error(
             `WebGL program error:
             VALIDATE_STATUS: ${gl.getProgramParameter(program, gl.VALIDATE_STATUS)}
             ERROR: ${gl.getError()}
@@ -517,26 +595,27 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
             ${vertex_shader_source}
             --- Fragment Shader ---
             ${fragment_shader_source}`);
-        log.error(program_error);
-        throw program_error;
+
+        let error = { type: 'program', message };
+        log.error(error.message);
+        throw error;
     }
 
     return program;
 };
 
 // Compile a vertex or fragment shader from provided source
-ShaderProgram.createShader = function (gl, source, type) {
-    var shader = gl.createShader(type);
+ShaderProgram.createShader = function (gl, source, stype) {
+    let shader = gl.createShader(stype);
 
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        var shader_error =
-            "WebGL shader error:\n" +
-            (type === gl.VERTEX_SHADER ? "VERTEX" : "FRAGMENT") + " SHADER:\n" +
-            gl.getShaderInfoLog(shader);
-        throw shader_error;
+        let type = (stype === gl.VERTEX_SHADER ? 'vertex' : 'fragment');
+        let message = gl.getShaderInfoLog(shader);
+        let errors = parseShaderErrors(message);
+        throw { type, message, errors };
     }
 
     return shader;
