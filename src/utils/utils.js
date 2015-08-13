@@ -434,10 +434,6 @@ Utils.pointInTile = function (point) {
     return point[0] > 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] < 0;
 };
 
-Utils.pixelToMercator = function (size) {
-    return size * Geo.units_per_pixel;
-};
-
 // http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
 Utils.hashString = function(str) {
     if (str.length === 0) {

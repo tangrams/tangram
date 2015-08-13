@@ -74,7 +74,7 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = Utils.pixelToMercator(this.size.text_size[0]);
+        let label_length = this.size.text_size[0] * Geo.units_per_pixel;
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
@@ -95,11 +95,11 @@ export default class LabelLine extends Label {
     computeAABB (size) {
         let upp = Geo.units_per_pixel;
 
-        let merc_width = this.size.text_size[0] * upp;
-        let merc_height = this.size.text_size[1] * upp;
+        let width = this.size.text_size[0] * upp;
+        let height = this.size.text_size[1] * upp;
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
-        let obb = new OBB(this.position[0] + this.offset[0], this.position[1] + this.offset[1], -this.angle, merc_width, merc_height);
+        let obb = new OBB(this.position[0] + this.offset[0], this.position[1] + this.offset[1], -this.angle, width, height);
         let aabb = obb.getExtent();
         aabb.obb = obb;
 
