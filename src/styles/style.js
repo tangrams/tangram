@@ -76,7 +76,9 @@ export var Style = {
         return this.hasOwnProperty('built_in') && this.built_in;
     },
 
-    fillVertexTemplate(attribute, value, { size, offset = 0 }) {
+    fillVertexTemplate(attribute, value, { size, offset }) {
+        offset = (offset === undefined) ? 0 : offset;
+
         let index = this.vertex_layout.index[attribute];
         if (index === undefined) {
             log.warn(`Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);

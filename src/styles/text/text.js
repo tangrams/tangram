@@ -1,7 +1,6 @@
 // Text rendering style
 
 import Builders from '../builders';
-import {StyleParser} from '../style_parser';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
@@ -555,7 +554,7 @@ Object.assign(TextStyle, {
             if (label.isComposite()) {
                 for (let j in label.labels) {
                     let l = label.labels[j];
-                    let subtexcoord_scale = this.subtexcoord_scale[l.text];
+                    //let subtexcoord_scale = this.subtexcoord_scale[l.text];
                     this.buildQuad([ l.position ], this.subtext_size[l.text], l.angle || 0, vertex_data, vertex_template, l.offset);
                 }
             } else {

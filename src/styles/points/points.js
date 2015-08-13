@@ -143,7 +143,6 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-        let i = 0;
         let color = style.color || StyleParser.defaults.color;
 
         // position - x & y coords will be filled in per-vertex below

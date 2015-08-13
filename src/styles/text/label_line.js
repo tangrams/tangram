@@ -26,9 +26,8 @@ export default class LabelLine extends Label {
 
         this.angle = this.computeAngle();
 
-        let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
-
         // old offset
+        //let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
         //let dot = Vector.dot(perp, [0, 1]);
         //let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
         //this.position = Vector.add(this.middleSegment(segment), offset);
