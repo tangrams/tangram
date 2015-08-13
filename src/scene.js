@@ -108,8 +108,6 @@ export default class Scene {
             }
         };
 
-        this.initialized = false;
-        this.initializing = false;
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
 
