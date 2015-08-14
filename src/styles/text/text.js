@@ -647,7 +647,7 @@ Object.assign(TextStyle, {
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
         // but could be made conditional in the vertex layout to save space
-        style.color = [1, 1, 1, 1];
+        style.color = TextStyle.white;
 
         // tell the point style (base class) that we want to render polygon labels at the polygon's centroid
         style.centroid = true;
@@ -658,3 +658,4 @@ Object.assign(TextStyle, {
 });
 
 TextStyle.texture_id = 0;
+TextStyle.white = [1, 1, 1, 1];
