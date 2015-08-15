@@ -652,6 +652,9 @@ Object.assign(TextStyle, {
         // tell the point style (base class) that we want to render polygon labels at the polygon's centroid
         style.centroid = true;
 
+        // points can be placed off the ground
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
+
         return style;
     }
 
