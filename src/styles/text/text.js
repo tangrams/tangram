@@ -70,11 +70,21 @@ Object.assign(TextStyle, {
         delete this.textures[tile];
         delete this.canvas[tile];
         delete this.aabbs[tile];
-        //delete this.features[tile];
+        // cleanup stored features for this tile
+        for (let key in this.features) {
+            let features = this.features[key];
+            for (let i = 0; i < features.length; ++i) {
+                if (features[i].tile_key === tile) {
+                    delete features[i];
+                }
+            }
+            if (Object.keys(features).length == 0) {
+                delete this.features[key];
+            }
+        }
         delete this.feature_labels[tile];
         delete this.feature_style_key[tile];
     },
-
 
     // Set font style params for canvas drawing
     setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
