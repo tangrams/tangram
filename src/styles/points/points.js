@@ -129,6 +129,11 @@ Object.assign(Points, {
             this.texcoord_scale = null;
         }
 
+        // Offset applied to point in screen space
+        style.offset = rule_style.offset || [0, 0];
+        style.offset[0] = parseInt(style.offset[0]);
+        style.offset[1] = parseInt(style.offset[1]);
+
         return style;
     },
 
@@ -185,7 +190,7 @@ Object.assign(Points, {
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
-                offset: offset,
+                offset: Vector.mult(offset, Utils.device_pixel_ratio),
                 angle: Utils.scaleInt16(Utils.radToDeg(angle), 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535
@@ -198,7 +203,7 @@ Object.assign(Points, {
             return;
         }
 
-        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), [10, 10]);
+        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), style.offset);
     },
 
     buildPolygons(polygons, style, vertex_data) {

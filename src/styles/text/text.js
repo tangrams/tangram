@@ -349,16 +349,10 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
-                    let offset = [0, 0];
-
-                    if (text_info.offset) {
-                        offset[0] = parseInt(text_info.offset[0]);
-                        offset[1] = parseInt(text_info.offset[1]);
-                    }
 
                     let labels = LabelBuilder.labelsFromGeometry(
                             feature.geometry,
-                            { text, size: text_info.size, offset },
+                            { text, size: text_info.size, offset: text_info.offset },
                             this.label_style
                     );
 
@@ -517,6 +511,7 @@ Object.assign(TextStyle, {
                 this.texts[tile.key] = this.texts[tile.key] || {};
             }
 
+            // features stored by hash for later use from main thread (tile / text / style)
             let label_feature = new FeatureLabel(feature, rule, context, text, tile, this.font_style);
             let feature_hash = label_feature.getHash();
 
@@ -532,14 +527,18 @@ Object.assign(TextStyle, {
                 this.texts[tile.key][style_key] = {};
             }
 
+            // label priority (lower is higher)
             let priority = (rule.priority !== undefined) ? parseFloat(rule.priority) : -1 >>> 0;
+
+            // label offset in pixel (applied in screen space)
+            let offset = rule.offset || [0, 0];
+            offset[0] = parseInt(offset[0]);
+            offset[1] = parseInt(offset[1]);
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
-                    text_style: label_feature.style,
-                    priority: priority,
-                    offset: rule.offset,
-                    ref: 0
+                    text_style: label_feature.style, 
+                    priority, offset, ref: 0
                 };
             }
 
