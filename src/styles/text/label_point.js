@@ -1,5 +1,4 @@
 import Label from './label';
-import Utils from '../../utils/utils';
 import Geo from '../../geo';
 import OBB from '../../utils/obb';
 

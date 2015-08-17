@@ -78,7 +78,7 @@ Object.assign(TextStyle, {
                     delete features[i];
                 }
             }
-            if (Object.keys(features).length == 0) {
+            if (Object.keys(features).length === 0) {
                 delete this.features[key];
             }
         }
