@@ -51,7 +51,7 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context, 'meters');
+        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context);
         if (!inner_width) {
             return;
         }
@@ -62,7 +62,7 @@ Object.assign(Lines, {
         // big in world space at the next zoom than at the previous)
         context.zoom ++;
         context.units_per_meter *= 2;
-        let next_width = StyleParser.cacheDistance(rule_style.next_width, context, 'meters');
+        let next_width = StyleParser.cacheDistance(rule_style.next_width, context);
         style.next_width = Utils.scaleInt16(next_width * context.units_per_meter / style.width, 256);
         context.zoom--;
         context.units_per_meter /= 2; // reset to original scale
@@ -101,11 +101,11 @@ Object.assign(Lines, {
         // Construct an outline style
         style.outline = style.outline || {};
         if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
-            let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context, 'meters') * 2;
+            let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context) * 2;
 
             context.zoom ++;
             context.units_per_meter *= 2;
-            let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context, 'meters') * 2;
+            let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context) * 2;
             context.zoom--;
             context.units_per_meter /= 2; // reset to original scale
 

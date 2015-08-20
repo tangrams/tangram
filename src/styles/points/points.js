@@ -92,6 +92,7 @@ Object.assign(Points, {
             }
         }
 
+        // points can be placed off the ground
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
