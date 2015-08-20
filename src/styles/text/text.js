@@ -8,6 +8,7 @@ import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
 import FeatureLabel from './feature_label';
 import LabelOptions from './label_options';
+import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
 
