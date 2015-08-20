@@ -7,6 +7,7 @@ import Utils from '../../utils/utils';
 import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
 import FeatureLabel from './feature_label';
+import LabelOptions from './label_options';
 
 import log from 'loglevel';
 
@@ -36,18 +37,6 @@ Object.assign(TextStyle, {
             typeface: 'Helvetica 12px',
             fill: 'white',
             capitalized: false
-        };
-
-        // default label style
-        this.label_style = {
-            lines: {
-                exceed: 80,
-                offset: 0
-            },
-            points: {
-                max_width: 150,
-                line_height: 100 // percentage
-            }
         };
 
         this.reset();
@@ -212,68 +201,6 @@ Object.assign(TextStyle, {
                     info.size.texture_text_size,
                     texture_size
                 );
-
-                if (!info.sub_texts) {
-                    continue;
-                }
-
-                let width = this.text_buffer;
-                let dists = [];
-                let space_size = info.size.split_size[' '];
-
-                for (let i = 0; i < info.sub_texts.length; ++i) {
-                    let sub_text = info.sub_texts[i];
-                    let split = sub_text.split(' ');
-
-                    dists[i] = width * pixel_scale;
-
-                    for (let j = 0; j < split.length; ++j) {
-                        let word = split[j];
-                        width += info.size.split_size[word];
-
-                        if (j !== split.length - 1) {
-                            width += space_size;
-                        }
-                    }
-
-                    if (i !== info.sub_texts.length - 1) {
-                        width += space_size / 2;
-                    }
-                }
-
-                // sub-texts uv mapping
-                for (let i = 0; i < info.sub_texts.length; ++i) {
-                    let sub_text = info.sub_texts[i];
-
-                    if (!info.subtexcoords) {
-                        info.subtexcoords = {};
-                    }
-
-                    let offset = 0;
-
-                    if (i < info.sub_texts.length - 1) {
-                        offset = info.size.texture_text_size[0] - dists[i + 1];
-                    }
-
-                    let position = [
-                        info.position[0] + dists[i],
-                        info.position[1]
-                    ];
-
-                    let size = [
-                        (info.size.texture_text_size[0] - offset) - dists[i],
-                        info.size.texture_text_size[1]
-                    ];
-
-                    if (!info.subtext_size) {
-                        info.subtext_size = {};
-                    }
-                    info.subtext_size[sub_text] = size;
-
-                    info.subtexcoords[sub_text] = Builders.getTexcoordsForSprite(
-                        position, size, texture_size
-                    );
-                }
             }
         }
     },
@@ -317,17 +244,6 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
-    subTextInfos (label_composite, text_info) {
-        if (!text_info.sub_texts) {
-            text_info.sub_texts = [];
-        }
-
-        for (let i in label_composite.labels) {
-            let label = label_composite.labels[i];
-            text_info.sub_texts.push(label.text);
-        }
-    },
-
     createLabels (tile, texts) {
         let labels_priorities = {};
 
@@ -349,12 +265,9 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
+                    let options = new LabelOptions({ offset: text_info.offset });
 
-                    let labels = LabelBuilder.labelsFromGeometry(
-                            feature.geometry,
-                            { text, size: text_info.size, offset: text_info.offset },
-                            this.label_style
-                    );
+                    let labels = LabelBuilder.labelsFromGeometry(text, text_info.size, feature.geometry, options);
 
                     for (let i = 0; i < labels.length; ++i) {
                         let label = labels[i];
@@ -362,10 +275,6 @@ Object.assign(TextStyle, {
 
                         labels_priorities[text_info.priority] = labels_priorities[text_info.priority] || [];
                         labels_priorities[text_info.priority].push({ style, feature, label, area });
-
-                        if (label.isComposite()) {
-                            this.subTextInfos(label, text_info);
-                        }
                     }
                 }
             }
@@ -559,16 +468,13 @@ Object.assign(TextStyle, {
 
         for (let i in style.labels) {
             let label = style.labels[i];
-
-            if (label.isComposite()) {
-                for (let j in label.labels) {
-                    let l = label.labels[j];
-                    //let subtexcoord_scale = this.subtexcoord_scale[l.text];
-                    this.buildQuad([ l.position ], this.subtext_size[l.text], l.angle || 0, vertex_data, vertex_template, l.offset);
-                }
-            } else {
-                this.buildQuad([ label.position ], label.size.texture_text_size, label.angle || 0, vertex_data, vertex_template, label.offset);
-            }
+            
+            this.buildQuad(
+                [label.position], 
+                label.size.texture_text_size, 
+                label.angle || 0, vertex_data, 
+                vertex_template, label.options.offset
+            );
         }
     },
 
@@ -597,8 +503,6 @@ Object.assign(TextStyle, {
         }
 
         this.texcoord_scale = text_info.texcoords;
-        this.subtexcoord_scale = text_info.subtexcoords;
-        this.subtext_size = text_info.subtext_size;
         style.text = text;
         style.labels = this.feature_labels[tile].get(feature);
 

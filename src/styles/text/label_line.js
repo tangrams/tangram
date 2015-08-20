@@ -4,35 +4,19 @@ import Label from './label';
 import OBB from '../../utils/obb';
 
 export default class LabelLine extends Label {
-    constructor (text, size, lines, style, offset, { move_in_tile, keep_in_tile }) {
-        super(text, size, offset, { move_in_tile, keep_in_tile });
+
+    constructor (text, size, lines, options) {
+        super(text, size, options);
 
         this.segment_index = 0;
         this.lines = lines;
-        this.exceed_heuristic = style.exceed;
-        //this.offset = style.offset;
         this.update();
-    }
-
-    middleSegment (segment) {
-        return [
-            (segment[0][0] + segment[1][0]) / 2,
-            (segment[0][1] + segment[1][1]) / 2,
-        ];
     }
 
     update () {
         let segment = this.currentSegment();
-
         this.angle = this.computeAngle();
-
-        // old offset
-        //let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
-        //let dot = Vector.dot(perp, [0, 1]);
-        //let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
-        //this.position = Vector.add(this.middleSegment(segment), offset);
-
-        this.position = this.middleSegment(segment);
+        this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
         this.aabb = this.computeAABB();
     }
 
@@ -78,7 +62,7 @@ export default class LabelLine extends Label {
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
             let exceed = (1 - (length / label_length)) * 100;
-            return exceed < this.exceed_heuristic;
+            return exceed < this.options.exceed;
         }
 
         return label_length < length;
@@ -93,12 +77,12 @@ export default class LabelLine extends Label {
 
     computeAABB (size) {
         let upp = Geo.units_per_pixel;
-
         let width = this.size.text_size[0] * upp;
         let height = this.size.text_size[1] * upp;
+        let p = [this.position[0] + this.options.offset[0], this.position[1] + this.options.offset[1]];
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
-        let obb = new OBB(this.position[0] + this.offset[0], this.position[1] + this.offset[1], -this.angle, width, height);
+        let obb = new OBB(p[0], p[1], -this.angle, width, height);
         let aabb = obb.getExtent();
         aabb.obb = obb;
 
@@ -134,5 +118,6 @@ export default class LabelLine extends Label {
 
         return super.discard(aabbs);
     }
+
 }
 
