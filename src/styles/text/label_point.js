@@ -14,8 +14,8 @@ export default class LabelPoint extends Label {
     computeAABB () {
         let width = this.size.text_size[0] * Geo.units_per_pixel;
         let height = this.size.text_size[1] * Geo.units_per_pixel;
-        
-        let p = [this.position[0] + this.options.offset[0], this.position[1] + this.options.offset[1]];
+        // apply offset, x positive, y pointing down
+        let p = [this.position[0] + this.options.offset[0], this.position[1] - this.options.offset[1]];
         let obb = new OBB(p[0], p[1], 0.0, width + this.options.buffer, height + this.options.buffer);
         let aabb = obb.getExtent();
         aabb.obb = obb;

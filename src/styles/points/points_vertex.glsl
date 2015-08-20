@@ -56,8 +56,8 @@ void main() {
     #ifdef TANGRAM_LAYER_ORDER
         applyLayerOrder(a_position.w * 32767., position);
     #endif
-
-    position.xy += (rotate2D(shape_offset, radians(shape.z * 360.)) * 2. + a_offset * 32767.) * position.w / u_resolution;
+    vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
+    position.xy += (rotate2D(shape_offset, radians(shape.z * 360.)) * 2. + offset * 32767.) * position.w / u_resolution;
 
     gl_Position = position;
 }

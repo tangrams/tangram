@@ -440,7 +440,7 @@ Object.assign(TextStyle, {
             // label offset in pixel (applied in screen space)
             let offset = rule.offset || [0, 0];
             offset[0] = parseInt(offset[0]);
-            offset[1] = parseInt(offset[1]);
+            offset[1] = parseInt(offset[1]); // y-point down
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
