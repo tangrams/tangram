@@ -99,18 +99,9 @@ Object.assign(TextStyle, {
     textSize (text, tile, capitalized) {
         let str = capitalized ? text.toUpperCase() : text;
         let ctx = this.canvas[tile].context;
-        let split = str.split(' ');
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        let split_size = {
-            " ": this.canvas[tile].context.measureText(" ").width / Utils.device_pixel_ratio
-        };
-
-        for (let i in split) {
-            let word = split[i];
-            split_size[word] = ctx.measureText(word).width / Utils.device_pixel_ratio;
-        }
 
         let str_width = ctx.measureText(str).width;
         let text_size = [
@@ -123,7 +114,7 @@ Object.assign(TextStyle, {
             this.px_size + buffer * 2
         ];
 
-        return { split_size, text_size, texture_text_size, px_size, px_logical_size };
+        return { text_size, texture_text_size, px_size, px_logical_size };
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
