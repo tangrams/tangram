@@ -2,9 +2,7 @@
 
 import boxIntersect from 'box-intersect';
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
 import OBB from '../../utils/obb';
-import Vector from '../../vector';
 
 export default class Label {
 

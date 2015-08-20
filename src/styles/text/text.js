@@ -185,8 +185,6 @@ Object.assign(TextStyle, {
     },
 
     rasterize (tile, texts, texture_size) {
-        let pixel_scale = Utils.device_pixel_ratio;
-
         for (let style in texts) {
             let text_infos = texts[style];
 
@@ -468,7 +466,7 @@ Object.assign(TextStyle, {
 
         for (let i in style.labels) {
             let label = style.labels[i];
-            
+
             this.buildQuad(
                 [label.position], 
                 label.size.texture_text_size, 
