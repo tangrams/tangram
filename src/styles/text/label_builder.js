@@ -5,7 +5,7 @@ import Geo from '../../geo';
 var LabelBuilder;
 export default LabelBuilder = {};
 
-LabelBuilder.labelsFromGeometry = function (text, size, geometry, options) {
+LabelBuilder.buildFromGeometry = function (text, size, geometry, options) {
     let labels = [];
 
     if (geometry.type === "LineString") {
@@ -38,5 +38,3 @@ LabelBuilder.labelsFromGeometry = function (text, size, geometry, options) {
 
     return labels;
 };
-
-

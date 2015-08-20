@@ -14,8 +14,6 @@ export default class Label {
             position: null,
             aabb: null,
         });
-
-        this.id = Label.id++;
     }
 
     occluded (aabbs) {
@@ -76,8 +74,4 @@ export default class Label {
         // should we discard? if not, just make occlusion test
         return discard || this.occluded(aabbs);
     }
-
 }
-
-Label.id = 0;
-

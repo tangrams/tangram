@@ -120,4 +120,3 @@ export default class LabelLine extends Label {
     }
 
 }
-

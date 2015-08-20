@@ -49,4 +49,3 @@ export default class LabelPoint extends Label {
     }
 
 }
-

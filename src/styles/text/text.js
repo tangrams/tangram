@@ -265,7 +265,7 @@ Object.assign(TextStyle, {
                     let feature = label_feature.feature;
                     let options = new LabelOptions({ offset: text_info.offset });
 
-                    let labels = LabelBuilder.labelsFromGeometry(text, text_info.size, feature.geometry, options);
+                    let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
 
                     for (let i = 0; i < labels.length; ++i) {
                         let label = labels[i];
