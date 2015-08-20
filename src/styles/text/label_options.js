@@ -11,7 +11,7 @@ export default class LabelOptions {
             buffer
         });
 
-        this.buffer = this.buffer || 2;
+        this.buffer = this.buffer || 4;
         this.buffer *= Geo.units_per_pixel;
         this.keep_in_tile = this.keep_in_tile || true;
         this.move_in_tile = this.move_in_tile || true;
