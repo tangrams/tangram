@@ -23,8 +23,9 @@ Object.assign(TextStyle, {
         this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = 'TextStyle-' + this.name;
         if (Utils.isMainThread) {
-            WorkerBroker.addTarget('TextStyle', this);
+            WorkerBroker.addTarget(this.main_thread_target, this);
         }
 
         // Point style (parent class) requires texturing to be turned on
@@ -442,7 +443,7 @@ Object.assign(TextStyle, {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target, 'getTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
@@ -459,13 +460,13 @@ Object.assign(TextStyle, {
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
                 this.freeTile(tile);
-                WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
+                WorkerBroker.postMessage(this.main_thread_target, 'freeTile', tile);
                 // early exit
                 return;
             }
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(({ texts, texture }) => {
+            return WorkerBroker.postMessage(this.main_thread_target, 'addTexts', tile, texts).then(({ texts, texture }) => {
                 if (texts) {
                     this.texts[tile] = texts;
 
