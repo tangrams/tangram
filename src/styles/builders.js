@@ -469,7 +469,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  Add special joins (not miter) types that require FAN tessellations
+//  Add special join types (not miter) that require FAN tessellation
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
@@ -509,7 +509,7 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
     }
 }
 
-//  Function to add the vertex need for line caps,
+//  Function to add the vertices needed for line caps,
 //  because re-use the buffers needs to be at the end
 function addCap (coord, normal, numCorners, isBeginning, constants) {
 
@@ -523,7 +523,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
         uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
 
     if (!isBeginning) {
-        uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
+        uvA = [constants.min_u,constants.max_v],                        // Beginning angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
         uvB = [constants.max_u,constants.max_v];
     }
@@ -536,7 +536,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 
 // Add a vertex to the VBO - get it from vertices at the specified index
 // (internal method for polyline builder)
-function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize, normal_index }, wall) {
+function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize, normal_index }, face_type) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -560,22 +560,37 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         vertex_template[scaling_index + 2] = halfWidth;
     }
 
-    // set normal to the scaling direction for the walls - this won't be triggered if it's a top
-    // console.log('normal_index?', normal_index);
-    // normal_index not getting set...
-    if (wall) {
-        vertex_template[normal_index + 0] = scalingVecs[index][0] * 1.5;
-        vertex_template[normal_index + 1] = scalingVecs[index][1] * 1.5;
+    // set normals
+    // set scaling factor to overcome 8-bit depth precision truncating low values
+    let scale = 1.5;
+    // set normals to the scaling direction for the walls
+    if (face_type == "wall") {
+        vertex_template[normal_index + 0] = scalingVecs[index][0] * scale;
+        vertex_template[normal_index + 1] = scalingVecs[index][1] * scale;
+        vertex_template[normal_index + 2] = 0;
+    } else if (face_type == "cap") {
+    // set normals to the perpendicular of the scaling direction for caps
+        // need two perpendiculars - one for the first vertex in the pair, then its opposite for the second vertex, because it has the opposite scalingVec
+        if (index % 2 == 0) {
+            vertex_template[normal_index + 0] = scalingVecs[index][1] * -scale;
+            vertex_template[normal_index + 1] = scalingVecs[index][0] * scale;
+        } else {
+            vertex_template[normal_index + 0] = scalingVecs[index][1] * scale;
+            vertex_template[normal_index + 1] = scalingVecs[index][0] * -scale;
+        }
+        // reverse the normals for the first caps in a line
+        if (index <= 3) { // magic # = first two vertices in a line are the caps
+            vertex_template[normal_index + 0] *= -1;
+            vertex_template[normal_index + 1] *= -1;
+        }
+        // z normal component is always 0
         vertex_template[normal_index + 2] = 0;
     } else {
+    // set normals straight up for face tops
         vertex_template[normal_index + 0] = 0;
         vertex_template[normal_index + 1] = 0;
         vertex_template[normal_index + 2] = 1;
     }
-        // vertex_template[normal_index + 0] = scalingVecs[index][0] * scaling_normalize;
-        // vertex_template[normal_index + 1] = scalingVecs[index][1] * scaling_normalize;
-        // vertex_template[normal_index + 2] = 0;
-
 
     //  Add vertex to VBO
     vertex_data.addVertex(vertex_template);
@@ -589,26 +604,23 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 //
 function addTrianglePairs (constants) {
     // Add vertices to buffer at the appropriate index
-    if (constants.height == 0) { // will this also pick up outlines?
-        // yeah not sure this is't the right factor -
-        // some of the others still show up at 0 z...
-    // if (true) {
+    if (constants.height == 0) {
         //      top
         //     0---1
         //     |  /|
         //     | / |
         //     |/  |
         //     2---3
-        // for (var i = 0; i < constants.nPairs; i++) {
-        //     // first triangle
-        //     addVertexAtIndex(2*i+2, constants);
-        //     addVertexAtIndex(2*i+1, constants);
-        //     addVertexAtIndex(2*i+0, constants);
-        //     // second triangle
-        //     addVertexAtIndex(2*i+2, constants);
-        //     addVertexAtIndex(2*i+3, constants);
-        //     addVertexAtIndex(2*i+1, constants);
-        // }
+        for (var i = 0; i < constants.nPairs; i++) {
+            // first triangle
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+1, constants);
+            addVertexAtIndex(2*i+0, constants);
+            // second triangle
+            addVertexAtIndex(2*i+2, constants);
+            addVertexAtIndex(2*i+3, constants);
+            addVertexAtIndex(2*i+1, constants);
+        }
     } else {
         // need three pairs of vertices - top, wall top, wall bottom
         //     wbtm    wtop     top
@@ -621,40 +633,42 @@ function addTrianglePairs (constants) {
         for (var i = 0; i < constants.nPairs; i++) {
             var wall = false;
             // start cap
-            // first cap triangle
-            // addVertexAtIndex(4*i+1, constants, wall);
-            // addVertexAtIndex(4*i+0, constants, wall);
-            // addVertexAtIndex(4*i+3, constants, wall);
-            // // second cap triangle
-            // addVertexAtIndex(4*i+3, constants, wall);
-            // addVertexAtIndex(4*i+0, constants, wall);
-            // addVertexAtIndex(4*i+2, constants, wall);
+            // first start cap triangle
+            // really only want to add caps at the first and last vertices --
+            // this is currently adding them for every vertex. not good
+            // this is also currently connecting to the last vertex for some reason, hmmmm
+            addVertexAtIndex(4*i+1, constants, "cap");
+            addVertexAtIndex(4*i+0, constants, "cap");
+            addVertexAtIndex(4*i+3, constants, "cap");
+            // // second start cap triangle
+            addVertexAtIndex(4*i+3, constants, "cap");
+            addVertexAtIndex(4*i+0, constants, "cap");
+            addVertexAtIndex(4*i+2, constants, "cap");
 
             // top
             // first top triangle
-            addVertexAtIndex(6*i+4, constants, wall);
-            addVertexAtIndex(6*i+10, constants, wall);
-            addVertexAtIndex(6*i+5, constants, wall);
+            addVertexAtIndex(6*i+4, constants);
+            addVertexAtIndex(6*i+10, constants);
+            addVertexAtIndex(6*i+5, constants);
             // second top triangle
-            addVertexAtIndex(6*i+5, constants, wall);
-            addVertexAtIndex(6*i+10, constants, wall);
-            addVertexAtIndex(6*i+11, constants, wall);
+            addVertexAtIndex(6*i+5, constants);
+            addVertexAtIndex(6*i+10, constants);
+            addVertexAtIndex(6*i+11, constants);
 
             // // bottom triangle
-            // addVertexAtIndex(6*i+0, constants, wall);
-            // addVertexAtIndex(6*i+6, constants, wall);
-            // addVertexAtIndex(6*i+1, constants, wall);
+            // addVertexAtIndex(6*i+0, constants, "wall");
+            // addVertexAtIndex(6*i+6, constants, "wall");
+            // addVertexAtIndex(6*i+1, constants, "wall");
 
-            wall = true;
             // first wall:
             // first triangle
-            addVertexAtIndex(6*i+0, constants, wall);
-            addVertexAtIndex(6*i+6, constants, wall);
-            addVertexAtIndex(6*i+2, constants, wall);
+            addVertexAtIndex(6*i+0, constants, "wall");
+            addVertexAtIndex(6*i+6, constants, "wall");
+            addVertexAtIndex(6*i+2, constants, "wall");
             // // second triangle
-            addVertexAtIndex(6*i+2, constants, wall);
-            addVertexAtIndex(6*i+6, constants, wall);
-            addVertexAtIndex(6*i+8, constants, wall);
+            addVertexAtIndex(6*i+2, constants, "wall");
+            addVertexAtIndex(6*i+6, constants, "wall");
+            addVertexAtIndex(6*i+8, constants, "wall");
         //     wbtm    wtop     top
         //     0---1   2---3   4---5
         //     |   |   |   |   |  /|
@@ -663,23 +677,23 @@ function addTrianglePairs (constants) {
         //     6---7   8---9   10-11
             // second wall:
             // first triangle
-            addVertexAtIndex(6*i+7, constants, wall);
-            addVertexAtIndex(6*i+1, constants, wall);
-            addVertexAtIndex(6*i+9, constants, wall);
+            addVertexAtIndex(6*i+7, constants, "wall");
+            addVertexAtIndex(6*i+1, constants, "wall");
+            addVertexAtIndex(6*i+9, constants, "wall");
             // second triangle
-            addVertexAtIndex(6*i+9, constants, wall);
-            addVertexAtIndex(6*i+1, constants, wall);
-            addVertexAtIndex(6*i+3, constants, wall);
+            addVertexAtIndex(6*i+9, constants, "wall");
+            addVertexAtIndex(6*i+1, constants, "wall");
+            addVertexAtIndex(6*i+3, constants, "wall");
  
-            // // end cap
-            // // first cap triangle
-            // addVertexAtIndex(6*i+4, constants, wall);
-            // addVertexAtIndex(6*i+5, constants, wall);
-            // addVertexAtIndex(6*i+6, constants, wall);
-            // // second cap triangle
-            // addVertexAtIndex(6*i+6, constants, wall);
-            // addVertexAtIndex(6*i+5, constants, wall);
-            // addVertexAtIndex(6*i+7, constants, wall);
+            // end cap
+            // first end cap triangle
+            addVertexAtIndex(6*i+6, constants, "cap");
+            addVertexAtIndex(6*i+7, constants, "cap");
+            addVertexAtIndex(6*i+10, constants, "cap");
+            // second end cap triangle
+            addVertexAtIndex(6*i+10, constants, "cap");
+            addVertexAtIndex(6*i+7, constants, "cap");
+            addVertexAtIndex(6*i+11, constants, "cap");
 
 
         }
