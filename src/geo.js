@@ -10,7 +10,7 @@ Geo.circumference_meters = Geo.half_circumference_meters * 2;
 Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
 Geo.meters_per_tile = [];
-Geo.max_zoom = 20;
+Geo.max_zoom = 18;
 for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
     Geo.meters_per_tile[z] = Geo.circumference_meters / Math.pow(2, z);
@@ -234,4 +234,32 @@ Geo.multiPolygonArea = function (polygons) {
 
 Geo.ringWinding = function (ring) {
     return Geo.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
+};
+
+// Enforce winding order on outer/inner rings
+// winding: 'CW' or 'CCW'
+Geo.enforceWinding = function (geom, winding) {
+    let polys;
+    if (geom.type === 'Polygon') {
+        polys = [geom.coordinates];
+    }
+    else if (geom.type === 'MultiPolygon') {
+        polys = geom.coordinates;
+    }
+    else {
+        return geom;
+    }
+
+    for (let p=0; p < polys.length; p++) {
+        let poly = polys[p];
+
+        // If first ring winding doesn't match, reverse all rings
+        // NOTE: assumes ring winding orders already alternate as expected
+        if (Geo.ringWinding(poly[0]) !== winding) {
+            for (let ring of poly) {
+                ring.reverse();
+            }
+        }
+    }
+    return geom;
 };

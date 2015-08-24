@@ -67,7 +67,9 @@ export class GeoJSONSource extends NetworkSource {
         this.tiled = true;
         this.load_data = null;
         this.tile_indexes = {}; // geojson-vt tile indices, by layer name
-        this.max_zoom = this.max_zoom || 14;
+        this.max_zoom = Math.max(this.max_zoom || 0, 15); // TODO: max zoom < 15 causes artifacts/no-draw at 20, investigate
+        this.pad_scale = 0; // we don't want padding on auto-tiled sources
+        this.enforce_winding = (source.enforce_winding === false) ? false : true; // default on, can be forced off
     }
 
     _load(dest) {

@@ -347,15 +347,23 @@ StyleManager.inheritanceDepth = function (key, styles) {
 };
 
 // Compile all styles
-StyleManager.compile = function (keys) {
+StyleManager.compile = function (keys, scene) {
     keys = keys || Object.keys(Styles);
     for (let key of keys) {
+        let style = Styles[key];
         try {
-            Styles[key].compile();
+            style.compile();
             log.trace(`StyleManager.compile(): compiled style ${key}`);
         }
         catch(error) {
             log.error(`StyleManager.compile(): error compiling style ${key}:`, error);
+
+            scene.trigger('warning', {
+                type: 'styles',
+                message: `Error compiling style ${key}`,
+                style,
+                shader_errors: style.program && style.program.shader_errors
+            });
         }
     }
 

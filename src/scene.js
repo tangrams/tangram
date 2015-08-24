@@ -13,6 +13,7 @@ import Light from './light';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
+import RenderState from './gl/render_state';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -107,8 +108,6 @@ export default class Scene {
             }
         };
 
-        this.initialized = false;
-        this.initializing = false;
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
 
@@ -135,7 +134,10 @@ export default class Scene {
                 this.resetFeatureSelection();
 
                 if (!this.texture_listener) {
-                    this.texture_listener = { update: () => this.dirty = true };
+                    this.texture_listener = {
+                        update: () => this.dirty = true,
+                        warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
+                    };
                     Texture.subscribe(this.texture_listener);
                 }
 
@@ -155,14 +157,25 @@ export default class Scene {
             this.initializing = false;
             this.updating = 0;
 
-            // Revert to last valid config if available
-            let msg = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
+            // Report and revert to last valid config if available
+            let type, message;
+            if (error.name === 'YAMLException') {
+                type = 'yaml';
+                message = 'Error parsing scene YAML';
+            }
+            else {
+                // TODO: more error types
+                message = 'Error initializing scene';
+            }
+            this.trigger('error', { type, message, error, url: this.config_source });
+
+            message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
             if (this.last_valid_config_source) {
-                log.warn(msg, error);
+                log.warn(message, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
                 return this.load(this.last_valid_config_source);
             }
-            log.error(msg, error);
+            log.error(message, error);
             throw error;
         });
     }
@@ -243,6 +256,7 @@ export default class Scene {
 
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
+        RenderState.initialize(this.gl);
     }
 
     // Get the URL to load the web worker from
@@ -650,27 +664,37 @@ export default class Scene {
 
         // Opaque styles: depth test on, depth write on, blending off
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
-        this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
-        count += this.renderStyles(styles, program_key);
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+            count += this.renderStyles(styles, program_key);
+        }
 
         // Transparent styles: depth test off, depth write on, custom blending
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
-        count += this.renderStyles(styles, program_key);
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+            count += this.renderStyles(styles, program_key);
+        }
 
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
-        count += this.renderStyles(styles, program_key);
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+            count += this.renderStyles(styles, program_key);
+        }
 
         // Inlay styles: depth test on, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'inlay');
-        this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
-        count += this.renderStyles(styles, program_key);
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
+            count += this.renderStyles(styles, program_key);
+        }
 
         // Overlay styles: depth test off, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
-        this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
-        count += this.renderStyles(styles, program_key);
+        if (styles.length > 0) {
+            this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+            count += this.renderStyles(styles, program_key);
+        }
 
         return count;
     }
@@ -712,6 +736,11 @@ export default class Scene {
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
                     program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
+                    // Normal matrix - transforms surface normals into view space
+                    // this matrix is constant since the view doesn't rotate for now
+                    mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+                    program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
                         this.lights[i].setupProgram(program);
@@ -733,10 +762,6 @@ export default class Scene {
                 // Model view matrix - transform tile space into view space (meters, relative to camera)
                 mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
                 program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-                // Normal matrix - transforms surface normals into view space
-                mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-                program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
 
                 // Render tile
                 tile.meshes[style].render();
@@ -788,42 +813,26 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        if (depth_test) {
-            gl.enable(gl.DEPTH_TEST);
-            gl.depthFunc(gl.LEQUAL);
-        }
-        else {
-            gl.disable(gl.DEPTH_TEST);
-        }
-
-        gl.depthMask(depth_write);
-
-        if (cull_face) {
-            gl.enable(gl.CULL_FACE);
-            gl.cullFace(gl.BACK);
-        }
-        else {
-            gl.disable(gl.CULL_FACE);
-        }
+        RenderState.depth_test.set({ depth_test: depth_test, depth_func: gl.LEQUAL });
+        RenderState.depth_write.set({ depth_write: depth_write });
+        RenderState.culling.set({ cull: cull_face, face: gl.BACK });
 
         if (alpha_blend) {
-            gl.enable(gl.BLEND);
-
             // Traditional blending
             if (alpha_blend === true) {
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                RenderState.blending.set({ blend: true, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA });
             }
             // Additive blending
             else if (alpha_blend === 'add') {
-                gl.blendFunc(gl.ONE, gl.ONE);
+                RenderState.blending.set({ blend: true, src: gl.ONE, dst: gl.ONE });
             }
             // Multiplicative blending
             else if (alpha_blend === 'multiply') {
-                gl.blendFunc(gl.ZERO, gl.SRC_COLOR);
+                RenderState.blending.set({ blend: true, src: gl.ZERO, dst: gl.SRC_COLOR });
             }
         }
         else {
-            gl.disable(gl.BLEND);
+            RenderState.blending.set({ blend: false, src: null, dst: null} );
         }
     }
 
@@ -878,7 +887,7 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             this.syncConfigToWorker();
-            StyleManager.compile(this.updateActiveStyles()); // only recompile newly active styles
+            StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             this.resetFeatureSelection();
             this.resetTime();
 
@@ -935,7 +944,7 @@ export default class Scene {
 
         return Utils.loadResource(this.config_source).then((config) => {
             this.config = config;
-            return this.preProcessConfig().then(() => { this.trigger('loadScene', this.config); });
+            return this.preProcessConfig().then(() => { this.trigger('load', { config: this.config }); });
         });
     }
 
@@ -944,6 +953,12 @@ export default class Scene {
             let source = this.config.sources[name];
             source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+
+            if (!this.sources[name]) {
+                delete this.sources[name];
+                log.warn(`Scene: could not create data source`, source);
+                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+            }
         }
     }
 
@@ -1017,7 +1032,7 @@ export default class Scene {
 
         // Find & compile active styles
         this.updateActiveStyles();
-        StyleManager.compile(Object.keys(this.active_styles));
+        StyleManager.compile(Object.keys(this.active_styles), this);
 
         this.dirty = true;
     }

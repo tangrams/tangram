@@ -58,13 +58,15 @@ export default class Texture {
             return;
         }
         if (typeof unit === 'number') {
-            this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+            if (Texture.activeUnit !== unit) {
+                this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+                Texture.activeUnit = unit;
+            }
         }
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-    }
-
-    unbind() {
-        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+        if (Texture.activeTexture !== this.texture) {
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+            Texture.activeTexture = this.texture;
+        }
     }
 
     // Loads a texture from a URL
@@ -80,18 +82,25 @@ export default class Texture {
         this.loading = new Promise((resolve, reject) => {
             this.image = new Image();
             this.image.onload = () => {
-                this.update(options);
-                this.setTextureFiltering(options);
-                this.calculateSprites();
+                try {
+                    this.update(options);
+                    this.setTextureFiltering(options);
+                    this.calculateSprites();
 
-                this.canvas = null; // mutually exclusive with other types
-                this.data = null;
+                    this.canvas = null; // mutually exclusive with other types
+                    this.data = null;
+                }
+                catch (e) {
+                    log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                    Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
+                }
 
                 resolve(this);
             };
             this.image.onerror = e => {
                 // Warn and resolve on error
                 log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
                 resolve(this);
             };
             this.image.crossOrigin = 'anonymous';
@@ -217,7 +226,6 @@ export default class Texture {
             }
         }
 
-        this.unbind();
         Texture.trigger('update', this);
     }
 
@@ -267,11 +275,9 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
-            if (!Texture.textures[texname]) {
-                let texture = new Texture(gl, texname, config);
-                if (config.url) {
-                    loading.push(texture.load(config.url, config));
-                }
+            let texture = new Texture(gl, texname, config);
+            if (config.url) {
+                loading.push(texture.load(config.url, config));
             }
         }
     }
@@ -333,6 +339,8 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+Texture.boundTexture = -1;
+Texture.activeUnit = -1;
 
 Texture.base_url = null; // optional base URL to add to textures
 

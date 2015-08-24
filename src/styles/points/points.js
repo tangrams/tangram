@@ -63,22 +63,34 @@ Object.assign(Points, {
             return null;
         }
 
-        style.sprite = rule_style.sprite;
-        if (typeof style.sprite === 'function') {
-            style.sprite = style.sprite(context);
+        let sprite = style.sprite = rule_style.sprite;
+        if (typeof sprite === 'function') {
+            sprite = sprite(context);
         }
+        style.sprite_default = rule_style.sprite_default; // optional fallback if 'sprite' not found
 
         // if point has texture and sprites, require a valid sprite to draw
         if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
-            if (!style.sprite) {
+            if (!sprite && !style.sprite_default) {
                 return;
             }
-            else if (!Texture.textures[this.texture].sprites[style.sprite]) {
-                log.warn(`Style: in style '${this.name}', could not find sprite '${style.sprite}' for texture '${this.texture}'`);
-                return;
+            else if (!Texture.textures[this.texture].sprites[sprite]) {
+                // If sprite not found, check for default sprite
+                if (style.sprite_default) {
+                    sprite = style.sprite_default;
+                    if (!Texture.textures[this.texture].sprites[sprite]) {
+                        log.warn(`Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
+                        return;
+                    }
+                }
+                else {
+                    log.warn(`Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    return;
+                }
             }
         }
 
+        // points can be placed off the ground
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
@@ -110,8 +122,8 @@ Object.assign(Points, {
         style.centroid = rule_style.centroid;
 
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        if (this.texture && style.sprite) {
-            this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, style.sprite);
+        if (this.texture && sprite) {
+            this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, sprite);
         } else {
             this.texcoord_scale = null;
         }

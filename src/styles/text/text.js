@@ -23,13 +23,18 @@ Object.assign(TextStyle, {
         this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = 'TextStyle-' + this.name;
         if (Utils.isMainThread) {
-            WorkerBroker.addTarget('TextStyle', this);
+            WorkerBroker.addTarget(this.main_thread_target, this);
         }
 
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
+
+        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
+        // See https://github.com/tangrams/tangram/issues/179
+        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // default font style
         this.font_style = {
@@ -58,7 +63,7 @@ Object.assign(TextStyle, {
         this.texts = {}; // unique texts, keyed by tile
         this.textures = {};
         this.canvas = {};
-        this.bboxes = {};
+        this.aabbs = {};
         this.features = {};
         this.feature_labels = {};
         this.feature_style_key = {};
@@ -69,7 +74,7 @@ Object.assign(TextStyle, {
         delete this.texts[tile];
         delete this.textures[tile];
         delete this.canvas[tile];
-        delete this.bboxes[tile];
+        delete this.aabbs[tile];
         delete this.features[tile];
         delete this.feature_labels[tile];
         delete this.feature_style_key[tile];
@@ -383,7 +388,7 @@ Object.assign(TextStyle, {
     },
 
     discardLabels (tile, labels, texts) {
-        this.bboxes[tile] = [];
+        this.aabbs[tile] = [];
         this.feature_labels[tile] = new Map();
 
         // Process labels by priority
@@ -396,7 +401,7 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
-                if (!label.discard(this.bboxes[tile])) {
+                if (!label.discard(this.aabbs[tile])) {
                     if (!this.feature_labels[tile].has(feature)) {
                         this.feature_labels[tile].set(feature, []);
                     }
@@ -438,7 +443,7 @@ Object.assign(TextStyle, {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage('TextStyle', 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target, 'getTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
@@ -455,13 +460,13 @@ Object.assign(TextStyle, {
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
                 this.freeTile(tile);
-                WorkerBroker.postMessage('TextStyle', 'freeTile', tile);
+                WorkerBroker.postMessage(this.main_thread_target, 'freeTile', tile);
                 // early exit
                 return;
             }
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage('TextStyle', 'addTexts', tile, texts).then(({ texts, texture }) => {
+            return WorkerBroker.postMessage(this.main_thread_target, 'addTexts', tile, texts).then(({ texts, texture }) => {
                 if (texts) {
                     this.texts[tile] = texts;
 
@@ -647,10 +652,13 @@ Object.assign(TextStyle, {
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
         // but could be made conditional in the vertex layout to save space
-        style.color = [1, 1, 1, 1];
+        style.color = TextStyle.white;
 
         // tell the point style (base class) that we want to render polygon labels at the polygon's centroid
         style.centroid = true;
+
+        // points can be placed off the ground
+        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
         return style;
     }
@@ -658,3 +666,4 @@ Object.assign(TextStyle, {
 });
 
 TextStyle.texture_id = 0;
+TextStyle.white = [1, 1, 1, 1];

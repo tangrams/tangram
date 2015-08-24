@@ -170,12 +170,9 @@ StyleParser.convertUnits = function(val, context, convert = 'meters') {
 // Takes a distance cache object and returns a distance value for this zoom
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
-StyleParser.cacheDistance = function(val, context, convert = 'units') {
+StyleParser.cacheDistance = function(val, context, convert = 'meters') {
     if (val.dynamic) {
         let v = val.dynamic(context);
-        if (convert === 'units') {
-            v *= context.units_per_meter;
-        }
         return v;
     }
     else if (val.zoom && val.zoom[convert] && val.zoom[convert][context.zoom]) {
@@ -186,48 +183,21 @@ StyleParser.cacheDistance = function(val, context, convert = 'units') {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
-            if (convert === 'units') {
-                v *= context.units_per_meter;
-            }
             return v;
         }
-        // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
+        // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
         else {
-            // Calculate color for current zoom
+            // Calculate value for current zoom
             val.zoom = val.zoom || {};
             let zunits = val.zoom[convert] = val.zoom[convert] || {};
 
             zunits[context.zoom] = StyleParser.convertUnits(val.value, context,
-                (convert === 'units' || convert === 'meters') && 'meters'); // convert to meters
+                convert === 'meters' && 'meters'); // convert to meters
             zunits[context.zoom] = Utils.interpolate(context.zoom, zunits[context.zoom]);
 
-            // Convert to tile units
-            if (convert === 'units') {
-                zunits[context.zoom] *= context.units_per_meter;
-            }
             return zunits[context.zoom];
         }
     }
-};
-
-StyleParser.parseDistance = function(val, context, convert = 'units') {
-    if (typeof val === 'function') {
-        val = val(context);
-    }
-    val = StyleParser.convertUnits(val, context,
-        (convert === 'units' || convert === 'meters') && 'meters'); // convert to meters
-    val = Utils.interpolate(context.zoom, val);
-
-    // Convert to tile units
-    if (convert === 'units') {
-        if (typeof val === 'number') {
-            val *= context.units_per_meter;
-        }
-        else if (Array.isArray(val)) {
-            val.forEach((v, i) => val[i] *= context.units_per_meter);
-        }
-    }
-    return val;
 };
 
 // Cache previously parsed color strings

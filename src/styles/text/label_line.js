@@ -2,6 +2,7 @@ import Vector from '../../vector';
 import Geo from '../../geo';
 import Label from './label';
 import Utils from '../../utils/utils';
+import OBB from '../../utils/obb';
 
 export default class LabelLine extends Label {
     constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
@@ -31,7 +32,7 @@ export default class LabelLine extends Label {
         let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
 
         this.position = Vector.add(this.middleSegment(segment), offset);
-        this.bbox = this.computeBBox();
+        this.aabb = this.computeAABB();
     }
 
     moveNextSegment () {
@@ -89,28 +90,18 @@ export default class LabelLine extends Label {
         return [ p1, p2 ];
     }
 
-    computeBBox (size) {
+    computeAABB (size) {
         let upp = Geo.units_per_pixel;
 
         let merc_width = this.size.text_size[0] * upp;
         let merc_height = this.size.text_size[1] * upp;
 
-        let c = Math.cos(this.angle);
-        let s = Math.sin(this.angle);
+        // the angle of the obb is negative since it's the tile system y axis is pointing down
+        let obb = new OBB(this.position[0], this.position[1], -this.angle, merc_width, merc_height);
+        let aabb = obb.getExtent();
+        aabb.obb = obb;
 
-        let x = merc_width * c - merc_height * s;
-        let y = merc_width * s + merc_height * c;
-
-        let max = Math.max(Math.abs(x), Math.abs(y)) * 0.5 + this.buffer;
-
-        let bbox = [
-            this.position[0] - max,
-            this.position[1] - max,
-            this.position[0] + max,
-            this.position[1] + max
-        ];
-
-        return bbox;
+        return aabb;
     }
 
     moveInTile () {
@@ -131,7 +122,7 @@ export default class LabelLine extends Label {
         return !in_tile || !fits_to_segment;
     }
 
-    discard (bboxes) {
+    discard (aabbs) {
         if (this.lines && !this.fitToSegment()) {
             while (!this.fitToSegment()) {
                 if (!this.moveNextSegment()) {
@@ -140,7 +131,7 @@ export default class LabelLine extends Label {
             }
         }
 
-        return super.discard(bboxes);
+        return super.discard(aabbs);
     }
 }
 

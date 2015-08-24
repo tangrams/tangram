@@ -67,7 +67,7 @@ export default class VertexLayout {
     // Assumes that the desired vertex buffer (VBO) is already bound
     // If a given program doesn't include all attributes, it can still use the vertex layout
     // to read those attribs that it does recognize, using the attrib offsets to skip others.
-    enable (gl, program)
+    enable (gl, program, force)
     {
         var attrib, location;
 
@@ -77,7 +77,9 @@ export default class VertexLayout {
             location = program.attribute(attrib.name).location;
 
             if (location !== -1) {
-                gl.enableVertexAttribArray(location);
+                if (!VertexLayout.enabled_attribs[location] || force) {
+                    gl.enableVertexAttribArray(location);
+                }
                 gl.vertexAttribPointer(location, attrib.size, attrib.type, attrib.normalized, this.stride, attrib.offset);
                 VertexLayout.enabled_attribs[location] = program;
             }
