@@ -9,9 +9,9 @@ Tangram: WebGL Maps for Vector Data
 
 Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector data, including tilesets and single files.
 
-## Quickstart
-
 Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/tangram-demo)) with a basic example of a Tangram map. 
+
+## Quickstart
 
 The current version of Tangram can be included in your page with:
 
