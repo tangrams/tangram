@@ -645,33 +645,24 @@ function addTrianglePairs (constants) {
         //     6---7   8---9   10-11
         //
         for (var i = 0; i <= constants.nPairs; i++) {
-            console.log(i, constants.nPairs)
-            // really only want to add caps at the first and last vertices of the line segment --
-            // this adds them for every vertex...
-
-            if (constants.nPairs != 0) {
-                // if (i == 0) {
-                if (i == 0 || i == constants.nPairs) {
-                    // console.log('cap');
-                    // start cap
-                    // first start cap triangle
-                    addVertexAtIndex(6*i+1, constants, "cap");
-                    addVertexAtIndex(6*i+0, constants, "cap");
-                    addVertexAtIndex(6*i+3, constants, "cap");
-                    // second start cap triangle
-                    addVertexAtIndex(6*i+3, constants, "cap");
-                    addVertexAtIndex(6*i+0, constants, "cap");
-                    addVertexAtIndex(6*i+2, constants, "cap");
-                    // have to flip the winding order depending though -
-                    // sometimes this is right and sometimes not, hmm...
-                    // addVertexAtIndex(6*i+0, constants, "cap");
-                    // addVertexAtIndex(6*i+1, constants, "cap");
-                    // addVertexAtIndex(6*i+2, constants, "cap");
-                    // // second start cap triangle
-                    // addVertexAtIndex(6*i+2, constants, "cap");
-                    // addVertexAtIndex(6*i+1, constants, "cap");
-                    // addVertexAtIndex(6*i+3, constants, "cap");
-                }
+            if (i == 0) {
+                // first start cap triangle
+                addVertexAtIndex(6*i+1, constants, "cap");
+                addVertexAtIndex(6*i+0, constants, "cap");
+                addVertexAtIndex(6*i+3, constants, "cap");
+                // second start cap triangle
+                addVertexAtIndex(6*i+3, constants, "cap");
+                addVertexAtIndex(6*i+0, constants, "cap");
+                addVertexAtIndex(6*i+2, constants, "cap");
+            } else if (i == constants.nPairs) { // reverse winding order so the face points the other direction
+                // first end cap triangle
+                addVertexAtIndex(6*i+0, constants, "cap");
+                addVertexAtIndex(6*i+1, constants, "cap");
+                addVertexAtIndex(6*i+2, constants, "cap");
+                // second start cap triangle
+                addVertexAtIndex(6*i+2, constants, "cap");
+                addVertexAtIndex(6*i+1, constants, "cap");
+                addVertexAtIndex(6*i+3, constants, "cap");
             }
 
             // top
