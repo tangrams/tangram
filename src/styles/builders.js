@@ -562,7 +562,7 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 
     // set normals
     // set scaling factor to overcome 8-bit depth precision truncating low values
-    let scale = 1.5;
+    let scale = 1.5; // todo: replace with a factor based on math, instead of a magic number
     // set normals to the scaling direction for the walls
     if (face_type == "wall") {
         vertex_template[normal_index + 0] = scalingVecs[index][0] * scale;
@@ -570,7 +570,14 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         vertex_template[normal_index + 2] = 0;
     } else if (face_type == "cap") {
     // set normals to the perpendicular of the scaling direction for caps
+
         // need two perpendiculars - one for the first vertex in the pair, then its opposite for the second vertex, because it has the opposite scalingVec
+        //
+        //       |  |
+        //  sv0 ←|  |→ sv1
+        //       |__|
+        // perp0 ↓  ↓ perp1
+
         if (index % 2 == 0) {
             vertex_template[normal_index + 0] = scalingVecs[index][1] * -scale;
             vertex_template[normal_index + 1] = scalingVecs[index][0] * scale;
@@ -578,7 +585,14 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
             vertex_template[normal_index + 0] = scalingVecs[index][1] * scale;
             vertex_template[normal_index + 1] = scalingVecs[index][0] * -scale;
         }
+
         // reverse the normals for the first caps in a line
+        //
+        // perp0 ↑__↑ perp1
+        //       |  |
+        //  sv0 ←|  |→ sv1
+        //       |  |
+
         if (index <= 3) { // magic # = first two vertices in a line are the caps
             vertex_template[normal_index + 0] *= -1;
             vertex_template[normal_index + 1] *= -1;
@@ -630,20 +644,35 @@ function addTrianglePairs (constants) {
         //     |   |   |   |   |/  |
         //     6---7   8---9   10-11
         //
-        for (var i = 0; i < constants.nPairs; i++) {
-            var wall = false;
-            // start cap
-            // first start cap triangle
-            // really only want to add caps at the first and last vertices --
-            // this is currently adding them for every vertex. not good
-            // this is also currently connecting to the last vertex for some reason, hmmmm
-            addVertexAtIndex(4*i+1, constants, "cap");
-            addVertexAtIndex(4*i+0, constants, "cap");
-            addVertexAtIndex(4*i+3, constants, "cap");
-            // // second start cap triangle
-            addVertexAtIndex(4*i+3, constants, "cap");
-            addVertexAtIndex(4*i+0, constants, "cap");
-            addVertexAtIndex(4*i+2, constants, "cap");
+        for (var i = 0; i <= constants.nPairs; i++) {
+            console.log(i, constants.nPairs)
+            // really only want to add caps at the first and last vertices of the line segment --
+            // this adds them for every vertex...
+
+            if (constants.nPairs != 0) {
+                // if (i == 0) {
+                if (i == 0 || i == constants.nPairs) {
+                    // console.log('cap');
+                    // start cap
+                    // first start cap triangle
+                    addVertexAtIndex(6*i+1, constants, "cap");
+                    addVertexAtIndex(6*i+0, constants, "cap");
+                    addVertexAtIndex(6*i+3, constants, "cap");
+                    // second start cap triangle
+                    addVertexAtIndex(6*i+3, constants, "cap");
+                    addVertexAtIndex(6*i+0, constants, "cap");
+                    addVertexAtIndex(6*i+2, constants, "cap");
+                    // have to flip the winding order depending though -
+                    // sometimes this is right and sometimes not, hmm...
+                    // addVertexAtIndex(6*i+0, constants, "cap");
+                    // addVertexAtIndex(6*i+1, constants, "cap");
+                    // addVertexAtIndex(6*i+2, constants, "cap");
+                    // // second start cap triangle
+                    // addVertexAtIndex(6*i+2, constants, "cap");
+                    // addVertexAtIndex(6*i+1, constants, "cap");
+                    // addVertexAtIndex(6*i+3, constants, "cap");
+                }
+            }
 
             // top
             // first top triangle
@@ -684,16 +713,7 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(6*i+9, constants, "wall");
             addVertexAtIndex(6*i+1, constants, "wall");
             addVertexAtIndex(6*i+3, constants, "wall");
- 
-            // end cap
-            // first end cap triangle
-            addVertexAtIndex(6*i+6, constants, "cap");
-            addVertexAtIndex(6*i+7, constants, "cap");
-            addVertexAtIndex(6*i+10, constants, "cap");
-            // second end cap triangle
-            addVertexAtIndex(6*i+10, constants, "cap");
-            addVertexAtIndex(6*i+7, constants, "cap");
-            addVertexAtIndex(6*i+11, constants, "cap");
+
 
 
         }
