@@ -8,12 +8,14 @@ import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
+import {mergeObjects} from './styles/rule';
 import Camera from './camera';
 import Light from './light';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
+import GLSL from './gl/glsl';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -932,30 +934,107 @@ export default class Scene {
     */
     loadScene(config_source = null) {
         this.config_source = config_source || this.config_source;
+
         if (typeof this.config_source === 'string') {
             this.config_path = Utils.pathForURL(this.config_source);
         }
         else {
             this.config_path = null;
         }
-        Texture.base_url = this.config_path;
 
-        return Utils.loadResource(this.config_source).then((config) => {
+        return Scene.loadScene(this.config_source).then(config => {
             this.config = config;
-            return this.preProcessConfig().then(() => { this.trigger('load', { config: this.config }); });
+            this.preProcessConfig();
+            this.trigger('load', { config: this.config });
+            return this.config;
         });
     }
 
-    loadDataSources() {
-        for (var name in this.config.sources) {
-            let source = this.config.sources[name];
-            source.url = Utils.addBaseURL(source.url);
-            this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+    // Load scenes definitions from external URLs
+    static loadScene(url) {
+        if (!url) {
+            return Promise.resolve({});
+        }
 
-            if (!this.sources[name]) {
-                delete this.sources[name];
-                log.warn(`Scene: could not create data source`, source);
-                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+        let path = Utils.pathForURL(url);
+        Texture.base_url = path; // TODO: fix to work per file
+
+        return Utils.loadResource(url).then(config => {
+            return StyleManager.loadRemoteStyles(config.styles, path).
+                then(styles => StyleManager.loadShaderBlocks(styles, path)). // TODO: deprecate remote shader blocks?
+                then(() => {
+                    // accept single-string or array
+                    if (typeof config.include === 'string') {
+                        config.include = [config.include];
+                    }
+
+                    if (!Array.isArray(config.include)) {
+                        Scene.normalizeTextures(config, path);
+                        return config;
+                    }
+
+                    // Collect URLs of scenes to include
+                    let includes = [];
+                    for (let url of config.include) {
+                        includes.push(Utils.addBaseURL(url, path));
+                    }
+
+                    return Promise.
+                        all(includes.map(Scene.loadScene)).
+                        then(configs => {
+                            config = mergeObjects({}, ...configs, config);
+                            Scene.normalizeTextures(config, path);
+                            return config;
+                        });
+                });
+        });
+    }
+
+    // Expand paths and centralize texture definitions for a scene object
+    static normalizeTextures(config, path) {
+        config.textures = config.textures || {};
+
+        if (config.styles) {
+            for (let [style_name, style] of Utils.entries(config.styles)) {
+                if (style.texture) {
+                    // Texture by URL, expand relative to scene file
+                    if (typeof style.texture === 'string' && !config.textures[style.texture]) {
+                        style.texture = Utils.addBaseURL(style.texture, path);
+                    }
+                    // Texture by object, move it to the global scene texture set and give it a default name
+                    else if (typeof style.texture === 'object') {
+                        let texture_name = '__' + style_name;
+                        config.textures[texture_name] = style.texture;
+                        style.texture = texture_name; // point style to location of texture
+                    }
+                }
+
+                // If style has texture uniforms, expand texture URLs relative to scene file
+                if (style.shaders && style.shaders.uniforms) {
+                    for (let {type, value, key, uniforms} of GLSL.parseUniforms(style.shaders.uniforms)) {
+                        if (type === 'sampler2D' && !config.textures[value]) {
+                            uniforms[key] = Utils.addBaseURL(value, path);
+                        }
+                    }
+                }
+
+                // If style has material, expand texture URLs relative to scene file
+                if (style.material) {
+                    for (let prop of ['emission', 'ambient', 'diffuse', 'specular', 'normal']) {
+                        if (style.material[prop] != null &&
+                            style.material[prop].texture &&
+                            !config.textures[style.material[prop].texture]) {
+                            style.material[prop].texture = Utils.addBaseURL(style.material[prop].texture, path);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add path to textures
+        if (config.textures) {
+            for (let texture of Utils.values(config.textures)) {
+                texture.url = Utils.addBaseURL(texture.url, path);
             }
         }
     }
@@ -986,31 +1065,26 @@ export default class Scene {
         this.config.lights = this.config.lights || {}; // ensure lights object
         this.config.styles = this.config.styles || {}; // ensure styles object
 
-        return StyleManager.preload(this.config.styles, this.config_path);
+        return this.config;
+    }
+
+    loadDataSources() {
+        for (var name in this.config.sources) {
+            let source = this.config.sources[name];
+            source.url = Utils.addBaseURL(source.url, this.config_path);
+            this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+
+            if (!this.sources[name]) {
+                delete this.sources[name];
+                log.warn(`Scene: could not create data source`, source);
+                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+            }
+        }
     }
 
     // Load all textures in the scene definition
     loadTextures() {
-        this.normalizeTextures();
         return Texture.createFromObject(this.gl, this.config.textures);
-    }
-
-    // Handle single or multi-texture syntax, for stylesheet convenience
-    normalizeTextures() {
-        if (!this.config.styles) {
-            return;
-        }
-
-        for (let [style_name, style] of Utils.entries(this.config.styles)) {
-            // If style has a single 'texture' object, move it to the global scene texture set
-            // and give it a default name
-            if (style.texture && typeof style.texture === 'object') {
-                let texture_name = '__' + style_name;
-                this.config.textures = this.config.textures || {};
-                this.config.textures[texture_name] = style.texture;
-                style.texture = texture_name; // point stlye to location of texture
-            }
-        }
     }
 
     // Called (currently manually) after styles are updated in stylesheet

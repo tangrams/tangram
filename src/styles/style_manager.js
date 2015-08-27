@@ -70,12 +70,6 @@ StyleManager.remove = function (name) {
     delete Styles[name];
 };
 
-// Preloads network resources in the stylesheet (shaders, textures, etc.)
-StyleManager.preload = function (styles, base) {
-    // First load remote styles, then load shader blocks from remote URLs
-    return StyleManager.loadRemoteStyles(styles, base).then(styles => StyleManager.loadShaderBlocks(styles, base));
-};
-
 // Load style definitions from external URLs
 StyleManager.loadRemoteStyles = function (styles, base) {
     // Collect URLs and modes to import from them
@@ -128,14 +122,14 @@ StyleManager.loadRemoteStyles = function (styles, base) {
                     }
                     else {
                         delete styles[target.target_name];
-                        return reject(new Error(`StyleManager.preload: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
+                        return reject(new Error(`StyleManager.loadRemoteStyles: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
                     }
                 }
                 resolve();
 
                 this.selection = false;
             }).catch((error) => {
-                log.error(`StyleManager.preload: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
+                log.error(`StyleManager.loadRemoteStyles: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
             });
         });
     })).then(() => Promise.resolve(styles));
@@ -143,6 +137,9 @@ StyleManager.loadRemoteStyles = function (styles, base) {
 
 // Preload shader blocks from external URLs
 StyleManager.loadShaderBlocks = function (styles, base) {
+    if (!styles) {
+        return Promise.resolve({});
+    }
     var queue = [];
     for (var style of Utils.values(styles)) {
         if (style.shaders && style.shaders.blocks) {
