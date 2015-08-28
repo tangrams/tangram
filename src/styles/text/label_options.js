@@ -1,5 +1,3 @@
-import Geo from '../../geo';
-
 export default class LabelOptions {
 
     constructor ({ offset, line_exceed, move_in_tile, keep_in_tile, buffer }) {
