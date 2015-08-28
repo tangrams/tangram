@@ -260,7 +260,10 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
-                    let options = new LabelOptions({ offset: text_info.offset });
+                    let options = new LabelOptions({
+                        offset: text_info.offset,
+                        buffer: text_info.buffer
+                    });
 
                     let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
 
@@ -436,13 +439,28 @@ Object.assign(TextStyle, {
 
             // label offset in pixel (applied in screen space)
             let offset = rule.offset || [0, 0];
-            offset[0] = parseInt(offset[0]);
-            offset[1] = parseInt(offset[1]); // y-point down
+            offset[0] = parseFloat(offset[0]);
+            offset[1] = parseFloat(offset[1]); // y-point down
+
+            // label buffer in pixel
+            let buffer = rule.buffer;
+            if (buffer != null) {
+                if (!Array.isArray(buffer)) {
+                    buffer = [buffer, buffer]; // buffer can be 1D or 2D
+                }
+
+                buffer[0] = parseFloat(buffer[0]);
+                buffer[1] = parseFloat(buffer[1]);
+            }
+
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
-                    text_style: label_feature.style, 
-                    priority, offset, ref: 0
+                    text_style: label_feature.style,
+                    priority,
+                    offset,
+                    buffer,
+                    ref: 0
                 };
             }
 
