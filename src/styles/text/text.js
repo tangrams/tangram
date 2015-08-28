@@ -262,7 +262,8 @@ Object.assign(TextStyle, {
                     let feature = label_feature.feature;
                     let options = new LabelOptions({
                         offset: text_info.offset,
-                        buffer: text_info.buffer
+                        buffer: text_info.buffer,
+                        line_exceed: text_info.line_exceed
                     });
 
                     let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
@@ -453,6 +454,11 @@ Object.assign(TextStyle, {
                 buffer[1] = parseFloat(buffer[1]);
             }
 
+            // label line exceed percentage
+            let line_exceed;
+            if (rule.line_exceed && rule.line_exceed.substr(-1) === '%') {
+                line_exceed = rule.line_exceed.substr(0,rule.line_exceed.length-1);
+            }
 
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
@@ -460,6 +466,7 @@ Object.assign(TextStyle, {
                     priority,
                     offset,
                     buffer,
+                    line_exceed,
                     ref: 0
                 };
             }

@@ -62,7 +62,7 @@ export default class LabelLine extends Label {
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
             let exceed = (1 - (length / label_length)) * 100;
-            return exceed < this.options.exceed;
+            return exceed < this.options.line_exceed;
         }
 
         return label_length < length;
