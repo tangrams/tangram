@@ -105,7 +105,8 @@ export default class Scene {
         this.debug = {
             profile: {
                 geometry_build: false
-            }
+            },
+            timeRebuild: n => this._timeRebuild(n)
         };
 
         this.updating = 0;
@@ -1248,6 +1249,26 @@ export default class Scene {
     _profileEnd(name) {
         console.profileEnd(`main thread: ${name}`);
         this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', name));
+    }
+
+    // Rebuild geometry a given # of times and print average, min, max timings
+    _timeRebuild (num = 1) {
+        let times = [];
+        let cycle = () => {
+            let start = +new Date();
+            this.rebuild().then(() => {
+                times.push(+new Date() - start);
+
+                if (times.length < num) {
+                    cycle();
+                }
+                else {
+                    let avg = ~~(times.reduce((a, b) => a + b) / times.length);
+                    log.info(`Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
+                }
+            });
+        };
+        cycle();
     }
 
 }
