@@ -85,7 +85,7 @@ Object.assign(TextStyle, {
     setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
         this.px_size = parseInt(px_size);
         this.px_logical_size = parseInt(px_logical_size);
-        this.text_buffer = 6; // pixel padding around text
+        this.text_buffer = 8; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
         ctx.font = font;
