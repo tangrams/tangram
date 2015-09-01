@@ -1,37 +1,22 @@
 import Vector from '../../vector';
 import Geo from '../../geo';
 import Label from './label';
-import Utils from '../../utils/utils';
 import OBB from '../../utils/obb';
 
 export default class LabelLine extends Label {
-    constructor (text, size, lines, style, { move_in_tile, keep_in_tile }) {
-        super(text, size, { move_in_tile, keep_in_tile });
+
+    constructor (text, size, lines, options) {
+        super(text, size, options);
 
         this.segment_index = 0;
         this.lines = lines;
-        this.exceed_heuristic = style.exceed;
-        this.offset = style.offset;
         this.update();
-    }
-
-    middleSegment (segment) {
-        return [
-            (segment[0][0] + segment[1][0]) / 2,
-            (segment[0][1] + segment[1][1]) / 2,
-        ];
     }
 
     update () {
         let segment = this.currentSegment();
-
         this.angle = this.computeAngle();
-
-        let perp = Vector.normalize(Vector.perp(segment[0], segment[1]));
-        let dot = Vector.dot(perp, [0, 1]);
-        let offset = Vector.mult(perp, Utils.pixelToMercator(this.offset * Math.sign(dot)));
-
-        this.position = Vector.add(this.middleSegment(segment), offset);
+        this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
         this.aabb = this.computeAABB();
     }
 
@@ -72,12 +57,12 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = Utils.pixelToMercator(this.size.text_size[0]);
+        let label_length = this.size.text_size[0] * Geo.units_per_pixel;
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
             let exceed = (1 - (length / label_length)) * 100;
-            return exceed < this.exceed_heuristic;
+            return exceed < this.options.line_exceed;
         }
 
         return label_length < length;
@@ -90,14 +75,15 @@ export default class LabelLine extends Label {
         return [ p1, p2 ];
     }
 
-    computeAABB (size) {
+    computeAABB () {
         let upp = Geo.units_per_pixel;
-
-        let merc_width = this.size.text_size[0] * upp;
-        let merc_height = this.size.text_size[1] * upp;
+        let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * upp;
+        let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * upp;
+        // apply offset, x positive, y pointing down
+        let p = [this.position[0] + this.options.offset[0], this.position[1] - this.options.offset[1]];
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
-        let obb = new OBB(this.position[0], this.position[1], -this.angle, merc_width, merc_height);
+        let obb = new OBB(p[0], p[1], -this.angle, width, height);
         let aabb = obb.getExtent();
         aabb.obb = obb;
 
@@ -133,5 +119,5 @@ export default class LabelLine extends Label {
 
         return super.discard(aabbs);
     }
-}
 
+}

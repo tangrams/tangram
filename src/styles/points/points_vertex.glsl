@@ -11,6 +11,7 @@ attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
+attribute vec2 a_offset;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
@@ -55,8 +56,8 @@ void main() {
     #ifdef TANGRAM_LAYER_ORDER
         applyLayerOrder(a_position.w * 32767., position);
     #endif
-
-    position.xy += rotate2D(shape_offset, radians(shape.z * 360.)) * 2. * position.w / u_resolution;
+    vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
+    position.xy += (rotate2D(shape_offset, radians(shape.z * 360.)) * 2. + offset * 32767.) * position.w / u_resolution;
 
     gl_Position = position;
 }

@@ -2,29 +2,18 @@
 
 import boxIntersect from 'box-intersect';
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
 import OBB from '../../utils/obb';
-import Vector from '../../vector';
 
 export default class Label {
-    constructor (text, size, { move_in_tile, keep_in_tile }) {
+
+    constructor (text, size, options) {
         Object.assign(this, {
             text,
             size,
-            position: [],
-            aabb: [],
-            move_in_tile,
-            keep_in_tile
+            options,
+            position: null,
+            aabb: null,
         });
-
-        this.id = Label.id++;
-        this.buffer = this.buffer || 2; // TODO: make configurable
-        this.buffer *= Geo.units_per_pixel;
-        this.keep_min_distance = true;
-    }
-
-    isComposite () {
-        return false;
     }
 
     occluded (aabbs) {
@@ -49,39 +38,6 @@ export default class Label {
         return intersect;
     }
 
-    // keep a minimal distance between the labels
-    checkMinDistance (aabbs) {
-        let obb1 = this.aabb.obb;
-        let w1 = Math.abs(obb1.quad[1][0] - obb1.quad[0][0]);
-
-        for (let i = 0; i < aabbs.length; ++i) {
-            let aabb = aabbs[i];
-            let obb0 = aabb.obb;
-
-            let dHalf = Vector.length(Vector.mult(Vector.sub(obb0.centroid, obb1.centroid), 0.5));
-            let w0 = Math.abs(obb0.quad[1][0] - obb0.quad[0][0]);
-
-            // skip obbs with half distance less than an obb width
-            if (dHalf > w0 + this.buffer && dHalf > w1 + this.buffer) {
-                continue;
-            }
-
-            for (let j = 0; j < obb0.quad.length; ++j) {
-                let v0 = obb0.quad[j];
-                for (let k = 0; k < obb1.quad.length; ++k) {
-                    let v1 = obb1.quad[k];
-                    let d = Vector.length(Vector.sub(v0, v1));
-
-                    if (d < this.buffer) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
     // checks whether the label is within the tile boundaries
     inTileBounds () {
         let min = [ this.aabb[0], this.aabb[1] ];
@@ -102,10 +58,10 @@ export default class Label {
         let discard = false;
 
         // perform specific styling rule, should we keep the label in tile bounds?
-        if (this.keep_in_tile) {
+        if (this.options.keep_in_tile) {
             let in_tile = this.inTileBounds();
 
-            if (!in_tile && this.move_in_tile) {
+            if (!in_tile && this.options.move_in_tile) {
                 // can we move?
                 discard = this.moveInTile();
             } else if (!in_tile) {
@@ -115,14 +71,7 @@ export default class Label {
             }
         }
 
-        if (this.keep_min_distance) {
-            discard |= this.checkMinDistance(aabbs);
-        }
-
         // should we discard? if not, just make occlusion test
         return discard || this.occluded(aabbs);
     }
 }
-
-Label.id = 0;
-

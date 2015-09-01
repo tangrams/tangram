@@ -8,6 +8,7 @@ import Builders from '../builders';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
+import Vector from '../../vector';
 
 import log from 'loglevel';
 
@@ -30,6 +31,7 @@ Object.assign(Points, {
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: true },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -128,6 +130,11 @@ Object.assign(Points, {
             this.texcoord_scale = null;
         }
 
+        // Offset applied to point in screen space
+        style.offset = rule_style.offset || [0, 0];
+        style.offset[0] = parseInt(style.offset[0]);
+        style.offset[1] = parseInt(style.offset[1]);
+
         return style;
     },
 
@@ -142,42 +149,54 @@ Object.assign(Points, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
-        let i = 0;
         let color = style.color || StyleParser.defaults.color;
 
         // position - x & y coords will be filled in per-vertex below
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = style.z || 0;
-
+        this.fillVertexTemplate('a_position', 0, { size: 2 });
+        this.fillVertexTemplate('a_position', style.z || 0, { size: 1, offset: 2 });
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.vertex_template[i++] = style.order || 0;
+        this.fillVertexTemplate('a_position', style.order || 0, { size: 1, offset: 3 });
 
         // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
+        this.fillVertexTemplate('a_shape', 0, { size: 4 });
 
         // texture coords
-        this.vertex_template[i++] = 0;
-        this.vertex_template[i++] = 0;
+        this.fillVertexTemplate('a_texcoord', 0, { size: 2 });
+
+        // offsets
+        this.fillVertexTemplate('a_offset', 0, { size: 2 });
 
         // color
-        this.vertex_template[i++] = color[0] * 255;
-        this.vertex_template[i++] = color[1] * 255;
-        this.vertex_template[i++] = color[2] * 255;
-        this.vertex_template[i++] = color[3] * 255;
+        this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
 
         // selection color
         if (this.selection) {
-            this.vertex_template[i++] = style.selection_color[0] * 255;
-            this.vertex_template[i++] = style.selection_color[1] * 255;
-            this.vertex_template[i++] = style.selection_color[2] * 255;
-            this.vertex_template[i++] = style.selection_color[3] * 255;
+            this.fillVertexTemplate('a_selection_color', Vector.mult(style.selection_color, 255), { size: 4 });
         }
 
         return this.vertex_template;
+    },
+
+    buildQuad (points, size, angle, vertex_data, vertex_template, offset) {
+        Builders.buildQuadsForPoints(
+            points,
+            vertex_data,
+            vertex_template,
+            {
+                texcoord_index: this.vertex_layout.index.a_texcoord,
+                position_index: this.vertex_layout.index.a_position,
+                shape_index: this.vertex_layout.index.a_shape,
+                offset_index: this.vertex_layout.index.a_offset
+            },
+            {
+                quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
+                quad_scale: Utils.scaleInt16(1, 256),
+                offset: Vector.mult(offset, Utils.device_pixel_ratio),
+                angle: Utils.scaleInt16(Utils.radToDeg(angle), 360),
+                texcoord_scale: this.texcoord_scale,
+                texcoord_normalize: 65535
+            }
+        );
     },
 
     buildPoints (points, style, vertex_data) {
@@ -185,25 +204,7 @@ Object.assign(Points, {
             return;
         }
 
-        var vertex_template = this.makeVertexTemplate(style);
-
-        let size = style.size;
-        let angle = style.angle;
-
-        Builders.buildQuadsForPoints(
-            points,
-            Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256),
-            Utils.scaleInt16(Utils.radToDeg(angle), 360),
-            Utils.scaleInt16(style.scale, 256),
-            vertex_data,
-            vertex_template,
-            this.vertex_layout.index.a_shape,
-            {
-                texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_scale: this.texcoord_scale,
-                texcoord_normalize: 65535
-            }
-        );
+        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), style.offset);
     },
 
     buildPolygons(polygons, style, vertex_data) {
