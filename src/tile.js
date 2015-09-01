@@ -170,49 +170,57 @@ export default class Tile {
                 continue;
             }
 
-            let geom = Tile.getDataForSource(data, layer.data, layer_name);
-            if (!geom) {
+            // Get data for one or more layers from source
+            let source_layers = Tile.getDataForSource(data, layer.data, layer_name);
+            if (source_layers.length === 0) {
                 continue;
             }
 
             // Render features in layer
-            let num_features = geom.features.length;
-            for (let f = num_features-1; f >= 0; f--) {
-                let feature = geom.features[f];
-                let context = StyleParser.getFeatureParseContext(feature, tile);
-
-                // Get draw groups for this feature
-                let layer_rules = rules[layer_name];
-                let draw_groups = layer_rules.buildDrawGroups(context, true);
-                if (!draw_groups) {
-                    continue;
+            source_layers.forEach(source_layer => {
+                let geom = source_layer.geom;
+                if (!geom) {
+                    return;
                 }
 
-                // Render draw groups
-                for (let group_name in draw_groups) {
-                    let group = draw_groups[group_name];
-                    if (!group.visible) {
+                for (let f = 0; f < geom.features.length; f++) {
+                    let feature = geom.features[f];
+                    let context = StyleParser.getFeatureParseContext(feature, tile);
+                    context.layer = source_layer.layer; // add data source layer name
+
+                    // Get draw groups for this feature
+                    let layer_rules = rules[layer_name];
+                    let draw_groups = layer_rules.buildDrawGroups(context, true);
+                    if (!draw_groups) {
                         continue;
                     }
 
-                    // Add to style
-                    let style_name = group.style || group_name;
-                    let style = styles[style_name];
+                    // Render draw groups
+                    for (let group_name in draw_groups) {
+                        let group = draw_groups[group_name];
+                        if (!group.visible) {
+                            continue;
+                        }
 
-                    if (!style) {
-                        log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
-                        continue;
+                        // Add to style
+                        let style_name = group.style || group_name;
+                        let style = styles[style_name];
+
+                        if (!style) {
+                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
+                            continue;
+                        }
+
+                        context.properties = group.properties; // add rule-specific properties to context
+
+                        style.addFeature(feature, group, context);
+
+                        context.properties = null; // clear group-specific properties
                     }
 
-                    context.properties = group.properties; // add rule-specific properties to context
-
-                    style.addFeature(feature, group, context);
-
-                    context.properties = null; // clear group-specific properties
+                    tile.debug.features++;
                 }
-
-                tile.debug.features++;
-            }
+            });
         }
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
@@ -241,39 +249,56 @@ export default class Tile {
 
     /**
         Retrieves geometry from a tile according to a data source definition
+        Returns an array of objects with:
+            layer: source layer name
+            geom: GeoJSON FeatureCollection
     */
     static getDataForSource (source_data, source_config, default_layer = null) {
-        var geom;
+        var layers = [];
 
         if (source_config != null) {
             // If no layer specified, and a default source layer exists
             if (!source_config.layer && source_data.layers._default) {
-                geom = source_data.layers._default;
+                layers.push({
+                    layer: '_default',
+                    geom: source_data.layers._default
+                });
             }
             // If no layer specified, and a default requested layer exists
             else if (!source_config.layer && default_layer) {
-                geom = source_data.layers[default_layer];
+                layers.push({
+                    layer: default_layer,
+                    geom: source_data.layers[default_layer]
+                });
             }
             // If a layer is specified by name, use it
             else if (typeof source_config.layer === 'string') {
-                geom = source_data.layers[source_config.layer];
+                layers.push({
+                    layer: source_config.layer,
+                    geom: source_data.layers[source_config.layer]
+                });
             }
             // If multiple layers are specified by name, combine them
             else if (Array.isArray(source_config.layer)) {
-                geom = { type: 'FeatureCollection', features: [] };
                 source_config.layer.forEach(layer => {
                     if (source_data.layers[layer] && source_data.layers[layer].features) {
-                        geom.features.push(...source_data.layers[layer].features);
+                        layers.push({
+                            layer,
+                            geom: source_data.layers[layer]
+                        });
                     }
                 });
             }
             // Assemble a custom layer via a function, which is called with all source layers
             else if (typeof source_config.layer === 'function') {
-                geom = source_config.layer(source_data.layers);
+                layers.push({
+                    geom: source_config.layer(source_data.layers)
+                    // custom layer has no name
+                });
             }
         }
 
-        return geom;
+        return layers;
     }
 
     /**
