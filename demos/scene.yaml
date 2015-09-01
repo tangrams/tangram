@@ -418,17 +418,6 @@ layers:
                 filter: { kind: [bookstore] }
                 draw: { icons: { sprite: bookstore } }
 
-    poi_labels:
-        data: { source: osm, layer: pois }
-        filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
-        draw:
-            text:
-                offset: [0px, 13px]
-                priority: 1
-                font:
-                    typeface: italic 10pt Helvetica
-                    fill: black
-
     places:
         data: { source: osm }
         filter:
@@ -505,19 +494,19 @@ layers:
                         fill: darkgreen
                         stroke: { color: white, width: 3 }
 
-        # pois:
-        #     filter:
-        #         $layer: pois
-        #         name: true
-        #         not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }
-        #         $zoom: { min: 18 }
-        #     draw:
-        #         text:
-        #             offset: [0px, 13px]
-        #             priority: 6
-        #             font:
-        #                 typeface: 12px Helvetica
-        #                 fill: black
+        pois:
+            filter:
+                $layer: pois
+                name: true
+                not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }
+                $zoom: { min: 18 }
+            draw:
+                text:
+                    offset: [0px, 13px]
+                    priority: 6
+                    font:
+                        typeface: 12px Helvetica
+                        fill: black
 
     # building_labels:
     #     data: { source: osm, layer: buildings }
