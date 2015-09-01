@@ -341,8 +341,6 @@ Builders.buildPolylines = function (
             addCap(coordCurr, normCurr, cornersOnCap , false, constants);
         }
     }
-    // if (minscale[0] != 10) console.log('min:', minscale);
-
 };
 
 // Add a vertex to the appropriate buffers (internal method for polyline builder)
@@ -355,8 +353,7 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
         scalingVecs.push(normal);
 
     } else {
-        console.log('NO scalingvecs');
-        // when does this happen? doesn't seem to matter if the lines are fixed-width or not
+        // this will "bake" the extruded vectors into the VBO, preventing real-time width changes
         vertices.push([coord[0] + normal[0] * halfWidth,
                        coord[1] + normal[1] * halfWidth]);
     }
@@ -372,31 +369,25 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
 //  The pairs of vertices are in opposite directions from the centerline - 
 function addVertexPair (coord, normal, v_pct, constants) {
     // var constants = JSON.parse(JSON.stringify(constants1));
-
-    // make a pair of vertices on the ground
+    // make a copy of coord to manipulate
     var coord2 = [coord[0], coord[1], 0];
+
+    // make a pair of vertices with opposite normals
     addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
     // if the polyline is elevated, make an elevated duplicate pair
-    // may need to make multiple copies, hmm
     if (constants.height > 0) {
-        // then the first pair was for the wall bottoms
-        // make a copy of coord to manipulate
-        var coord2 = [coord[0], coord[1], constants.height];
 
-        // make a copy for the wall tops
-        // normals should be the scalingVectors, as the walls face the direction the up-facing verts are being extruded
-        // okay, but which ones? constants.scalingVecs has the vecs for all the verts in the line...
-        // normal arg turns into the scalingVec – is not the face normal, that's assumed elsewhere - where?
-        // oh wait – the scalingvec for a given point *is* the face normal i want - so how to know when to use it for the face normal? and how to set the facenormal?
+        coord2 = [coord[0], coord[1], constants.height];
+
+        // make an elevated pair for the wall tops
         addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
         addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 
-        // and one more for the top, upward-facing triangle
+        // and one more pair for the top face
         addVertex(coord2, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
         addVertex(coord2, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-
     }
 }
 
@@ -431,17 +422,17 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var uvCurr = Vector.set(uA);
     var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
-    //  Add the FIRST and CENTER vertex
-    //  The triangles will be composed in a FAN style around it
+    // Add the FIRST and CENTER vertex
+    // The triangles will be composed in a FAN style around it
     addVertex(coord, nC, uC, constants);
 
-    //  Add first corner
+    // Add first corner
     addVertex(coord, normCurr, uA, constants);
 
     // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     // Rotate the extrusion normal
 
         if (numTriangles === 4 && (t === 0 || t === numTriangles - 2)) {
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
@@ -450,7 +441,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
 
         uvCurr = Vector.add(uvCurr,uv_delta);
 
-        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+        addVertex(coord, normCurr, uvCurr, constants);      // Add computed corner
     }
 
     for (var i = 0; i < numTriangles; i++) {
@@ -475,8 +466,8 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  Add special join types (not miter) that require FAN tessellation
-//  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
+// Add special join types (not miter) that require FAN tessellation
+// Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
     var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
@@ -515,8 +506,8 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
     }
 }
 
-//  Function to add the vertices needed for line caps,
-//  because re-use the buffers needs to be at the end
+// Function to add the vertices needed for line caps,
+// because re-use the buffers needs to be at the end
 function addCap (coord, normal, numCorners, isBeginning, constants) {
 
     if (numCorners < 1) {
@@ -576,7 +567,6 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         vertex_template[normal_index + 0] = normalizedScalingVecs[0] * normal_normalize;
         vertex_template[normal_index + 1] = normalizedScalingVecs[1] * normal_normalize;
         vertex_template[normal_index + 2] = 0;
-        // console.log(vertex_template[normal_index + 0], vertex_template[normal_index + 1]);
     } else if (face_type == "cap") {
     // set normals to the perpendicular of the scaling direction for caps
 
@@ -621,11 +611,7 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 
 // Add a pair of triangles to the VBO and clear the buffers
 // This constructs a quad for a given two-vertex line segment
-// based on the contents of the buffers in "constants"
-//
-// The two triangles make a quad - the two vertices of the hypotenuse are shared
-//
-
+// based on the buffers in "constants"
 function addTrianglePairs (constants) {
     // Add vertices to buffer at the appropriate index
     if (constants.height == 0) {
@@ -675,7 +661,7 @@ function addTrianglePairs (constants) {
                 addVertexAtIndex(6*i+3, constants, "cap");
             }
 
-            // top
+            // top:
             // first top triangle
             addVertexAtIndex(6*i+4, constants);
             addVertexAtIndex(6*i+10, constants);
@@ -684,11 +670,6 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(6*i+5, constants);
             addVertexAtIndex(6*i+10, constants);
             addVertexAtIndex(6*i+11, constants);
-
-            // // bottom triangle
-            // addVertexAtIndex(6*i+0, constants, "wall");
-            // addVertexAtIndex(6*i+6, constants, "wall");
-            // addVertexAtIndex(6*i+1, constants, "wall");
 
             // first wall:
             // first triangle
@@ -699,12 +680,7 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(6*i+2, constants, "wall");
             addVertexAtIndex(6*i+6, constants, "wall");
             addVertexAtIndex(6*i+8, constants, "wall");
-        //     wbtm    wtop     top
-        //     0---1   2---3   4---5
-        //     |   |   |   |   |  /|
-        //     |   |   |   |   | / |
-        //     |   |   |   |   |/  |
-        //     6---7   8---9   10-11
+
             // second wall:
             // first triangle
             addVertexAtIndex(6*i+7, constants, "wall");
@@ -714,9 +690,6 @@ function addTrianglePairs (constants) {
             addVertexAtIndex(6*i+9, constants, "wall");
             addVertexAtIndex(6*i+1, constants, "wall");
             addVertexAtIndex(6*i+3, constants, "wall");
-
-
-
         }
     }
 
@@ -732,8 +705,9 @@ function addTrianglePairs (constants) {
     }
 }
 
-// Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
-// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
+// Build a billboard sprite quad centered on a point. Sprites are intended
+// to be drawn in screenspace, and have properties for width, height, angle,
+// and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
 Builders.buildQuadsForPoints = function (
     points,
