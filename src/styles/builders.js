@@ -339,10 +339,13 @@ Builders.buildPolylines = function (
             addCap(coordCurr, normCurr, cornersOnCap , false, constants);
         }
     }
+    // if (minscale[0] != 10) console.log('min:', minscale);
+
 };
 
 // Add a vertex to the appropriate buffers (internal method for polyline builder)
 function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVecs, texcoords}) {
+
     if (scalingVecs) {
         // If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
@@ -360,6 +363,7 @@ function addVertex (coord, normal, uv, { halfWidth, height, vertices, scalingVec
     if (texcoords) {
         texcoords.push(uv);
     }
+
 }
 
 //  Add equidistant pairs of vertices (internal method for polyline builder)
@@ -541,7 +545,6 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     if (index >= vertices.length) {
         return;
     }
-
     // set vertex position
     vertex_template[0] = vertices[index][0];
     vertex_template[1] = vertices[index][1];
@@ -561,13 +564,19 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     }
 
     // set normals
-    // set scaling factor to overcome 8-bit depth precision truncating low values
-    let scale = 1.5; // todo: replace with a factor based on math, instead of a magic number
+    // convert scale from floats to bytes
+    let scale = 127; // todo: pass this as a parameter in constants
+    // initialize normalization variable but only set it when necessary
+    let normalizedScalingVecs;
+    if (face_type) {
+        normalizedScalingVecs = Vector.normalize(scalingVecs[index]);
+    }
     // set normals to the scaling direction for the walls
     if (face_type == "wall") {
-        vertex_template[normal_index + 0] = scalingVecs[index][0] * scale;
-        vertex_template[normal_index + 1] = scalingVecs[index][1] * scale;
+        vertex_template[normal_index + 0] = normalizedScalingVecs[0] * scale;
+        vertex_template[normal_index + 1] = normalizedScalingVecs[1] * scale;
         vertex_template[normal_index + 2] = 0;
+        // console.log(vertex_template[normal_index + 0], vertex_template[normal_index + 1]);
     } else if (face_type == "cap") {
     // set normals to the perpendicular of the scaling direction for caps
 
@@ -579,11 +588,11 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         // perp0 ↓  ↓ perp1
 
         if (index % 2 == 0) {
-            vertex_template[normal_index + 0] = scalingVecs[index][1] * -scale;
-            vertex_template[normal_index + 1] = scalingVecs[index][0] * scale;
+            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * -scale;
+            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * scale;
         } else {
-            vertex_template[normal_index + 0] = scalingVecs[index][1] * scale;
-            vertex_template[normal_index + 1] = scalingVecs[index][0] * -scale;
+            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * scale;
+            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * -scale;
         }
 
         // reverse the normals for the first caps in a line
@@ -616,6 +625,7 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 //
 // The two triangles make a quad - the two vertices of the hypotenuse are shared
 //
+
 function addTrianglePairs (constants) {
     // Add vertices to buffer at the appropriate index
     if (constants.height == 0) {
