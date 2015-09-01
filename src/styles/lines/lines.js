@@ -235,6 +235,7 @@ Object.assign(Lines, {
                     texcoord_scale: this.texcoord_scale,
                     texcoord_normalize: 65535, // scale UVs to unsigned shorts
                     normal_index: this.vertex_layout.index.a_normal,
+                    normal_normalize: 127, // scale normals from shorts to signed bytes
                     closed_polygon: options && options.closed_polygon,
                     remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
                     tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4

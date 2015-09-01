@@ -174,6 +174,7 @@ Builders.buildPolylines = function (
         scaling_index,
         scaling_normalize,
         normal_index,
+        normal_normalize,
         join, cap
     }) {
 
@@ -198,6 +199,7 @@ Builders.buildPolylines = function (
         texcoords: texcoord_index && [],
         texcoord_normalize,
         normal_index,
+        normal_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0
     };
@@ -540,7 +542,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 
 // Add a vertex to the VBO - get it from vertices at the specified index
 // (internal method for polyline builder)
-function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize, normal_index }, face_type) {
+function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, height, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize, normal_index, normal_normalize }, face_type) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -564,8 +566,6 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     }
 
     // set normals
-    // convert scale from floats to bytes
-    let scale = 127; // todo: pass this as a parameter in constants
     // initialize normalization variable but only set it when necessary
     let normalizedScalingVecs;
     if (face_type) {
@@ -573,8 +573,8 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
     }
     // set normals to the scaling direction for the walls
     if (face_type == "wall") {
-        vertex_template[normal_index + 0] = normalizedScalingVecs[0] * scale;
-        vertex_template[normal_index + 1] = normalizedScalingVecs[1] * scale;
+        vertex_template[normal_index + 0] = normalizedScalingVecs[0] * normal_normalize;
+        vertex_template[normal_index + 1] = normalizedScalingVecs[1] * normal_normalize;
         vertex_template[normal_index + 2] = 0;
         // console.log(vertex_template[normal_index + 0], vertex_template[normal_index + 1]);
     } else if (face_type == "cap") {
@@ -588,11 +588,11 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         // perp0 ↓  ↓ perp1
 
         if (index % 2 == 0) {
-            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * -scale;
-            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * scale;
+            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * -normal_normalize;
+            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * normal_normalize;
         } else {
-            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * scale;
-            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * -scale;
+            vertex_template[normal_index + 0] = normalizedScalingVecs[1] * normal_normalize;
+            vertex_template[normal_index + 1] = normalizedScalingVecs[0] * -normal_normalize;
         }
 
         // reverse the normals for the first caps in a line
