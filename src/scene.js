@@ -956,8 +956,10 @@ export default class Scene {
             return Promise.resolve({});
         }
 
-        let path = Utils.pathForURL(url);
-        Texture.base_url = path; // TODO: fix to work per file
+        let path;
+        if (typeof url === 'string') {
+            path = Utils.pathForURL(url);
+        }
 
         return Utils.loadResource(url).then(config => {
             return StyleManager.loadRemoteStyles(config.styles, path).
