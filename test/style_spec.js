@@ -40,7 +40,7 @@ describe('Styles:', () => {
         });
 
         it('creates a custom style', () => {
-            StyleManager.create('rainbow', sampleScene.config.styles.rainbow);
+            StyleManager.create('rainbow', sampleScene.styles.rainbow);
             assert.equal(Styles.rainbow.constructor, Style.constructor);
             assert.equal(Styles.rainbow.base, 'polygons');
         });
@@ -48,7 +48,7 @@ describe('Styles:', () => {
         describe('builds custom styles w/dependencies from stylesheet', () => {
 
             beforeEach(() => {
-                StyleManager.build(sampleScene.config.styles);
+                StyleManager.build(sampleScene.styles);
             });
 
             it('compiles parent custom style', () => {
@@ -126,7 +126,7 @@ describe('Styles:', () => {
         });
 
         it('injects a dependent uniform in a custom style', () => {
-            StyleManager.create('scale', sampleScene.config.styles.scale);
+            StyleManager.create('scale', sampleScene.styles.scale);
             Styles.scale.init();
             Styles.scale.setGL(gl);
             Styles.scale.compile();
