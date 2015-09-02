@@ -79,7 +79,7 @@ if (Utils.isMainThread) {
 
                 this._updating_tangram = true;
                 var view = map.getCenter();
-                view.zoom = Math.min(map.getZoom(), map.getMaxZoom(), Geo.max_zoom);
+                view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
@@ -120,7 +120,7 @@ if (Utils.isMainThread) {
 
             // Initial view
             var view = map.getCenter();
-            view.zoom = Math.min(map.getZoom(), map.getMaxZoom(), Geo.max_zoom);
+            view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
             this.scene.setView(view);
 
             // Subscribe to tangram events
