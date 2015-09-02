@@ -1,3 +1,5 @@
+include: transit.yaml
+
 cameras:
     perspective:
         type: perspective
