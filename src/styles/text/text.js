@@ -490,9 +490,9 @@ Object.assign(TextStyle, {
             let label = style.labels[i];
 
             this.buildQuad(
-                [label.position], 
-                label.size.texture_text_size, 
-                label.angle || 0, vertex_data, 
+                [label.position],
+                label.size.texture_text_size,
+                Utils.radToDeg(label.angle) || 0, vertex_data,
                 vertex_template, label.options.offset
             );
         }

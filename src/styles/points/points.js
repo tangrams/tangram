@@ -192,7 +192,7 @@ Object.assign(Points, {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
                 offset: Vector.mult(offset, Utils.device_pixel_ratio),
-                angle: Utils.scaleInt16(Utils.radToDeg(angle), 360),
+                angle: Utils.scaleInt16(angle, 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535
             }
