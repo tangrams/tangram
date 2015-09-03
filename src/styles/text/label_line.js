@@ -57,7 +57,7 @@ export default class LabelLine extends Label {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = this.size.text_size[0] * Geo.units_per_pixel;
+        let label_length = this.size.text_size[0] * this.options.units_per_pixel;
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
@@ -76,7 +76,7 @@ export default class LabelLine extends Label {
     }
 
     computeAABB () {
-        let upp = Geo.units_per_pixel;
+        let upp = this.options.units_per_pixel;
         let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * upp;
         let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * upp;
         // apply offset, x positive, y pointing down

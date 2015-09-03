@@ -261,6 +261,7 @@ Object.assign(TextStyle, {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
                     let options = new LabelOptions({
+                        units_per_pixel: text_info.units_per_pixel,
                         offset: text_info.offset,
                         buffer: text_info.buffer,
                         line_exceed: text_info.line_exceed
@@ -463,6 +464,7 @@ Object.assign(TextStyle, {
             if (!this.texts[tile.key][style_key][text]) {
                 this.texts[tile.key][style_key][text] = {
                     text_style: label_feature.style,
+                    units_per_pixel: tile.units_per_pixel,
                     priority,
                     offset,
                     buffer,
