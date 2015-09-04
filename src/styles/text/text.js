@@ -437,7 +437,19 @@ Object.assign(TextStyle, {
             }
 
             // label priority (lower is higher)
-            let priority = (rule.priority !== undefined) ? parseFloat(rule.priority) : -1 >>> 0;
+            let priority = rule.priority;
+            if (priority !== undefined) {
+                // if priority is a number, use it as-is, otherwise, check type
+                if (typeof priority === 'string') {
+                    priority = feature.properties[priority]; // get priority from feature property
+                }
+                else if (typeof priority === 'function') {
+                    priority = priority(context);
+                }
+            }
+            else {
+                priority = -1 >>> 0; // default to max priority value if none set
+            }
 
             // label offset in pixel (applied in screen space)
             let offset = rule.offset || [0, 0];
