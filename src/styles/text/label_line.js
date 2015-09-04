@@ -78,8 +78,13 @@ export default class LabelLine extends Label {
         let upp = this.options.units_per_pixel;
         let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * upp;
         let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * upp;
+
         // apply offset, x positive, y pointing down
-        let p = [this.position[0] + this.options.offset[0], this.position[1] - this.options.offset[1]];
+        let offset = Vector.rot(this.options.offset, this.angle);
+        let p = [
+            this.position[0] + (offset[0] * upp),
+            this.position[1] - (offset[1] * upp)
+        ];
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
         let obb = new OBB(p[0], p[1], -this.angle, width, height);
