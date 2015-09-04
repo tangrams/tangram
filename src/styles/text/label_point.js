@@ -8,6 +8,10 @@ export default class LabelPoint extends Label {
         super(text, size, options);
 
         this.position = position;
+        this.update();
+    }
+
+    update() {
         this.aabb = this.computeAABB();
     }
 
