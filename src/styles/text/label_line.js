@@ -1,5 +1,4 @@
 import Vector from '../../vector';
-import Geo from '../../geo';
 import Label from './label';
 import OBB from '../../utils/obb';
 
