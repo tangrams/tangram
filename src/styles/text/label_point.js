@@ -6,20 +6,42 @@ export default class LabelPoint extends Label {
 
     constructor (text, position, size, options) {
         super(text, size, options);
-
         this.position = position;
         this.update();
     }
 
     update() {
+        this.options.offset = this.computeOffset();
         this.aabb = this.computeAABB();
+    }
+
+    computeOffset () {
+        if (!this.options.placement) {
+            return this.options.offset;
+        }
+
+        let offset = [this.options.offset[0], this.options.offset[1]];
+
+        if (this.options.placement === 'W') {
+            offset[0] -= this.size.text_size[0] / 2;
+        }
+        else if (this.options.placement === 'E') {
+            offset[0] += this.size.text_size[0] / 2;
+        }
+        else if (this.options.placement === 'N') {
+            offset[1] -= this.size.text_size[1] / 2;
+        }
+        else if (this.options.placement === 'S') {
+            offset[1] += this.size.text_size[1] / 2;
+        }
+
+        return offset;
     }
 
     computeAABB () {
         let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
         let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
 
-        // apply offset, x positive, y pointing down
         let p = [
             this.position[0] + (this.options.offset[0] * this.options.units_per_pixel),
             this.position[1] - (this.options.offset[1] * this.options.units_per_pixel)

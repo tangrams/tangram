@@ -592,6 +592,11 @@ Object.assign(TextStyle, {
             offset[0] = parseFloat(offset[0]);
             offset[1] = parseFloat(offset[1]); // y-point down
 
+            // label placement (point labels only)
+            // label will be adjusted in the given cardinal direction, relatove to its original point
+            // one of: N, S, E, W
+            let placement = rule.placement;
+
             // label buffer in pixel
             let buffer = rule.buffer;
             if (buffer != null) {
@@ -617,6 +622,7 @@ Object.assign(TextStyle, {
                     priority,
                     offset,
                     buffer,
+                    placement,
                     line_exceed,
                     ref: 0
                 };
