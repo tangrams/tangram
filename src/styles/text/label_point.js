@@ -2,6 +2,12 @@ import Label from './label';
 import Geo from '../../geo';
 import OBB from '../../utils/obb';
 
+// Sets of values to match for cardinal placements
+const wests = ['W', 'NW', 'SW'];
+const easts = ['E', 'NE', 'SE'];
+const norths = ['N', 'NW', 'NE'];
+const souths = ['S', 'SW', 'SE'];
+
 export default class LabelPoint extends Label {
 
     constructor (text, position, size, options) {
@@ -21,17 +27,21 @@ export default class LabelPoint extends Label {
         }
 
         let offset = [this.options.offset[0], this.options.offset[1]];
+        let p = this.options.placement;
 
-        if (this.options.placement === 'W') {
+        // An optional west/east offset
+        if (wests.indexOf(p) > -1) {
             offset[0] -= this.size.text_size[0] / 2;
         }
-        else if (this.options.placement === 'E') {
+        else if (easts.indexOf(p) > -1) {
             offset[0] += this.size.text_size[0] / 2;
         }
-        else if (this.options.placement === 'N') {
+
+        // An optional north/south offset
+        if (norths.indexOf(p) > -1) {
             offset[1] -= this.size.text_size[1] / 2;
         }
-        else if (this.options.placement === 'S') {
+        else if (souths.indexOf(p) > -1) {
             offset[1] += this.size.text_size[1] / 2;
         }
 
