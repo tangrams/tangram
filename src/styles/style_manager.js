@@ -235,17 +235,24 @@ StyleManager.mix = function (style, styles) {
         }, {}) || {}
     );
 
-    merge.map(x => x.blocks).filter(x => x).forEach(blocks => {
+    // Keep track of which style each block originated from
+    let merge_block_scopes = sources.filter(x => x.shaders && x.shaders.blocks).map(x => x.name);
+
+    merge.map(x => x.blocks).filter(x => x).forEach((blocks, num) => {
         shaders.blocks = shaders.blocks || {};
+        shaders.block_scopes = shaders.block_scopes || {};
 
         for (let [t, block] of Utils.entries(blocks)) {
             shaders.blocks[t] = shaders.blocks[t] || [];
+            shaders.block_scopes[t] = shaders.block_scopes[t] || [];
 
             if (Array.isArray(block)) {
                 shaders.blocks[t].push(...block);
+                shaders.block_scopes[t].push(...block.map(() => merge_block_scopes[num]));
             }
             else {
                 shaders.blocks[t].push(block);
+                shaders.block_scopes[t].push(merge_block_scopes[num]);
             }
         }
     });
