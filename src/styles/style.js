@@ -270,6 +270,7 @@ export var Style = {
 
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
+        var block_scopes = (this.shaders && this.shaders.block_scopes);
         var uniforms = (this.shaders && this.shaders.uniforms);
 
         // accept a single extension, or an array of extensions
@@ -289,6 +290,7 @@ export var Style = {
                     defines,
                     uniforms,
                     blocks,
+                    block_scopes,
                     extensions
                 }
             );
@@ -304,6 +306,7 @@ export var Style = {
                         defines: selection_defines,
                         uniforms,
                         blocks,
+                        block_scopes,
                         extensions
                     }
                 );
@@ -324,10 +327,14 @@ export var Style = {
     },
 
     // Add a shader block
-    addShaderBlock (key, ...blocks) {
+    addShaderBlock (key, block, scope = null) {
         this.shaders.blocks = this.shaders.blocks || {};
         this.shaders.blocks[key] = this.shaders.blocks[key] || [];
-        this.shaders.blocks[key].push(...blocks);
+        this.shaders.blocks[key].push(block);
+
+        this.shaders.block_scopes = this.shaders.block_scopes || {};
+        this.shaders.block_scopes[key] = this.shaders.block_scopes[key] || [];
+        this.shaders.block_scopes[key].push(scope);
     },
 
     // Remove all shader blocks for key
@@ -337,9 +344,9 @@ export var Style = {
         }
     },
 
-    replaceShaderBlock (key, ...blocks) {
+    replaceShaderBlock (key, block, scope = null) {
         this.removeShaderBlock(key);
-        this.addShaderBlock(key, ...blocks);
+        this.addShaderBlock(key, block, scope);
     },
 
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram
