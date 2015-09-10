@@ -563,11 +563,11 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         normalizedScalingVecs = Vector.normalize(scalingVecs[index]);
     }
     // set normals to the scaling direction for the walls
-    if (face_type == "wall") {
+    if (face_type === "wall") {
         vertex_template[normal_index + 0] = normalizedScalingVecs[0] * normal_normalize;
         vertex_template[normal_index + 1] = normalizedScalingVecs[1] * normal_normalize;
         vertex_template[normal_index + 2] = 0;
-    } else if (face_type == "cap") {
+    } else if (face_type === "cap") {
     // set normals to the perpendicular of the scaling direction for caps
 
         // need two perpendiculars - one for the first vertex in the pair, then its opposite for the second vertex, because it has the opposite scalingVec
@@ -577,7 +577,7 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
         //       |__|
         // perp0 ↓  ↓ perp1
 
-        if (index % 2 == 0) {
+        if (index % 2 === 0) {
             vertex_template[normal_index + 0] = normalizedScalingVecs[1] * -normal_normalize;
             vertex_template[normal_index + 1] = normalizedScalingVecs[0] * normal_normalize;
         } else {
@@ -614,7 +614,7 @@ function addVertexAtIndex (index, { vertex_data, vertex_template, halfWidth, hei
 // based on the buffers in "constants"
 function addTrianglePairs (constants) {
     // Add vertices to buffer at the appropriate index
-    if (constants.height == 0) {
+    if (constants.height === 0) {
         //      top
         //     0---1
         //     |  /|
@@ -641,7 +641,7 @@ function addTrianglePairs (constants) {
         //     6---7   8---9   10-11
         //
         for (var i = 0; i <= constants.nPairs; i++) {
-            if (i == 0) {
+            if (i === 0) {
                 // first start cap triangle
                 addVertexAtIndex(6*i+1, constants, "cap");
                 addVertexAtIndex(6*i+0, constants, "cap");
@@ -650,7 +650,7 @@ function addTrianglePairs (constants) {
                 addVertexAtIndex(6*i+3, constants, "cap");
                 addVertexAtIndex(6*i+0, constants, "cap");
                 addVertexAtIndex(6*i+2, constants, "cap");
-            } else if (i == constants.nPairs) { // reverse winding order so the face points the other direction
+            } else if (i === constants.nPairs) { // reverse winding order so the face points the other direction
                 // first end cap triangle
                 addVertexAtIndex(6*i+0, constants, "cap");
                 addVertexAtIndex(6*i+1, constants, "cap");
