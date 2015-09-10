@@ -107,8 +107,7 @@ Builders.buildExtrudedPolygons = function (
         ];
     }
 
-    var num_polygons = polygons.length; // when is this ever more than 1?
-    if (num_polygons > 1) console.log('polys:', num_polygons); // never seen it
+    var num_polygons = polygons.length; // this is most often 1, but sometimes > 1
 
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
