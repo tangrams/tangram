@@ -437,10 +437,21 @@ Utils.toPixelSize = function (size, kind) {
 };
 
 Utils.pointInTile = function (point) {
-    return point[0] > 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] < 0;
+    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };
 
-Utils.pixelToMercator = function (size) {
-    return size * Geo.units_per_pixel;
+// http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+Utils.hashString = function(str) {
+    if (str.length === 0) {
+        return 0;
+    }
+    let hash = 0;
+    
+    for (let i = 0, len = str.length; i < len; i++) {
+        let chr = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0; 
+    }
+    return hash;
 };
 

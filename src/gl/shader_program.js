@@ -26,6 +26,7 @@ export default class ShaderProgram {
 
         // key/values for blocks that can be injected into shaders at compile-time
         this.blocks = Object.assign({}, options.blocks||{});
+        this.block_scopes = Object.assign({}, options.block_scopes||{});
 
         // list of extensions to activate
         this.extensions = options.extensions || [];
@@ -111,14 +112,16 @@ export default class ShaderProgram {
                 continue;
             }
 
-            // Each key can be a single string or array of strings
-            var source = `\n${block}\n`;
-            if (Array.isArray(block)) {
-                // Combine all blocks into one string
-                source = block.reduce((prev, cur) => `\n${prev}\n${cur}\n`);
-            }
-            source = `// tangram-block-start: ${key}\n` + source; // mark start and end of block
-            source += `// tangram-block-end: ${key}`;
+            // Combine all blocks into one string
+            var source = '';
+            block.forEach(val => {
+                // Mark start and end of each block with metadata (which can be extracted from
+                // final source for error handling, debugging, etc.)
+                let mark = `${val.scope}, ${val.key}, ${val.num}`;
+                source += `\n// tangram-block-start: ${mark}\n`;
+                source += val.source;
+                source += `\n// tangram-block-end: ${mark}\n`;
+            });
 
             // Inject
             if (inject_vertex != null) {
@@ -200,25 +203,53 @@ export default class ShaderProgram {
 
     // Make list of shader blocks (global, then program-specific)
     buildShaderBlockList() {
-        var d, blocks = {};
-        for (d in ShaderProgram.blocks) {
-            blocks[d] = [];
+        let key, blocks = {};
 
-            if (Array.isArray(ShaderProgram.blocks[d])) {
-                blocks[d].push(...ShaderProgram.blocks[d]);
+        // Global blocks
+        for (key in ShaderProgram.blocks) {
+            blocks[key] = [];
+
+            if (Array.isArray(ShaderProgram.blocks[key])) {
+                blocks[key].push(
+                    ...ShaderProgram.blocks[key].map((source, num) => {
+                        return { key, source, num, scope: 'ShaderProgram' };
+                    })
+                );
             }
             else {
-                blocks[d] = [ShaderProgram.blocks[d]];
+                blocks[key] = [{ key, source: ShaderProgram.blocks[key], num: 0, scope: 'ShaderProgram' }];
             }
         }
-        for (d in this.blocks) {
-            blocks[d] = blocks[d] || [];
 
-            if (Array.isArray(this.blocks[d])) {
-                blocks[d].push(...this.blocks[d]);
+        // Program-specific blocks
+        for (key in this.blocks) {
+            blocks[key] = blocks[key] || [];
+
+            if (Array.isArray(this.blocks[key])) {
+                let scopes = (this.block_scopes && this.block_scopes[key]) || [];
+                let cur_scope = null, num = 0;
+
+                for (let b=0; b < this.blocks[key].length; b++) {
+                    // Count blocks relative to current scope
+                    if (scopes[b] !== cur_scope) {
+                        cur_scope = scopes[b];
+                        num = 0;
+                    }
+
+                    blocks[key].push({
+                        key,
+                        source: this.blocks[key][b],
+                        num,
+                        scope: cur_scope || this.name
+                    });
+
+                    num++;
+                }
             }
             else {
-                blocks[d].push(this.blocks[d]);
+                // TODO: address discrepancy in array vs. single-value blocks
+                // styles assume array when tracking block scopes
+                blocks[key].push({ key, source: this.blocks[key], num: 0, scope: this.name });
             }
         }
         return blocks;
@@ -441,7 +472,9 @@ export default class ShaderProgram {
 
     // Get info on which shader block (if any) a particular line number in a shader is in
     // Returns an object with the following info if a block is found: { name, line, source }
+    //  scope: where the shader block originated, either a style name, or global such as ShaderProgram
     //  name: shader block name (e.g. 'color', 'position', 'global')
+    //  num: the block number *within* local scope (e.g. if a style has multiple 'color' blocks)
     //  line: line number *within* the shader block (not the whole shader program), useful for error highlighting
     //  source: the code for the line
     // NOTE: this does a bruteforce loop over the shader source and looks for shader block start/end markers
@@ -453,12 +486,17 @@ export default class ShaderProgram {
         let block;
         for (let i=0; i < num && i < lines.length; i++) {
             let line = lines[i];
-            let match = line.match(/\/\/ tangram-block-start: (\w+)/);
+            let match = line.match(/\/\/ tangram-block-start: (\w+), (\w+), (\d+)/);
             if (match && match.length > 1) {
-                block = { name: match[1] }; // mark current block
+                // mark current block
+                block = {
+                    scope: match[1],
+                    name: match[2],
+                    num: match[3]
+                };
             }
             else {
-                match = line.match(/\/\/ tangram-block-end: (\w+)/);
+                match = line.match(/\/\/ tangram-block-end: (\w+), (\w+), (\d+)/);
                 if (match && match.length > 1) {
                     block = null; // clear current block
                 }
