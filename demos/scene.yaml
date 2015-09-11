@@ -47,28 +47,6 @@ textures:
             bookstore: [0, 333, 32, 32]
 
 styles:
-    grid:
-        base: polygons
-        shaders:
-            blocks:
-                global: |
-                    // GridTile - shows vector tile boundaries
-                    //=============================
-                    varying vec3 v_pos;
-                    vec2 TileCoords(){return fract(v_pos.xy*0.0002445);}
-                    bool grid(vec2 st, float res){
-                        vec2 grid = fract(st*res);
-                        return grid.x < res || grid.y < res;
-                    }
-                    float TileGrid(){
-                        vec2 st = TileCoords()*100.;
-                        float pct = 0.0;
-                        if (grid(st,0.001)) pct += .5;
-                        return pct;
-                    }
-                position: v_pos = a_position;
-                filter: |
-                    color.rgb += vec3(TileGrid());
     water:
         base: polygons
         animated: true
@@ -155,20 +133,80 @@ styles:
         base: points
         texture: pois
 
+    grid:
+        base: polygons
+        lighting: false
+        shaders:
+            extensions: OES_standard_derivatives
+            # extensions: [OES_standard_derivatives, EXT_frag_depth]
+            blocks:
+                color: |
+                    // From: http://madebyevan.com/shaders/grid/
+                    // Pick a coordinate to visualize in a grid
+                    vec3 coord = v_world_position.xyz / 10.;
+
+                    // Compute anti-aliased world-space grid lines
+                    vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+                    float line = min(min(grid.x, grid.y), grid.z);
+
+                    // Just visualize the grid lines directly
+                    color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
+
+
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
-    #     type: TopoJSONTiles
+    #     type: TopoJSON
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
+    # schools:
+    #     type: GeoJSON
+    #     url: demos/data/school-districts-polygon.geojson
+    # counties:
+    #     type: TopoJSON
+    #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
 
 layers:
+
     earth:
         data: { source: osm }
         draw:
             polygons:
-                style: grid
-                color: '#666'
+                style: flat
                 order: 0
+                color: '#f0ebeb'
+
+    landuse:
+        data: { source: osm }
+        filter:
+            name: true
+            # show smaller landuse areas at higher zooms
+            any:
+                - { $zoom: { min: 9 }, area: { min: 10000000 } }
+                - { $zoom: { min: 10 }, area: { min: 3300000 } }
+                - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                - { $zoom: { min: 13 }, area: { min: 10000 } }
+                - { $zoom: { min: 15 } }
+        draw:
+            polygons:
+                order: 1
+                interactive: true
+                style: flat
+        green:
+            filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
+            draw:
+                polygons:
+                    order: 2
+                    color: '#bddec5'
+        blue:
+            filter: { kind: [commercial, industrial] }
+            draw:
+                polygons:
+                    color: '#C0CDCD'
+        orange:
+            filter: { kind: [university] }
+            draw:
+                polygons:
+                    color: '#D9CFC3'
 
     water:
         data: { source: osm }
@@ -182,10 +220,10 @@ layers:
                 - { $zoom: { min: 18 } }
         draw:
             polygons:
-                style: grid
-                color: '#333'
                 interactive: true
+                style: flat
                 order: 3
+                color: '#9dc3de'
 
     roads:
         data: { source: osm }
@@ -271,34 +309,34 @@ layers:
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
                             order: 38
 
-    # buildings:
-    #     data: { source: osm }
-    #     filter: { $zoom: { min: 14 } }
+    buildings:
+        data: { source: osm }
+        filter: { $zoom: { min: 14 } }
 
-    #     draw:
-    #         polygons:
-    #             order: 50
-    #             color: [.65, .65, .65]
+        draw:
+            polygons:
+                order: 50
+                color: [.65, .65, .65]
 
-    #     # turn interactive feature selection on for buildings with names
-    #     interactive:
-    #         filter: { name: true }
-    #         draw: { polygons: { interactive: true } }
+        # turn interactive feature selection on for buildings with names
+        interactive:
+            filter: { name: true }
+            draw: { polygons: { interactive: true } }
 
-    #     # extrude 3d buildings
-    #     extruded:
-    #         filter: { $zoom: { min: 15 } }
-    #         draw:
-    #             polygons:
-    #                 style: buildings
-    #                 extrude: function () { return feature.height > 20 || $zoom >= 16; }
+        # extrude 3d buildings
+        extruded:
+            filter: { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    style: buildings
+                    extrude: function () { return feature.height > 20 || $zoom >= 16; }
 
-    #     high-line:
-    #         filter: { roof_material: grass }
-    #         draw:
-    #             polygons:
-    #                 style: flat
-    #                 color: '#bddec5'
+        high-line:
+            filter: { roof_material: grass }
+            draw:
+                polygons:
+                    style: flat
+                    color: '#bddec5'
 
     road_labels:
         data: { source: osm, layer: roads }
@@ -307,34 +345,31 @@ layers:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
                 text:
+                    priority: 2
                     font:
                         fill: '#666'
-                        typeface: 100 12px Helvetica
+                        typeface: 12px Helvetica
                         stroke: { color: white, width: 4 }
 
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
                 text:
+                    priority: 5
                     font:
                         fill: '#666'
                         stroke: { color: white, width: 4 }
-                        typeface: 100 12px Helvetica
+                        typeface: 12px Helvetica
 
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
                 draw:
                     text:
+                        priority: 3
                         font:
-                            typeface: 100 16px Helvetica
+                            typeface: 16px Helvetica
                             stroke: { color: white, width: 4 }
-            minor_road:
-                filter: { kind: minor_road, railway: false, $zoom: { min: 15 } }
-                draw:
-                    text:
-                        font:
-                            typeface: 100 12px Helvetica
-                            stroke: { color: white, width: 4 }
+
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
@@ -344,6 +379,7 @@ layers:
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             icons:
+                offset: [0px, -13px]
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
 
@@ -398,6 +434,7 @@ layers:
                 - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
             text:
+                priority: 1
                 font:
                     typeface: italic 11pt Helvetica
                     fill: black
@@ -433,11 +470,79 @@ layers:
             filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
             visible: false
 
-    landuse_labels:
-        data: { source: osm }
-        draw:
-            text:
-                font:
-                    typeface: Italic 10pt Lucida Grande
-                    fill: darkgreen
-                    stroke: { color: white, width: 3 }
+    point_labels:
+        data: { source: osm, layer: [pois, landuse_labels] }
+        filter:
+            name: true
+
+        landuse:
+            filter:
+                $layer: landuse_labels
+                kind: [park, forest, cemetery, graveyard]
+                any:
+                    # show labels for smaller landuse areas at higher zooms
+                    - { $zoom: { min: 9 }, area: { min: 100000000 } }
+                    - { $zoom: { min: 10 }, area: { min: 10000000 } }
+                    - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                    - { $zoom: { min: 15 }, area: { min: 10000 } }
+                    - { $zoom: { min: 18 } }
+            draw:
+                text:
+                    priority: 4
+                    font:
+                        typeface: Italic 10pt Lucida Grande
+                        fill: darkgreen
+                        stroke: { color: white, width: 3 }
+
+        pois:
+            filter:
+                $layer: pois
+                name: true
+                not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }
+                $zoom: { min: 18 }
+            draw:
+                text:
+                    offset: [0px, 13px]
+                    priority: 6
+                    font:
+                        typeface: 12px Helvetica
+                        fill: black
+
+    # building_labels:
+    #     data: { source: osm, layer: buildings }
+    #     filter:
+    #         name: true
+    #         any:
+    #             - { $zoom: { min: 17 }, height: { min: 50 } }
+    #             - $zoom: { min: 18 }
+    #     draw:
+    #         text:
+    #             priority: 6
+    #             font:
+    #                 typeface: 8pt Lucida Grande
+    #                 fill: darkred
+    #                 stroke: { color: white, width: 3 }
+
+    # schools:
+    #     data: { source: schools }
+    #     draw:
+    #         lines:
+    #             order: 100
+    #             color: red
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true
+    #         text:
+    #             text_source: schoolDistrict
+    #             font:
+    #                 fill: white
+    #                 typeface: 16px Futura
+    #                 stroke: { color: black, width: 4 }
+
+    # counties:
+    #     data: { source: counties }
+    #     draw:
+    #         lines:
+    #             order: 101
+    #             color: purple
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true

@@ -10,7 +10,7 @@ Geo.circumference_meters = Geo.half_circumference_meters * 2;
 Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
 Geo.meters_per_pixel = [];
 Geo.meters_per_tile = [];
-Geo.max_zoom = 20;
+Geo.max_zoom = 18;
 for (var z=0; z <= Geo.max_zoom; z++) {
     Geo.meters_per_pixel[z] = Geo.min_zoom_meters_per_pixel / Math.pow(2, z);
     Geo.meters_per_tile[z] = Geo.circumference_meters / Math.pow(2, z);
@@ -167,4 +167,99 @@ Geo.geometryType = function(type) {
     if (type === 'Point' || type === 'MultiPoint') {
         return 'point';
     }
+};
+
+Geo.centroid = function (polygon) {
+    let n = polygon.length;
+    let centroid = [0, 0];
+
+    for (let p=0; p < polygon.length; p++) {
+        centroid[0] += polygon[p][0];
+        centroid[1] += polygon[p][1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Geo.multiCentroid = function (polygons) {
+    let n = polygons.length;
+    let centroid = [0, 0];
+
+    for (let p=0; p < polygons.length; p++) {
+        let polygon = polygons[p][0];
+        let c = Geo.centroid(polygon);
+        centroid[0] += c[0];
+        centroid[1] += c[1];
+    }
+
+    centroid[0] /= n;
+    centroid[1] /= n;
+
+    return centroid;
+};
+
+Geo.signedPolygonAreaSum = function (polygon) {
+    let area = 0;
+    let n = polygon.length;
+
+    for (let i = 0; i < n - 1; i++) {
+        let p0 = polygon[i];
+        let p1 = polygon[i+1];
+
+        area += p0[0] * p1[1] - p1[0] * p0[1];
+    }
+
+    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+    return area;
+};
+
+// TODO: subtract inner ring areas
+Geo.polygonArea = function (polygon) {
+    return Math.abs(Geo.signedPolygonAreaSum(polygon)) / 2;
+};
+
+Geo.multiPolygonArea = function (polygons) {
+    let area = 0;
+
+    for (let p=0; p < polygons.length; p++) {
+        let polygon = polygons[p][0];
+        area += Geo.polygonArea(polygon);
+    }
+
+    return area;
+};
+
+Geo.ringWinding = function (ring) {
+    return Geo.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
+};
+
+// Enforce winding order on outer/inner rings
+// winding: 'CW' or 'CCW'
+Geo.enforceWinding = function (geom, winding) {
+    let polys;
+    if (geom.type === 'Polygon') {
+        polys = [geom.coordinates];
+    }
+    else if (geom.type === 'MultiPolygon') {
+        polys = geom.coordinates;
+    }
+    else {
+        return geom;
+    }
+
+    for (let p=0; p < polys.length; p++) {
+        let poly = polys[p];
+
+        // If first ring winding doesn't match, reverse all rings
+        // NOTE: assumes ring winding orders already alternate as expected
+        if (Geo.ringWinding(poly[0]) !== winding) {
+            for (let ring of poly) {
+                ring.reverse();
+            }
+        }
+    }
+    return geom;
 };

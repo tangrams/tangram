@@ -9,9 +9,8 @@ uniform mat4 u_model;
 uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
 
-attribute vec3 a_position;
+attribute vec4 a_position;
 attribute vec4 a_color;
-attribute float a_layer;
 
 // Optional normal attribute, otherwise default to up
 #ifdef TANGRAM_NORMAL_ATTRIBUTE
@@ -23,8 +22,10 @@ attribute float a_layer;
 
 // Optional dynamic line extrusion
 #ifdef TANGRAM_EXTRUDE_LINES
-    attribute vec3 a_extrude;
-    attribute float a_scale;
+    // xy: extrusion direction in xy plane
+    // z:  half-width of line (amount to extrude)
+    // w:  scaling factor for interpolating width between zooms
+    attribute vec4 a_extrude;
 #endif
 
 varying vec4 v_position;
@@ -57,18 +58,19 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position, 1.);
+    vec4 position = vec4(a_position.xyz * 32767., 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy;
-        float width = a_extrude.z;
+        vec2 extrude = a_extrude.xy * 255.;
+        float width = a_extrude.z * 32767.;
+        float scale = a_extrude.w * 255.;
 
         // Keep line width constant in screen-space
         float zscale = u_tile_origin.z - u_map_position.z;
         width *= pow(2., zscale);
 
         // Smoothly interpolate line width between zooms
-        width = mix(width, width * a_scale * 256., -zscale);
+        width = mix(width, width * scale, -zscale);
 
         // Modify line width before extrusion
         #pragma tangram: width
@@ -110,7 +112,7 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(a_layer, position);
+    applyLayerOrder(a_position.w * 32767., position);
 
     gl_Position = position;
 }

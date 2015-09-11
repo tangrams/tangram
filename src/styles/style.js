@@ -76,6 +76,21 @@ export var Style = {
         return this.hasOwnProperty('built_in') && this.built_in;
     },
 
+    fillVertexTemplate(attribute, value, { size, offset }) {
+        offset = (offset === undefined) ? 0 : offset;
+
+        let index = this.vertex_layout.index[attribute];
+        if (index === undefined) {
+            log.warn(`Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);
+            return;
+        }
+
+        for (let i = 0; i < size; ++i) {
+            let v = value.length > i ? value[i] : value;
+            this.vertex_template[index + i + offset] = v;
+        }
+    },
+
     /*** Style parsing and geometry construction ***/
 
     // Returns an object to hold feature data (for a tile or other object)
@@ -255,7 +270,14 @@ export var Style = {
 
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
+        var block_scopes = (this.shaders && this.shaders.block_scopes);
         var uniforms = (this.shaders && this.shaders.uniforms);
+
+        // accept a single extension, or an array of extensions
+        var extensions = (this.shaders && this.shaders.extensions);
+        if (typeof extensions === 'string') {
+            extensions = [extensions];
+        }
 
         // Create shaders
         try {
@@ -267,7 +289,9 @@ export var Style = {
                     name: this.name,
                     defines,
                     uniforms,
-                    blocks
+                    blocks,
+                    block_scopes,
+                    extensions
                 }
             );
             this.program.compile();
@@ -281,7 +305,9 @@ export var Style = {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
                         uniforms,
-                        blocks
+                        blocks,
+                        block_scopes,
+                        extensions
                     }
                 );
                 this.selection_program.compile();
@@ -301,10 +327,14 @@ export var Style = {
     },
 
     // Add a shader block
-    addShaderBlock (key, ...blocks) {
+    addShaderBlock (key, block, scope = null) {
         this.shaders.blocks = this.shaders.blocks || {};
         this.shaders.blocks[key] = this.shaders.blocks[key] || [];
-        this.shaders.blocks[key].push(...blocks);
+        this.shaders.blocks[key].push(block);
+
+        this.shaders.block_scopes = this.shaders.block_scopes || {};
+        this.shaders.block_scopes[key] = this.shaders.block_scopes[key] || [];
+        this.shaders.block_scopes[key].push(scope);
     },
 
     // Remove all shader blocks for key
@@ -314,9 +344,9 @@ export var Style = {
         }
     },
 
-    replaceShaderBlock (key, ...blocks) {
+    replaceShaderBlock (key, block, scope = null) {
         this.removeShaderBlock(key);
-        this.addShaderBlock(key, ...blocks);
+        this.addShaderBlock(key, block, scope);
     },
 
     /** TODO: could probably combine and generalize this with similar method in ShaderProgram

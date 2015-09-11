@@ -1,5 +1,6 @@
 import Utils from './utils/utils';
 import Scene from './scene';
+import Geo from './geo';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -78,7 +79,7 @@ if (Utils.isMainThread) {
 
                 this._updating_tangram = true;
                 var view = map.getCenter();
-                view.zoom = map.getZoom();
+                view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
@@ -119,7 +120,7 @@ if (Utils.isMainThread) {
 
             // Initial view
             var view = map.getCenter();
-            view.zoom = map.getZoom();
+            view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
             this.scene.setView(view);
 
             // Subscribe to tangram events

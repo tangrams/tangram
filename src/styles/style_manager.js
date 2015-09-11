@@ -202,7 +202,12 @@ StyleManager.mix = function (style, styles) {
 
     // Overwrites - last definition wins
     style.base = sources.map(x => x.base).filter(x => x).pop();
+    style.lighting = sources.map(x => x.lighting).filter(x => x != null).pop();
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
+    if (sources.some(x => x.blend)) {
+        // only mix blend if explicitly set, otherwise let base style choose blending mode
+        style.blend = sources.map(x => x.blend).filter(x => x).pop();
+    }
 
     // Merges - property-specific rules for merging values
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x));
@@ -213,17 +218,41 @@ StyleManager.mix = function (style, styles) {
     shaders.defines = Object.assign({}, ...merge.map(x => x.defines).filter(x => x));
     shaders.uniforms = Object.assign({}, ...merge.map(x => x.uniforms).filter(x => x));
 
-    merge.map(x => x.blocks).filter(x => x).forEach(blocks => {
+    // Build a list of unique extensions
+    shaders.extensions = Object.keys(merge
+        .map(x => x.extensions)
+        .filter(x => x)
+        .reduce((prev, cur) => {
+            // single extension
+            if (typeof cur === 'string') {
+                prev[cur] = true;
+            }
+            // array of extensions
+            else {
+                cur.forEach(x => prev[x] = true);
+            }
+            return prev;
+        }, {}) || {}
+    );
+
+    // Keep track of which style each block originated from
+    let merge_block_scopes = sources.filter(x => x.shaders && x.shaders.blocks).map(x => x.name);
+
+    merge.map(x => x.blocks).filter(x => x).forEach((blocks, num) => {
         shaders.blocks = shaders.blocks || {};
+        shaders.block_scopes = shaders.block_scopes || {};
 
         for (let [t, block] of Utils.entries(blocks)) {
             shaders.blocks[t] = shaders.blocks[t] || [];
+            shaders.block_scopes[t] = shaders.block_scopes[t] || [];
 
             if (Array.isArray(block)) {
                 shaders.blocks[t].push(...block);
+                shaders.block_scopes[t].push(...block.map(() => merge_block_scopes[num]));
             }
             else {
                 shaders.blocks[t].push(block);
+                shaders.block_scopes[t].push(merge_block_scopes[num]);
             }
         }
     });
@@ -325,15 +354,23 @@ StyleManager.inheritanceDepth = function (key, styles) {
 };
 
 // Compile all styles
-StyleManager.compile = function (keys) {
+StyleManager.compile = function (keys, scene) {
     keys = keys || Object.keys(Styles);
     for (let key of keys) {
+        let style = Styles[key];
         try {
-            Styles[key].compile();
+            style.compile();
             log.trace(`StyleManager.compile(): compiled style ${key}`);
         }
         catch(error) {
             log.error(`StyleManager.compile(): error compiling style ${key}:`, error);
+
+            scene.trigger('warning', {
+                type: 'styles',
+                message: `Error compiling style ${key}`,
+                style,
+                shader_errors: style.program && style.program.shader_errors
+            });
         }
     }
 

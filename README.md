@@ -1,4 +1,4 @@
-Tangram: WebGL Maps for Vector Tiles
+Tangram: WebGL Maps for Vector Data
 ===
 
 [![Circle CI](https://circleci.com/gh/tangrams/tangram.png?style=badge&circle-token=2529a88125530794f64ffa1783625b5357456f71)](https://circleci.com/gh/tangrams/tangram)
@@ -7,16 +7,16 @@ Tangram: WebGL Maps for Vector Tiles
 ![tangram-header](https://cloud.githubusercontent.com/assets/459970/7569087/8cd14df6-f7d4-11e4-8360-db31790d2bbf.png)
 </a>
 
-Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector tiles.
-
-## Quickstart
+Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector data, including tilesets and single files.
 
 Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/tangram-demo)) with a basic example of a Tangram map. 
+
+## Quickstart
 
 The current version of Tangram can be included in your page with:
 
 ```
-<script src="https://mapzen.com/tangram/0.1/tangram.min.js"></script>
+<script src="https://mapzen.com/tangram/tangram.min.js"></script>
 ```
 
 The library includes a [Leaflet](http://leafletjs.com) plugin, `Tangram.LeafletLayer`, to provide basic web map pan/zoom functionality.

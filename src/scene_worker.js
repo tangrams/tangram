@@ -2,7 +2,7 @@
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
-import DataSource from './data_source.js';
+import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
@@ -54,6 +54,10 @@ Utils.isWorkerThread && Object.assign(self, {
         config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
+            if (!source) {
+                continue;
+            }
+
             if (source.tiled) {
                 self.sources.tiles[name] = source;
             }

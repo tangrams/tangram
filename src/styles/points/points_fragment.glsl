@@ -45,6 +45,11 @@ void main (void) {
         }
     #endif
 
+    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
+    #ifdef TANGRAM_UNMULTIPLY_ALPHA
+        color.rgb /= max(color.a, 0.001);
+    #endif
+
     #pragma tangram: color
     #pragma tangram: filter
 
