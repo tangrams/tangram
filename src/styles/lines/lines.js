@@ -251,10 +251,9 @@ Object.assign(Lines, {
             }
         }
 
-        if (style.extrude > 0) {
-            ;
+        // if (style.extrude > 0) {
             // console.log(style.z);
-        }
+        // }
     },
 
     buildPolygons(polygons, style, vertex_data, context) {
