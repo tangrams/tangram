@@ -240,7 +240,8 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = {};  // this will store all labels, sorted into objects by priority
+        let labels_priorities = {};  // this will store all labels in the tile, 
+                                     // sorted into objects by priority
 
         // texts holds text_info objects, keyed by style
         // Example:
@@ -339,20 +340,12 @@ Object.assign(TextStyle, {
                 continue;
             }
 
-            // i is a label object at the current priority level, example:
-            // Object: {
-            //  area: undefined,
-            //  feature: Object,
-            //  label: LabelLine,
-            //  style: "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8"
-            // }
-
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
                 // test the label for intersections with other labels in the tile
                 if (!label.discard(this.aabbs[tile])) {
-                    // if it didn't collide (or won a collision)
+                    // if it didn't collide
                     if (!this.feature_labels[tile].has(feature)) {
                         // if the label was just made, make a new empty entry in this
                         // tile's feature_labels using the feature as the key -
