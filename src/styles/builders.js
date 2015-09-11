@@ -639,7 +639,7 @@ function addTrianglePairs (constants) {
         //     |   |   |   |   |/  |
         //     6---7   8---9   10-11
         //
-        for (var i = 0; i <= constants.nPairs; i++) {
+        for (i = 0; i <= constants.nPairs; i++) {
             if (i === 0) {
                 // first start cap triangle
                 addVertexAtIndex(6*i+1, constants, "cap");
