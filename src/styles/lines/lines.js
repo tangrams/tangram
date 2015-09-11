@@ -252,6 +252,7 @@ Object.assign(Lines, {
         }
 
         if (style.extrude > 0) {
+            ;
             // console.log(style.z);
         }
     },
