@@ -440,10 +440,11 @@ Object.assign(TextStyle, {
             let priority = rule.priority;
             if (priority !== undefined) {
                 // if priority is a number, use it as-is, otherwise, check type
-                if (typeof priority === 'string') {
-                    priority = feature.properties[priority]; // get priority from feature property
-                }
-                else if (typeof priority === 'function') {
+                // if (typeof priority === 'string') {
+                //     priority = feature.properties[priority]; // get priority from feature property
+                // }
+                // else if (typeof priority === 'function') {
+                if (typeof priority === 'function') {
                     priority = priority(context);
                 }
             }
