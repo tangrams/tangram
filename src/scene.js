@@ -309,15 +309,12 @@ export default class Scene {
             );
         }
 
-        this.next_worker = 0;
         return Promise.all(queue);
     }
 
     // Round robin selection of next worker
     nextWorker() {
-        var worker = this.workers[this.next_worker];
-        this.next_worker = (this.next_worker + 1) % this.workers.length;
-        return worker;
+        return this.workers[Math.floor(Math.random() * this.workers.length)];
     }
 
     /**
