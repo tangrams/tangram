@@ -476,8 +476,9 @@ layers:
                         style: italic
                         fill: black
                         stroke: { color: white, width: 3 }
+
         minor-places:
-            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
+            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 14 } }
             visible: false
 
     point_labels:
