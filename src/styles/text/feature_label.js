@@ -28,23 +28,45 @@ export default class FeatureLabel {
             style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
         }
 
-        // Use default typeface
-        style.font = rule.font.typeface || default_font_style.typeface;
-        style.capitalized = rule.font.capitalized || default_font_style.capitalized;
+        // Font properties are modeled after CSS names:
+        // - family: Helvetica, Futura, etc.
+        // - size: in pt, px, or em
+        // - style: normal, italic, oblique
+        // - weight: normal, bold, etc.
+        style.style = rule.font.style || default_font_style.style;
+        style.weight = rule.font.weight || default_font_style.weight;
+        style.family = rule.font.family || default_font_style.family;
+        // style.capitalized = rule.font.capitalized || default_font_style.capitalized; // TODO new syntax
 
+        let size = rule.font.size || rule.font.typeface || default_font_style.size;
         let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
-        let ft_size = style.font.match(size_regex)[0];
+        let ft_size = (size.match(size_regex) || [])[0];
         let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
+        // TODO: improve pt/em conversion
         style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
         style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
         style.stroke_width *= Utils.device_pixel_ratio;
-        style.font = style.font.replace(size_regex, style.px_size + "px");
+        style.size = size.replace(size_regex, style.px_size + "px");
+
+        if (rule.font.typeface) { // legacy syntax
+            style.font_css = rule.font.typeface.replace(size_regex, style.px_size + "px");
+        }
+        else {
+            style.font_css = this.fontCSS(style);
+        }
 
         return style;
     }
 
-    constructStyleKey ({ font, fill, stroke, stroke_width }) {
-        return `${font}/${fill}/${stroke}/${stroke_width}`;
+    // Build CSS-style font string
+    fontCSS ({ style, weight, size, family }) {
+        return [style, weight, size, family]
+            .filter(x => x) // remove null props
+            . join(' ');
+    }
+
+    constructStyleKey ({ style, weight, family, size, fill, stroke, stroke_width, typeface }) {
+        return [style, weight, family, size, fill, stroke, stroke_width, typeface].join('/'); // typeface for legacy
     }
 }

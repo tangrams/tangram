@@ -348,7 +348,8 @@ layers:
                     priority: 2
                     font:
                         fill: '#666'
-                        typeface: 12px Helvetica
+                        family: Helvetica
+                        size: 12px
                         stroke: { color: white, width: 4 }
 
         not_highway:
@@ -359,7 +360,8 @@ layers:
                     font:
                         fill: '#666'
                         stroke: { color: white, width: 4 }
-                        typeface: 12px Helvetica
+                        family: Helvetica
+                        size: 12px
 
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
@@ -367,7 +369,8 @@ layers:
                     text:
                         priority: 3
                         font:
-                            typeface: 16px Helvetica
+                            family: Helvetica
+                            size: 16px
                             stroke: { color: white, width: 4 }
 
             small:
@@ -436,7 +439,9 @@ layers:
             text:
                 priority: 1
                 font:
-                    typeface: italic 11pt Helvetica
+                    family: Helvetica
+                    size: 11pt
+                    style: italic
                     fill: black
                     stroke: { color: white, width: 3 }
         continents:
@@ -456,14 +461,19 @@ layers:
             draw:
                 text:
                     font:
-                        typeface: italic 14pt Baskerville
+                        family: Baskerville
+                        size: 14pt
+                        style: italic
+
         cities:
             # this filter shows lower scaleranks at higher zooms, starting at z4
             filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
             draw:
                 text:
                     font:
-                        typeface: italic 12pt Helvetica
+                        family: Helvetica
+                        size: 12pt
+                        style: italic
                         fill: black
                         stroke: { color: white, width: 3 }
         minor-places:
@@ -490,7 +500,9 @@ layers:
                 text:
                     priority: 4
                     font:
-                        typeface: Italic 10pt Lucida Grande
+                        family: Lucida Grande
+                        size: 10pt
+                        style: italic
                         fill: darkgreen
                         stroke: { color: white, width: 3 }
 
@@ -505,7 +517,8 @@ layers:
                     offset: [0px, 13px]
                     priority: 6
                     font:
-                        typeface: 12px Helvetica
+                        family: Helvetica
+                        size: 12px
                         fill: black
 
     # building_labels:
@@ -519,7 +532,8 @@ layers:
     #         text:
     #             priority: 6
     #             font:
-    #                 typeface: 8pt Lucida Grande
+    #                 family: Lucida Grande
+    #                 size: 8pt
     #                 fill: darkred
     #                 stroke: { color: white, width: 3 }
 
@@ -535,7 +549,8 @@ layers:
     #             text_source: schoolDistrict
     #             font:
     #                 fill: white
-    #                 typeface: 16px Futura
+    #                 family: Futura
+    #                 size: 16px
     #                 stroke: { color: black, width: 4 }
 
     # counties:

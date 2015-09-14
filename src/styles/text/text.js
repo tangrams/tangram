@@ -39,10 +39,12 @@ Object.assign(TextStyle, {
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // default font style
-        this.font_style = {
-            typeface: 'Helvetica 12px',
-            fill: 'white',
-            capitalized: false
+        this.default_font_style = {
+            style: 'normal',
+            weight: null,
+            size: '12px',
+            family: 'Helvetica',
+            fill: 'white'
         };
 
         this.reset();
@@ -82,13 +84,13 @@ Object.assign(TextStyle, {
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
+    setFont (tile, { font_css, fill, stroke, stroke_width, px_size, px_logical_size }) {
         this.px_size = parseInt(px_size);
         this.px_logical_size = parseInt(px_logical_size);
         this.text_buffer = 8; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
-        ctx.font = font;
+        ctx.font = font_css;
         if (stroke) {
             ctx.strokeStyle = stroke;
             ctx.lineWidth = stroke_width;
@@ -173,7 +175,7 @@ Object.assign(TextStyle, {
             for (let text in text_infos) {
                 let text_style = text_infos[text].text_style;
                 // update text sizes
-                this.setFont(tile, text_style);
+                this.setFont(tile, text_style); // TODO: only set once above
                 text_infos[text].size = this.textSize(text, tile, text_style.capitalized);
             }
         }
@@ -188,7 +190,7 @@ Object.assign(TextStyle, {
             for (let text in text_infos) {
                 let info = text_infos[text];
 
-                this.setFont(tile, info.text_style);
+                this.setFont(tile, info.text_style); // TODO: only set once above
                 this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.capitalized);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
@@ -421,7 +423,7 @@ Object.assign(TextStyle, {
             }
 
             // features stored by hash for later use from main thread (tile / text / style)
-            let label_feature = new FeatureLabel(feature, rule, context, text, tile, this.font_style);
+            let label_feature = new FeatureLabel(feature, rule, context, text, tile, this.default_font_style);
             let feature_hash = label_feature.getHash();
 
             if (!label_feature.style) {
