@@ -3,11 +3,11 @@ import {StyleParser} from '../style_parser';
 
 export default class FeatureLabel {
 
-    constructor (feature, rule, context, text, tile, font_style) {
+    constructor (feature, rule, context, text, tile, default_font_style) {
         this.text = text;
         this.feature = feature;
         this.tile_key = tile.key;
-        this.style = this.constructFontStyle(rule, context, font_style);
+        this.style = this.constructFontStyle(rule, context, default_font_style);
         this.style_key = this.constructStyleKey(this.style);
     }
 
@@ -16,21 +16,21 @@ export default class FeatureLabel {
         return Utils.hashString(str);
     }
 
-    constructFontStyle (rule, context, font_style) {
+    constructFontStyle (rule, context, default_font_style) {
         let style = {};
 
         // Use fill if specified, or default
-        style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) || font_style.fill;
+        style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
 
         // Use stroke if specified
         if (rule.font.stroke && rule.font.stroke.color) {
             style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
-            style.stroke_width = rule.font.stroke.width || font_style.stroke.width;
+            style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
         }
 
         // Use default typeface
-        style.font = rule.font.typeface || font_style.typeface;
-        style.capitalized = rule.font.capitalized || font_style.capitalized;
+        style.font = rule.font.typeface || default_font_style.typeface;
+        style.capitalized = rule.font.capitalized || default_font_style.capitalized;
 
         let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
         let ft_size = style.font.match(size_regex)[0];
