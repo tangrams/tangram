@@ -104,8 +104,8 @@ Object.assign(TextStyle, {
     },
 
     // Width and height of text based on current font style
-    textSize (text, tile, capitalized) {
-        let str = capitalized ? text.toUpperCase() : text;
+    textSize (text, tile, transform) {
+        let str = FeatureLabel.applyTextTransform(text, transform);
         let ctx = this.canvas[tile].context;
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
@@ -126,8 +126,8 @@ Object.assign(TextStyle, {
     },
 
     // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke, capitalized) {
-        let str = capitalized ? text.toUpperCase() : text;
+    drawText (text, [x, y], tile, stroke, transform) {
+        let str = FeatureLabel.applyTextTransform(text, transform);
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
         if (stroke) {
             this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
@@ -176,7 +176,7 @@ Object.assign(TextStyle, {
                 let text_style = text_infos[text].text_style;
                 // update text sizes
                 this.setFont(tile, text_style); // TODO: only set once above
-                text_infos[text].size = this.textSize(text, tile, text_style.capitalized);
+                text_infos[text].size = this.textSize(text, tile, text_style.transform);
             }
         }
 
@@ -191,7 +191,7 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style); // TODO: only set once above
-                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.capitalized);
+                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.transform);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,

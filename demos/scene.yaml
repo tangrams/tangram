@@ -449,13 +449,13 @@ layers:
             draw:
                 text:
                     font:
-                        capitalized: true
+                        transform: uppercase
         countries:
             filter: { kind: country }
             draw:
                 text:
                     font:
-                        capitalized: true
+                        transform: uppercase
         oceans:
             filter: { kind: ocean }
             draw:
