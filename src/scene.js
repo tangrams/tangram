@@ -980,6 +980,7 @@ export default class Scene {
                     for (let url of config.include) {
                         includes.push(Utils.addBaseURL(url, path));
                     }
+                    delete config.include; // don't want to merge this property
 
                     return Promise.
                         all(includes.map(Scene.loadScene)).
