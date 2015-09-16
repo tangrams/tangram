@@ -155,7 +155,7 @@ export default SceneLoader = {
         }
 
         if (!active) {
-            config.cameras[camera_names[0]].active = true;
+            config.cameras[Object.keys(config.cameras)[0]].active = true;
         }
 
         // Ensure top-level properties
