@@ -120,7 +120,7 @@ export default class Scene {
 
     // Load (or reload) scene config
     // Optionally specify new scene file URL
-    load(config_source = null) {
+    load(config_source = null, config_path = null) {
         if (this.initializing) {
             return Promise.resolve();
         }
@@ -130,7 +130,7 @@ export default class Scene {
         this.initializing = true;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
-        return this.loadScene(config_source)
+        return this.loadScene(config_source, config_path)
             .then(() => this.createWorkers())
             .then(() => {
                 this.createCanvas();
@@ -184,8 +184,8 @@ export default class Scene {
     }
 
     // For API compatibility
-    reload(config_source = null) {
-        return this.load(config_source);
+    reload(config_source = null, config_path = null) {
+        return this.load(config_source, config_path);
     }
 
     destroy() {
@@ -932,17 +932,17 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene(config_source = null) {
+    loadScene(config_source = null, config_path = null) {
         this.config_source = config_source || this.config_source;
 
         if (typeof this.config_source === 'string') {
-            this.config_path = Utils.pathForURL(this.config_source);
+            this.config_path = config_path || Utils.pathForURL(this.config_source);
         }
         else {
             this.config_path = null;
         }
 
-        return Scene.loadScene(this.config_source).then(config => {
+        return Scene.loadScene(this.config_source, this.config_path).then(config => {
             this.config = config;
             this.preProcessConfig();
             this.trigger('load', { config: this.config });
@@ -951,14 +951,16 @@ export default class Scene {
     }
 
     // Load scenes definitions from external URLs
-    static loadScene(url) {
+    // Optional *initial* path only (won't be passed to recursive 'include' calls)
+    // Useful for loading resources in base scene file from a separate location
+    // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
+    static loadScene(url, path = null) {
         if (!url) {
             return Promise.resolve({});
         }
 
-        let path;
         if (typeof url === 'string') {
-            path = Utils.pathForURL(url);
+            path = path || Utils.pathForURL(url);
         }
 
         return Utils.loadResource(url).then(config => {
