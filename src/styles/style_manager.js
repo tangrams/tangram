@@ -328,7 +328,6 @@ StyleManager.inheritanceDepth = function (key, styles) {
         let style = styles[key];
         if (!style) {
             // this is a scene def error, trying to extend a style that doesn't exist
-            // TODO: warn/throw?
             break;
         }
 
@@ -342,10 +341,22 @@ StyleManager.inheritanceDepth = function (key, styles) {
 
         if (Array.isArray(style.mix)) {
             // If multiple mixins, find the deepest one
-            parents += Math.max(...style.mix.map(s => StyleManager.inheritanceDepth(s, styles)));
+            parents += Math.max(...style.mix.map(s => {
+                // Trying to mix into itself!
+                if (key === s) {
+                    return;
+                }
+
+                return StyleManager.inheritanceDepth(s, styles);
+            }));
             break;
         }
         else {
+            // Trying to mix into itself!
+            if (key === style.mix) {
+                break;
+            }
+
             // If single mixin, continue loop up the tree
             key = style.mix;
         }
