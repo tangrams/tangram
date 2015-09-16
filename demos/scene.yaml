@@ -160,7 +160,7 @@ sources:
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
     # schools:
     #     type: GeoJSON
-    #     url: demos/data/school-districts-polygon.geojson
+    #     url: data/school-districts-polygon.geojson
     # counties:
     #     type: TopoJSON
     #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
