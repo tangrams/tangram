@@ -24,11 +24,11 @@ Enjoy!
     var tile_sources = {
         'mapzen': {
             type: 'MVT',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-geojson': {
             type: 'GeoJSON',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
             // transform: function(data) {
             //     // You can edit the tile data here before it gets projected
             //     // and rendered
@@ -41,7 +41,7 @@ Enjoy!
         },
         'mapzen-dev': {
             type: 'GeoJSON',
-            url: '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-local': {
             type: 'GeoJSON',
@@ -49,7 +49,7 @@ Enjoy!
         },
         'mapzen-topojson': {
             type: 'TopoJSON',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
         },
 
         // 'osm': {
@@ -59,7 +59,7 @@ Enjoy!
 
         'mapbox': {
             type: 'MVT',
-            url: '//{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+            url: 'https://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }
 
