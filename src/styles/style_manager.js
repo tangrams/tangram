@@ -236,27 +236,45 @@ StyleManager.mix = function (style, styles) {
         }, {}) || {}
     );
 
-    // Keep track of which style each block originated from
-    let merge_block_scopes = sources.filter(x => x.shaders && x.shaders.blocks).map(x => x.name);
+    // Mark all shader blocks for the target style as originating with its own name
+    if (style.shaders && style.shaders.blocks) {
+        style.shaders.block_scopes = style.shaders.block_scopes || {};
+        for (let [k, block] of Utils.entries(style.shaders.blocks)) {
+            style.shaders.block_scopes[k] = style.shaders.block_scopes[k] || [];
+            if (Array.isArray(block)) {
+                style.shaders.block_scopes[k].push(...block.map(() => style.name));
+            }
+            else {
+                style.shaders.block_scopes[k].push(style.name);
+            }
+        }
+    }
 
-    merge.map(x => x.blocks).filter(x => x).forEach((blocks, num) => {
+    // Merge shader blocks, keeping track of which style each block originated from
+    for (let source of merge) {
+        if (!source.blocks) {
+            continue;
+        }
+
         shaders.blocks = shaders.blocks || {};
         shaders.block_scopes = shaders.block_scopes || {};
 
-        for (let [t, block] of Utils.entries(blocks)) {
+        for (let [t, block] of Utils.entries(source.blocks)) {
+            let block_scope = source.block_scopes[t];
+
             shaders.blocks[t] = shaders.blocks[t] || [];
             shaders.block_scopes[t] = shaders.block_scopes[t] || [];
 
             if (Array.isArray(block)) {
                 shaders.blocks[t].push(...block);
-                shaders.block_scopes[t].push(...block.map(() => merge_block_scopes[num]));
+                shaders.block_scopes[t].push(...block_scope);
             }
             else {
                 shaders.blocks[t].push(block);
-                shaders.block_scopes[t].push(merge_block_scopes[num]);
+                shaders.block_scopes[t].push(block_scope);
             }
         }
-    });
+    };
 
     style.shaders = shaders;
     style.mixed = true; // track that we already applied mixins (avoid dupe work later)
