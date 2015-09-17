@@ -107,8 +107,18 @@ StyleManager.loadRemoteStyles = function (styles, base) {
         return new Promise((resolve, reject) => {
             Utils.loadResource(url).then((data) => {
                 // Mixin remote styles, within each remote file
-                for (var source_style in data) {
-                    StyleManager.mix(data[source_style], data);
+                // TODO: may not handle multiple levels of mixins, and will not handle nested remote files
+                for (var source_name in data) {
+                    let source_import = urls[url] && urls[url].find(s => s.source_name === source_name);
+                    if (source_import) {
+                        // use imported name if different from name in source file
+                        data[source_name].name = source_import.target_name;
+                    }
+                    else {
+                        data[source_name].name = source_name;
+                    }
+
+                    data[source_name] = StyleManager.mix(data[source_name], data);
                 }
 
                 // Add remote styles to local styles
