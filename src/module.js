@@ -30,6 +30,7 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import FeatureSelection from './selection';
 
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 
 // Default to 64-bit because we need the extra precision when multiplying matrices w/mercator projected values
@@ -38,6 +39,7 @@ glMatrix.glMatrix.setMatrixArrayType(Float64Array);
 // Make some modules accessible for debugging
 var debug = {
     log,
+    yaml,
     Utils,
     Geo,
     DataSource,
