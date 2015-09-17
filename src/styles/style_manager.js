@@ -284,7 +284,7 @@ StyleManager.mix = function (style, styles) {
                 shaders.block_scopes[t].push(block_scope);
             }
         }
-    };
+    }
 
     style.shaders = shaders;
     style.mixed = true; // track that we already applied mixins (avoid dupe work later)
