@@ -220,12 +220,15 @@ Object.assign(TextStyle, {
 
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
+        this.textures[tile] = new Texture(this.gl, texture);
 
         // ask for rasterization for the text set
         this.rasterize(tile, texts, texture_size);
 
-        this.textures[tile].setCanvas(this.canvas[tile].canvas);
+        this.textures[tile].setCanvas(this.canvas[tile].canvas, {
+            filtering: 'linear',
+            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+        });
 
         // we don't need tile canvas/texture once it has been copied to to GPU
         delete this.textures[tile];
