@@ -151,6 +151,7 @@ export default class Scene {
                 this.initializing = false;
                 this.initialized = true;
                 this.last_valid_config_source = this.config_source;
+                this.last_valid_config_path = this.config_path;
 
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
@@ -175,7 +176,7 @@ export default class Scene {
             if (this.last_valid_config_source) {
                 log.warn(message, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_valid_config_source);
+                return this.load(this.last_valid_config_source, this.last_valid_config_path);
             }
             log.error(message, error);
             throw error;
