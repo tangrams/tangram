@@ -4,6 +4,7 @@ import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
+import {mergeObjects} from './rule';
 
 import log from 'loglevel';
 
@@ -268,11 +269,11 @@ StyleManager.mix = function (style, styles) {
 // config: properties of new style
 // styles: working set of styles being built (used for mixing in existing styles)
 StyleManager.create = function (name, config, styles = {}) {
-    let style = Object.assign({}, config); // shallow copy
+    let style = mergeObjects({}, config); // deep copy
     style.name = name;
 
     // Style mixins
-    StyleManager.mix(style, styles);
+    style = StyleManager.mix(style, styles);
 
     // Has base style?
     // Only renderable (instantiated) styles should be included for run-time use
