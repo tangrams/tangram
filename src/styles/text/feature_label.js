@@ -18,6 +18,7 @@ export default class FeatureLabel {
 
     constructFontStyle (rule, context, default_font_style) {
         let style = {};
+        rule.font = rule.font || default_font_style;
 
         // Use fill if specified, or default
         style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
