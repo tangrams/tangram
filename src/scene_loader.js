@@ -1,6 +1,6 @@
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
-import {mergeObjects} from './styles/rule';
+// import {mergeObjects} from './styles/rule';
 import {StyleManager} from './styles/style_manager';
 
 var SceneLoader;
@@ -30,29 +30,29 @@ export default SceneLoader = {
                 then(styles => StyleManager.loadShaderBlocks(styles, path)). // TODO: deprecate remote shader blocks?
                 then(() => {
                     // accept single-string or array
-                    if (typeof config.include === 'string') {
-                        config.include = [config.include];
-                    }
+                    // if (typeof config.include === 'string') {
+                    //     config.include = [config.include];
+                    // }
 
-                    if (!Array.isArray(config.include)) {
+                    // if (!Array.isArray(config.include)) {
                         SceneLoader.normalize(config, path);
                         return config;
-                    }
+                    // }
 
                     // Collect URLs of scenes to include
-                    let includes = [];
-                    for (let url of config.include) {
-                        includes.push(Utils.addBaseURL(url, path));
-                    }
-                    delete config.include; // don't want to merge this property
+                    // let includes = [];
+                    // for (let url of config.include) {
+                    //     includes.push(Utils.addBaseURL(url, path));
+                    // }
+                    // delete config.include; // don't want to merge this property
 
-                    return Promise.
-                        all(includes.map(url => SceneLoader.loadSceneRecursive(url))).
-                        then(configs => {
-                            config = mergeObjects({}, ...configs, config);
-                            SceneLoader.normalize(config, path);
-                            return config;
-                        });
+                    // return Promise.
+                    //     all(includes.map(url => SceneLoader.loadSceneRecursive(url))).
+                    //     then(configs => {
+                    //         config = mergeObjects({}, ...configs, config);
+                    //         SceneLoader.normalize(config, path);
+                    //         return config;
+                    //     });
                 });
         });
     },
