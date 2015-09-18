@@ -8,6 +8,7 @@ import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
+import SceneLoader from './scene_loader';
 import Camera from './camera';
 import Light from './light';
 import TileManager from './tile_manager';
@@ -118,7 +119,7 @@ export default class Scene {
 
     // Load (or reload) scene config
     // Optionally specify new scene file URL
-    load(config_source = null) {
+    load(config_source = null, config_path = null) {
         if (this.initializing) {
             return Promise.resolve();
         }
@@ -128,7 +129,7 @@ export default class Scene {
         this.initializing = true;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
-        return this.loadScene(config_source)
+        return this.loadScene(config_source, config_path)
             .then(() => this.createWorkers())
             .then(() => {
                 this.createCanvas();
@@ -150,6 +151,7 @@ export default class Scene {
                 this.initializing = false;
                 this.initialized = true;
                 this.last_valid_config_source = this.config_source;
+                this.last_valid_config_path = this.config_path;
 
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
@@ -174,7 +176,7 @@ export default class Scene {
             if (this.last_valid_config_source) {
                 log.warn(message, error);
                 log.info(`Scene.load() reverting to last valid configuration`);
-                return this.load(this.last_valid_config_source);
+                return this.load(this.last_valid_config_source, this.last_valid_config_path);
             }
             log.error(message, error);
             throw error;
@@ -182,8 +184,8 @@ export default class Scene {
     }
 
     // For API compatibility
-    reload(config_source = null) {
-        return this.load(config_source);
+    reload(config_source = null, config_path = null) {
+        return this.load(config_source, config_path);
     }
 
     destroy() {
@@ -930,26 +932,26 @@ export default class Scene {
        Load (or reload) the scene config
        @return {Promise}
     */
-    loadScene(config_source = null) {
+    loadScene(config_source = null, config_path = null) {
         this.config_source = config_source || this.config_source;
+
         if (typeof this.config_source === 'string') {
-            this.config_path = Utils.pathForURL(this.config_source);
+            this.config_path = config_path || Utils.pathForURL(this.config_source);
         }
         else {
             this.config_path = null;
         }
-        Texture.base_url = this.config_path;
 
-        return Utils.loadResource(this.config_source).then((config) => {
+        return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
             this.config = config;
-            return this.preProcessConfig().then(() => { this.trigger('load', { config: this.config }); });
+            this.trigger('load', { config: this.config });
+            return this.config;
         });
     }
 
     loadDataSources() {
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
-            source.url = Utils.addBaseURL(source.url);
             this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
 
             if (!this.sources[name]) {
@@ -960,57 +962,9 @@ export default class Scene {
         }
     }
 
-    // Normalize some settings that may not have been explicitly specified in the scene definition
-    preProcessConfig() {
-        // Assign ids to data sources
-        let source_id = 0;
-        for (let source in this.config.sources) {
-            this.config.sources[source].id = source_id++;
-        }
-
-        // If only one camera specified, set it as default
-        this.config.cameras = this.config.cameras || {};
-        if (this.config.camera) {
-            this.config.cameras.default = this.config.camera;
-        }
-        let camera_names = Object.keys(this.config.cameras);
-        if (camera_names.length === 0) {
-            this.config.cameras.default = { active: true };
-
-        }
-        else if (!this._active_camera) {
-            // If no camera set as active, use first one
-            this.config.cameras[camera_names[0]].active = true;
-        }
-
-        this.config.lights = this.config.lights || {}; // ensure lights object
-        this.config.styles = this.config.styles || {}; // ensure styles object
-
-        return StyleManager.preload(this.config.styles, this.config_path);
-    }
-
     // Load all textures in the scene definition
     loadTextures() {
-        this.normalizeTextures();
         return Texture.createFromObject(this.gl, this.config.textures);
-    }
-
-    // Handle single or multi-texture syntax, for stylesheet convenience
-    normalizeTextures() {
-        if (!this.config.styles) {
-            return;
-        }
-
-        for (let [style_name, style] of Utils.entries(this.config.styles)) {
-            // If style has a single 'texture' object, move it to the global scene texture set
-            // and give it a default name
-            if (style.texture && typeof style.texture === 'object') {
-                let texture_name = '__' + style_name;
-                this.config.textures = this.config.textures || {};
-                this.config.textures[texture_name] = style.texture;
-                style.texture = texture_name; // point stlye to location of texture
-            }
-        }
     }
 
     // Called (currently manually) after styles are updated in stylesheet

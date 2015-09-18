@@ -27,14 +27,6 @@ describe('Scene', function () {
             assert.instanceOf(subject, Scene);
         });
 
-        it('correctly sets the value of the layers object', () => {
-            assert.equal(subject.layer_source, sampleScene.layers);
-        });
-
-        it('correctly sets the value of the config object', () => {
-            assert.equal(subject.config_source, sampleScene.config);
-        });
-
 
     });
 
@@ -72,6 +64,23 @@ describe('Scene', function () {
                 assert.isTrue(subject.styles.rainbow.compiled);
                 assert.ok(subject.styles.rainbow.program);
             });
+        });
+
+        describe('loading scene from an existing object', () => {
+
+            beforeEach(() => {
+                subject = makeScene({ config: sampleScene });
+                return subject.load();
+            });
+
+            it('correctly sets the value of the config object', () => {
+                assert.equal(subject.config_source, sampleScene);
+            });
+
+            it('sets the initialized property', () => {
+                assert.isTrue(subject.initialized);
+            });
+
         });
 
         describe('when the scene is already initialized', () => {

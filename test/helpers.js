@@ -1,5 +1,4 @@
 import Scene from '../src/scene';
-import sampleScene from './fixtures/sample-scene';
 
 /*
     Special web worker treatment:
@@ -49,7 +48,7 @@ window.makeScene = function (options) {
     options.logLevel =  options.logLevel || 'info';
 
     return new Scene(
-        sampleScene.config,
+        options.config || 'http://localhost:9876/base/test/fixtures/sample-scene.yaml',
         options
     );
 

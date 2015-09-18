@@ -1,118 +1,115 @@
 {
+    "sources": {
+        "osm": {
+            "max_zoom": 20,
+            "type": "GeoJSON",
+            "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
+        }
+    },
 
-    "config": {
-
-        "sources": {
-            "osm": {
-                "max_zoom": 20,
-                "type": "GeoJSONTiles",
-                "url": "http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json"
-            }
-        },
-
-        "layers": {
-            "earth": {
-                "data": {
-                    "source": "osm"
-                },
-                "draw": {
-                    "polygons": {
-                        "color": [0.175, 0.175, 0.175],
-                        "order": 0
-                    }
-                }
+    "layers": {
+        "earth": {
+            "data": {
+                "source": "osm"
             },
-            "landuse": {
-                "data": {
-                    "source": "osm"
-                },
-                "draw": {
-                    "polygons": {
-                        "color": [0.5, 0.875, 0.5],
-                        "order": 1
-                    }
-                }
-            },
-            "water": {
-                "data": {
-                    "source": "osm"
-                },
-                "draw": {
-                    "polygons": {
-                        "color": [0.5, 0.5, 0.875],
-                        "order": 2
-                    }
-                }
-            },
-            "roads": {
-                "data": {
-                    "source": "osm"
-                },
-                "draw": {
-                    "lines": {
-                        "color": [0.4, 0.4, 0.4],
-                        "order": 3
-                    }
-                }
-            },
-            "buildings": {
-                "data": {
-                    "source": "osm"
-                },
-                "draw": {
-                    "polygons": {
-                        "style": "rainbow",
-                        "color": [0.6, 0.6, 0.6],
-                        "order": 4
-                    }
+            "draw": {
+                "polygons": {
+                    "color": [0.175, 0.175, 0.175],
+                    "order": 0
                 }
             }
         },
-        "lights": {
-            "ambient": {
-                "type": "ambient",
-                "ambient": 0.5
+        "landuse": {
+            "data": {
+                "source": "osm"
+            },
+            "draw": {
+                "polygons": {
+                    "color": [0.5, 0.875, 0.5],
+                    "order": 1
+                }
             }
         },
-        "styles": {
-            "rainbow_child": {
-                "mix": "rainbow",
-                "animated": true,
-                "shaders": {
-                    "blocks": {
-                        "color":
-                            "color.rgb = clamp(hsv2rgb(c) * 2., 0., 1.);"
-                    }
-                }
+        "water": {
+            "data": {
+                "source": "osm"
             },
-            "rainbow": {
-                "base": "polygons",
-                "animated": true,
-                "shaders": {
-                    "blocks": {
-                        "global":
-                            "vec3 hsv2rgb(vec3 c) { \n\
-                                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); \n\
-                                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www); \n\
-                                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y); \n\
-                            }",
-                        "color":
-                            "vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0); \n\
-                            color.rgb = hsv2rgb(c);"
-                    }
+            "draw": {
+                "polygons": {
+                    "color": [0.5, 0.5, 0.875],
+                    "order": 2
                 }
+            }
+        },
+        "roads": {
+            "data": {
+                "source": "osm"
             },
-            "scale": {
-                "base": "polygons",
-                "shaders": {
-                    "uniforms": {
-                        "scale": [1, 2, 3]
-                    },
-                    "blocks": {
-                        "position":
-                            "position.xyz *= scale;"
-                    }
+            "draw": {
+                "lines": {
+                    "color": [0.4, 0.4, 0.4],
+                    "order": 3
+                }
+            }
+        },
+        "buildings": {
+            "data": {
+                "source": "osm"
+            },
+            "draw": {
+                "polygons": {
+                    "style": "rainbow",
+                    "color": [0.6, 0.6, 0.6],
+                    "order": 4
                 }
             }
         }
-    }}
+    },
+    "lights": {
+        "ambient": {
+            "type": "ambient",
+            "ambient": 0.5
+        }
+    },
+    "styles": {
+        "rainbow_child": {
+            "mix": "rainbow",
+            "animated": true,
+            "shaders": {
+                "blocks": {
+                    "color":
+                        "color.rgb = clamp(hsv2rgb(c) * 2., 0., 1.);"
+                }
+            }
+        },
+        "rainbow": {
+            "base": "polygons",
+            "animated": true,
+            "shaders": {
+                "blocks": {
+                    "global":
+                        "vec3 hsv2rgb(vec3 c) { \n\
+                            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); \n\
+                            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www); \n\
+                            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y); \n\
+                        }",
+                    "color":
+                        "vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0); \n\
+                        color.rgb = hsv2rgb(c);"
+                }
+            }
+        },
+        "scale": {
+            "base": "polygons",
+            "shaders": {
+                "uniforms": {
+                    "scale": [1, 2, 3]
+                },
+                "blocks": {
+                    "position":
+                        "position.xyz *= scale;"
+                }
+            }
+        }
+    }
+}
