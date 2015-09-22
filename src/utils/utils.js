@@ -55,9 +55,9 @@ Utils.addBaseURL = function (url, base) {
 
 Utils.pathForURL = function (url) {
     if (url.search(/^(data|blob):/) === -1) {
-        return url.substr(0, url.lastIndexOf('/') + 1);
+        return url.substr(0, url.lastIndexOf('/') + 1) || './';
     }
-    return '';
+    return './';
 };
 
 Utils.cacheBusterForUrl = function (url) {

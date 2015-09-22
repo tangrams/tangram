@@ -939,7 +939,7 @@ export default class Scene {
             this.config_path = config_path || Utils.pathForURL(this.config_source);
         }
         else {
-            this.config_path = null;
+            this.config_path = config_path;
         }
 
         return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
