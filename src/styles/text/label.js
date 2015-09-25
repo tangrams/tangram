@@ -1,6 +1,6 @@
 /*global Label */
 
-import boxIntersect from 'box-intersect';
+import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
 import Utils from '../../utils/utils';
 import OBB from '../../utils/obb';
 
@@ -16,6 +16,7 @@ export default class Label {
         });
     }
 
+    // check for overlaps with other labels in the tile
     occluded (aabbs) {
         let intersect = false;
 
@@ -32,9 +33,9 @@ export default class Label {
 
         // No collision on aabb
         if (!intersect) {
+            // it's clean, add it to the list of bboxes
             aabbs.push(this.aabb);
         }
-
         return intersect;
     }
 

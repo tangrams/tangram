@@ -245,11 +245,37 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = {};
+        let labels_priorities = {};  // this will store all labels in the tile, 
+                                     // sorted into objects by priority
 
+        // texts holds text_info objects, keyed by style
+        // Example:
+        // Object {
+        //     "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8": Object {
+        //         East 10th Street: Object,
+        //         East 12th Street: Object
+        //     },
+        //     "100 32px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8": Object {
+        //         3rd Avenue: Object
+        //     }
+        // }
+        
+        // for each style key
         for (let style in texts) {
             let text_infos = texts[style];
 
+            // text_infos holds text objects, keyed by text
+            // Example:
+            // Object: {
+            //      "3rd Avenue": Object {
+            //          priority: 3,
+            //          ref: 1,
+            //          size: Object,
+            //          text_style: Object
+            //      }
+            // }
+
+            // for each text object:
             for (let text in text_infos) {
                 let text_info = text_infos[text];
                 text_info.ref = 0;
@@ -261,7 +287,9 @@ Object.assign(TextStyle, {
                 }
 
                 let label_features = this.features[hash];
+                // this.features holds all features, keyed by tile, then style, then text
 
+                // for each feature
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
@@ -272,6 +300,7 @@ Object.assign(TextStyle, {
                         line_exceed: text_info.line_exceed
                     });
 
+                    // build a label for each text_info object
                     let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
 
                     for (let i = 0; i < labels.length; ++i) {
@@ -303,6 +332,8 @@ Object.assign(TextStyle, {
         return labels_priorities;
     },
 
+    // test all labels for collisions -
+    // when two collide, discard the lower-priority label
     discardLabels (tile, labels, texts) {
         this.aabbs[tile] = [];
         this.feature_labels[tile] = new Map();
@@ -310,18 +341,25 @@ Object.assign(TextStyle, {
         // Process labels by priority
         let priorities = Object.keys(labels).sort((a, b) => a - b);
         for (let priority of priorities) {
-            if (!labels[priority]) {
+            if (!labels[priority]) { // no labels at this priority, skip to next
                 continue;
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
                 let { style, feature, label } = labels[priority][i];
 
+                // test the label for intersections with other labels in the tile
                 if (!label.discard(this.aabbs[tile])) {
+                    // if it didn't collide
                     if (!this.feature_labels[tile].has(feature)) {
+                        // if the label was just made, make a new empty entry in this
+                        // tile's feature_labels using the feature as the key -
+                        // the entry will be used as the style.labels
                         this.feature_labels[tile].set(feature, []);
                     }
+                    // add the label to the entry's value
                     this.feature_labels[tile].get(feature).push(label);
+                    // increment a count of how many times this style is used in the tile
                     texts[style][label.text].ref++;
                 }
             }
@@ -329,16 +367,16 @@ Object.assign(TextStyle, {
 
         for (let style in texts) {
             for (let text in texts[style]) {
-                if (texts[style][text].ref < 1) {
-                    delete texts[style][text];
+                if (texts[style][text].ref < 1) { // if this style isn't being used
+                    delete texts[style][text]; // cleanup
                 }
             }
         }
 
         for (let style in texts) {
             let text_infos = texts[style];
-            // No labels for this style
             if (Object.keys(text_infos).length === 0) {
+                // No labels for this style
                 delete texts[style];
             }
         }
@@ -408,7 +446,7 @@ Object.assign(TextStyle, {
             return;
         }
 
-        // Collect text
+        // Collect text - default source is feature.properties.name
         let text;
         let source = rule.text_source || 'name';
 
@@ -422,6 +460,8 @@ Object.assign(TextStyle, {
             feature.text = text;
 
             if (!this.texts[tile.key]) {
+                // this is the first label in the tile, make a new tile entry
+                // eg "osm/15/9650/12319/15"
                 this.texts[tile.key] = this.texts[tile.key] || {};
             }
 
@@ -438,6 +478,8 @@ Object.assign(TextStyle, {
             this.feature_style_key[tile.key].set(feature, style_key);
 
             if (!this.texts[tile.key][style_key]) {
+                // first label with this style in this tile, make a new style entry
+                // example: "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8"
                 this.texts[tile.key][style_key] = {};
             }
 
@@ -480,6 +522,7 @@ Object.assign(TextStyle, {
             }
 
             if (!this.texts[tile.key][style_key][text]) {
+                // first label with this text/style/tile combination, make a new label entry
                 this.texts[tile.key][style_key][text] = {
                     text_style: label_feature.style,
                     units_per_pixel: tile.units_per_pixel,
@@ -544,6 +587,7 @@ Object.assign(TextStyle, {
 
         this.texcoord_scale = text_info.texcoords;
         style.text = text;
+        // add the labels from the feature_labels object for this tile
         style.labels = this.feature_labels[tile].get(feature);
 
         // TODO: point style (parent class) requires a color, setting it to white for now,
