@@ -113,22 +113,25 @@ export class GeoJSONSource extends NetworkSource {
             };
 
             for (let feature of t.features) {
-
-                // Copy geometry (don't want to modify internal geojson-vt data)
-                let geom = feature.geometry.map(ring =>
-                    ring.map(coord => [coord[0], coord[1]])
-                );
-
+                let geom; // copy geometry (don't want to modify internal geojson-vt data)
                 let type;
+
                 if (feature.type === 1) {
+                    geom = feature.geometry.map(coord => [coord[0], coord[1]]);
                     type = 'MultiPoint';
                 }
-                else if (feature.type === 2) {
-                    type = 'MultiLineString';
-                }
-                else if (feature.type === 3) {
-                    type = 'MultiPolygon';
-                    geom = this.decodeMultiPolygon(geom); // un-flatten rings
+                else if (feature.type === 2 || feature.type === 3) {
+                    geom = feature.geometry.map(ring =>
+                        ring.map(coord => [coord[0], coord[1]])
+                    );
+
+                    if (feature.type === 2) {
+                        type = 'MultiLineString';
+                    }
+                    else  {
+                        type = 'MultiPolygon';
+                        geom = this.decodeMultiPolygon(geom); // un-flatten rings
+                    }
                 }
                 else {
                     continue;
@@ -151,14 +154,14 @@ export class GeoJSONSource extends NetworkSource {
     }
 
     // Decode multipolygons, which are encoded as a single set of rings
-    // Outer rings are wound CCW, inner are CW
-    // A CCW ring indicates the start of a new polygon
+    // Outer rings are wound CW, inner are CCW
+    // A CW ring indicates the start of a new polygon
     decodeMultiPolygon (geom) {
         let polys = [];
         let poly = [];
         for (let ring of geom) {
             let winding = Geo.ringWinding(ring);
-            if (winding === 'CCW' && poly.length > 0) {
+            if (winding === 'CW' && poly.length > 0) {
                 polys.push(poly);
                 poly = [];
             }
