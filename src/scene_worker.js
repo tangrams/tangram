@@ -136,7 +136,7 @@ Utils.isWorkerThread && Object.assign(self, {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-                        Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        Utils.log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                         resolve({ tile: Tile.slice(tile) });
                     });
