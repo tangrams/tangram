@@ -37,7 +37,7 @@ export class GeoJSONTileSource extends NetworkTileSource {
     prepareGeoJSON (data, tile, source) {
         // Apply optional data transform
         if (typeof this.transform === 'function') {
-            data = this.transform(data, source);
+            data = this.transform(data, this.extra_data);
         }
 
         source.layers = GeoJSONSource.prototype.getLayers(data);
