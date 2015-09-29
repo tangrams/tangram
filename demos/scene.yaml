@@ -215,7 +215,6 @@ layers:
     landuse:
         data: { source: osm }
         filter:
-            name: true
             # show smaller landuse areas at higher zooms
             any:
                 - { $zoom: { min: 9 }, area: { min: 10000000 } }
