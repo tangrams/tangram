@@ -2,8 +2,6 @@ import Utils from './utils/utils';
 import Scene from './scene';
 import Geo from './geo';
 
-import CSSMatrix from 'xcssmatrix';
-
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
 export function leafletLayer(options) {
@@ -85,7 +83,6 @@ if (Utils.isMainThread) {
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
-                this.reverseTransform(map);
                 this._updating_tangram = false;
             };
             map.on('move', this.hooks.move);
@@ -119,8 +116,7 @@ if (Utils.isMainThread) {
 
             // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
             // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-            // this.scene.container = map.getContainer();
-            this.scene.container = this.getContainer();
+            this.scene.container = map.getContainer();
 
             // Initial view
             var view = map.getCenter();
@@ -134,18 +130,6 @@ if (Utils.isMainThread) {
 
             // Use leaflet's existing event system as the callback mechanism
             this.scene.load().then(() => {
-                // make sure the expected scene is being initialized
-                // can be another scene object if layer is removed and re-added before scene init completes
-                if (this.scene === scene) {
-                    // TODO: why is force-resize needed here?
-                    var size = map.getSize();
-                    this.scene.resizeMap(size.x, size.y);
-
-                    var center = map.getCenter();
-                    this.scene.setCenter(center.lng, center.lat, map.getZoom());
-                    this.reverseTransform(map);
-                }
-
                 this.fire('init');
             }).catch(error => {
                 this.fire('error', error);
@@ -251,20 +235,6 @@ if (Utils.isMainThread) {
                 return;
             }
             this.scene.update();
-        },
-
-        // Reverse the CSS transform Leaflet applies to the layer, since Tangram's WebGL canvas
-        // is expected to be 'absolutely' positioned.
-        reverseTransform: function (map) {
-            if (!map || !this.scene.canvas) {
-                return;
-            }
-
-            var pane = map.getPanes().mapPane;
-            var transform = pane.style.transform || pane.style['-webkit-transform'];
-            var matrix = new CSSMatrix(transform).inverse();
-            this.scene.canvas.style.transform = matrix;
-            this.scene.canvas.style['-webkit-transform'] = matrix;
         }
 
     });
