@@ -27,6 +27,7 @@ export default class FeatureLabel {
         if (rule.font.stroke && rule.font.stroke.color) {
             style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
             style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
+            style.stroke_width = style.stroke_width && parseFloat(style.stroke_width);
         }
 
         // Font properties are modeled after CSS names:
