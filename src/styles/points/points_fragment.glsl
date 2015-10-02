@@ -39,7 +39,7 @@ void main (void) {
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
-    #ifndef TANGRAM_BLEND_OVERLAY
+    #ifdef TANGRAM_BLEND_OPAQUE
         if (color.a < TANGRAM_ALPHA_DISCARD) {
             discard;
         }
