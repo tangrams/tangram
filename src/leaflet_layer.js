@@ -29,6 +29,7 @@ if (Utils.isMainThread) {
         initialize: function (options) {
             // Defaults
             options.showDebug = (!options.showDebug ? false : true);
+            options.wheelDebounceTime = options.wheelDebounceTime || 40;
 
             L.setOptions(this, options);
             this.createScene();
@@ -37,6 +38,11 @@ if (Utils.isMainThread) {
 
             // Force leaflet zoom animations off
             this._zoomAnimated = false;
+
+            this.debounceViewReset = Utils.debounce(() => {
+                this._map.fire('zoomend');
+                this._map.fire('moveend');
+            }, this.options.wheelDebounceTime);
         },
 
         createScene: function () {
@@ -184,6 +190,7 @@ if (Utils.isMainThread) {
         // default behavior is presumably improved
         modifyScrollWheelBehavior: function (map) {
             if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
+                let layer = this;
                 map.scrollWheelZoom._performZoom = function () {
                     var map = this._map,
                         delta = this._delta,
@@ -217,6 +224,8 @@ if (Utils.isMainThread) {
 
                         map._move(newCenter, newZoom);
                     }
+
+                    layer.debounceViewReset();
                 };
             }
         },
