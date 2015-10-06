@@ -191,6 +191,16 @@ if (Utils.isMainThread) {
         modifyScrollWheelBehavior: function (map) {
             if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                 let layer = this;
+
+                map.scrollWheelZoom._onWheelScroll = function(e) {
+                    // modify to skip debounce, as it seems to cause animation-sync issues in Chrome
+                    // with Tangram continuous rendering
+                    this._delta += L.DomEvent.getWheelDelta(e);
+                    this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+                    this._performZoom();
+                    L.DomEvent.stop(e);
+                };
+
                 map.scrollWheelZoom._performZoom = function () {
                     var map = this._map,
                         delta = this._delta,
@@ -227,6 +237,10 @@ if (Utils.isMainThread) {
 
                     layer.debounceViewReset();
                 };
+
+                // Re-init scroll wheel
+                map.scrollWheelZoom.removeHooks();
+                map.scrollWheelZoom.addHooks();
             }
         },
 
