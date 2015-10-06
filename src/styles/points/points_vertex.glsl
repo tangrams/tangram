@@ -3,6 +3,7 @@ uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec3 u_tile_origin;
 uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
