@@ -440,12 +440,31 @@ Utils.hashString = function(str) {
         return 0;
     }
     let hash = 0;
-    
+
     for (let i = 0, len = str.length; i < len; i++) {
         let chr = str.charCodeAt(i);
         hash = ((hash << 5) - hash) + chr;
-        hash |= 0; 
+        hash |= 0;
     }
     return hash;
 };
 
+Utils.debounce = function (func, wait, immediate) {
+    let timeout;
+    return function() {
+        let context = this,
+            args = arguments;
+        let later = function() {
+            timeout = null;
+            if (!immediate) {
+                func.apply(context, args);
+            }
+        };
+        let callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) {
+            func.apply(context, args);
+        }
+    };
+};

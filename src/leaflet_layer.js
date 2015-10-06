@@ -29,6 +29,7 @@ if (Utils.isMainThread) {
         initialize: function (options) {
             // Defaults
             options.showDebug = (!options.showDebug ? false : true);
+            options.wheelDebounceTime = options.wheelDebounceTime || 40;
 
             L.setOptions(this, options);
             this.createScene();
@@ -37,6 +38,11 @@ if (Utils.isMainThread) {
 
             // Force leaflet zoom animations off
             this._zoomAnimated = false;
+
+            this.debounceViewReset = Utils.debounce(() => {
+                this._map.fire('zoomend');
+                this._map.fire('moveend');
+            }, this.options.wheelDebounceTime);
         },
 
         createScene: function () {
@@ -184,6 +190,17 @@ if (Utils.isMainThread) {
         // default behavior is presumably improved
         modifyScrollWheelBehavior: function (map) {
             if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
+                let layer = this;
+
+                map.scrollWheelZoom._onWheelScroll = function(e) {
+                    // modify to skip debounce, as it seems to cause animation-sync issues in Chrome
+                    // with Tangram continuous rendering
+                    this._delta += L.DomEvent.getWheelDelta(e);
+                    this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+                    this._performZoom();
+                    L.DomEvent.stop(e);
+                };
+
                 map.scrollWheelZoom._performZoom = function () {
                     var map = this._map,
                         delta = this._delta,
@@ -192,7 +209,7 @@ if (Utils.isMainThread) {
                     map.stop(); // stop panning and fly animations if any
 
                     // NOTE: this is the only real modification to default leaflet behavior
-                    delta /= 40;
+                    delta /= 30;
 
                     delta = Math.max(Math.min(delta, 4), -4);
                     delta = map._limitZoom(zoom + delta) - zoom;
@@ -217,7 +234,13 @@ if (Utils.isMainThread) {
 
                         map._move(newCenter, newZoom);
                     }
+
+                    layer.debounceViewReset();
                 };
+
+                // Re-init scroll wheel
+                map.scrollWheelZoom.removeHooks();
+                map.scrollWheelZoom.addHooks();
             }
         },
 
