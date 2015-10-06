@@ -199,7 +199,7 @@ if (Utils.isMainThread) {
                     map.stop(); // stop panning and fly animations if any
 
                     // NOTE: this is the only real modification to default leaflet behavior
-                    delta /= 40;
+                    delta /= 30;
 
                     delta = Math.max(Math.min(delta, 4), -4);
                     delta = map._limitZoom(zoom + delta) - zoom;
