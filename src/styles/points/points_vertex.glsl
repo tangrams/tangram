@@ -18,6 +18,8 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 
+vec3 g_model_position; // position in model space in [0, 1] range
+
 #pragma tangram: camera
 #pragma tangram: global
 
@@ -34,6 +36,7 @@ void main() {
     v_texcoord = a_texcoord;
 
     // Position
+    g_model_position = a_position.xyz * 32767. / TANGRAM_TILE_SCALE; // position in model space in [0, 1] range
     vec4 position = u_modelView * vec4(a_position.xyz * 32767., 1.);
 
     // Apply positioning and scaling in screen space
