@@ -200,7 +200,7 @@ StyleManager.mix = function (style, styles) {
         else {
             sources.push(style.mix);
         }
-        sources = sources.map(x => styles[x]).filter(x => x);
+        sources = sources.map(x => styles[x]).filter(x => x && x !== style); // TODO: warning on trying to mix into self
     }
     sources.push(style);
 
