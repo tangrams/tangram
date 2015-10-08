@@ -43,7 +43,10 @@ varying vec4 v_world_position;
     varying vec4 v_lighting;
 #endif
 
-vec3 g_model_position; // position in model space in [0, 1] range
+// position in model space in [0, 1] range over a tile
+vec3 modelPosition() {
+    return a_position.xyz * 32767. / TANGRAM_TILE_SCALE;
+}
 
 #pragma tangram: camera
 #pragma tangram: material
@@ -60,7 +63,6 @@ void main() {
     #endif
 
     // Position
-    g_model_position = a_position.xyz * 32767. / TANGRAM_TILE_SCALE; // position in model space in [0, 1] range
     vec4 position = vec4(a_position.xyz * 32767., 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
