@@ -258,6 +258,7 @@ StyleManager.mix = function (style, styles) {
     }
 
     // Merge shader blocks, keeping track of which style each block originated from
+    let mixed = {}; // all scopes mixed so far
     for (let source of merge) {
         if (!source.blocks) {
             continue;
@@ -265,6 +266,7 @@ StyleManager.mix = function (style, styles) {
 
         shaders.blocks = shaders.blocks || {};
         shaders.block_scopes = shaders.block_scopes || {};
+        let mixed_source = {}; // scopes mixed for this source style
 
         for (let [t, block] of Utils.entries(source.blocks)) {
             let block_scope = source.block_scopes[t];
@@ -272,19 +274,28 @@ StyleManager.mix = function (style, styles) {
             shaders.blocks[t] = shaders.blocks[t] || [];
             shaders.block_scopes[t] = shaders.block_scopes[t] || [];
 
-            if (Array.isArray(block)) {
-                shaders.blocks[t].push(...block);
-                shaders.block_scopes[t].push(...block_scope);
-            }
-            else {
-                shaders.blocks[t].push(block);
-                shaders.block_scopes[t].push(block_scope);
+            // standardize on arrays (block can be single or multi-value)
+            block = Array.isArray(block) ? block : [block];
+            block_scope = Array.isArray(block_scope) ? block_scope : [block_scope];
+
+            for (let b=0; b < block.length; b++) {
+                // Skip blocks we've already mixed in from the same scope
+                // Repeating scope indicates a diamond pattern where a style is being mixed multiple times
+                if (mixed[block_scope[b]]) {
+                    continue;
+                }
+                mixed_source[block_scope[b]] = true;
+
+                shaders.blocks[t].push(block[b]);
+                shaders.block_scopes[t].push(block_scope[b]);
             }
         }
+
+        Object.assign(mixed, mixed_source); // add scopes mixed from this source
     }
 
     style.shaders = shaders;
-    style.mixed = true; // track that we already applied mixins (avoid dupe work later)
+    style.mixed = mixed; // track that we already applied mixins (avoid dupe work later)
 
     return style;
 };
