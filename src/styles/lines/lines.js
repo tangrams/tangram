@@ -96,7 +96,7 @@ Object.assign(Lines, {
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
-        style.tile_edges = rule_style.tile_edges;
+        style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
         style.outline = style.outline || {};

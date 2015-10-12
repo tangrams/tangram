@@ -5,6 +5,7 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Geo from '../../geo';
 
 export var Polygons = Object.create(Style);
 
@@ -72,6 +73,8 @@ Object.assign(Polygons, {
             }
         }
 
+        style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
+
         // style.outline = style.outline || {};
         // if (rule_style.outline) {
         //     style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
@@ -137,12 +140,14 @@ Object.assign(Polygons, {
         return this.vertex_template;
     },
 
-    buildPolygons(polygons, style, vertex_data) {
+    buildPolygons(polygons, style, vertex_data, context) {
         let vertex_template = this.makeVertexTemplate(style);
-        let texcoords = {
+        let options = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
             texcoord_scale: this.texcoord_scale,
-            texcoord_normalize: 65535 // scale UVs to unsigned shorts
+            texcoord_normalize: 65535, // scale UVs to unsigned shorts
+            remove_tile_edges: !style.tile_edges,
+            tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
         };
 
         // Extruded polygons (e.g. 3D buildings)
@@ -153,7 +158,7 @@ Object.assign(Polygons, {
                 vertex_data, vertex_template,
                 this.vertex_layout.index.a_normal,
                 127, // scale normals to signed bytes
-                texcoords
+                options
             );
         }
         // Regular polygons
@@ -161,7 +166,7 @@ Object.assign(Polygons, {
             Builders.buildPolygons(
                 polygons,
                 vertex_data, vertex_template,
-                texcoords
+                options
             );
         }
     }

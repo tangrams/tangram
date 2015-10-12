@@ -84,7 +84,13 @@ Builders.buildExtrudedPolygons = function (
     vertex_data, vertex_template,
     normal_index,
     normal_normalize,
-    { texcoord_index, texcoord_scale, texcoord_normalize }) {
+    {
+        remove_tile_edges,
+        tile_edge_tolerance,
+        texcoord_index,
+        texcoord_scale,
+        texcoord_normalize
+    }) {
 
     // Top
     var min_z = z + (min_height || 0);
@@ -116,6 +122,10 @@ Builders.buildExtrudedPolygons = function (
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
+                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], { tolerance: tile_edge_tolerance })) {
+                    continue; // don't extrude tile edges
+                }
+
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 var wall_vertices = [
                     // Triangle
