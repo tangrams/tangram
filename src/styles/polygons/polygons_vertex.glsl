@@ -43,11 +43,6 @@ varying vec4 v_world_position;
     varying vec4 v_lighting;
 #endif
 
-// position in model space in [0, 1] range over a tile
-vec3 modelPosition() {
-    return a_position.xyz * 32767. / TANGRAM_TILE_SCALE;
-}
-
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -84,10 +79,7 @@ void main() {
     #endif
 
     // World coordinates for 3d procedural textures
-    v_world_position = u_model * position;
-    #if defined(TANGRAM_WORLD_POSITION_WRAP)
-        v_world_position.xy -= world_position_anchor;
-    #endif
+    v_world_position = wrapWorldPosition(u_model * position);
 
     // Adjust for tile and view position
     position = u_modelView * position;

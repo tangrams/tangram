@@ -26,14 +26,14 @@ StyleManager.init = function () {
 
     ShaderProgram.removeBlock('global');
 
+    // Model and world position accessors
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/position_accessors']);
+
     // Layer re-ordering function
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/layer_order']);
 
     // Feature selection global
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
-
-    // World position wrapping
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/world_position_wrap']);
 
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);
