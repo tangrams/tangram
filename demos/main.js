@@ -396,7 +396,7 @@ Enjoy!
     // Create dat GUI
     var gui = new dat.GUI({ autoPlace: true });
     function addGUI () {
-        gui.domElement.parentNode.style.zIndex = 5;
+        gui.domElement.parentNode.style.zIndex = 10000;
         window.gui = gui;
 
         // Add ability to remove a whole folder from DAT.gui
