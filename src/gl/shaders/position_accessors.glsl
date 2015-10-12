@@ -2,7 +2,7 @@
 // Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.
 #ifdef TANGRAM_VERTEX_SHADER
 vec3 modelPosition() {
-    return a_position.xyz * 32767. / TANGRAM_TILE_SCALE;
+    return UNPACK_SHORT(a_position.xyz) / TANGRAM_TILE_SCALE;
 }
 #endif
 

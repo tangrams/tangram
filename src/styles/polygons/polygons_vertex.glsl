@@ -58,11 +58,11 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position.xyz * 32767., 1.);
+    vec4 position = vec4(UNPACK_SHORT(a_position.xyz), 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy * 255.;
-        float width = a_extrude.z * 32767.;
+        float width = UNPACK_SHORT(a_extrude.z);
         float scale = a_extrude.w * 255.;
 
         // Keep line width constant in screen-space
@@ -109,7 +109,7 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(a_position.w * 32767., position);
+    applyLayerOrder(UNPACK_SHORT(a_position.w), position);
 
     gl_Position = position;
 }

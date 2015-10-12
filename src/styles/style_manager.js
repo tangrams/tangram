@@ -26,6 +26,9 @@ StyleManager.init = function () {
 
     ShaderProgram.removeBlock('global');
 
+    // Unpacking functions (for normalized vertex attributes)
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/unpack']);
+
     // Model and world position accessors
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/position_accessors']);
 

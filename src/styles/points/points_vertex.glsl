@@ -34,7 +34,7 @@ void main() {
     v_texcoord = a_texcoord;
 
     // Position
-    vec4 position = u_modelView * vec4(a_position.xyz * 32767., 1.);
+    vec4 position = u_modelView * vec4(UNPACK_SHORT(a_position.xyz), 1.);
 
     // Apply positioning and scaling in screen space
     float zscale = fract(u_map_position.z) * (a_shape.w * 256. - 1.) + 1.;
@@ -44,7 +44,7 @@ void main() {
     float theta = radians(a_shape.z * 360.);
 
     shape = rotate2D(shape, theta);             // apply rotation to vertex
-    shape += rotate2D(offset * 32767., theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
+    shape += rotate2D(UNPACK_SHORT(offset), theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
@@ -57,7 +57,7 @@ void main() {
     cameraProjection(position);
 
     #ifdef TANGRAM_LAYER_ORDER
-        applyLayerOrder(a_position.w * 32767., position);
+        applyLayerOrder(UNPACK_SHORT(a_position.w), position);
     #endif
 
     position.xy += shape * 2. * position.w / u_resolution;
