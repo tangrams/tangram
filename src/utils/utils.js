@@ -426,7 +426,7 @@ Utils.toCanvasColor = function (color) {
 
 // Some Canvas implementations have pre-multiplied alpha that we need to adjust for
 Utils.canvasPremultipliedAlpha = function () {
-    return (Utils.browser().safari ? false : true);
+    return (Utils.browser().ios ? false : true);
 };
 
 Utils.toPixelSize = function (size, kind) {
