@@ -34,24 +34,22 @@ void main() {
     v_texcoord = a_texcoord;
 
     // Position
-    vec4 position = u_modelView * vec4(a_position.xyz * 32767., 1.);
+    vec4 position = u_modelView * vec4(SHORT(a_position.xyz), 1.);
 
     // Apply positioning and scaling in screen space
-    float zscale = fract(u_map_position.z) * (a_shape.w * 256. - 1.) + 1.;
+    float zscale = fract(u_map_position.z) * (SCALE_8(a_shape.w) - 1.) + 1.;
     // float zscale = log(fract(u_map_position.z) + 1.) / log(2.) * (a_shape.w - 1.) + 1.;
-    vec2 shape = a_shape.xy * 256. * zscale;     //
+    vec2 shape = SCALE_8(a_shape.xy) * zscale;     //
     vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
     float theta = radians(a_shape.z * 360.);
 
     shape = rotate2D(shape, theta);             // apply rotation to vertex
-    shape += rotate2D(offset * 32767., theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
+    shape += rotate2D(SHORT(offset), theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
     v_world_position.xy += shape * u_meters_per_pixel;
-    #if defined(TANGRAM_WORLD_POSITION_WRAP)
-        v_world_position.xy -= world_position_anchor;
-    #endif
+    v_world_position = wrapWorldPosition(v_world_position);
 
     // Modify position before camera projection
     #pragma tangram: position
@@ -59,7 +57,7 @@ void main() {
     cameraProjection(position);
 
     #ifdef TANGRAM_LAYER_ORDER
-        applyLayerOrder(a_position.w * 32767., position);
+        applyLayerOrder(SHORT(a_position.w), position);
     #endif
 
     position.xy += shape * 2. * position.w / u_resolution;

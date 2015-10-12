@@ -5,6 +5,7 @@ import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import {mergeObjects} from './rule';
+import Geo from '../geo';
 
 import log from 'loglevel';
 
@@ -25,14 +26,17 @@ StyleManager.init = function () {
 
     ShaderProgram.removeBlock('global');
 
+    // Unpacking functions (for normalized vertex attributes)
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/unpack']);
+
+    // Model and world position accessors
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/position_accessors']);
+
     // Layer re-ordering function
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/layer_order']);
 
     // Feature selection global
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
-
-    // World position wrapping
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/world_position_wrap']);
 
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);
@@ -40,6 +44,9 @@ StyleManager.init = function () {
     // assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
     // for outlines (inserted in between layers), another extra bit to prevent precision loss
     ShaderProgram.defines.TANGRAM_LAYER_DELTA = 1 / (1 << 14);
+
+    // Internal tile scale
+    ShaderProgram.defines.TANGRAM_TILE_SCALE = `vec3(${Geo.tile_scale}., ${Geo.tile_scale}., u_meters_per_pixel * ${Geo.tile_size}.)`;
 
     StyleManager.initialized = true;
 };
