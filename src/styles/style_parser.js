@@ -229,7 +229,9 @@ StyleParser.colorForString = function(string) {
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
-        v[3] = v[3] || 1; // default alpha
+        if (v[3] == null) {
+            v[3] = 1; // default alpha
+        }
         return v;
     }
     else if (val.static) {
@@ -243,7 +245,9 @@ StyleParser.cacheColor = function(val, context = {}) {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
-            v[3] = v[3] || 1; // default alpha
+            if (v[3] == null) {
+                v[3] = 1; // default alpha
+            }
             return v;
         }
         // Single string color
@@ -272,7 +276,9 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Single array color
         else {
             val.static = val.value;
-            val.static[3] = val.static[3] || 1; // default alpha
+            if (val.static[3] == null) {
+                val.static[3] = 1; // default alpha
+            }
             return val.static;
         }
     }
@@ -319,7 +325,7 @@ StyleParser.parseColor = function(val, context = {}) {
     // Defaults
     if (val) {
         // alpha
-        if (!val[3]) {
+        if (val[3] == null) {
             val[3] = 1;
         }
     }
