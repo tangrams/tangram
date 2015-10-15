@@ -219,9 +219,10 @@ StyleManager.mix = function (style, styles) {
     style.base = sources.map(x => x.base).filter(x => x).pop();
     style.lighting = sources.map(x => x.lighting).filter(x => x != null).pop();
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
-    if (sources.some(x => x.blend)) {
+    if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
         // only mix blend if explicitly set, otherwise let base style choose blending mode
-        style.blend = sources.map(x => x.blend).filter(x => x).pop();
+        // hasOwnProperty check gives preference to base style prototype
+        style.blend = sources.map(x => x.hasOwnProperty('blend') && x.blend).filter(x => x).pop();
     }
 
     // Merges - property-specific rules for merging values
