@@ -88,7 +88,7 @@ if (Utils.isMainThread) {
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
-                this.reverseTransform(map);
+                this.reverseTransform();
                 this._updating_tangram = false;
             };
             map.on('move', this.hooks.move);
@@ -137,7 +137,7 @@ if (Utils.isMainThread) {
 
                 this.updateSize();
                 this.updateView();
-                this.reverseTransform(map);
+                this.reverseTransform();
 
                 this._updating_tangram = false;
 
@@ -281,35 +281,15 @@ if (Utils.isMainThread) {
             this.scene.update();
         },
 
-        // Reverse the CSS transform Leaflet applies to the layer, since Tangram's WebGL canvas
+        // Reverse the CSS positioning Leaflet applies to the layer, since Tangram's WebGL canvas
         // is expected to be 'absolutely' positioned.
-        reverseTransform: function (map) {
-            if (!map || !this.scene.canvas) {
+        reverseTransform: function () {
+            if (!this._map || !this.scene || !this.scene.container) {
                 return;
             }
 
-            var pane = map.getPanes().mapPane;
-            // var transform = pane.style.transform || pane.style['-webkit-transform'];
-            var style = window.getComputedStyle(pane);
-            var transform = style.transform || style['-webkit-transform'];
-
-            // Parse transform like: 'matrix(1, 0, 0, 1, 50, -100)'
-            if (!this.matrixRegex) {
-                let n = '\\s*([-+]?[0-9]*\\.?[0-9]+)(?:deg|rad|grad|px|%)*\\s*'; // match a number and optional units
-                this.matrixRegex = new RegExp(`matrix\\s*\\(${n},${n},${n},${n},${n},${n}\\)`); // match 6 matrix coefficients
-            }
-
-            var match = transform.match(this.matrixRegex);
-            if (match && match.length >= 7) {
-                // Matrix with reverse translation
-                match = match.slice(1, 7); // pull out 6 matching matrix values
-                match[4] *= -1; // reverse x & y translation components
-                match[5] *= -1;
-
-                var matrix = `matrix(${match.join(', ')})`; // reconstruct matrix
-                this.scene.canvas.style.transform = matrix;
-                this.scene.canvas.style['-webkit-transform'] = matrix;
-            }
+            var top_left = this._map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(this.scene.container, top_left);
         }
 
     });
