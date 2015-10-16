@@ -163,6 +163,8 @@ Object.assign(TextStyle, {
         // create a canvas
         if(!this.canvas[tile]) {
             let canvas = document.createElement('canvas');
+            canvas.style.backgroundColor = 'transparent'; // render text on transparent background
+
             this.canvas[tile] = {
                 canvas: canvas,
                 context: canvas.getContext('2d')
