@@ -38,11 +38,8 @@ Utils.isWorkerThread && Object.assign(self, {
 
     // Starts a config refresh
     updateConfig ({ config, generation }) {
-        self.config = null;
         config = JSON.parse(config);
-
         self.generation = generation;
-        self.styles = null;
 
         // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
@@ -50,7 +47,10 @@ Utils.isWorkerThread && Object.assign(self, {
             config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
         }
 
-        // Create data sources
+        // Create data sources (and save any previous)
+        var prev_sources = {};
+        Object.keys(self.sources.tiles).forEach(s => prev_sources[s] = JSON.stringify(self.sources.tiles[s]));
+
         config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
@@ -72,6 +72,11 @@ Utils.isWorkerThread && Object.assign(self, {
                     }
                 }
             }
+        }
+
+        // Clear tile cache if data source config changed
+        if (Object.keys(self.sources.tiles).some(s => JSON.stringify(self.sources.tiles[s]) !== prev_sources[s])) {
+            self.tiles = {};
         }
 
         // Expand styles
