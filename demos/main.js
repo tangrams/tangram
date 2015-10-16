@@ -81,9 +81,7 @@ Enjoy!
         map = L.map('map', {
             maxZoom: 20,
             trackResize: true,
-            inertia: false,
-            keyboard: false,
-            wheelDebounceTime: 20
+            keyboard: false
         }),
 
         layer = Tangram.leafletLayer({
