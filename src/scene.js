@@ -964,6 +964,7 @@ export default class Scene {
 
     // Load all textures in the scene definition
     loadTextures() {
+        Texture.destroy(this.gl);
         return Texture.createFromObject(this.gl, this.config.textures);
     }
 
