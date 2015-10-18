@@ -73,6 +73,39 @@ Utils.cacheBusterForUrl = function (url) {
     return url;
 };
 
+// Add a set of query string params to a URL
+// params: hash of key/value pairs of query string parameters
+Utils.addParamsToURL = function (url, params) {
+    var qs_index = url.indexOf('?');
+    var hash_index = url.indexOf('#');
+
+    // Save and trim hash
+    var hash = '';
+    if (hash_index > -1) {
+        hash = url.slice(hash_index);
+        url = url.slice(0, hash_index);
+    }
+
+    // Start query string
+    if (qs_index === -1) {
+        qs_index = url.length;
+        url += '?';
+    }
+    qs_index++; // advanced past '?'
+
+    // Build query string params
+    var url_params = '';
+    for (var p in params) {
+        url_params += `${p}=${params[p]}&`;
+    }
+
+    // Insert new query string params and restore hash
+    // NOTE: doesn't replace any values already present on query string, just inserts dupe values
+    url = url.slice(0, qs_index) + url_params + url.slice(qs_index) + hash;
+
+    return url;
+};
+
 // Polyfill (for Safari compatibility)
 Utils._createObjectURL = undefined;
 Utils.createObjectURL = function (url) {
