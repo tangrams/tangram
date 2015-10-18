@@ -9,7 +9,7 @@ export default class DataSource {
         this.config = config; // save original config
         this.id = config.id;
         this.name = config.name;
-        this.url = config.url;
+        this.url = Utils.addParamsToURL(config.url, config.params);
         this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
 
