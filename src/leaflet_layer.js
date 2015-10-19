@@ -191,8 +191,13 @@ if (Utils.isMainThread) {
         modifyScrollWheelBehavior: function (map) {
             if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                 let layer = this;
+                let enabled = map.scrollWheelZoom.enabled();
+                if (enabled) {
+                    map.scrollWheelZoom.disable(); // disable before modifying
+                }
 
-                map.scrollWheelZoom._onWheelScroll = function(e) {
+                // modify prototype and current instance, so add/remove hooks work on existing references
+                L.Map.ScrollWheelZoom._onWheelScroll = map.scrollWheelZoom._onWheelScroll = function(e) {
                     // modify to skip debounce, as it seems to cause animation-sync issues in Chrome
                     // with Tangram continuous rendering
                     this._delta += L.DomEvent.getWheelDelta(e);
@@ -201,7 +206,7 @@ if (Utils.isMainThread) {
                     L.DomEvent.stop(e);
                 };
 
-                map.scrollWheelZoom._performZoom = function () {
+                L.Map.ScrollWheelZoom._performZoom = map.scrollWheelZoom._performZoom = function () {
                     var map = this._map,
                         delta = this._delta,
                         zoom = map.getZoom();
@@ -238,9 +243,9 @@ if (Utils.isMainThread) {
                     layer.debounceViewReset();
                 };
 
-                // Re-init scroll wheel
-                map.scrollWheelZoom.removeHooks();
-                map.scrollWheelZoom.addHooks();
+                if (enabled) {
+                    map.scrollWheelZoom.enable(); // re-enable after modifying
+                }
             }
         },
 
