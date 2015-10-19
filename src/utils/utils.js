@@ -76,6 +76,10 @@ Utils.cacheBusterForUrl = function (url) {
 // Add a set of query string params to a URL
 // params: hash of key/value pairs of query string parameters
 Utils.addParamsToURL = function (url, params) {
+    if (!params || Object.keys(params).length === 0) {
+        return url;
+    }
+
     var qs_index = url.indexOf('?');
     var hash_index = url.indexOf('#');
 
