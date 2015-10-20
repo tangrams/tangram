@@ -264,7 +264,7 @@ layers:
     roads:
         data: { source: osm }
         filter:
-            not: { kind: [rail] }
+            not: { kind: [rail, ferry] }
         draw:
             lines:
                 style: flat_lines
