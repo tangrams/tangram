@@ -181,7 +181,8 @@ Builders.buildPolylines = function (
         scaling_index,
         scaling_normalize,
         join, cap,
-		miter_limit
+        miter_limit,
+        units_per_pixel
     }) {
 
     var cornersOnCap = (cap === "square") ? 2 : ((cap === "round") ? 3 : 0);  // Butt is the implicit default
@@ -205,7 +206,8 @@ Builders.buildPolylines = function (
         texcoords: texcoord_index && [],
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
-        nPairs: 0
+        nPairs: 0,
+        units_per_pixel
     };
 
     // For each LINE in a MULTI-LINE
@@ -218,7 +220,7 @@ Builders.buildPolylines = function (
             continue;
         }
 
-        //  Initialize variables 
+        //  Initialize variables
         var coordPrev = [0, 0], // Previous point coordinates
             coordCurr = [0, 0], // Current point coordinates
             coordNext = [0, 0]; // Next point coordinates
@@ -328,7 +330,7 @@ Builders.buildPolylines = function (
                 }
 
                 var thisJoin = trianglesOnJoin;
-                //  Check Miter limit according to 
+                //  Check Miter limit according to
                 //  https://github.com/tangrams/tangram/blob/5e7686d477bfc0069656157b3d46ba5bac5aab39/src/gl/gl_builders.js#L309
                 var len_sq = Vector.lengthSq(normCurr);
                 if (thisJoin === 0 && (len_sq > (miter_len_max * miter_len_max)) ){
@@ -341,7 +343,7 @@ Builders.buildPolylines = function (
                             [normPrev,normCurr, normNext],
                             i/lineSize, thisJoin,
                             constants);
-                } 
+                }
                 // If is a SEGMENT (or regular join, that means miter)
                 else {
                     addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
@@ -411,11 +413,11 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     if ( numTriangles === 3 ){
 
         var w = constants.halfWidth*2;
-        var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/Geo.units_per_pixel;
-        numTriangles = Math.max(1, Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/Geo.units_per_pixel) ));
+        var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/constants.units_per_pixel;
+        numTriangles = Math.max(1, Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/constants.units_per_pixel) ));
         // the miter lenght of fans of four triangles are force to look like a square avoid that.
         if (numTriangles === 4) {
-            numTriangles = 3; 
+            numTriangles = 3;
         }
     }
     var angle_step = angle_delta/numTriangles;
