@@ -197,6 +197,7 @@ StyleManager.mix = function (style, styles) {
     if (style.mixed) {
         return style;
     }
+    style.mixed = {};
 
     // Mixin sources, in order
     let sources = [];
@@ -208,6 +209,11 @@ StyleManager.mix = function (style, styles) {
             sources.push(style.mix);
         }
         sources = sources.map(x => styles[x]).filter(x => x && x !== style); // TODO: warning on trying to mix into self
+
+        // Track which styles were mixed into this one
+        for (let s of sources) {
+            style.mixed[s] = true;
+        }
     }
     sources.push(style);
 
@@ -229,7 +235,13 @@ StyleManager.mix = function (style, styles) {
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
     style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
 
-    // Shaders
+    // Mix shader properties
+    StyleManager.mixShaders(style, styles, sources);
+    return style;
+};
+
+// Mix the propertes in the "shaders" block
+StyleManager.mixShaders = function (style, styles, sources) {
     let shaders = {}; // newly mixed shaders properties
     let shader_merges = sources.map(x => x.shaders).filter(x => x); // just the source styles with shader properties
 
@@ -246,7 +258,8 @@ StyleManager.mix = function (style, styles) {
         .filter(x => x.shaders && x.shaders.uniforms)
         .forEach(x => {
             for (let u in x.shaders.uniforms) {
-                shaders._uniform_scopes[u] = x;
+                let style_name = x.name;
+                shaders._uniform_scopes[u] = style_name;
 
                 // Define getter and setter for this uniform
                 // Getter returns value for this style if present, otherwise asks appropriate ancestor for it
@@ -256,10 +269,16 @@ StyleManager.mix = function (style, styles) {
                     enumerable: true,
                     configurable: true,
                     get: function () {
-                        if (shaders._uniforms[u] != null) {
+                        // Uniform is explicitly defined on this style
+                        if (shaders._uniforms[u] !== undefined) {
                             return shaders._uniforms[u];
                         }
-                        return shaders._uniform_scopes[u].shaders.uniforms[u];
+                        // Uniform was mixed from another style, forward request there
+                        // Identify check is needed to prevent infinite recursion if a previously defined uniform
+                        // is set to undefined
+                        else if (styles[shaders._uniform_scopes[u]].shaders.uniforms !== shaders.uniforms) {
+                            return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
+                        }
                     },
                     set: function (v) {
                         shaders._uniforms[u] = v;
@@ -334,13 +353,12 @@ StyleManager.mix = function (style, styles) {
             }
         }
 
-        Object.assign(mixed, mixed_source); // add scopes mixed from this source
+        // Add styles mixed in from this source - they could be multi-level ancestors,
+        // beyond the first-level "parents" defined in this style's `mix` list
+        Object.assign(style.mixed, mixed_source);
     }
 
-    // Assign back to style and mark as mixed
-    style.shaders = shaders;
-    style.mixed = mixed; // track that we already applied mixins (avoid dupe work later)
-
+    style.shaders = shaders; // assign back to style
     return style;
 };
 
