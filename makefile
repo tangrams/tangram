@@ -8,6 +8,8 @@ all: \
 	dist/tangram.min.js \
 	dist/tangram.debug.js
 
+debug: dist/tangram.debug.js
+
 dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
 	node build.js --debug=true --require './src/module.js' --polyfill > dist/tangram.debug.js
 

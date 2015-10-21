@@ -6,6 +6,7 @@ import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import Builders from '../builders';
+import Geo from '../../geo';
 import Utils from '../../utils/utils';
 
 export var Lines = Object.create(Style);
@@ -15,31 +16,33 @@ Object.assign(Lines, {
     built_in: true,
     vertex_shader_key: 'styles/polygons/polygons_vertex', // re-use polygon shaders
     fragment_shader_key: 'styles/polygons/polygons_fragment',
-    selection: true,
+    selection: true, // turn feature selection on
 
     init() {
         Style.init.apply(this, arguments);
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
-            { name: 'a_position', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_extrude', size: 3, type: gl.FLOAT, normalized: false },
-            { name: 'a_scale', size: 1, type: gl.SHORT, normalized: true },
-            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true },
-            { name: 'a_layer', size: 1, type: gl.FLOAT, normalized: false }
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
-        // Tell the shader we want an order attribute, and to extrude lines
-        this.defines.TANGRAM_ORDER_ATTRIBUTE = true;
+        // Tell the shader we want a order in vertex attributes, and to extrude lines
+        this.defines.TANGRAM_LAYER_ORDER = true;
         this.defines.TANGRAM_EXTRUDE_LINES = true;
+
+        // Optional feature selection
+        if (this.selection) {
+            attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
+        }
 
         // Optional texture UVs
         if (this.texcoords) {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
 
             // Add vertex attribute for UVs only when needed
-            attribs.push({ name: 'a_texcoord', size: 2, type: gl.FLOAT, normalized: false });
+            attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
 
         this.vertex_layout = new VertexLayout(attribs);
@@ -48,7 +51,7 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context, 'meters');
+        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context);
         if (!inner_width) {
             return;
         }
@@ -59,7 +62,7 @@ Object.assign(Lines, {
         // big in world space at the next zoom than at the previous)
         context.zoom ++;
         context.units_per_meter *= 2;
-        let next_width = StyleParser.cacheDistance(rule_style.next_width, context, 'meters');
+        let next_width = StyleParser.cacheDistance(rule_style.next_width, context);
         style.next_width = Utils.scaleInt16(next_width * context.units_per_meter / style.width, 256);
         context.zoom--;
         context.units_per_meter /= 2; // reset to original scale
@@ -93,16 +96,16 @@ Object.assign(Lines, {
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
-        style.tile_edges = rule_style.tile_edges;
+        style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
         style.outline = style.outline || {};
         if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
-            let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context, 'meters') * 2;
+            let outline_width = StyleParser.cacheDistance(rule_style.outline.width, context) * 2;
 
             context.zoom ++;
             context.units_per_meter *= 2;
-            let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context, 'meters') * 2;
+            let outline_next_width = StyleParser.cacheDistance(rule_style.outline.next_width, context) * 2;
             context.zoom--;
             context.units_per_meter /= 2; // reset to original scale
 
@@ -159,38 +162,42 @@ Object.assign(Lines, {
      * A plain JS array matching the order of the vertex layout.
      */
     makeVertexTemplate(style) {
+        let i = 0;
+
         // position - x & y coords will be filled in per-vertex below
-        this.vertex_template[0] = 0;
-        this.vertex_template[1] = 0;
-        this.vertex_template[2] = style.z || 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = style.z || 0;
+
+        // layer order - w coord of 'position' attribute (for packing efficiency)
+        this.vertex_template[i++] = style.order;
 
         // extrusion vector
-        this.vertex_template[3] = 0;
-        this.vertex_template[4] = 0;
-        this.vertex_template[5] = 1;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
+        this.vertex_template[i++] = 0;
 
         // scaling to previous and next zoom
-        this.vertex_template[6] = style.next_width;
+        this.vertex_template[i++] = style.next_width;
 
         // color
-        this.vertex_template[7] = style.color[0] * 255;
-        this.vertex_template[8] = style.color[1] * 255;
-        this.vertex_template[9] = style.color[2] * 255;
-        this.vertex_template[10] = style.color[3] * 255;
+        this.vertex_template[i++] = style.color[0] * 255;
+        this.vertex_template[i++] = style.color[1] * 255;
+        this.vertex_template[i++] = style.color[2] * 255;
+        this.vertex_template[i++] = style.color[3] * 255;
 
         // selection color
-        this.vertex_template[11] = style.selection_color[0] * 255;
-        this.vertex_template[12] = style.selection_color[1] * 255;
-        this.vertex_template[13] = style.selection_color[2] * 255;
-        this.vertex_template[14] = style.selection_color[3] * 255;
-
-        // layer order
-        this.vertex_template[15] = style.order;
+        if (this.selection) {
+            this.vertex_template[i++] = style.selection_color[0] * 255;
+            this.vertex_template[i++] = style.selection_color[1] * 255;
+            this.vertex_template[i++] = style.selection_color[2] * 255;
+            this.vertex_template[i++] = style.selection_color[3] * 255;
+        }
 
         // Add texture UVs to template only if needed
         if (this.texcoords) {
-            this.vertex_template[16] = 0;
-            this.vertex_template[17] = 0;
+            this.vertex_template[i++] = 0;
+            this.vertex_template[i++] = 0;
         }
 
         return this.vertex_template;
@@ -210,10 +217,13 @@ Object.assign(Lines, {
                     cap: style.cap,
                     join: style.join,
                     scaling_index: this.vertex_layout.index.a_extrude,
+                    scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
                     texcoord_index: this.vertex_layout.index.a_texcoord,
                     texcoord_scale: this.texcoord_scale,
+                    texcoord_normalize: 65535, // scale UVs to unsigned shorts
                     closed_polygon: options && options.closed_polygon,
-                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges
+                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
+                    tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
                 }
             );
         }

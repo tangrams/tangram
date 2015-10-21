@@ -2,7 +2,7 @@
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import Tile from './tile';
-import DataSource from './data_source.js';
+import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
@@ -38,11 +38,8 @@ Utils.isWorkerThread && Object.assign(self, {
 
     // Starts a config refresh
     updateConfig ({ config, generation }) {
-        self.config = null;
         config = JSON.parse(config);
-
         self.generation = generation;
-        self.styles = null;
 
         // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
@@ -50,10 +47,17 @@ Utils.isWorkerThread && Object.assign(self, {
             config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
         }
 
-        // Create data sources
+        // Create data sources (and save any previous)
+        var prev_sources = {};
+        Object.keys(self.sources.tiles).forEach(s => prev_sources[s] = JSON.stringify(self.sources.tiles[s]));
+
         config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
         for (var name in config.sources) {
             let source = DataSource.create(Object.assign(config.sources[name], {name}));
+            if (!source) {
+                continue;
+            }
+
             if (source.tiled) {
                 self.sources.tiles[name] = source;
             }
@@ -68,6 +72,11 @@ Utils.isWorkerThread && Object.assign(self, {
                     }
                 }
             }
+        }
+
+        // Clear tile cache if data source config changed
+        if (Object.keys(self.sources.tiles).some(s => JSON.stringify(self.sources.tiles[s]) !== prev_sources[s])) {
+            self.tiles = {};
         }
 
         // Expand styles
@@ -132,7 +141,7 @@ Utils.isWorkerThread && Object.assign(self, {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-                        Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        Utils.log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                         resolve({ tile: Tile.slice(tile) });
                     });

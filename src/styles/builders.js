@@ -36,9 +36,13 @@ Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
 Builders.buildPolygons = function (
     polygons,
     vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale }) {
+    { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    }
+
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
         var polygon = polygons[p];
@@ -64,8 +68,8 @@ Builders.buildPolygons = function (
 
             // Add UVs
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = (vertex[0] - min_x) * scale_u + min_u;
-                vertex_template[texcoord_index + 1] = (vertex[1] - min_y) * scale_v + min_v;
+                vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
             }
 
             vertex_data.addVertex(vertex_template);
@@ -79,18 +83,26 @@ Builders.buildExtrudedPolygons = function (
     z, height, min_height,
     vertex_data, vertex_template,
     normal_index,
-    { texcoord_index, texcoord_scale }) {
+    normal_normalize,
+    {
+        remove_tile_edges,
+        tile_edge_tolerance,
+        texcoord_index,
+        texcoord_scale,
+        texcoord_normalize
+    }) {
 
     // Top
     var min_z = z + (min_height || 0);
     var max_z = z + height;
     vertex_template[2] = max_z;
-    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index });
+    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
 
     // Walls
     // Fit UVs to wall quad
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -110,6 +122,10 @@ Builders.buildExtrudedPolygons = function (
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
+                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], { tolerance: tile_edge_tolerance })) {
+                    continue; // don't extrude tile edges
+                }
+
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 var wall_vertices = [
                     // Triangle
@@ -129,9 +145,9 @@ Builders.buildExtrudedPolygons = function (
                 );
 
                 // Update vertex template with current surface normal
-                vertex_template[normal_index + 0] = normal[0];
-                vertex_template[normal_index + 1] = normal[1];
-                vertex_template[normal_index + 2] = normal[2];
+                vertex_template[normal_index + 0] = normal[0] * normal_normalize;
+                vertex_template[normal_index + 1] = normal[1] * normal_normalize;
+                vertex_template[normal_index + 2] = normal[2] * normal_normalize;
 
                 for (var wv=0; wv < wall_vertices.length; wv++) {
                     vertex_template[0] = wall_vertices[wv][0];
@@ -139,8 +155,8 @@ Builders.buildExtrudedPolygons = function (
                     vertex_template[2] = wall_vertices[wv][2];
 
                     if (texcoord_index) {
-                        vertex_template[texcoord_index + 0] = texcoords[wv][0];
-                        vertex_template[texcoord_index + 1] = texcoords[wv][1];
+                        vertex_template[texcoord_index + 0] = texcoords[wv][0] * texcoord_normalize;
+                        vertex_template[texcoord_index + 1] = texcoords[wv][1] * texcoord_normalize;
                     }
 
                     vertex_data.addVertex(vertex_template);
@@ -161,9 +177,11 @@ Builders.buildPolylines = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
+        texcoord_normalize,
         scaling_index,
+        scaling_normalize,
         join, cap,
-        miter_limit
+		miter_limit
     }) {
 
     var cornersOnCap = (cap === "square") ? 2 : ((cap === "round") ? 3 : 0);  // Butt is the implicit default
@@ -171,6 +189,7 @@ Builders.buildPolylines = function (
     var miter_len_max = (miter_limit)? miter_limit : 3; // Miter limit distance
 
     // Build variables
+    texcoord_normalize = texcoord_normalize || 1;
     var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
 
     // Values that are constant for each line and are passed to helper functions
@@ -180,9 +199,11 @@ Builders.buildPolylines = function (
         halfWidth: width/2,
         vertices: [],
         scaling_index,
+        scaling_normalize,
         scalingVecs: scaling_index && [],
         texcoord_index,
         texcoords: texcoord_index && [],
+        texcoord_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0
     };
@@ -223,15 +244,15 @@ Builders.buildPolylines = function (
             isNext = i+1 < lineSize;
 
             if (isPrev) {
-                // If there is a previus one, copy the current (previous) values on *Prev
+                // If there is a previous one, copy the current (previous) values on *Prev
                 coordPrev = coordCurr;
                 normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
             } else if (i === 0 && closed_polygon === true) {
-                // If is the first point and is a close polygon
+                // If it's the first point and is a closed polygon
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tile_edge_tolerance })) {
+                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
                         needToClose = false;
                     }
                 }
@@ -249,17 +270,17 @@ Builders.buildPolylines = function (
             if (isNext) {
                 coordNext = line[i+1];
             } else if (closed_polygon === true) {
-                // If is the last point a close polygon
+                // If it's the last point in a closed polygon
                 coordNext = line[1];
                 isNext = true;
             }
 
             if (isNext) {
-                // If is not the last one get next coordinates and calculate the right normal
+                // If it's not the last one get next coordinates and calculate the right normal
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (Builders.isOnTileEdge(coordCurr, coordNext, { tile_edge_tolerance })) {
+                    if (Builders.isOnTileEdge(coordCurr, coordNext, { tolerance: tile_edge_tolerance })) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -276,24 +297,24 @@ Builders.buildPolylines = function (
 
             //  Compute current normal
             if (isPrev) {
-                //  If there is a PREVIUS ...
+                //  If there is a PREVIOUS ...
                 if (isNext) {
-                    // ... and a NEXT ONE, compute previus and next normals (scaled by the angle with the last prev)
+                    // ... and a NEXT ONE, compute previous and next normals (scaled by the angle with the last prev)
                     normCurr = Vector.normalize(Vector.add(normPrev, normNext));
                     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
                     normCurr = Vector.mult(normCurr,scale*scale);
                 } else {
-                    // ... and there is NOT a NEXT ONE, copy the previus next one (which is the current one)
+                    // ... and there is NOT a NEXT ONE, copy the previous next one (which is the current one)
                     normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                 }
             } else {
-                // If is NOT a PREVIUS ...
+                // If there is NO PREVIOUS ...
                 if (isNext) {
                     // ... and a NEXT ONE,
                     normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                     normCurr = normNext;
                 } else {
-                    // ... and NOT a NEXT ONE, nothing to do (without prev or next one this is just a point)
+                    // ... and NO NEXT ONE, nothing to do (without prev or next one this is just a point)
                     continue;
                 }
             }
@@ -301,8 +322,7 @@ Builders.buildPolylines = function (
             //  ADDING DATA ( segments, caps and joins)
             // -------------------------------------
             if (isPrev || isNext) {
-
-                // If is the BEGINING of a LINE
+                // If it's the BEGINNING of a LINE
                 if (i === 0 && !isPrev && !closed_polygon) {
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
@@ -335,10 +355,10 @@ Builders.buildPolylines = function (
             }
         }
 
-        // Add vertices to buffer acording their index
+        // Add vertices to buffer according to their index
         indexPairs(constants);
 
-         // If is the END OF a LINE
+         // If it's the END of a LINE
         if(!closed_polygon) {
             addCap(coordCurr, normCurr, cornersOnCap , false, constants);
         }
@@ -348,16 +368,16 @@ Builders.buildPolylines = function (
 // Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
-        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertexes)
+        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
         scalingVecs.push(normal);
     } else {
-        //  b. Add the extruded vertexes
+        //  b. Add the extruded vertices
         vertices.push([coord[0] + normal[0] * halfWidth,
                        coord[1] + normal[1] * halfWidth]);
     }
 
-    // c) Add uv's if they are enable
+    // c) Add UVs if they are enabled
     if (texcoords) {
         texcoords.push(uv);
     }
@@ -380,8 +400,8 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         return;
     }
 
-    // Add previus vertices to buffer and clean the buffers and index pairs
-    // Because we are going to add more triangles.
+    // Add previous vertices to buffer and clear the buffers and index pairs
+    // because we are going to add more triangles.
     indexPairs(constants);
 
     var normCurr = Vector.set(nA);
@@ -407,14 +427,14 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var uvCurr = Vector.set(uA);
     var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
-    //  Add the first and CENTER vertex
-    //  The triangles will be composed on FAN style arround it
+    //  Add the FIRST and CENTER vertex
+    //  The triangles will be composed in a FAN style around it
     addVertex(coord, nC, uC, constants);
 
     //  Add first corner
     addVertex(coord, normCurr, uA, constants);
 
-    // Iterate through the rest of the coorners
+    // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
         normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
@@ -441,7 +461,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         }
     }
 
-    // Clean the buffer
+    // Clear the buffer
     constants.vertices = [];
     if (constants.scalingVecs) {
         constants.scalingVecs = [];
@@ -451,8 +471,8 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  Add speccials joins (not miter) tipes that require FAN tessalations
-//  Using this ( http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation ) as reference
+//  Add special joins (not miter) types that require FAN tessellations
+//  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
 
     var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
@@ -500,7 +520,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     }
 
     // UVs
-    var uvA = [constants.min_u,constants.min_v],                        // Begining angle UVs
+    var uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
         uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
 
@@ -517,7 +537,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scalingVecs, texcoord_index, texcoords }) {
+function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
     // Prevent access to undefined vertices
     if (index >= vertices.length) {
         return;
@@ -529,14 +549,14 @@ function addIndex (index, { vertex_data, vertex_template, halfWidth, vertices, s
 
     // set UVs
     if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[index][0];
-        vertex_template[texcoord_index + 1] = texcoords[index][1];
+        vertex_template[texcoord_index + 0] = texcoords[index][0] * texcoord_normalize;
+        vertex_template[texcoord_index + 1] = texcoords[index][1] * texcoord_normalize;
     }
 
-    // set Scaling vertex (X, Y normal direction + Z haltwidth as attribute)
+    // set Scaling vertex (X, Y normal direction + Z halfwidth as attribute)
     if (scaling_index) {
-        vertex_template[scaling_index + 0] = scalingVecs[index][0];
-        vertex_template[scaling_index + 1] = scalingVecs[index][1];
+        vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
+        vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;
         vertex_template[scaling_index + 2] = halfWidth;
     }
 
@@ -572,15 +592,11 @@ function indexPairs (constants) {
 // Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
 // properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
 // of a sprite between two zoom levels.
-Builders.buildQuadsForPoints = function (
-    points,
-    width, height, angle, scale,
-    vertex_data, vertex_template,
-    scaling_index,
-    { texcoord_index, texcoord_scale }) {
-
-    let w2 = width / 2;
-    let h2 = height / 2;
+Builders.buildQuadsForPoints = function (points, vertex_data, vertex_template,
+    { texcoord_index, position_index, shape_index, offset_index },
+    { quad, quad_scale, offset, angle, texcoord_scale, texcoord_normalize }) {
+    let w2 = quad[0] / 2;
+    let h2 = quad[1] / 2;
     let scaling = [
         [-w2, -h2],
         [w2, -h2],
@@ -591,9 +607,11 @@ Builders.buildQuadsForPoints = function (
         [-w2, h2]
     ];
 
-    let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
     let texcoords;
     if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+
+        let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
@@ -612,17 +630,20 @@ Builders.buildQuadsForPoints = function (
         for (let pos=0; pos < 6; pos++) {
             // Add texcoords
             if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[pos][0];
-                vertex_template[texcoord_index + 1] = texcoords[pos][1];
+                vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
+                vertex_template[texcoord_index + 1] = texcoords[pos][1] * texcoord_normalize;
             }
 
-            vertex_template[0] = point[0];
-            vertex_template[1] = point[1];
+            vertex_template[position_index + 0] = point[0];
+            vertex_template[position_index + 1] = point[1];
 
-            vertex_template[scaling_index + 0] = scaling[pos][0];
-            vertex_template[scaling_index + 1] = scaling[pos][1];
-            vertex_template[scaling_index + 2] = angle;
-            vertex_template[scaling_index + 3] = scale;
+            vertex_template[shape_index + 0] = scaling[pos][0];
+            vertex_template[shape_index + 1] = scaling[pos][1];
+            vertex_template[shape_index + 2] = angle;
+            vertex_template[shape_index + 3] = quad_scale;
+
+            vertex_template[offset_index + 0] = offset[0];
+            vertex_template[offset_index + 1] = offset[1];
 
             vertex_data.addVertex(vertex_template);
         }
@@ -644,8 +665,7 @@ Builders.isOnTileEdge = function (pa, pb, options) {
     options = options || {};
 
     var tolerance_function = options.tolerance_function || Builders.valuesWithinTolerance;
-    var tolerance = options.tolerance || 3; // tweak this adjust if catching too few/many line segments near tile edges
-                                            // TODO: make tolerance configurable by source if necessary
+    var tolerance = options.tolerance || 1;
     var tile_min = Builders.tile_bounds[0];
     var tile_max = Builders.tile_bounds[1];
     var edge = null;
@@ -668,31 +688,4 @@ Builders.isOnTileEdge = function (pa, pb, options) {
 Builders.valuesWithinTolerance = function (a, b, tolerance) {
     tolerance = tolerance || 1;
     return (Math.abs(a - b) < tolerance);
-};
-
-// Build a zigzag line pattern for testing joins and caps
-Builders.buildZigzagLineTestPattern = function () {
-    var min = { x: 0, y: 0}; //  tile.min;
-    var max = { x: 4096, y: 4096 }; // tile.max;
-
-    var g = {
-        id: 123,
-        geometry: {
-            type: 'LineString',
-            coordinates: [
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.75 + max.y * 0.25],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.5 + max.y * 0.5],
-                [min.x * 0.25 + max.x * 0.75, min.y * 0.75 + max.y * 0.25],
-                [min.x * 0.25 + max.x * 0.75, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.4 + max.x * 0.6, min.y * 0.5 + max.y * 0.5],
-                [min.x * 0.5 + max.x * 0.5, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.25 + max.y * 0.75],
-                [min.x * 0.75 + max.x * 0.25, min.y * 0.4 + max.y * 0.6]
-            ]
-        },
-        properties: {
-            kind: 'debug'
-        }
-    };
-    return g;
 };

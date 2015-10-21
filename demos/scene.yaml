@@ -1,3 +1,5 @@
+# include: transit.yaml
+
 cameras:
     perspective:
         type: perspective
@@ -133,13 +135,75 @@ styles:
         base: points
         texture: pois
 
+    grid:
+        base: polygons
+        lighting: false
+        shaders:
+            extensions: OES_standard_derivatives
+            # extensions: [OES_standard_derivatives, EXT_frag_depth]
+            blocks:
+                color: |
+                    // From: http://madebyevan.com/shaders/grid/
+                    // Pick a coordinate to visualize in a grid
+                    vec3 coord = v_world_position.xyz / 10.;
+
+                    // Compute anti-aliased world-space grid lines
+                    vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+                    float line = min(min(grid.x, grid.y), grid.z);
+
+                    // Just visualize the grid lines directly
+                    color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
+
+
 sources:
     # When commented, demo main.js will set source based on URL - uncomment for testing
     # osm:
-    #     type: TopoJSONTiles
+    #     type: TopoJSON
     #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
+    #     # Data filtering demo with 'scripts' and 'transform' properties:
+    #     # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
+    #     # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
+    #     # That feature is then filtered on below in the 'roads' layer.
+    #     # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
+    #     # transform: |
+    #     #     function(data, extra_data) {
+
+    #     #         if (data.roads &&
+    #     #             data.roads.features &&
+    #     #             data.landuse &&
+    #     #             data.landuse.features) {
+
+    #     #             data.roads.features.forEach(function(road) {
+    #     #                 for (var i=0; i < data.landuse.features.length; i++) {
+    #     #                     var land = data.landuse.features[i];
+
+    #     #                     if (land.properties.kind !== 'park') {
+    #     #                         continue;
+    #     #                     }
+
+    #     #                     try {
+    #     #                         if (turf.intersect(road, land)) {
+    #     #                             road.properties.intersects_park = true;
+    #     #                         }
+    #     #                     }
+    #     #                     catch(e){
+    #     #                         //debugger;
+    #     #                     }
+    #     #                 }
+    #     #                 return true;
+    #     #             });
+    #     #         }
+    #     #         return data;
+    #     #     }
+    # schools:
+    #     type: GeoJSON
+    #     url: data/school-districts-polygon.geojson
+    # counties:
+    #     type: TopoJSON
+    #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
 
 layers:
+
     earth:
         data: { source: osm }
         draw:
@@ -151,7 +215,6 @@ layers:
     landuse:
         data: { source: osm }
         filter:
-            name: true
             # show smaller landuse areas at higher zooms
             any:
                 - { $zoom: { min: 9 }, area: { min: 10000000 } }
@@ -282,6 +345,15 @@ layers:
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
                             order: 38
 
+        # apply outline to roads intersecting parks - see data source transform example in `sources`
+        land:
+            filter: { intersects_park: true }
+            draw:
+                lines:
+                    outline:
+                        color: yellow
+                        width: 2px
+
     buildings:
         data: { source: osm }
         filter: { $zoom: { min: 14 } }
@@ -321,7 +393,8 @@ layers:
                     priority: 2
                     font:
                         fill: '#666'
-                        typeface: 12px Helvetica
+                        family: Helvetica
+                        size: 12px
                         stroke: { color: white, width: 4 }
 
         not_highway:
@@ -332,7 +405,8 @@ layers:
                     font:
                         fill: '#666'
                         stroke: { color: white, width: 4 }
-                        typeface: 12px Helvetica
+                        family: Helvetica
+                        size: 12px
 
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
@@ -340,7 +414,8 @@ layers:
                     text:
                         priority: 3
                         font:
-                            typeface: 16px Helvetica
+                            family: Helvetica
+                            size: 16px
                             stroke: { color: white, width: 4 }
 
             small:
@@ -352,6 +427,7 @@ layers:
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             icons:
+                offset: [0px, -13px]
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
 
@@ -408,7 +484,9 @@ layers:
             text:
                 priority: 1
                 font:
-                    typeface: italic 11pt Helvetica
+                    family: Helvetica
+                    size: 11pt
+                    style: italic
                     fill: black
                     stroke: { color: white, width: 3 }
         continents:
@@ -416,51 +494,78 @@ layers:
             draw:
                 text:
                     font:
-                        capitalized: true
+                        transform: uppercase
         countries:
             filter: { kind: country }
             draw:
                 text:
                     font:
-                        capitalized: true
+                        transform: uppercase
         oceans:
             filter: { kind: ocean }
             draw:
                 text:
                     font:
-                        typeface: italic 14pt Baskerville
+                        family: Baskerville
+                        size: 14pt
+                        style: italic
+
         cities:
             # this filter shows lower scaleranks at higher zooms, starting at z4
             filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
             draw:
                 text:
                     font:
-                        typeface: italic 12pt Helvetica
+                        family: Helvetica
+                        size: 12pt
+                        style: italic
                         fill: black
                         stroke: { color: white, width: 3 }
+
         minor-places:
-            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 13 } }
+            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 14 } }
             visible: false
 
-    landuse_labels:
-        data: { source: osm }
+    point_labels:
+        data: { source: osm, layer: [pois, landuse_labels] }
         filter:
             name: true
-            kind: [park, forest, cemetery, graveyard]
-            any:
-                # show labels for smaller landuse areas at higher zooms
-                - { $zoom: { min: 9 }, area: { min: 100000000 } }
-                - { $zoom: { min: 10 }, area: { min: 10000000 } }
-                - { $zoom: { min: 12 }, area: { min: 1000000 } }
-                - { $zoom: { min: 15 }, area: { min: 10000 } }
-                - { $zoom: { min: 18 } }
-        draw:
-            text:
-                priority: 4
-                font:
-                    typeface: Italic 10pt Lucida Grande
-                    fill: darkgreen
-                    stroke: { color: white, width: 3 }
+
+        landuse:
+            filter:
+                $layer: landuse_labels
+                kind: [park, forest, cemetery, graveyard]
+                any:
+                    # show labels for smaller landuse areas at higher zooms
+                    - { $zoom: { min: 9 }, area: { min: 100000000 } }
+                    - { $zoom: { min: 10 }, area: { min: 10000000 } }
+                    - { $zoom: { min: 12 }, area: { min: 1000000 } }
+                    - { $zoom: { min: 15 }, area: { min: 10000 } }
+                    - { $zoom: { min: 18 } }
+            draw:
+                text:
+                    priority: 4
+                    font:
+                        family: Lucida Grande
+                        size: 10pt
+                        style: italic
+                        fill: darkgreen
+                        stroke: { color: white, width: 3 }
+
+        pois:
+            filter:
+                $layer: pois
+                name: true
+                not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }
+                $zoom: { min: 18 }
+            draw:
+                text:
+                    offset: [0px, 13px]
+                    priority: 6
+                    font:
+                        family: Helvetica
+                        size: 12px
+                        fill: black
 
     # building_labels:
     #     data: { source: osm, layer: buildings }
@@ -473,6 +578,32 @@ layers:
     #         text:
     #             priority: 6
     #             font:
-    #                 typeface: 8pt Lucida Grande
+    #                 family: Lucida Grande
+    #                 size: 8pt
     #                 fill: darkred
     #                 stroke: { color: white, width: 3 }
+
+    # schools:
+    #     data: { source: schools }
+    #     draw:
+    #         lines:
+    #             order: 100
+    #             color: red
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true
+    #         text:
+    #             text_source: schoolDistrict
+    #             font:
+    #                 fill: white
+    #                 family: Futura
+    #                 size: 16px
+    #                 stroke: { color: black, width: 4 }
+
+    # counties:
+    #     data: { source: counties }
+    #     draw:
+    #         lines:
+    #             order: 101
+    #             color: purple
+    #             width: [[7, .5px], [9, 1px], [14, 5px]]
+    #             interactive: true

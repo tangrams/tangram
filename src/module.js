@@ -13,7 +13,10 @@ import {SceneWorker} from '../src/scene_worker';
 import version from './utils/version';
 import log from 'loglevel';
 import Geo from './geo';
-import DataSource from './data_source';
+import DataSource from './sources/data_source';
+import './sources/geojson';
+import './sources/topojson';
+import './sources/mvt';
 import TileManager from './tile_manager';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';
@@ -27,6 +30,7 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import FeatureSelection from './selection';
 
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 
 // Default to 64-bit because we need the extra precision when multiplying matrices w/mercator projected values
@@ -35,6 +39,7 @@ glMatrix.glMatrix.setMatrixArrayType(Float64Array);
 // Make some modules accessible for debugging
 var debug = {
     log,
+    yaml,
     Utils,
     Geo,
     DataSource,

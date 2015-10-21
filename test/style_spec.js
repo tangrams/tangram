@@ -40,7 +40,7 @@ describe('Styles:', () => {
         });
 
         it('creates a custom style', () => {
-            StyleManager.create('rainbow', sampleScene.config.styles.rainbow);
+            StyleManager.create('rainbow', sampleScene.styles.rainbow);
             assert.equal(Styles.rainbow.constructor, Style.constructor);
             assert.equal(Styles.rainbow.base, 'polygons');
         });
@@ -48,7 +48,7 @@ describe('Styles:', () => {
         describe('builds custom styles w/dependencies from stylesheet', () => {
 
             beforeEach(() => {
-                StyleManager.build(sampleScene.config.styles);
+                StyleManager.build(sampleScene.styles);
             });
 
             it('compiles parent custom style', () => {
@@ -73,14 +73,16 @@ describe('Styles:', () => {
 
         it('loads a remote style from a URL', (done) => {
             let styles = { windows: { url: 'http://localhost:9876/base/test/fixtures/sample-remote-style.yaml' } };
-            StyleManager.preload(styles).then(() => {
-                StyleManager.build(styles);
-                Styles.windows.setGL(gl);
-                Styles.windows.compile();
-                assert.ok(Styles.windows.compiled);
-                assert.ok(Styles.windows.program.compiled);
-                done();
-            });
+            StyleManager.loadRemoteStyles(styles)
+                .then(styles => StyleManager.loadShaderBlocks(styles))
+                .then(() => {
+                    StyleManager.build(styles);
+                    Styles.windows.setGL(gl);
+                    Styles.windows.compile();
+                    assert.ok(Styles.windows.compiled);
+                    assert.ok(Styles.windows.program.compiled);
+                    done();
+                });
         });
 
         it('loads a remote style from a URL, with a different local name', (done) => {
@@ -88,14 +90,16 @@ describe('Styles:', () => {
                 name: 'windows',
                 url: 'http://localhost:9876/base/test/fixtures/sample-remote-style.yaml'
             } };
-            StyleManager.preload(styles).then(() => {
-                StyleManager.build(styles);
-                Styles.localName.setGL(gl);
-                Styles.localName.compile();
-                assert.ok(Styles.localName.compiled);
-                assert.ok(Styles.localName.program.compiled);
-                done();
-            });
+            StyleManager.loadRemoteStyles(styles)
+                .then(styles => StyleManager.loadShaderBlocks(styles))
+                .then(() => {
+                    StyleManager.build(styles);
+                    Styles.localName.setGL(gl);
+                    Styles.localName.compile();
+                    assert.ok(Styles.localName.compiled);
+                    assert.ok(Styles.localName.program.compiled);
+                    done();
+                });
         });
 
     });
@@ -122,7 +126,7 @@ describe('Styles:', () => {
         });
 
         it('injects a dependent uniform in a custom style', () => {
-            StyleManager.create('scale', sampleScene.config.styles.scale);
+            StyleManager.create('scale', sampleScene.styles.scale);
             Styles.scale.init();
             Styles.scale.setGL(gl);
             Styles.scale.compile();

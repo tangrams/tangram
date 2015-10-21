@@ -1,9 +1,9 @@
 uniform vec2 u_resolution;
-uniform float u_meters_per_pixel;
-uniform float u_device_pixel_ratio;
 uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec3 u_tile_origin;
+uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
 
 uniform sampler2D u_texture;
 
@@ -39,10 +39,15 @@ void main (void) {
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
-    #ifndef TANGRAM_BLEND_OVERLAY
+    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
         if (color.a < TANGRAM_ALPHA_DISCARD) {
             discard;
         }
+    #endif
+
+    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
+    #ifdef TANGRAM_UNMULTIPLY_ALPHA
+        color.rgb /= max(color.a, 0.001);
     #endif
 
     #pragma tangram: color

@@ -21,6 +21,7 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
     var parsed = [];
 
     for (var name in uniforms) {
+        var key = name; // save the original name
         var uniform = uniforms[name];
         var u;
 
@@ -33,8 +34,10 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
             parsed.push({
                 type: 'float',
                 method: '1f',
-                name, value:
-                uniform
+                name,
+                value: uniform,
+                key,
+                uniforms
             });
         }
         // Array: vector, array of floats, array of textures, or array of structs
@@ -47,7 +50,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                         type: 'vec' + uniform.length,
                         method: uniform.length + 'fv',
                         name,
-                        value: uniform
+                        value: uniform,
+                        key,
+                        uniforms
                     });
                 }
                 // float array
@@ -56,7 +61,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                         type: 'float[]',
                         method: '1fv',
                         name: name + '[0]',
-                        value: uniform
+                        value: uniform,
+                        key,
+                        uniforms
                     });
                 }
                 // TODO: assume matrix for (typeof == Float32Array && length == 16)?
@@ -68,7 +75,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                         type: 'sampler2D',
                         method: '1i',
                         name: name + '[' + u + ']',
-                        value: uniform[u]
+                        value: uniform[u],
+                        key: u,
+                        uniforms: uniform
                     });
                 }
             }
@@ -82,7 +91,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                             type: 'vec' + uniform[0].length,
                             method: uniform[u].length + 'fv',
                             name: name + '[' + u + ']',
-                            value: uniform[u]
+                            value: uniform[u],
+                            key: u,
+                            uniforms: uniform
                         });
                     }
                 }
@@ -102,7 +113,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                 type: 'bool',
                 method: '1i',
                 name,
-                value: uniform
+                value: uniform,
+                key,
+                uniforms
             });
         }
         // Texture
@@ -111,7 +124,9 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                 type: 'sampler2D',
                 method: '1i',
                 name,
-                value: uniform
+                value: uniform,
+                key,
+                uniforms
             });
         }
         // Structure

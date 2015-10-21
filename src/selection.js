@@ -201,6 +201,7 @@ export default class FeatureSelection {
     }
 
     static reset() {
+        this.tiles = {};
         this.map = {};
         this.map_size = 0;
         this.map_entry = 0;

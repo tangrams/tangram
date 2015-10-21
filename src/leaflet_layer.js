@@ -1,5 +1,6 @@
 import Utils from './utils/utils';
 import Scene from './scene';
+import Geo from './geo';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
@@ -28,6 +29,7 @@ if (Utils.isMainThread) {
         initialize: function (options) {
             // Defaults
             options.showDebug = (!options.showDebug ? false : true);
+            options.wheelDebounceTime = options.wheelDebounceTime || 40;
 
             L.setOptions(this, options);
             this.createScene();
@@ -36,6 +38,11 @@ if (Utils.isMainThread) {
 
             // Force leaflet zoom animations off
             this._zoomAnimated = false;
+
+            this.debounceViewReset = Utils.debounce(() => {
+                this._map.fire('zoomend');
+                this._map.fire('moveend');
+            }, this.options.wheelDebounceTime);
         },
 
         createScene: function () {
@@ -78,7 +85,7 @@ if (Utils.isMainThread) {
 
                 this._updating_tangram = true;
                 var view = map.getCenter();
-                view.zoom = map.getZoom();
+                view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
@@ -119,7 +126,7 @@ if (Utils.isMainThread) {
 
             // Initial view
             var view = map.getCenter();
-            view.zoom = map.getZoom();
+            view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
             this.scene.setView(view);
 
             // Subscribe to tangram events
@@ -183,7 +190,23 @@ if (Utils.isMainThread) {
         // default behavior is presumably improved
         modifyScrollWheelBehavior: function (map) {
             if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
-                map.scrollWheelZoom._performZoom = function () {
+                let layer = this;
+                let enabled = map.scrollWheelZoom.enabled();
+                if (enabled) {
+                    map.scrollWheelZoom.disable(); // disable before modifying
+                }
+
+                // modify prototype and current instance, so add/remove hooks work on existing references
+                L.Map.ScrollWheelZoom._onWheelScroll = map.scrollWheelZoom._onWheelScroll = function(e) {
+                    // modify to skip debounce, as it seems to cause animation-sync issues in Chrome
+                    // with Tangram continuous rendering
+                    this._delta += L.DomEvent.getWheelDelta(e);
+                    this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+                    this._performZoom();
+                    L.DomEvent.stop(e);
+                };
+
+                L.Map.ScrollWheelZoom._performZoom = map.scrollWheelZoom._performZoom = function () {
                     var map = this._map,
                         delta = this._delta,
                         zoom = map.getZoom();
@@ -202,12 +225,27 @@ if (Utils.isMainThread) {
                     if (!delta) { return; }
 
                     if (map.options.scrollWheelZoom === 'center') {
-                        map.setZoom(zoom + delta);
+                        map._move(map.getCenter(), zoom + delta);
                     } else {
-                        map.setZoomAround(this._lastMousePos, zoom + delta);
+                        // Re-centering code from Leaflet's map.setZoomAround() function
+                        var latlng = this._lastMousePos,
+                            newZoom = zoom + delta,
+                            scale = map.getZoomScale(newZoom),
+                            viewHalf = map.getSize().divideBy(2),
+                            containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
+
+                            centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
+                            newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
+
+                        map._move(newCenter, newZoom);
                     }
-                    return false;
+
+                    layer.debounceViewReset();
                 };
+
+                if (enabled) {
+                    map.scrollWheelZoom.enable(); // re-enable after modifying
+                }
             }
         },
 

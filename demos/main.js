@@ -24,11 +24,11 @@ Enjoy!
     var tile_sources = {
         'mapzen': {
             type: 'MVT',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-geojson': {
-            type: 'GeoJSONTiles',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
+            type: 'GeoJSON',
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
             // transform: function(data) {
             //     // You can edit the tile data here before it gets projected
             //     // and rendered
@@ -40,26 +40,26 @@ Enjoy!
             // ]
         },
         'mapzen-dev': {
-            type: 'GeoJSONTiles',
-            url: '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
+            type: 'GeoJSON',
+            url: 'https://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-local': {
-            type: 'GeoJSONTiles',
+            type: 'GeoJSON',
             url: '//localhost:8080/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-topojson': {
-            type: 'TopoJSONTiles',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
+            type: 'TopoJSON',
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
         },
 
         // 'osm': {
-        //     type: 'GeoJSONTiles',
+        //     type: 'GeoJSON',
         //     url: '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
         // },
 
         'mapbox': {
             type: 'MVT',
-            url: '//{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+            url: 'https://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }
 
@@ -81,9 +81,7 @@ Enjoy!
         map = L.map('map', {
             maxZoom: 20,
             trackResize: true,
-            inertia: false,
-            keyboard: false,
-            wheelDebounceTime: 20
+            keyboard: false
         }),
 
         layer = Tangram.leafletLayer({
@@ -96,12 +94,19 @@ Enjoy!
         });
 
     layer.scene.subscribe({
-        loadScene: function (config) {
+        load: function (msg) {
+            var config = msg.config;
             // If no source was set in scene definition, set one based on the URL
             if (!config.sources || !config.sources['osm']) {
                 config.sources = config.sources || {};
                 config.sources['osm'] = tile_sources[default_tile_source];
             }
+        },
+        error: function (msg) {
+            // debugger;
+        },
+        warning: function (msg) {
+            // debugger;
         }
     });
 
@@ -389,7 +394,7 @@ Enjoy!
     // Create dat GUI
     var gui = new dat.GUI({ autoPlace: true });
     function addGUI () {
-        gui.domElement.parentNode.style.zIndex = 5;
+        gui.domElement.parentNode.style.zIndex = 10000;
         window.gui = gui;
 
         // Add ability to remove a whole folder from DAT.gui
@@ -552,8 +557,8 @@ Enjoy!
         if (rS != null) { // rstats
             rS('frame').end();
             rS('rendertiles').set(scene.renderable_tiles_count);
-            rS('glbuffers').set((scene.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
-            rS('features').set(scene.getDebugSum('features'));
+            rS('glbuffers').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
+            rS('features').set(scene.tile_manager.getDebugSum('features'));
             rS().update();
         }
 

@@ -3,6 +3,7 @@
 
 import log from 'loglevel';
 import yaml from 'js-yaml';
+import bowser from 'bowser';
 import Geo from '../geo';
 
 var Utils;
@@ -55,9 +56,9 @@ Utils.addBaseURL = function (url, base) {
 
 Utils.pathForURL = function (url) {
     if (url.search(/^(data|blob):/) === -1) {
-        return url.substr(0, url.lastIndexOf('/') + 1);
+        return url.substr(0, url.lastIndexOf('/') + 1) || './';
     }
-    return '';
+    return './';
 };
 
 Utils.cacheBusterForUrl = function (url) {
@@ -122,15 +123,11 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
 };
 
 Utils.parseResource = function (body) {
-    var data = null;
+    var data;
     try {
-        eval('data = ' + body); // jshint ignore:line
+        data = yaml.safeLoad(body);
     } catch (e) {
-        try {
-            data = yaml.safeLoad(body);
-        } catch (e) {
-            throw e;
-        }
+        throw e;
     }
     return data;
 };
@@ -151,6 +148,11 @@ Utils.loadResource = function (source) {
             resolve(source);
         }
     });
+};
+
+// Wrapper for browser info
+Utils.browser = function () {
+    return bowser;
 };
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
@@ -403,8 +405,11 @@ Utils.recurseValues = function* (obj) {
     }
 };
 
-Utils.scaleInt16 = function (val, max) {
-    return (val / max) * 32768;
+// Scale a *signed* short for use in a GL VBO
+// `unit` is an optional scaling factor to mimic fixed point, since these values will be
+// normalized to 0-1, e.g. divide input by unit on the way in, multiply it back in the shader
+Utils.scaleInt16 = function (val, unit) {
+    return (val / unit) * 32767;
 };
 
 Utils.degToRad = function (degrees) {
@@ -419,63 +424,9 @@ Utils.toCanvasColor = function (color) {
     return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
 };
 
-Utils.centroid = function (polygon) {
-    let n = polygon.length;
-    let centroid = [0, 0];
-
-    for (let p=0; p < polygon.length; p++) {
-        centroid[0] += polygon[p][0];
-        centroid[1] += polygon[p][1];
-    }
-
-    centroid[0] /= n;
-    centroid[1] /= n;
-
-    return centroid;
-};
-
-Utils.multiCentroid = function (polygons) {
-    let n = polygons.length;
-    let centroid = [0, 0];
-
-    for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        let c = Utils.centroid(polygon);
-        centroid[0] += c[0];
-        centroid[1] += c[1];
-    }
-
-    centroid[0] /= n;
-    centroid[1] /= n;
-
-    return centroid;
-};
-
-Utils.polygonArea = function (polygon) {
-    let area = 0;
-    let n = polygon.length;
-
-    for (let i = 0; i < n - 1; i++) {
-        let p0 = polygon[i];
-        let p1 = polygon[i+1];
-
-        area += p0[0] * p1[1] - p1[0] * p0[1];
-    }
-
-    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
-
-    return Math.abs(area) / 2;
-};
-
-Utils.multiPolygonArea = function (polygons) {
-    let area = 0;
-
-    for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        area += Utils.polygonArea(polygon);
-    }
-
-    return area;
+// Some Canvas implementations have pre-multiplied alpha that we need to adjust for
+Utils.canvasPremultipliedAlpha = function () {
+    return (Utils.browser().ios ? false : true);
 };
 
 Utils.toPixelSize = function (size, kind) {
@@ -491,10 +442,40 @@ Utils.toPixelSize = function (size, kind) {
 };
 
 Utils.pointInTile = function (point) {
-    return point[0] > 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] < 0;
+    return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };
 
-Utils.pixelToMercator = function (size) {
-    return size * Geo.units_per_pixel;
+// http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+Utils.hashString = function(str) {
+    if (str.length === 0) {
+        return 0;
+    }
+    let hash = 0;
+
+    for (let i = 0, len = str.length; i < len; i++) {
+        let chr = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0;
+    }
+    return hash;
 };
 
+Utils.debounce = function (func, wait, immediate) {
+    let timeout;
+    return function() {
+        let context = this,
+            args = arguments;
+        let later = function() {
+            timeout = null;
+            if (!immediate) {
+                func.apply(context, args);
+            }
+        };
+        let callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) {
+            func.apply(context, args);
+        }
+    };
+};

@@ -1,50 +1,48 @@
 /*global Label */
 
-import boxIntersect from 'box-intersect';
+import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
 import Utils from '../../utils/utils';
-import Geo from '../../geo';
+import OBB from '../../utils/obb';
 
 export default class Label {
-    constructor (text, size, { move_in_tile, keep_in_tile }) {
+
+    constructor (text, size, options) {
         Object.assign(this, {
             text,
             size,
-            position: [],
-            bbox: [],
-            move_in_tile,
-            keep_in_tile
+            options,
+            position: null,
+            aabb: null,
         });
-
-        this.id = Label.id++;
-
-        this.buffer = this.buffer || 2; // TODO: make configurable
-        this.buffer *= Geo.units_per_pixel;
     }
 
-    isComposite () {
-        return false;
-    }
-
-    occluded (bboxes) {
+    // check for overlaps with other labels in the tile
+    occluded (aabbs) {
         let intersect = false;
 
-        if (bboxes.length > 0) {
-            boxIntersect([this.bbox], bboxes, (i, j) => {
-                intersect = true;
-                return true;
+        // Broadphase
+        if (aabbs.length > 0) {
+            boxIntersect([this.aabb], aabbs, (i, j) => {
+                // Narrow phase
+                if (OBB.intersect(this.aabb.obb, aabbs[j].obb)) {
+                    intersect = true;
+                    return true;
+                }
             });
         }
 
+        // No collision on aabb
         if (!intersect) {
-            bboxes.push(this.bbox);
+            // it's clean, add it to the list of bboxes
+            aabbs.push(this.aabb);
         }
-
         return intersect;
     }
 
+    // checks whether the label is within the tile boundaries
     inTileBounds () {
-        let min = [ this.bbox[0], this.bbox[1] ];
-        let max = [ this.bbox[2], this.bbox[3] ];
+        let min = [ this.aabb[0], this.aabb[1] ];
+        let max = [ this.aabb[2], this.aabb[3] ];
 
         if (!Utils.pointInTile(min) || !Utils.pointInTile(max)) {
             return false;
@@ -53,14 +51,18 @@ export default class Label {
         return true;
     }
 
-    discard (bboxes) {
+    // whether the label should be discarded
+    // 1. try to keep the label in tile if the label (to avoid collision over tile for now)
+    // 2. if 1. -> keep a minimal distance between the label
+    // 3. if 2. -> perfom occlusion
+    discard (aabbs) {
         let discard = false;
 
         // perform specific styling rule, should we keep the label in tile bounds?
-        if (this.keep_in_tile) {
+        if (this.options.keep_in_tile) {
             let in_tile = this.inTileBounds();
 
-            if (!in_tile && this.move_in_tile) {
+            if (!in_tile && this.options.move_in_tile) {
                 // can we move?
                 discard = this.moveInTile();
             } else if (!in_tile) {
@@ -71,9 +73,6 @@ export default class Label {
         }
 
         // should we discard? if not, just make occlusion test
-        return discard || this.occluded(bboxes);
+        return discard || this.occluded(aabbs);
     }
 }
-
-Label.id = 0;
-
