@@ -440,8 +440,19 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     if (numTriangles === 3) {
         // ... if that's the case try to simplify the number of triangles
         var w = constants.halfWidth*2;
+
+        // Core ecuation taked from here (http://slabode.exofire.net/circle_draw.shtml) adapted from circle to what ever angle we have
         var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/constants.units_per_pixel;
-        numTriangles = Math.max(1, Math.ceil( (dist*(angle_delta*angle_delta) )/(20+constants.halfWidth/constants.units_per_pixel) ));
+        numTriangles = Math.ceil( (100*Math.sqrt(dist)/360)*angle_delta );
+        numTriangles = Math.min(15, Math.max(1,numTriangles));  // Limit the max and min
+
+        // Debug it
+        // console.log("Circle: dist:",dist,"angle:",angle_delta, "U/pixel:",constants.units_per_pixel," -> # triangles", numTriangles);
+
+        // If is a cap and have less than 2 triangles skip
+        if (angle_delta >= 3.14 && numTriangles < 2) {
+            return;
+        }
     }
     // Calculate the angle for each triangle
     var angle_step = angle_delta/numTriangles;
