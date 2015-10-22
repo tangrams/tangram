@@ -392,7 +392,7 @@ Builders.buildPolylines = function (
 
 // Helper function for polyline tesselation
 // add two equidistant pairs of vertices (internal method for polyline builder)
-function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
+function addPolylineVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
@@ -411,8 +411,8 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 
 //  Add two equidistant vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, v_pct, constants) {
-    addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-    addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addPolylineVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addPolylineVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 }
 
 //  Tessalate a FAN geometry between points A       B
@@ -458,17 +458,17 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
 
     //  Add the FIRST and CENTER vertex
     //  The triangles will be composed in a FAN style around it
-    addVertex(coord, nC, uC, constants);
+    addPolylineVertex(coord, nC, uC, constants);
 
     //  Add first corner
-    addVertex(coord, normCurr, uA, constants);
+    addPolylineVertex(coord, normCurr, uA, constants);
 
     // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
         normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
         uvCurr = Vector.add(uvCurr,uv_delta);
-        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+        addPolylineVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
     }
 
     // Index the vertices
@@ -520,12 +520,12 @@ function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
     //  The triangles will be add in a FAN style around it
     //
     //                       A -- C
-    addVertex(coord, nC, uC, constants);
+    addPolylineVertex(coord, nC, uC, constants);
 
     //  Add first corner     +
     //                       :
     //                       A -- C
-    addVertex(coord, normCurr, uA, constants);
+    addPolylineVertex(coord, normCurr, uA, constants);
 
     // Iterate through the rest of the coorners completing the triangles
     // (except the corner 1 to save one triangle to be draw )
@@ -550,7 +550,7 @@ function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
 
         if (t !== 1) {
             //  Add computed corner (except the corner 1)
-            addVertex(coord, normCurr, uvCurr, constants);      
+            addPolylineVertex(coord, normCurr, uvCurr, constants);      
         }
     }
 
@@ -592,8 +592,8 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
 
     if (signed) {
-        addVertex(coords[1], nA, uA, constants);
-        addVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nA, uA, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
     } else {
         nA = Vector.neg(T[0]);
         nC = T[1];
@@ -601,18 +601,18 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-        addVertex(coords[1], nC, uC, constants);
-        addVertex(coords[1], nA, uA, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nA, uA, constants);
     }
 
     addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
 
     if (signed) {
-        addVertex(coords[1], nB, uB, constants);
-        addVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nB, uB, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
     } else {
-        addVertex(coords[1], nC, uC, constants);
-        addVertex(coords[1], nB, uB, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nB, uB, constants);
     }
 }
 
