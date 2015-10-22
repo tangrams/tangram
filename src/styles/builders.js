@@ -641,7 +641,7 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
                    Vector.neg(normal), [0, 0], normal, 
                    uvA, uvC, uvB, 
                    isBeginning, 
-                   constants)
+                   constants);
     } else {
         // If caps are set as round ( numCorners===3 )
         addFan( coord,
