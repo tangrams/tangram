@@ -103,36 +103,76 @@ Object.assign(TextStyle, {
         ctx.miterLimit = 2;
     },
 
-    // Width and height of text based on current font style
-    textSize (text, tile, transform) {
+    // Computes width and height of text based on current font style
+    // Includes word wrapping
+    textSize (text, tile, transform, { max_line_width = 18 } = {}) {
         let str = FeatureLabel.applyTextTransform(text, transform);
         let ctx = this.canvas[tile].context;
         let px_size = this.px_size;
         let px_logical_size = this.px_logical_size;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
 
-        let str_width = ctx.measureText(str).width;
+        // Word wrapping
+        let words = str.split(/\s+/); // split words on spaces
+        let new_line = { width: 0, chars: 0, text: '' };
+        let line = Object.assign({}, new_line);
+        let lines = [];
+        let max_width = 0; // max width
+
+        for (let w=0; w < words.length; w++) {
+            let word = words[w];
+
+            if (line.chars + word.length > max_line_width && line.chars > 0) {
+                // remove last space if character
+                line.text = line.text.trim();
+
+                line.width = ctx.measureText(line.text).width;
+                max_width = Math.max(max_width, line.width);
+                lines.push(line);
+                line = Object.assign({}, new_line);
+            }
+
+            line.chars += word.length + 1; // add one for space
+            line.text += word + ' ';
+        }
+        line.width = ctx.measureText(line.text).width;
+        max_width = Math.max(max_width, Math.ceil(line.width));
+        lines.push(line);
+
+        // let str_width = ctx.measureText(str).width;
+        let height = lines.length * this.px_size;
+
         let text_size = [
-            str_width / Utils.device_pixel_ratio,
-            this.px_size / Utils.device_pixel_ratio
+            max_width / Utils.device_pixel_ratio,
+            height / Utils.device_pixel_ratio
         ];
 
         let texture_text_size = [
-            Math.ceil(str_width) + buffer * 2,
-            this.px_size + buffer * 2
+            max_width + buffer * 2,
+            height + buffer * 2
         ];
 
-        return { text_size, texture_text_size, px_size, px_logical_size };
+        return {
+            lines,
+            size: { text_size, texture_text_size, px_size, px_logical_size }
+        };
     },
 
-    // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke, transform) {
-        let str = FeatureLabel.applyTextTransform(text, transform);
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        if (stroke) {
-            this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
+    // Draw one or more lines of text at specified location, adjusting for buffer and baseline
+    drawText (lines, [x, y], tile, stroke, transform) {
+        for (let line_num=0; line_num < lines.length; line_num++) {
+            let line = lines[line_num];
+            let str = FeatureLabel.applyTextTransform(line.text, transform);
+            let buffer = this.text_buffer * Utils.device_pixel_ratio;
+
+            let tx = x + buffer;
+            let ty = y + buffer + (line_num + 1) * this.px_size;
+
+            if (stroke) {
+                this.canvas[tile].context.strokeText(str, tx, ty);
+            }
+            this.canvas[tile].context.fillText(str, tx, ty);
         }
-        this.canvas[tile].context.fillText(str, x + buffer, y + buffer + this.px_size);
     },
 
     setTextureTextPositions (texts) {
@@ -176,7 +216,7 @@ Object.assign(TextStyle, {
                 let text_style = text_infos[text].text_style;
                 // update text sizes
                 this.setFont(tile, text_style); // TODO: only set once above
-                text_infos[text].size = this.textSize(text, tile, text_style.transform);
+                Object.assign(text_infos[text], this.textSize(text, tile, text_style.transform));
             }
         }
 
@@ -191,7 +231,7 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style); // TODO: only set once above
-                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.transform);
+                this.drawText(info.lines, info.position, tile, info.text_style.stroke, info.text_style.transform);
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
@@ -245,7 +285,7 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = {};  // this will store all labels in the tile, 
+        let labels_priorities = {};  // this will store all labels in the tile,
                                      // sorted into objects by priority
 
         // texts holds text_info objects, keyed by style
@@ -259,7 +299,7 @@ Object.assign(TextStyle, {
         //         3rd Avenue: Object
         //     }
         // }
-        
+
         // for each style key
         for (let style in texts) {
             let text_infos = texts[style];
