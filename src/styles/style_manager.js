@@ -258,8 +258,7 @@ StyleManager.mixShaders = function (style, styles, sources) {
         .filter(x => x.shaders && x.shaders.uniforms)
         .forEach(x => {
             for (let u in x.shaders.uniforms) {
-                let style_name = x.name;
-                shaders._uniform_scopes[u] = style_name;
+                shaders._uniform_scopes[u] = x.name;
 
                 // Define getter and setter for this uniform
                 // Getter returns value for this style if present, otherwise asks appropriate ancestor for it
