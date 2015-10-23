@@ -30,15 +30,13 @@ export default class RenderState {
 
     	// Blending mode
     	RenderState.blending = new RenderState(
-            { blend: false, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA },
+            { blend: false, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA, src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA },
             (value) => {
     			if (value.blend) {
             		gl.enable(gl.BLEND);
 
                     if (value.src_alpha && value.dst_alpha) {
-                        gl.blendFuncSeparate(
-                            value.src, value.dst,
-                            value.src_alpha || gl.ONE, value.dst_alpha || gl.ONE_MINUS_SRC_ALPHA);
+                        gl.blendFuncSeparate(value.src, value.dst, value.src_alpha, value.dst_alpha);
                     }
                     else {
                         gl.blendFunc(value.src, value.dst);

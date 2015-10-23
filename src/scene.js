@@ -820,15 +820,27 @@ export default class Scene {
         if (alpha_blend) {
             // Traditional blending
             if (alpha_blend === true) {
-                RenderState.blending.set({ blend: true, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Additive blending
             else if (alpha_blend === 'add') {
-                RenderState.blending.set({ blend: true, src: gl.ONE, dst: gl.ONE });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ONE, dst: gl.ONE,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Multiplicative blending
             else if (alpha_blend === 'multiply') {
-                RenderState.blending.set({ blend: true, src: gl.ZERO, dst: gl.SRC_COLOR });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ZERO, dst: gl.SRC_COLOR,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
         }
         else {
