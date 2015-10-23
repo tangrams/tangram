@@ -34,9 +34,8 @@ Object.assign(TextStyle, {
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
-        // Manually un-multiply alpha, because some Canvas text rasterization is pre-multiplied
-        // See https://github.com/tangrams/tangram/issues/179
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = Utils.canvasPremultipliedAlpha();
+        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
+        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // default font style
         this.default_font_style = {
