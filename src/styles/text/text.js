@@ -609,8 +609,9 @@ Object.assign(TextStyle, {
 
             // max line width for word wrap
             let max_line_width = rule.max_line_width; // use explicitly set value
-            if (typeof max_line_width !== 'number' && Geo.geometryType(feature.geometry.type) === 'point') {
-                // point labels have word wrap on w/default max length, line labels default off
+            if (typeof max_line_width !== 'number' && Geo.geometryType(feature.geometry.type) !== 'line') {
+                // point labels (for point and polygon features) have word wrap on w/default max length,
+                // line labels default off
                 max_line_width = 15;
             }
 
