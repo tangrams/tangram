@@ -113,33 +113,59 @@ Object.assign(TextStyle, {
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
 
         // Word wrapping
-        let words = str.split(/\s+/); // split words on spaces
-        let new_line = { width: 0, chars: 0, text: '' };
-        let line = Object.assign({}, new_line);
-        let lines = [];
-        let max_width = 0; // max width
-
-        for (let w=0; w < words.length; w++) {
-            let word = words[w];
-
-            if (line.chars + word.length > max_line_width && line.chars > 0) {
-                // remove last space if character
-                line.text = line.text.trim();
-
-                line.width = ctx.measureText(line.text).width;
-                max_width = Math.max(max_width, line.width);
-                lines.push(line);
-                line = Object.assign({}, new_line);
-            }
-
-            line.chars += word.length + 1; // add one for space
-            line.text += word + ' ';
+        // Line breaks can be caused by:
+        //  - implicit line break when a maximum character threshold is exceeded per line (max_line_width)
+        //  - explicit line break in the label text (\n)
+        let words;
+        if (typeof max_line_width === 'number') {
+            words = str.split(' '); // split words on spaces
         }
-        line.width = ctx.measureText(line.text).width;
-        max_width = Math.max(max_width, Math.ceil(line.width));
-        lines.push(line);
+        else {
+            words = [str]; // no max line word wrapping (but new lines will still be in effect)
+        }
+        let new_line_template = { width: 0, chars: 0, text: '' };
+        let line = Object.assign({}, new_line_template); // current line
+        let lines = []; // completed lines
+        let max_width = 0; // max width to fit all lines
 
-        // let str_width = ctx.measureText(str).width;
+        // add current line buffer to completed lines, optionally start new line
+        function addLine (new_line) {
+            line.text = line.text.trim();
+            if (line.text.length > 0) {
+                line.width = ctx.measureText(line.text).width;
+                max_width = Math.max(max_width, Math.ceil(line.width));
+                lines.push(line);
+            }
+            if (new_line) {
+                line = Object.assign({}, new_line_template);
+            }
+        }
+
+        // First iterate on space-break groups (will be oneif  max line length off), then iterate on line-break groups
+        for (let w=0; w < words.length; w++) {
+            let breaks = words[w].split('\n'); // split on line breaks
+
+            for (let n=0; n < breaks.length; n++) {
+                let word = breaks[n];
+
+                // if adding current word would overflow, add a new line instead
+                if (line.chars + word.length > max_line_width && line.chars > 0) {
+                    addLine(true);
+                }
+
+                // add current word (plus space)
+                line.chars += word.length + 1;
+                line.text += word + ' ';
+
+                // if line breaks present, add new line (unless on last line)
+                if (breaks.length > 1 && n < breaks.length - 1) {
+                    addLine(true);
+                }
+            }
+        }
+        addLine(false);
+
+        // Final dimensions of text
         let height = lines.length * this.px_size;
 
         let text_size = [
@@ -152,6 +178,7 @@ Object.assign(TextStyle, {
             height + buffer * 2
         ];
 
+        // Returns lines (w/per-line info for drawing) and text's overall logical + canvas size
         return {
             lines,
             size: { text_size, texture_text_size, px_size, px_logical_size }
