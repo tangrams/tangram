@@ -3,6 +3,7 @@
 import Builders from '../builders';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
+import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
@@ -105,7 +106,7 @@ Object.assign(TextStyle, {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping
-    textSize (text, tile, transform, { max_line_width = 18 } = {}) {
+    textSize (text, tile, { transform, max_line_width }) {
         let str = FeatureLabel.applyTextTransform(text, transform);
         let ctx = this.canvas[tile].context;
         let px_size = this.px_size;
@@ -141,7 +142,7 @@ Object.assign(TextStyle, {
             }
         }
 
-        // First iterate on space-break groups (will be oneif  max line length off), then iterate on line-break groups
+        // First iterate on space-break groups (will be one if max line length off), then iterate on line-break groups
         for (let w=0; w < words.length; w++) {
             let breaks = words[w].split('\n'); // split on line breaks
 
@@ -186,13 +187,26 @@ Object.assign(TextStyle, {
     },
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], tile, stroke, transform) {
+    drawText (lines, [x, y], size, tile, { stroke, transform, align }) {
+        align = align || 'center';
+
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
             let str = FeatureLabel.applyTextTransform(line.text, transform);
             let buffer = this.text_buffer * Utils.device_pixel_ratio;
 
-            let tx = x + buffer;
+            // Text alignment
+            let tx;
+            if (align === 'left') {
+                tx = x + buffer;
+            }
+            else if (align === 'center') {
+                tx = x + size[0]/2 - line.width/2;
+            }
+            else if (align === 'right') {
+                tx = x + size[0] - line.width - buffer;
+            }
+
             let ty = y + buffer + (line_num + 1) * this.px_size;
 
             if (stroke) {
@@ -243,7 +257,13 @@ Object.assign(TextStyle, {
                 let text_style = text_infos[text].text_style;
                 // update text sizes
                 this.setFont(tile, text_style); // TODO: only set once above
-                Object.assign(text_infos[text], this.textSize(text, tile, text_style.transform));
+                Object.assign(
+                    text_infos[text],
+                    this.textSize(text, tile, {
+                        transform: text_style.transform,
+                        max_line_width: text_infos[text].max_line_width
+                    })
+                );
             }
         }
 
@@ -258,7 +278,11 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style); // TODO: only set once above
-                this.drawText(info.lines, info.position, tile, info.text_style.stroke, info.text_style.transform);
+                this.drawText(info.lines, info.position, info.size.texture_text_size, tile, {
+                    stroke: info.text_style.stroke,
+                    transform: info.text_style.transform,
+                    align: info.align
+                });
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
@@ -360,12 +384,7 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
-                    let options = new LabelOptions({
-                        units_per_pixel: text_info.units_per_pixel,
-                        offset: text_info.offset,
-                        buffer: text_info.buffer,
-                        line_exceed: text_info.line_exceed
-                    });
+                    let options = new LabelOptions(text_info);
 
                     // build a label for each text_info object
                     let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
@@ -588,6 +607,13 @@ Object.assign(TextStyle, {
                 line_exceed = rule.line_exceed.substr(0,rule.line_exceed.length-1);
             }
 
+            // max line width for word wrap
+            let max_line_width = rule.max_line_width; // use explicitly set value
+            if (typeof max_line_width !== 'number' && Geo.geometryType(feature.geometry.type) === 'point') {
+                // point labels have word wrap on w/default max length, line labels default off
+                max_line_width = 15;
+            }
+
             if (!this.texts[tile.key][style_key][text]) {
                 // first label with this text/style/tile combination, make a new label entry
                 this.texts[tile.key][style_key][text] = {
@@ -597,6 +623,8 @@ Object.assign(TextStyle, {
                     offset,
                     buffer,
                     line_exceed,
+                    align: rule.align,
+                    max_line_width: max_line_width,
                     ref: 0
                 };
             }
