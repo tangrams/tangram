@@ -1,3 +1,4 @@
+import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
 import log from 'loglevel';
 
@@ -257,31 +258,6 @@ export function calculateDraw(rule) {
 
     draw.push(rule.draw);
     return draw;
-}
-
-export function mergeObjects(newObj, ...sources) {
-
-    for (let source of sources) {
-        if (!source) {
-            continue;
-        }
-        for (let key in source) {
-            let value = source[key];
-            // Recursively merge the source into the destination if it is a a non-null key/value object
-            // (e.g. don't merge arrays, those are treated as scalar values; null values will overwrite/erase
-            // the previous destination value)
-            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                newObj[key] = mergeObjects(newObj[key] || {}, value);
-            }
-            // Overwrite the previous destination value if the source property is: a scalar (number/string),
-            // an array, or a null value
-            else {
-                newObj[key] = value;
-            }
-        }
-
-    }
-    return newObj;
 }
 
 export function calculateOrder(orders, context = null, defaultOrder = 0) {

@@ -4,7 +4,7 @@ import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
-import {mergeObjects} from './rule';
+import mergeObjects from '../utils/merge';
 import Geo from '../geo';
 
 import log from 'loglevel';
