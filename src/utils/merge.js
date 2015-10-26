@@ -14,9 +14,10 @@ export default function mergeObjects (dest, ...sources) {
             }
             // Overwrite the previous destination value if the source property is: a scalar (number/string),
             // an array, or a null value
-            else {
+            else if (value !== undefined) {
                 dest[key] = value;
             }
+            // Undefined source properties are ignored
         }
 
     }
