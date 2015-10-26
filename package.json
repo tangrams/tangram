@@ -45,7 +45,7 @@
     "vector-tile": "1.1.2",
     "topojson": "^1.6.19",
     "geojson-vt": "2.1.6",
-    "babel": "4.7.8"
+    "babel": "5.8.29"
   },
   "devDependencies": {
     "uglify-js": "^2.4.14",
