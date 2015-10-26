@@ -343,7 +343,9 @@ export function parseRules(rules) {
 
     for (let key in rules) {
         let rule = rules[key];
-        ruleTrees[key] = parseRuleTree(key, rule);
+        if (rule) {
+            ruleTrees[key] = parseRuleTree(key, rule);
+        }
     }
 
     return ruleTrees;

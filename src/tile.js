@@ -167,7 +167,7 @@ export default class Tile {
         for (let layer_name in layers) {
             let layer = layers[layer_name];
             // Skip layers with no data source defined
-            if (!layer.data) {
+            if (!layer || !layer.data) {
                 log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
                 continue;
             }

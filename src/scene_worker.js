@@ -44,7 +44,9 @@ Utils.isWorkerThread && Object.assign(self, {
         // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
         for (var layer in config.layers) {
-            config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
+            if (config.layers[layer]) {
+                config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
+            }
         }
 
         // Create data sources (and save any previous)

@@ -997,7 +997,7 @@ export default class Scene {
         this.active_styles = {};
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule.draw) {
+            if (rule && rule.draw) {
                 for (let [name, group] of Utils.entries(rule.draw)) {
                     // TODO: warn on non-object draw group
                     if (typeof group === 'object' && group.visible !== false) {
