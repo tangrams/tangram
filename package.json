@@ -61,7 +61,7 @@
     "karma-mocha": "~0.1.9",
     "karma": "~0.12.23",
     "karma-chrome-launcher": "~0.1.4",
-    "karma-sauce-launcher": "iwillig/karma-sauce-launcher#firefox-profiles",
+    "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "~1.0.4",
     "babel-runtime": "4.7.7",
     "babelify": "5.0.4",
