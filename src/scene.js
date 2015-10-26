@@ -237,15 +237,15 @@ export default class Scene {
         this.canvas.style.position = 'absolute';
         this.canvas.style.top = 0;
         this.canvas.style.left = 0;
+        this.canvas.style.backgroundColor = 'transparent'; // TODO: only if alpha on
 
         // Force tangram canvas underneath all leaflet layers, and set background to transparent
-        this.canvas.style.zIndex = -1;
         this.container.style.cssText += 'background: transparent;';
         this.container.appendChild(this.canvas);
 
         try {
             this.gl = Context.getContext(this.canvas, {
-                alpha: false /*premultipliedAlpha: false*/,
+                alpha: true, premultipliedAlpha: true, // TODO: vary w/scene alpha
                 device_pixel_ratio: Utils.device_pixel_ratio
             });
         }
@@ -820,19 +820,31 @@ export default class Scene {
         if (alpha_blend) {
             // Traditional blending
             if (alpha_blend === true) {
-                RenderState.blending.set({ blend: true, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Additive blending
             else if (alpha_blend === 'add') {
-                RenderState.blending.set({ blend: true, src: gl.ONE, dst: gl.ONE });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ONE, dst: gl.ONE,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Multiplicative blending
             else if (alpha_blend === 'multiply') {
-                RenderState.blending.set({ blend: true, src: gl.ZERO, dst: gl.SRC_COLOR });
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ZERO, dst: gl.SRC_COLOR,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
         }
         else {
-            RenderState.blending.set({ blend: false, src: null, dst: null} );
+            RenderState.blending.set({ blend: false });
         }
     }
 
@@ -1104,7 +1116,7 @@ export default class Scene {
             this.background.color = StyleParser.parseColor(bg.color);
         }
         if (!this.background.color) {
-            this.background.color = [0, 0, 0, 1]; // default background to black
+            this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
         }
     }
 

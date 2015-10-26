@@ -72,8 +72,7 @@ if (Utils.isMainThread) {
 
             this.hooks.resize = () => {
                 this._updating_tangram = true;
-                var size = map.getSize();
-                this.scene.resizeMap(size.x, size.y);
+                this.updateSize();
                 this._updating_tangram = false;
             };
             map.on('resize', this.hooks.resize);
@@ -89,6 +88,7 @@ if (Utils.isMainThread) {
 
                 this.scene.setView(view);
                 this.scene.immediateRedraw();
+                this.reverseTransform();
                 this._updating_tangram = false;
             };
             map.on('move', this.hooks.move);
@@ -120,14 +120,11 @@ if (Utils.isMainThread) {
             // Modify default leaflet scroll wheel behavior
             this.modifyScrollWheelBehavior(map);
 
-            // Canvas element will be inserted after map container (leaflet transforms shouldn't be applied to the GL canvas)
-            // TODO: find a better way to deal with this? right now GL map only renders correctly as the bottom layer
-            this.scene.container = map.getContainer();
+            // Add GL canvas to layer container
+            this.scene.container = this.getContainer();
 
             // Initial view
-            var view = map.getCenter();
-            view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
-            this.scene.setView(view);
+            this.updateView();
 
             // Subscribe to tangram events
             this.scene.subscribe({
@@ -136,6 +133,14 @@ if (Utils.isMainThread) {
 
             // Use leaflet's existing event system as the callback mechanism
             this.scene.load().then(() => {
+                this._updating_tangram = true;
+
+                this.updateSize();
+                this.updateView();
+                this.reverseTransform();
+
+                this._updating_tangram = false;
+
                 this.fire('init');
             }).catch(error => {
                 this.fire('error', error);
@@ -249,6 +254,17 @@ if (Utils.isMainThread) {
             }
         },
 
+        updateView: function () {
+            var view = this._map.getCenter();
+            view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.max_zoom);
+            this.scene.setView(view);
+        },
+
+        updateSize: function () {
+            var size = this._map.getSize();
+            this.scene.resizeMap(size.x, size.y);
+        },
+
         onTangramViewUpdate: function () {
             if (!this._map || this._updating_tangram) {
                 return;
@@ -263,6 +279,17 @@ if (Utils.isMainThread) {
                 return;
             }
             this.scene.update();
+        },
+
+        // Reverse the CSS positioning Leaflet applies to the layer, since Tangram's WebGL canvas
+        // is expected to be 'absolutely' positioned.
+        reverseTransform: function () {
+            if (!this._map || !this.scene || !this.scene.container) {
+                return;
+            }
+
+            var top_left = this._map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(this.scene.container, top_left);
         }
 
     });

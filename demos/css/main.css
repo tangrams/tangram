@@ -15,7 +15,7 @@ body {
     width: 200px;
     margin-left: -100px;
     position: absolute;
-    z-index: 10;
+    z-index: 100001;
     text-align: center;
     font-family: Helvetica, sans-serif;
     font-size: 12px;
