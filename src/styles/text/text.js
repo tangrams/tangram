@@ -3,7 +3,6 @@
 import Builders from '../builders';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
-import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import {Points} from '../points/points';
 import LabelBuilder from './label_builder';
@@ -45,7 +44,9 @@ Object.assign(TextStyle, {
             weight: null,
             size: '12px',
             family: 'Helvetica',
-            fill: 'white'
+            fill: 'white',
+            text_wrap: 15,
+            align: 'center'
         };
 
         this.reset();
@@ -106,7 +107,7 @@ Object.assign(TextStyle, {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping
-    textSize (text, tile, { transform, max_line_width }) {
+    textSize (text, tile, { transform, text_wrap }) {
         let str = FeatureLabel.applyTextTransform(text, transform);
         let ctx = this.canvas[tile].context;
         let px_size = this.px_size;
@@ -115,10 +116,10 @@ Object.assign(TextStyle, {
 
         // Word wrapping
         // Line breaks can be caused by:
-        //  - implicit line break when a maximum character threshold is exceeded per line (max_line_width)
+        //  - implicit line break when a maximum character threshold is exceeded per line (text_wrap)
         //  - explicit line break in the label text (\n)
         let words;
-        if (typeof max_line_width === 'number') {
+        if (typeof text_wrap === 'number') {
             words = str.split(' '); // split words on spaces
         }
         else {
@@ -150,7 +151,7 @@ Object.assign(TextStyle, {
                 let word = breaks[n];
 
                 // if adding current word would overflow, add a new line instead
-                if (line.chars + word.length > max_line_width && line.chars > 0) {
+                if (line.chars + word.length > text_wrap && line.chars > 0) {
                     addLine(true);
                 }
 
@@ -261,7 +262,7 @@ Object.assign(TextStyle, {
                     text_infos[text],
                     this.textSize(text, tile, {
                         transform: text_style.transform,
-                        max_line_width: text_infos[text].max_line_width
+                        text_wrap: text_style.text_wrap
                     })
                 );
             }
@@ -281,7 +282,7 @@ Object.assign(TextStyle, {
                 this.drawText(info.lines, info.position, info.size.texture_text_size, tile, {
                     stroke: info.text_style.stroke,
                     transform: info.text_style.transform,
-                    align: info.align
+                    align: info.text_style.align
                 });
 
                 info.texcoords = Builders.getTexcoordsForSprite(
@@ -607,14 +608,6 @@ Object.assign(TextStyle, {
                 line_exceed = rule.line_exceed.substr(0,rule.line_exceed.length-1);
             }
 
-            // max line width for word wrap
-            let max_line_width = rule.max_line_width; // use explicitly set value
-            if (max_line_width == null && Geo.geometryType(feature.geometry.type) !== 'line') {
-                // point labels (for point and polygon features) have word wrap on w/default max length,
-                // line labels default off
-                max_line_width = 15;
-            }
-
             if (!this.texts[tile.key][style_key][text]) {
                 // first label with this text/style/tile combination, make a new label entry
                 this.texts[tile.key][style_key][text] = {
@@ -624,8 +617,6 @@ Object.assign(TextStyle, {
                     offset,
                     buffer,
                     line_exceed,
-                    align: rule.align,
-                    max_line_width: max_line_width,
                     ref: 0
                 };
             }

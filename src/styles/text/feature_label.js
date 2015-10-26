@@ -1,4 +1,5 @@
 import Utils from '../../utils/utils';
+import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
 
 export default class FeatureLabel {
@@ -7,7 +8,7 @@ export default class FeatureLabel {
         this.text = text;
         this.feature = feature;
         this.tile_key = tile.key;
-        this.style = this.constructFontStyle(rule, context, default_font_style);
+        this.style = this.constructFontStyle(feature, rule, context, default_font_style);
         this.style_key = this.constructStyleKey(this.style);
     }
 
@@ -16,7 +17,7 @@ export default class FeatureLabel {
         return Utils.hashString(str);
     }
 
-    constructFontStyle (rule, context, default_font_style) {
+    constructFontStyle (feature, rule, context, default_font_style) {
         let style = {};
         rule.font = rule.font || default_font_style;
 
@@ -59,6 +60,24 @@ export default class FeatureLabel {
             style.font_css = this.fontCSS(style);
         }
 
+        // Word wrap and text alignment
+        // Not a font properties, but affect atlas of unique text textures
+        let text_wrap = rule.text_wrap; // use explicitly set value
+
+        if (text_wrap == null && Geo.geometryType(feature.geometry.type) !== 'line') {
+            // point labels (for point and polygon features) have word wrap on w/default max length,
+            // line labels default off
+            text_wrap = true;
+        }
+
+        // setting to 'true' causes default wrap value to be used
+        if (text_wrap === true) {
+            text_wrap = default_font_style.text_wrap;
+        }
+        style.text_wrap = text_wrap;
+
+        style.align = rule.align || default_font_style.align;
+
         return style;
     }
 
@@ -70,8 +89,20 @@ export default class FeatureLabel {
     }
 
     // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
-    constructStyleKey ({ style, weight, family, size, fill, stroke, stroke_width, transform, typeface }) {
-        return [style, weight, family, size, fill, stroke, stroke_width, transform, typeface].join('/'); // typeface for legacy
+    constructStyleKey (settings) {
+        return [
+            settings.style,
+            settings.weight,
+            settings.family,
+            settings.size,
+            settings.fill,
+            settings.stroke,
+            settings.stroke_width,
+            settings.transform,
+            settings.typeface,
+            settings.text_wrap,
+            settings.align
+        ].join('/'); // typeface for legacy
     }
 
     // Called before rasterization
