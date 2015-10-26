@@ -267,9 +267,15 @@ export function mergeObjects(newObj, ...sources) {
         }
         for (let key in source) {
             let value = source[key];
-            if (typeof value === 'object' && !Array.isArray(value)) {
+            // Recursively merge the source into the destination if it is a a non-null key/value object
+            // (e.g. don't merge arrays, those are treated as scalar values; null values will overwrite/erase
+            // the previous destination value)
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                 newObj[key] = mergeObjects(newObj[key] || {}, value);
-            } else {
+            }
+            // Overwrite the previous destination value if the source property is: a scalar (number/string),
+            // an array, or a null value
+            else {
                 newObj[key] = value;
             }
         }
