@@ -85,9 +85,8 @@ Object.assign(TextStyle, {
     },
 
     // Set font style params for canvas drawing
-    setFont (tile, { font_css, fill, stroke, stroke_width, px_size, px_logical_size }) {
-        this.px_size = parseInt(px_size);
-        this.px_logical_size = parseInt(px_logical_size);
+    setFont (tile, { font_css, fill, stroke, stroke_width, px_size }) {
+        this.px_size = px_size;
         this.text_buffer = 8; // pixel padding around text
         let ctx = this.canvas[tile].context;
 
@@ -105,13 +104,15 @@ Object.assign(TextStyle, {
     },
 
     // Computes width and height of text based on current font style
-    // Includes word wrapping
+    // Includes word wrapping, returns size info for whole text block and individual lines
     textSize (text, tile, { transform, text_wrap }) {
         let str = FeatureLabel.applyTextTransform(text, transform);
         let ctx = this.canvas[tile].context;
-        let px_size = this.px_size;
-        let px_logical_size = this.px_logical_size;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
+        let px_size = this.px_size;
+
+        // vertical padding, TODO: use Canvas TextMetrics when/if they become available and/or make configurable
+        px_size += 2;
 
         // Word wrapping
         // Line breaks can be caused by:
@@ -167,7 +168,7 @@ Object.assign(TextStyle, {
         addLine(false);
 
         // Final dimensions of text
-        let height = lines.length * this.px_size;
+        let height = lines.length * px_size;
 
         let text_size = [
             max_width / Utils.device_pixel_ratio,
@@ -179,10 +180,10 @@ Object.assign(TextStyle, {
             height + buffer * 2
         ];
 
-        // Returns lines (w/per-line info for drawing) and text's overall logical + canvas size
+        // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { text_size, texture_text_size, px_size, px_logical_size }
+            size: { text_size, texture_text_size, px_size }
         };
     },
 
@@ -194,6 +195,8 @@ Object.assign(TextStyle, {
             let line = lines[line_num];
             let str = FeatureLabel.applyTextTransform(line.text, transform);
             let buffer = this.text_buffer * Utils.device_pixel_ratio;
+            let texture_size = size.texture_text_size;
+            let px_size = size.px_size;
 
             // Text alignment
             let tx;
@@ -201,13 +204,15 @@ Object.assign(TextStyle, {
                 tx = x + buffer;
             }
             else if (align === 'center') {
-                tx = x + size[0]/2 - line.width/2;
+                tx = x + texture_size[0]/2 - line.width/2;
             }
             else if (align === 'right') {
-                tx = x + size[0] - line.width - buffer;
+                tx = x + texture_size[0] - line.width - buffer;
             }
 
-            let ty = y + buffer + (line_num + 1) * this.px_size;
+            // In the absence of better Canvas TextMetrics (not supported by browsers yet),
+            // 0.75 buffer produces a better approximate vertical centering of text
+            let ty = y + buffer * .75 + (line_num + 1) * px_size;
 
             if (stroke) {
                 this.canvas[tile].context.strokeText(str, tx, ty);
@@ -280,7 +285,7 @@ Object.assign(TextStyle, {
                 let info = text_infos[text];
 
                 this.setFont(tile, info.text_style); // TODO: only set once above
-                this.drawText(info.lines, info.position, info.size.texture_text_size, tile, {
+                this.drawText(info.lines, info.position, info.size, tile, {
                     stroke: info.text_style.stroke,
                     transform: info.text_style.transform,
                     align: info.text_style.align

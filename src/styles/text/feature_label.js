@@ -49,7 +49,7 @@ export default class FeatureLabel {
         let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
 
         // TODO: improve pt/em conversion
-        style.px_logical_size = Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind);
+        style.px_logical_size = parseInt(Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind));
         style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
         style.stroke_width *= Utils.device_pixel_ratio;
         style.size = size.replace(size_regex, style.px_size + "px");
