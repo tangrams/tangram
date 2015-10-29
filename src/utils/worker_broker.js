@@ -291,7 +291,10 @@ function setupWorkerThread () {
                     type: 'worker_reply',
                     message_id: id,
                     message: value
-                }, transferables);
+                }, transferables.map(t => t.object));
+
+                // Remove neutered transferables from parent objects
+                transferables.filter(t => t.parent && t.property).forEach(t => delete t.parent[t.property]);
 
                 if (transferables.length > 0) {
                     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
@@ -313,7 +316,10 @@ function setupWorkerThread () {
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-            }, transferables);
+            }, transferables.map(t => t.object));
+
+            // Remove neutered transferables from parent objects
+            transferables.filter(t => t.parent && t.property).forEach(t => delete t.parent[t.property]);
 
             if (transferables.length > 0) {
                 Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
@@ -324,29 +330,33 @@ function setupWorkerThread () {
 }
 
 // Build a list of transferable objects from a source object
+// Returns a list of info about each transferable:
+//   - object: the actual transferable object
+//   - parent: the parent object that the transferable is a property of (if any)
+//   - property: the property name of the transferable on the parent object (if any)
 // TODO: add option in case you DON'T want to transfer objects
-function findTransferables(source, list = []) {
+function findTransferables(source, parent = null, property = null, list = []) {
     if (!source) {
          return list;
     }
 
     if (Array.isArray(source)) {
         // Check each array element
-        source.forEach(x => findTransferables(x, list));
+        source.forEach((x, i) => findTransferables(x, source, i, list));
     }
     else if (typeof source === 'object') {
         // Is the object a transferable array buffer?
         if (source instanceof ArrayBuffer) {
-            list.push(source);
+            list.push({ object: source, parent, property });
         }
         // Or looks like a typed array (has an array buffer property)?
         else if (source.buffer instanceof ArrayBuffer) {
-            list.push(source.buffer);
+            list.push({ object: source.buffer, parent, property });
         }
         // Otherwise check each property
         else {
-            for (let p in source) {
-                findTransferables(source[p], list);
+            for (let prop in source) {
+                findTransferables(source[prop], source, prop, list);
             }
         }
     }
