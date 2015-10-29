@@ -66,7 +66,8 @@ export default class FeatureSelection {
                 type: 'point',
                 id: this.selection_request_id,
                 point,
-                resolve
+                resolve,
+                reject
             };
         });
     }
@@ -74,6 +75,22 @@ export default class FeatureSelection {
     // Any pending selection requests
     pendingRequests() {
         return this.requests;
+    }
+
+    clearPendingRequests() {
+        for (var r in this.requests) {
+            var request = this.requests[r];
+
+            // This request was already sent to the worker, we're just awaiting its reply
+            if (request.sent) {
+                continue;
+            }
+
+            // Reject request since it will never be fulfilled
+            // TODO: pass a reason for rejection?
+            request.reject({ request });
+        }
+        this.requests = {};
     }
 
     // Read pending results from the selection buffer. Called after rendering to selection buffer.
@@ -146,7 +163,8 @@ export default class FeatureSelection {
         var changed = false;
         if ((feature != null && this.feature == null) ||
             (feature == null && this.feature != null) ||
-            (feature != null && this.feature != null && feature.id !== this.feature.id)) {
+            (feature != null && this.feature != null &&
+                JSON.stringify(feature) !== JSON.stringify(this.feature))) {
             changed = true;
         }
 

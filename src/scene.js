@@ -627,6 +627,7 @@ export default class Scene {
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
             if (this.panning) {
+                this.selection.clearPendingRequests();
                 return;
             }
 
@@ -862,7 +863,7 @@ export default class Scene {
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
-        return this.selection.getFeatureAt(point);
+        return this.selection.getFeatureAt(point).catch(r => Promise.resolve(r));
     }
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
