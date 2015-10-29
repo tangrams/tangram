@@ -136,9 +136,9 @@ Utils.isWorkerThread && Object.assign(self, {
 
                         tile.loading = false;
                         tile.loaded = true;
-                        Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles).then(keys => {
-                            resolve({ tile: Tile.slice(tile, keys) });
-                        });
+                        Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles)
+                            .then(keys => resolve({ tile: Tile.slice(tile, keys) }))
+                            .then(() => delete tile.mesh_data);
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
@@ -146,6 +146,7 @@ Utils.isWorkerThread && Object.assign(self, {
                         Utils.log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                         resolve({ tile: Tile.slice(tile) });
+                        delete tile.mesh_data;
                     });
                 });
             }
@@ -154,9 +155,9 @@ Utils.isWorkerThread && Object.assign(self, {
                 Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles).then(keys => {
-                    return { tile: Tile.slice(tile, keys) };
-                });
+                return Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles)
+                    .then(keys => { tile: Tile.slice(tile, keys) })
+                    .then(() => delete tile.mesh_data);
             }
         });
     },
