@@ -560,8 +560,10 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
-                    offset: [12px, 0px]
-                    placement: E
+                    anchor: right
+                    # align: left
+                    offset: [13px, 0]
+                    move_into_tile: false
                     priority: 6
                     font:
                         family: Helvetica
