@@ -427,7 +427,7 @@ layers:
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             icons:
-                offset: [0px, -13px]
+                # offset: [0px, -13px]
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
 
@@ -560,7 +560,10 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
-                    offset: [0px, 13px]
+                    anchor: right
+                    # align: left
+                    offset: [13px, 0]
+                    move_into_tile: false
                     priority: 6
                     font:
                         family: Helvetica

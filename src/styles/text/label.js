@@ -51,23 +51,21 @@ export default class Label {
         return true;
     }
 
-    // whether the label should be discarded
-    // 1. try to keep the label in tile if the label (to avoid collision over tile for now)
-    // 2. if 1. -> keep a minimal distance between the label
-    // 3. if 2. -> perfom occlusion
+    // Whether the label should be discarded
+    // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
     discard (aabbs) {
         let discard = false;
 
-        // perform specific styling rule, should we keep the label in tile bounds?
-        if (this.options.keep_in_tile) {
+        // Should the label be culled if it can't fit inside the tile bounds?
+        if (this.options.cull_from_tile) {
             let in_tile = this.inTileBounds();
 
-            if (!in_tile && this.options.move_in_tile) {
-                // can we move?
-                discard = this.moveInTile();
+            // If it doesn't fit, should we try to move it into the tile bounds?
+            if (!in_tile && this.options.move_into_tile) {
+                // Were we able to fit it in the tile?
+                discard = this.moveIntoTile();
             } else if (!in_tile) {
-                // we didn't want to move at all,
-                // just discard since we're out of tile bounds
+                // discard since we're out of tile bounds
                 return true;
             }
         }
