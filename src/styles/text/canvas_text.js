@@ -236,4 +236,4 @@ export default class CanvasText {
         return text;
     }
 
-};
+}

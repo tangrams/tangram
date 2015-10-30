@@ -100,7 +100,6 @@ Object.assign(TextStyle, {
 
         let canvas = this.canvas[tile];
         let texture_size = canvas.setTextureTextPositions(texts);
-        let context = canvas.context;
 
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
