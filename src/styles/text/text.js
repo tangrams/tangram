@@ -629,6 +629,7 @@ Object.assign(TextStyle, {
                     buffer,
                     anchor,
                     line_exceed,
+                    move_into_tile: rule.move_into_tile,
                     ref: 0
                 };
             }

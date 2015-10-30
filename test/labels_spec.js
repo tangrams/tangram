@@ -41,7 +41,7 @@ describe('Labels', () => {
                 it(`can move back into tile for ${edge} edge`, () => {
                     label.position = p;
                     label.update();
-                    let discarded = label.moveInTile();
+                    let discarded = label.moveIntoTile();
                     assert.isFalse(discarded);
                     assert.isTrue(label.inTileBounds());
                 });

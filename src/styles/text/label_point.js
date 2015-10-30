@@ -64,7 +64,7 @@ export default class LabelPoint extends Label {
         return aabb;
     }
 
-    moveInTile () {
+    moveIntoTile () {
         let updated = false;
 
         if (this.aabb[0] < 0) {
