@@ -116,20 +116,4 @@ export default class FeatureLabel {
         ].join('/'); // typeface for legacy
     }
 
-    // Called before rasterization
-    static applyTextTransform (text, transform) {
-        if (transform === 'capitalize') {
-            return text.replace(/\w\S*/g, function (txt) {
-                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-            });
-        }
-        else if (transform === 'uppercase') {
-            return text.toUpperCase();
-        }
-        else if (transform === 'lowercase') {
-            return text.toLowerCase();
-        }
-        return text;
-    }
-
 }
