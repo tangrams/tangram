@@ -212,7 +212,7 @@ Object.assign(TextStyle, {
 
             // In the absence of better Canvas TextMetrics (not supported by browsers yet),
             // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + buffer * .75 + (line_num + 1) * px_size;
+            let ty = y + buffer * 0.75 + (line_num + 1) * px_size;
 
             if (stroke) {
                 this.canvas[tile].context.strokeText(str, tx, ty);
