@@ -1,6 +1,6 @@
 import chai from 'chai';
 import Scene from '../src/scene';
-import {leafletLayer} from '../src/leaflet_layer';
+import {leafletLayer, LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene';
 let assert = chai.assert;
 
