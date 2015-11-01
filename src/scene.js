@@ -237,10 +237,9 @@ export default class Scene {
         this.canvas.style.position = 'absolute';
         this.canvas.style.top = 0;
         this.canvas.style.left = 0;
-        this.canvas.style.backgroundColor = 'transparent'; // TODO: only if alpha on
 
         // Force tangram canvas underneath all leaflet layers, and set background to transparent
-        this.container.style.cssText += 'background: transparent;';
+        this.container.style.backgroundColor = 'transparent';
         this.container.appendChild(this.canvas);
 
         try {
@@ -818,6 +817,9 @@ export default class Scene {
         RenderState.depth_write.set({ depth_write: depth_write });
         RenderState.culling.set({ cull: cull_face, face: gl.BACK });
 
+        // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
+        // http://webglfundamentals.org/webgl/lessons/webgl-and-alpha.html
+        // http://stackoverflow.com/a/11533416
         if (alpha_blend) {
             // Traditional blending
             if (alpha_blend === true) {
@@ -845,7 +847,11 @@ export default class Scene {
             }
         }
         else {
-            RenderState.blending.set({ blend: false });
+            // All source, no destination
+            RenderState.blending.set({
+                blend: true,
+                src: gl.SRC_ALPHA, dst: gl.ZERO
+            });
         }
     }
 
@@ -1118,6 +1124,10 @@ export default class Scene {
         if (!this.background.color) {
             this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
         }
+
+        // set canvas background to match, so transparent geometry blends w/expected color
+        this.canvas.style.backgroundColor =
+            `rgba(${this.background.color.map(c => Math.floor(c * 255)).join(', ')})`;
     }
 
     // Update scene config, and optionally rebuild geometry
