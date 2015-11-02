@@ -1128,9 +1128,14 @@ export default class Scene {
             this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
         }
 
-        // set canvas background to match, so transparent geometry blends w/expected color
-        this.canvas.style.backgroundColor =
-            `rgba(${this.background.color.map(c => Math.floor(c * 255)).join(', ')})`;
+        // if background is fully opaque, set canvas background to match
+        if (this.background.color[3] === 1) {
+            this.canvas.style.backgroundColor =
+                `rgba(${this.background.color.map(c => Math.floor(c * 255)).join(', ')})`;
+        }
+        else {
+            this.canvas.style.backgroundColor = 'transparent';
+        }
     }
 
     // Update scene config, and optionally rebuild geometry
