@@ -633,7 +633,7 @@ export default class Scene {
             this.selection.bind();                  // switch to FBO
             this.renderPass(
                 'selection_program',                // render w/alternate program
-                { allow_alpha_blend: false });
+                { allow_blend: false });
             this.selection.read();                  // read results from selection buffer
 
             // Reset to screen buffer
@@ -653,46 +653,46 @@ export default class Scene {
 
     // Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
     // Called both for main render pass, and for secondary passes like selection buffer
-    renderPass(program_key = 'program', { allow_alpha_blend } = {}) {
+    renderPass(program_key = 'program', { allow_blend } = {}) {
         let styles;
         let count = 0; // how many primitives were rendered
 
         // optionally force alpha off (e.g. for selection pass)
-        allow_alpha_blend = (allow_alpha_blend == null) ? true : allow_alpha_blend;
+        allow_blend = (allow_blend == null) ? true : allow_blend;
 
         this.clearFrame({ clear_color: true, clear_depth: true });
 
         // Opaque styles: depth test on, depth write on, blending off
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+            this.setRenderState({ depth_test: true, depth_write: true, blend: (allow_blend && 'opaque') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Transparent styles: depth test off, depth write on, custom blending
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'add') });
             count += this.renderStyles(styles, program_key);
         }
 
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'multiply') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Inlay styles: depth test on, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'inlay');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'standard') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Overlay styles: depth test off, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+            this.setRenderState({ depth_test: false, depth_write: false, blend: (allow_blend && 'standard') });
             count += this.renderStyles(styles, program_key);
         }
 
@@ -798,17 +798,17 @@ export default class Scene {
         }
     }
 
-    setRenderState({ depth_test, depth_write, cull_face, alpha_blend } = {}) {
+    setRenderState({ depth_test, depth_write, cull_face, blend } = {}) {
         if (!this.initialized) {
             return;
         }
 
         // Defaults
         // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-        depth_test = (depth_test === false) ? false : true;         // default true
-        depth_write = (depth_write === false) ? false : true;       // default true
-        cull_face = (cull_face === false) ? false : true;           // default true
-        alpha_blend = (alpha_blend != null) ? alpha_blend : false;  // default false
+        depth_test = (depth_test === false) ? false : true;     // default true
+        depth_write = (depth_write === false) ? false : true;   // default true
+        cull_face = (cull_face === false) ? false : true;       // default true
+        blend = (blend != null) ? blend : false;                // default false
 
         // Reset frame state
         let gl = this.gl;
@@ -820,9 +820,16 @@ export default class Scene {
         // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
         // http://webglfundamentals.org/webgl/lessons/webgl-and-alpha.html
         // http://stackoverflow.com/a/11533416
-        if (alpha_blend) {
-            // Traditional blending
-            if (alpha_blend === true) {
+        if (blend) {
+            // Opaque: all source, no destination
+            if (blend === 'opaque') {
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.SRC_ALPHA, dst: gl.ZERO
+                });
+            }
+            // Traditional alpha blending
+            else if (blend === 'standard') {
                 RenderState.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
@@ -830,7 +837,7 @@ export default class Scene {
                 });
             }
             // Additive blending
-            else if (alpha_blend === 'add') {
+            else if (blend === 'add') {
                 RenderState.blending.set({
                     blend: true,
                     src: gl.ONE, dst: gl.ONE,
@@ -838,7 +845,7 @@ export default class Scene {
                 });
             }
             // Multiplicative blending
-            else if (alpha_blend === 'multiply') {
+            else if (blend === 'multiply') {
                 RenderState.blending.set({
                     blend: true,
                     src: gl.ZERO, dst: gl.SRC_COLOR,
@@ -847,11 +854,7 @@ export default class Scene {
             }
         }
         else {
-            // All source, no destination
-            RenderState.blending.set({
-                blend: true,
-                src: gl.SRC_ALPHA, dst: gl.ZERO
-            });
+            RenderState.blending.set({ blend: false });
         }
     }
 
