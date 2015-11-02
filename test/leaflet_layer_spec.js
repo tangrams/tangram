@@ -1,6 +1,6 @@
 import chai from 'chai';
 import Scene from '../src/scene';
-import {LeafletLayer} from '../src/leaflet_layer';
+import {leafletLayer, LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene';
 let assert = chai.assert;
 
@@ -11,7 +11,7 @@ let map = L.map(
 map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
-    let layer = new LeafletLayer({
+    let layer = leafletLayer({
         scene: sampleScene,
         disableRenderLoop: true,
         workerUrl: 'http://localhost:9876/tangram.debug.js'

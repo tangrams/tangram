@@ -2,6 +2,7 @@
 UGLIFY = ./node_modules/.bin/uglifyjs
 KARMA = ./node_modules/karma/bin/karma
 JSHINT = ./node_modules/.bin/jshint
+DEREQUIRE = ./node_modules/.bin/derequire
 
 # Build debug and minified libraries
 all: \
@@ -11,7 +12,7 @@ all: \
 debug: dist/tangram.debug.js
 
 dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
-	node build.js --debug=true --require './src/module.js' --runtime > dist/tangram.debug.js
+	node build.js --debug=true --require './src/module.js' --runtime | $(DEREQUIRE) > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
