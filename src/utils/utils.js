@@ -64,7 +64,13 @@ Utils.cacheBusterForUrl = function (url) {
     if (url.search(/^(data|blob):/) > -1) {
         return url; // no cache-busting on object or data URLs
     }
-    return url + '?' + (+new Date());
+    if (url.indexOf('?') > -1) {
+        url += '&' + (+new Date());
+    }
+    else {
+        url += '?' + (+new Date());
+    }
+    return url;
 };
 
 // Polyfill (for Safari compatibility)
