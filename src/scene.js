@@ -98,6 +98,7 @@ export default class Scene {
         this.modelViewMatrix32 = new Float32Array(16);
         this.normalMatrix = new Float64Array(9);
         this.normalMatrix32 = new Float32Array(9);
+        this.inverseNormalMatrix32 = new Float32Array(9);
 
         this.selection = null;
         this.texture_listener = null;
@@ -736,10 +737,12 @@ export default class Scene {
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
                     program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
-                    // Normal matrix - transforms surface normals into view space
-                    // this matrix is constant since the view doesn't rotate for now
+                    // Normal matrices - transforms surface normals into view space
                     mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+                    mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
+
                     program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+                    program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {

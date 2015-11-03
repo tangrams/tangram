@@ -7,12 +7,16 @@ uniform float u_device_pixel_ratio;
 
 uniform mat4 u_model;
 uniform mat4 u_modelView;
+uniform mat3 u_normalMatrix;
+uniform mat3 u_inverseNormalMatrix;
 
 attribute vec4 a_position;
 attribute vec4 a_shape;
 attribute vec4 a_color;
 attribute vec2 a_texcoord;
 attribute vec2 a_offset;
+
+#define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
