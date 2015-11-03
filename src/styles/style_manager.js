@@ -30,7 +30,7 @@ StyleManager.init = function () {
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/unpack']);
 
     // Model and world position accessors
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/position_accessors']);
+    ShaderProgram.addBlock('global', shaderSources['gl/shaders/accessors']);
 
     // Layer re-ordering function
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/layer_order']);
