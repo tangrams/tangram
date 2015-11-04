@@ -385,7 +385,7 @@ layers:
 
     road_labels:
         data: { source: osm, layer: roads }
-        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
+        filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: [rail, ferry] }, $zoom: { min: 10 } }
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
