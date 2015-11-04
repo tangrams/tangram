@@ -67,11 +67,7 @@ Enjoy!
     default_tile_source = 'mapzen',
     scene_url = 'demos/scene.yaml',
     osm_debug = false,
-    locations = {
-        'London': [51.508, -0.105, 15],
-        'New York': [40.70531887544228, -74.00976419448853, 16],
-        'Seattle': [47.609722, -122.333056, 15]
-    }, rS, url_hash, map_start_location, url_ui, url_style;
+    rS, url_hash, map_start_location, url_ui, url_style;
 
 
     getValuesFromUrl();
@@ -130,16 +126,13 @@ Enjoy!
         }
 
         // Get location from URL
-        map_start_location = locations['New York'];
+        map_start_location = [40.70531887544228, -74.00976419448853, 16]; // NYC
 
         if (url_hash.length === 3) {
             map_start_location = url_hash.slice(0, 3);
         }
         if (url_hash.length > 3) {
             map_start_location = url_hash.slice(1, 4);
-        }
-        else if (url_hash.length === 2) {
-            map_start_location = locations[url_hash[1]];
         }
 
         if (url_hash.length > 4) {
