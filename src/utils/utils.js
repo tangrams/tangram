@@ -3,7 +3,6 @@
 
 import log from 'loglevel';
 import yaml from 'js-yaml';
-import bowser from 'bowser';
 import Geo from '../geo';
 
 var Utils;
@@ -65,7 +64,13 @@ Utils.cacheBusterForUrl = function (url) {
     if (url.search(/^(data|blob):/) > -1) {
         return url; // no cache-busting on object or data URLs
     }
-    return url + '?' + (+new Date());
+    if (url.indexOf('?') > -1) {
+        url += '&' + (+new Date());
+    }
+    else {
+        url += '?' + (+new Date());
+    }
+    return url;
 };
 
 // Polyfill (for Safari compatibility)
@@ -148,11 +153,6 @@ Utils.loadResource = function (source) {
             resolve(source);
         }
     });
-};
-
-// Wrapper for browser info
-Utils.browser = function () {
-    return bowser;
 };
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
@@ -244,9 +244,12 @@ Utils.log = function (level, ...msg) {
 };
 
 // Default to allowing high pixel density
+// Returns true if display density changed
 Utils.use_high_density_display = true;
 Utils.updateDevicePixelRatio = function () {
+    let prev = Utils.device_pixel_ratio;
     Utils.device_pixel_ratio = (Utils.use_high_density_display && window.devicePixelRatio) || 1;
+    return Utils.device_pixel_ratio !== prev;
 };
 
 // Mark thread as main or worker
@@ -420,13 +423,12 @@ Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };
 
-Utils.toCanvasColor = function (color) {
-    return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
-};
-
-// Some Canvas implementations have pre-multiplied alpha that we need to adjust for
-Utils.canvasPremultipliedAlpha = function () {
-    return (Utils.browser().ios ? false : true);
+Utils.toCSSColor = function (color) {
+    if (color[3] === 1) { // full opacity
+        return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
+    }
+    // RGB is between [0, 255] opacity is between [0, 1]
+    return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
 };
 
 Utils.toPixelSize = function (size, kind) {

@@ -1,6 +1,6 @@
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
-// import {mergeObjects} from './styles/rule';
+// import mergeObjects from './utils/merge';
 import {StyleManager} from './styles/style_manager';
 
 var SceneLoader;

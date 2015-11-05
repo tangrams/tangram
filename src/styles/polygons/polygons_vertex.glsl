@@ -8,6 +8,7 @@ uniform float u_device_pixel_ratio;
 uniform mat4 u_model;
 uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
+uniform mat3 u_inverseNormalMatrix;
 
 attribute vec4 a_position;
 attribute vec4 a_color;

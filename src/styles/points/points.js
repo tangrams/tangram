@@ -92,11 +92,30 @@ Object.assign(Points, {
             }
         }
 
+        // Sets texcoord scale if needed (e.g. for sprite sub-area)
+        let sprite_info;
+        if (this.texture && sprite) {
+            sprite_info = Texture.getSpriteInfo(this.texture, sprite);
+            this.texcoord_scale = sprite_info.texcoords;
+        } else {
+            this.texcoord_scale = null;
+        }
+
         // points can be placed off the ground
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
+        // point size defined explicitly, or defaults to sprite size, or generic fallback
+        style.size = rule_style.size;
+        if (!style.size) {
+            if (sprite_info) {
+                style.size = { value: sprite_info.size };
+            }
+            else {
+                style.size = { value: [16, 16] };
+            }
+        }
+
         // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = rule_style.size || { value: [32, 32] };
         style.size = StyleParser.cacheDistance(style.size, context, 'pixels');
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
@@ -122,13 +141,6 @@ Object.assign(Points, {
         // polygons rendering as points will render each individual polygon point by default, but
         // rendering a single point at the polygon's centroid can be enabled
         style.centroid = rule_style.centroid;
-
-        // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        if (this.texture && sprite) {
-            this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, sprite);
-        } else {
-            this.texcoord_scale = null;
-        }
 
         // Offset applied to point in screen space
         style.offset = rule_style.offset || [0, 0];

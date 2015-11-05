@@ -98,6 +98,7 @@ export default class Scene {
         this.modelViewMatrix32 = new Float32Array(16);
         this.normalMatrix = new Float64Array(9);
         this.normalMatrix32 = new Float32Array(9);
+        this.inverseNormalMatrix32 = new Float32Array(9);
 
         this.selection = null;
         this.texture_listener = null;
@@ -239,13 +240,12 @@ export default class Scene {
         this.canvas.style.left = 0;
 
         // Force tangram canvas underneath all leaflet layers, and set background to transparent
-        this.canvas.style.zIndex = -1;
-        this.container.style.cssText += 'background: transparent;';
+        this.container.style.backgroundColor = 'transparent';
         this.container.appendChild(this.canvas);
 
         try {
             this.gl = Context.getContext(this.canvas, {
-                alpha: false /*premultipliedAlpha: false*/,
+                alpha: true, premultipliedAlpha: true, // TODO: vary w/scene alpha
                 device_pixel_ratio: Utils.device_pixel_ratio
             });
         }
@@ -502,6 +502,13 @@ export default class Scene {
         });
     }
 
+    // Resize the map when device pixel ratio changes, e.g. when switching between displays
+    updateDevicePixelRatio () {
+        if (Utils.updateDevicePixelRatio()) {
+            this.resizeMap(this.css_size.width, this.css_size.height);
+        }
+    }
+
     resizeMap(width, height) {
         this.dirty = true;
 
@@ -587,6 +594,7 @@ export default class Scene {
         this.dirty = false; // subclasses can set this back to true when animation is needed
 
         // Render the scene
+        this.updateDevicePixelRatio();
         this.render();
 
         // Post-render loop hook
@@ -627,13 +635,14 @@ export default class Scene {
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
             if (this.panning) {
+                this.selection.clearPendingRequests();
                 return;
             }
 
             this.selection.bind();                  // switch to FBO
             this.renderPass(
                 'selection_program',                // render w/alternate program
-                { allow_alpha_blend: false });
+                { allow_blend: false });
             this.selection.read();                  // read results from selection buffer
 
             // Reset to screen buffer
@@ -653,46 +662,46 @@ export default class Scene {
 
     // Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
     // Called both for main render pass, and for secondary passes like selection buffer
-    renderPass(program_key = 'program', { allow_alpha_blend } = {}) {
+    renderPass(program_key = 'program', { allow_blend } = {}) {
         let styles;
         let count = 0; // how many primitives were rendered
 
         // optionally force alpha off (e.g. for selection pass)
-        allow_alpha_blend = (allow_alpha_blend == null) ? true : allow_alpha_blend;
+        allow_blend = (allow_blend == null) ? true : allow_blend;
 
         this.clearFrame({ clear_color: true, clear_depth: true });
 
         // Opaque styles: depth test on, depth write on, blending off
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: true, alpha_blend: false });
+            this.setRenderState({ depth_test: true, depth_write: true, blend: (allow_blend && 'opaque') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Transparent styles: depth test off, depth write on, custom blending
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'add') });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'add') });
             count += this.renderStyles(styles, program_key);
         }
 
         styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: (allow_alpha_blend && 'multiply') });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'multiply') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Inlay styles: depth test on, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'inlay');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, alpha_blend: allow_alpha_blend });
+            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'standard') });
             count += this.renderStyles(styles, program_key);
         }
 
         // Overlay styles: depth test off, depth write off, blending on
         styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
         if (styles.length > 0) {
-            this.setRenderState({ depth_test: false, depth_write: false, alpha_blend: allow_alpha_blend });
+            this.setRenderState({ depth_test: false, depth_write: false, blend: (allow_blend && 'standard') });
             count += this.renderStyles(styles, program_key);
         }
 
@@ -736,10 +745,12 @@ export default class Scene {
                     program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
                     program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 
-                    // Normal matrix - transforms surface normals into view space
-                    // this matrix is constant since the view doesn't rotate for now
+                    // Normal matrices - transforms surface normals into view space
                     mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+                    mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
+
                     program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+                    program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
 
                     this.camera.setupProgram(program);
                     for (let i in this.lights) {
@@ -798,17 +809,17 @@ export default class Scene {
         }
     }
 
-    setRenderState({ depth_test, depth_write, cull_face, alpha_blend } = {}) {
+    setRenderState({ depth_test, depth_write, cull_face, blend } = {}) {
         if (!this.initialized) {
             return;
         }
 
         // Defaults
         // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-        depth_test = (depth_test === false) ? false : true;         // default true
-        depth_write = (depth_write === false) ? false : true;       // default true
-        cull_face = (cull_face === false) ? false : true;           // default true
-        alpha_blend = (alpha_blend != null) ? alpha_blend : false;  // default false
+        depth_test = (depth_test === false) ? false : true;     // default true
+        depth_write = (depth_write === false) ? false : true;   // default true
+        cull_face = (cull_face === false) ? false : true;       // default true
+        blend = (blend != null) ? blend : false;                // default false
 
         // Reset frame state
         let gl = this.gl;
@@ -817,22 +828,44 @@ export default class Scene {
         RenderState.depth_write.set({ depth_write: depth_write });
         RenderState.culling.set({ cull: cull_face, face: gl.BACK });
 
-        if (alpha_blend) {
-            // Traditional blending
-            if (alpha_blend === true) {
-                RenderState.blending.set({ blend: true, src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA });
+        // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
+        // http://webglfundamentals.org/webgl/lessons/webgl-and-alpha.html
+        // http://stackoverflow.com/a/11533416
+        if (blend) {
+            // Opaque: all source, no destination
+            if (blend === 'opaque') {
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.SRC_ALPHA, dst: gl.ZERO
+                });
+            }
+            // Traditional alpha blending
+            else if (blend === 'standard') {
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Additive blending
-            else if (alpha_blend === 'add') {
-                RenderState.blending.set({ blend: true, src: gl.ONE, dst: gl.ONE });
+            else if (blend === 'add') {
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ONE, dst: gl.ONE,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
             // Multiplicative blending
-            else if (alpha_blend === 'multiply') {
-                RenderState.blending.set({ blend: true, src: gl.ZERO, dst: gl.SRC_COLOR });
+            else if (blend === 'multiply') {
+                RenderState.blending.set({
+                    blend: true,
+                    src: gl.ZERO, dst: gl.SRC_COLOR,
+                    src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+                });
             }
         }
         else {
-            RenderState.blending.set({ blend: false, src: null, dst: null} );
+            RenderState.blending.set({ blend: false });
         }
     }
 
@@ -850,7 +883,7 @@ export default class Scene {
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
-        return this.selection.getFeatureAt(point);
+        return this.selection.getFeatureAt(point).catch(r => Promise.resolve(r));
     }
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
@@ -964,7 +997,6 @@ export default class Scene {
 
     // Load all textures in the scene definition
     loadTextures() {
-        Texture.destroy(this.gl);
         return Texture.createFromObject(this.gl, this.config.textures);
     }
 
@@ -997,7 +1029,7 @@ export default class Scene {
         this.active_styles = {};
         var animated = false; // is any active style animated?
         for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule.draw) {
+            if (rule && rule.draw) {
                 for (let [name, group] of Utils.entries(rule.draw)) {
                     // TODO: warn on non-object draw group
                     if (typeof group === 'object' && group.visible !== false) {
@@ -1104,7 +1136,16 @@ export default class Scene {
             this.background.color = StyleParser.parseColor(bg.color);
         }
         if (!this.background.color) {
-            this.background.color = [0, 0, 0, 1]; // default background to black
+            this.background.color = [0, 0, 0, 0]; // default background TODO: vary w/scene alpha
+        }
+
+        // if background is fully opaque, set canvas background to match
+        if (this.background.color[3] === 1) {
+            this.canvas.style.backgroundColor =
+                `rgba(${this.background.color.map(c => Math.floor(c * 255)).join(', ')})`;
+        }
+        else {
+            this.canvas.style.backgroundColor = 'transparent';
         }
     }
 

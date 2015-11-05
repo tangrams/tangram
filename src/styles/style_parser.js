@@ -94,6 +94,7 @@ StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
                 var $zoom = context.zoom;
+                var $layer = context.layer;
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;
@@ -229,7 +230,9 @@ StyleParser.colorForString = function(string) {
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
-        v[3] = v[3] || 1; // default alpha
+        if (v[3] == null) {
+            v[3] = 1; // default alpha
+        }
         return v;
     }
     else if (val.static) {
@@ -243,7 +246,9 @@ StyleParser.cacheColor = function(val, context = {}) {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
-            v[3] = v[3] || 1; // default alpha
+            if (v[3] == null) {
+                v[3] = 1; // default alpha
+            }
             return v;
         }
         // Single string color
@@ -272,7 +277,9 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Single array color
         else {
             val.static = val.value;
-            val.static[3] = val.static[3] || 1; // default alpha
+            if (val.static[3] == null) {
+                val.static[3] = 1; // default alpha
+            }
             return val.static;
         }
     }
@@ -319,7 +326,7 @@ StyleParser.parseColor = function(val, context = {}) {
     // Defaults
     if (val) {
         // alpha
-        if (!val[3]) {
+        if (val[3] == null) {
             val[3] = 1;
         }
     }
@@ -330,35 +337,17 @@ StyleParser.parseColor = function(val, context = {}) {
     return val;
 };
 
-// Order is summed from top to bottom in the style hierarchy:
-// each child order value is added to the parent order value
 StyleParser.calculateOrder = function(order, context) {
+    // Computed order
     if (typeof order === 'function') {
         order = order(context);
     }
-    else if (Array.isArray(order)) {
-        order = order.reduce((sum, order) => {
-            order = order || StyleParser.defaults.order;
-            if (typeof order === 'function') {
-                order = order(context);
-            }
-            else if (typeof order === 'string') {
-                order = context.feature.properties[order];
-            }
-            else {
-                order = parseFloat(order);
-            }
-
-            if (!order || isNaN(order)) {
-                return sum;
-            }
-            return sum + order;
-        }, 0);
-    }
     else if (typeof order === 'string') {
+        // Order tied to feature property
         if (context.feature.properties[order]) {
             order = context.feature.properties[order];
         }
+        // Explicit order value
         else {
             order = parseFloat(order);
         }

@@ -2,6 +2,7 @@
 UGLIFY = ./node_modules/.bin/uglifyjs
 KARMA = ./node_modules/karma/bin/karma
 JSHINT = ./node_modules/.bin/jshint
+DEREQUIRE = ./node_modules/.bin/derequire
 
 # Build debug and minified libraries
 all: \
@@ -11,7 +12,7 @@ all: \
 debug: dist/tangram.debug.js
 
 dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
-	node build.js --debug=true --require './src/module.js' --polyfill > dist/tangram.debug.js
+	node build.js --debug=true --require './src/module.js' --runtime | $(DEREQUIRE) > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
@@ -28,9 +29,7 @@ lint: .npm
 	$(JSHINT) `find src/ -name '*.js'`
 	$(JSHINT) `find test/ -name '*.js'`
 
-# Test-specific builds of the library, which use  use the babel runtime (instead of polyfill),
-# to avoid errors w/multiple polyfill instances created for each test. First file is to be loaded as
-# a web worker, second is the core library plus tests, to be executed on main thread.
+# Test-specific builds of the library
 build-testable: lint dist/tangram.debug.js
 	node build.js --debug=true --require './src/module.js' --runtime > dist/tangram.test-worker.js
 	node build.js --debug=true --all './test/*.js' --runtime > dist/tangram.test.js

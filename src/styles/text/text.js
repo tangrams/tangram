@@ -1,10 +1,10 @@
 // Text rendering style
 
-import Builders from '../builders';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Points} from '../points/points';
+import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import FeatureLabel from './feature_label';
 import LabelOptions from './label_options';
@@ -34,9 +34,8 @@ Object.assign(TextStyle, {
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
-        // Manually un-multiply alpha, because some Canvas text rasterization is pre-multiplied
-        // See https://github.com/tangrams/tangram/issues/179
-        this.defines.TANGRAM_UNMULTIPLY_ALPHA = Utils.canvasPremultipliedAlpha();
+        // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
+        this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // default font style
         this.default_font_style = {
@@ -44,7 +43,9 @@ Object.assign(TextStyle, {
             weight: null,
             size: '12px',
             family: 'Helvetica',
-            fill: 'white'
+            fill: 'white',
+            text_wrap: 15,
+            align: 'center'
         };
 
         this.reset();
@@ -83,123 +84,12 @@ Object.assign(TextStyle, {
         delete this.feature_style_key[tile];
     },
 
-    // Set font style params for canvas drawing
-    setFont (tile, { font_css, fill, stroke, stroke_width, px_size, px_logical_size }) {
-        this.px_size = parseInt(px_size);
-        this.px_logical_size = parseInt(px_logical_size);
-        this.text_buffer = 8; // pixel padding around text
-        let ctx = this.canvas[tile].context;
-
-        ctx.font = font_css;
-        if (stroke) {
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = stroke_width;
-        }
-        else {
-            ctx.strokeStyle = null;
-            ctx.lineWidth = 0;
-        }
-        ctx.fillStyle = fill;
-        ctx.miterLimit = 2;
-    },
-
-    // Width and height of text based on current font style
-    textSize (text, tile, transform) {
-        let str = FeatureLabel.applyTextTransform(text, transform);
-        let ctx = this.canvas[tile].context;
-        let px_size = this.px_size;
-        let px_logical_size = this.px_logical_size;
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-
-        let str_width = ctx.measureText(str).width;
-        let text_size = [
-            str_width / Utils.device_pixel_ratio,
-            this.px_size / Utils.device_pixel_ratio
-        ];
-
-        let texture_text_size = [
-            Math.ceil(str_width) + buffer * 2,
-            this.px_size + buffer * 2
-        ];
-
-        return { text_size, texture_text_size, px_size, px_logical_size };
-    },
-
-    // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke, transform) {
-        let str = FeatureLabel.applyTextTransform(text, transform);
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        if (stroke) {
-            this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
-        }
-        this.canvas[tile].context.fillText(str, x + buffer, y + buffer + this.px_size);
-    },
-
-    setTextureTextPositions (texts) {
-        // Find widest label and sum of all label heights
-        let widest = 0, height = 0;
-
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let text_info = text_infos[text];
-                let size = text_info.size.texture_text_size;
-
-                text_info.position = [0, height];
-
-                if (size[0] > widest) {
-                    widest = size[0];
-                }
-
-                height += size[1];
-            }
-        }
-
-        return [ widest, height ];
-    },
-
-    getTextSizes (tile, texts) {
-        // create a canvas
+    calcTextSizes (tile, texts) {
         if(!this.canvas[tile]) {
-            let canvas = document.createElement('canvas');
-            this.canvas[tile] = {
-                canvas: canvas,
-                context: canvas.getContext('2d')
-            };
+            this.canvas[tile] = new CanvasText();
         }
 
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let text_style = text_infos[text].text_style;
-                // update text sizes
-                this.setFont(tile, text_style); // TODO: only set once above
-                text_infos[text].size = this.textSize(text, tile, text_style.transform);
-            }
-        }
-
-        return Promise.resolve(texts);
-    },
-
-    rasterize (tile, texts, texture_size) {
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let info = text_infos[text];
-
-                this.setFont(tile, info.text_style); // TODO: only set once above
-                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.transform);
-
-                info.texcoords = Builders.getTexcoordsForSprite(
-                    info.position,
-                    info.size.texture_text_size,
-                    texture_size
-                );
-            }
-        }
+        return this.canvas[tile].textSizes(tile, texts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
@@ -208,24 +98,22 @@ Object.assign(TextStyle, {
             return Promise.resolve({});
         }
 
-        let texture_size = this.setTextureTextPositions(texts);
-        let context = this.canvas[tile].context;
+        let canvas = this.canvas[tile];
+        let texture_size = canvas.setTextureTextPositions(texts);
 
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
-        // update the canvas "context"
-        this.canvas[tile].canvas.width = texture_size[0];
-        this.canvas[tile].canvas.height = texture_size[1];
-        context.clearRect(0, 0, texture_size[0], texture_size[1]);
+        // update the canvas to texture size
+        canvas.resize(...texture_size);
 
         // create a texture
         let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
         this.textures[tile] = new Texture(this.gl, texture);
 
         // ask for rasterization for the text set
-        this.rasterize(tile, texts, texture_size);
+        canvas.rasterize(tile, texts, texture_size);
 
-        this.textures[tile].setCanvas(this.canvas[tile].canvas, {
+        this.textures[tile].setCanvas(canvas.canvas, {
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });
@@ -245,7 +133,7 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, texts) {
-        let labels_priorities = {};  // this will store all labels in the tile, 
+        let labels_priorities = {};  // this will store all labels in the tile,
                                      // sorted into objects by priority
 
         // texts holds text_info objects, keyed by style
@@ -259,7 +147,7 @@ Object.assign(TextStyle, {
         //         3rd Avenue: Object
         //     }
         // }
-        
+
         // for each style key
         for (let style in texts) {
             let text_infos = texts[style];
@@ -293,12 +181,7 @@ Object.assign(TextStyle, {
                 for (let i = 0; i < label_features.length; ++i) {
                     let label_feature = label_features[i];
                     let feature = label_feature.feature;
-                    let options = new LabelOptions({
-                        units_per_pixel: text_info.units_per_pixel,
-                        offset: text_info.offset,
-                        buffer: text_info.buffer,
-                        line_exceed: text_info.line_exceed
-                    });
+                    let options = new LabelOptions(text_info);
 
                     // build a label for each text_info object
                     let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
@@ -397,7 +280,7 @@ Object.assign(TextStyle, {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target, 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target, 'calcTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
@@ -504,6 +387,11 @@ Object.assign(TextStyle, {
             offset[0] = parseFloat(offset[0]);
             offset[1] = parseFloat(offset[1]); // y-point down
 
+            // label anchors (point labels only)
+            // label will be adjusted in the given direction, relatove to its original point
+            // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+            let anchor = rule.anchor;
+
             // label buffer in pixel
             let buffer = rule.buffer;
             if (buffer != null) {
@@ -529,7 +417,9 @@ Object.assign(TextStyle, {
                     priority,
                     offset,
                     buffer,
+                    anchor,
                     line_exceed,
+                    move_into_tile: rule.move_into_tile,
                     ref: 0
                 };
             }

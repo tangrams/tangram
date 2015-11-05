@@ -189,7 +189,7 @@ Enjoy!
     // Update URL hash on move
     map.attributionControl.setPrefix('');
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
-    map.on('moveend', updateURL);
+    map.on('move', updateURL);
 
     // Take a screenshot and save file
     function screenshot() {
@@ -481,7 +481,7 @@ Enjoy!
         selection_info.style.display = 'block';
 
         // Show selected feature on hover
-        scene.container.addEventListener('mousemove', function (event) {
+        map.getContainer().addEventListener('mousemove', function (event) {
             if (gui['feature info'] == false) {
                 if (selection_info.parentNode != null) {
                     selection_info.parentNode.removeChild(selection_info);
@@ -498,18 +498,17 @@ Enjoy!
                 }
                 var feature = selection.feature;
                 if (feature != null) {
-                    // console.log("selection map: " + JSON.stringify(feature));
-
                     var label = '';
                     if (feature.properties.name != null) {
                         label = feature.properties.name;
                     }
+                    // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
 
                     if (label != '') {
                         selection_info.style.left = (pixel.x + 5) + 'px';
                         selection_info.style.top = (pixel.y + 15) + 'px';
                         selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-                        scene.container.appendChild(selection_info);
+                        map.getContainer().appendChild(selection_info);
                     }
                     else if (selection_info.parentNode != null) {
                         selection_info.parentNode.removeChild(selection_info);
@@ -534,10 +533,10 @@ Enjoy!
     function preUpdate (will_render) {
         // Input
         if (key.isPressed('up')) {
-            map.setZoom(map.getZoom() + zoom_step);
+            map._move(map.getCenter(), map.getZoom() + zoom_step);
         }
         else if (key.isPressed('down')) {
-            map.setZoom(map.getZoom() - zoom_step);
+            map._move(map.getCenter(), map.getZoom() - zoom_step);
         }
 
         // Profiling
@@ -589,10 +588,16 @@ Enjoy!
             window.osm_layer =
                 L.tileLayer(
                     'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    { opacity: 0.5 })
-                .bringToFront()
+                    // 'https://stamen-tiles.a.ssl.fastly.net/terrain-background/{z}/{x}/{y}.jpg',
+                    {
+                        maxZoom: 19//,
+                        // opacity: 0.5
+                    })
                 .addTo(map);
+                // .bringToFront();
         }
+
+        layer.bringToFront();
     });
 
 
