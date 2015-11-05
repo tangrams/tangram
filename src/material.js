@@ -92,6 +92,7 @@ export default class Material {
         }
 
         style.replaceShaderBlock(Material.block, shaderSources['gl/shaders/material'], 'Material');
+        style.addShaderBlock('setup', '\nmaterial = u_material;\n');
     }
 
     setupProgram (_program) {
