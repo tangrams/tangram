@@ -598,11 +598,12 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nC = Vector.neg(T[1]),  // normal to center (-vP)
         nB = T[2];              // normal to point B (bT)
 
-    var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+    var uA, uC, uB;
 
     if (signed) {
+        uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         addPolylineVertex(coords[1], nA, uA, constants);
         addPolylineVertex(coords[1], nC, uC, constants);
     } else {
@@ -636,14 +637,16 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     }
 
     // UVs
-    var uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
-        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
-        uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
+    var uvA, uvC, uvB;
 
     if (!isBeginning) {
         uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
         uvB = [constants.max_u,constants.max_v];
+    } else {
+        uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
+        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
+        uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
     }
 
     if ( numCorners === 2 ){
