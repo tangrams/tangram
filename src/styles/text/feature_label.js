@@ -23,11 +23,11 @@ export default class FeatureLabel {
         rule.font = rule.font || default_font_style;
 
         // Use fill if specified, or default
-        style.fill = (rule.font.fill && Utils.toCanvasColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
+        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
 
         // Use stroke if specified
         if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCanvasColor(StyleParser.parseColor(rule.font.stroke.color));
+            style.stroke = Utils.toCSSColor(StyleParser.parseColor(rule.font.stroke.color));
             style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
             style.stroke_width = style.stroke_width && parseFloat(style.stroke_width);
         }

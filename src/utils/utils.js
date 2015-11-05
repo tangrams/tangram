@@ -423,8 +423,12 @@ Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };
 
-Utils.toCanvasColor = function (color) {
-    return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
+Utils.toCSSColor = function (color) {
+    if (color[3] === 1) { // full opacity
+        return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
+    }
+    // RGB is between [0, 255] opacity is between [0, 1]
+    return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
 };
 
 Utils.toPixelSize = function (size, kind) {
