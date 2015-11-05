@@ -501,6 +501,13 @@ export default class Scene {
         });
     }
 
+    // Resize the map when device pixel ratio changes, e.g. when switching between displays
+    updateDevicePixelRatio () {
+        if (Utils.updateDevicePixelRatio()) {
+            this.resizeMap(this.css_size.width, this.css_size.height);
+        }
+    }
+
     resizeMap(width, height) {
         this.dirty = true;
 
@@ -586,6 +593,7 @@ export default class Scene {
         this.dirty = false; // subclasses can set this back to true when animation is needed
 
         // Render the scene
+        this.updateDevicePixelRatio();
         this.render();
 
         // Post-render loop hook

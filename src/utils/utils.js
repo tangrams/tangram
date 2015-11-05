@@ -244,9 +244,12 @@ Utils.log = function (level, ...msg) {
 };
 
 // Default to allowing high pixel density
+// Returns true if display density changed
 Utils.use_high_density_display = true;
 Utils.updateDevicePixelRatio = function () {
+    let prev = Utils.device_pixel_ratio;
     Utils.device_pixel_ratio = (Utils.use_high_density_display && window.devicePixelRatio) || 1;
+    return Utils.device_pixel_ratio !== prev;
 };
 
 // Mark thread as main or worker
