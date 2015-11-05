@@ -30,6 +30,9 @@ varying vec4 v_world_position;
 #pragma tangram: global
 
 void main (void) {
+    // Initialize globals
+    #pragma tangram: setup
+
     vec4 color = v_color;
 
     // Apply a texture

@@ -31,8 +31,8 @@ vec2 rotate2D(vec2 _st, float _angle) {
 }
 
 void main() {
-    // Adds vertex shader support for feature selection
-    #pragma tangram: feature-selection-vertex
+    // Initialize globals
+    #pragma tangram: setup
 
     v_color = a_color;
     v_texcoord = a_texcoord;
