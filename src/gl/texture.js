@@ -37,7 +37,8 @@ export default class Texture {
         Texture.textures[this.name] = this;
 
         this.sprites = options.sprites;
-        this.texcoords = {};
+        this.texcoords = {};    // sprite UVs ([0, 1] range)
+        this.sizes = {};        // sprite sizes (pixel size)
     }
 
     // Destroy a single texture instance
@@ -243,6 +244,9 @@ export default class Texture {
                     [sprite[2], sprite[3]],
                     [this.width, this.height]
                 );
+
+                // Pixel size of sprite
+                this.sizes[s] = [sprite[2], sprite[3]];
             }
         }
     }
@@ -264,10 +268,10 @@ Texture.destroy = function (gl) {
     }
 };
 
-// Get sprite sub-area to use for texture coordinates (default is [0, 1])
-Texture.getSpriteTexcoords = function (texname, sprite) {
+// Get sprite pixel size and UVs
+Texture.getSpriteInfo = function (texname, sprite) {
     let texture = Texture.textures[texname];
-    return texture && texture.texcoords[sprite];
+    return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
 };
 
 // Create a set of textures keyed in an object
@@ -314,6 +318,7 @@ Texture.getInfo = function (name) {
                 height: tex.height,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
+                sizes: tex.sizes,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid
