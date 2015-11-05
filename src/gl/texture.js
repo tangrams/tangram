@@ -34,7 +34,9 @@ export default class Texture {
             Texture.textures[this.name].destroy();
         }
 
+        // Cache texture instance and definition
         Texture.textures[this.name] = this;
+        Texture.texture_configs[this.name] = Object.assign({ name }, options);
 
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
@@ -281,6 +283,13 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
+
+            // If texture already exists and definition hasn't changed, no need to re-create
+            // Note: to avoid flicker when other textures/scene items change
+            if (!Texture.changed(texname, config)) {
+                continue;
+            }
+
             let texture = new Texture(gl, texname, config);
             if (config.url) {
                 loading.push(texture.load(config.url, config));
@@ -288,6 +297,18 @@ Texture.createFromObject = function (gl, textures) {
         }
     }
     return Promise.all(loading);
+};
+
+// Indicate if a texture definition would be a change from the current cache
+Texture.changed = function (name, config) {
+    if (Texture.textures[name]) { // cached texture
+        // compare definitions
+        if (JSON.stringify(Texture.texture_configs[name]) ===
+            JSON.stringify(Object.assign({ name }, config))) {
+            return false;
+        }
+    }
+    return true;
 };
 
 // Get metadata for a texture by name
@@ -346,6 +367,7 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+Texture.texture_configs = {};
 Texture.boundTexture = -1;
 Texture.activeUnit = -1;
 
