@@ -51,9 +51,9 @@ Object.assign(Lines, {
     _parseFeature (feature, rule_style, context) {
         var style = this.feature_style;
 
-        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context);
-        if (!inner_width) {
-            return;
+        let inner_width = rule_style.width && StyleParser.cacheDistance(rule_style.width, context) || 0;
+        if (inner_width <= 0) {
+            return; // skip lines with zero or negative width
         }
         style.width = inner_width * context.units_per_meter;
 
