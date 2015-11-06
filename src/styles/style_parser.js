@@ -98,7 +98,14 @@ StyleParser.wrapFunction = function (func) {
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;
-                return (${func}());
+
+                var val = (${func}());
+
+                if (isNaN(val)) {
+                    val = null; // convert NaNs to nulls
+                }
+
+                return val;
             }`;
     return f;
 };
