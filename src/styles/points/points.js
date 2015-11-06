@@ -9,6 +9,7 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
+import PointAnchor from './point_anchor';
 
 import log from 'loglevel';
 
@@ -143,9 +144,17 @@ Object.assign(Points, {
         style.centroid = rule_style.centroid;
 
         // Offset applied to point in screen space
-        style.offset = rule_style.offset || [0, 0];
-        style.offset[0] = parseInt(style.offset[0]);
-        style.offset[1] = parseInt(style.offset[1]);
+        if (rule_style.offset) {
+            style.offset = rule_style.offset;
+            style.offset[0] = parseInt(style.offset[0]) * Utils.device_pixel_ratio;
+            style.offset[1] = parseInt(style.offset[1]) * Utils.device_pixel_ratio;
+        }
+        else {
+            style.offset = [0, 0];
+        }
+
+        // anchor
+        style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);
 
         return style;
     },
@@ -203,7 +212,7 @@ Object.assign(Points, {
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
-                offset: Vector.mult(offset, Utils.device_pixel_ratio),
+                offset,
                 angle: Utils.scaleInt16(angle, 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535

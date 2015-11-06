@@ -1,12 +1,7 @@
 import Label from './label';
 import Geo from '../../geo';
 import OBB from '../../utils/obb';
-
-// Sets of values to match for directional and corner anchors
-const lefts = ['left', 'top-left', 'bottom-left'];
-const rights = ['right', 'top-right', 'bottom-right'];
-const tops = ['top', 'top-left', 'top-right'];
-const bottoms = ['bottom', 'bottom-left', 'bottom-right'];
+import PointAnchor from '../points/point_anchor';
 
 export default class LabelPoint extends Label {
 
@@ -22,30 +17,7 @@ export default class LabelPoint extends Label {
     }
 
     computeOffset () {
-        if (!this.options.anchor || this.options.anchor === 'center') {
-            return this.options.offset;
-        }
-
-        let offset = [this.options.offset[0], this.options.offset[1]];
-        let anchor = this.options.anchor;
-
-        // An optional left/right offset
-        if (LabelPoint.isLeftAnchor(anchor)) {
-            offset[0] -= this.size.text_size[0] / 2;
-        }
-        else if (LabelPoint.isRightAnchor(anchor)) {
-            offset[0] += this.size.text_size[0] / 2;
-        }
-
-        // An optional top/bottom offset
-        if (LabelPoint.isTopAnchor(anchor)) {
-            offset[1] -= this.size.text_size[1] / 2;
-        }
-        else if (LabelPoint.isBottomAnchor(anchor)) {
-            offset[1] += this.size.text_size[1] / 2;
-        }
-
-        return offset;
+        return PointAnchor.computeOffset(this.options.offset, this.size.text_size, this.options.anchor);
     }
 
     computeAABB () {
@@ -92,22 +64,6 @@ export default class LabelPoint extends Label {
         }
 
         return !this.inTileBounds();
-    }
-
-    static isLeftAnchor (anchor) {
-        return (lefts.indexOf(anchor) > -1);
-    }
-
-    static isRightAnchor (anchor) {
-        return (rights.indexOf(anchor) > -1);
-    }
-
-    static isTopAnchor (anchor) {
-        return (tops.indexOf(anchor) > -1);
-    }
-
-    static isBottomAnchor (anchor) {
-        return (bottoms.indexOf(anchor) > -1);
     }
 
 }
