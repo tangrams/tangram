@@ -230,6 +230,11 @@ Utils.isWorkerThread && Object.assign(self, {
         return Promise.resolve();
     },
 
+    // Sync device pixel ratio from main thread
+    updateDevicePixelRatio (device_pixel_ratio) {
+        Utils.device_pixel_ratio = device_pixel_ratio;
+    },
+
     // Profiling helpers
     profile (name) {
         console.profile(`worker ${self._worker_id}: ${name}`);

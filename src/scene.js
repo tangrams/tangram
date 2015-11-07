@@ -505,6 +505,7 @@ export default class Scene {
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
     updateDevicePixelRatio () {
         if (Utils.updateDevicePixelRatio()) {
+            this.workers.forEach(w => WorkerBroker.postMessage(w, 'updateDevicePixelRatio', Utils.device_pixel_ratio));
             this.resizeMap(this.css_size.width, this.css_size.height);
         }
     }
