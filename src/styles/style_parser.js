@@ -237,7 +237,7 @@ StyleParser.colorForString = function(string) {
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
-        if (v[3] == null) {
+        if (v && v[3] == null) {
             v[3] = 1; // default alpha
         }
         return v;
@@ -253,7 +253,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
-            if (v[3] == null) {
+            if (v && v[3] == null) {
                 v[3] = 1; // default alpha
             }
             return v;
@@ -270,7 +270,7 @@ StyleParser.cacheColor = function(val, context = {}) {
                 // Parse any string colors inside stops
                 for (let i=0; i < val.value.length; i++) {
                     let v = val.value[i];
-                    if (typeof v[1] === 'string') {
+                    if (v && typeof v[1] === 'string') {
                         v[1] = StyleParser.colorForString(v[1]);
                     }
                 }
@@ -284,7 +284,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Single array color
         else {
             val.static = val.value;
-            if (val.static[3] == null) {
+            if (val.static && val.static[3] == null) {
                 val.static[3] = 1; // default alpha
             }
             return val.static;
