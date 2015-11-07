@@ -43,19 +43,14 @@ export default class FeatureLabel {
         style.family = rule.font.family || default_font_style.family;
         style.transform = rule.font.transform;
 
-        let size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
-        let size_regex = /([0-9]*\.)?[0-9]+(px|pt|em|%)/g;
-        let ft_size = (size.match(size_regex) || [])[0];
-        let size_kind = ft_size.replace(/([0-9]*\.)?[0-9]+/g, '');
-
-        // TODO: improve pt/em conversion
-        style.px_logical_size = parseInt(Utils.toPixelSize(ft_size.replace(/([a-z]|%)/g, ''), size_kind));
+        style.size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
+        let [, unit_size, units] = style.size.match(FeatureLabel.font_size_re) || [];
+        style.px_logical_size = Utils.toFontPixelSize(unit_size, units); // TODO: improve pt/em conversion
         style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
         style.stroke_width *= Utils.device_pixel_ratio;
-        style.size = size.replace(size_regex, style.px_size + "px");
 
         if (rule.font.typeface) { // 'typeface' legacy syntax, deprecate
-            style.font_css = rule.font.typeface.replace(size_regex, style.px_size + "px");
+            style.font_css = rule.font.typeface;
         }
         else {
             style.font_css = this.fontCSS(style);
@@ -105,7 +100,7 @@ export default class FeatureLabel {
             settings.style,
             settings.weight,
             settings.family,
-            settings.size,
+            settings.px_size,
             settings.fill,
             settings.stroke,
             settings.stroke_width,
@@ -117,3 +112,6 @@ export default class FeatureLabel {
     }
 
 }
+
+// Extract font size and units
+FeatureLabel.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)/;

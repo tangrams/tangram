@@ -431,16 +431,15 @@ Utils.toCSSColor = function (color) {
     return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
 };
 
-Utils.toPixelSize = function (size, kind) {
-    if (kind === "px") {
-        return size;
-    } else if (kind === "em") {
-        return 16 * size;
+Utils.toFontPixelSize = function (size, kind) {
+    if (kind === "em") {
+        size *= 16;
     } else if (kind === "pt") {
-        return size / 0.75;
+        size /= 0.75;
     } else if (kind === "%") {
-        return size / 6.25;
+        size /= 6.25;
     }
+    return parseFloat(size);
 };
 
 Utils.pointInTile = function (point) {
