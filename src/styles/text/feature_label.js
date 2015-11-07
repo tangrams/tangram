@@ -1,7 +1,7 @@
 import Utils from '../../utils/utils';
 import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
-import LabelPoint from './label_point';
+import PointAnchor from '../points/point_anchor';
 
 export default class FeatureLabel {
 
@@ -79,10 +79,10 @@ export default class FeatureLabel {
 
         // default alignment to match anchor
         if (!rule.align && rule.anchor && rule.anchor !== 'center') {
-            if (LabelPoint.isLeftAnchor(rule.anchor)) {
+            if (PointAnchor.isLeftAnchor(rule.anchor)) {
                 rule.align = 'right';
             }
-            else if (LabelPoint.isRightAnchor(rule.anchor)) {
+            else if (PointAnchor.isRightAnchor(rule.anchor)) {
                 rule.align = 'left';
             }
         }
