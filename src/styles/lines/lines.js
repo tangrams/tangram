@@ -79,7 +79,7 @@ Object.assign(Lines, {
         // NB: multiply by 2 because a given width is twice as big in screen space at the next zoom
         style.width = width * context.units_per_meter;
         style.next_width = (next_width * 2) - width;
-        style.next_width *= context.units_per_meter
+        style.next_width *= context.units_per_meter;
         style.next_width /= 2; // NB: divide by 2 because extrusion width is halved in builder - remove?
 
         style.color = this.parseColor(rule_style.color, context);
