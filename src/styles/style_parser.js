@@ -300,34 +300,20 @@ StyleParser.parseColor = function(val, context = {}) {
     // Parse CSS-style colors
     // TODO: change all colors to use 0-255 range internally to avoid dividing and then re-multiplying in geom builder
     if (typeof val === 'string') {
-        val = parseCSSColor.parseCSSColor(val);
-        if (val && val.length === 4) {
-            val[0] /= 255;
-            val[1] /= 255;
-            val[2] /= 255;
-        }
-        else {
-            val = null;
-        }
+        val = StyleParser.colorForString(val);
     }
     else if (Array.isArray(val) && Array.isArray(val[0])) {
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
         for (let i=0; i < val.length; i++) {
             let v = val[i];
             if (typeof v[1] === 'string') {
-                var vc = parseCSSColor.parseCSSColor(v[1]);
-                if (vc && vc.length === 4) {
-                    vc[0] /= 255;
-                    vc[1] /= 255;
-                    vc[2] /= 255;
-                    v[1] = vc;
-                }
+                v[1] = StyleParser.colorForString(v[1]);
             }
         }
-    }
 
-    if (context.zoom) {
-        val = Utils.interpolate(context.zoom, val);
+        if (context.zoom) {
+            val = Utils.interpolate(context.zoom, val);
+        }
     }
 
     // Defaults
