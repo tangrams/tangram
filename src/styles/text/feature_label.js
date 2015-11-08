@@ -25,13 +25,6 @@ export default class FeatureLabel {
         // Use fill if specified, or default
         style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
 
-        // Use stroke if specified
-        if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.parseColor(rule.font.stroke.color));
-            style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
-            style.stroke_width = style.stroke_width && parseFloat(style.stroke_width);
-        }
-
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
         // - size: in pt, px, or em
@@ -53,11 +46,26 @@ export default class FeatureLabel {
             }
             style.px_size = rule.font.px_size_by_zoom[context.zoom];
         }
-        else {
-            style.px_size = rule.font.px_size || default_font_style.px_size; // single size
+        else { // single value
+            style.px_size = rule.font.px_size || default_font_style.px_size;
         }
 
-        style.stroke_width *= Utils.device_pixel_ratio;
+        // Use stroke if specified
+        if (rule.font.stroke && rule.font.stroke.color) {
+            style.stroke = Utils.toCSSColor(StyleParser.parseColor(rule.font.stroke.color));
+
+            if (rule.font.stroke.width_by_zoom) { // zoom stops
+                if (rule.font.stroke.width_by_zoom[context.zoom] == null) { // calc and cache
+                    rule.font.stroke.width_by_zoom[context.zoom] =
+                        Utils.interpolate(context.zoom, rule.font.stroke.width);
+                }
+                style.stroke_width = rule.font.stroke.width_by_zoom[context.zoom];
+            }
+            else { // single value
+                style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
+            }
+            style.stroke_width *= Utils.device_pixel_ratio;
+        }
 
         if (rule.font.typeface) { // 'typeface' legacy syntax, deprecate
             style.font_css = rule.font.typeface;

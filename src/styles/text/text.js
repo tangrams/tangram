@@ -457,6 +457,17 @@ Object.assign(TextStyle, {
         else {
             draw.font.px_size = CanvasText.fontPixelSize(draw.font.size);
         }
+
+        // Same prep as above, for text stroke
+        if (draw.font.stroke && draw.font.stroke.width != null) {
+            if (Array.isArray(draw.font.stroke.width)) {
+                draw.font.stroke.width = draw.font.stroke.width.map(v => [v[0], parseFloat(v[1])]);
+                draw.font.stroke.width_by_zoom = {};
+            }
+            else {
+                draw.font.stroke.width = parseFloat(draw.font.stroke.width);
+            }
+        }
     },
 
     build (style, vertex_data) {
