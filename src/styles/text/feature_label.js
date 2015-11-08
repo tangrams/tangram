@@ -23,7 +23,7 @@ export default class FeatureLabel {
         rule.font = rule.font || default_font_style;
 
         // Use fill if specified, or default
-        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
+        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.cacheColor(rule.font.fill, context))) || default_font_style.fill;
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -52,7 +52,7 @@ export default class FeatureLabel {
 
         // Use stroke if specified
         if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.parseColor(rule.font.stroke.color, context));
+            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(rule.font.stroke.color, context));
 
             if (rule.font.stroke.width_by_zoom) { // zoom stops
                 if (rule.font.stroke.width_by_zoom[context.zoom] == null) { // calc and cache

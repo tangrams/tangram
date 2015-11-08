@@ -446,6 +446,12 @@ Object.assign(TextStyle, {
             return;
         }
 
+        // Setup caching for colors
+        draw.font.fill = draw.font.fill && { value: draw.font.fill };
+        if (draw.font.stroke) {
+            draw.font.stroke.color = draw.font.stroke.color && { value: draw.font.stroke.color };
+        }
+
         // Convert font units and setup caching for zoom interpolation if needed
         if (Array.isArray(draw.font.size)) {
             // convert all stops
