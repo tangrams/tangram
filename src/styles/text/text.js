@@ -447,9 +447,9 @@ Object.assign(TextStyle, {
         }
 
         // Setup caching for colors
-        draw.font.fill = draw.font.fill && { value: draw.font.fill };
+        draw.font.fill = this.cacheObject(draw.font.fill);
         if (draw.font.stroke) {
-            draw.font.stroke.color = draw.font.stroke.color && { value: draw.font.stroke.color };
+            draw.font.stroke.color = this.cacheObject(draw.font.stroke.color);
         }
 
         // Convert font units and setup caching for zoom interpolation if needed

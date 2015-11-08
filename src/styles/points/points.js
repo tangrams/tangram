@@ -160,9 +160,9 @@ Object.assign(Points, {
     },
 
     _preprocess (draw) {
-        draw.color = draw.color && { value: draw.color };
-        draw.z = draw.z && { value: draw.z };
-        draw.size = draw.size && { value: draw.size };
+        draw.color = this.cacheObject(draw.color);
+        draw.z = this.cacheObject(draw.z);
+        draw.size = this.cacheObject(draw.size);
     },
 
     /**

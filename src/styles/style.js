@@ -218,6 +218,12 @@ export var Style = {
 
     _preprocess () {}, // optionally implemented by subclass
 
+    // Build a style param cache object
+    // `value` is raw value, cache methods will add other properties as needed
+    cacheObject (obj) {
+        return obj && { value: obj };
+    },
+
     // Parse an order value
     parseOrder (order, context) {
         // Calculate order if it was not cached
