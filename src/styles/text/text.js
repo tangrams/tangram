@@ -42,6 +42,7 @@ Object.assign(TextStyle, {
             style: 'normal',
             weight: null,
             size: '12px',
+            px_size: 12,
             family: 'Helvetica',
             fill: 'white',
             text_wrap: 15,
@@ -329,6 +330,10 @@ Object.assign(TextStyle, {
             return;
         }
 
+        // Called here because otherwise it will be delayed until the feature queue is parsed,
+        // and we want the preprocessing done before we evaluate text style below
+        this.preprocessFeatureStyle(rule);
+
         // Collect text - default source is feature.properties.name
         let text;
         let source = rule.text_source || 'name';
@@ -433,6 +438,24 @@ Object.assign(TextStyle, {
                 this.startData(tile.key);
             }
             this.tile_data[tile.key].queue.push([feature, rule, context]);
+        }
+    },
+
+    preprocess (draw) {
+        if (!draw.font) {
+            return;
+        }
+
+        // Convert font units and setup caching for zoom interpolation if needed
+        if (Array.isArray(draw.font.size)) {
+            // convert all stops
+            draw.font.px_size = draw.font.size.map(v => [v[0], CanvasText.fontPixelSize(v[1])]);
+
+            // presence of this property indicates size should be evaluated + cached at each zoom
+            draw.font.px_size_by_zoom = {};
+        }
+        else {
+            draw.font.px_size = CanvasText.fontPixelSize(draw.font.size);
         }
     },
 

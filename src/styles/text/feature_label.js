@@ -43,10 +43,20 @@ export default class FeatureLabel {
         style.family = rule.font.family || default_font_style.family;
         style.transform = rule.font.transform;
 
+        // original size (not currently used, but useful for debugging)
         style.size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
-        let [, unit_size, units] = style.size.match(FeatureLabel.font_size_re) || [];
-        style.px_logical_size = Utils.toFontPixelSize(unit_size, units); // TODO: improve pt/em conversion
-        style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
+
+        // calculated pixel size
+        if (rule.font.px_size_by_zoom) { // zoom stops
+            if (rule.font.px_size_by_zoom[context.zoom] == null) { // calc and cache
+                rule.font.px_size_by_zoom[context.zoom] = Utils.interpolate(context.zoom, rule.font.px_size);
+            }
+            style.px_size = rule.font.px_size_by_zoom[context.zoom];
+        }
+        else {
+            style.px_size = rule.font.px_size || default_font_style.px_size; // single size
+        }
+
         style.stroke_width *= Utils.device_pixel_ratio;
 
         if (rule.font.typeface) { // 'typeface' legacy syntax, deprecate
@@ -88,8 +98,8 @@ export default class FeatureLabel {
     }
 
     // Build CSS-style font string (to set Canvas draw state)
-    fontCSS ({ style, weight, size, family }) {
-        return [style, weight, size, family]
+    fontCSS ({ style, weight, px_size, family }) {
+        return [style, weight, px_size + 'px', family]
             .filter(x => x) // remove null props
             .join(' ');
     }
@@ -114,4 +124,4 @@ export default class FeatureLabel {
 }
 
 // Extract font size and units
-FeatureLabel.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)/;
+// FeatureLabel.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)/;

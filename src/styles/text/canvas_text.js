@@ -236,4 +236,31 @@ export default class CanvasText {
         return text;
     }
 
+    // Convert font CSS-style size ('12px', '14pt', '1.5em', etc.) to pixel size (adjusted for device pixel ratio)
+    // Defaults units to pixels if not specified
+    static fontPixelSize (size) {
+        if (size == null) {
+            return;
+        }
+        size = (typeof size === 'string') ? size : String(size); // need a string for regex
+
+        let [, px_size, units] = size.match(CanvasText.font_size_re) || [];
+        units = units || 'px';
+
+        if (units === "em") {
+            px_size *= 16;
+        } else if (units === "pt") {
+            px_size /= 0.75;
+        } else if (units === "%") {
+            px_size /= 6.25;
+        }
+
+        px_size = parseFloat(px_size);
+        px_size *= Utils.device_pixel_ratio;
+        return px_size;
+    }
+
 }
+
+// Extract font size and units
+CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
