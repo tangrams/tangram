@@ -92,7 +92,7 @@ Object.assign(Polygons, {
         return style;
     },
 
-    preprocess (draw) {
+    _preprocess (draw) {
         draw.color = draw.color && { value: draw.color };
         draw.z = draw.z && { value: draw.z };
     },

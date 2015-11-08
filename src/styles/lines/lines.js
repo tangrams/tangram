@@ -156,7 +156,7 @@ Object.assign(Lines, {
         return style;
     },
 
-    preprocess (draw) {
+    _preprocess (draw) {
         draw.color = draw.color && { value: draw.color };
         draw.width = draw.width && { value: draw.width };
         draw.next_width = draw.width && { value: draw.width.value };

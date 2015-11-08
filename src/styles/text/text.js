@@ -332,7 +332,7 @@ Object.assign(TextStyle, {
 
         // Called here because otherwise it will be delayed until the feature queue is parsed,
         // and we want the preprocessing done before we evaluate text style below
-        this.preprocessFeatureStyle(rule);
+        this.preprocess(rule);
 
         // Collect text - default source is feature.properties.name
         let text;
@@ -441,7 +441,7 @@ Object.assign(TextStyle, {
         }
     },
 
-    preprocess (draw) {
+    _preprocess (draw) {
         if (!draw.font) {
             return;
         }
