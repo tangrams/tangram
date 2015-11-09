@@ -157,6 +157,7 @@ export default class Scene {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
+                this.requestRedraw();
         }).catch(error => {
             this.initializing = false;
             this.updating = 0;
@@ -1166,10 +1167,11 @@ export default class Scene {
         this.updateStyles();
         this.syncConfigToWorker();
         if (rebuild) {
-            return this.rebuildGeometry().then(() => this.updating--);
+            return this.rebuildGeometry().then(() => { this.updating--; this.requestRedraw(); });
         }
         else {
             this.updating--;
+            this.requestRedraw();
             return Promise.resolve();
         }
     }
