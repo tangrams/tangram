@@ -40,30 +40,12 @@ export default class FeatureLabel {
         style.size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
 
         // calculated pixel size
-        if (rule.font.px_size_by_zoom) { // zoom stops
-            if (rule.font.px_size_by_zoom[context.zoom] == null) { // calc and cache
-                rule.font.px_size_by_zoom[context.zoom] = Utils.interpolate(context.zoom, rule.font.px_size);
-            }
-            style.px_size = rule.font.px_size_by_zoom[context.zoom];
-        }
-        else { // single value
-            style.px_size = rule.font.px_size || default_font_style.px_size;
-        }
+        style.px_size = StyleParser.cacheProperty(rule.font.px_size, context) || default_font_style.px_size;
 
         // Use stroke if specified
         if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(rule.font.stroke.color, context));
-
-            if (rule.font.stroke.width_by_zoom) { // zoom stops
-                if (rule.font.stroke.width_by_zoom[context.zoom] == null) { // calc and cache
-                    rule.font.stroke.width_by_zoom[context.zoom] =
-                        Utils.interpolate(context.zoom, rule.font.stroke.width);
-                }
-                style.stroke_width = rule.font.stroke.width_by_zoom[context.zoom];
-            }
-            else { // single value
-                style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
-            }
+            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(rule.font.stroke.color, context) || default_font_style.stroke);
+            style.stroke_width = StyleParser.cacheProperty(rule.font.stroke.width, context) || default_font_style.stroke_width;
             style.stroke_width *= Utils.device_pixel_ratio;
         }
 

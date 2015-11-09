@@ -142,6 +142,65 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
     };
 };
 
+// Build a style param cache object
+// `value` is raw value, cache methods will add other properties as needed
+// `transform` is optional transform function to run on values
+StyleParser.cacheObject = function (obj, transform = null) {
+    if (obj == null) {
+        return;
+    }
+
+    if (typeof transform === 'function') {
+        if (Array.isArray(obj) && Array.isArray(obj[0])) {
+            obj = obj.map(v => [v[0], transform(v[1])]);
+        }
+        else {
+            obj = transform(obj);
+        }
+    }
+
+    return { value: obj };
+};
+
+// Interpolation and caching for a generic property (not a color or distance)
+// { value: original, static: val, zoom: { 1: val1, 2: val2, ... }, dynamic: function(){...} }
+StyleParser.cacheProperty = function(val, context) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) { // function, compute each time (no caching)
+        let v = val.dynamic(context);
+        return v;
+    }
+    else if (val.static) { // single static value
+        return val.static;
+    }
+    else if (val.zoom && val.zoom[context.zoom]) { // interpolated, cached
+        return val.zoom[context.zoom];
+    }
+    else { // not yet evaulated for cache
+        // Dynamic function-based
+        if (typeof val.value === 'function') {
+            val.dynamic = val.value;
+            let v = val.dynamic(context);
+            return v;
+        }
+        // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
+        else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
+            // Calculate value for current zoom
+            val.zoom = val.zoom || {};
+            val.zoom = {};
+            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
+            return val.zoom[context.zoom];
+        }
+        // Single static value
+        else {
+            val.static = val.value;
+            return val.static;
+        }
+    }
+};
+
 StyleParser.convertUnits = function(val, context, convert = 'meters') {
     if (typeof val === 'string') {
         var units = val.match(/([0-9.-]+)([a-z]+)/);

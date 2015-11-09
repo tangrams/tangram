@@ -157,15 +157,15 @@ Object.assign(Lines, {
     },
 
     _preprocess (draw) {
-        draw.color = this.cacheObject(draw.color);
-        draw.width = this.cacheObject(draw.width);
-        draw.next_width = this.cacheObject(draw.width); // width will be computed for next zoom
-        draw.z = this.cacheObject(draw.z);
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.width = StyleParser.cacheObject(draw.width);
+        draw.next_width = StyleParser.cacheObject(draw.width); // width will be computed for next zoom
+        draw.z = StyleParser.cacheObject(draw.z);
 
         if (draw.outline) {
-            draw.outline.color = this.cacheObject(draw.outline.color);
-            draw.outline.width = this.cacheObject(draw.outline.width);
-            draw.outline.next_width = this.cacheObject(draw.outline.width); // width re-computed for next zoom
+            draw.outline.color = StyleParser.cacheObject(draw.outline.color);
+            draw.outline.width = StyleParser.cacheObject(draw.outline.width);
+            draw.outline.next_width = StyleParser.cacheObject(draw.outline.width); // width re-computed for next zoom
         }
     },
 

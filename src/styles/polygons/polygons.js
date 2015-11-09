@@ -93,8 +93,8 @@ Object.assign(Polygons, {
     },
 
     _preprocess (draw) {
-        draw.color = this.cacheObject(draw.color);
-        draw.z = this.cacheObject(draw.z);
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.z = StyleParser.cacheObject(draw.z);
     },
 
     /**

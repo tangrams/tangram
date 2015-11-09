@@ -447,32 +447,15 @@ Object.assign(TextStyle, {
         }
 
         // Setup caching for colors
-        draw.font.fill = this.cacheObject(draw.font.fill);
+        draw.font.fill = StyleParser.cacheObject(draw.font.fill);
         if (draw.font.stroke) {
-            draw.font.stroke.color = this.cacheObject(draw.font.stroke.color);
+            draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
         }
 
-        // Convert font units and setup caching for zoom interpolation if needed
-        if (Array.isArray(draw.font.size)) {
-            // convert all stops
-            draw.font.px_size = draw.font.size.map(v => [v[0], CanvasText.fontPixelSize(v[1])]);
-
-            // presence of this property indicates size should be evaluated + cached at each zoom
-            draw.font.px_size_by_zoom = {};
-        }
-        else {
-            draw.font.px_size = CanvasText.fontPixelSize(draw.font.size);
-        }
-
-        // Same prep as above, for text stroke
+        // Convert font and text stroke and setup caching
+        draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
-            if (Array.isArray(draw.font.stroke.width)) {
-                draw.font.stroke.width = draw.font.stroke.width.map(v => [v[0], parseFloat(v[1])]);
-                draw.font.stroke.width_by_zoom = {};
-            }
-            else {
-                draw.font.stroke.width = parseFloat(draw.font.stroke.width);
-            }
+            draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
     },
 
