@@ -318,6 +318,14 @@ layers:
                     width: [[15, 0px], [18, 2px]]
                     outline:
                         width: 0
+        ferry:
+            filter: { kind: ferry }
+            draw:
+                lines:
+                    color: '#8db3ce'
+                    width: [[14, 1px], [18, 2px]]
+                    outline:
+                        width: 0
         airports:
             filter: { aeroway: true }
             draw:
@@ -418,6 +426,17 @@ layers:
                             size: 16px
                             stroke: { color: white, width: 4 }
 
+            ferry:
+                filter: { kind: ferry }
+                draw:
+                    text:
+                        text_wrap: 20
+                        font:
+                            fill: '#8db3ce'
+                            stroke: { color: white, width: 4px }
+                            style: italic
+                            size: 12px
+
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
@@ -491,6 +510,7 @@ layers:
                     family: Helvetica
                     size: 11pt
                     style: italic
+                    transform: uppercase
                     fill: black
                     stroke: { color: white, width: 3 }
         continents:
@@ -521,8 +541,8 @@ layers:
                 text:
                     font:
                         family: Helvetica
-                        size: 12pt
-                        style: italic
+                        size: 14px
+                        style: normal
                         fill: black
                         stroke: { color: white, width: 3 }
 
@@ -531,13 +551,15 @@ layers:
             visible: false
 
     point_labels:
-        data: { source: osm, layer: [pois, landuse_labels] }
+        data: { source: osm, layer: [pois, landuse] }
         filter:
             name: true
 
         landuse:
             filter:
-                $layer: landuse_labels
+                $layer: landuse
+                $geometry: point
+                label_placement: yes
                 kind: [park, forest, cemetery, graveyard]
                 any:
                     # show labels for smaller landuse areas at higher zooms
