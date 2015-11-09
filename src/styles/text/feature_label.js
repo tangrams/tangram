@@ -112,6 +112,3 @@ export default class FeatureLabel {
     }
 
 }
-
-// Extract font size and units
-// FeatureLabel.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)/;
