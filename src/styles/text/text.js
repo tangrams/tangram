@@ -42,6 +42,7 @@ Object.assign(TextStyle, {
             style: 'normal',
             weight: null,
             size: '12px',
+            px_size: 12,
             family: 'Helvetica',
             fill: 'white',
             text_wrap: 15,
@@ -329,6 +330,10 @@ Object.assign(TextStyle, {
             return;
         }
 
+        // Called here because otherwise it will be delayed until the feature queue is parsed,
+        // and we want the preprocessing done before we evaluate text style below
+        this.preprocess(rule);
+
         // Collect text - default source is feature.properties.name
         let text;
         let source = rule.text_source || 'name';
@@ -433,6 +438,24 @@ Object.assign(TextStyle, {
                 this.startData(tile.key);
             }
             this.tile_data[tile.key].queue.push([feature, rule, context]);
+        }
+    },
+
+    _preprocess (draw) {
+        if (!draw.font) {
+            return;
+        }
+
+        // Setup caching for colors
+        draw.font.fill = StyleParser.cacheObject(draw.font.fill);
+        if (draw.font.stroke) {
+            draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
+        }
+
+        // Convert font and text stroke and setup caching
+        draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
+        if (draw.font.stroke && draw.font.stroke.width != null) {
+            draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
     },
 

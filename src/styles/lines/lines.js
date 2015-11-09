@@ -156,16 +156,16 @@ Object.assign(Lines, {
         return style;
     },
 
-    preprocess (draw) {
-        draw.color = draw.color && { value: draw.color };
-        draw.width = draw.width && { value: draw.width };
-        draw.next_width = draw.width && { value: draw.width.value };
-        draw.z = draw.z && { value: draw.z };
+    _preprocess (draw) {
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.width = StyleParser.cacheObject(draw.width);
+        draw.next_width = StyleParser.cacheObject(draw.width); // width will be computed for next zoom
+        draw.z = StyleParser.cacheObject(draw.z);
 
         if (draw.outline) {
-            draw.outline.color = draw.outline.color && { value: draw.outline.color };
-            draw.outline.width = draw.outline.width && { value: draw.outline.width };
-            draw.outline.next_width = draw.outline.width && { value: draw.outline.width.value };
+            draw.outline.color = StyleParser.cacheObject(draw.outline.color);
+            draw.outline.width = StyleParser.cacheObject(draw.outline.width);
+            draw.outline.next_width = StyleParser.cacheObject(draw.outline.width); // width re-computed for next zoom
         }
     },
 

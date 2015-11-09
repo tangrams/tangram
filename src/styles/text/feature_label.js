@@ -23,14 +23,7 @@ export default class FeatureLabel {
         rule.font = rule.font || default_font_style;
 
         // Use fill if specified, or default
-        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.parseColor(rule.font.fill, context))) || default_font_style.fill;
-
-        // Use stroke if specified
-        if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.parseColor(rule.font.stroke.color));
-            style.stroke_width = rule.font.stroke.width || default_font_style.stroke.width;
-            style.stroke_width = style.stroke_width && parseFloat(style.stroke_width);
-        }
+        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.cacheColor(rule.font.fill, context))) || default_font_style.fill;
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -43,11 +36,18 @@ export default class FeatureLabel {
         style.family = rule.font.family || default_font_style.family;
         style.transform = rule.font.transform;
 
+        // original size (not currently used, but useful for debugging)
         style.size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
-        let [, unit_size, units] = style.size.match(FeatureLabel.font_size_re) || [];
-        style.px_logical_size = Utils.toFontPixelSize(unit_size, units); // TODO: improve pt/em conversion
-        style.px_size = style.px_logical_size * Utils.device_pixel_ratio;
-        style.stroke_width *= Utils.device_pixel_ratio;
+
+        // calculated pixel size
+        style.px_size = StyleParser.cacheProperty(rule.font.px_size, context) || default_font_style.px_size;
+
+        // Use stroke if specified
+        if (rule.font.stroke && rule.font.stroke.color) {
+            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(rule.font.stroke.color, context) || default_font_style.stroke);
+            style.stroke_width = StyleParser.cacheProperty(rule.font.stroke.width, context) || default_font_style.stroke_width;
+            style.stroke_width *= Utils.device_pixel_ratio;
+        }
 
         if (rule.font.typeface) { // 'typeface' legacy syntax, deprecate
             style.font_css = rule.font.typeface;
@@ -88,8 +88,8 @@ export default class FeatureLabel {
     }
 
     // Build CSS-style font string (to set Canvas draw state)
-    fontCSS ({ style, weight, size, family }) {
-        return [style, weight, size, family]
+    fontCSS ({ style, weight, px_size, family }) {
+        return [style, weight, px_size + 'px', family]
             .filter(x => x) // remove null props
             .join(' ');
     }
@@ -112,6 +112,3 @@ export default class FeatureLabel {
     }
 
 }
-
-// Extract font size and units
-FeatureLabel.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)/;

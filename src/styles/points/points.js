@@ -159,10 +159,10 @@ Object.assign(Points, {
         return style;
     },
 
-    preprocess (draw) {
-        draw.color = draw.color && { value: draw.color };
-        draw.z = draw.z && { value: draw.z };
-        draw.size = draw.size && { value: draw.size };
+    _preprocess (draw) {
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.z = StyleParser.cacheObject(draw.z);
+        draw.size = StyleParser.cacheObject(draw.size);
     },
 
     /**

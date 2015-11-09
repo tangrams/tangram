@@ -541,7 +541,7 @@ layers:
                 text:
                     font:
                         family: Helvetica
-                        size: 14px
+                        size: [[6, 12px], [9, 16px]]
                         style: normal
                         fill: black
                         stroke: { color: white, width: 3 }
