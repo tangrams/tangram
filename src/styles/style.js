@@ -129,7 +129,7 @@ export var Style = {
             this.startData(tile.key);
         }
 
-        let style = this.parseFeature(feature, rule, context);
+        let style = this.parseFeature.apply(this, arguments); // allow subclasses to pass extra args
 
         // Skip feature?
         if (!style) {
@@ -195,7 +195,7 @@ export var Style = {
             }
 
             // Subclass implementation
-            style = this._parseFeature(feature, rule_style, context);
+            style = this._parseFeature.apply(this, arguments); // allow subclasses to pass extra args
 
             return style;
         }
