@@ -19,13 +19,13 @@ import RenderState from './gl/render_state';
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
 import {Points} from './styles/points/points';
-import {TextStyle} from './styles/text/text';
+import {Text} from './styles/text/text';
 
 // Add built-in rendering styles
 StyleManager.register(Polygons);
 StyleManager.register(Lines);
 StyleManager.register(Points);
-StyleManager.register(TextStyle);
+StyleManager.register(Text);
 
 import log from 'loglevel';
 import glMatrix from 'gl-matrix';

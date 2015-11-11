@@ -3,73 +3,28 @@ import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
 import PointAnchor from '../points/point_anchor';
 
-export default class FeatureLabel {
+var TextStyle;
 
-    constructor (feature, draw, context, text, tile, default_style) {
-        this.text = text;
-        this.feature = feature;
-        this.tile_key = tile.key;
-        this.layout = this.constructLayout(feature, draw, context, tile);
-        this.style = this.constructTextStyle(feature, draw, context, default_style);
-        this.style_key = this.constructStyleKey(this.style);
-    }
+export default TextStyle  = {
 
-    getHash () {
-        let str = this.tile_key + this.style_key + this.text;
-        return Utils.hashString(str);
-    }
+    // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
+    key (settings) {
+        return [
+            settings.style,
+            settings.weight,
+            settings.family,
+            settings.px_size,
+            settings.fill,
+            settings.stroke,
+            settings.stroke_width,
+            settings.transform,
+            settings.typeface,
+            settings.text_wrap,
+            settings.align
+        ].join('/'); // typeface for legacy
+    },
 
-   constructLayout (feature, draw, context, tile) {
-        let layout = {};
-        layout.units_per_pixel = tile.units_per_pixel || 1;
-
-        // label anchors (point labels only)
-        // label will be adjusted in the given direction, relatove to its original point
-        // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
-        layout.anchor = draw.anchor;
-
-        // label offset in pixel (applied in screen space)
-        layout.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
-
-        // label buffer in pixel
-        let buffer = draw.buffer;
-        if (buffer != null) {
-            if (!Array.isArray(buffer)) {
-                buffer = [buffer, buffer]; // buffer can be 1D or 2D
-            }
-
-            buffer[0] = parseFloat(buffer[0]);
-            buffer[1] = parseFloat(buffer[1]);
-        }
-        layout.buffer = buffer || [0, 0];
-
-        // label priority (lower is higher)
-        let priority = draw.priority;
-        if (priority != null) {
-            if (typeof priority === 'function') {
-                priority = priority(context);
-            }
-        }
-        else {
-            priority = -1 >>> 0; // default to max priority value if none set
-        }
-        layout.priority = priority;
-
-        // label line exceed percentage
-        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
-            layout.line_exceed = draw.line_exceed.substr(0,draw.line_exceed.length-1);
-        }
-        else {
-            layout.line_exceed = 80;
-        }
-
-        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
-        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
-
-        return layout;
-    }
-
-    constructTextStyle (feature, draw, context, default_style) {
+    compute (feature, draw, context, default_style) {
         let style = {};
 
         draw.font = draw.font || default_style;
@@ -136,7 +91,7 @@ export default class FeatureLabel {
         style.align = draw.align || default_style.align;
 
         return style;
-    }
+    },
 
     // Build CSS-style font string (to set Canvas draw state)
     fontCSS ({ style, weight, px_size, family }) {
@@ -145,21 +100,4 @@ export default class FeatureLabel {
             .join(' ');
     }
 
-    // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
-    constructStyleKey (settings) {
-        return [
-            settings.style,
-            settings.weight,
-            settings.family,
-            settings.px_size,
-            settings.fill,
-            settings.stroke,
-            settings.stroke_width,
-            settings.transform,
-            settings.typeface,
-            settings.text_wrap,
-            settings.align
-        ].join('/'); // typeface for legacy
-    }
-
-}
+};

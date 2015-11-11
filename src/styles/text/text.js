@@ -6,14 +6,15 @@ import Utils from '../../utils/utils';
 import {Points} from '../points/points';
 import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
-import FeatureLabel from './feature_label';
+import TextStyle from './text_style';
+import LayoutStyle from './layout_style';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
 
-export let TextStyle = Object.create(Points);
+export let Text = Object.create(Points);
 
-Object.assign(TextStyle, {
+Object.assign(Text, {
     name: 'text',
     super: Points,
     built_in: true,
@@ -24,7 +25,7 @@ Object.assign(TextStyle, {
         this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = 'TextStyle-' + this.name;
+        this.main_thread_target = 'Text-' + this.name;
         if (Utils.isMainThread) {
             WorkerBroker.addTarget(this.main_thread_target, this);
         }
@@ -97,22 +98,20 @@ Object.assign(TextStyle, {
             return; // no text for this feature
         }
 
-        // Parse draw options for this feature label
-        let label_feature = new FeatureLabel(feature, draw, context, text, tile, this.default_style);
-        if (!label_feature.style) {
-            return;
-        }
-        let style_key = label_feature.style_key;
+        // Compute text style and layout settings for this feature label
+        let layout = LayoutStyle.compute(feature, draw, context, tile);
+        let text_style = TextStyle.compute(feature, draw, context, this.default_style);
+        let text_style_key = TextStyle.key(text_style);
 
         // first label in tile, or with this style?
         this.texts[tile.key] = this.texts[tile.key] || {};
-        this.texts[tile.key][style_key] = this.texts[tile.key][style_key] || {};
+        this.texts[tile.key][text_style_key] = this.texts[tile.key][text_style_key] || {};
 
         // unique text strings, grouped by text drawing style
-        if (!this.texts[tile.key][style_key][text]) {
+        if (!this.texts[tile.key][text_style_key][text]) {
             // first label with this text/style/tile combination, make a new label entry
-            this.texts[tile.key][style_key][text] = {
-                text_style: label_feature.style,
+            this.texts[tile.key][text_style_key][text] = {
+                text_style,
                 ref: 0 // # of times this text/style combo appears in tile
             };
         }
@@ -123,8 +122,7 @@ Object.assign(TextStyle, {
         }
         this.tile_data[tile.key].queue.push({
             feature, draw, context,
-            text, style_key,
-            layout: label_feature.layout
+            text, text_style_key, layout
         });
     },
 
@@ -173,8 +171,8 @@ Object.assign(TextStyle, {
                     // Build queued features
                     labels.forEach(q => {
                         let text = q.label.text;
-                        let style_key = q.style_key;
-                        let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
+                        let text_style_key = q.text_style_key;
+                        let text_info = this.texts[tile] && this.texts[tile][text_style_key] && this.texts[tile][text_style_key][text];
                         q.label.texcoords = text_info.texcoords;
 
                         this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
@@ -192,14 +190,14 @@ Object.assign(TextStyle, {
         let priorities = {}; // labels, group by priority
 
         for (let f=0; f < feature_queue.length; f++) {
-            let { feature, draw, context, text, style_key, layout } = feature_queue[f];
-            let text_info = this.texts[tile][style_key][text];
+            let { feature, draw, context, text, text_style_key, layout } = feature_queue[f];
+            let text_info = this.texts[tile][text_style_key][text];
 
             let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, layout);
             for (let i = 0; i < labels.length; ++i) {
                 let label = labels[i];
                 priorities[layout.priority] = priorities[layout.priority] || [];
-                priorities[layout.priority].push({ feature, draw, context, text, style_key, label });
+                priorities[layout.priority].push({ feature, draw, context, text, text_style_key, label });
             }
         }
 
@@ -220,14 +218,14 @@ Object.assign(TextStyle, {
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
-                let { label, style_key } = labels[priority][i];
+                let { label, text_style_key } = labels[priority][i];
 
                 // test the label for intersections with other labels in the tile
                 if (!label.discard(this.aabbs[tile])) {
                     keep_labels.push(labels[priority][i]);
 
                     // increment a count of how many times this style is used in the tile
-                    texts[style_key][label.text].ref++;
+                    texts[text_style_key][label.text].ref++;
                 }
             }
         }
@@ -276,7 +274,7 @@ Object.assign(TextStyle, {
         canvas.rasterize(tile, texts, texture_size);
 
         // create a texture
-        let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
+        let t = 'labels-' + tile + '-' + (Text.texture_id++);
         let texture = new Texture(this.gl, t);
         texture.setCanvas(canvas.canvas, {
             filtering: 'linear',
@@ -344,4 +342,4 @@ Object.assign(TextStyle, {
 
 });
 
-TextStyle.texture_id = 0; // namespaces per-tile label textures
+Text.texture_id = 0; // namespaces per-tile label textures
