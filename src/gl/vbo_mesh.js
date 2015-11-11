@@ -1,8 +1,6 @@
 /* global VBOMesh */
 // Manage rendering for primitives
-import GLSL from './glsl';
 import ShaderProgram from './shader_program';
-import Texture from './texture';
 import VertexArrayObject from './vao';
 import log from 'loglevel';
 
