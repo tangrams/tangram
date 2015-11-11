@@ -93,13 +93,6 @@ export default class VBOMesh  {
         this.buffer = null;
         delete this.vertex_data;
 
-        // Free texture uniforms that are owned by this mesh
-        for (let {type, value} of GLSL.parseUniforms(this.uniforms)) {
-            if (type === 'sampler2D' && Texture.textures[value]) {
-                Texture.textures[value].destroy();
-            }
-        }
-
         return true;
     }
 
