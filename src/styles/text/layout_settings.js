@@ -1,6 +1,6 @@
-var LayoutStyle;
+var LayoutSettings;
 
-export default LayoutStyle = {
+export default LayoutSettings = {
 
    compute (feature, draw, context, tile) {
         let layout = {};

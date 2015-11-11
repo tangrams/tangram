@@ -3,9 +3,9 @@ import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
 import PointAnchor from '../points/point_anchor';
 
-var TextStyle;
+var TextSettings;
 
-export default TextStyle  = {
+export default TextSettings = {
 
     // A key for grouping all labels of the same text style (e.g. same Canvas state, to minimize state changes)
     key (settings) {
