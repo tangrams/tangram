@@ -37,18 +37,6 @@ Object.assign(TextStyle, {
         // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
-        // default font style
-        this.default_style = {
-            style: 'normal',
-            weight: null,
-            size: '12px',
-            px_size: 12,
-            family: 'Helvetica',
-            fill: 'white',
-            text_wrap: 15,
-            align: 'center'
-        };
-
         this.reset();
     },
 
@@ -100,7 +88,7 @@ Object.assign(TextStyle, {
 
         // Compute text style and layout settings for this feature label
         let layout = LayoutSettings.compute(feature, draw, context, tile);
-        let text_settings = TextSettings.compute(feature, draw, context, this.default_style);
+        let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
         // first label in tile, or with this style?
