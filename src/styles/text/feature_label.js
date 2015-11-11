@@ -5,11 +5,12 @@ import PointAnchor from '../points/point_anchor';
 
 export default class FeatureLabel {
 
-    constructor (feature, rule, context, text, tile, default_font_style) {
+    constructor (feature, draw, context, text, tile, default_style) {
         this.text = text;
         this.feature = feature;
         this.tile_key = tile.key;
-        this.style = this.constructFontStyle(feature, rule, context, default_font_style);
+        this.layout = this.constructLayout(feature, draw, context, tile);
+        this.style = this.constructTextStyle(feature, draw, context, default_style);
         this.style_key = this.constructStyleKey(this.style);
     }
 
@@ -18,12 +19,63 @@ export default class FeatureLabel {
         return Utils.hashString(str);
     }
 
-    constructFontStyle (feature, rule, context, default_font_style) {
+   constructLayout (feature, draw, context, tile) {
+        let layout = {};
+        layout.units_per_pixel = tile.units_per_pixel || 1;
+
+        // label anchors (point labels only)
+        // label will be adjusted in the given direction, relatove to its original point
+        // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+        layout.anchor = draw.anchor;
+
+        // label offset in pixel (applied in screen space)
+        layout.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
+
+        // label buffer in pixel
+        let buffer = draw.buffer;
+        if (buffer != null) {
+            if (!Array.isArray(buffer)) {
+                buffer = [buffer, buffer]; // buffer can be 1D or 2D
+            }
+
+            buffer[0] = parseFloat(buffer[0]);
+            buffer[1] = parseFloat(buffer[1]);
+        }
+        layout.buffer = buffer || [0, 0];
+
+        // label priority (lower is higher)
+        let priority = draw.priority;
+        if (priority != null) {
+            if (typeof priority === 'function') {
+                priority = priority(context);
+            }
+        }
+        else {
+            priority = -1 >>> 0; // default to max priority value if none set
+        }
+        layout.priority = priority;
+
+        // label line exceed percentage
+        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
+            layout.line_exceed = draw.line_exceed.substr(0,draw.line_exceed.length-1);
+        }
+        else {
+            layout.line_exceed = 80;
+        }
+
+        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
+
+        return layout;
+    }
+
+    constructTextStyle (feature, draw, context, default_style) {
         let style = {};
-        rule.font = rule.font || default_font_style;
+
+        draw.font = draw.font || default_style;
 
         // Use fill if specified, or default
-        style.fill = (rule.font.fill && Utils.toCSSColor(StyleParser.cacheColor(rule.font.fill, context))) || default_font_style.fill;
+        style.fill = (draw.font.fill && Utils.toCSSColor(StyleParser.cacheColor(draw.font.fill, context))) || default_style.fill;
 
         // Font properties are modeled after CSS names:
         // - family: Helvetica, Futura, etc.
@@ -31,26 +83,26 @@ export default class FeatureLabel {
         // - style: normal, italic, oblique
         // - weight: normal, bold, etc.
         // - transform: capitalize, uppercase, lowercase
-        style.style = rule.font.style || default_font_style.style;
-        style.weight = rule.font.weight || default_font_style.weight;
-        style.family = rule.font.family || default_font_style.family;
-        style.transform = rule.font.transform;
+        style.style = draw.font.style || default_style.style;
+        style.weight = draw.font.weight || default_style.weight;
+        style.family = draw.font.family || default_style.family;
+        style.transform = draw.font.transform;
 
         // original size (not currently used, but useful for debugging)
-        style.size = rule.font.size || rule.font.typeface || default_font_style.size; // TODO: 'typeface' legacy syntax, deprecate
+        style.size = draw.font.size || draw.font.typeface || default_style.size; // TODO: 'typeface' legacy syntax, deprecate
 
         // calculated pixel size
-        style.px_size = StyleParser.cacheProperty(rule.font.px_size, context) || default_font_style.px_size;
+        style.px_size = StyleParser.cacheProperty(draw.font.px_size, context) || default_style.px_size;
 
         // Use stroke if specified
-        if (rule.font.stroke && rule.font.stroke.color) {
-            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(rule.font.stroke.color, context) || default_font_style.stroke);
-            style.stroke_width = StyleParser.cacheProperty(rule.font.stroke.width, context) || default_font_style.stroke_width;
+        if (draw.font.stroke && draw.font.stroke.color) {
+            style.stroke = Utils.toCSSColor(StyleParser.cacheColor(draw.font.stroke.color, context) || default_style.stroke);
+            style.stroke_width = StyleParser.cacheProperty(draw.font.stroke.width, context) || default_style.stroke_width;
             style.stroke_width *= Utils.device_pixel_ratio;
         }
 
-        if (rule.font.typeface) { // 'typeface' legacy syntax, deprecate
-            style.font_css = rule.font.typeface;
+        if (draw.font.typeface) { // 'typeface' legacy syntax, deprecate
+            style.font_css = draw.font.typeface;
         }
         else {
             style.font_css = this.fontCSS(style);
@@ -58,8 +110,7 @@ export default class FeatureLabel {
 
         // Word wrap and text alignment
         // Not a font properties, but affect atlas of unique text textures
-        let text_wrap = rule.text_wrap; // use explicitly set value
-
+        let text_wrap = draw.text_wrap; // use explicitly set value
         if (text_wrap == null && Geo.geometryType(feature.geometry.type) !== 'line') {
             // point labels (for point and polygon features) have word wrap on w/default max length,
             // line labels default off
@@ -68,21 +119,21 @@ export default class FeatureLabel {
 
         // setting to 'true' causes default wrap value to be used
         if (text_wrap === true) {
-            text_wrap = default_font_style.text_wrap;
+            text_wrap = default_style.text_wrap;
         }
         style.text_wrap = text_wrap;
 
         // default alignment to match anchor
-        if (!rule.align && rule.anchor && rule.anchor !== 'center') {
-            if (PointAnchor.isLeftAnchor(rule.anchor)) {
-                rule.align = 'right';
+        if (!draw.align && draw.anchor && draw.anchor !== 'center') {
+            if (PointAnchor.isLeftAnchor(draw.anchor)) {
+                draw.align = 'right';
             }
-            else if (PointAnchor.isRightAnchor(rule.anchor)) {
-                rule.align = 'left';
+            else if (PointAnchor.isRightAnchor(draw.anchor)) {
+                draw.align = 'left';
             }
         }
 
-        style.align = rule.align || default_font_style.align;
+        style.align = draw.align || default_style.align;
 
         return style;
     }

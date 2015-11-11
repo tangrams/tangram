@@ -44,10 +44,12 @@ export default class CanvasText {
                 this.setFont(tile, text_style); // TODO: only set once above
                 Object.assign(
                     text_infos[text],
-                    this.textSize(text, tile, {
-                        transform: text_style.transform,
-                        text_wrap: text_style.text_wrap
-                    })
+                    this.textSize(
+                        text,
+                        tile,
+                        text_style.transform,
+                        text_style.text_wrap
+                    )
                 );
             }
         }
@@ -57,7 +59,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, tile, { transform, text_wrap }) {
+    textSize (text, tile, transform, text_wrap) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;

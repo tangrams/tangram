@@ -7,7 +7,6 @@ import {Points} from '../points/points';
 import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import FeatureLabel from './feature_label';
-import LabelOptions from './label_options';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -38,7 +37,7 @@ Object.assign(TextStyle, {
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
         // default font style
-        this.default_font_style = {
+        this.default_style = {
             style: 'normal',
             weight: null,
             size: '12px',
@@ -100,84 +99,34 @@ Object.assign(TextStyle, {
             return; // no text for this feature
         }
 
-        if (!this.texts[tile.key]) {
-            // this is the first label in the tile, make a new tile entry
-            // eg "osm/15/9650/12319/15"
-            this.texts[tile.key] = {};
-        }
-
-        let label_feature = new FeatureLabel(feature, draw, context, text, tile, this.default_font_style);
+        // Parse draw options for this feature label
+        let label_feature = new FeatureLabel(feature, draw, context, text, tile, this.default_style);
         if (!label_feature.style) {
             return;
         }
-
         let style_key = label_feature.style_key;
-        if (!this.texts[tile.key][style_key]) {
-            // first label with this style in this tile, make a new style entry
-            // example: "100 24px Helvetica/rgb(102,102,102)/rgb(255,255,255)/8"
-            this.texts[tile.key][style_key] = {};
-        }
 
-        // label priority (lower is higher)
-        let priority = draw.priority;
-        if (priority != null) {
-            if (typeof priority === 'function') {
-                priority = priority(context);
-            }
-        }
-        else {
-            priority = -1 >>> 0; // default to max priority value if none set
-        }
-
-        // label offset in pixel (applied in screen space)
-        let offset = draw.offset || [0, 0];
-        offset[0] = parseFloat(offset[0]);
-        offset[1] = parseFloat(offset[1]); // y-point down
-
-        // label anchors (point labels only)
-        // label will be adjusted in the given direction, relatove to its original point
-        // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
-        let anchor = draw.anchor;
-
-        // label buffer in pixel
-        let buffer = draw.buffer;
-        if (buffer != null) {
-            if (!Array.isArray(buffer)) {
-                buffer = [buffer, buffer]; // buffer can be 1D or 2D
-            }
-
-            buffer[0] = parseFloat(buffer[0]);
-            buffer[1] = parseFloat(buffer[1]);
-        }
-
-        // label line exceed percentage
-        let line_exceed;
-        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
-            line_exceed = draw.line_exceed.substr(0,draw.line_exceed.length-1);
-        }
+        // first label in tile, or with this style?
+        this.texts[tile.key] = this.texts[tile.key] || {};
+        this.texts[tile.key][style_key] = this.texts[tile.key][style_key] || {};
 
         // unique text strings, grouped by text drawing style
         if (!this.texts[tile.key][style_key][text]) {
             // first label with this text/style/tile combination, make a new label entry
             this.texts[tile.key][style_key][text] = {
                 text_style: label_feature.style,
-                units_per_pixel: tile.units_per_pixel,
-                priority,
-                offset,
-                buffer,
-                anchor,
-                line_exceed,
-                move_into_tile: draw.move_into_tile,
-                ref: 0
+                ref: 0 // # of times this text/style combo appears in tile
             };
         }
 
+        // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
             this.startData(tile.key);
         }
         this.tile_data[tile.key].queue.push({
             feature, draw, context,
-            text, style_key
+            text, style_key,
+            layout: label_feature.layout
         });
     },
 
@@ -230,7 +179,7 @@ Object.assign(TextStyle, {
                         let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
                         q.label.texcoords = text_info.texcoords;
 
-                        this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label, text_info);
+                        this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
                     });
                 }
 
@@ -241,29 +190,26 @@ Object.assign(TextStyle, {
         });
     },
 
-    createLabels (tile, features) {
+    createLabels (tile, feature_queue) {
         let priorities = {}; // labels, group by priority
 
-        for (let f=0; f < features.length; f++) {
-            // let { feature, text, text_info, style_key } = features[f];
-            let { feature, draw, context, text, style_key } = features[f];
+        for (let f=0; f < feature_queue.length; f++) {
+            let { feature, draw, context, text, style_key, layout } = feature_queue[f];
             let text_info = this.texts[tile][style_key][text];
-            let options = new LabelOptions(text_info);
 
-            let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
+            let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, layout);
             for (let i = 0; i < labels.length; ++i) {
                 let label = labels[i];
-
-                priorities[text_info.priority] = priorities[text_info.priority] || [];
-                priorities[text_info.priority].push({ feature, draw, context, text, style_key, label });
+                priorities[layout.priority] = priorities[layout.priority] || [];
+                priorities[layout.priority].push({ feature, draw, context, text, style_key, label });
             }
         }
 
         return priorities;
     },
 
-    // test all labels for collisions -
-    // when two collide, discard the lower-priority label
+    // Test labels for collisions, higher to lower priority
+    // When two collide, discard the lower-priority label
     discardLabels (tile, labels, texts) {
         this.aabbs[tile] = [];
         let keep_labels = [];
@@ -276,7 +222,7 @@ Object.assign(TextStyle, {
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
-                let { feature, label, style_key } = labels[priority][i];
+                let { label, style_key } = labels[priority][i];
 
                 // test the label for intersections with other labels in the tile
                 if (!label.discard(this.aabbs[tile])) {
@@ -288,18 +234,18 @@ Object.assign(TextStyle, {
             }
         }
 
+        // Remove text/style combinations that have no visible labels
         for (let style in texts) {
             for (let text in texts[style]) {
-                if (texts[style][text].ref < 1) { // if this style isn't being used
-                    delete texts[style][text]; // cleanup
+                // no labels for this text
+                if (texts[style][text].ref < 1) {
+                    delete texts[style][text];
                 }
             }
         }
-
         for (let style in texts) {
-            let text_infos = texts[style];
-            if (Object.keys(text_infos).length === 0) {
-                // No labels for this style
+            // no labels for this style
+            if (Object.keys(texts[style]).length === 0) {
                 delete texts[style];
             }
         }
@@ -314,7 +260,6 @@ Object.assign(TextStyle, {
         if(!this.canvas[tile]) {
             this.canvas[tile] = new CanvasText();
         }
-
         return this.canvas[tile].textSizes(tile, texts);
     },
 
@@ -351,18 +296,19 @@ Object.assign(TextStyle, {
         return { texts, texture };
     },
 
+    // Sets up caching for draw rule properties
     _preprocess (draw) {
         if (!draw.font) {
             return;
         }
 
-        // Setup caching for colors
+        // Colors
         draw.font.fill = StyleParser.cacheObject(draw.font.fill);
         if (draw.font.stroke) {
             draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
         }
 
-        // Convert font and text stroke and setup caching
+        // Convert font and text stroke sizes
         draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
@@ -371,23 +317,10 @@ Object.assign(TextStyle, {
 
     // Parse feature is called "late", after all labels have been created
     // The usual parsing done by _parseFeature() is handled by addFeature() above
+    // Here we just pass the label through to the build functions below
     _parseFeature (feature, draw, context, label) {
-        let text = label.text;
-        let style = this.feature_style;
-
-        style.label = label;
-
-        // TODO: point style (parent class) requires a color, setting it to white for now,
-        // but could be made conditional in the vertex layout to save space
-        style.color = TextStyle.white;
-
-        // tell the point style (base class) that we want to render polygon labels at the polygon's centroid
-        style.centroid = true;
-
-        // points can be placed off the ground
-        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
-
-        return style;
+        this.feature_style.label = label;
+        return this.feature_style;
     },
 
     build (style, vertex_data) {
@@ -418,5 +351,4 @@ Object.assign(TextStyle, {
 
 });
 
-TextStyle.texture_id = 0;
-TextStyle.white = [1, 1, 1, 1];
+TextStyle.texture_id = 0; // namespaces per-tile label textures
