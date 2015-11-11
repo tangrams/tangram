@@ -262,7 +262,7 @@ Object.assign(TextStyle, {
         canvas.rasterize(tile, texts, texture_size);
 
         // create a texture
-        let t = 'labels-' + tile + '-' + (Text.texture_id++);
+        let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
         let texture = new Texture(this.gl, t);
         texture.setCanvas(canvas.canvas, {
             filtering: 'linear',
@@ -330,4 +330,4 @@ Object.assign(TextStyle, {
 
 });
 
-Text.texture_id = 0; // namespaces per-tile label textures
+TextStyle.texture_id = 0; // namespaces per-tile label textures
