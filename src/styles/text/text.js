@@ -54,7 +54,6 @@ Object.assign(TextStyle, {
     reset() {
         this.super.reset.call(this);
         this.texts = {}; // unique texts, grouped by tile, by style
-        this.textures = {};
         this.canvas = {};
         this.aabbs = {};
     },
@@ -62,7 +61,6 @@ Object.assign(TextStyle, {
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.texts[tile];
-        delete this.textures[tile];
         delete this.canvas[tile];
         delete this.aabbs[tile];
     },
@@ -271,29 +269,24 @@ Object.assign(TextStyle, {
 
         let canvas = this.canvas[tile];
         let texture_size = canvas.setTextureTextPositions(texts);
-
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
-        // update the canvas to texture size
+        // update canvas size & rasterize all the text strings we need
         canvas.resize(...texture_size);
-
-        // create a texture
-        let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.textures[tile] = new Texture(this.gl, texture);
-
-        // ask for rasterization for the text set
         canvas.rasterize(tile, texts, texture_size);
 
-        this.textures[tile].setCanvas(canvas.canvas, {
+        // create a texture
+        let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
+        let texture = new Texture(this.gl, t);
+        texture.setCanvas(canvas.canvas, {
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });
 
-        // we don't need tile canvas/texture once it has been copied to to GPU
-        delete this.textures[tile];
+        // we don't need tile canvas once it has been copied to to GPU
         delete this.canvas[tile];
 
-        return { texts, texture };
+        return { texts, texture: t }; // texture is returned by name (not instance)
     },
 
     // Sets up caching for draw rule properties
