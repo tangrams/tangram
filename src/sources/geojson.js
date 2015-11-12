@@ -1,4 +1,5 @@
 import DataSource, {NetworkSource, NetworkTileSource} from './data_source';
+import {MVTSource} from './mvt';
 import Geo from '../geo';
 
 // For tiling GeoJSON client-side
@@ -113,64 +114,38 @@ export class GeoJSONSource extends NetworkSource {
             };
 
             for (let feature of t.features) {
-                let geom; // copy geometry (don't want to modify internal geojson-vt data)
-                let type;
+                // GeoJSON feature
+                let f = {
+                    type: 'Feature',
+                    geometry: {},
+                    properties: feature.tags
+                };
 
                 if (feature.type === 1) {
-                    geom = feature.geometry.map(coord => [coord[0], coord[1]]);
-                    type = 'MultiPoint';
+                    f.geometry.coordinates = feature.geometry.map(coord => [coord[0], coord[1]]);
+                    f.geometry.type = 'MultiPoint';
                 }
                 else if (feature.type === 2 || feature.type === 3) {
-                    geom = feature.geometry.map(ring =>
+                    f.geometry.coordinates = feature.geometry.map(ring =>
                         ring.map(coord => [coord[0], coord[1]])
                     );
 
                     if (feature.type === 2) {
-                        type = 'MultiLineString';
+                        f.geometry.type = 'MultiLineString';
                     }
                     else  {
-                        type = 'MultiPolygon';
-                        geom = this.decodeMultiPolygon(geom); // un-flatten rings
+                        f.geometry = MVTSource.decodeMultiPolygon(f.geometry); // un-flatten rings
                     }
                 }
                 else {
                     continue;
                 }
 
-                let f = {
-                    type: 'Feature',
-                    geometry: {
-                        type,
-                        coordinates: geom
-                    },
-                    properties: feature.tags
-                };
-
                 collection.features.push(f);
             }
         }
 
         return collection;
-    }
-
-    // Decode multipolygons, which are encoded as a single set of rings
-    // Outer rings are wound CW, inner are CCW
-    // A CW ring indicates the start of a new polygon
-    decodeMultiPolygon (geom) {
-        let polys = [];
-        let poly = [];
-        for (let ring of geom) {
-            let winding = Geo.ringWinding(ring);
-            if (winding === 'CW' && poly.length > 0) {
-                polys.push(poly);
-                poly = [];
-            }
-            poly.push(ring);
-        }
-        if (poly.length > 0) {
-            polys.push(poly);
-        }
-        return polys;
     }
 
     formatUrl (dest) {
