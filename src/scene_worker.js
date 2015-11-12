@@ -54,7 +54,8 @@ Utils.isWorkerThread && Object.assign(self, {
         }
 
         // Create data sources
-        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
+        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources)); // parse new sources
+        self.sources.tiles = {}; // clear previous sources
         for (let name in config.sources) {
             let source = DataSource.create(Object.assign({}, config.sources[name], {name}));
             if (!source) {
