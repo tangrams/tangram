@@ -1,8 +1,6 @@
 /* global VBOMesh */
 // Manage rendering for primitives
-import GLSL from './glsl';
 import ShaderProgram from './shader_program';
-import Texture from './texture';
 import VertexArrayObject from './vao';
 import log from 'loglevel';
 
@@ -92,13 +90,6 @@ export default class VBOMesh  {
         this.gl.deleteBuffer(this.buffer);
         this.buffer = null;
         delete this.vertex_data;
-
-        // Free texture uniforms that are owned by this mesh
-        for (let {type, value} of GLSL.parseUniforms(this.uniforms)) {
-            if (type === 'sampler2D' && Texture.textures[value]) {
-                Texture.textures[value].destroy();
-            }
-        }
 
         return true;
     }

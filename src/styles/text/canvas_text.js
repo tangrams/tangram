@@ -39,15 +39,17 @@ export default class CanvasText {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
-                let text_style = text_infos[text].text_style;
+                let text_settings = text_infos[text].text_settings;
                 // update text sizes
-                this.setFont(tile, text_style); // TODO: only set once above
+                this.setFont(tile, text_settings); // TODO: only set once above
                 Object.assign(
                     text_infos[text],
-                    this.textSize(text, tile, {
-                        transform: text_style.transform,
-                        text_wrap: text_style.text_wrap
-                    })
+                    this.textSize(
+                        text,
+                        tile,
+                        text_settings.transform,
+                        text_settings.text_wrap
+                    )
                 );
             }
         }
@@ -57,7 +59,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, tile, { transform, text_wrap }) {
+    textSize (text, tile, transform, text_wrap) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -180,11 +182,11 @@ export default class CanvasText {
             for (let text in text_infos) {
                 let info = text_infos[text];
 
-                this.setFont(tile, info.text_style); // TODO: only set once above
+                this.setFont(tile, info.text_settings); // TODO: only set once above
                 this.drawText(info.lines, info.position, info.size, tile, {
-                    stroke: info.text_style.stroke,
-                    transform: info.text_style.transform,
-                    align: info.text_style.align
+                    stroke: info.text_settings.stroke,
+                    transform: info.text_settings.transform,
+                    align: info.text_settings.align
                 });
 
                 info.texcoords = Builders.getTexcoordsForSprite(
