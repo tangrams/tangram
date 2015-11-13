@@ -1,4 +1,5 @@
 import DataSource, {NetworkTileSource} from './data_source';
+import Geo from '../geo';
 
 import Pbf from 'pbf';
 import {VectorTile, VectorTileFeature} from 'vector-tile';
@@ -69,7 +70,7 @@ export class MVTSource extends NetworkTileSource {
                     }
                 }
                 else if (VectorTileFeature.types[feature.type] === 'Polygon') {
-                    geometry.type = 'Polygon';
+                    geometry = MVTSource.decodeMultiPolygon(geometry); // un-flatten rings
                 }
 
                 layer_geojson.features.push(feature_geojson);
@@ -77,6 +78,37 @@ export class MVTSource extends NetworkTileSource {
             layers[l] = layer_geojson;
         }
         return layers;
+    }
+
+    // Decode multipolygons, which are encoded as a single set of rings
+    // Outer rings are wound CW, inner are CCW
+    // A CW ring indicates the start of a new polygon
+    static decodeMultiPolygon (geom) {
+        let polys = [];
+        let poly = [];
+        for (let ring of geom.coordinates) {
+            let winding = Geo.ringWinding(ring);
+            if (winding === 'CW' && poly.length > 0) {
+                polys.push(poly);
+                poly = [];
+            }
+            poly.push(ring);
+        }
+        if (poly.length > 0) {
+            polys.push(poly);
+        }
+
+        // Single or multi?
+        if (polys.length === 1) {
+            geom.type = 'Polygon';
+            geom.coordinates = polys[0];
+        }
+        else {
+            geom.type = 'MultiPolygon';
+            geom.coordinates = polys;
+        }
+
+        return geom;
     }
 
 }
