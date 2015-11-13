@@ -4,7 +4,7 @@
 import Utils from './utils/utils';
 
 // The leaflet layer plugin is currently the primary public API
-import {LeafletLayer, leafletLayer} from './leaflet_layer';
+import {leafletLayer} from './leaflet_layer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import {SceneWorker} from '../src/scene_worker';
@@ -64,7 +64,6 @@ if (Utils.isMainThread) {
     WorkerBroker.addTarget('Texture', Texture);
 
     window.Tangram = module.exports = {
-        LeafletLayer,
         leafletLayer,
         debug,
         version: version.string

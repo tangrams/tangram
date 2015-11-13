@@ -94,7 +94,7 @@ export default class LabelLine extends Label {
         return aabb;
     }
 
-    moveInTile () {
+    moveIntoTile () {
         let in_tile = false;
         let fits_to_segment = this.fitToSegment();
 

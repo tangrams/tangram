@@ -197,7 +197,7 @@ export default TileManager = {
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
             Tile.abortBuild(tile);
-            this.scene.updateBounds();
+            this.updateTilesForView();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
@@ -205,7 +205,7 @@ export default TileManager = {
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
-            this.scene.updateBounds();
+            this.updateTilesForView();
         }
         else {
             // Update tile with properties from worker

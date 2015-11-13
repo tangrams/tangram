@@ -1,8 +1,8 @@
 var version;
 export default version = {
-    string: 'v0.3.3',
+    string: 'v0.4.0',
     major: 0,
-    minor: 3,
-    patch: 3,
+    minor: 4,
+    patch: 0,
     pre: false
 };

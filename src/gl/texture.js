@@ -79,6 +79,8 @@ export default class Texture {
             url = Utils.addBaseURL(url, Texture.base_url);
         }
 
+        url = Utils.cacheBusterForUrl(url);
+
         this.loading = new Promise((resolve, reject) => {
             this.image = new Image();
             this.image.onload = () => {

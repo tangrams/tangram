@@ -1,8 +1,8 @@
 // Vertex position in model space: [0, 1] range over the local tile
 // Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.
 #ifdef TANGRAM_VERTEX_SHADER
-vec3 modelPosition() {
-    return SHORT(a_position.xyz) / TANGRAM_TILE_SCALE;
+vec4 modelPosition() {
+    return vec4(SHORT(a_position.xyz) / TANGRAM_TILE_SCALE, 1.);
 }
 #endif
 

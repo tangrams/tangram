@@ -3,7 +3,6 @@
 
 import log from 'loglevel';
 import yaml from 'js-yaml';
-import bowser from 'bowser';
 import Geo from '../geo';
 
 var Utils;
@@ -65,7 +64,13 @@ Utils.cacheBusterForUrl = function (url) {
     if (url.search(/^(data|blob):/) > -1) {
         return url; // no cache-busting on object or data URLs
     }
-    return url + '?' + (+new Date());
+    if (url.indexOf('?') > -1) {
+        url += '&' + (+new Date());
+    }
+    else {
+        url += '?' + (+new Date());
+    }
+    return url;
 };
 
 // Polyfill (for Safari compatibility)
@@ -148,11 +153,6 @@ Utils.loadResource = function (source) {
             resolve(source);
         }
     });
-};
-
-// Wrapper for browser info
-Utils.browser = function () {
-    return bowser;
 };
 
 // Needed for older browsers that still support WebGL (Safari 6 etc.)
@@ -422,11 +422,6 @@ Utils.radToDeg = function (radians) {
 
 Utils.toCanvasColor = function (color) {
     return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
-};
-
-// Some Canvas implementations have pre-multiplied alpha that we need to adjust for
-Utils.canvasPremultipliedAlpha = function () {
-    return (Utils.browser().ios ? false : true);
 };
 
 Utils.toPixelSize = function (size, kind) {
