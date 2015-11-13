@@ -66,6 +66,9 @@ export default class Tile {
 
     static key (coords, source, style_zoom) {
         coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
+            return; // cull tiles out of range (x will wrap)
+        }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
