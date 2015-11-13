@@ -50,8 +50,8 @@ varying vec4 v_world_position;
 #pragma tangram: global
 
 void main() {
-    // Adds vertex shader support for feature selection
-    #pragma tangram: feature-selection-vertex
+    // Initialize globals
+    #pragma tangram: setup
 
     // Texture UVs
     #ifdef TANGRAM_TEXTURE_COORDS

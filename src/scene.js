@@ -1011,7 +1011,6 @@ export default class Scene {
         }
 
         // (Re)build styles from config
-        StyleManager.init();
         this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
@@ -1158,6 +1157,8 @@ export default class Scene {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};
+
+        StyleManager.init();
         this.createCamera();
         this.createLights();
         this.loadDataSources();
