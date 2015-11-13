@@ -27,6 +27,9 @@ varying vec4 v_world_position;
 #endif
 #define TANGRAM_FADE_START (1. - TANGRAM_FADE_RANGE)
 
+#pragma tangram: camera
+#pragma tangram: material
+#pragma tangram: lighting
 #pragma tangram: global
 
 void main (void) {
