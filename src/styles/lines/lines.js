@@ -219,29 +219,27 @@ Object.assign(Lines, {
         var vertex_template = this.makeVertexTemplate(style);
 
         // Main line
-        if (style.color && style.width) {
-            Builders.buildPolylines(
-                lines,
-                style.width,
-                vertex_data,
-                vertex_template,
-                {
-                    cap: style.cap,
-                    join: style.join,
-                    scaling_index: this.vertex_layout.index.a_extrude,
-                    scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
-                    texcoord_index: this.vertex_layout.index.a_texcoord,
-                    texcoord_scale: this.texcoord_scale,
-                    texcoord_normalize: 65535, // scale UVs to unsigned shorts
-                    closed_polygon: options && options.closed_polygon,
-                    remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
-                    tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
-                }
-            );
-        }
+        Builders.buildPolylines(
+            lines,
+            style.width,
+            vertex_data,
+            vertex_template,
+            {
+                cap: style.cap,
+                join: style.join,
+                scaling_index: this.vertex_layout.index.a_extrude,
+                scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
+                texcoord_index: this.vertex_layout.index.a_texcoord,
+                texcoord_scale: this.texcoord_scale,
+                texcoord_normalize: 65535, // scale UVs to unsigned shorts
+                closed_polygon: options && options.closed_polygon,
+                remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
+                tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
+            }
+        );
 
         // Outline
-         if (style.outline && style.outline.color && style.outline.width) {
+         if (style.outline && style.outline.color != null && style.outline.width != null) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
                 outline_style.addFeature(context.feature, style.outline, context);
