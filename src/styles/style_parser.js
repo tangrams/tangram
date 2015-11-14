@@ -150,6 +150,10 @@ StyleParser.cacheObject = function (obj, transform = null) {
         return;
     }
 
+    if (obj.value) {
+        return { value: obj.value }; // clone existing cache object
+    }
+
     if (typeof transform === 'function') {
         if (Array.isArray(obj) && Array.isArray(obj[0])) {
             obj = obj.map(v => [v[0], transform(v[1])]);
