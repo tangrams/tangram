@@ -13,7 +13,9 @@ import Texture from './gl/texture';
 export var SceneWorker = self;
 
 // Worker functionality will only be defined in worker thread
-Utils.isWorkerThread && Object.assign(self, {
+if (Utils.isWorkerThread) {
+
+Object.assign(self, {
 
     FeatureSelection,
 
@@ -246,3 +248,7 @@ Utils.isWorkerThread && Object.assign(self, {
     }
 
 });
+
+WorkerBroker.addTarget('self', self);
+
+}

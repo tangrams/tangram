@@ -60,8 +60,6 @@ var debug = {
 
 // Window can only be set in main thread
 if (Utils.isMainThread) {
-    // Main thread objects that can be called from workers
-    WorkerBroker.addTarget('Texture', Texture);
 
     window.Tangram = module.exports = {
         leafletLayer,
