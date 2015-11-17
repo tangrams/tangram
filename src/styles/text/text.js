@@ -212,7 +212,7 @@ Object.assign(TextStyle, {
                 let { label, text_settings_key } = labels[priority][i];
 
                 // test the label for intersections with other labels in the tile
-                if (!label.discard(this.aabbs[tile])) {
+                if (!layout.collide || !label.discard(this.aabbs[tile])) {
                     keep_labels.push(labels[priority][i]);
 
                     // increment a count of how many times this style is used in the tile

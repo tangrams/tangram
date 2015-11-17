@@ -46,6 +46,10 @@ export default LayoutSettings = {
             layout.line_exceed = 80;
         }
 
+        // collision flag
+        layout.collide = (draw.collide === false) ? false : true;
+
+        // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 
