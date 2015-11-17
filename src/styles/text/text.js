@@ -8,6 +8,7 @@ import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import TextSettings from './text_settings';
 import LayoutSettings from './layout_settings';
+import RepeatGroup from './repeat_group';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -44,14 +45,12 @@ Object.assign(TextStyle, {
         this.super.reset.call(this);
         this.texts = {}; // unique texts, grouped by tile, by style
         this.canvas = {};
-        this.aabbs = {};
     },
 
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.texts[tile];
         delete this.canvas[tile];
-        delete this.aabbs[tile];
     },
 
     // Override
@@ -90,7 +89,7 @@ Object.assign(TextStyle, {
         }
 
         // Compute text style and layout settings for this feature label
-        let layout = LayoutSettings.compute(feature, draw, context, tile);
+        let layout = LayoutSettings.compute(feature, draw, text, context, tile);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
@@ -188,7 +187,10 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels.length; ++i) {
                 let label = labels[i];
                 priorities[layout.priority] = priorities[layout.priority] || [];
-                priorities[layout.priority].push({ feature, draw, context, text, text_settings_key, label });
+                priorities[layout.priority].push({
+                    feature, draw, context,
+                    text, text_settings_key, layout, label
+                });
             }
         }
 
@@ -198,8 +200,11 @@ Object.assign(TextStyle, {
     // Test labels for collisions, higher to lower priority
     // When two collide, discard the lower-priority label
     discardLabels (tile, labels, texts) {
-        this.aabbs[tile] = [];
+        let aabbs = [];
         let keep_labels = [];
+
+        let repeat_groups = {};
+        let repeat_group;
 
         // Process labels by priority
         let priorities = Object.keys(labels).sort((a, b) => a - b);
@@ -209,14 +214,37 @@ Object.assign(TextStyle, {
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
-                let { label, text_settings_key } = labels[priority][i];
+                let { label, text_settings_key, layout } = labels[priority][i];
+                let settings = texts[text_settings_key][label.text];
+
+                // check for repeats
+                if (layout.repeat_dist != null) {
+                    repeat_group = repeat_groups[layout.repeat_key];
+                    if (repeat_group) {
+                        let check = repeat_group.check(label);
+                        if (check.repeat) {
+                            console.log(`discard label '${label.text}', dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(repeat_group.repeat_dist_sq)/layout.units_per_pixel}`);
+                            continue;
+                        }
+                    }
+                }
 
                 // test the label for intersections with other labels in the tile
-                if (!layout.collide || !label.discard(this.aabbs[tile])) {
+                if (!layout.collide || !label.discard(aabbs)) {
                     keep_labels.push(labels[priority][i]);
 
                     // increment a count of how many times this style is used in the tile
-                    texts[text_settings_key][label.text].ref++;
+                    settings.ref++;
+
+                    // register as placed for future repeat culling
+                    if (layout.repeat_dist != null) {
+                        if (repeat_group == null) {
+                            repeat_group =
+                                repeat_groups[layout.repeat_key] =
+                                new RepeatGroup(layout.repeat_key, layout.repeat_dist);
+                        }
+                        repeat_group.add(label);
+                    }
                 }
             }
         }

@@ -2,7 +2,7 @@ var LayoutSettings;
 
 export default LayoutSettings = {
 
-   compute (feature, draw, context, tile) {
+   compute (feature, draw, text, context, tile) {
         let layout = {};
         layout.units_per_pixel = tile.units_per_pixel || 1;
 
@@ -44,6 +44,24 @@ export default LayoutSettings = {
         }
         else {
             layout.line_exceed = 80;
+        }
+
+        // repeat rules
+        if (typeof draw.repeat_key === 'function') {
+            layout.repeat_key = draw.repeat_key(context);
+        }
+        else if (typeof draw.repeat_key === 'string') {
+            layout.repeat_key = draw.repeat_key;
+        }
+        else {
+            layout.repeat_key = draw.key + '/' + text;
+        }
+
+        if (typeof draw.repeat_dist === 'number') {
+            layout.repeat_dist = draw.repeat_dist * layout.units_per_pixel;
+        }
+        else if (draw.repeat_dist !== false) {
+            layout.repeat_dist = 200 * layout.units_per_pixel; // default
         }
 
         // collision flag
