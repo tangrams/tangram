@@ -61,7 +61,7 @@ styles:
                 color: |
                     color.rgb *=
                         abs(pnoise(
-                            (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
+                            (worldPosition().xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
                             vec3(TANGRAM_WORLD_POSITION_WRAP / 10.0))
                         ) / 4. + .75;
 
@@ -80,7 +80,7 @@ styles:
                     }
                 color: |
                     // modulate hue by z-position and time, then convert to RGB and set pixel color
-                    vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
+                    vec3 c = vec3(worldPosition().z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
     popup:
@@ -129,7 +129,7 @@ styles:
         shaders:
             blocks:
                 color: |
-                    color.rgb = vec3(min((v_world_position.z*.0005 + .65),.8));
+                    color.rgb = vec3(min((worldPosition().z*.0005 + .65),.8));
 
     icons:
         base: points
@@ -145,7 +145,7 @@ styles:
                 color: |
                     // From: http://madebyevan.com/shaders/grid/
                     // Pick a coordinate to visualize in a grid
-                    vec3 coord = v_world_position.xyz / 10.;
+                    vec3 coord = worldPosition().xyz / 10.;
 
                     // Compute anti-aliased world-space grid lines
                     vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
