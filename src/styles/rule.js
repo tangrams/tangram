@@ -1,3 +1,4 @@
+import {Styles} from './style_manager';
 import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
 import log from 'loglevel';
@@ -61,6 +62,7 @@ class Rule {
         this.id = Rule.id++;
         this.parent = parent;
         this.name = name;
+        this.full_name = this.parent ? this.parent.full_name + '.' + this.name : this.name;
         this.draw = draw;
         this.filter = filter;
         this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
@@ -252,10 +254,22 @@ export function parseRuleTree(name, rule, parent) {
     if (!empty) {
         for (let key in nonWhiteListed) {
             let property = nonWhiteListed[key];
-            if (typeof property === 'object') {
+            if (typeof property === 'object' && !Array.isArray(property)) {
                 parseRuleTree(key, property, r);
             } else {
-                log.warn('Rule property must be an object: ', name, rule, property);
+                // Invalid layer
+                let msg = `Layer value must be an object: can't create layer '${key}: ${JSON.stringify(property)}'`;
+                msg += `, under parent layer '${r.full_name}'.`;
+
+                // If the parent is a style name, this may be an incorrectly nested layer
+                if (Styles[r.name]) {
+                    msg += ` The parent '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                    if (parent) {
+                        msg += ` under '${parent.name}'`;
+                    }
+                    msg += ` instead?`;
+                }
+                log.warn(msg);
             }
         }
 
