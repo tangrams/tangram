@@ -56,6 +56,7 @@ export default LayoutSettings = {
         else {
             layout.repeat_key = draw.key + '/' + text;
         }
+        layout.repeat_key = tile.key + '/' + layout.repeat_key;
 
         if (typeof draw.repeat_dist === 'number') {
             layout.repeat_dist = draw.repeat_dist * layout.units_per_pixel;

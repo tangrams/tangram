@@ -218,15 +218,10 @@ Object.assign(TextStyle, {
                 let settings = texts[text_settings_key][label.text];
 
                 // check for repeats
-                if (layout.repeat_dist != null) {
-                    repeat_group = repeat_groups[layout.repeat_key];
-                    if (repeat_group) {
-                        let check = repeat_group.check(label);
-                        if (check.repeat) {
-                            console.log(`discard label '${label.text}', dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(repeat_group.repeat_dist_sq)/layout.units_per_pixel}`);
-                            continue;
-                        }
-                    }
+                let check = RepeatGroup.check(label, layout);
+                if (check) {
+                    console.log(`discard label '${label.text}', dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                    continue;
                 }
 
                 // test the label for intersections with other labels in the tile
@@ -237,14 +232,7 @@ Object.assign(TextStyle, {
                     settings.ref++;
 
                     // register as placed for future repeat culling
-                    if (layout.repeat_dist != null) {
-                        if (repeat_group == null) {
-                            repeat_group =
-                                repeat_groups[layout.repeat_key] =
-                                new RepeatGroup(layout.repeat_key, layout.repeat_dist);
-                        }
-                        repeat_group.add(label);
-                    }
+                    RepeatGroup.add(label, layout);
                 }
             }
         }

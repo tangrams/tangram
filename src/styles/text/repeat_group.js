@@ -18,16 +18,28 @@ export default class RepeatGroup {
             let dist_sq = dx * dx + dy * dy;
 
             if (dist_sq < this.repeat_dist_sq) {
-                // return false;
-                return { repeat: true, dist_sq };
+                return { dist_sq, repeat_dist_sq: this.repeat_dist_sq };
             }
         }
-        // return true;
-        return { repeat: false };
     }
 
     add (obj) {
         this.objs.push(obj);
     }
 
+    static check (obj, layout) {
+        if (layout.repeat_dist && this.groups[layout.repeat_key]) {
+            return this.groups[layout.repeat_key].check(obj);
+        }
+    }
+
+    static add (obj, layout) {
+        if (layout.repeat_dist && this.groups[layout.repeat_key] == null) {
+            this.groups[layout.repeat_key] = new RepeatGroup(layout.repeat_key, layout.repeat_dist);
+        }
+        this.groups[layout.repeat_key].add(obj);
+    }
+
 }
+
+RepeatGroup.groups = {};
