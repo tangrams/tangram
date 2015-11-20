@@ -34,10 +34,13 @@ export default class Texture {
             Texture.textures[this.name].destroy();
         }
 
+        // Cache texture instance and definition
         Texture.textures[this.name] = this;
+        Texture.texture_configs[this.name] = Object.assign({ name }, options);
 
         this.sprites = options.sprites;
-        this.texcoords = {};
+        this.texcoords = {};    // sprite UVs ([0, 1] range)
+        this.sizes = {};        // sprite sizes (pixel size)
     }
 
     // Destroy a single texture instance
@@ -78,6 +81,8 @@ export default class Texture {
         if (Texture.base_url) {
             url = Utils.addBaseURL(url, Texture.base_url);
         }
+
+        url = Utils.cacheBusterForUrl(url);
 
         this.loading = new Promise((resolve, reject) => {
             this.image = new Image();
@@ -241,6 +246,9 @@ export default class Texture {
                     [sprite[2], sprite[3]],
                     [this.width, this.height]
                 );
+
+                // Pixel size of sprite
+                this.sizes[s] = [sprite[2], sprite[3]];
             }
         }
     }
@@ -262,10 +270,10 @@ Texture.destroy = function (gl) {
     }
 };
 
-// Get sprite sub-area to use for texture coordinates (default is [0, 1])
-Texture.getSpriteTexcoords = function (texname, sprite) {
+// Get sprite pixel size and UVs
+Texture.getSpriteInfo = function (texname, sprite) {
     let texture = Texture.textures[texname];
-    return texture && texture.texcoords[sprite];
+    return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
 };
 
 // Create a set of textures keyed in an object
@@ -275,6 +283,13 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
+
+            // If texture already exists and definition hasn't changed, no need to re-create
+            // Note: to avoid flicker when other textures/scene items change
+            if (!Texture.changed(texname, config)) {
+                continue;
+            }
+
             let texture = new Texture(gl, texname, config);
             if (config.url) {
                 loading.push(texture.load(config.url, config));
@@ -282,6 +297,18 @@ Texture.createFromObject = function (gl, textures) {
         }
     }
     return Promise.all(loading);
+};
+
+// Indicate if a texture definition would be a change from the current cache
+Texture.changed = function (name, config) {
+    if (Texture.textures[name]) { // cached texture
+        // compare definitions
+        if (JSON.stringify(Texture.texture_configs[name]) ===
+            JSON.stringify(Object.assign({ name }, config))) {
+            return false;
+        }
+    }
+    return true;
 };
 
 // Get metadata for a texture by name
@@ -312,6 +339,7 @@ Texture.getInfo = function (name) {
                 height: tex.height,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
+                sizes: tex.sizes,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid
@@ -339,6 +367,7 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+Texture.texture_configs = {};
 Texture.boundTexture = -1;
 Texture.activeUnit = -1;
 

@@ -129,7 +129,7 @@ export var Style = {
             this.startData(tile.key);
         }
 
-        let style = this.parseFeature(feature, rule, context);
+        let style = this.parseFeature.apply(this, arguments); // allow subclasses to pass extra args
 
         // Skip feature?
         if (!style) {
@@ -169,11 +169,7 @@ export var Style = {
         try {
             var style = this.feature_style;
 
-            // Preprocess first time
-            if (!rule_style.preprocessed) {
-                this.preprocess(rule_style);
-                rule_style.preprocessed = true;
-            }
+            this.preprocess(rule_style);
 
             // Calculate order if it was not cached
             style.order = this.parseOrder(rule_style.order, context);
@@ -199,7 +195,7 @@ export var Style = {
             }
 
             // Subclass implementation
-            style = this._parseFeature(feature, rule_style, context);
+            style = this._parseFeature.apply(this, arguments); // allow subclasses to pass extra args
 
             return style;
         }
@@ -212,7 +208,15 @@ export var Style = {
         throw new MethodNotImplemented('_parseFeature');
     },
 
-    preprocess () {},
+    preprocess (rule_style) {
+        // Preprocess first time
+        if (!rule_style.preprocessed) {
+            this._preprocess(rule_style); // optional subclass implementation
+            rule_style.preprocessed = true;
+        }
+    },
+
+    _preprocess () {}, // optionally implemented by subclass
 
     // Parse an order value
     parseOrder (order, context) {

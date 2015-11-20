@@ -1,6 +1,7 @@
 /*jshint worker: true*/
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
+import mergeObjects from './utils/merge';
 import Tile from './tile';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
@@ -25,7 +26,7 @@ Utils.isWorkerThread && Object.assign(self, {
     layers: {},
     tiles: {},
     objects: {},
-    config: {},
+    config: {},     // raw config (e.g. functions, macros, etc. not expanded)
 
     // Initialize worker
     init (worker_id, num_workers, device_pixel_ratio) {
@@ -38,22 +39,25 @@ Utils.isWorkerThread && Object.assign(self, {
 
     // Starts a config refresh
     updateConfig ({ config, generation }) {
-        self.config = null;
         config = JSON.parse(config);
 
+        self.last_config = mergeObjects({}, self.config);
+        self.config = mergeObjects({}, config);
         self.generation = generation;
-        self.styles = null;
 
         // Data block functions are not macro'ed and wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
-        for (var layer in config.layers) {
-            config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
+        for (let layer in config.layers) {
+            if (config.layers[layer]) {
+                config.layers[layer].data = Utils.stringsToFunctions(config.layers[layer].data);
+            }
         }
 
         // Create data sources
-        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources));
-        for (var name in config.sources) {
-            let source = DataSource.create(Object.assign(config.sources[name], {name}));
+        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources)); // parse new sources
+        self.sources.tiles = {}; // clear previous sources
+        for (let name in config.sources) {
+            let source = DataSource.create(Object.assign({}, config.sources[name], {name}));
             if (!source) {
                 continue;
             }
@@ -74,17 +78,25 @@ Utils.isWorkerThread && Object.assign(self, {
             }
         }
 
+        // Clear tile cache if data source config changed
+        if (!self.config.sources ||
+            !self.last_config.sources ||
+            Object.keys(self.config.sources).some(s => {
+                return JSON.stringify(self.config.sources[s]) !== JSON.stringify(self.last_config.sources[s]);
+            })) {
+            self.tiles = {};
+        }
+
         // Expand styles
-        self.config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
-        self.styles = StyleManager.build(self.config.styles, { generation: self.generation });
+        config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
+        self.styles = StyleManager.build(config.styles, { generation: self.generation });
 
         // Parse each top-level layer as a separate rule tree
-        // TODO: find a more graceful way to incorporate this
-
-        self.rules = parseRules(self.config.layers);
+        self.layers = config.layers;
+        self.rules = parseRules(self.layers);
 
         // Sync tetxure info from main thread
-        self.syncing_textures = self.syncTextures();
+        self.syncing_textures = self.syncTextures(config.textures);
 
         // Return promise for when config refresh finishes
         self.configuring = self.syncing_textures.then(() => {
@@ -129,14 +141,14 @@ Utils.isWorkerThread && Object.assign(self, {
 
                         tile.loading = false;
                         tile.loaded = true;
-                        Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles).then(keys => {
+                        Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
                             resolve({ tile: Tile.slice(tile, keys) });
                         });
                     }).catch((error) => {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-                        Utils.log('error', `tile load error for ${tile.key}: ${error.stack}`);
+                        Utils.log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                         resolve({ tile: Tile.slice(tile) });
                     });
@@ -147,7 +159,7 @@ Utils.isWorkerThread && Object.assign(self, {
                 Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self.config.layers, self.rules, self.styles).then(keys => {
+                return Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
                     return { tile: Tile.slice(tile, keys) };
                 });
             }
@@ -200,12 +212,12 @@ Utils.isWorkerThread && Object.assign(self, {
     },
 
     // Texture info needs to be synced from main thread
-    syncTextures () {
+    syncTextures (tex_config) {
         // We're only syncing the textures that have sprites defined, since these are (currently) the only ones we
         // need info about for geometry construction (e.g. width/height, which we only know after the texture loads)
         let textures = [];
-        if (self.config.textures) {
-            for (let [texname, texture] of Utils.entries(self.config.textures)) {
+        if (tex_config) {
+            for (let [texname, texture] of Utils.entries(tex_config)) {
                 if (texture.sprites) {
                     textures.push(texname);
                 }
@@ -217,6 +229,11 @@ Utils.isWorkerThread && Object.assign(self, {
             return Texture.syncTexturesToWorker(textures);
         }
         return Promise.resolve();
+    },
+
+    // Sync device pixel ratio from main thread
+    updateDevicePixelRatio (device_pixel_ratio) {
+        Utils.device_pixel_ratio = device_pixel_ratio;
     },
 
     // Profiling helpers

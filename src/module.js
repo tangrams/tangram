@@ -4,7 +4,7 @@
 import Utils from './utils/utils';
 
 // The leaflet layer plugin is currently the primary public API
-import {LeafletLayer, leafletLayer} from './leaflet_layer';
+import {leafletLayer} from './leaflet_layer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
 import {SceneWorker} from '../src/scene_worker';
@@ -30,6 +30,7 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import FeatureSelection from './selection';
 
+import yaml from 'js-yaml';
 import glMatrix from 'gl-matrix';
 
 // Default to 64-bit because we need the extra precision when multiplying matrices w/mercator projected values
@@ -38,6 +39,7 @@ glMatrix.glMatrix.setMatrixArrayType(Float64Array);
 // Make some modules accessible for debugging
 var debug = {
     log,
+    yaml,
     Utils,
     Geo,
     DataSource,
@@ -62,7 +64,6 @@ if (Utils.isMainThread) {
     WorkerBroker.addTarget('Texture', Texture);
 
     window.Tangram = module.exports = {
-        LeafletLayer,
         leafletLayer,
         debug,
         version: version.string

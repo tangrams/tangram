@@ -1,13 +1,13 @@
 // Text rendering style
 
-import Builders from '../builders';
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {Points} from '../points/points';
+import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
-import FeatureLabel from './feature_label';
-import LabelOptions from './label_options';
+import TextSettings from './text_settings';
+import LayoutSettings from './layout_settings';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -35,201 +35,23 @@ Object.assign(TextStyle, {
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
         // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
-        // See https://github.com/tangrams/tangram/issues/179
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
-
-        // default font style
-        this.font_style = {
-            typeface: 'Helvetica 12px',
-            fill: 'white',
-            capitalized: false
-        };
 
         this.reset();
     },
 
     reset() {
         this.super.reset.call(this);
-        this.texts = {}; // unique texts, keyed by tile
-        this.textures = {};
+        this.texts = {}; // unique texts, grouped by tile, by style
         this.canvas = {};
         this.aabbs = {};
-        this.features = {};
-        this.feature_labels = {};
-        this.feature_style_key = {};
     },
 
     // Called on main thread to release tile-specific resources
     freeTile (tile) {
         delete this.texts[tile];
-        delete this.textures[tile];
         delete this.canvas[tile];
         delete this.aabbs[tile];
-        // cleanup stored features for this tile
-        for (let key in this.features) {
-            let features = this.features[key];
-            for (let i = 0; i < features.length; ++i) {
-                if (features[i].tile_key === tile) {
-                    delete features[i];
-                }
-            }
-            if (Object.keys(features).length === 0) {
-                delete this.features[key];
-            }
-        }
-        delete this.feature_labels[tile];
-        delete this.feature_style_key[tile];
-    },
-
-    // Set font style params for canvas drawing
-    setFont (tile, { font, fill, stroke, stroke_width, px_size, px_logical_size }) {
-        this.px_size = parseInt(px_size);
-        this.px_logical_size = parseInt(px_logical_size);
-        this.text_buffer = 8; // pixel padding around text
-        let ctx = this.canvas[tile].context;
-
-        ctx.font = font;
-        if (stroke) {
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = stroke_width;
-        }
-        else {
-            ctx.strokeStyle = null;
-            ctx.lineWidth = 0;
-        }
-        ctx.fillStyle = fill;
-        ctx.miterLimit = 2;
-    },
-
-    // Width and height of text based on current font style
-    textSize (text, tile, capitalized) {
-        let str = capitalized ? text.toUpperCase() : text;
-        let ctx = this.canvas[tile].context;
-        let px_size = this.px_size;
-        let px_logical_size = this.px_logical_size;
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-
-        let str_width = ctx.measureText(str).width;
-        let text_size = [
-            str_width / Utils.device_pixel_ratio,
-            this.px_size / Utils.device_pixel_ratio
-        ];
-
-        let texture_text_size = [
-            Math.ceil(str_width) + buffer * 2,
-            this.px_size + buffer * 2
-        ];
-
-        return { text_size, texture_text_size, px_size, px_logical_size };
-    },
-
-    // Draw text at specified location, adjusting for buffer and baseline
-    drawText (text, [x, y], tile, stroke, capitalized) {
-        let str = capitalized ? text.toUpperCase() : text;
-        let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        if (stroke) {
-            this.canvas[tile].context.strokeText(str, x + buffer, y + buffer + this.px_size);
-        }
-        this.canvas[tile].context.fillText(str, x + buffer, y + buffer + this.px_size);
-    },
-
-    setTextureTextPositions (texts) {
-        // Find widest label and sum of all label heights
-        let widest = 0, height = 0;
-
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let text_info = text_infos[text];
-                let size = text_info.size.texture_text_size;
-
-                text_info.position = [0, height];
-
-                if (size[0] > widest) {
-                    widest = size[0];
-                }
-
-                height += size[1];
-            }
-        }
-
-        return [ widest, height ];
-    },
-
-    getTextSizes (tile, texts) {
-        // create a canvas
-        if(!this.canvas[tile]) {
-            let canvas = document.createElement('canvas');
-            this.canvas[tile] = {
-                canvas: canvas,
-                context: canvas.getContext('2d')
-            };
-        }
-
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let text_style = text_infos[text].text_style;
-                // update text sizes
-                this.setFont(tile, text_style);
-                text_infos[text].size = this.textSize(text, tile, text_style.capitalized);
-            }
-        }
-
-        return Promise.resolve(texts);
-    },
-
-    rasterize (tile, texts, texture_size) {
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let info = text_infos[text];
-
-                this.setFont(tile, info.text_style);
-                this.drawText(text, info.position, tile, info.text_style.stroke, info.text_style.capitalized);
-
-                info.texcoords = Builders.getTexcoordsForSprite(
-                    info.position,
-                    info.size.texture_text_size,
-                    texture_size
-                );
-            }
-        }
-    },
-
-    // Called on main thread from worker, to create atlas of labels for a tile
-    addTexts (tile, texts) {
-        if (!this.canvas[tile]) {
-            return Promise.resolve({});
-        }
-
-        let texture_size = this.setTextureTextPositions(texts);
-        let context = this.canvas[tile].context;
-
-        log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
-
-        // update the canvas "context"
-        this.canvas[tile].canvas.width = texture_size[0];
-        this.canvas[tile].canvas.height = texture_size[1];
-        context.clearRect(0, 0, texture_size[0], texture_size[1]);
-
-        // create a texture
-        let texture = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        this.textures[tile] = new Texture(this.gl, texture, { filtering: 'linear' });
-
-        // ask for rasterization for the text set
-        this.rasterize(tile, texts, texture_size);
-
-        this.textures[tile].setCanvas(this.canvas[tile].canvas);
-
-        // we don't need tile canvas/texture once it has been copied to to GPU
-        delete this.textures[tile];
-        delete this.canvas[tile];
-
-        return Promise.resolve({ texts, texture });
     },
 
     // Override
@@ -239,134 +61,83 @@ Object.assign(TextStyle, {
         return tile_data;
     },
 
-    createLabels (tile, texts) {
-        let labels_priorities = {};
-
-        for (let style in texts) {
-            let text_infos = texts[style];
-
-            for (let text in text_infos) {
-                let text_info = text_infos[text];
-                text_info.ref = 0;
-
-                let hash = Utils.hashString(tile + style + text);
-
-                if (!this.features[hash]) {
-                    continue;
-                }
-
-                let label_features = this.features[hash];
-
-                for (let i = 0; i < label_features.length; ++i) {
-                    let label_feature = label_features[i];
-                    let feature = label_feature.feature;
-                    let options = new LabelOptions({
-                        units_per_pixel: text_info.units_per_pixel,
-                        offset: text_info.offset,
-                        buffer: text_info.buffer,
-                        line_exceed: text_info.line_exceed
-                    });
-
-                    let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, options);
-
-                    for (let i = 0; i < labels.length; ++i) {
-                        let label = labels[i];
-                        let area = label.area;
-
-                        labels_priorities[text_info.priority] = labels_priorities[text_info.priority] || [];
-                        labels_priorities[text_info.priority].push({ style, feature, label, area });
-                    }
-                }
-            }
+    // Override to queue features instead of processing immediately
+    addFeature (feature, draw, context) {
+        let tile = context.tile;
+        if (tile.generation !== this.generation) {
+            return;
         }
 
-        // sort by area size if defined
-        for (let p = 0; p < labels_priorities.length; ++p) {
-            if (!labels_priorities[p]) {
-                continue;
-            }
+        // Called here because otherwise it will be delayed until the feature queue is parsed,
+        // and we want the preprocessing done before we evaluate text style below
+        this.preprocess(draw);
 
-            labels_priorities[p].sort((e1, e2) => {
-                if (e1.area && e2.area) {
-                    return e1.area < e2.area;
-                } else {
-                    return false;
-                }
-            });
+        // Collect text - default source is feature.properties.name
+        let text;
+        let source = draw.text_source || 'name';
+
+        if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
         }
 
-        return labels_priorities;
-    },
-
-    discardLabels (tile, labels, texts) {
-        this.aabbs[tile] = [];
-        this.feature_labels[tile] = new Map();
-
-        // Process labels by priority
-        let priorities = Object.keys(labels).sort((a, b) => a - b);
-        for (let priority of priorities) {
-            if (!labels[priority]) {
-                continue;
-            }
-
-            for (let i = 0; i < labels[priority].length; i++) {
-                let { style, feature, label } = labels[priority][i];
-
-                if (!label.discard(this.aabbs[tile])) {
-                    if (!this.feature_labels[tile].has(feature)) {
-                        this.feature_labels[tile].set(feature, []);
-                    }
-                    this.feature_labels[tile].get(feature).push(label);
-                    texts[style][label.text].ref++;
-                }
-            }
+        if (text == null) {
+            return; // no text for this feature
         }
 
-        for (let style in texts) {
-            for (let text in texts[style]) {
-                if (texts[style][text].ref < 1) {
-                    delete texts[style][text];
-                }
-            }
+        // Compute text style and layout settings for this feature label
+        let layout = LayoutSettings.compute(feature, draw, context, tile);
+        let text_settings = TextSettings.compute(feature, draw, context);
+        let text_settings_key = TextSettings.key(text_settings);
+
+        // first label in tile, or with this style?
+        this.texts[tile.key] = this.texts[tile.key] || {};
+        this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
+
+        // unique text strings, grouped by text drawing style
+        if (!this.texts[tile.key][text_settings_key][text]) {
+            // first label with this text/style/tile combination, make a new label entry
+            this.texts[tile.key][text_settings_key][text] = {
+                text_settings,
+                ref: 0 // # of times this text/style combo appears in tile
+            };
         }
 
-        for (let style in texts) {
-            let text_infos = texts[style];
-            // No labels for this style
-            if (Object.keys(text_infos).length === 0) {
-                delete texts[style];
-            }
+        // Queue the feature for processing
+        if (!this.tile_data[tile.key]) {
+            this.startData(tile.key);
         }
+        this.tile_data[tile.key].queue.push({
+            feature, draw, context,
+            text, text_settings_key, layout
+        });
     },
 
     // Override
     endData (tile) {
-        // Count collected text
-        let count;
         let tile_data = this.tile_data[tile];
+        let count = Object.keys(this.texts[tile]||{}).length;
 
-        if (tile_data.queue.length > 0) {
-            count = Object.keys(this.texts[tile]||{}).length;
-            log.trace(`# texts for tile ${tile}: ${count}`);
-        }
         if (!count) {
             return Promise.resolve();
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target, 'getTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target, 'calcTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
             }
+            this.texts[tile] = texts;
 
-            let labels = this.createLabels(tile, texts);
+            let labels = this.createLabels(tile, tile_data.queue);
             if (!labels) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
             }
 
-            this.discardLabels(tile, labels, texts);
+            labels = this.discardLabels(tile, labels, texts);
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
@@ -377,7 +148,7 @@ Object.assign(TextStyle, {
             }
 
             // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target, 'addTexts', tile, texts).then(({ texts, texture }) => {
+            return WorkerBroker.postMessage(this.main_thread_target, 'rasterizeTexts', tile, texts).then(({ texts, texture }) => {
                 if (texts) {
                     this.texts[tile] = texts;
 
@@ -386,118 +157,163 @@ Object.assign(TextStyle, {
                     tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
                     // Build queued features
-                    tile_data.queue.forEach(q => this.super.addFeature.apply(this, q));
-                    tile_data.queue = [];
+                    labels.forEach(q => {
+                        let text = q.label.text;
+                        let text_settings_key = q.text_settings_key;
+                        let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][text];
+                        q.label.texcoords = text_info.texcoords;
+
+                        this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
+                    });
                 }
 
+                tile_data.queue = []; // TODO: free earlier?
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
             });
         });
     },
 
-    // Override to queue features instead of processing immediately
-    addFeature (feature, rule, context) {
-        let tile = context.tile;
-        if (tile.generation !== this.generation) {
+    createLabels (tile, feature_queue) {
+        let priorities = {}; // labels, group by priority
+
+        for (let f=0; f < feature_queue.length; f++) {
+            let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
+            let text_info = this.texts[tile][text_settings_key][text];
+
+            let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, layout);
+            for (let i = 0; i < labels.length; ++i) {
+                let label = labels[i];
+                priorities[layout.priority] = priorities[layout.priority] || [];
+                priorities[layout.priority].push({ feature, draw, context, text, text_settings_key, label });
+            }
+        }
+
+        return priorities;
+    },
+
+    // Test labels for collisions, higher to lower priority
+    // When two collide, discard the lower-priority label
+    discardLabels (tile, labels, texts) {
+        this.aabbs[tile] = [];
+        let keep_labels = [];
+
+        // Process labels by priority
+        let priorities = Object.keys(labels).sort((a, b) => a - b);
+        for (let priority of priorities) {
+            if (!labels[priority]) { // no labels at this priority, skip to next
+                continue;
+            }
+
+            for (let i = 0; i < labels[priority].length; i++) {
+                let { label, text_settings_key } = labels[priority][i];
+
+                // test the label for intersections with other labels in the tile
+                if (!label.discard(this.aabbs[tile])) {
+                    keep_labels.push(labels[priority][i]);
+
+                    // increment a count of how many times this style is used in the tile
+                    texts[text_settings_key][label.text].ref++;
+                }
+            }
+        }
+
+        // Remove text/style combinations that have no visible labels
+        for (let style in texts) {
+            for (let text in texts[style]) {
+                // no labels for this text
+                if (texts[style][text].ref < 1) {
+                    delete texts[style][text];
+                }
+            }
+        }
+        for (let style in texts) {
+            // no labels for this style
+            if (Object.keys(texts[style]).length === 0) {
+                delete texts[style];
+            }
+        }
+
+        return keep_labels;
+    },
+
+    // Called on main thread from worker, to compute the size of each text string,
+    // were it to be rendered. This info is then used to perform initial label culling, *before*
+    // labels are actually rendered.
+    calcTextSizes (tile, texts) {
+        if(!this.canvas[tile]) {
+            this.canvas[tile] = new CanvasText();
+        }
+        return this.canvas[tile].textSizes(tile, texts);
+    },
+
+    // Called on main thread from worker, to create atlas of labels for a tile
+    rasterizeTexts (tile, texts) {
+        if (!this.canvas[tile]) {
+            return Promise.resolve({});
+        }
+
+        let canvas = this.canvas[tile];
+        let texture_size = canvas.setTextureTextPositions(texts);
+        log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+
+        // update canvas size & rasterize all the text strings we need
+        canvas.resize(...texture_size);
+        canvas.rasterize(tile, texts, texture_size);
+
+        // create a texture
+        let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
+        let texture = new Texture(this.gl, t);
+        texture.setCanvas(canvas.canvas, {
+            filtering: 'linear',
+            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+        });
+
+        // we don't need tile canvas once it has been copied to to GPU
+        delete this.canvas[tile];
+
+        return { texts, texture: t }; // texture is returned by name (not instance)
+    },
+
+    // Sets up caching for draw rule properties
+    _preprocess (draw) {
+        if (!draw.font) {
             return;
         }
 
-        // Collect text
-        let text;
-        let source = rule.text_source || 'name';
-
-        if (typeof source === 'string') {
-            text = feature.properties[source];
-        } else if (typeof source === 'function') {
-            text = source(context);
+        // Colors
+        draw.font.fill = StyleParser.cacheObject(draw.font.fill);
+        if (draw.font.stroke) {
+            draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
         }
 
-        if (text) {
-            feature.text = text;
-
-            if (!this.texts[tile.key]) {
-                this.texts[tile.key] = this.texts[tile.key] || {};
-            }
-
-            // features stored by hash for later use from main thread (tile / text / style)
-            let label_feature = new FeatureLabel(feature, rule, context, text, tile, this.font_style);
-            let feature_hash = label_feature.getHash();
-
-            if (!label_feature.style) {
-                return;
-            }
-
-            let style_key = label_feature.style_key;
-            this.feature_style_key[tile.key] = this.feature_style_key[tile.key] || new Map();
-            this.feature_style_key[tile.key].set(feature, style_key);
-
-            if (!this.texts[tile.key][style_key]) {
-                this.texts[tile.key][style_key] = {};
-            }
-
-            // label priority (lower is higher)
-            let priority = (rule.priority !== undefined) ? parseFloat(rule.priority) : -1 >>> 0;
-
-            // label offset in pixel (applied in screen space)
-            let offset = rule.offset || [0, 0];
-            offset[0] = parseFloat(offset[0]);
-            offset[1] = parseFloat(offset[1]); // y-point down
-
-            // label buffer in pixel
-            let buffer = rule.buffer;
-            if (buffer != null) {
-                if (!Array.isArray(buffer)) {
-                    buffer = [buffer, buffer]; // buffer can be 1D or 2D
-                }
-
-                buffer[0] = parseFloat(buffer[0]);
-                buffer[1] = parseFloat(buffer[1]);
-            }
-
-            // label line exceed percentage
-            let line_exceed;
-            if (rule.line_exceed && rule.line_exceed.substr(-1) === '%') {
-                line_exceed = rule.line_exceed.substr(0,rule.line_exceed.length-1);
-            }
-
-            if (!this.texts[tile.key][style_key][text]) {
-                this.texts[tile.key][style_key][text] = {
-                    text_style: label_feature.style,
-                    units_per_pixel: tile.units_per_pixel,
-                    priority,
-                    offset,
-                    buffer,
-                    line_exceed,
-                    ref: 0
-                };
-            }
-
-            // add the label feature
-            this.features = this.features || {};
-            this.features[feature_hash] = this.features[feature_hash] || [];
-            this.features[feature_hash].push(label_feature);
-
-            if (!this.tile_data[tile.key]) {
-                this.startData(tile.key);
-            }
-            this.tile_data[tile.key].queue.push([feature, rule, context]);
+        // Convert font and text stroke sizes
+        draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
+        if (draw.font.stroke && draw.font.stroke.width != null) {
+            draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
+    },
+
+    // Parse feature is called "late", after all labels have been created
+    // The usual parsing done by _parseFeature() is handled by addFeature() above
+    // Here we just pass the label through to the build functions below
+    _parseFeature (feature, draw, context, label) {
+        this.feature_style.label = label;
+        return this.feature_style;
     },
 
     build (style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
+        let label = style.label;
 
-        for (let i in style.labels) {
-            let label = style.labels[i];
+        this.texcoord_scale = label.texcoords;
 
-            this.buildQuad(
-                [label.position],
-                label.size.texture_text_size,
-                Utils.radToDeg(label.angle) || 0, vertex_data,
-                vertex_template, label.options.offset
-            );
-        }
+        this.buildQuad(
+            [label.position],
+            label.size.texture_text_size,
+            Utils.radToDeg(label.angle) || 0, vertex_data,
+            vertex_template, label.options.offset
+        );
     },
 
     buildLines (lines, style, vertex_data) {
@@ -510,38 +326,8 @@ Object.assign(TextStyle, {
 
     buildPolygons (points, style, vertex_data) {
         this.build(style, vertex_data);
-    },
-
-    _parseFeature (feature, rule_style, context) {
-        let text = feature.text;
-
-        let style = this.feature_style;
-        let tile = context.tile.key;
-        let style_key = this.feature_style_key[tile].get(feature);
-        let text_info = this.texts[tile] && this.texts[tile][style_key] && this.texts[tile][style_key][text];
-
-        if (!text_info || !this.feature_labels[tile].has(feature)) {
-            return;
-        }
-
-        this.texcoord_scale = text_info.texcoords;
-        style.text = text;
-        style.labels = this.feature_labels[tile].get(feature);
-
-        // TODO: point style (parent class) requires a color, setting it to white for now,
-        // but could be made conditional in the vertex layout to save space
-        style.color = TextStyle.white;
-
-        // tell the point style (base class) that we want to render polygon labels at the polygon's centroid
-        style.centroid = true;
-
-        // points can be placed off the ground
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
-
-        return style;
     }
 
 });
 
-TextStyle.texture_id = 0;
-TextStyle.white = [1, 1, 1, 1];
+TextStyle.texture_id = 0; // namespaces per-tile label textures

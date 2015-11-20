@@ -486,7 +486,7 @@ export default class ShaderProgram {
         let block;
         for (let i=0; i < num && i < lines.length; i++) {
             let line = lines[i];
-            let match = line.match(/\/\/ tangram-block-start: (\w+), (\w+), (\d+)/);
+            let match = line.match(/\/\/ tangram-block-start: ([A-Za-z0-9_-]+), ([A-Za-z0-9_-]+), (\d+)/);
             if (match && match.length > 1) {
                 // mark current block
                 block = {
@@ -496,7 +496,7 @@ export default class ShaderProgram {
                 };
             }
             else {
-                match = line.match(/\/\/ tangram-block-end: (\w+), (\w+), (\d+)/);
+                match = line.match(/\/\/ tangram-block-end: ([A-Za-z0-9_-]+), ([A-Za-z0-9_-]+), (\d+)/);
                 if (match && match.length > 1) {
                     block = null; // clear current block
                 }

@@ -1,6 +1,6 @@
 import chai from 'chai';
 import Scene from '../src/scene';
-import {LeafletLayer} from '../src/leaflet_layer';
+import {leafletLayer, LeafletLayer} from '../src/leaflet_layer';
 import sampleScene from './fixtures/sample-scene';
 let assert = chai.assert;
 
@@ -11,9 +11,8 @@ let map = L.map(
 map.setView([0, 0], 0); // required to put leaflet in a "ready" state, or it will never call the layer's onAdd() method
 
 let makeOne = () => {
-    let layer = new LeafletLayer({
-        source: sampleScene.tile_source,
-        scene: sampleScene.config,
+    let layer = leafletLayer({
+        scene: sampleScene,
         disableRenderLoop: true,
         workerUrl: 'http://localhost:9876/tangram.debug.js'
     });
@@ -48,7 +47,7 @@ describe('Leaflet plugin', () => {
 
         beforeEach(function (done) {
             subject = makeOne();
-            sinon.spy(map, 'getContainer');
+            sinon.spy(subject, 'getContainer');
             sinon.spy(subject.scene, 'load');
 
             subject.on('init', () => {
@@ -61,11 +60,11 @@ describe('Leaflet plugin', () => {
 
         afterEach(() => {
             subject.remove();
-            map.getContainer.restore();
+            subject.getContainer.restore();
         });
 
-        it('calls the map\'s .getContainer() method', () => {
-            sinon.assert.called(map.getContainer);
+        it('calls the layer\'s .getContainer() method', () => {
+            sinon.assert.called(subject.getContainer);
         });
 
         it('initializes the scene', () => {

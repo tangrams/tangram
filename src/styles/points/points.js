@@ -9,6 +9,7 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
+import PointAnchor from './point_anchor';
 
 import log from 'loglevel';
 
@@ -92,11 +93,30 @@ Object.assign(Points, {
             }
         }
 
+        // Sets texcoord scale if needed (e.g. for sprite sub-area)
+        let sprite_info;
+        if (this.texture && sprite) {
+            sprite_info = Texture.getSpriteInfo(this.texture, sprite);
+            this.texcoord_scale = sprite_info.texcoords;
+        } else {
+            this.texcoord_scale = null;
+        }
+
         // points can be placed off the ground
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
 
+        // point size defined explicitly, or defaults to sprite size, or generic fallback
+        style.size = rule_style.size;
+        if (!style.size) {
+            if (sprite_info) {
+                style.size = { value: sprite_info.size };
+            }
+            else {
+                style.size = { value: [16, 16] };
+            }
+        }
+
         // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = rule_style.size || { value: [32, 32] };
         style.size = StyleParser.cacheDistance(style.size, context, 'pixels');
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
@@ -123,25 +143,26 @@ Object.assign(Points, {
         // rendering a single point at the polygon's centroid can be enabled
         style.centroid = rule_style.centroid;
 
-        // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        if (this.texture && sprite) {
-            this.texcoord_scale = Texture.getSpriteTexcoords(this.texture, sprite);
-        } else {
-            this.texcoord_scale = null;
+        // Offset applied to point in screen space
+        if (rule_style.offset) {
+            style.offset = rule_style.offset;
+            style.offset[0] = parseInt(style.offset[0]) * Utils.device_pixel_ratio;
+            style.offset[1] = parseInt(style.offset[1]) * Utils.device_pixel_ratio;
+        }
+        else {
+            style.offset = [0, 0];
         }
 
-        // Offset applied to point in screen space
-        style.offset = rule_style.offset || [0, 0];
-        style.offset[0] = parseInt(style.offset[0]);
-        style.offset[1] = parseInt(style.offset[1]);
+        // anchor
+        style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);
 
         return style;
     },
 
-    preprocess (draw) {
-        draw.color = draw.color && { value: draw.color };
-        draw.z = draw.z && { value: draw.z };
-        draw.size = draw.size && { value: draw.size };
+    _preprocess (draw) {
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.z = StyleParser.cacheObject(draw.z);
+        draw.size = StyleParser.cacheObject(draw.size);
     },
 
     /**
@@ -191,7 +212,7 @@ Object.assign(Points, {
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
-                offset: Vector.mult(offset, Utils.device_pixel_ratio),
+                offset,
                 angle: Utils.scaleInt16(angle, 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535

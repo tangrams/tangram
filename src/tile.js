@@ -66,6 +66,9 @@ export default class Tile {
 
     static key (coords, source, style_zoom) {
         coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
+            return; // cull tiles out of range (x will wrap)
+        }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
@@ -167,7 +170,7 @@ export default class Tile {
         for (let layer_name in layers) {
             let layer = layers[layer_name];
             // Skip layers with no data source defined
-            if (!layer.data) {
+            if (!layer || !layer.data) {
                 log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
                 continue;
             }

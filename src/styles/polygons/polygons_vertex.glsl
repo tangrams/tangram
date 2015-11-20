@@ -8,6 +8,7 @@ uniform float u_device_pixel_ratio;
 uniform mat4 u_model;
 uniform mat4 u_modelView;
 uniform mat3 u_normalMatrix;
+uniform mat3 u_inverseNormalMatrix;
 
 attribute vec4 a_position;
 attribute vec4 a_color;
@@ -49,8 +50,8 @@ varying vec4 v_world_position;
 #pragma tangram: global
 
 void main() {
-    // Adds vertex shader support for feature selection
-    #pragma tangram: feature-selection-vertex
+    // Initialize globals
+    #pragma tangram: setup
 
     // Texture UVs
     #ifdef TANGRAM_TEXTURE_COORDS
@@ -58,19 +59,19 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position.xyz * 32767., 1.);
+    vec4 position = vec4(SHORT(a_position.xyz), 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy * 255.;
-        float width = a_extrude.z * 32767.;
-        float scale = a_extrude.w * 255.;
+        vec2 extrude = SCALE_8(a_extrude.xy);
+        float width = SHORT(a_extrude.z);
+        float dwdz = SHORT(a_extrude.w);
+        float dz = clamp(u_map_position.z - abs(u_tile_origin.z), 0.0, 1.0);
 
-        // Keep line width constant in screen-space
-        float zscale = u_tile_origin.z - u_map_position.z;
-        width *= pow(2., zscale);
+        // Interpolate between zoom levels
+        width += dwdz * dz;
 
-        // Smoothly interpolate line width between zooms
-        width = mix(width, width * scale, -zscale);
+        // Scale pixel dimensions to be consistent in screen space
+        width *= exp2(-dz);
 
         // Modify line width before extrusion
         #pragma tangram: width
@@ -79,10 +80,7 @@ void main() {
     #endif
 
     // World coordinates for 3d procedural textures
-    v_world_position = u_model * position;
-    #if defined(TANGRAM_WORLD_POSITION_WRAP)
-        v_world_position.xy -= world_position_anchor;
-    #endif
+    v_world_position = wrapWorldPosition(u_model * position);
 
     // Adjust for tile and view position
     position = u_modelView * position;
@@ -112,7 +110,7 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(a_position.w * 32767., position);
+    applyLayerOrder(SHORT(a_position.w), position);
 
     gl_Position = position;
 }

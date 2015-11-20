@@ -1,6 +1,8 @@
 import Texture from './gl/texture';
 import WorkerBroker from './utils/worker_broker';
 
+import log from 'loglevel';
+
 export default class FeatureSelection {
 
     constructor(gl, workers) {
@@ -66,7 +68,8 @@ export default class FeatureSelection {
                 type: 'point',
                 id: this.selection_request_id,
                 point,
-                resolve
+                resolve,
+                reject
             };
         });
     }
@@ -74,6 +77,22 @@ export default class FeatureSelection {
     // Any pending selection requests
     pendingRequests() {
         return this.requests;
+    }
+
+    clearPendingRequests() {
+        for (var r in this.requests) {
+            var request = this.requests[r];
+
+            // This request was already sent to the worker, we're just awaiting its reply
+            if (request.sent) {
+                continue;
+            }
+
+            // Reject request since it will never be fulfilled
+            // TODO: pass a reason for rejection?
+            request.reject({ request });
+            delete this.requests[r];
+        }
     }
 
     // Read pending results from the selection buffer. Called after rendering to selection buffer.
@@ -139,14 +158,16 @@ export default class FeatureSelection {
     finishRead (message) {
         var request = this.requests[message.id];
         if (!request) {
-            throw new Error("FeatureSelection.finishRead() called without any message");
+            log.error("FeatureSelection.finishRead(): could not find message", message);
+            return; // request was cleared before it returned
         }
 
         var feature = message.feature;
         var changed = false;
         if ((feature != null && this.feature == null) ||
             (feature == null && this.feature != null) ||
-            (feature != null && this.feature != null && feature.id !== this.feature.id)) {
+            (feature != null && this.feature != null &&
+                JSON.stringify(feature) !== JSON.stringify(this.feature))) {
             changed = true;
         }
 
@@ -201,6 +222,7 @@ export default class FeatureSelection {
     }
 
     static reset() {
+        this.tiles = {};
         this.map = {};
         this.map_size = 0;
         this.map_entry = 0;

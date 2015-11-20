@@ -140,9 +140,14 @@ export default class Light {
     inject () {
         let instance =  `
             uniform ${this.struct_name} u_${this.name};
-            ${this.struct_name} ${this.name} = u_${this.name};\n`;
+            ${this.struct_name} ${this.name};
+            `;
+        let assign = `
+            ${this.name} = u_${this.name};\n
+        `;
 
         ShaderProgram.addBlock(Light.block, instance);
+        ShaderProgram.addBlock('setup', assign);
     }
 
     // Update method called once per frame

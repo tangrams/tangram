@@ -55,16 +55,22 @@ Utils.addBaseURL = function (url, base) {
 
 Utils.pathForURL = function (url) {
     if (url.search(/^(data|blob):/) === -1) {
-        return url.substr(0, url.lastIndexOf('/') + 1);
+        return url.substr(0, url.lastIndexOf('/') + 1) || './';
     }
-    return '';
+    return './';
 };
 
 Utils.cacheBusterForUrl = function (url) {
     if (url.search(/^(data|blob):/) > -1) {
         return url; // no cache-busting on object or data URLs
     }
-    return url + '?' + (+new Date());
+    if (url.indexOf('?') > -1) {
+        url += '&' + (+new Date());
+    }
+    else {
+        url += '?' + (+new Date());
+    }
+    return url;
 };
 
 // Polyfill (for Safari compatibility)
@@ -238,9 +244,12 @@ Utils.log = function (level, ...msg) {
 };
 
 // Default to allowing high pixel density
+// Returns true if display density changed
 Utils.use_high_density_display = true;
 Utils.updateDevicePixelRatio = function () {
+    let prev = Utils.device_pixel_ratio;
     Utils.device_pixel_ratio = (Utils.use_high_density_display && window.devicePixelRatio) || 1;
+    return Utils.device_pixel_ratio !== prev;
 };
 
 // Mark thread as main or worker
@@ -420,20 +429,12 @@ Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };
 
-Utils.toCanvasColor = function (color) {
-    return 'rgb(' +  Math.round(color[0] * 255) + ',' + Math.round(color[1]  * 255) + ',' + Math.round(color[2] * 255) + ')';
-};
-
-Utils.toPixelSize = function (size, kind) {
-    if (kind === "px") {
-        return size;
-    } else if (kind === "em") {
-        return 16 * size;
-    } else if (kind === "pt") {
-        return size / 0.75;
-    } else if (kind === "%") {
-        return size / 6.25;
+Utils.toCSSColor = function (color) {
+    if (color[3] === 1) { // full opacity
+        return `rgb(${color.slice(0, 3).map(c => Math.round(c * 255)).join(', ')})`;
     }
+    // RGB is between [0, 255] opacity is between [0, 1]
+    return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
 };
 
 Utils.pointInTile = function (point) {
@@ -446,12 +447,31 @@ Utils.hashString = function(str) {
         return 0;
     }
     let hash = 0;
-    
+
     for (let i = 0, len = str.length; i < len; i++) {
         let chr = str.charCodeAt(i);
         hash = ((hash << 5) - hash) + chr;
-        hash |= 0; 
+        hash |= 0;
     }
     return hash;
 };
 
+Utils.debounce = function (func, wait, immediate) {
+    let timeout;
+    return function() {
+        let context = this,
+            args = arguments;
+        let later = function() {
+            timeout = null;
+            if (!immediate) {
+                func.apply(context, args);
+            }
+        };
+        let callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) {
+            func.apply(context, args);
+        }
+    };
+};

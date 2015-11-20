@@ -24,11 +24,11 @@ Enjoy!
     var tile_sources = {
         'mapzen': {
             type: 'MVT',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-geojson': {
             type: 'GeoJSON',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
             // transform: function(data) {
             //     // You can edit the tile data here before it gets projected
             //     // and rendered
@@ -41,7 +41,7 @@ Enjoy!
         },
         'mapzen-dev': {
             type: 'GeoJSON',
-            url: '//vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
         },
         'mapzen-local': {
             type: 'GeoJSON',
@@ -49,7 +49,7 @@ Enjoy!
         },
         'mapzen-topojson': {
             type: 'TopoJSON',
-            url: '//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
+            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
         },
 
         // 'osm': {
@@ -59,7 +59,7 @@ Enjoy!
 
         'mapbox': {
             type: 'MVT',
-            url: '//{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
+            url: 'https://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
             max_zoom: 15
         }
 
@@ -67,11 +67,7 @@ Enjoy!
     default_tile_source = 'mapzen',
     scene_url = 'demos/scene.yaml',
     osm_debug = false,
-    locations = {
-        'London': [51.508, -0.105, 15],
-        'New York': [40.70531887544228, -74.00976419448853, 16],
-        'Seattle': [47.609722, -122.333056, 15]
-    }, rS, url_hash, map_start_location, url_ui, url_style;
+    rS, url_hash, map_start_location, url_ui, url_style;
 
 
     getValuesFromUrl();
@@ -81,9 +77,7 @@ Enjoy!
         map = L.map('map', {
             maxZoom: 20,
             trackResize: true,
-            inertia: false,
-            keyboard: false,
-            wheelDebounceTime: 20
+            keyboard: false
         }),
 
         layer = Tangram.leafletLayer({
@@ -132,16 +126,13 @@ Enjoy!
         }
 
         // Get location from URL
-        map_start_location = locations['New York'];
+        map_start_location = [40.70531887544228, -74.00976419448853, 16]; // NYC
 
         if (url_hash.length === 3) {
             map_start_location = url_hash.slice(0, 3);
         }
         if (url_hash.length > 3) {
             map_start_location = url_hash.slice(1, 4);
-        }
-        else if (url_hash.length === 2) {
-            map_start_location = locations[url_hash[1]];
         }
 
         if (url_hash.length > 4) {
@@ -191,7 +182,7 @@ Enjoy!
     // Update URL hash on move
     map.attributionControl.setPrefix('');
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
-    map.on('moveend', updateURL);
+    map.on('move', updateURL);
 
     // Take a screenshot and save file
     function screenshot() {
@@ -396,7 +387,7 @@ Enjoy!
     // Create dat GUI
     var gui = new dat.GUI({ autoPlace: true });
     function addGUI () {
-        gui.domElement.parentNode.style.zIndex = 5;
+        gui.domElement.parentNode.style.zIndex = 10000;
         window.gui = gui;
 
         // Add ability to remove a whole folder from DAT.gui
@@ -483,7 +474,7 @@ Enjoy!
         selection_info.style.display = 'block';
 
         // Show selected feature on hover
-        scene.container.addEventListener('mousemove', function (event) {
+        map.getContainer().addEventListener('mousemove', function (event) {
             if (gui['feature info'] == false) {
                 if (selection_info.parentNode != null) {
                     selection_info.parentNode.removeChild(selection_info);
@@ -500,18 +491,17 @@ Enjoy!
                 }
                 var feature = selection.feature;
                 if (feature != null) {
-                    // console.log("selection map: " + JSON.stringify(feature));
-
                     var label = '';
                     if (feature.properties.name != null) {
                         label = feature.properties.name;
                     }
+                    // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
 
                     if (label != '') {
                         selection_info.style.left = (pixel.x + 5) + 'px';
                         selection_info.style.top = (pixel.y + 15) + 'px';
                         selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-                        scene.container.appendChild(selection_info);
+                        map.getContainer().appendChild(selection_info);
                     }
                     else if (selection_info.parentNode != null) {
                         selection_info.parentNode.removeChild(selection_info);
@@ -536,10 +526,10 @@ Enjoy!
     function preUpdate (will_render) {
         // Input
         if (key.isPressed('up')) {
-            map.setZoom(map.getZoom() + zoom_step);
+            map._move(map.getCenter(), map.getZoom() + zoom_step);
         }
         else if (key.isPressed('down')) {
-            map.setZoom(map.getZoom() - zoom_step);
+            map._move(map.getCenter(), map.getZoom() - zoom_step);
         }
 
         // Profiling
@@ -591,10 +581,16 @@ Enjoy!
             window.osm_layer =
                 L.tileLayer(
                     'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    { opacity: 0.5 })
-                .bringToFront()
+                    // 'https://stamen-tiles.a.ssl.fastly.net/terrain-background/{z}/{x}/{y}.jpg',
+                    {
+                        maxZoom: 19//,
+                        // opacity: 0.5
+                    })
                 .addTo(map);
+                // .bringToFront();
         }
+
+        layer.bringToFront();
     });
 
 

@@ -90,6 +90,7 @@ class PerspectiveCamera extends Camera {
         }
 
         this.vanishing_point = options.vanishing_point || [0, 0]; // [x, y]
+        this.vanishing_point = this.vanishing_point.map(parseFloat); // we implicitly only support px units here
         this.vanishing_point_skew = [];
 
         this.position_meters = null;

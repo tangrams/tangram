@@ -158,7 +158,7 @@ export default TileManager = {
             }
 
             let key = Tile.key(coords, source, this.scene.tile_zoom);
-            if (!this.hasTile(key)) {
+            if (key && !this.hasTile(key)) {
                 let tile = Tile.create({
                     source,
                     coords,
@@ -197,6 +197,7 @@ export default TileManager = {
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
             Tile.abortBuild(tile);
+            this.updateTilesForView();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
@@ -204,6 +205,7 @@ export default TileManager = {
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
+            this.updateTilesForView();
         }
         else {
             // Update tile with properties from worker

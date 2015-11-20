@@ -1,3 +1,5 @@
+import {Styles} from './style_manager';
+import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
 import log from 'loglevel';
 
@@ -16,8 +18,6 @@ function cacheKey (rules) {
 export function mergeTrees(matchingTrees, key, context) {
     var draw = {},
         draws,
-        // order = [],
-        // order_draws = [],
         treeDepth = 0,
         x, t;
 
@@ -43,21 +43,6 @@ export function mergeTrees(matchingTrees, key, context) {
             continue;
         }
 
-        // Property-specific logic
-        // for (i=0; i < draws.length; i++) {
-        //     if (!draws[i]) {
-        //         continue;
-        //     }
-
-        //     // Collect unique orders (don't add the order multiple times for the smae draw rule)
-        //     if (draws[i].order !== undefined) {
-        //         if (order_draws.indexOf(draws[i]) === -1) {
-        //             order.push(draws[i].order);
-        //             order_draws.push(draws[i]);
-        //         }
-        //     }
-        // }
-
         // Merge remaining draw objects
         mergeObjects(draw, ...draws);
     }
@@ -66,19 +51,6 @@ export function mergeTrees(matchingTrees, key, context) {
     if (draw.visible === false) {
         return null;
     }
-
-    // Sum all orders
-    // Note: temporarily commenting out, will revisit with new scene file syntax
-    // if (order.length > 0) {
-    //     // Order can be cached if it is all numeric
-    //     if (order.length === 1 && typeof order[0] === 'number') {
-    //         order = order[0];
-    //     }
-    //     else if (order.every(v => typeof v === 'number')) {
-    //         order = calculateOrder(order, context); // TODO: use StyleParser.calculateOrder
-    //     }
-    //     draw.order = order;
-    // }
 
     return draw;
 }
@@ -90,6 +62,7 @@ class Rule {
         this.id = Rule.id++;
         this.parent = parent;
         this.name = name;
+        this.full_name = this.parent ? this.parent.full_name + '.' + this.name : this.name;
         this.draw = draw;
         this.filter = filter;
         this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
@@ -259,44 +232,6 @@ export function calculateDraw(rule) {
     return draw;
 }
 
-export function mergeObjects(newObj, ...sources) {
-
-    for (let source of sources) {
-        if (!source) {
-            continue;
-        }
-        for (let key in source) {
-            let value = source[key];
-            if (typeof value === 'object' && !Array.isArray(value)) {
-                newObj[key] = mergeObjects(newObj[key] || {}, value);
-            } else {
-                newObj[key] = value;
-            }
-        }
-
-    }
-    return newObj;
-}
-
-export function calculateOrder(orders, context = null, defaultOrder = 0) {
-    let sum = defaultOrder;
-
-    for (let order of orders) {
-        if (typeof order === 'function') {
-            order = order(context);
-        } else {
-            order = parseFloat(order);
-        }
-
-        if (!order || isNaN(order)) {
-            continue;
-        }
-        sum += order;
-    }
-    return sum;
-}
-
-
 export function parseRuleTree(name, rule, parent) {
 
     let properties = {name, parent};
@@ -319,10 +254,22 @@ export function parseRuleTree(name, rule, parent) {
     if (!empty) {
         for (let key in nonWhiteListed) {
             let property = nonWhiteListed[key];
-            if (typeof property === 'object') {
+            if (typeof property === 'object' && !Array.isArray(property)) {
                 parseRuleTree(key, property, r);
             } else {
-                log.warn('Rule property must be an object: ', name, rule, property);
+                // Invalid layer
+                let msg = `Layer value must be an object: can't create layer '${key}: ${JSON.stringify(property)}'`;
+                msg += `, under parent layer '${r.full_name}'.`;
+
+                // If the parent is a style name, this may be an incorrectly nested layer
+                if (Styles[r.name]) {
+                    msg += ` The parent '${r.name}' is also the name of a style, did you mean to create a 'draw' group`;
+                    if (parent) {
+                        msg += ` under '${parent.name}'`;
+                    }
+                    msg += ` instead?`;
+                }
+                log.warn(msg);
             }
         }
 
@@ -337,7 +284,9 @@ export function parseRules(rules) {
 
     for (let key in rules) {
         let rule = rules[key];
-        ruleTrees[key] = parseRuleTree(key, rule);
+        if (rule) {
+            ruleTrees[key] = parseRuleTree(key, rule);
+        }
     }
 
     return ruleTrees;

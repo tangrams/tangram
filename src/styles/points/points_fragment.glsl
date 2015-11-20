@@ -1,15 +1,20 @@
 uniform vec2 u_resolution;
-uniform float u_meters_per_pixel;
-uniform float u_device_pixel_ratio;
 uniform float u_time;
 uniform vec3 u_map_position;
 uniform vec3 u_tile_origin;
+uniform float u_meters_per_pixel;
+uniform float u_device_pixel_ratio;
+
+uniform mat3 u_normalMatrix;
+uniform mat3 u_inverseNormalMatrix;
 
 uniform sampler2D u_texture;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
+
+#define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 // Alpha discard threshold (substitute for alpha blending)
 #ifndef TANGRAM_ALPHA_DISCARD
@@ -22,9 +27,15 @@ varying vec4 v_world_position;
 #endif
 #define TANGRAM_FADE_START (1. - TANGRAM_FADE_RANGE)
 
+#pragma tangram: camera
+#pragma tangram: material
+#pragma tangram: lighting
 #pragma tangram: global
 
 void main (void) {
+    // Initialize globals
+    #pragma tangram: setup
+
     vec4 color = v_color;
 
     // Apply a texture
@@ -39,7 +50,7 @@ void main (void) {
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
-    #ifndef TANGRAM_BLEND_OVERLAY
+    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
         if (color.a < TANGRAM_ALPHA_DISCARD) {
             discard;
         }
