@@ -35,14 +35,14 @@ windows:
                     return o4.y * d.y + o4.x * (1.0 - d.y);
                 }
             color: |
-                vec3 vPos = v_world_position.xyz / u_frequency;
+                vec3 vPos = worldPosition().xyz / u_frequency;
                 vec3 mask = mix(vec3(0.0), vec3(1.0), step(fract(mod(vPos, .9)), vec3(.4, .4, .6)));
 
                 if (mask.x + mask.y + mask.z > .5) {
                     color.rgb = u_buildingColor;
                     color.rgb -= vec3(vPos.z * .1); // height factor
                 } else {
-                    float noiseColor = 2. * noise(v_world_position.xyz * 0.1 + (floor(u_time * 5.) / 10.));
+                    float noiseColor = 2. * noise(worldPosition().xyz * 0.1 + (floor(u_time * 5.) / 10.));
                     color.rgb = u_windowColor * noiseColor;
                 }
 
