@@ -54,23 +54,22 @@ export default class Label {
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
     discard (aabbs) {
-        let discard = false;
-
         // Should the label be culled if it can't fit inside the tile bounds?
         if (this.options.cull_from_tile) {
             let in_tile = this.inTileBounds();
 
             // If it doesn't fit, should we try to move it into the tile bounds?
             if (!in_tile && this.options.move_into_tile) {
-                // Were we able to fit it in the tile?
-                discard = this.moveIntoTile();
+                // Can we fit the label into the tile?
+                if (!this.moveIntoTile()) {
+                    return true; // can't fit in tile, discard
+                }
             } else if (!in_tile) {
-                // discard since we're out of tile bounds
-                return true;
+                return true; // out of tile bounds, discard
             }
         }
 
-        // should we discard? if not, just make occlusion test
-        return discard || this.occluded(aabbs);
+        // If the label hasn't been discarded yet, check to see if it's occluded by other labels
+        return this.occluded(aabbs);
     }
 }

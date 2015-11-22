@@ -36,6 +36,8 @@ export default class LabelPoint extends Label {
         return aabb;
     }
 
+    // Try to move the label into the tile bounds
+    // Returns true if label was moved into tile, false if it couldn't be moved
     moveIntoTile () {
         let updated = false;
 
@@ -63,7 +65,7 @@ export default class LabelPoint extends Label {
             this.aabb = this.computeAABB();
         }
 
-        return !this.inTileBounds();
+        return this.inTileBounds();
     }
 
 }
