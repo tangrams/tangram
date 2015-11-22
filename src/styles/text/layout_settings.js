@@ -40,7 +40,7 @@ export default LayoutSettings = {
 
         // label line exceed percentage
         if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
-            layout.line_exceed = draw.line_exceed.substr(0,draw.line_exceed.length-1);
+            layout.line_exceed = parseFloat(draw.line_exceed.substr(0,draw.line_exceed.length-1));
         }
         else {
             layout.line_exceed = 80;
