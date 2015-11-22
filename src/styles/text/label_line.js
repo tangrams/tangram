@@ -60,7 +60,7 @@ export default class LabelLine extends Label {
             return exceed < this.options.line_exceed;
         }
 
-        return label_length < length;
+        return label_length <= length;
     }
 
     currentSegment () {
