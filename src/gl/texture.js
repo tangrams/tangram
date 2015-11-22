@@ -41,6 +41,7 @@ export default class Texture {
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
+        log.trace(`creating Texture ${this.name}`);
     }
 
     // Destroy a single texture instance
@@ -54,6 +55,7 @@ export default class Texture {
         this.data = null;
         delete Texture.textures[this.name];
         this.valid = false;
+        log.trace(`destroying Texture ${this.name}`);
     }
 
     bind(unit) {
@@ -191,20 +193,17 @@ export default class Texture {
             // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.REPEAT);
 
             if (options.filtering === 'mipmap') {
-                log.trace('power-of-2 MIPMAP');
                 this.filtering = 'mipmap';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); // TODO: use trilinear filtering by defualt instead?
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                 gl.generateMipmap(gl.TEXTURE_2D);
             }
             else if (options.filtering === 'linear') {
-                log.trace('power-of-2 LINEAR');
                 this.filtering = 'linear';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             }
             else if (options.filtering === 'nearest') {
-                log.trace('power-of-2 NEAREST');
                 this.filtering = 'nearest';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -218,13 +217,11 @@ export default class Texture {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
             if (options.filtering === 'nearest') {
-                log.trace('power-of-2 NEAREST');
                 this.filtering = 'nearest';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             }
             else { // default to linear for non-power-of-2 textures
-                log.trace('power-of-2 LINEAR');
                 this.filtering = 'linear';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -264,7 +261,6 @@ Texture.destroy = function (gl) {
     for (var t of textures) {
         var texture = Texture.textures[t];
         if (texture.gl === gl) {
-            log.trace(`destroying Texture ${texture.name}`);
             texture.destroy();
         }
     }
