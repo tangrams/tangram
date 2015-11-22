@@ -97,7 +97,7 @@ export default class LabelLine extends Label {
         let fits_to_segment = this.fitToSegment();
 
         // Try line segments until we find one that fits the label (and is inside the tile)
-        while (!in_tile && !fits_to_segment) {
+        while (!in_tile || !fits_to_segment) {
             if (!this.moveNextSegment()) {
                 break; // we can't move further in this line
             }
