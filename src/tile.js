@@ -126,7 +126,7 @@ export default class Tile {
     }
 
     destroy() {
-        this.workerMessage('removeTile', this.key);
+        this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
     }
@@ -155,7 +155,7 @@ export default class Tile {
         if (!this.loaded) {
             this.loading = true;
         }
-        return this.workerMessage('buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
+        return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
     // Process geometry for tile - called by web worker

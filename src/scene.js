@@ -300,7 +300,7 @@ export default class Scene {
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, Utils.device_pixel_ratio).then(
                 (id) => {
                     log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -506,8 +506,7 @@ export default class Scene {
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
     updateDevicePixelRatio () {
         if (Utils.updateDevicePixelRatio()) {
-            Promise
-                .all(this.workers.map(w => WorkerBroker.postMessage(w, 'updateDevicePixelRatio', Utils.device_pixel_ratio)))
+            WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
                 .then(() => this.rebuild())
                 .then(() => this.resizeMap(this.css_size.width, this.css_size.height));
         }
@@ -1183,11 +1182,9 @@ export default class Scene {
     syncConfigToWorker() {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.config_serialized = Utils.serializeWithFunctions(this.config);
-        this.workers.forEach(worker => {
-            WorkerBroker.postMessage(worker, 'updateConfig', {
-                config: this.config_serialized,
-                generation: this.generation
-            });
+        WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+            config: this.config_serialized,
+            generation: this.generation
         });
     }
 
@@ -1196,7 +1193,7 @@ export default class Scene {
             this.selection = new FeatureSelection(this.gl, this.workers);
         }
         else if (this.workers) {
-            this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');
         }
     }
 
@@ -1207,8 +1204,7 @@ export default class Scene {
         }
         this.fetching_selection_map = true;
 
-        return Promise
-            .all(this.workers.map(worker => WorkerBroker.postMessage(worker, 'getFeatureSelectionMapSize')))
+        return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize')
             .then(sizes => {
                 this.fetching_selection_map = false;
                 return sizes.reduce((a, b) => a + b);
@@ -1242,12 +1238,12 @@ export default class Scene {
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {
         console.profile(`main thread: ${name}`);
-        this.workers.forEach(w => WorkerBroker.postMessage(w, 'profile', name));
+        WorkerBroker.postMessage(this.workers, 'self.profile', name);
     }
 
     _profileEnd(name) {
         console.profileEnd(`main thread: ${name}`);
-        this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', name));
+        WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
     }
 
     // Rebuild geometry a given # of times and print average, min, max timings
