@@ -1,3 +1,5 @@
+import Geo from '../../geo';
+
 var LayoutSettings;
 
 export default LayoutSettings = {
@@ -47,22 +49,22 @@ export default LayoutSettings = {
         }
 
         // repeat rules
-        if (typeof draw.repeat_key === 'function') {
-            layout.repeat_key = draw.repeat_key(context);
+        if (typeof draw.repeat_group === 'function') {
+            layout.repeat_key = draw.repeat_group(context);
         }
-        else if (typeof draw.repeat_key === 'string') {
-            layout.repeat_key = draw.repeat_key;
+        else if (typeof draw.repeat_group === 'string') {
+            layout.repeat_key = draw.repeat_group;
         }
         else {
-            layout.repeat_key = draw.key + '/' + text;
+            layout.repeat_key = draw.key; // default to unique set of matching layers
         }
-        layout.repeat_key = tile.key + '/' + layout.repeat_key;
+        layout.repeat_key += '/' + text;
 
-        if (typeof draw.repeat_dist === 'number') {
-            layout.repeat_dist = draw.repeat_dist * layout.units_per_pixel;
+        if (typeof draw.repeat === 'number') {
+            layout.repeat_dist = draw.repeat * layout.units_per_pixel;
         }
-        else if (draw.repeat_dist !== false) {
-            layout.repeat_dist = 200 * layout.units_per_pixel; // default
+        else if (draw.repeat !== false) {
+            layout.repeat_dist = Geo.tile_size * layout.units_per_pixel; // default
         }
 
         // collision flag

@@ -202,9 +202,7 @@ Object.assign(TextStyle, {
     discardLabels (tile, labels, texts) {
         let aabbs = [];
         let keep_labels = [];
-
-        let repeat_groups = {};
-        let repeat_group;
+        RepeatGroup.clear(tile);
 
         // Process labels by priority
         let priorities = Object.keys(labels).sort((a, b) => a - b);
@@ -217,22 +215,25 @@ Object.assign(TextStyle, {
                 let { label, text_settings_key, layout } = labels[priority][i];
                 let settings = texts[text_settings_key][label.text];
 
-                // check for repeats
-                let check = RepeatGroup.check(label, layout);
-                if (check) {
-                    console.log(`discard label '${label.text}', dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
-                    continue;
-                }
-
                 // test the label for intersections with other labels in the tile
                 if (!layout.collide || !label.discard(aabbs)) {
+                    // check for repeats
+                    let check = RepeatGroup.check(label, layout, tile);
+                    if (check) {
+                        log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                        continue;
+                    }
+                    // register as placed for future repeat culling
+                    RepeatGroup.add(label, layout, tile);
+
+                    label.add(aabbs); // add label to currently visible set
                     keep_labels.push(labels[priority][i]);
 
                     // increment a count of how many times this style is used in the tile
                     settings.ref++;
-
-                    // register as placed for future repeat culling
-                    RepeatGroup.add(label, layout);
+                }
+                else if (layout.collide) {
+                    log.trace(`discard label '${label.text}' due to collision`);
                 }
             }
         }
