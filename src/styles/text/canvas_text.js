@@ -63,10 +63,8 @@ export default class CanvasText {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        let px_size = this.px_size;
-
-        // vertical padding, TODO: use Canvas TextMetrics when/if they become available and/or make configurable
-        px_size += 2;
+        let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
+        let line_height = this.px_size + leading; // px_size already in device pixels
 
         // Word wrapping
         // Line breaks can be caused by:
@@ -122,22 +120,24 @@ export default class CanvasText {
         addLine(false);
 
         // Final dimensions of text
-        let height = lines.length * px_size;
+        let height = lines.length * line_height;
 
-        let text_size = [
+        let collision_size = [
             max_width / Utils.device_pixel_ratio,
             height / Utils.device_pixel_ratio
         ];
 
-        let texture_text_size = [
+        let texture_size = [
             max_width + buffer * 2,
             height + buffer * 2
         ];
 
+        let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
+
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { text_size, texture_text_size, px_size }
+            size: { collision_size, texture_size, logical_size, line_height }
         };
     }
 
@@ -149,8 +149,8 @@ export default class CanvasText {
             let line = lines[line_num];
             let str = this.applyTextTransform(line.text, transform);
             let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let texture_size = size.texture_text_size;
-            let px_size = size.px_size;
+            let texture_size = size.texture_size;
+            let line_height = size.line_height;
 
             // Text alignment
             let tx;
@@ -166,7 +166,7 @@ export default class CanvasText {
 
             // In the absence of better Canvas TextMetrics (not supported by browsers yet),
             // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + buffer * 0.75 + (line_num + 1) * px_size;
+            let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
 
             if (stroke) {
                 this.context.strokeText(str, tx, ty);
@@ -191,7 +191,7 @@ export default class CanvasText {
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
-                    info.size.texture_text_size,
+                    info.size.texture_size,
                     texture_size
                 );
             }
@@ -207,7 +207,7 @@ export default class CanvasText {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let size = text_info.size.texture_text_size;
+                let size = text_info.size.texture_size;
 
                 text_info.position = [0, height];
 

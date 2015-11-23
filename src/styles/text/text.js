@@ -310,7 +310,7 @@ Object.assign(TextStyle, {
 
         this.buildQuad(
             [label.position],
-            label.size.texture_text_size,
+            label.size.logical_size,
             Utils.radToDeg(label.angle) || 0, vertex_data,
             vertex_template, label.options.offset
         );

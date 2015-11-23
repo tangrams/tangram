@@ -125,9 +125,6 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.size[0] *= Utils.device_pixel_ratio;
-        style.size[1] *= Utils.device_pixel_ratio;
-
         style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {
             style.angle = style.angle(context);
@@ -144,14 +141,7 @@ Object.assign(Points, {
         style.centroid = rule_style.centroid;
 
         // Offset applied to point in screen space
-        if (rule_style.offset) {
-            style.offset = rule_style.offset;
-            style.offset[0] = parseInt(style.offset[0]) * Utils.device_pixel_ratio;
-            style.offset[1] = parseInt(style.offset[1]) * Utils.device_pixel_ratio;
-        }
-        else {
-            style.offset = [0, 0];
-        }
+        style.offset = (Array.isArray(rule_style.offset) && rule_style.offset.map(parseFloat)) || [0, 0];
 
         // anchor
         style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);

@@ -66,7 +66,10 @@ void main() {
         applyLayerOrder(SHORT(a_position.w), position);
     #endif
 
-    position.xy += shape * 2. * position.w / u_resolution;
+    // Apply pixel offset in screen-space
+    // Multiply by 2 is because screen is 2 units wide Normalized Device Coords (and u_resolution device pixels wide)
+    // Device pixel ratio adjustment is because shape is in logical pixels
+    position.xy += shape * position.w * 2. * u_device_pixel_ratio / u_resolution;
 
     gl_Position = position;
 }

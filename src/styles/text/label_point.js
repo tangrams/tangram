@@ -17,12 +17,12 @@ export default class LabelPoint extends Label {
     }
 
     computeOffset () {
-        return PointAnchor.computeOffset(this.options.offset, this.size.text_size, this.options.anchor);
+        return PointAnchor.computeOffset(this.options.offset, this.size.collision_size, this.options.anchor);
     }
 
     computeAABB () {
-        let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
-        let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
+        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
+        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
 
         let p = [
             this.position[0] + (this.options.offset[0] * this.options.units_per_pixel),

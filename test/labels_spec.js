@@ -10,7 +10,7 @@ describe('Labels', () => {
     describe('LabelPoint', () => {
 
         beforeEach(() => {
-            let size = { text_size: [1000, 500] };
+            let size = { collision_size: [1000, 500] };
             let p = [2000, -1000];
             label = new LabelPoint('Test', p, size, {
                 units_per_pixel: 1,
