@@ -731,56 +731,58 @@ export default class Scene {
         for (var t in this.renderable_tiles) {
             var tile = this.renderable_tiles[t];
 
-            if (tile.meshes[style] != null) {
-                // Setup style if encountering for first time this frame
-                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                if (first_for_style === true) {
-                    first_for_style = false;
-
-                    program.use();
-                    this.styles[style].setup();
-
-                    // TODO: don't set uniforms when they haven't changed
-                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
-                    // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-                    program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
-
-                    // Normal matrices - transforms surface normals into view space
-                    mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-                    mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
-
-                    program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
-                    program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
-
-                    this.camera.setupProgram(program);
-                    for (let i in this.lights) {
-                        this.lights[i].setupProgram(program);
-                    }
-                }
-
-                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-                // Tile origin
-                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
-
-                // Model matrix - transform tile space into world space (meters, absolute mercator position)
-                mat4.identity(this.modelMatrix);
-                mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
-                mat4.copy(this.modelMatrix32, this.modelMatrix);
-                program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
-
-                // Model view matrix - transform tile space into view space (meters, relative to camera)
-                mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
-                program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-                // Render tile
-                tile.meshes[style].render();
-                render_count += tile.meshes[style].geometry_count;
+            if (tile.meshes[style] == null) {
+                continue;
             }
+
+            // Style-specific state
+            // Only setup style if rendering for first time this frame
+            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+            if (first_for_style === true) {
+                first_for_style = false;
+
+                program.use();
+                this.styles[style].setup();
+
+                // TODO: don't set uniforms when they haven't changed
+                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
+
+                this.camera.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
+            }
+
+            // Tile-specific state
+            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+
+            // Tile origin
+            program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
+
+            // Model matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.modelMatrix);
+            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+            mat4.copy(this.modelMatrix32, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
+
+            // Model view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
+
+            // Normal matrices - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+            program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
+
+            // Render tile
+            tile.meshes[style].render();
+            render_count += tile.meshes[style].geometry_count;
         }
 
         return render_count;
