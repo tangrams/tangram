@@ -166,6 +166,9 @@ Builders.buildExtrudedPolygons = function (
     }
 };
 
+// TODO:
+//  - Pre posees the line into segments on not over tile edge 
+
 // Build tessellated triangles for a polyline
 Builders.buildPolylines = function (
     lines,
@@ -260,7 +263,7 @@ Builders.buildPolylines = function (
                 var needToClose = true;
                 if (remove_tile_edges) {
                     // If the line is over a tile edge and need to be remove skip the wrapping arround
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
+                    if (Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
                         needToClose = false;
                     }
                 }
