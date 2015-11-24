@@ -101,6 +101,10 @@ Geo.wrapLng = function(x) {
 
 // Run an in-place transform function on each cooordinate in a GeoJSON geometry
 Geo.transformGeometry = function (geometry, transform) {
+    if (geometry == null) {
+        return; // skip if missing geometry (valid GeoJSON)
+    }
+
     if (geometry.type === 'Point') {
         transform(geometry.coordinates);
     }

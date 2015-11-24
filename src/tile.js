@@ -195,6 +195,10 @@ export default class Tile {
 
                 for (let f = 0; f < geom.features.length; f++) {
                     let feature = geom.features[f];
+                    if (feature.geometry == null) {
+                        continue; // skip features w/o geometry (valid GeoJSON)
+                    }
+
                     let context = StyleParser.getFeatureParseContext(feature, tile);
                     context.layer = source_layer.layer; // add data source layer name
 
