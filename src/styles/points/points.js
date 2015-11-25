@@ -153,6 +153,7 @@ Object.assign(Points, {
         draw.color = StyleParser.cacheObject(draw.color);
         draw.z = StyleParser.cacheObject(draw.z);
         draw.size = StyleParser.cacheObject(draw.size);
+        return draw;
     },
 
     /**

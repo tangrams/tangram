@@ -167,6 +167,7 @@ Object.assign(Lines, {
             draw.outline.width = StyleParser.cacheObject(draw.outline.width);
             draw.outline.next_width = StyleParser.cacheObject(draw.outline.width); // width re-computed for next zoom
         }
+        return draw;
     },
 
     /**

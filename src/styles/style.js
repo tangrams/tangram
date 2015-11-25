@@ -169,7 +169,10 @@ export var Style = {
         try {
             var style = this.feature_style;
 
-            this.preprocess(rule_style);
+            rule_style = this.preprocess(rule_style);
+            if (!rule_style) {
+                return;
+            }
 
             // Calculate order if it was not cached
             style.order = this.parseOrder(rule_style.order, context);
@@ -211,12 +214,19 @@ export var Style = {
     preprocess (rule_style) {
         // Preprocess first time
         if (!rule_style.preprocessed) {
-            this._preprocess(rule_style); // optional subclass implementation
+            rule_style = this._preprocess(rule_style); // optional subclass implementation
+            if (!rule_style) {
+                return;
+            }
             rule_style.preprocessed = true;
         }
+        return rule_style;
     },
 
-    _preprocess () {}, // optionally implemented by subclass
+    // optionally implemented by subclass
+    _preprocess (rule_style) {
+        return rule_style;
+    },
 
     // Parse an order value
     parseOrder (order, context) {

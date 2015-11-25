@@ -70,7 +70,10 @@ Object.assign(TextStyle, {
 
         // Called here because otherwise it will be delayed until the feature queue is parsed,
         // and we want the preprocessing done before we evaluate text style below
-        this.preprocess(draw);
+        draw = this.preprocess(draw);
+        if (!draw) {
+            return;
+        }
 
         // Collect text - default source is feature.properties.name
         let text;
@@ -292,6 +295,8 @@ Object.assign(TextStyle, {
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
+
+        return draw;
     },
 
     // Parse feature is called "late", after all labels have been created
