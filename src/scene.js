@@ -987,6 +987,30 @@ export default class Scene {
         });
     }
 
+    // Add source. The config should have {type: ['topoJSON'|'geoJSON'], [url: string | data: obj]}
+    setDataSource (name, config) {
+        if ( !name || !config || !config.type || (!config.url && !config.data ) ) {
+            log.error("No name provide or not valid config:", name, config);
+            return;
+        }
+
+        let load = (this.config.sources[name] == null);
+        let source = this.config.sources[name] = Object.assign({}, config);
+
+        if (source.data && typeof source.data === 'object') {
+            source.url = Utils.createObjectURL(new Blob([JSON.stringify(source.data)]));
+            delete source.data;
+            // TODO: add path normalization logic
+        }
+
+        if (load) {
+            this.updateConfig({ rebuild: true });
+            // this.loadDataSources();
+        } else {
+            this.rebuild();
+        }
+    }
+    
     loadDataSources() {
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
