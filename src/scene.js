@@ -1025,6 +1025,15 @@ export default class Scene {
         }
     }
 
+    setTexture (style_name, uniform_name, config ) {
+        if ( !style_name || !uniform_name || !config || (!config.url && !config.data ) ) {
+            log.error("No enought values to upload texture:", style_name, uniform_name, config);
+            return;
+        }
+        
+        loadTexture( { style: 'style_name', uniform: 'uniform_name', source: [string|obj]})
+    }
+
     // Load all textures in the scene definition
     loadTextures() {
         return Texture.createFromObject(this.gl, this.config.textures);
