@@ -1025,56 +1025,30 @@ export default class Scene {
         }
     }
 
-    setTexture (style_name, uniform_name, config ) {
-        if ( !style_name || !uniform_name || !config || (!config.url && !config.data ) ) {
-            log.error("No enought values to upload texture:", style_name, uniform_name, config);
+    setTexture (style_name, uniform_name, element) {
+        // All arguments are necesary
+        if (!style_name || !uniform_name || !element) {
+            log.error("No enought values to upload texture:", style_name, uniform_name, element);
             return;
         }
 
-        // TODO:
-        //  - check if the style exist
-        //  - check if the uniform exist
-
-        if (config.data && config.width && config.height && config.format && config.type) {
-            console.log("The hard way");
-            // Something like but using Tangram's core function
-        
-            // gl.activeTexture(gl.TEXTURE0);
-            // gl.bindTexture(gl.TEXTURE_2D, 0);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            // gl.texImage2D(
-            //     gl.TEXTURE_2D, // target
-            //     0, // mip level
-            //     gl.RGBA, // internal format
-            //     width, height, // width and height
-            //     0, // border
-            //     gl.RGBA, //format
-            //     gl.FLOAT, // type
-            //     pixels // texture data
-            // );
-            // gl.bindTexture(gl.TEXTURE_2D, null);
-        } else {
-            var url = config.url || "";
-
-            if (config instanceof HTMLImageElement) {
-                // The config obj is a IMAGE
-                var canvas = document.createElement("canvas");
-                canvas.width = config.width;
-                canvas.height = config.height;
-                var ctx = canvas.getContext("2d");
-                ctx.drawImage(config, 0, 0);
-                url = canvas.toDataURL("image/png");
-
-            } else if (config instanceof HTMLCanvasElement) {
-                // The config obj is a Canvas
-                url = config.toDataURL('image/png');
-            }
-
-            this.styles[style_name].shaders.uniforms[uniform_name] = url;
+        // Check if the style exist...
+        if (!this.config.styles[style_name] ) {
+            log.error("The style (", style_name, ") doesn't exist.");
+            return;
         }
+
+        // If uniform doesn't excist create on it?
+        if (!this.config.styles[style_name].shaders.uniforms[uniform_name]){
+            this.config.styles[style_name].shaders.uniforms.uniform_name = element;
+        }
+
+        
+        this.styles[style_name].shaders.uniforms[uniform_name] = element;
+
+        // Doing it in the conf doesn't update the content
+        // this.config.styles[style_name].shaders.uniforms[uniform_name] = element;
+
         this.rebuild();
     }
 
