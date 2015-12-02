@@ -2,7 +2,6 @@ import chai from 'chai';
 let assert = chai.assert;
 
 import LabelPoint from '../src/styles/text/label_point';
-import LabelOptions from '../src/styles/text/label_options';
 
 let label;
 
@@ -11,10 +10,13 @@ describe('Labels', () => {
     describe('LabelPoint', () => {
 
         beforeEach(() => {
-            let options = new LabelOptions({ units_per_pixel: 1 });
-            let size = { text_size: [1000, 500] };
+            let size = { collision_size: [1000, 500] };
             let p = [2000, -1000];
-            label = new LabelPoint('Test', p, size, options);
+            label = new LabelPoint('Test', p, size, {
+                units_per_pixel: 1,
+                offset: [0, 0],
+                buffer: [0, 0]
+            });
         });
 
         it('is in tile bounds', () => {
@@ -41,8 +43,8 @@ describe('Labels', () => {
                 it(`can move back into tile for ${edge} edge`, () => {
                     label.position = p;
                     label.update();
-                    let discarded = label.moveIntoTile();
-                    assert.isFalse(discarded);
+                    let moved = label.moveIntoTile();
+                    assert.isTrue(moved);
                     assert.isTrue(label.inTileBounds());
                 });
 

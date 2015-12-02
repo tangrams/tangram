@@ -39,15 +39,17 @@ export default class CanvasText {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
-                let text_style = text_infos[text].text_style;
+                let text_settings = text_infos[text].text_settings;
                 // update text sizes
-                this.setFont(tile, text_style); // TODO: only set once above
+                this.setFont(tile, text_settings); // TODO: only set once above
                 Object.assign(
                     text_infos[text],
-                    this.textSize(text, tile, {
-                        transform: text_style.transform,
-                        text_wrap: text_style.text_wrap
-                    })
+                    this.textSize(
+                        text,
+                        tile,
+                        text_settings.transform,
+                        text_settings.text_wrap
+                    )
                 );
             }
         }
@@ -57,14 +59,12 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, tile, { transform, text_wrap }) {
+    textSize (text, tile, transform, text_wrap) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
-        let px_size = this.px_size;
-
-        // vertical padding, TODO: use Canvas TextMetrics when/if they become available and/or make configurable
-        px_size += 2;
+        let leading = 2 * Utils.device_pixel_ratio; // make configurable and/or use Canvas TextMetrics when available
+        let line_height = this.px_size + leading; // px_size already in device pixels
 
         // Word wrapping
         // Line breaks can be caused by:
@@ -120,22 +120,24 @@ export default class CanvasText {
         addLine(false);
 
         // Final dimensions of text
-        let height = lines.length * px_size;
+        let height = lines.length * line_height;
 
-        let text_size = [
+        let collision_size = [
             max_width / Utils.device_pixel_ratio,
             height / Utils.device_pixel_ratio
         ];
 
-        let texture_text_size = [
+        let texture_size = [
             max_width + buffer * 2,
             height + buffer * 2
         ];
 
+        let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
+
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { text_size, texture_text_size, px_size }
+            size: { collision_size, texture_size, logical_size, line_height }
         };
     }
 
@@ -147,8 +149,8 @@ export default class CanvasText {
             let line = lines[line_num];
             let str = this.applyTextTransform(line.text, transform);
             let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let texture_size = size.texture_text_size;
-            let px_size = size.px_size;
+            let texture_size = size.texture_size;
+            let line_height = size.line_height;
 
             // Text alignment
             let tx;
@@ -164,7 +166,7 @@ export default class CanvasText {
 
             // In the absence of better Canvas TextMetrics (not supported by browsers yet),
             // 0.75 buffer produces a better approximate vertical centering of text
-            let ty = y + buffer * 0.75 + (line_num + 1) * px_size;
+            let ty = y + buffer * 0.75 + (line_num + 1) * line_height;
 
             if (stroke) {
                 this.context.strokeText(str, tx, ty);
@@ -180,16 +182,16 @@ export default class CanvasText {
             for (let text in text_infos) {
                 let info = text_infos[text];
 
-                this.setFont(tile, info.text_style); // TODO: only set once above
+                this.setFont(tile, info.text_settings); // TODO: only set once above
                 this.drawText(info.lines, info.position, info.size, tile, {
-                    stroke: info.text_style.stroke,
-                    transform: info.text_style.transform,
-                    align: info.text_style.align
+                    stroke: info.text_settings.stroke,
+                    transform: info.text_settings.transform,
+                    align: info.text_settings.align
                 });
 
                 info.texcoords = Builders.getTexcoordsForSprite(
                     info.position,
-                    info.size.texture_text_size,
+                    info.size.texture_size,
                     texture_size
                 );
             }
@@ -205,7 +207,7 @@ export default class CanvasText {
 
             for (let text in text_infos) {
                 let text_info = text_infos[text];
-                let size = text_info.size.texture_text_size;
+                let size = text_info.size.texture_size;
 
                 text_info.position = [0, height];
 
@@ -236,4 +238,31 @@ export default class CanvasText {
         return text;
     }
 
+    // Convert font CSS-style size ('12px', '14pt', '1.5em', etc.) to pixel size (adjusted for device pixel ratio)
+    // Defaults units to pixels if not specified
+    static fontPixelSize (size) {
+        if (size == null) {
+            return;
+        }
+        size = (typeof size === 'string') ? size : String(size); // need a string for regex
+
+        let [, px_size, units] = size.match(CanvasText.font_size_re) || [];
+        units = units || 'px';
+
+        if (units === "em") {
+            px_size *= 16;
+        } else if (units === "pt") {
+            px_size /= 0.75;
+        } else if (units === "%") {
+            px_size /= 6.25;
+        }
+
+        px_size = parseFloat(px_size);
+        px_size *= Utils.device_pixel_ratio;
+        return px_size;
+    }
+
 }
+
+// Extract font size and units
+CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;

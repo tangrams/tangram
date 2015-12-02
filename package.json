@@ -38,6 +38,9 @@
     },
     {
       "name": "Ivan Willig"
+    },
+    {
+      "name": "Lou Huang"
     }
   ],
   "license": "MIT",
@@ -45,7 +48,7 @@
     "box-intersect": "^1.0.0",
     "csscolorparser": "^1.0.2",
     "earcut": "1.2.0",
-    "match-feature": "tangrams/match-feature",
+    "match-feature": "tangrams/match-feature#v1.0.0",
     "gl-matrix": "2.2.1",
     "js-yaml": "^3.1.0",
     "loglevel": "~1.2.0",

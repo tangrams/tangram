@@ -158,7 +158,7 @@ export default TileManager = {
             }
 
             let key = Tile.key(coords, source, this.scene.tile_zoom);
-            if (!this.hasTile(key)) {
+            if (key && !this.hasTile(key)) {
                 let tile = Tile.create({
                     source,
                     coords,

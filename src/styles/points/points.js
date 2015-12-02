@@ -9,6 +9,7 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
+import PointAnchor from './point_anchor';
 
 import log from 'loglevel';
 
@@ -124,9 +125,6 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.size[0] *= Utils.device_pixel_ratio;
-        style.size[1] *= Utils.device_pixel_ratio;
-
         style.angle = rule_style.angle || 0;
         if (typeof style.angle === 'function') {
             style.angle = style.angle(context);
@@ -143,17 +141,19 @@ Object.assign(Points, {
         style.centroid = rule_style.centroid;
 
         // Offset applied to point in screen space
-        style.offset = rule_style.offset || [0, 0];
-        style.offset[0] = parseInt(style.offset[0]);
-        style.offset[1] = parseInt(style.offset[1]);
+        style.offset = (Array.isArray(rule_style.offset) && rule_style.offset.map(parseFloat)) || [0, 0];
+
+        // anchor
+        style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);
 
         return style;
     },
 
-    preprocess (draw) {
-        draw.color = draw.color && { value: draw.color };
-        draw.z = draw.z && { value: draw.z };
-        draw.size = draw.size && { value: draw.size };
+    _preprocess (draw) {
+        draw.color = StyleParser.cacheObject(draw.color);
+        draw.z = StyleParser.cacheObject(draw.z);
+        draw.size = StyleParser.cacheObject(draw.size);
+        return draw;
     },
 
     /**
@@ -203,7 +203,7 @@ Object.assign(Points, {
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
                 quad_scale: Utils.scaleInt16(1, 256),
-                offset: Vector.mult(offset, Utils.device_pixel_ratio),
+                offset,
                 angle: Utils.scaleInt16(angle, 360),
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535

@@ -47,16 +47,12 @@ export default class LabelLine extends Label {
         return theta;
     }
 
-    fitToSegment (should_fit = true) {
-        if (!should_fit) {
-            return true;
-        }
-
+    fitToSegment () {
         let segment = this.currentSegment();
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
-        let label_length = this.size.text_size[0] * this.options.units_per_pixel;
+        let label_length = this.size.collision_size[0] * this.options.units_per_pixel;
 
         if (label_length > length) {
             // an exceed heurestic of 100% would let the label fit in any cases
@@ -64,7 +60,7 @@ export default class LabelLine extends Label {
             return exceed < this.options.line_exceed;
         }
 
-        return label_length < length;
+        return label_length <= length;
     }
 
     currentSegment () {
@@ -76,8 +72,8 @@ export default class LabelLine extends Label {
 
     computeAABB () {
         let upp = this.options.units_per_pixel;
-        let width = (this.size.text_size[0] + this.options.buffer[0] * 2) * upp;
-        let height = (this.size.text_size[1] + this.options.buffer[1] * 2) * upp;
+        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * upp;
+        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * upp;
 
         // apply offset, x positive, y pointing down
         let offset = Vector.rot(this.options.offset, this.angle);
@@ -94,25 +90,27 @@ export default class LabelLine extends Label {
         return aabb;
     }
 
+    // Try to move the label into the tile bounds
+    // Returns true if label was moved into tile, false if it couldn't be moved
     moveIntoTile () {
         let in_tile = false;
         let fits_to_segment = this.fitToSegment();
 
-        // move this label until we found a line we can fit in
-        while (!in_tile && !fits_to_segment) {
+        // Try line segments until we find one that fits the label (and is inside the tile)
+        while (!in_tile || !fits_to_segment) {
             if (!this.moveNextSegment()) {
-                // we can't move further in this line
-                break;
+                break; // we can't move further in this line
             }
 
             in_tile = this.inTileBounds();
             fits_to_segment = this.fitToSegment();
         }
 
-        return !in_tile || !fits_to_segment;
+        return in_tile && fits_to_segment;
     }
 
     discard (aabbs) {
+        // First find a line segment that fits the label
         if (this.lines && !this.fitToSegment()) {
             while (!this.fitToSegment()) {
                 if (!this.moveNextSegment()) {
@@ -121,6 +119,7 @@ export default class LabelLine extends Label {
             }
         }
 
+        // If label fits in line, run standard discard tests
         return super.discard(aabbs);
     }
 

@@ -66,6 +66,9 @@ export default class Tile {
 
     static key (coords, source, style_zoom) {
         coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
+            return; // cull tiles out of range (x will wrap)
+        }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
@@ -123,7 +126,7 @@ export default class Tile {
     }
 
     destroy() {
-        this.workerMessage('removeTile', this.key);
+        this.workerMessage('self.removeTile', this.key);
         this.freeResources();
         this.worker = null;
     }
@@ -152,7 +155,7 @@ export default class Tile {
         if (!this.loaded) {
             this.loading = true;
         }
-        return this.workerMessage('buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
+        return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
     // Process geometry for tile - called by web worker
@@ -192,6 +195,10 @@ export default class Tile {
 
                 for (let f = 0; f < geom.features.length; f++) {
                     let feature = geom.features[f];
+                    if (feature.geometry == null) {
+                        continue; // skip features w/o geometry (valid GeoJSON)
+                    }
+
                     let context = StyleParser.getFeatureParseContext(feature, tile);
                     context.layer = source_layer.layer; // add data source layer name
 

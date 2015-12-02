@@ -61,7 +61,7 @@ styles:
                 color: |
                     color.rgb *=
                         abs(pnoise(
-                            (v_world_position.xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
+                            (worldPosition().xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
                             vec3(TANGRAM_WORLD_POSITION_WRAP / 10.0))
                         ) / 4. + .75;
 
@@ -80,7 +80,7 @@ styles:
                     }
                 color: |
                     // modulate hue by z-position and time, then convert to RGB and set pixel color
-                    vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
+                    vec3 c = vec3(worldPosition().z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
     popup:
@@ -129,7 +129,7 @@ styles:
         shaders:
             blocks:
                 color: |
-                    color.rgb = vec3(min((v_world_position.z*.0005 + .65),.8));
+                    color.rgb = vec3(min((worldPosition().z*.0005 + .65),.8));
 
     icons:
         base: points
@@ -145,7 +145,7 @@ styles:
                 color: |
                     // From: http://madebyevan.com/shaders/grid/
                     // Pick a coordinate to visualize in a grid
-                    vec3 coord = v_world_position.xyz / 10.;
+                    vec3 coord = worldPosition().xyz / 10.;
 
                     // Compute anti-aliased world-space grid lines
                     vec3 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
@@ -318,6 +318,14 @@ layers:
                     width: [[15, 0px], [18, 2px]]
                     outline:
                         width: 0
+        ferry:
+            filter: { kind: ferry }
+            draw:
+                lines:
+                    color: '#8db3ce'
+                    width: [[14, 1px], [18, 2px]]
+                    outline:
+                        width: 0
         airports:
             filter: { aeroway: true }
             draw:
@@ -418,6 +426,17 @@ layers:
                             size: 16px
                             stroke: { color: white, width: 4 }
 
+            ferry:
+                filter: { kind: ferry }
+                draw:
+                    text:
+                        text_wrap: 20
+                        font:
+                            fill: '#8db3ce'
+                            stroke: { color: white, width: 4px }
+                            style: italic
+                            size: 12px
+
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
@@ -426,8 +445,12 @@ layers:
         data: { source: osm, layer: pois }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
+            points:
+                visible: false # turn on for debug
+                color: red
+                size: 8px
             icons:
-                # offset: [0px, -13px]
+                anchor: top
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
 
@@ -487,6 +510,7 @@ layers:
                     family: Helvetica
                     size: 11pt
                     style: italic
+                    transform: uppercase
                     fill: black
                     stroke: { color: white, width: 3 }
         continents:
@@ -517,8 +541,8 @@ layers:
                 text:
                     font:
                         family: Helvetica
-                        size: 12pt
-                        style: italic
+                        size: [[6, 12px], [9, 16px]]
+                        style: normal
                         fill: black
                         stroke: { color: white, width: 3 }
 
@@ -527,13 +551,15 @@ layers:
             visible: false
 
     point_labels:
-        data: { source: osm, layer: [pois, landuse_labels] }
+        data: { source: osm, layer: [pois, landuse] }
         filter:
             name: true
 
         landuse:
             filter:
-                $layer: landuse_labels
+                $layer: landuse
+                $geometry: point
+                label_placement: yes
                 kind: [park, forest, cemetery, graveyard]
                 any:
                     # show labels for smaller landuse areas at higher zooms
@@ -560,9 +586,9 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
-                    anchor: right
+                    anchor: bottom
                     # align: left
-                    offset: [13px, 0]
+                    offset: [0, 2px]
                     move_into_tile: false
                     priority: 6
                     font:

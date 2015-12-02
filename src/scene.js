@@ -157,6 +157,7 @@ export default class Scene {
                 if (this.render_loop !== false) {
                     this.setupRenderLoop();
                 }
+                this.requestRedraw();
         }).catch(error => {
             this.initializing = false;
             this.updating = 0;
@@ -299,7 +300,7 @@ export default class Scene {
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'init', id, this.num_workers, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, Utils.device_pixel_ratio).then(
                 (id) => {
                     log.debug(`Scene.makeWorkers: initialized worker ${id}`);
                     return id;
@@ -505,7 +506,9 @@ export default class Scene {
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
     updateDevicePixelRatio () {
         if (Utils.updateDevicePixelRatio()) {
-            this.resizeMap(this.css_size.width, this.css_size.height);
+            WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
+                .then(() => this.rebuild())
+                .then(() => this.resizeMap(this.css_size.width, this.css_size.height));
         }
     }
 
@@ -728,56 +731,58 @@ export default class Scene {
         for (var t in this.renderable_tiles) {
             var tile = this.renderable_tiles[t];
 
-            if (tile.meshes[style] != null) {
-                // Setup style if encountering for first time this frame
-                // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
-                if (first_for_style === true) {
-                    first_for_style = false;
-
-                    program.use();
-                    this.styles[style].setup();
-
-                    // TODO: don't set uniforms when they haven't changed
-                    program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                    program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                    program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
-                    // Math.floor(this.zoom) + (Math.log((this.zoom % 1) + 1) / Math.LN2 // scale fractional zoom by log
-                    program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-                    program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
-
-                    // Normal matrices - transforms surface normals into view space
-                    mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-                    mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
-
-                    program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
-                    program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
-
-                    this.camera.setupProgram(program);
-                    for (let i in this.lights) {
-                        this.lights[i].setupProgram(program);
-                    }
-                }
-
-                // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-                // Tile origin
-                program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
-
-                // Model matrix - transform tile space into world space (meters, absolute mercator position)
-                mat4.identity(this.modelMatrix);
-                mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-                mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
-                mat4.copy(this.modelMatrix32, this.modelMatrix);
-                program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
-
-                // Model view matrix - transform tile space into view space (meters, relative to camera)
-                mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
-                program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-                // Render tile
-                tile.meshes[style].render();
-                render_count += tile.meshes[style].geometry_count;
+            if (tile.meshes[style] == null) {
+                continue;
             }
+
+            // Style-specific state
+            // Only setup style if rendering for first time this frame
+            // (lazy init, not all styles will be used in all screen views; some styles might be defined but never used)
+            if (first_for_style === true) {
+                first_for_style = false;
+
+                program.use();
+                this.styles[style].setup();
+
+                // TODO: don't set uniforms when they haven't changed
+                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
+                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
+                program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
+
+                this.camera.setupProgram(program);
+                for (let i in this.lights) {
+                    this.lights[i].setupProgram(program);
+                }
+            }
+
+            // Tile-specific state
+            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+
+            // Tile origin
+            program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
+
+            // Model matrix - transform tile space into world space (meters, absolute mercator position)
+            mat4.identity(this.modelMatrix);
+            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
+            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+            mat4.copy(this.modelMatrix32, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
+
+            // Model view matrix - transform tile space into view space (meters, relative to camera)
+            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
+            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
+
+            // Normal matrices - transforms surface normals into view space
+            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
+            mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
+            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
+            program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
+
+            // Render tile
+            tile.meshes[style].render();
+            render_count += tile.meshes[style].geometry_count;
         }
 
         return render_count;
@@ -1007,7 +1012,6 @@ export default class Scene {
         }
 
         // (Re)build styles from config
-        StyleManager.init();
         this.styles = StyleManager.build(this.config.styles, this);
 
         // Optionally set GL context (used when initializing or re-initializing GL resources)
@@ -1032,7 +1036,7 @@ export default class Scene {
             if (rule && rule.draw) {
                 for (let [name, group] of Utils.entries(rule.draw)) {
                     // TODO: warn on non-object draw group
-                    if (typeof group === 'object' && group.visible !== false) {
+                    if (group != null && typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
                         let styles = [style_name];
 
@@ -1154,6 +1158,8 @@ export default class Scene {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};
+
+        StyleManager.init();
         this.createCamera();
         this.createLights();
         this.loadDataSources();
@@ -1165,10 +1171,11 @@ export default class Scene {
         this.updateStyles();
         this.syncConfigToWorker();
         if (rebuild) {
-            return this.rebuildGeometry().then(() => this.updating--);
+            return this.rebuildGeometry().then(() => { this.updating--; this.requestRedraw(); });
         }
         else {
             this.updating--;
+            this.requestRedraw();
             return Promise.resolve();
         }
     }
@@ -1177,11 +1184,9 @@ export default class Scene {
     syncConfigToWorker() {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.config_serialized = Utils.serializeWithFunctions(this.config);
-        this.workers.forEach(worker => {
-            WorkerBroker.postMessage(worker, 'updateConfig', {
-                config: this.config_serialized,
-                generation: this.generation
-            });
+        WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+            config: this.config_serialized,
+            generation: this.generation
         });
     }
 
@@ -1190,7 +1195,7 @@ export default class Scene {
             this.selection = new FeatureSelection(this.gl, this.workers);
         }
         else if (this.workers) {
-            this.workers.forEach(worker => WorkerBroker.postMessage(worker, 'resetFeatureSelection'));
+            WorkerBroker.postMessage(this.workers, 'self.resetFeatureSelection');
         }
     }
 
@@ -1201,8 +1206,7 @@ export default class Scene {
         }
         this.fetching_selection_map = true;
 
-        return Promise
-            .all(this.workers.map(worker => WorkerBroker.postMessage(worker, 'getFeatureSelectionMapSize')))
+        return WorkerBroker.postMessage(this.workers, 'self.getFeatureSelectionMapSize')
             .then(sizes => {
                 this.fetching_selection_map = false;
                 return sizes.reduce((a, b) => a + b);
@@ -1236,12 +1240,12 @@ export default class Scene {
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {
         console.profile(`main thread: ${name}`);
-        this.workers.forEach(w => WorkerBroker.postMessage(w, 'profile', name));
+        WorkerBroker.postMessage(this.workers, 'self.profile', name);
     }
 
     _profileEnd(name) {
         console.profileEnd(`main thread: ${name}`);
-        this.workers.forEach(w => WorkerBroker.postMessage(w, 'profileEnd', name));
+        WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
     }
 
     // Rebuild geometry a given # of times and print average, min, max timings

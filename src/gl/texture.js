@@ -34,11 +34,14 @@ export default class Texture {
             Texture.textures[this.name].destroy();
         }
 
+        // Cache texture instance and definition
         Texture.textures[this.name] = this;
+        Texture.texture_configs[this.name] = Object.assign({ name }, options);
 
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
+        log.trace(`creating Texture ${this.name}`);
     }
 
     // Destroy a single texture instance
@@ -52,6 +55,7 @@ export default class Texture {
         this.data = null;
         delete Texture.textures[this.name];
         this.valid = false;
+        log.trace(`destroying Texture ${this.name}`);
     }
 
     bind(unit) {
@@ -189,20 +193,17 @@ export default class Texture {
             // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.REPEAT);
 
             if (options.filtering === 'mipmap') {
-                log.trace('power-of-2 MIPMAP');
                 this.filtering = 'mipmap';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); // TODO: use trilinear filtering by defualt instead?
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                 gl.generateMipmap(gl.TEXTURE_2D);
             }
             else if (options.filtering === 'linear') {
-                log.trace('power-of-2 LINEAR');
                 this.filtering = 'linear';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             }
             else if (options.filtering === 'nearest') {
-                log.trace('power-of-2 NEAREST');
                 this.filtering = 'nearest';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -216,13 +217,11 @@ export default class Texture {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
             if (options.filtering === 'nearest') {
-                log.trace('power-of-2 NEAREST');
                 this.filtering = 'nearest';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             }
             else { // default to linear for non-power-of-2 textures
-                log.trace('power-of-2 LINEAR');
                 this.filtering = 'linear';
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -262,7 +261,6 @@ Texture.destroy = function (gl) {
     for (var t of textures) {
         var texture = Texture.textures[t];
         if (texture.gl === gl) {
-            log.trace(`destroying Texture ${texture.name}`);
             texture.destroy();
         }
     }
@@ -281,6 +279,13 @@ Texture.createFromObject = function (gl, textures) {
     if (textures) {
         for (let texname in textures) {
             let config = textures[texname];
+
+            // If texture already exists and definition hasn't changed, no need to re-create
+            // Note: to avoid flicker when other textures/scene items change
+            if (!Texture.changed(texname, config)) {
+                continue;
+            }
+
             let texture = new Texture(gl, texname, config);
             if (config.url) {
                 loading.push(texture.load(config.url, config));
@@ -288,6 +293,18 @@ Texture.createFromObject = function (gl, textures) {
         }
     }
     return Promise.all(loading);
+};
+
+// Indicate if a texture definition would be a change from the current cache
+Texture.changed = function (name, config) {
+    if (Texture.textures[name]) { // cached texture
+        // compare definitions
+        if (JSON.stringify(Texture.texture_configs[name]) ===
+            JSON.stringify(Object.assign({ name }, config))) {
+            return false;
+        }
+    }
+    return true;
 };
 
 // Get metadata for a texture by name
@@ -335,7 +352,7 @@ Texture.getInfo = function (name) {
 // Called from worker, gets info on one or more textures info from main thread via remote call, then stores it
 // locally in worker. 'textures' can be an array of texture names to sync, or if null, all textures are synced.
 Texture.syncTexturesToWorker = function (names) {
-    return WorkerBroker.postMessage('Texture', 'getInfo', names).
+    return WorkerBroker.postMessage('Texture.getInfo', names).
         then(textures => {
             for (var tex of textures) {
                 Texture.textures[tex.name] = tex;
@@ -346,9 +363,11 @@ Texture.syncTexturesToWorker = function (names) {
 
 // Global set of textures, by name
 Texture.textures = {};
+Texture.texture_configs = {};
 Texture.boundTexture = -1;
 Texture.activeUnit = -1;
 
 Texture.base_url = null; // optional base URL to add to textures
 
+WorkerBroker.addTarget('Texture', Texture);
 subscribeMixin(Texture);

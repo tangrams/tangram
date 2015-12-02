@@ -20,11 +20,8 @@ StyleManager.baseStyle = Style;
 
 // Global configuration for all styles
 StyleManager.init = function () {
-    if (StyleManager.initialized) {
-        return;
-    }
-
     ShaderProgram.removeBlock('global');
+    ShaderProgram.removeBlock('setup');
 
     // Unpacking functions (for normalized vertex attributes)
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/unpack']);
@@ -39,7 +36,7 @@ StyleManager.init = function () {
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
 
     // Feature selection vertex shader support
-    ShaderProgram.replaceBlock('feature-selection-vertex', shaderSources['gl/shaders/selection_vertex']);
+    ShaderProgram.replaceBlock('setup', shaderSources['gl/shaders/selection_vertex']);
 
     // Minimum value for float comparisons
     ShaderProgram.defines.TANGRAM_EPSILON = 0.00001;
@@ -50,8 +47,6 @@ StyleManager.init = function () {
 
     // Internal tile scale
     ShaderProgram.defines.TANGRAM_TILE_SCALE = `vec3(${Geo.tile_scale}., ${Geo.tile_scale}., u_meters_per_pixel * ${Geo.tile_size}.)`;
-
-    StyleManager.initialized = true;
 };
 
 // Destroy all styles for a given GL context

@@ -98,7 +98,14 @@ StyleParser.wrapFunction = function (func) {
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
                 var properties = context.properties;
-                return (${func}());
+
+                var val = (${func}());
+
+                if (typeof val === 'number' && isNaN(val)) {
+                    val = null; // convert NaNs to nulls
+                }
+
+                return val;
             }`;
     return f;
 };
@@ -133,6 +140,69 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
         meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
         units_per_meter: Geo.units_per_meter[tile.coords.z]
     };
+};
+
+// Build a style param cache object
+// `value` is raw value, cache methods will add other properties as needed
+// `transform` is optional transform function to run on values
+StyleParser.cacheObject = function (obj, transform = null) {
+    if (obj == null) {
+        return;
+    }
+
+    if (obj.value) {
+        return { value: obj.value }; // clone existing cache object
+    }
+
+    if (typeof transform === 'function') {
+        if (Array.isArray(obj) && Array.isArray(obj[0])) {
+            obj = obj.map(v => [v[0], transform(v[1])]);
+        }
+        else {
+            obj = transform(obj);
+        }
+    }
+
+    return { value: obj };
+};
+
+// Interpolation and caching for a generic property (not a color or distance)
+// { value: original, static: val, zoom: { 1: val1, 2: val2, ... }, dynamic: function(){...} }
+StyleParser.cacheProperty = function(val, context) {
+    if (val == null) {
+        return;
+    }
+    else if (val.dynamic) { // function, compute each time (no caching)
+        let v = val.dynamic(context);
+        return v;
+    }
+    else if (val.static) { // single static value
+        return val.static;
+    }
+    else if (val.zoom && val.zoom[context.zoom]) { // interpolated, cached
+        return val.zoom[context.zoom];
+    }
+    else { // not yet evaulated for cache
+        // Dynamic function-based
+        if (typeof val.value === 'function') {
+            val.dynamic = val.value;
+            let v = val.dynamic(context);
+            return v;
+        }
+        // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
+        else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
+            // Calculate value for current zoom
+            val.zoom = val.zoom || {};
+            val.zoom = {};
+            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
+            return val.zoom[context.zoom];
+        }
+        // Single static value
+        else {
+            val.static = val.value;
+            return val.static;
+        }
+    }
 };
 
 StyleParser.convertUnits = function(val, context, convert = 'meters') {
@@ -230,7 +300,7 @@ StyleParser.colorForString = function(string) {
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
-        if (v[3] == null) {
+        if (v && v[3] == null) {
             v[3] = 1; // default alpha
         }
         return v;
@@ -246,7 +316,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
-            if (v[3] == null) {
+            if (v && v[3] == null) {
                 v[3] = 1; // default alpha
             }
             return v;
@@ -263,7 +333,7 @@ StyleParser.cacheColor = function(val, context = {}) {
                 // Parse any string colors inside stops
                 for (let i=0; i < val.value.length; i++) {
                     let v = val.value[i];
-                    if (typeof v[1] === 'string') {
+                    if (v && typeof v[1] === 'string') {
                         v[1] = StyleParser.colorForString(v[1]);
                     }
                 }
@@ -277,7 +347,7 @@ StyleParser.cacheColor = function(val, context = {}) {
         // Single array color
         else {
             val.static = val.value;
-            if (val.static[3] == null) {
+            if (val.static && val.static[3] == null) {
                 val.static[3] = 1; // default alpha
             }
             return val.static;
@@ -293,34 +363,20 @@ StyleParser.parseColor = function(val, context = {}) {
     // Parse CSS-style colors
     // TODO: change all colors to use 0-255 range internally to avoid dividing and then re-multiplying in geom builder
     if (typeof val === 'string') {
-        val = parseCSSColor.parseCSSColor(val);
-        if (val && val.length === 4) {
-            val[0] /= 255;
-            val[1] /= 255;
-            val[2] /= 255;
-        }
-        else {
-            val = null;
-        }
+        val = StyleParser.colorForString(val);
     }
     else if (Array.isArray(val) && Array.isArray(val[0])) {
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
         for (let i=0; i < val.length; i++) {
             let v = val[i];
             if (typeof v[1] === 'string') {
-                var vc = parseCSSColor.parseCSSColor(v[1]);
-                if (vc && vc.length === 4) {
-                    vc[0] /= 255;
-                    vc[1] /= 255;
-                    vc[2] /= 255;
-                    v[1] = vc;
-                }
+                v[1] = StyleParser.colorForString(v[1]);
             }
         }
-    }
 
-    if (context.zoom) {
-        val = Utils.interpolate(context.zoom, val);
+        if (context.zoom) {
+            val = Utils.interpolate(context.zoom, val);
+        }
     }
 
     // Defaults

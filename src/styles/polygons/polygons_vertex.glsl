@@ -50,8 +50,8 @@ varying vec4 v_world_position;
 #pragma tangram: global
 
 void main() {
-    // Adds vertex shader support for feature selection
-    #pragma tangram: feature-selection-vertex
+    // Initialize globals
+    #pragma tangram: setup
 
     // Texture UVs
     #ifdef TANGRAM_TEXTURE_COORDS
@@ -64,14 +64,14 @@ void main() {
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = SCALE_8(a_extrude.xy);
         float width = SHORT(a_extrude.z);
-        float scale = SCALE_8(a_extrude.w);
+        float dwdz = SHORT(a_extrude.w);
+        float dz = clamp(u_map_position.z - abs(u_tile_origin.z), 0.0, 1.0);
 
-        // Keep line width constant in screen-space
-        float zscale = u_tile_origin.z - u_map_position.z;
-        width *= pow(2., zscale);
+        // Interpolate between zoom levels
+        width += dwdz * dz;
 
-        // Smoothly interpolate line width between zooms
-        width = mix(width, width * scale, -zscale);
+        // Scale pixel dimensions to be consistent in screen space
+        width *= exp2(-dz);
 
         // Modify line width before extrusion
         #pragma tangram: width

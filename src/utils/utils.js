@@ -431,18 +431,6 @@ Utils.toCSSColor = function (color) {
     return `rgba(${color.map((c, i) => (i < 3 && Math.round(c * 255)) || c).join(', ')})`;
 };
 
-Utils.toPixelSize = function (size, kind) {
-    if (kind === "px") {
-        return size;
-    } else if (kind === "em") {
-        return 16 * size;
-    } else if (kind === "pt") {
-        return size / 0.75;
-    } else if (kind === "%") {
-        return size / 6.25;
-    }
-};
-
 Utils.pointInTile = function (point) {
     return point[0] >= 0 && point[1] > -Geo.tile_scale && point[0] < Geo.tile_scale && point[1] <= 0;
 };

@@ -48,7 +48,7 @@ struct Material {
 
 // Note: uniform is copied to a global instance to allow modification
 uniform Material u_material;
-Material material = u_material;
+Material material;
 
 #ifdef TANGRAM_MATERIAL_EMISSION_TEXTURE
 uniform sampler2D u_material_emission_texture;

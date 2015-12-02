@@ -281,6 +281,7 @@ function extendLeaflet(options) {
                 }
                 this._updating_tangram = true;
                 this._map.setView([this.scene.center.lat, this.scene.center.lng], this.scene.zoom, { animate: false });
+                this.reverseTransform();
                 this._updating_tangram = false;
             },
 

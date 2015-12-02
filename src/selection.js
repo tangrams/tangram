@@ -1,6 +1,8 @@
 import Texture from './gl/texture';
 import WorkerBroker from './utils/worker_broker';
 
+import log from 'loglevel';
+
 export default class FeatureSelection {
 
     constructor(gl, workers) {
@@ -89,8 +91,8 @@ export default class FeatureSelection {
             // Reject request since it will never be fulfilled
             // TODO: pass a reason for rejection?
             request.reject({ request });
+            delete this.requests[r];
         }
-        this.requests = {};
     }
 
     // Read pending results from the selection buffer. Called after rendering to selection buffer.
@@ -132,7 +134,7 @@ export default class FeatureSelection {
                     if (this.workers[worker_id] != null) {
                         WorkerBroker.postMessage(
                             this.workers[worker_id],
-                            'getFeatureSelection',
+                            'self.getFeatureSelection',
                             { id: request.id, key: feature_key })
                         .then(message => {
                             this.finishRead(message);
@@ -156,7 +158,8 @@ export default class FeatureSelection {
     finishRead (message) {
         var request = this.requests[message.id];
         if (!request) {
-            throw new Error("FeatureSelection.finishRead() called without any message");
+            log.error("FeatureSelection.finishRead(): could not find message", message);
+            return; // request was cleared before it returned
         }
 
         var feature = message.feature;
