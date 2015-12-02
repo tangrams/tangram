@@ -138,6 +138,15 @@ export default class Texture {
         this.data = null;
     }
 
+    setImage(image, options) {
+        this.image = image;
+        this.update(options);
+        this.setTextureFiltering(options);
+
+        this.canvas = null; // mutually exclusive with other types
+        this.data = null;
+    }
+
     // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
     update(options = {}) {
         if (!this.valid) {
@@ -287,8 +296,18 @@ Texture.createFromObject = function (gl, textures) {
 
             let texture = new Texture(gl, texname, config);
             if (config.url) {
-                loading.push(texture.load(config.url, config));
+                texture.load(config.url, config);
+            } else if (config.image && config.image instanceof HTMLImageElement) {
+                texture.setImage(config.image, config);
+            } else if (config.canvas &&config.canvas instanceof HTMLCanvasElement) {
+                texture.setCanvas(config.canvas, config);
+            } else if (config.data && config.width && config.height) {
+                texture.setData(config.width, config.height, config.data, config);
+            } else {
+                log.error('Texture: unkwon format for', config);
             }
+
+            loading.push(texture);
         }
     }
     return Promise.all(loading);
