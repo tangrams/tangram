@@ -1036,7 +1036,7 @@ export default class Scene {
             if (rule && rule.draw) {
                 for (let [name, group] of Utils.entries(rule.draw)) {
                     // TODO: warn on non-object draw group
-                    if (typeof group === 'object' && group.visible !== false) {
+                    if (group != null && typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
                         let styles = [style_name];
 
