@@ -51,7 +51,7 @@ export default TextSettings = {
         // - transform: capitalize, uppercase, lowercase
         style.style = draw.font.style || this.defaults.style;
         style.weight = draw.font.weight || this.defaults.weight;
-        style.family = draw.font.family || this.defaults.family;
+        style.family = (draw.font.family ? `${draw.font.family}, ` : '') + this.defaults.family;
         style.transform = draw.font.transform;
 
         // original size (not currently used, but useful for debugging)
