@@ -310,6 +310,9 @@ Object.assign(TextStyle, {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
 
+        // Repeat rules
+        draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
+
         return draw;
     },
 

@@ -1,4 +1,5 @@
 import Geo from '../../geo';
+import {StyleParser} from '../style_parser';
 
 var LayoutSettings;
 
@@ -48,24 +49,24 @@ export default LayoutSettings = {
             layout.line_exceed = 80;
         }
 
-        // repeat rules
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.cacheProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance == null) {
+            layout.repeat_distance = Geo.tile_size;
+        }
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key
         if (typeof draw.repeat_group === 'function') {
-            layout.repeat_key = draw.repeat_group(context);
+            layout.repeat_group = draw.repeat_group(context);
         }
         else if (typeof draw.repeat_group === 'string') {
-            layout.repeat_key = draw.repeat_group;
+            layout.repeat_group = draw.repeat_group;
         }
         else {
-            layout.repeat_key = draw.key; // default to unique set of matching layers
+            layout.repeat_group = draw.key; // default to unique set of matching layers
         }
-        layout.repeat_key += '/' + text;
-
-        if (typeof draw.repeat === 'number') {
-            layout.repeat_dist = draw.repeat * layout.units_per_pixel;
-        }
-        else if (draw.repeat !== false) {
-            layout.repeat_dist = Geo.tile_size * layout.units_per_pixel; // default
-        }
+        layout.repeat_group += '/' + text;
 
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;

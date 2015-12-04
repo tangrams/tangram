@@ -62,22 +62,22 @@ export default class RepeatGroup {
 
     // Check an object to see if it's a repeat within its designated group
     static check (obj, layout, tile) {
-        if (layout.repeat_dist && this.groups[tile][layout.repeat_key]) {
-            return this.groups[tile][layout.repeat_key].check(obj);
+        if (layout.repeat_distance != null && this.groups[tile][layout.repeat_group]) {
+            return this.groups[tile][layout.repeat_group].check(obj);
         }
     }
 
     // Add an object to its designated group
     static add (obj, layout, tile) {
-        if (layout.repeat_dist) {
-            if (this.groups[tile][layout.repeat_key] == null) {
-                this.groups[tile][layout.repeat_key] = new RepeatGroup(
-                    layout.repeat_key,
-                    layout.repeat_dist,
+        if (layout.repeat_distance != null) {
+            if (this.groups[tile][layout.repeat_group] == null) {
+                this.groups[tile][layout.repeat_group] = new RepeatGroup(
+                    layout.repeat_group,
+                    layout.repeat_distance,
                     RepeatGroup.max_repeat_dist * layout.units_per_pixel
                 );
             }
-            this.groups[tile][layout.repeat_key].add(obj);
+            this.groups[tile][layout.repeat_group].add(obj);
         }
     }
 
