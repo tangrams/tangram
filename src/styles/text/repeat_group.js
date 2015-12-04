@@ -62,14 +62,14 @@ export default class RepeatGroup {
 
     // Check an object to see if it's a repeat within its designated group
     static check (obj, layout, tile) {
-        if (layout.repeat_distance != null && this.groups[tile][layout.repeat_group]) {
+        if (layout.repeat_distance && this.groups[tile][layout.repeat_group]) {
             return this.groups[tile][layout.repeat_group].check(obj);
         }
     }
 
     // Add an object to its designated group
     static add (obj, layout, tile) {
-        if (layout.repeat_distance != null) {
+        if (layout.repeat_distance) {
             if (this.groups[tile][layout.repeat_group] == null) {
                 this.groups[tile][layout.repeat_group] = new RepeatGroup(
                     layout.repeat_group,
