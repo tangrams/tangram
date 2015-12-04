@@ -450,7 +450,6 @@ layers:
                 color: red
                 size: 8px
             icons:
-                anchor: top
                 size: [[13, 12px], [15, 18px]]
                 interactive: true
 
@@ -586,9 +585,9 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
-                    anchor: bottom
                     # align: left
-                    offset: [0, 2px]
+                    anchor: bottom
+                    offset: [[13, [0, 6px]], [15, [0, 9px]]]
                     move_into_tile: false
                     priority: 6
                     font:

@@ -1,3 +1,5 @@
+import {StyleParser} from '../style_parser';
+
 var LayoutSettings;
 
 export default LayoutSettings = {
@@ -12,7 +14,7 @@ export default LayoutSettings = {
         layout.anchor = draw.anchor;
 
         // label offset in pixel (applied in screen space)
-        layout.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
+        layout.offset = StyleParser.cacheProperty(draw.offset, context) || [0, 0];
 
         // label buffer in pixel
         let buffer = draw.buffer;

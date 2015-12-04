@@ -296,6 +296,9 @@ Object.assign(TextStyle, {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
 
+        // Offset (parse each array component)
+        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
         return draw;
     },
 
