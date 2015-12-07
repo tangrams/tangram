@@ -38,6 +38,9 @@ export var Style = {
         // Blending
         this.blend = this.blend || 'opaque';        // default: opaque styles are drawn first, without blending
         this.defines[`TANGRAM_BLEND_${this.blend.toUpperCase()}`] = true;
+        if (this.blend_order == null) { // controls order of rendering for styles w/non-opaque blending
+            this.blend_order = -1; // defaults to first
+        }
 
         // If the style defines its own material, replace the inherited material instance
         if (!(this.material instanceof Material)) {
@@ -399,10 +402,63 @@ export var Style = {
         program.setUniforms(this.shaders && this.shaders.uniforms, true); // reset texture unit to 0
     },
 
+    // Render state settings by blend mode
+    render_states: {
+        opaque: { depth_test: true, depth_write: true },
+        add: { depth_test: true, depth_write: false },
+        multiply: { depth_test: true, depth_write: false },
+        inlay: { depth_test: true, depth_write: false },
+        overlay: { depth_test: false, depth_write: false }
+    },
+
+    // Default sort order for blend modes
+    default_blend_orders: {
+        opaque: 0,
+        add: 1,
+        multiply: 2,
+        inlay: 3,
+        overlay: 4
+    },
+
+    // Comparison function for sorting styles by blend
+    blendOrderSort (a, b) {
+        // opaque always comes first
+        if (a.blend === 'opaque' || b.blend === 'opaque') {
+            if (a.blend === 'opaque' && b.blend === 'opaque') { // if both are opaque
+                return a.name < b.name ? -1 : 1; // use name as tie breaker
+            }
+            else if (a.blend === 'opaque') {
+                return -1; // only `a` was opaque
+            }
+            else {
+                return 1; // only `b` was opaque
+            }
+        }
+
+        // use explicit blend order if possible
+        if (a.blend_order < b.blend_order) {
+            return -1;
+        }
+        else if (a.blend_order > b.blend_order) {
+            return 1;
+        }
+
+        // if blend orders are equal, use default order by blend mode
+        if (Style.default_blend_orders[a.blend] < Style.default_blend_orders[b.blend]) {
+            return -1;
+        }
+        else if (Style.default_blend_orders[a.blend] > Style.default_blend_orders[b.blend]) {
+            return 1;
+        }
+
+        return a.name < b.name ? -1 : 1; // use name as tie breaker
+    },
+
     update () {
         // Style-specific animation
         // if (typeof this.animation === 'function') {
         //     this.animation();
         // }
     }
+
 };

@@ -6,6 +6,7 @@ import subscribeMixin from './utils/subscribe';
 import Context from './gl/context';
 import Texture from './gl/texture';
 import VertexArrayObject from './gl/vao';
+import {Style} from './styles/style';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
@@ -666,70 +667,47 @@ export default class Scene {
     // Render all active styles, grouped by blend/depth type (opaque, overlay, etc.) and by program (style)
     // Called both for main render pass, and for secondary passes like selection buffer
     renderPass(program_key = 'program', { allow_blend } = {}) {
-        let styles;
-        let count = 0; // how many primitives were rendered
-
         // optionally force alpha off (e.g. for selection pass)
         allow_blend = (allow_blend == null) ? true : allow_blend;
 
         this.clearFrame({ clear_color: true, clear_depth: true });
 
-        // Opaque styles: depth test on, depth write on, blending off
-        styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'opaque');
-        if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: true, blend: (allow_blend && 'opaque') });
-            count += this.renderStyles(styles, program_key);
-        }
+        // Sort styles by blend order
+        let styles = Object.keys(this.active_styles).
+            map(s => this.styles[s]).
+            sort(Style.blendOrderSort);
 
-        // Transparent styles: depth test off, depth write on, custom blending
-        styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'add');
-        if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'add') });
-            count += this.renderStyles(styles, program_key);
-        }
-
-        styles = Object.keys(this.active_styles).filter(s => this.styles[s].blend === 'multiply');
-        if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'multiply') });
-            count += this.renderStyles(styles, program_key);
-        }
-
-        // Inlay styles: depth test on, depth write off, blending on
-        styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'inlay');
-        if (styles.length > 0) {
-            this.setRenderState({ depth_test: true, depth_write: false, blend: (allow_blend && 'standard') });
-            count += this.renderStyles(styles, program_key);
-        }
-
-        // Overlay styles: depth test off, depth write off, blending on
-        styles = Object.keys(this.styles).filter(s => this.styles[s].blend === 'overlay');
-        if (styles.length > 0) {
-            this.setRenderState({ depth_test: false, depth_write: false, blend: (allow_blend && 'standard') });
-            count += this.renderStyles(styles, program_key);
-        }
-
-        return count;
-    }
-
-    renderStyles(styles, program_key) {
-        let count = 0;
+        // Render styles
+        let count = 0; // how many primitives were rendered
+        let last_blend;
         for (let style of styles) {
-            let program = this.styles[style][program_key];
-            if (!program || !program.compiled) {
-                continue;
+            // Only update render state when blend mode changes
+            if (style.blend !== last_blend) {
+                let state = Object.assign({},
+                    Style.render_states[style.blend],       // render state for blend mode
+                    { blend: (allow_blend && style.blend) } // enable/disable blending (e.g. no blend for selection)
+                );
+                this.setRenderState(state);
             }
-            count += this.renderStyle(style, program);
+            count += this.renderStyle(style.name, program_key);
+            last_blend = style.blend;
         }
+
         return count;
     }
 
-    renderStyle(style, program) {
-        var first_for_style = true;
-        var render_count = 0;
+    renderStyle(style, program_key) {
+        let first_for_style = true;
+        let render_count = 0;
+
+        let program = this.styles[style][program_key];
+        if (!program || !program.compiled) {
+            return 0;
+        }
 
         // Render tile GL geometries
-        for (var t in this.renderable_tiles) {
-            var tile = this.renderable_tiles[t];
+        for (let t in this.renderable_tiles) {
+            let tile = this.renderable_tiles[t];
 
             if (tile.meshes[style] == null) {
                 continue;
@@ -845,7 +823,7 @@ export default class Scene {
                 });
             }
             // Traditional alpha blending
-            else if (blend === 'standard') {
+            else if (blend === 'overlay' || blend === 'inlay') {
                 RenderState.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
