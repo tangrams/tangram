@@ -23,8 +23,6 @@ export function mergeTrees(matchingTrees, group) {
         visible: true // visible by default
     };
 
-    let layers = new Set(); // layers that contributed to the draw group
-
     // Find deepest tree
     for (let t=0; t < matchingTrees.length; t++) {
         if (matchingTrees[t].length > treeDepth) {
@@ -45,38 +43,17 @@ export function mergeTrees(matchingTrees, group) {
             continue;
         }
 
-        // Check if any draw group is present
-        // Find deepest-level layer name for this tree
-        // Find ambiguous properties at this level
-        let present = false;
-        for (let i=0; i < draws.length; i++) {
-            if (draws[i]) {
-                present = true;
-
-                if (draws[i].full_name) {
-                    layers.add(draws[i].full_name);
-                }
-            }
-        }
-        if (!present) {
-            continue;
-        }
-
         // Sort by layer name before merging, so rules are applied deterministically
         // when multiple rules modify the same properties
-        draws.sort((a, b) => (a && a.full_name) > (b && b.full_name) ? 1 : -1);
+        draws.sort((a, b) => (a && a.layer_name) > (b && b.layer_name) ? 1 : -1);
 
         // Merge draw objects
         mergeObjects(draw, ...draws);
 
         // Remove layer names, they were only used transiently to sort and calculate final layer
         // (final merged names will not be accurate since only one tree can win)
-        delete draw.name;
-        delete draw.full_name;
+        delete draw.layer_name;
     }
-
-    // Layer names as array
-    draw.layers = [...layers];
 
     // Short-circuit if not visible
     if (draw.visible === false) {
@@ -102,8 +79,7 @@ class Rule {
         // Denormalize layer name & properties to draw groups
         if (this.draw) {
             for (let group in this.draw) {
-                this.draw[group].name = this.name;
-                this.draw[group].full_name = this.full_name;
+                this.draw[group].layer_name = this.full_name;
 
                 if (this.properties !== undefined) {
                     this.draw[group].properties = this.properties;
@@ -197,6 +173,7 @@ export class RuleTree extends Rule {
                         }
                         else {
                             ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                            ruleCache[cache_key][draw_key].layers = rules.map(x => x && x.full_name);
                         }
                     }
 
