@@ -98,9 +98,9 @@ describe('.mergeTrees()', () => {
     describe('when given layers with ambiguous properties', () => {
 
         const subject = [
-            [ { group: { a: 1, full_name: 'x' } } ],
-            [ { group: { a: 2, full_name: 'z' } } ],
-            [ { group: { a: 3, full_name: 'y' } } ]
+            [ { group: { a: 1, layer_name: 'x' } } ],
+            [ { group: { a: 2, layer_name: 'z' } } ],
+            [ { group: { a: 3, layer_name: 'y' } } ]
         ];
 
         it('the lexically sorted highest rule wins', () => {
