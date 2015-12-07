@@ -4,6 +4,8 @@ import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/bo
 import Utils from '../../utils/utils';
 import OBB from '../../utils/obb';
 
+import log from 'loglevel';
+
 export default class Label {
 
     constructor (text, size, options) {
@@ -23,20 +25,22 @@ export default class Label {
         // Broadphase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
+                log.trace(`${this.text} broad phase collide`, this, this.aabb, aabbs[j]);
+
                 // Narrow phase
                 if (OBB.intersect(this.aabb.obb, aabbs[j].obb)) {
+                    log.trace(`${this.text} narrow phase collide`, this, this.aabb.obb, aabbs[j].obb);
                     intersect = true;
                     return true;
                 }
             });
         }
-
-        // No collision on aabb
-        if (!intersect) {
-            // it's clean, add it to the list of bboxes
-            aabbs.push(this.aabb);
-        }
         return intersect;
+    }
+
+    // Add this label's bounding box to the provided set
+    add (aabbs) {
+        aabbs.push(this.aabb);
     }
 
     // checks whether the label is within the tile boundaries

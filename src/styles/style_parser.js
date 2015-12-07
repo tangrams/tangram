@@ -144,7 +144,7 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
 
 // Build a style param cache object
 // `value` is raw value, cache methods will add other properties as needed
-// `transform` is optional transform function to run on values
+// `transform` is optional transform function to run on values (except function values)
 StyleParser.cacheObject = function (obj, transform = null) {
     if (obj == null) {
         return;
@@ -155,11 +155,11 @@ StyleParser.cacheObject = function (obj, transform = null) {
     }
 
     if (typeof transform === 'function') {
-        if (Array.isArray(obj) && Array.isArray(obj[0])) {
+        if (Array.isArray(obj) && Array.isArray(obj[0])) { // zoom stops
             obj = obj.map(v => [v[0], transform(v[1])]);
         }
-        else {
-            obj = transform(obj);
+        else if (typeof obj !== 'function') { // don't transform functions
+            obj = transform(obj); // single value
         }
     }
 
