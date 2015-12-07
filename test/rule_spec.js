@@ -43,7 +43,8 @@ describe('.mergeTrees()', () => {
                 a: 1,
                 b: 2,
                 c: 10,
-                d: 'x'
+                d: 'x',
+                layers: []
             };
             assert.deepEqual(result, compare);
         });
@@ -87,7 +88,26 @@ describe('.mergeTrees()', () => {
                 order: 3,
                 a: 'y',
                 b: 'z',
-                color: [7, 8, 9]
+                color: [7, 8, 9],
+                layers: []
+            });
+        });
+
+    });
+
+    describe('when given layers with ambiguous properties', () => {
+
+        const subject = [
+            [ { group: { a: 1, full_name: 'x' } } ],
+            [ { group: { a: 2, full_name: 'z' } } ],
+            [ { group: { a: 3, full_name: 'y' } } ]
+        ];
+
+        it('the lexically sorted highest rule wins', () => {
+            assert.deepEqual(mergeTrees(subject, 'group', {}), {
+                a: 2,
+                layers: ['x', 'z', 'y'],
+                visible: true
             });
         });
 
