@@ -240,19 +240,9 @@ function extendLeaflet(options) {
                         if (!delta) { return; }
 
                         if (map.options.scrollWheelZoom === 'center') {
-                            map._move(map.getCenter(), zoom + delta);
+                            map.setZoom(zoom + delta);
                         } else {
-                            // Re-centering code from Leaflet's map.setZoomAround() function
-                            var latlng = this._lastMousePos,
-                                newZoom = zoom + delta,
-                                scale = map.getZoomScale(newZoom),
-                                viewHalf = map.getSize().divideBy(2),
-                                containerPoint = latlng instanceof L.Point ? latlng : map.latLngToContainerPoint(latlng),
-
-                                centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale),
-                                newCenter = map.containerPointToLatLng(viewHalf.add(centerOffset));
-
-                            map._move(newCenter, newZoom);
+                            map.setZoomAround(this._lastMousePos, zoom + delta);
                         }
 
                         layer.debounceViewReset();
