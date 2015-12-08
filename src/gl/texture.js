@@ -15,16 +15,23 @@ export default class Texture {
             this.valid = true;
         }
         this.bind();
-        this.image = null;      // an Image object/element that is the source for this texture
-        this.canvas = null;     // a Canvas object/element that is the source for this texture
-        this.loading = null;    // a Promise object to track the loading state of this texture
 
         // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
         this.setData(1, 1, new Uint8Array([0, 0, 0, 255]), { filtering: 'nearest' });
 
         // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
+        // this.source = 
+        // this.source_type = 'url', 'canvas', etc.
+        this.url = options.url;
+        this.canvas = options.canvas;     // a Canvas object/element that is the source for this texture
+        this.image = null;      // an Image object/element that is the source for this texture
+        this.loading = null;    // a Promise object to track the loading state of this texture
 
+        // <---------------------
+        // TODO:
+        //      - in the case value is not a string make a unique ID
+        //  (other whise I'm not sure how is storing the texture in Texture.textures[*] )
         this.name = name;
         this.filtering = options.filtering;
 
@@ -36,10 +43,12 @@ export default class Texture {
         // Cache texture instance and definition
         Texture.textures[this.name] = this;
         Texture.texture_configs[this.name] = Object.assign({ name }, options);
+        // <---------------------
 
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
+        this.load(options);
         log.trace(`creating Texture ${this.name}`);
     }
 
@@ -73,8 +82,26 @@ export default class Texture {
         }
     }
 
-    // Loads a texture from a URL
-    load(url, options = {}) {
+    load(config = {}) {
+        // if (value && typeof value === 'string') {
+        //     return this.setUrl(value, config);
+        // } else if (value && value instanceof HTMLImageElement) {
+        //     return this.setImage(value, config);
+        // } else if (value && value instanceof HTMLCanvasElement) {
+        //     return this.setCanvas(value, config);
+        // } else if (value.data && value.width && value.height) {
+        //     return this.setData(value.width, value.height, value.data, config);
+
+        if (typeof this.url === 'string') {
+            return this.setUrl(this.url, config);   
+        } else if (this.canvas instanceof HTMLCanvasElement) {
+            return this.setCanvas(this.canvas, config);
+        } 
+        // else reject?
+    }
+
+    // Sets texture from an url
+    setUrl(url, options = {}) {
         if (!this.valid) {
             return;
         }
@@ -123,9 +150,13 @@ export default class Texture {
 
         this.image = null; // mutually exclusive with other types
         this.canvas = null;
+        this.url = null;
 
         this.update(options);
         this.setTextureFiltering(options);
+
+        this.loading = Promise.resolve(this);
+        return this.loading;
     }
 
     // Sets the texture to track a canvas element
@@ -136,6 +167,10 @@ export default class Texture {
 
         this.image = null; // mutually exclusive with other types
         this.data = null;
+        this.url = null;
+
+        this.loading = Promise.resolve(this);
+        return this.loading;
     }
 
     setImage(image, options) {
@@ -145,6 +180,9 @@ export default class Texture {
 
         this.canvas = null; // mutually exclusive with other types
         this.data = null;
+
+        this.loading = Promise.resolve(this);
+        return this.loading;
     }
 
     // Uploads current image or buffer to the GPU (can be used to update animated textures on the fly)
@@ -295,19 +333,10 @@ Texture.createFromObject = function (gl, textures) {
             }
 
             let texture = new Texture(gl, texname, config);
-            if (config.url) {
-                texture.load(config.url, config);
-            } else if (config.image && config.image instanceof HTMLImageElement) {
-                texture.setImage(config.image, config);
-            } else if (config.canvas &&config.canvas instanceof HTMLCanvasElement) {
-                texture.setCanvas(config.canvas, config);
-            } else if (config.data && config.width && config.height) {
-                texture.setData(config.width, config.height, config.data, config);
-            } else {
-                log.error('Texture: unkwon format for', config);
-            }
-
-            loading.push(texture);
+            // let ret = texture.load(config);
+            // if (ret !== undefined) {
+            loading.push(texture.loading);
+            // }
         }
     }
     return Promise.all(loading);
@@ -317,6 +346,7 @@ Texture.createFromObject = function (gl, textures) {
 Texture.changed = function (name, config) {
     if (Texture.textures[name]) { // cached texture
         // compare definitions
+        // TODO: fix for canvas/image/data
         if (JSON.stringify(Texture.texture_configs[name]) ===
             JSON.stringify(Object.assign({ name }, config))) {
             return false;

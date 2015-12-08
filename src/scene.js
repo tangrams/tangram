@@ -1025,32 +1025,27 @@ export default class Scene {
         }
     }
 
-    setTexture (style_name, uniform_name, element) {
-        // All arguments are necesary
-        if (!style_name || !uniform_name || !element) {
-            log.error("No enought values to upload texture:", style_name, uniform_name, element);
-            return;
-        }
+    // setTexture (style_name, uniform_name, element) {
+    //     // All arguments are necesary
+    //     if (!style_name || !uniform_name || !element) {
+    //         log.error("No enought values to upload texture:", style_name, uniform_name, element);
+    //         return;
+    //     }
 
-        // Check if the style exist...
-        if (!this.config.styles[style_name] ) {
-            log.error("The style (", style_name, ") doesn't exist.");
-            return;
-        }
+    //     // Check if the style exist...
+    //     if (!this.config.styles[style_name] ) {
+    //         log.error("The style (", style_name, ") doesn't exist.");
+    //         return;
+    //     }
 
-        // If uniform doesn't excist create on it?
-        if (!this.config.styles[style_name].shaders.uniforms[uniform_name]){
-            this.config.styles[style_name].shaders.uniforms.uniform_name = element;
-        }
+    //     // this.config.textures[uniform_name] = element;
+    //     this.styles[style_name].shaders.uniforms[uniform_name] = element;
 
-        
-        this.styles[style_name].shaders.uniforms[uniform_name] = element;
+    //     // Doing it in the conf doesn't update the content
+    //     // this.config.styles[style_name].shaders.uniforms[uniform_name] = element;
 
-        // Doing it in the conf doesn't update the content
-        // this.config.styles[style_name].shaders.uniforms[uniform_name] = element;
-
-        this.rebuild();
-    }
+    //     this.rebuild();
+    // }
 
     // Load all textures in the scene definition
     loadTextures() {

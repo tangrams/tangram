@@ -367,8 +367,7 @@ export default class ShaderProgram {
     setTextureUniform(uniform_name, texture_name) {
         var texture = Texture.textures[texture_name];
         if (texture == null) {
-            texture = new Texture(this.gl, texture_name);
-            texture.load(texture_name);
+            texture = new Texture(this.gl, texture_name, { url: texture_name });
         }
 
         texture.bind(this.texture_unit);
