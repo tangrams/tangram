@@ -36,4 +36,4 @@ wood:
 
             # fragment: |
             color: |
-                color.rgb = wood(v_world_position.xyz);
+                color.rgb = wood(worldPosition().xyz);

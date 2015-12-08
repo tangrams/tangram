@@ -67,7 +67,7 @@ styles:
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
                 color: |
-                    vec3 c = vec3(v_world_position.z * .003 + u_time / 10., 1.0, 1.0);
+                    vec3 c = vec3(worldPosition().z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
 
     scale:
