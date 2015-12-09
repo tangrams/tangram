@@ -26,10 +26,10 @@ describe('RuleGroup', () => {
 
 describe('.mergeTrees()', () => {
     let subject = [
-        [ { group: { a: 0.001 } }, { group: { b: 2 } }, { group: { c: 3 } }, { group: { d: 4 } } ],
-        [ { group: { a: 3.14 } }, { group: { d: 3 } }, { group: { a: 1 } }, { group: { b: 2 } } ],
-        [ { group: { b: 'y' } }, { group: { a: 'x' } }, { group:{ b: 0.0003 } }, { group: { c: 10 } } ],
-        [ { group: { b: 3.14 } }, { group: { a: 2.71828 } }, { group:{ b: 0.0001 } }, { group: { d: 'x' } } ]
+        [ { group: { a: 0.001 } }, { group: { a: 1, b: 2 } }, { group: { b: 4, c: 3 } }, { group: { d: 4 } } ],
+        [ { group: { x: 3.14 } }, { group: { y: 3 } }, { group: { x: 10, z: 1 } }, { group: { w: 2 } } ],
+        [ { group: { e: 'y' } }, { group: { f: 'x' } }, { group:{ g: 0.0003 } }, { group: { h: 10 } } ],
+        [ { group: { s: 3.14 } }, { group: { t: 2.71828 } }, { group:{ u: 0.0001 } }, { group: { v: 'x' } } ]
     ];
 
     const {mergeTrees} = require('../src/styles/rule');
@@ -40,10 +40,10 @@ describe('.mergeTrees()', () => {
             let result = mergeTrees(subject, 'group', {});
             let compare = {
                 visible: true,
-                a: 1,
-                b: 2,
-                c: 10,
-                d: 'x'
+                a: 1, b: 4, c: 3, d: 4,
+                x: 10, y: 3, z: 1, w: 2,
+                e: 'y', f: 'x', g: 0.0003, h: 10,
+                s: 3.14, t: 2.71828, u: 0.0001, v: 'x'
             };
             assert.deepEqual(result, compare);
         });
@@ -81,14 +81,35 @@ describe('.mergeTrees()', () => {
         ];
 
         it('returns the correct object', () => {
-            assert.deepEqual(mergeTrees(subject, 'group', {}), {
+            let result = mergeTrees(subject, 'group');
+            let compare = {
                 visible: true,
                 width: 10,
                 order: 3,
                 a: 'y',
                 b: 'z',
                 color: [7, 8, 9]
-            });
+            };
+            assert.deepEqual(result, compare);
+        });
+
+    });
+
+    describe('when given layers with ambiguous properties', () => {
+
+        const subject = [
+            [ { group: { a: 1, layer_name: 'x' } } ],
+            [ { group: { a: 2, layer_name: 'z' } } ],
+            [ { group: { a: 3, layer_name: 'y' } } ]
+        ];
+
+        it('the lexically sorted highest rule wins', () => {
+            let result = mergeTrees(subject, 'group');
+            let compare = {
+                a: 2,
+                visible: true
+            };
+            assert.deepEqual(result, compare);
         });
 
     });
