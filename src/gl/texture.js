@@ -16,24 +16,18 @@ export default class Texture {
         }
         this.bind();
 
+        this.name = name;
+        this.source = null;
+        this.source_type = 'none';
+        this.loading = null;    // a Promise object to track the loading state of this texture
+        this.filtering = options.filtering;
+        this.sprites = options.sprites;
+        this.texcoords = {};    // sprite UVs ([0, 1] range)
+        this.sizes = {};        // sprite sizes (pixel size)
+
         // Default to a 1-pixel black texture so we can safely render while we wait for an image to load
         // See: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
         this.setData(1, 1, new Uint8Array([0, 0, 0, 255]), { filtering: 'nearest' });
-
-        // TODO: better support for non-URL sources: canvas/video elements, raw pixel buffers
-        // this.source = 
-        // this.source_type = 'url', 'canvas', etc.
-        this.url = options.url;
-        this.canvas = options.canvas;     // a Canvas object/element that is the source for this texture
-        this.image = null;      // an Image object/element that is the source for this texture
-        this.loading = null;    // a Promise object to track the loading state of this texture
-
-        // <---------------------
-        // TODO:
-        //      - in the case value is not a string make a unique ID
-        //  (other whise I'm not sure how is storing the texture in Texture.textures[*] )
-        this.name = name;
-        this.filtering = options.filtering;
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
@@ -43,11 +37,7 @@ export default class Texture {
         // Cache texture instance and definition
         Texture.textures[this.name] = this;
         Texture.texture_configs[this.name] = Object.assign({ name }, options);
-        // <---------------------
-
-        this.sprites = options.sprites;
-        this.texcoords = {};    // sprite UVs ([0, 1] range)
-        this.sizes = {};        // sprite sizes (pixel size)
+        
         this.load(options);
         log.trace(`creating Texture ${this.name}`);
     }
@@ -82,22 +72,16 @@ export default class Texture {
         }
     }
 
-    load(config = {}) {
-        // if (value && typeof value === 'string') {
-        //     return this.setUrl(value, config);
-        // } else if (value && value instanceof HTMLImageElement) {
-        //     return this.setImage(value, config);
-        // } else if (value && value instanceof HTMLCanvasElement) {
-        //     return this.setCanvas(value, config);
-        // } else if (value.data && value.width && value.height) {
-        //     return this.setData(value.width, value.height, value.data, config);
-
-        if (typeof this.url === 'string') {
-            return this.setUrl(this.url, config);   
-        } else if (this.canvas instanceof HTMLCanvasElement) {
-            return this.setCanvas(this.canvas, config);
-        } 
-        // else reject?
+    load(options = {}) {
+        if (typeof options.url === 'string') {
+            return this.setUrl(options.url, options);   
+        } else if (options.canvas instanceof HTMLCanvasElement) {
+            return this.setCanvas(options.canvas, options);
+        } else if (options.image instanceof HTMLImageElement) {
+            return this.setImage(options.image, options);
+        } else if (options.data && options.width && options.height) {
+            return this.setData(options.width, options.height, options.data, options);
+        }
     }
 
     // Sets texture from an url
@@ -110,18 +94,17 @@ export default class Texture {
             url = Utils.addBaseURL(url, Texture.base_url);
         }
 
-        url = Utils.cacheBusterForUrl(url);
+        this.source = Utils.cacheBusterForUrl(url);
+        this.source_type = 'url';
 
         this.loading = new Promise((resolve, reject) => {
-            this.image = new Image();
-            this.image.onload = () => {
+            let image = new Image();
+            image.onload = () => {
                 try {
-                    this.update(options);
-                    this.setTextureFiltering(options);
+                    this.setImage(image, options);
+                    // this.update(options);
+                    // this.setTextureFiltering(options);
                     this.calculateSprites();
-
-                    this.canvas = null; // mutually exclusive with other types
-                    this.data = null;
                 }
                 catch (e) {
                     log.warn(`Texture: failed to load url: '${url}'`, e, options);
@@ -130,14 +113,14 @@ export default class Texture {
 
                 resolve(this);
             };
-            this.image.onerror = e => {
+            image.onerror = e => {
                 // Warn and resolve on error
                 log.warn(`Texture: failed to load url: '${url}'`, e, options);
                 Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
                 resolve(this);
             };
-            this.image.crossOrigin = 'anonymous';
-            this.image.src = url;
+            image.crossOrigin = 'anonymous';
+            image.src = url;
         });
         return this.loading;
     }
@@ -146,11 +129,9 @@ export default class Texture {
     setData(width, height, data, options = {}) {
         this.width = width;
         this.height = height;
-        this.data = data;
 
-        this.image = null; // mutually exclusive with other types
-        this.canvas = null;
-        this.url = null;
+        this.source = data;
+        this.source_type = 'data';
 
         this.update(options);
         this.setTextureFiltering(options);
@@ -161,25 +142,22 @@ export default class Texture {
 
     // Sets the texture to track a canvas element
     setCanvas(canvas, options) {
-        this.canvas = canvas;
+        this.source = canvas;
+        this.source_type = 'canvas';
+
         this.update(options);
         this.setTextureFiltering(options);
-
-        this.image = null; // mutually exclusive with other types
-        this.data = null;
-        this.url = null;
 
         this.loading = Promise.resolve(this);
         return this.loading;
     }
 
     setImage(image, options) {
-        this.image = image;
+        this.source = image;
+        this.source_type = 'image';
+
         this.update(options);
         this.setTextureFiltering(options);
-
-        this.canvas = null; // mutually exclusive with other types
-        this.data = null;
 
         this.loading = Promise.resolve(this);
         return this.loading;
@@ -195,21 +173,15 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, (options.UNPACK_FLIP_Y_WEBGL === false ? false : true));
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
-        // Image element
-        if (this.image && this.image.complete) {
-            this.width = this.image.width;
-            this.height = this.image.height;
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.image);
-        }
-        // Canvas element
-        else if (this.canvas) {
-            this.width = this.canvas.width;
-            this.height = this.canvas.height;
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.canvas);
+        // Image or Canvas element
+        if (this.source_type === 'canvas' || (this.source_type === 'image' && this.source.complete)) {
+            this.width = this.source.width;
+            this.height = this.source.height;
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
         }
         // Raw image buffer
-        else if (this.width && this.height) { // NOTE: this.data can be null, to zero out texture
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.data);
+        else if (this.source_type === 'data') { // NOTE: this.data can be null, to zero out texture
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
         }
 
         Texture.trigger('update', this);
@@ -333,10 +305,7 @@ Texture.createFromObject = function (gl, textures) {
             }
 
             let texture = new Texture(gl, texname, config);
-            // let ret = texture.load(config);
-            // if (ret !== undefined) {
             loading.push(texture.loading);
-            // }
         }
     }
     return Promise.all(loading);
