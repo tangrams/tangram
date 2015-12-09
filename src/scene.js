@@ -955,10 +955,10 @@ export default class Scene {
         this.config_source = config_source || this.config_source;
 
         if (typeof this.config_source === 'string') {
-            this.config_path = config_path || Utils.pathForURL(this.config_source);
+            this.config_path = Utils.pathForURL(config_path || this.config_source);
         }
         else {
-            this.config_path = config_path;
+            this.config_path = Utils.pathForURL(config_path);
         }
 
         return SceneLoader.loadScene(this.config_source, this.config_path).then(config => {
