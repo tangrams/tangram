@@ -261,8 +261,8 @@ Object.assign(TextStyle, {
 
         // create a texture
         let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
-        let texture = new Texture(this.gl, t);
-        texture.setCanvas(canvas.canvas, {
+        let texture = new Texture(this.gl, t, {
+            canvas: canvas.canvas,
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });

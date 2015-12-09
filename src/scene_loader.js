@@ -89,7 +89,6 @@ export default SceneLoader = {
                         let texture_name = '__' + style_name;
                         config.textures[texture_name] = { url: tex };
                         style.texture = texture_name; // point style to location of texture
-                        // style.texture = Utils.addBaseURL(tex, path);
                     }
                     // Texture by object, move it to the global scene texture set and give it a default name
                     else if (typeof tex === 'object') {
@@ -109,7 +108,6 @@ export default SceneLoader = {
                             let texture_name = '__' + style_name + '_uniform_' + key;
                             config.textures[texture_name] = { url: value };
                             uniforms[key] = texture_name; // point style to location of texture
-                            // uniforms[key] = Utils.addBaseURL(value, path);
                         }
                     }
 
@@ -128,7 +126,6 @@ export default SceneLoader = {
                                 let texture_name = '__' + style_name + '_material_' + prop;
                                 config.textures[texture_name] = { url: tex };
                                 style.material[prop].texture = texture_name; // point style to location of texture
-                                // style.material[prop].texture = Utils.addBaseURL(tex, path);
                             }
                             // Texture by object, move it to the global scene texture set and give it a default name
                             else if (typeof tex === 'object') {
