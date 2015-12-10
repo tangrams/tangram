@@ -18,7 +18,7 @@ export default class Texture {
 
         this.name = name;
         this.source = null;
-        this.source_type = 'none';
+        this.source_type = null;
         this.loading = null;    // a Promise object to track the loading state of this texture
         this.filtering = options.filtering;
         this.sprites = options.sprites;
