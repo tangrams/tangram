@@ -8,6 +8,7 @@ import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import TextSettings from './text_settings';
 import LayoutSettings from './layout_settings';
+import RepeatGroup from './repeat_group';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -42,23 +43,18 @@ Object.assign(TextStyle, {
 
     reset() {
         this.super.reset.call(this);
-        this.texts = {}; // unique texts, grouped by tile, by style
-        this.canvas = {};
-        this.aabbs = {};
+        if (Utils.isMainThread) {
+            this.canvas = new CanvasText();
+        }
+        else if (Utils.isWorkerThread) {
+            this.queues = {};
+            this.texts = {}; // unique texts, grouped by tile, by style
+        }
     },
 
-    // Called on main thread to release tile-specific resources
+    // Called on worker thread to release tile-specific resources
     freeTile (tile) {
         delete this.texts[tile];
-        delete this.canvas[tile];
-        delete this.aabbs[tile];
-    },
-
-    // Override
-    startData (tile) {
-        let tile_data = this.super.startData.apply(this, arguments);
-        tile_data.queue = [];
-        return tile_data;
     },
 
     // Override to queue features instead of processing immediately
@@ -90,7 +86,7 @@ Object.assign(TextStyle, {
         }
 
         // Compute text style and layout settings for this feature label
-        let layout = LayoutSettings.compute(feature, draw, context, tile);
+        let layout = LayoutSettings.compute(feature, draw, text, context, tile);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
@@ -111,7 +107,13 @@ Object.assign(TextStyle, {
         if (!this.tile_data[tile.key]) {
             this.startData(tile.key);
         }
-        this.tile_data[tile.key].queue.push({
+
+        if (!this.queues[tile.key]) {
+            this.queues[tile.key] = [];
+        }
+
+        // this.tile_data[tile.key].queue.push({
+        this.queues[tile.key].push({
             feature, draw, context,
             text, text_settings_key, layout
         });
@@ -119,7 +121,9 @@ Object.assign(TextStyle, {
 
     // Override
     endData (tile) {
-        let tile_data = this.tile_data[tile];
+        let queue = this.queues[tile];
+        this.queues[tile] = [];
+
         let count = Object.keys(this.texts[tile]||{}).length;
 
         if (!count) {
@@ -134,7 +138,8 @@ Object.assign(TextStyle, {
             }
             this.texts[tile] = texts;
 
-            let labels = this.createLabels(tile, tile_data.queue);
+            let labels = this.createLabels(tile, queue);
+
             if (!labels) {
                 this.freeTile(tile);
                 return this.super.endData.apply(this, arguments);
@@ -145,19 +150,13 @@ Object.assign(TextStyle, {
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
                 this.freeTile(tile);
-                WorkerBroker.postMessage(this.main_thread_target+'.freeTile', tile);
-                // early exit
-                return;
+                return this.super.endData.apply(this, arguments);
             }
 
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile, texts).then(({ texts, texture }) => {
                 if (texts) {
                     this.texts[tile] = texts;
-
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    tile_data.uniforms = { u_texture: texture };
-                    tile_data.textures = [texture]; // assign texture ownership to tile - TODO: implement in VBOMesh
 
                     // Build queued features
                     labels.forEach(q => {
@@ -170,9 +169,16 @@ Object.assign(TextStyle, {
                     });
                 }
 
-                tile_data.queue = []; // TODO: free earlier?
                 this.freeTile(tile);
-                return this.super.endData.apply(this, arguments);
+
+                return this.super.endData.apply(this, arguments).then(tile_data => {
+                    // Attach tile-specific label atlas to mesh as a texture uniform
+                    if (texture && tile_data) {
+                        tile_data.uniforms = { u_texture: texture };
+                        tile_data.textures = [texture]; // assign texture ownership to tile
+                        return tile_data;
+                    }
+                });
             });
         });
     },
@@ -188,7 +194,10 @@ Object.assign(TextStyle, {
             for (let i = 0; i < labels.length; ++i) {
                 let label = labels[i];
                 priorities[layout.priority] = priorities[layout.priority] || [];
-                priorities[layout.priority].push({ feature, draw, context, text, text_settings_key, label });
+                priorities[layout.priority].push({
+                    feature, draw, context,
+                    text, text_settings_key, layout, label
+                });
             }
         }
 
@@ -198,8 +207,9 @@ Object.assign(TextStyle, {
     // Test labels for collisions, higher to lower priority
     // When two collide, discard the lower-priority label
     discardLabels (tile, labels, texts) {
-        this.aabbs[tile] = [];
+        let aabbs = [];
         let keep_labels = [];
+        RepeatGroup.clear(tile);
 
         // Process labels by priority
         let priorities = Object.keys(labels).sort((a, b) => a - b);
@@ -209,14 +219,28 @@ Object.assign(TextStyle, {
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
-                let { label, text_settings_key } = labels[priority][i];
+                let { label, text_settings_key, layout } = labels[priority][i];
+                let settings = texts[text_settings_key][label.text];
 
                 // test the label for intersections with other labels in the tile
-                if (!label.discard(this.aabbs[tile])) {
+                if (!layout.collide || !label.discard(aabbs)) {
+                    // check for repeats
+                    let check = RepeatGroup.check(label, layout, tile);
+                    if (check) {
+                        log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                        continue;
+                    }
+                    // register as placed for future repeat culling
+                    RepeatGroup.add(label, layout, tile);
+
+                    label.add(aabbs); // add label to currently visible set
                     keep_labels.push(labels[priority][i]);
 
                     // increment a count of how many times this style is used in the tile
-                    texts[text_settings_key][label.text].ref++;
+                    settings.ref++;
+                }
+                else if (layout.collide) {
+                    log.trace(`discard label '${label.text}' due to collision`);
                 }
             }
         }
@@ -244,19 +268,12 @@ Object.assign(TextStyle, {
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
     calcTextSizes (tile, texts) {
-        if(!this.canvas[tile]) {
-            this.canvas[tile] = new CanvasText();
-        }
-        return this.canvas[tile].textSizes(tile, texts);
+        return this.canvas.textSizes(tile, texts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile, texts) {
-        if (!this.canvas[tile]) {
-            return Promise.resolve({});
-        }
-
-        let canvas = this.canvas[tile];
+        let canvas = new CanvasText();
         let texture_size = canvas.setTextureTextPositions(texts);
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
@@ -271,9 +288,6 @@ Object.assign(TextStyle, {
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });
-
-        // we don't need tile canvas once it has been copied to to GPU
-        delete this.canvas[tile];
 
         return { texts, texture: t }; // texture is returned by name (not instance)
     },
@@ -295,6 +309,12 @@ Object.assign(TextStyle, {
         if (draw.font.stroke && draw.font.stroke.width != null) {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
+
+        // Offset (parse each array component)
+        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
+        // Repeat rules
+        draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
     },

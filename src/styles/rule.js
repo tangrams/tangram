@@ -8,6 +8,7 @@ export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
 export let ruleCache = {};
 
 function cacheKey (rules) {
+    rules = rules.sort((a, b) => a - b);
     var k = rules[0].id;
     for (var i=1; i < rules.length; i++) {
         k += '/' + rules[i].id;
@@ -15,17 +16,16 @@ function cacheKey (rules) {
     return k;
 }
 
-export function mergeTrees(matchingTrees, key, context) {
-    var draw = {},
-        draws,
-        treeDepth = 0,
-        x, t;
+// Merge matching layer rule trees into a final draw group
+export function mergeTrees(matchingTrees, group) {
+    let draws, treeDepth = 0;
 
-    // Visible by default
-    draw.visible = true;
+    let draw = {
+        visible: true // visible by default
+    };
 
     // Find deepest tree
-    for (t = 0; t < matchingTrees.length; t++) {
+    for (let t=0; t < matchingTrees.length; t++) {
         if (matchingTrees[t].length > treeDepth) {
             treeDepth = matchingTrees[t].length;
         }
@@ -37,14 +37,23 @@ export function mergeTrees(matchingTrees, key, context) {
     }
 
     // Iterate trees in parallel
-    for (x = 0; x < treeDepth; x++) {
-        draws = matchingTrees.map(tree => tree[x] && tree[x][key]);
+    for (let x=0; x < treeDepth; x++) {
+        // Pull out the requested draw group, for each tree, at this depth
+        draws = matchingTrees.map(tree => tree[x] && tree[x][group]);
         if (draws.length === 0) {
             continue;
         }
 
-        // Merge remaining draw objects
+        // Sort by layer name before merging, so rules are applied deterministically
+        // when multiple rules modify the same properties
+        draws.sort((a, b) => (a && a.layer_name) > (b && b.layer_name) ? 1 : -1);
+
+        // Merge draw objects
         mergeObjects(draw, ...draws);
+
+        // Remove layer names, they were only used transiently to sort and calculate final layer
+        // (final merged names will not be accurate since only one tree can win)
+        delete draw.layer_name;
     }
 
     // Short-circuit if not visible
@@ -62,15 +71,17 @@ class Rule {
         this.id = Rule.id++;
         this.parent = parent;
         this.name = name;
-        this.full_name = this.parent ? this.parent.full_name + '.' + this.name : this.name;
+        this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
         this.draw = draw;
         this.filter = filter;
         this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
         this.properties = properties !== undefined ? properties : (this.parent && this.parent.properties);
 
-        // Denormalize properties to draw groups
+        // Denormalize layer name & properties to draw groups
         if (this.draw) {
             for (let group in this.draw) {
+                this.draw[group].layer_name = this.full_name;
+
                 if (this.properties !== undefined) {
                     this.draw[group].properties = this.properties;
                 }
@@ -155,7 +166,7 @@ export class RuleTree extends Rule {
                     // Calculate each draw group
                     for (let draw_key in draw_keys) {
                         ruleCache[cache_key] = ruleCache[cache_key] || {};
-                        ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key, context);
+                        ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key);
 
                         // Only save the ones that weren't null
                         if (!ruleCache[cache_key][draw_key]) {
@@ -163,6 +174,7 @@ export class RuleTree extends Rule {
                         }
                         else {
                             ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                            ruleCache[cache_key][draw_key].layers = rules.map(x => x && x.full_name);
                         }
                     }
 

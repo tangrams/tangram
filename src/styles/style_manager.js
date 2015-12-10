@@ -228,6 +228,7 @@ StyleManager.mix = function (style, styles) {
         // hasOwnProperty check gives preference to base style prototype
         style.blend = sources.map(x => x.hasOwnProperty('blend') && x.blend).filter(x => x).pop();
     }
+    style.blend_order = sources.map(x => x.blend_order).filter(x => x != null).pop();
 
     // Merges - property-specific rules for merging values
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)

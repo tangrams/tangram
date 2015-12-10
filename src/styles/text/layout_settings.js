@@ -1,8 +1,11 @@
+import Geo from '../../geo';
+import {StyleParser} from '../style_parser';
+
 var LayoutSettings;
 
 export default LayoutSettings = {
 
-   compute (feature, draw, context, tile) {
+   compute (feature, draw, text, context, tile) {
         let layout = {};
         layout.units_per_pixel = tile.units_per_pixel || 1;
 
@@ -12,7 +15,7 @@ export default LayoutSettings = {
         layout.anchor = draw.anchor;
 
         // label offset in pixel (applied in screen space)
-        layout.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
+        layout.offset = StyleParser.cacheProperty(draw.offset, context) || [0, 0];
 
         // label buffer in pixel
         let buffer = draw.buffer;
@@ -46,6 +49,29 @@ export default LayoutSettings = {
             layout.line_exceed = 80;
         }
 
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.cacheProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance == null) {
+            layout.repeat_distance = Geo.tile_size;
+        }
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key
+        if (typeof draw.repeat_group === 'function') {
+            layout.repeat_group = draw.repeat_group(context);
+        }
+        else if (typeof draw.repeat_group === 'string') {
+            layout.repeat_group = draw.repeat_group;
+        }
+        else {
+            layout.repeat_group = draw.key; // default to unique set of matching layers
+        }
+        layout.repeat_group += '/' + text;
+
+        // collision flag
+        layout.collide = (draw.collide === false) ? false : true;
+
+        // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 

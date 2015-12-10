@@ -79,6 +79,6 @@ dots:
                     return color;
                 }
 
-            filter: color.rgb *= dots(v_world_position.xyz);
-            # fragment: color *= dots(v_world_position.xyz + vec3(0., 0., u_time * 25.)); // animated dots
-            # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(v_world_position.xyz); } // apply only to up-facing surfaces
+            filter: color.rgb *= dots(worldPosition().xyz);
+            # fragment: color *= dots(worldPosition().xyz + vec3(0., 0., u_time * 25.)); // animated dots
+            # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(worldPosition().xyz); } // apply only to up-facing surfaces
