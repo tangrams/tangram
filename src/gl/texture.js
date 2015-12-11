@@ -262,6 +262,10 @@ export default class Texture {
 
 // Static/class methods and state
 
+Texture.create = function constructor(gl, name, options = {}) {
+    return new Texture(gl, name, options);
+};
+
 // Destroy all texture instances for a given GL context
 Texture.destroy = function (gl) {
     var textures = Object.keys(Texture.textures);
