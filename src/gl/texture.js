@@ -75,7 +75,7 @@ export default class Texture {
     load(options = {}) {
         if (typeof options.url === 'string') {
             return this.setUrl(options.url, options);
-        } else if (options.element instanceof HTMLCanvasElement || options.element instanceof HTMLImageElement) {
+        } else if (options.element) {
             return this.setElement(options.element, options);
         } else if (options.data && options.width && options.height) {
             return this.setData(options.width, options.height, options.data, options);
@@ -100,12 +100,10 @@ export default class Texture {
             image.onload = () => {
                 try {
                     this.setElement(image, options);
-                    // this.update(options);
-                    // this.setTextureFiltering(options);
                     this.calculateSprites();
                 }
                 catch (e) {
-                    log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                    log.warn(`Texture '${this.name}': failed to load url: '${url}'`, e, options);
                     Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
                 }
 
@@ -113,7 +111,7 @@ export default class Texture {
             };
             image.onerror = e => {
                 // Warn and resolve on error
-                log.warn(`Texture: failed to load url: '${url}'`, e, options);
+                log.warn(`Texture '${this.name}': failed to load url: '${url}'`, e, options);
                 Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
                 resolve(this);
             };
@@ -140,11 +138,24 @@ export default class Texture {
 
     // Sets the texture to track a element (canvas/image)
     setElement(element, options) {
-        this.source = element;
-        this.source_type = 'element';
+        // a string element is interpeted as a CSS selector
+        if (typeof element === 'string') {
+            element = document.querySelector(element);
+        }
 
-        this.update(options);
-        this.setTextureFiltering(options);
+        if (element instanceof HTMLCanvasElement || element instanceof HTMLImageElement) {
+            this.source = element;
+            this.source_type = 'element';
+
+            this.update(options);
+            this.setTextureFiltering(options);
+        }
+        else {
+            let msg = `the 'element' parameter (\`element: ${JSON.stringify(element)}\`) must be a CSS `;
+            msg += `selector string, or an <image> or <canvas> object`;
+            log.warn(`Texture '${this.name}': ${msg}`, options);
+            Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
+        }
 
         this.loading = Promise.resolve(this);
         return this.loading;
