@@ -262,7 +262,7 @@ export default class Texture {
 
 // Static/class methods and state
 
-Texture.create = function constructor(gl, name, options = {}) {
+Texture.create = function constructor(gl, name, options) {
     return new Texture(gl, name, options);
 };
 
@@ -297,7 +297,7 @@ Texture.createFromObject = function (gl, textures) {
                 continue;
             }
 
-            let texture = new Texture(gl, texname, config);
+            let texture = Texture.create(gl, texname, config);
             loading.push(texture.loading);
         }
     }
