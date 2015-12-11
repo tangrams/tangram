@@ -37,7 +37,7 @@ export default class Texture {
         // Cache texture instance and definition
         Texture.textures[this.name] = this;
         Texture.texture_configs[this.name] = Object.assign({ name }, options);
-        
+
         this.load(options);
         log.trace(`creating Texture ${this.name}`);
     }
@@ -74,7 +74,7 @@ export default class Texture {
 
     load(options = {}) {
         if (typeof options.url === 'string') {
-            return this.setUrl(options.url, options);   
+            return this.setUrl(options.url, options);
         } else if (options.element instanceof HTMLCanvasElement || options.element instanceof HTMLImageElement) {
             return this.setElement(options.element, options);
         } else if (options.data && options.width && options.height) {
@@ -161,7 +161,7 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
-        if ((this.source_type === 'element' && this.source instanceof HTMLCanvasElement) || 
+        if ((this.source_type === 'element' && this.source instanceof HTMLCanvasElement) ||
             (this.source_type === 'element' && this.source instanceof HTMLImageElement &&  this.source.complete)) {
 
             this.width = this.source.width;
@@ -306,9 +306,14 @@ Texture.createFromObject = function (gl, textures) {
 
 // Indicate if a texture definition would be a change from the current cache
 Texture.changed = function (name, config) {
-    if (Texture.textures[name]) { // cached texture
+    let texture = Texture.textures[name];
+    if (texture) { // cached texture
+        // canvas/image-based textures are considered dynamic and always refresh
+        if (texture.source_type === 'element' || config.element != null) {
+            return true;
+        }
+
         // compare definitions
-        // TODO: fix for canvas/image/data
         if (JSON.stringify(Texture.texture_configs[name]) ===
             JSON.stringify(Object.assign({ name }, config))) {
             return false;
