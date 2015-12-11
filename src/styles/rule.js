@@ -97,9 +97,23 @@ class Rule {
     }
 
     buildFilter() {
-        var type = typeof this.filter;
-        if (type === 'object') {
+        let type = typeof this.filter;
+        if (this.filter != null && type !== 'object' && type !== 'function') {
+            // Invalid filter
+            let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
+            msg += `but was set to \`filter: ${this.filter}\` instead`;
+            log.warn(msg);
+            return;
+        }
+
+        try {
             this.filter = match(this.filter);
+        }
+        catch(e) {
+            // Invalid filter
+            let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
+            msg += `failed with error ${e.message}, ${e.stack}`;
+            log.warn(msg);
         }
     }
 
