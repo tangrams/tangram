@@ -75,10 +75,8 @@ export default class Texture {
     load(options = {}) {
         if (typeof options.url === 'string') {
             return this.setUrl(options.url, options);   
-        } else if (options.canvas instanceof HTMLCanvasElement) {
-            return this.setCanvas(options.canvas, options);
-        } else if (options.image instanceof HTMLImageElement) {
-            return this.setImage(options.image, options);
+        } else if (options.element instanceof HTMLCanvasElement || options.element instanceof HTMLImageElement) {
+            return this.setElement(options.element, options);
         } else if (options.data && options.width && options.height) {
             return this.setData(options.width, options.height, options.data, options);
         }
@@ -101,7 +99,7 @@ export default class Texture {
             let image = new Image();
             image.onload = () => {
                 try {
-                    this.setImage(image, options);
+                    this.setElement(image, options);
                     // this.update(options);
                     // this.setTextureFiltering(options);
                     this.calculateSprites();
@@ -140,21 +138,10 @@ export default class Texture {
         return this.loading;
     }
 
-    // Sets the texture to track a canvas element
-    setCanvas(canvas, options) {
-        this.source = canvas;
-        this.source_type = 'canvas';
-
-        this.update(options);
-        this.setTextureFiltering(options);
-
-        this.loading = Promise.resolve(this);
-        return this.loading;
-    }
-
-    setImage(image, options) {
-        this.source = image;
-        this.source_type = 'image';
+    // Sets the texture to track a element (canvas/image)
+    setElement(element, options) {
+        this.source = element;
+        this.source_type = 'element';
 
         this.update(options);
         this.setTextureFiltering(options);
@@ -174,7 +161,9 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
-        if (this.source_type === 'canvas' || (this.source_type === 'image' && this.source.complete)) {
+        if ((this.source_type === 'element' && this.source instanceof HTMLCanvasElement) || 
+            (this.source_type === 'element' && this.source instanceof HTMLImageElement &&  this.source.complete)) {
+
             this.width = this.source.width;
             this.height = this.source.height;
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
