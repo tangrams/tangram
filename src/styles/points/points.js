@@ -104,7 +104,10 @@ Object.assign(Points, {
                 }
             }
         }
-        style.sprite = sprite;
+        else if (sprite) {
+            log.warn(`Style: in style '${this.name}', sprite '${sprite}' was specified, but texture '${this.texture}' has no sprites`);
+            sprite = null;
+        }
 
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
         let sprite_info;
