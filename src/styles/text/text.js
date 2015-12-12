@@ -144,17 +144,16 @@ Object.assign(TextStyle, {
             this.texts[tile] = texts;
 
             let labels = this.createLabels(tile, queue);
-
             if (!labels) {
-                return this.finishTile(tile);
+                return this.finishTile(tile); // no labels created for this tile
             }
 
-            labels = this.discardLabels(tile, labels, texts);
-
-            // No labels for this tile
-            if (Object.keys(texts).length === 0) {
-                return this.finishTile(tile);
+            labels = this.discardLabels(tile, labels);
+            if (!labels) {
+                return this.finishTile(tile); // no labels visible for this tile
             }
+
+            this.cullTextStyles(texts, labels);
 
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile, texts).then(({ texts, texture }) => {
@@ -207,7 +206,7 @@ Object.assign(TextStyle, {
 
     // Test labels for collisions, higher to lower priority
     // When two collide, discard the lower-priority label
-    discardLabels (tile, labels, texts) {
+    discardLabels (tile, labels) {
         let aabbs = [];
         let keep_labels = [];
         RepeatGroup.clear(tile);
@@ -220,8 +219,7 @@ Object.assign(TextStyle, {
             }
 
             for (let i = 0; i < labels[priority].length; i++) {
-                let { label, text_settings_key, layout } = labels[priority][i];
-                let settings = texts[text_settings_key][label.text];
+                let { label, layout } = labels[priority][i];
 
                 // test the label for intersections with other labels in the tile
                 if (!layout.collide || !label.discard(aabbs)) {
@@ -236,9 +234,6 @@ Object.assign(TextStyle, {
 
                     label.add(aabbs); // add label to currently visible set
                     keep_labels.push(labels[priority][i]);
-
-                    // increment a count of how many times this style is used in the tile
-                    settings.ref++;
                 }
                 else if (layout.collide) {
                     log.trace(`discard label '${label.text}' due to collision`);
@@ -246,23 +241,37 @@ Object.assign(TextStyle, {
             }
         }
 
+        return keep_labels.length > 0 && keep_labels;
+    },
+
+    // Remove unused text/style combinations to avoid unnecessary rasterization
+    cullTextStyles(texts, labels) {
+        // Count how many times each text/style combination is used
+        for (let i=0; i < labels.length; i++) {
+            let q = labels[i];
+            let text = q.label.text;
+            let text_settings_key = q.text_settings_key;
+            let settings = texts[text_settings_key][text].ref++;
+        }
+
         // Remove text/style combinations that have no visible labels
         for (let style in texts) {
             for (let text in texts[style]) {
                 // no labels for this text
                 if (texts[style][text].ref < 1) {
+                    // console.log(`drop label text ${text} in style ${style}`);
                     delete texts[style][text];
                 }
             }
         }
+
         for (let style in texts) {
             // no labels for this style
             if (Object.keys(texts[style]).length === 0) {
+                // console.log(`drop label text style ${style}`);
                 delete texts[style];
             }
         }
-
-        return keep_labels;
     },
 
     // Called on main thread from worker, to compute the size of each text string,
