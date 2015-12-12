@@ -135,7 +135,7 @@ export default class Texture {
         this.source_type = 'data';
 
         this.update(options);
-        this.setTextureFiltering(options);
+        this.setFiltering(options);
 
         this.loading = Promise.resolve(this);
         return this.loading;
@@ -157,7 +157,7 @@ export default class Texture {
             this.source_type = 'element';
 
             this.update(options);
-            this.setTextureFiltering(options);
+            this.setFiltering(options);
         }
         else {
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
@@ -198,7 +198,7 @@ export default class Texture {
     }
 
     // Determines appropriate filtering mode
-    setTextureFiltering(options = {}) {
+    setFiltering(options = {}) {
         if (!this.valid) {
             return;
         }
@@ -216,9 +216,6 @@ export default class Texture {
             this.power_of_2 = true;
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || (options.repeat && gl.REPEAT) || gl.CLAMP_TO_EDGE);
-
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.TEXTURE_WRAP_S || gl.REPEAT);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.TEXTURE_WRAP_T || gl.REPEAT);
 
             if (options.filtering === 'mipmap') {
                 this.filtering = 'mipmap';
