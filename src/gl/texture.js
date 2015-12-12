@@ -73,12 +73,18 @@ export default class Texture {
     }
 
     load(options = {}) {
+        this.loading = null;
+
         if (typeof options.url === 'string') {
-            return this.setUrl(options.url, options);
+            this.setUrl(options.url, options);
         } else if (options.element) {
-            return this.setElement(options.element, options);
+            this.setElement(options.element, options);
         } else if (options.data && options.width && options.height) {
-            return this.setData(options.width, options.height, options.data, options);
+            this.setData(options.width, options.height, options.data, options);
+        }
+
+        if (this.loading) {
+            return this.loading.then((tex) => { this.calculateSprites(); return tex; });
         }
     }
 
@@ -100,7 +106,6 @@ export default class Texture {
             image.onload = () => {
                 try {
                     this.setElement(image, options);
-                    this.calculateSprites();
                 }
                 catch (e) {
                     log.warn(`Texture '${this.name}': failed to load url: '${url}'`, e, options);
