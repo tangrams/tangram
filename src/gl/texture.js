@@ -198,7 +198,7 @@ export default class Texture {
             return;
         }
 
-        options.filtering = options.filtering || this.filtering || 'linear';
+        options.filtering = options.filtering || 'linear';
 
         var gl = this.gl;
         this.bind();
