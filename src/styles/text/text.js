@@ -57,6 +57,12 @@ Object.assign(TextStyle, {
         delete this.texts[tile];
     },
 
+    // Free tile-specific resources before finshing style construction
+    finishTile(tile) {
+        this.freeTile(tile);
+        return this.super.endData.call(this, tile);
+    },
+
     // Override to queue features instead of processing immediately
     addFeature (feature, draw, context) {
         let tile = context.tile;
@@ -133,24 +139,21 @@ Object.assign(TextStyle, {
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
-                this.freeTile(tile);
-                return this.super.endData.apply(this, arguments);
+                return this.finishTile(tile);
             }
             this.texts[tile] = texts;
 
             let labels = this.createLabels(tile, queue);
 
             if (!labels) {
-                this.freeTile(tile);
-                return this.super.endData.apply(this, arguments);
+                return this.finishTile(tile);
             }
 
             labels = this.discardLabels(tile, labels, texts);
 
             // No labels for this tile
             if (Object.keys(texts).length === 0) {
-                this.freeTile(tile);
-                return this.super.endData.apply(this, arguments);
+                return this.finishTile(tile);
             }
 
             // second call to main thread, for rasterizing the set of texts
@@ -169,9 +172,7 @@ Object.assign(TextStyle, {
                     });
                 }
 
-                this.freeTile(tile);
-
-                return this.super.endData.apply(this, arguments).then(tile_data => {
+                return this.finishTile(tile).then(tile_data => {
                     // Attach tile-specific label atlas to mesh as a texture uniform
                     if (texture && tile_data) {
                         tile_data.uniforms = { u_texture: texture };
