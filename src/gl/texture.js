@@ -138,12 +138,16 @@ export default class Texture {
 
     // Sets the texture to track a element (canvas/image)
     setElement(element, options) {
+        let el = element;
+
         // a string element is interpeted as a CSS selector
         if (typeof element === 'string') {
             element = document.querySelector(element);
         }
 
-        if (element instanceof HTMLCanvasElement || element instanceof HTMLImageElement) {
+        if (element instanceof HTMLCanvasElement ||
+            element instanceof HTMLImageElement ||
+            element instanceof HTMLVideoElement) {
             this.source = element;
             this.source_type = 'element';
 
@@ -151,8 +155,8 @@ export default class Texture {
             this.setTextureFiltering(options);
         }
         else {
-            let msg = `the 'element' parameter (\`element: ${JSON.stringify(element)}\`) must be a CSS `;
-            msg += `selector string, or an <image> or <canvas> object`;
+            let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
+            msg += `selector string, or a <canvas>, <image> or <video> object`;
             log.warn(`Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }
@@ -172,15 +176,16 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
-        if ((this.source_type === 'element' && this.source instanceof HTMLCanvasElement) ||
-            (this.source_type === 'element' && this.source instanceof HTMLImageElement &&  this.source.complete)) {
+        if (this.source_type === 'element' &&
+            (this.source instanceof HTMLCanvasElement || this.source instanceof HTMLVideoElement ||
+             (this.source instanceof HTMLImageElement && this.source.complete))) {
 
             this.width = this.source.width;
             this.height = this.source.height;
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
         }
         // Raw image buffer
-        else if (this.source_type === 'data') { // NOTE: this.data can be null, to zero out texture
+        else if (this.source_type === 'data') {
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.source);
         }
 
