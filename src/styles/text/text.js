@@ -3,6 +3,7 @@
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
+import {Style} from '../style';
 import {Points} from '../points/points';
 import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
@@ -22,7 +23,6 @@ Object.assign(TextStyle, {
     selection: false, // no feature selection for text by default
 
     init() {
-
         this.super.init.apply(this, arguments);
 
         // Provide a hook for this object to be called from worker threads
@@ -47,7 +47,6 @@ Object.assign(TextStyle, {
             this.canvas = new CanvasText();
         }
         else if (Utils.isWorkerThread) {
-            this.queues = {};
             this.texts = {}; // unique texts, grouped by tile, by style
         }
     },
@@ -60,7 +59,7 @@ Object.assign(TextStyle, {
     // Free tile-specific resources before finshing style construction
     finishTile(tile) {
         this.freeTile(tile);
-        return this.super.endData.call(this, tile);
+        return Style.endData.call(this, tile);
     },
 
     // Override to queue features instead of processing immediately
@@ -118,7 +117,6 @@ Object.assign(TextStyle, {
             this.queues[tile.key] = [];
         }
 
-        // this.tile_data[tile.key].queue.push({
         this.queues[tile.key].push({
             feature, draw, context,
             text, text_settings_key, layout
@@ -170,7 +168,8 @@ Object.assign(TextStyle, {
                             let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][text];
                             q.label.texcoords = text_info.texcoords;
 
-                            this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
+                            this.feature_style.label = q.label;
+                            Style.addFeature.call(this, q.feature, q.draw, q.context, q.label);
                         });
                     }
 
@@ -291,14 +290,6 @@ Object.assign(TextStyle, {
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
-    },
-
-    // Parse feature is called "late", after all labels have been created
-    // The usual parsing done by _parseFeature() is handled by addFeature() above
-    // Here we just pass the label through to the build functions below
-    _parseFeature (feature, draw, context, label) {
-        this.feature_style.label = label;
-        return this.feature_style;
     },
 
     build (style, vertex_data) {

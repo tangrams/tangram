@@ -206,7 +206,7 @@ export var Style = {
     },
 
     _parseFeature (feature, rule_style, context) {
-        throw new MethodNotImplemented('_parseFeature');
+        return this.feature_style;
     },
 
     preprocess (rule_style) {

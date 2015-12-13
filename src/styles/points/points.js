@@ -53,21 +53,35 @@ Object.assign(Points, {
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
         }
+
+        this.queues = {};
     },
 
-    _parseFeature (feature, rule_style, context) {
-        var style = this.feature_style;
-        let tile = context.tile.key;
+    reset () {
+        this.queues = {};
+    },
 
-        style.color = this.parseColor(rule_style.color, context);
+    // Override to queue features instead of processing immediately
+    addFeature (feature, draw, context) {
+        let tile = context.tile;
+
+        // Called here because otherwise it will be delayed until the feature queue is parsed,
+        // and we want the preprocessing done before we evaluate text style below
+        draw = this.preprocess(draw);
+        if (!draw) {
+            return;
+        }
+
+        let style = {};
+        style.color = this.parseColor(draw.color, context);
 
         // require color or texture
         if (!style.color && !this.texture) {
             return null;
         }
 
-        let sprite = style.sprite = StyleParser.evalProp(rule_style.sprite, context);
-        style.sprite_default = rule_style.sprite_default; // optional fallback if 'sprite' not found
+        let sprite = style.sprite = StyleParser.evalProp(draw.sprite, context);
+        style.sprite_default = draw.sprite_default; // optional fallback if 'sprite' not found
 
         // if point has texture and sprites, require a valid sprite to draw
         if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
@@ -100,10 +114,10 @@ Object.assign(Points, {
         }
 
         // points can be placed off the ground
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
-        style.size = rule_style.size;
+        style.size = draw.size;
         if (!style.size) {
             if (sprite_info) {
                 style.size = { value: sprite_info.size };
@@ -122,25 +136,49 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = StyleParser.evalProp(rule_style.angle, context) || 0;
+        style.angle = StyleParser.evalProp(draw.angle, context) || 0;
 
         // factor by which point scales from current zoom level to next zoom level
-        style.scale = rule_style.scale || 1;
+        style.scale = draw.scale || 1;
 
         // to store bbox by tiles
         style.tile = tile;
 
         // polygons rendering as points will render each individual polygon point by default, but
         // rendering a single point at the polygon's centroid can be enabled
-        style.centroid = rule_style.centroid;
+        style.centroid = draw.centroid;
 
         // Offset applied to point in screen space
-        style.offset = (Array.isArray(rule_style.offset) && rule_style.offset.map(parseFloat)) || [0, 0];
+        style.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
 
         // anchor
-        style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);
+        style.offset = PointAnchor.computeOffset(style.offset, style.size, draw.anchor);
 
-        return style;
+        // Queue the feature for processing
+        if (!this.tile_data[tile.key]) {
+            this.startData(tile.key);
+        }
+
+        if (!this.queues[tile.key]) {
+            this.queues[tile.key] = [];
+        }
+
+        this.queues[tile.key].push({
+            feature, draw, context, style
+        });
+    },
+
+    // Override
+    endData (tile) {
+        let queue = this.queues[tile];
+        this.queues[tile] = [];
+
+        queue.forEach(q => {
+            this.feature_style = q.style;
+            Style.addFeature.call(this, q.feature, q.draw, q.context);
+        });
+
+        return Style.endData.call(this, tile);
     },
 
     _preprocess (draw) {
