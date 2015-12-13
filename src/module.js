@@ -28,6 +28,7 @@ import WorkerBroker from './utils/worker_broker';
 import {ruleCache} from './styles/rule';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
+import Collision from './styles/collision';
 import FeatureSelection from './selection';
 
 import yaml from 'js-yaml';
@@ -55,6 +56,7 @@ var debug = {
     ruleCache,
     StyleManager,
     StyleParser,
+    Collision,
     FeatureSelection
 };
 

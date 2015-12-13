@@ -1,6 +1,7 @@
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
+import Collision from './styles/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
@@ -170,6 +171,8 @@ export default class Tile {
 
         let data = tile.source_data;
 
+        Collision.startTile(tile.key);
+
         // Treat top-level style rules as 'layers'
         for (let layer_name in layers) {
             let layer = layers[layer_name];
@@ -259,6 +262,8 @@ export default class Tile {
         }
 
         return Promise.all(queue).then(() => {
+            Collision.resetTile(tile.key);
+
             // Return keys to be transfered to main thread
             return ['mesh_data'];
         });

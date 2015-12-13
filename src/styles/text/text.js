@@ -8,7 +8,7 @@ import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import TextSettings from './text_settings';
 import LayoutSettings from './layout_settings';
-import RepeatGroup from './repeat_group';
+import Collision from '../collision';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -123,6 +123,9 @@ Object.assign(TextStyle, {
             feature, draw, context,
             text, text_settings_key, layout
         });
+
+        // Register with collision manager
+        Collision.addStyle(this.name, tile.key);
     },
 
     // Override
@@ -130,54 +133,55 @@ Object.assign(TextStyle, {
         let queue = this.queues[tile];
         this.queues[tile] = [];
 
-        let count = Object.keys(this.texts[tile]||{}).length;
-
-        if (!count) {
+        if (Object.keys(this.texts[tile]||{}).length === 0) {
             return Promise.resolve();
         }
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile, this.texts[tile]).then(texts => {
             if (!texts) {
+                Collision.collide({}, this.name, tile);
                 return this.finishTile(tile);
             }
             this.texts[tile] = texts;
 
             let labels = this.createLabels(tile, queue);
             if (!labels) {
+                Collision.collide({}, this.name, tile);
                 return this.finishTile(tile); // no labels created for this tile
             }
 
-            labels = this.discardLabels(tile, labels);
-            if (!labels) {
-                return this.finishTile(tile); // no labels visible for this tile
-            }
-
-            this.cullTextStyles(texts, labels);
-
-            // second call to main thread, for rasterizing the set of texts
-            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile, texts).then(({ texts, texture }) => {
-                if (texts) {
-                    this.texts[tile] = texts;
-
-                    // Build queued features
-                    labels.forEach(q => {
-                        let text = q.label.text;
-                        let text_settings_key = q.text_settings_key;
-                        let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][text];
-                        q.label.texcoords = text_info.texcoords;
-
-                        this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
-                    });
+            return Collision.collide(labels, this.name, tile).then(labels => {
+                if (!labels) {
+                    return this.finishTile(tile); // no labels visible for this tile
                 }
 
-                return this.finishTile(tile).then(tile_data => {
-                    // Attach tile-specific label atlas to mesh as a texture uniform
-                    if (texture && tile_data) {
-                        tile_data.uniforms = { u_texture: texture };
-                        tile_data.textures = [texture]; // assign texture ownership to tile
-                        return tile_data;
+                this.cullTextStyles(texts, labels);
+
+                // second call to main thread, for rasterizing the set of texts
+                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile, texts).then(({ texts, texture }) => {
+                    if (texts) {
+                        this.texts[tile] = texts;
+
+                        // Build queued features
+                        labels.forEach(q => {
+                            let text = q.label.text;
+                            let text_settings_key = q.text_settings_key;
+                            let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][text];
+                            q.label.texcoords = text_info.texcoords;
+
+                            this.super.addFeature.call(this, q.feature, q.draw, q.context, q.label);
+                        });
                     }
+
+                    return this.finishTile(tile).then(tile_data => {
+                        // Attach tile-specific label atlas to mesh as a texture uniform
+                        if (texture && tile_data) {
+                            tile_data.uniforms = { u_texture: texture };
+                            tile_data.textures = [texture]; // assign texture ownership to tile
+                            return tile_data;
+                        }
+                    });
                 });
             });
         });
@@ -202,46 +206,6 @@ Object.assign(TextStyle, {
         }
 
         return priorities;
-    },
-
-    // Test labels for collisions, higher to lower priority
-    // When two collide, discard the lower-priority label
-    discardLabels (tile, labels) {
-        let aabbs = [];
-        let keep_labels = [];
-        RepeatGroup.clear(tile);
-
-        // Process labels by priority
-        let priorities = Object.keys(labels).sort((a, b) => a - b);
-        for (let priority of priorities) {
-            if (!labels[priority]) { // no labels at this priority, skip to next
-                continue;
-            }
-
-            for (let i = 0; i < labels[priority].length; i++) {
-                let { label, layout } = labels[priority][i];
-
-                // test the label for intersections with other labels in the tile
-                if (!layout.collide || !label.discard(aabbs)) {
-                    // check for repeats
-                    let check = RepeatGroup.check(label, layout, tile);
-                    if (check) {
-                        log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
-                        continue;
-                    }
-                    // register as placed for future repeat culling
-                    RepeatGroup.add(label, layout, tile);
-
-                    label.add(aabbs); // add label to currently visible set
-                    keep_labels.push(labels[priority][i]);
-                }
-                else if (layout.collide) {
-                    log.trace(`discard label '${label.text}' due to collision`);
-                }
-            }
-        }
-
-        return keep_labels.length > 0 && keep_labels;
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization
