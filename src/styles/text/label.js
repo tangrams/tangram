@@ -20,14 +20,21 @@ export default class Label {
         let aabbs = bboxes.aabb;
         let obbs = bboxes.obb;
 
-        // Broadphase
+        // Broad phase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                log.trace(`${this.options.id} broad phase collide`, this, this.aabb, aabbs[j]);
+                log.trace('collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
+
+                // Skip narrow phase collision if no rotation
+                if (this.obb.angle === 0 && obbs[j].angle === 0) {
+                    log.trace('collision: skip narrow phase collide because neither is rotated', this.options.id, this, this.obb, obbs[j]);
+                    intersect = true;
+                    return true;
+                }
 
                 // Narrow phase
                 if (OBB.intersect(this.obb, obbs[j])) {
-                    log.trace(`${this.options.id} narrow phase collide`, this, this.obb, obbs[j]);
+                    log.trace('collision: narrow phase collide', this.options.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
