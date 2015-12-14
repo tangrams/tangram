@@ -7,13 +7,11 @@ import log from 'loglevel';
 export default class Label {
 
     constructor (text, size, options) {
-        Object.assign(this, {
-            text,
-            size,
-            options,
-            position: null,
-            aabb: null,
-        });
+        this.text = text;
+        this.size = size;
+        this.options = options;
+        this.position = null;
+        this.aabb = null;
     }
 
     // check for overlaps with other labels in the tile
