@@ -10,7 +10,10 @@ export default Collision = {
 
     startTile (tile) {
         let state = this.tiles[tile] = {
-            aabbs: [],          // current set of placed bounding boxes
+            bboxes: {           // current set of placed bounding boxes
+                aabb: [],
+                obb: []
+            },
             objects: {},        // objects to collide, grouped by priority, then by style
             keep: {},           // objects that were kept after collision, grouped by style
             styles: new Set()   // styles contributing collision objects
@@ -64,7 +67,7 @@ export default Collision = {
     // When two collide, discard the lower-priority label
     endTile (tile) {
         let state = this.tiles[tile];
-        let aabbs = state.aabbs;
+        let bboxes = state.bboxes;
         let keep = state.keep;
 
         RepeatGroup.clear(tile);
@@ -86,7 +89,7 @@ export default Collision = {
                     let { label, layout } = objects[i]; // TODO: `label` should be generic
 
                     // test the label for intersections with other labels in the tile
-                    if (!layout.collide || !label.discard(aabbs)) {
+                    if (!layout.collide || !label.discard(bboxes)) {
                         // check for repeats
                         let check = RepeatGroup.check(label, layout, tile);
                         if (check) {
@@ -96,7 +99,7 @@ export default Collision = {
                         // register as placed for future repeat culling
                         RepeatGroup.add(label, layout, tile);
 
-                        label.add(aabbs); // add label to currently visible set
+                        label.add(bboxes); // add label to currently visible set
                         keep[style].push(objects[i]);
                     }
                     else if (layout.collide) {

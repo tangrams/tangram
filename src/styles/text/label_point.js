@@ -13,14 +13,14 @@ export default class LabelPoint extends Label {
 
     update() {
         this.options.offset = this.computeOffset();
-        this.aabb = this.computeAABB();
+        this.updateBBoxes();
     }
 
     computeOffset () {
         return PointAnchor.computeOffset(this.options.offset, this.size.collision_size, this.options.anchor);
     }
 
-    computeAABB () {
+    updateBBoxes () {
         let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
         let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
 
@@ -29,11 +29,8 @@ export default class LabelPoint extends Label {
             this.position[1] - (this.options.offset[1] * this.options.units_per_pixel)
         ];
 
-        let obb = new OBB(p[0], p[1], 0, width, height);
-        let aabb = obb.getExtent();
-        aabb.obb = obb;
-
-        return aabb;
+        this.obb = new OBB(p[0], p[1], 0, width, height);
+        this.aabb = this.obb.getExtent();
     }
 
     // Try to move the label into the tile bounds
@@ -62,7 +59,7 @@ export default class LabelPoint extends Label {
         }
 
         if (updated) {
-            this.aabb = this.computeAABB();
+            this.updateBBoxes();
         }
 
         return this.inTileBounds();

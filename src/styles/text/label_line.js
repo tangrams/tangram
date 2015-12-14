@@ -16,7 +16,7 @@ export default class LabelLine extends Label {
         let segment = this.currentSegment();
         this.angle = this.computeAngle();
         this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
-        this.aabb = this.computeAABB();
+        this.updateBBoxes();
     }
 
     moveNextSegment () {
@@ -70,7 +70,7 @@ export default class LabelLine extends Label {
         return [ p1, p2 ];
     }
 
-    computeAABB () {
+    updateBBoxes () {
         let upp = this.options.units_per_pixel;
         let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * upp;
         let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * upp;
@@ -83,11 +83,8 @@ export default class LabelLine extends Label {
         ];
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
-        let obb = new OBB(p[0], p[1], -this.angle, width, height);
-        let aabb = obb.getExtent();
-        aabb.obb = obb;
-
-        return aabb;
+        this.obb = new OBB(p[0], p[1], -this.angle, width, height);
+        this.aabb = this.obb.getExtent();
     }
 
     // Try to move the label into the tile bounds
@@ -109,7 +106,7 @@ export default class LabelLine extends Label {
         return in_tile && fits_to_segment;
     }
 
-    discard (aabbs) {
+    discard (bboxes) {
         // First find a line segment that fits the label
         if (this.lines && !this.fitToSegment()) {
             while (!this.fitToSegment()) {
@@ -120,7 +117,7 @@ export default class LabelLine extends Label {
         }
 
         // If label fits in line, run standard discard tests
-        return super.discard(aabbs);
+        return super.discard(bboxes);
     }
 
 }

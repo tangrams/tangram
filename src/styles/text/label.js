@@ -11,11 +11,14 @@ export default class Label {
         this.options = options;
         this.position = null;
         this.aabb = null;
+        this.obb = null;
     }
 
     // check for overlaps with other labels in the tile
-    occluded (aabbs) {
+    occluded (bboxes) {
         let intersect = false;
+        let aabbs = bboxes.aabb;
+        let obbs = bboxes.obb;
 
         // Broadphase
         if (aabbs.length > 0) {
@@ -23,8 +26,8 @@ export default class Label {
                 log.trace(`${this.options.id} broad phase collide`, this, this.aabb, aabbs[j]);
 
                 // Narrow phase
-                if (OBB.intersect(this.aabb.obb, aabbs[j].obb)) {
-                    log.trace(`${this.options.id} narrow phase collide`, this, this.aabb.obb, aabbs[j].obb);
+                if (OBB.intersect(this.obb, obbs[j])) {
+                    log.trace(`${this.options.id} narrow phase collide`, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
@@ -34,8 +37,9 @@ export default class Label {
     }
 
     // Add this label's bounding box to the provided set
-    add (aabbs) {
-        aabbs.push(this.aabb);
+    add (bboxes) {
+        bboxes.aabb.push(this.aabb);
+        bboxes.obb.push(this.obb);
     }
 
     // checks whether the label is within the tile boundaries
@@ -52,7 +56,7 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard (aabbs) {
+    discard (bboxes) {
         // Should the label be culled if it can't fit inside the tile bounds?
         if (this.options.cull_from_tile) {
             let in_tile = this.inTileBounds();
@@ -69,6 +73,6 @@ export default class Label {
         }
 
         // If the label hasn't been discarded yet, check to see if it's occluded by other labels
-        return this.occluded(aabbs);
+        return this.occluded(bboxes);
     }
 }
