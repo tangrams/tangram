@@ -8,6 +8,8 @@ export default class VertexLayout {
     // Attribs are an array, in layout order, of: name, size, type, normalized
     // ex: { name: 'position', size: 3, type: gl.FLOAT, normalized: false }
     constructor (attribs) {
+        // console.log('attribs', attribs);
+
         this.attribs = attribs; // dictionary of attributes, specified as standard GL attrib options
         this.components = [];   // list of type and offset info about each attribute component
         this.index = {};        // linear buffer index of each attribute component, e.g. this.index.position.x

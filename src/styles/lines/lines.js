@@ -45,6 +45,11 @@ Object.assign(Lines, {
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }
 
+        // this is only done once for the whole scene - just add the attrib by default for now
+        this.defines.TANGRAM_NORMAL_ATTRIBUTE = true;
+        attribs.push({ name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }); // gets padded to 4-bytes
+        // }
+
         this.vertex_layout = new VertexLayout(attribs);
     },
 
@@ -105,9 +110,10 @@ Object.assign(Lines, {
         }
 
         // Raise line height if extruded
-        if (style.extrude && style.height) {
-            style.z += style.height;
-        }
+        // ! do this in the builder for now
+        // if (style.extrude && style.height) {
+        //     style.z += style.height;
+        // }
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
@@ -213,16 +219,23 @@ Object.assign(Lines, {
             this.vertex_template[i++] = 0;
         }
 
+        // Add normals to template only if needed
+        if (this.feature_style.extrude > 0) { // probably need a better detect here - new property?
+            this.vertex_template[i++] = 0;
+            // console.log('vertex template normal index:', i); // 17
+            this.vertex_template[i++] = 0;
+        }
+
         return this.vertex_template;
     },
 
     buildLines(lines, style, vertex_data, context, options) {
         var vertex_template = this.makeVertexTemplate(style);
-
         // Main line
         Builders.buildPolylines(
             lines,
             style.width,
+            style.extrude || 0,
             vertex_data,
             vertex_template,
             {
@@ -233,6 +246,8 @@ Object.assign(Lines, {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
+                normal_index: this.vertex_layout.index.a_normal,
+                normal_normalize: 127, // scale normals from shorts to signed bytes
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
                 tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
@@ -246,6 +261,10 @@ Object.assign(Lines, {
                 outline_style.addFeature(context.feature, style.outline, context);
             }
         }
+
+        // if (style.extrude > 0) {
+            // console.log(style.z);
+        // }
     },
 
     buildPolygons(polygons, style, vertex_data, context) {

@@ -419,6 +419,12 @@ Utils.degToRad = function (degrees) {
     return degrees * Math.PI / 180;
 };
 
+// Convert an angle to an x,y unit vector
+Utils.degToVec = function (degrees) {
+
+    return [Math.cos(Utils.degToRad(degrees)), Math.cos(Utils.degToRad(degrees))];
+};
+
 Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };
