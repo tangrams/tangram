@@ -163,9 +163,8 @@ Object.assign(TextStyle, {
 
                         // Build queued features
                         labels.forEach(q => {
-                            let text = q.label.text;
                             let text_settings_key = q.text_settings_key;
-                            let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][text];
+                            let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][q.text];
                             q.label.texcoords = text_info.texcoords;
 
                             this.feature_style.label = q.label;
@@ -193,7 +192,7 @@ Object.assign(TextStyle, {
             let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
             let text_info = this.texts[tile][text_settings_key][text];
 
-            let labels = LabelBuilder.buildFromGeometry(text, text_info.size, feature.geometry, layout);
+            let labels = LabelBuilder.buildFromGeometry(text_info.size, feature.geometry, layout);
             for (let i = 0; i < labels.length; ++i) {
                 let label = labels[i];
                 priorities[layout.priority] = priorities[layout.priority] || [];
@@ -211,10 +210,8 @@ Object.assign(TextStyle, {
     cullTextStyles(texts, labels) {
         // Count how many times each text/style combination is used
         for (let i=0; i < labels.length; i++) {
-            let q = labels[i];
-            let text = q.label.text;
-            let text_settings_key = q.text_settings_key;
-            let settings = texts[text_settings_key][text].ref++;
+            let text_settings_key = labels[i].text_settings_key;
+            let settings = texts[text_settings_key][labels[i].text].ref++;
         }
 
         // Remove text/style combinations that have no visible labels

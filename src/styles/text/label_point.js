@@ -5,8 +5,8 @@ import PointAnchor from '../points/point_anchor';
 
 export default class LabelPoint extends Label {
 
-    constructor (text, position, size, options) {
-        super(text, size, options);
+    constructor (position, size, options) {
+        super(size, options);
         this.position = [position[0], position[1]];
         this.update();
     }

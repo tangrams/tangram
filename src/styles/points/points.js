@@ -162,6 +162,7 @@ Object.assign(Points, {
         style.collide = (draw.collide === false) ? false : true; // pass style to collision manager as 'layout'
         style.collision_size = style.size; // pass style to label constructor as 'size'
         style.buffer = [0, 0];
+        style.id = feature;
 
         let priority = draw.priority;
         if (priority != null) {
@@ -204,8 +205,7 @@ Object.assign(Points, {
             let geometry = feature.geometry;
 
             if (geometry.type === 'Point') {
-                // TODO: 'name' text is placeholder/debugging
-                q.label = new LabelPoint(feature.properties.name, geometry.coordinates, style, style);
+                q.label = new LabelPoint(geometry.coordinates, style, style);
                 q.layout = style;
 
                 // TODO: collision manager should accept flat list of objects w/priority properties

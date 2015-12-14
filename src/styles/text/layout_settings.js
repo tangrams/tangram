@@ -7,6 +7,7 @@ export default LayoutSettings = {
 
    compute (feature, draw, text, context, tile) {
         let layout = {};
+        layout.id = feature;
         layout.units_per_pixel = tile.units_per_pixel || 1;
 
         // label anchors (point labels only)

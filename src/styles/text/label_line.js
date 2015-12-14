@@ -4,8 +4,8 @@ import OBB from '../../utils/obb';
 
 export default class LabelLine extends Label {
 
-    constructor (text, size, lines, options) {
-        super(text, size, options);
+    constructor (size, lines, options) {
+        super(size, options);
 
         this.segment_index = 0;
         this.lines = lines;
