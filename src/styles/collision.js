@@ -56,8 +56,7 @@ export default Collision = {
 
         // Wait for objects to be added from all styles
         return state.complete.then(() => {
-            let keep = state.keep[style];
-            return (keep && keep.length) ? keep : null;
+            return state.keep[style] || [];
         });
     },
 

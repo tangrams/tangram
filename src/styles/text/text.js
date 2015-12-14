@@ -150,7 +150,7 @@ Object.assign(TextStyle, {
             }
 
             return Collision.collide(labels, this.name, tile).then(labels => {
-                if (!labels) {
+                if (labels.length === 0) {
                     return this.finishTile(tile); // no labels visible for this tile
                 }
 
