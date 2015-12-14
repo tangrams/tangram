@@ -210,8 +210,7 @@ Object.assign(TextStyle, {
     cullTextStyles(texts, labels) {
         // Count how many times each text/style combination is used
         for (let i=0; i < labels.length; i++) {
-            let text_settings_key = labels[i].text_settings_key;
-            let settings = texts[text_settings_key][labels[i].text].ref++;
+            texts[labels[i].text_settings_key][labels[i].text].ref++;
         }
 
         // Remove text/style combinations that have no visible labels
