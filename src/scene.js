@@ -987,9 +987,12 @@ export default class Scene {
         });
     }
 
-    // Add source. The config should have {type: ['topoJSON'|'geoJSON'], [url: string | data: obj]}
+    // Add source, `name` and `config` need to be provided:
+    //  - If the name doesn't match a sources it will create it
+    //  - the config obj follow the YAML scene spec: {type: ['topoJSON'|'geoJSON'|'MVT'], [url: string | data: obj]} 
+    //    Note that you could provide a `url` or a `data` object 
     setDataSource (name, config) {
-        if ( !name || !config || !config.type || (!config.url && !config.data ) ) {
+        if (!name || !config || !config.type || (!config.url && !config.data)) {
             log.error("No name provide or not valid config:", name, config);
             return;
         }
@@ -1005,7 +1008,6 @@ export default class Scene {
 
         if (load) {
             this.updateConfig({ rebuild: true });
-            // this.loadDataSources();
         } else {
             this.rebuild();
         }
