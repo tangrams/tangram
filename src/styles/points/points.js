@@ -10,6 +10,8 @@ import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import PointAnchor from './point_anchor';
+import LabelPoint from '../text/label_point';
+import Collision from '../collision';
 
 import log from 'loglevel';
 
@@ -103,14 +105,15 @@ Object.assign(Points, {
                 }
             }
         }
+        style.sprite = sprite;
 
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
         let sprite_info;
         if (this.texture && sprite) {
             sprite_info = Texture.getSpriteInfo(this.texture, sprite);
-            this.texcoord_scale = sprite_info.texcoords;
+            style.texcoord_scale = sprite_info.texcoords;
         } else {
-            this.texcoord_scale = null;
+            style.texcoord_scale = null;
         }
 
         // points can be placed off the ground
@@ -142,7 +145,7 @@ Object.assign(Points, {
         style.scale = draw.scale || 1;
 
         // to store bbox by tiles
-        style.tile = tile;
+        style.tile = tile; // TODO: is this used??? should it be?
 
         // polygons rendering as points will render each individual polygon point by default, but
         // rendering a single point at the polygon's centroid can be enabled
@@ -153,6 +156,23 @@ Object.assign(Points, {
 
         // anchor
         style.offset = PointAnchor.computeOffset(style.offset, style.size, draw.anchor);
+
+        // TODO: clean up, these are to satisfy label interface
+        style.units_per_pixel = tile.units_per_pixel; // pass style to collision manager as 'layout'
+        style.collide = (draw.collide === false) ? false : true; // pass style to collision manager as 'layout'
+        style.collision_size = style.size; // pass style to label constructor as 'size'
+        style.buffer = [0, 0];
+
+        let priority = draw.priority;
+        if (priority != null) {
+            if (typeof priority === 'function') {
+                priority = priority(context);
+            }
+        }
+        else {
+            priority = -1 >>> 0; // default to max priority value if none set
+        }
+        style.priority = priority;
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
@@ -166,6 +186,9 @@ Object.assign(Points, {
         this.queues[tile.key].push({
             feature, draw, context, style
         });
+
+        // Register with collision manager
+        Collision.addStyle(this.name, tile.key);
     },
 
     // Override
@@ -173,12 +196,33 @@ Object.assign(Points, {
         let queue = this.queues[tile];
         this.queues[tile] = [];
 
+        let boxes = {}; // grouped by priority
         queue.forEach(q => {
-            this.feature_style = q.style;
-            Style.addFeature.call(this, q.feature, q.draw, q.context);
+            // TODO: support other types besides single points
+            let style = q.style;
+            let feature = q.feature;
+            let geometry = feature.geometry;
+
+            if (geometry.type === 'Point') {
+                // TODO: 'name' text is placeholder/debugging
+                q.label = new LabelPoint(feature.properties.name, geometry.coordinates, style, style);
+                q.layout = style;
+
+                // TODO: collision manager should accept flat list of objects w/priority properties
+                boxes[style.priority] = boxes[style.priority] || [];
+                boxes[style.priority].push(q);
+            }
         });
 
-        return Style.endData.call(this, tile);
+        return Collision.collide(boxes, this.name, tile).then(boxes => {
+            boxes.forEach(q => {
+                this.feature_style = q.style;
+                this.texcoord_scale = q.style.texcoord_scale;
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
+            });
+
+            return Style.endData.call(this, tile);
+        });
     },
 
     _preprocess (draw) {
