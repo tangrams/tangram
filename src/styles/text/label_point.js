@@ -7,7 +7,7 @@ export default class LabelPoint extends Label {
 
     constructor (text, position, size, options) {
         super(text, size, options);
-        this.position = position;
+        this.position = [position[0], position[1]];
         this.update();
     }
 
