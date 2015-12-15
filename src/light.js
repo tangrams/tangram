@@ -267,14 +267,16 @@ class PointLight extends Light {
             this.position_eye[0] = x - this.scene.camera.position_meters[0];
             this.position_eye[1] = y - this.scene.camera.position_meters[1];
 
-            this.position_eye[2] = StyleParser.convertUnits(this.position[2], { zoom: this.scene.zoom });
+            this.position_eye[2] = StyleParser.convertUnits(this.position[2],
+                { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) });
             this.position_eye[2] = this.position_eye[2] - this.scene.camera.position_meters[2];
         }
         if (this.origin === 'ground' || this.origin === 'camera') {
             // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
-            this.position_eye = StyleParser.convertUnits(this.position, { zoom: this.scene.zoom });
+            this.position_eye = StyleParser.convertUnits(this.position,
+                { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) });
 
             if (this.origin === 'ground') {
                 // Leave light's xy in camera space, but z needs to be moved relative to ground plane
@@ -295,12 +297,14 @@ class PointLight extends Light {
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.innerRadius`,
-                StyleParser.convertUnits(this.radius[0], { zoom: this.scene.zoom }));
+                StyleParser.convertUnits(this.radius[0],
+                    { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) }));
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.outerRadius`,
-                StyleParser.convertUnits(this.radius[1], { zoom: this.scene.zoom }));
+                StyleParser.convertUnits(this.radius[1],
+                    { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) }));
         }
     }
 }

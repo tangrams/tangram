@@ -117,7 +117,7 @@ Object.assign(Points, {
         }
 
         // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = StyleParser.cacheDistance(style.size, context, 'pixels');
+        style.size = StyleParser.cacheProperty(style.size, context);
 
         // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
         style.size = [
@@ -151,8 +151,8 @@ Object.assign(Points, {
 
     _preprocess (draw) {
         draw.color = StyleParser.colorCacheObject(draw.color);
-        draw.z = StyleParser.cacheObject(draw.z);
-        draw.size = StyleParser.cacheObject(draw.size);
+        draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
+        draw.size = StyleParser.cacheObject(draw.size, parseFloat);
         return draw;
     },
 

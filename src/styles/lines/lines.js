@@ -158,14 +158,14 @@ Object.assign(Lines, {
 
     _preprocess (draw) {
         draw.color = StyleParser.colorCacheObject(draw.color);
-        draw.width = StyleParser.cacheObject(draw.width);
-        draw.next_width = StyleParser.cacheObject(draw.width); // width will be computed for next zoom
-        draw.z = StyleParser.cacheObject(draw.z);
+        draw.width = StyleParser.cacheObject(draw.width, StyleParser.cacheUnits);
+        draw.next_width = StyleParser.cacheObject(draw.width, StyleParser.cacheUnits); // width will be computed for next zoom
+        draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
 
         if (draw.outline) {
             draw.outline.color = StyleParser.colorCacheObject(draw.outline.color);
-            draw.outline.width = StyleParser.cacheObject(draw.outline.width);
-            draw.outline.next_width = StyleParser.cacheObject(draw.outline.width); // width re-computed for next zoom
+            draw.outline.width = StyleParser.cacheObject(draw.outline.width, StyleParser.cacheUnits);
+            draw.outline.next_width = StyleParser.cacheObject(draw.outline.width, StyleParser.cacheUnits); // width re-computed for next zoom
         }
         return draw;
     },

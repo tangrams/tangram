@@ -158,49 +158,60 @@ StyleParser.cacheProperty = function(val, context) {
     }
 };
 
-StyleParser.convertUnits = function(val, context, convert = 'meters') {
-    if (typeof val === 'string') {
+StyleParser.convertUnits = function(val, context) {
+    // pre-parsed units
+    if (val.val) {
+        if (val.units === 'px') { // convert from pixels
+            return val.val * context.meters_per_pixel;
+        }
+        return val.val;
+    }
+    // un-parsed unit string
+    else if (typeof val === 'string') {
         var units = val.match(/([0-9.-]+)([a-z]+)/);
         if (units && units.length === 3) {
             val = parseFloat(units[1]);
             units = units[2];
         }
 
-        // Convert to meters
-        if (convert === 'meters') {
-            // Convert from pixels
-            if (units === 'px') {
-                val *= Geo.metersPerPixel(context.zoom);
-            }
-            // Convert from kilometers
-            else if (units === 'km') {
-                val *= 1000;
-            }
+        if (units === 'px') { // convert from pixels
+            val *= context.meters_per_pixel;
         }
     }
+    // multiple values or stops
     else if (Array.isArray(val)) {
         // Array of arrays, e.g. zoom-interpolated stops
         if (Array.isArray(val[0])) {
-            return val.map(v => { return [v[0], StyleParser.convertUnits(v[1], context, convert)]; });
+            return val.map(v => [v[0], StyleParser.convertUnits(v[1], context)]);
         }
         // Array of values
         else {
-            return val.map(v => { return StyleParser.convertUnits(v, context, convert); });
+            return val.map(v => StyleParser.convertUnits(v, context));
         }
     }
     return val;
 };
 
+// Pre-parse units from string values
+StyleParser.cacheUnits = function (val) {
+    if (typeof val === 'string') {
+        if (val.trim().slice(-2) === 'px') {
+            return { units: 'px', val: parseFloat(val) };
+        }
+        return { val: parseFloat(val) };
+    }
+};
+
 // Takes a distance cache object and returns a distance value for this zoom
 // (caching the result for future use)
 // { value: original, zoom: { z: meters }, dynamic: function(){...} }
-StyleParser.cacheDistance = function(val, context, convert = 'meters') {
+StyleParser.cacheDistance = function(val, context) {
     if (val.dynamic) {
         let v = val.dynamic(context);
         return v;
     }
-    else if (val.zoom && val.zoom[convert] && val.zoom[convert][context.zoom]) {
-        return val.zoom[convert][context.zoom];
+    else if (val.zoom && val.zoom[context.zoom]) {
+        return val.zoom[context.zoom];
     }
     else {
         // Dynamic function-based
@@ -213,13 +224,12 @@ StyleParser.cacheDistance = function(val, context, convert = 'meters') {
         else {
             // Calculate value for current zoom
             val.zoom = val.zoom || {};
-            let zunits = val.zoom[convert] = val.zoom[convert] || {};
 
-            zunits[context.zoom] = StyleParser.convertUnits(val.value, context,
-                convert === 'meters' && 'meters'); // convert to meters
-            zunits[context.zoom] = Utils.interpolate(context.zoom, zunits[context.zoom]);
+            // Do final unit conversion as late as possible, when interpolation values have been determined
+            val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value,
+                v => StyleParser.convertUnits(v, context));
 
-            return zunits[context.zoom];
+            return val.zoom[context.zoom];
         }
     }
 };

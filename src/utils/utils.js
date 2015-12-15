@@ -324,7 +324,7 @@ Utils.interpolate = function(x, points, transform) {
         return points;
     }
 
-    var x1, x2, d, y;
+    var x1, x2, d, y, y1, y2;
 
     // Min bounds
     if (x <= points[0][0]) {
@@ -353,8 +353,8 @@ Utils.interpolate = function(x, points, transform) {
                     y = [];
                     for (var c=0; c < points[i][1].length; c++) {
                         if (typeof transform === 'function') {
-                            var y1 = transform(points[i][1][c]);
-                            var y2 = transform(points[i+1][1][c]);
+                            y1 = transform(points[i][1][c]);
+                            y2 = transform(points[i+1][1][c]);
                             d = y2 - y1;
                             y[c] = d * (x - x1) / (x2 - x1) + y1;
                         }
@@ -367,8 +367,8 @@ Utils.interpolate = function(x, points, transform) {
                 // Single value
                 else {
                     if (typeof transform === 'function') {
-                        var y1 = transform(points[i][1]);
-                        var y2 = transform(points[i+1][1]);
+                        y1 = transform(points[i][1]);
+                        y2 = transform(points[i+1][1]);
                         d = y2 - y1;
                         y = d * (x - x1) / (x2 - x1) + y1;
                     }
