@@ -987,10 +987,19 @@ export default class Scene {
         });
     }
 
-    // Add source, `name` and `config` need to be provided:
+    // Add source to a scene, arguments `name` and `config` need to be provided:
     //  - If the name doesn't match a sources it will create it
-    //  - the config obj follow the YAML scene spec: {type: ['topoJSON'|'geoJSON'|'MVT'], [url: string | data: obj]} 
-    //    Note that you could provide a `url` or a `data` object 
+    //  - the `config` obj follow the YAML scene spec, ex: ```{type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson"]}```
+    //    that looks like:
+    //
+    //      scene.setDataSource("osm", {type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson" });
+    //
+    //  - also can be pass a ```data``` obj: ```{type: 'GeoJSON', data: JSObj ]}```
+    //
+    //      var geojson_data = {};
+    //      ...
+    //      scene.setDataSource("dynamic_data", {type: 'GeoJSON', data: geojson_data });
+    //
     setDataSource (name, config) {
         if (!name || !config || !config.type || (!config.url && !config.data)) {
             log.error("No name provide or not valid config:", name, config);
