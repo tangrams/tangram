@@ -2,7 +2,6 @@ import Utils from '../utils/utils';
 import Geo from '../geo';
 
 import parseCSSColor from 'csscolorparser';
-import log from 'loglevel';
 
 export var StyleParser = {};
 
@@ -56,9 +55,9 @@ StyleParser.macros = {
     // pseudo-random color by geometry id
     'Style.color.pseudoRandomColor': function() {
         return [
-            0.7 * (parseInt(feature.id, 16) / 100 % 1),
-            0.7 * (parseInt(feature.id, 16) / 10000 % 1),
-            0.7 * (parseInt(feature.id, 16) / 1000000 % 1),
+            0.7 * (parseInt(feature.id, 16) / 100 % 1),     // jshint ignore:line
+            0.7 * (parseInt(feature.id, 16) / 10000 % 1),   // jshint ignore:line
+            0.7 * (parseInt(feature.id, 16) / 1000000 % 1), // jshint ignore:line
             1
         ];
     },
