@@ -28,7 +28,7 @@ Object.assign(self, {
     layers: {},
     tiles: {},
     objects: {},
-    config: {},     // raw config (e.g. functions, macros, etc. not expanded)
+    config: {},     // raw config (e.g. functions, etc. not expanded)
 
     // Initialize worker
     init (worker_id, num_workers, device_pixel_ratio) {
@@ -47,7 +47,7 @@ Object.assign(self, {
         self.config = mergeObjects({}, config);
         self.generation = generation;
 
-        // Data block functions are not macro'ed and wrapped like the rest of the style functions are
+        // Data block functions are not context wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
         for (let layer in config.layers) {
             if (config.layers[layer]) {
@@ -56,7 +56,7 @@ Object.assign(self, {
         }
 
         // Create data sources
-        config.sources = Utils.stringsToFunctions(StyleParser.expandMacros(config.sources)); // parse new sources
+        config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
         self.sources.tiles = {}; // clear previous sources
         for (let name in config.sources) {
             let source = DataSource.create(Object.assign({}, config.sources[name], {name}));
@@ -90,7 +90,7 @@ Object.assign(self, {
         }
 
         // Expand styles
-        config = Utils.stringsToFunctions(StyleParser.expandMacros(config), StyleParser.wrapFunction);
+        config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);
         self.styles = StyleManager.build(config.styles, { generation: self.generation });
 
         // Parse each top-level layer as a separate rule tree

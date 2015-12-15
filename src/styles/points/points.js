@@ -150,7 +150,7 @@ Object.assign(Points, {
     },
 
     _preprocess (draw) {
-        draw.color = StyleParser.cacheObject(draw.color);
+        draw.color = StyleParser.colorCacheObject(draw.color);
         draw.z = StyleParser.cacheObject(draw.z);
         draw.size = StyleParser.cacheObject(draw.size);
         return draw;

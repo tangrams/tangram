@@ -6,84 +6,6 @@ import log from 'loglevel';
 
 export var StyleParser = {};
 
-// Style macros
-
-StyleParser.expandMacros = function expandMacros (obj) {
-    for (var p in obj) {
-        var val = obj[p];
-
-        // Loop through object properties
-        if (typeof val === 'object') {
-            obj[p] = expandMacros(val);
-        }
-        // Convert strings back into functions
-        else if (typeof val === 'string') {
-            for (var m in StyleParser.macros) {
-                if (val.match(StyleParser.macros[m])) {
-                    var f;
-                    try {
-                        /*jshint ignore:start */
-                        eval('f = ' + val);
-                        /*jshint ignore:end */
-                        obj[p] = f;
-                        log.trace(`expanded macro ${val} to ${f}`);
-                        break;
-                    }
-                    catch (e) {
-                        // fall-back to original value if parsing failed
-                        obj[p] = val;
-                        log.trace(`failed to expand macro ${val}`);
-                    }
-                }
-            }
-        }
-    }
-
-    return obj;
-};
-
-// List of macros
-StyleParser.macros = [
-    'Style.color.pseudoRandomColor',
-    'Style.color.randomColor'
-];
-
-
-
-var Style = {};
-
-Style.color = {
-    // pseudo-random grayscale by geometry id
-    pseudoRandomGrayscale() {
-        var func = `function() {
-            var c = Math.max((parseInt(feature.id, 16) % 100) / 100, 0.4);
-            return [0.7 * c, 0.7 * c, 0.7 * c];
-        }`;
-        return func;
-    },
-
-    // pseudo-random color by geometry id
-    pseudoRandomColor() {
-        var func = `function() {
-            return [
-                0.7 * (parseInt(feature.id, 16) / 100 % 1),
-                0.7 * (parseInt(feature.id, 16) / 10000 % 1),
-                0.7 * (parseInt(feature.id, 16) / 1000000 % 1)
-            ];
-        }`;
-        return func;
-        // return `function() { return [0.7 * (parseInt(feature.id, 16) / 100 % 1), 0.7 * (parseInt(feature.id, 16) / 10000 % 1), 0.7 * (parseInt(feature.id, 16) / 1000000 % 1)]; }`;
-    },
-
-    // random color
-    randomColor() {
-        var func = `function() {
-            return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random()];
-        }`;
-        return func;
-    }
-};
-
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
 // - $zoom: the current map zoom level
@@ -129,6 +51,23 @@ StyleParser.defaults = {
     }
 };
 
+// Style macros
+StyleParser.macros = {
+    // pseudo-random color by geometry id
+    'Style.color.pseudoRandomColor': function() {
+        return [
+            0.7 * (parseInt(feature.id, 16) / 100 % 1),
+            0.7 * (parseInt(feature.id, 16) / 10000 % 1),
+            0.7 * (parseInt(feature.id, 16) / 1000000 % 1),
+            1
+        ];
+    },
+
+    // random color
+    'Style.color.randomColor': function() {
+        return [0.7 * Math.random(), 0.7 * Math.random(), 0.7 * Math.random(), 1];
+    }
+};
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
 StyleParser.getFeatureParseContext = function (feature, tile) {
@@ -164,6 +103,21 @@ StyleParser.cacheObject = function (obj, transform = null) {
     }
 
     return { value: obj };
+};
+
+// Convert old-style color macro into a function
+// TODO: deprecate this macro syntax
+StyleParser.colorCacheObject = function (obj) {
+    return StyleParser.cacheObject(obj, v => {
+        if (v === 'Style.color.pseudoRandomColor') {
+            return Utils.stringToFunction(StyleParser.wrapFunction(StyleParser.macros['Style.color.pseudoRandomColor']));
+        }
+        else if (v === 'Style.color.randomColor') {
+            return StyleParser.macros['Style.color.randomColor'];
+        }
+
+        return v;
+    });
 };
 
 // Interpolation and caching for a generic property (not a color or distance)
