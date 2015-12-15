@@ -315,7 +315,7 @@ Utils.nextPowerOf2 = function(value) {
 //
 // TODO: add other interpolation methods besides linear
 //
-Utils.interpolate = function(x, points) {
+Utils.interpolate = function(x, points, transform) {
     // If this doesn't resemble a list of control points, just return the original value
     if (!Array.isArray(points) || !Array.isArray(points[0])) {
         return points;
@@ -329,10 +329,16 @@ Utils.interpolate = function(x, points) {
     // Min bounds
     if (x <= points[0][0]) {
         y = points[0][1];
+        if (typeof transform === 'function') {
+            y = transform(y);
+        }
     }
     // Max bounds
     else if (x >= points[points.length-1][0]) {
         y = points[points.length-1][1];
+        if (typeof transform === 'function') {
+            y = transform(y);
+        }
     }
     // Find which control points x is between
     else {
@@ -346,14 +352,30 @@ Utils.interpolate = function(x, points) {
                 if (Array.isArray(points[i][1])) {
                     y = [];
                     for (var c=0; c < points[i][1].length; c++) {
-                        d = points[i+1][1][c] - points[i][1][c];
-                        y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
+                        if (typeof transform === 'function') {
+                            var y1 = transform(points[i][1][c]);
+                            var y2 = transform(points[i+1][1][c]);
+                            d = y2 - y1;
+                            y[c] = d * (x - x1) / (x2 - x1) + y1;
+                        }
+                        else {
+                            d = points[i+1][1][c] - points[i][1][c];
+                            y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
+                        }
                     }
                 }
                 // Single value
                 else {
-                    d = points[i+1][1] - points[i][1];
-                    y = d * (x - x1) / (x2 - x1) + points[i][1];
+                    if (typeof transform === 'function') {
+                        var y1 = transform(points[i][1]);
+                        var y2 = transform(points[i+1][1]);
+                        d = y2 - y1;
+                        y = d * (x - x1) / (x2 - x1) + y1;
+                    }
+                    else {
+                        d = points[i+1][1] - points[i][1];
+                        y = d * (x - x1) / (x2 - x1) + points[i][1];
+                    }
                 }
                 break;
             }
