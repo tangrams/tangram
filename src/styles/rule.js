@@ -8,12 +8,15 @@ export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
 export let ruleCache = {};
 
 function cacheKey (rules) {
-    rules = rules.sort((a, b) => a - b);
-    var k = rules[0].id;
-    for (var i=1; i < rules.length; i++) {
-        k += '/' + rules[i].id;
+    if (rules.length > 1) {
+        rules = rules.sort((a, b) => a.id - b.id);
+        var k = rules[0].id;
+        for (var i=1; i < rules.length; i++) {
+            k += '/' + rules[i].id;
+        }
+        return k;
     }
-    return k;
+    return rules[0].id;
 }
 
 // Merge matching layer rule trees into a final draw group
