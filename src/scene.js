@@ -109,7 +109,7 @@ export default class Scene {
             profile: {
                 geometry_build: false
             },
-            timeRebuild: n => this._timeRebuild(n)
+            timeRebuild: this._timeRebuild.bind(this)
         };
 
         this.updating = 0;
@@ -874,12 +874,12 @@ export default class Scene {
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
     // TODO: detect which elements need to be refreshed/rebuilt (stylesheet changes, etc.)
-    rebuild() {
-        return this.rebuildGeometry();
+    rebuild(options) {
+        return this.rebuildGeometry(options);
     }
 
     // Rebuild all tiles
-    rebuildGeometry() {
+    rebuildGeometry({ sync = true } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -905,8 +905,10 @@ export default class Scene {
             }
 
             // Update config (in case JS objects were manipulated directly)
-            this.syncConfigToWorker();
-            StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
+            if (sync) {
+                this.syncConfigToWorker();
+                StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
+            }
             this.resetFeatureSelection();
             this.resetTime();
 
@@ -1230,11 +1232,11 @@ export default class Scene {
     }
 
     // Rebuild geometry a given # of times and print average, min, max timings
-    _timeRebuild (num = 1) {
+    _timeRebuild (num = 1, options = {}) {
         let times = [];
         let cycle = () => {
             let start = +new Date();
-            this.rebuild().then(() => {
+            this.rebuild(options).then(() => {
                 times.push(+new Date() - start);
 
                 if (times.length < num) {
