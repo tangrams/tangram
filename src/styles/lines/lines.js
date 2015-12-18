@@ -121,32 +121,39 @@ Object.assign(Lines, {
             let outline_width = this.calcWidth(rule_style.outline.width, context) * 2;
             let outline_next_width = this.calcWidthNextZoom(rule_style.outline.next_width, context) * 2;
 
-            // Maintain consistent outline width around the line fill
-            style.outline.width = { value: outline_width + width };
-            style.outline.next_width = { value: outline_next_width + next_width };
-
-            style.outline.color = rule_style.outline.color;
-            style.outline.cap = rule_style.outline.cap || rule_style.cap;
-            style.outline.join = rule_style.outline.join || rule_style.join;
-            style.outline.style = rule_style.outline.style || this.name;
-
-            // Explicitly defined outline order, or inherited from inner line
-            if (rule_style.outline.order) {
-                style.outline.order = this.parseOrder(rule_style.outline.order, context);
+            if ((outline_width === 0 && outline_next_width === 0) || outline_width < 0 || outline_next_width < 0) {
+                // skip lines that don't interpolate between zero or greater width
+                style.outline.width = null;
+                style.outline.color = null;
             }
             else {
-                style.outline.order = style.order;
+                // Maintain consistent outline width around the line fill
+                style.outline.width = { value: outline_width + width };
+                style.outline.next_width = { value: outline_next_width + next_width };
+
+                style.outline.color = rule_style.outline.color;
+                style.outline.cap = rule_style.outline.cap || rule_style.cap;
+                style.outline.join = rule_style.outline.join || rule_style.join;
+                style.outline.style = rule_style.outline.style || this.name;
+
+                // Explicitly defined outline order, or inherited from inner line
+                if (rule_style.outline.order) {
+                    style.outline.order = this.parseOrder(rule_style.outline.order, context);
+                }
+                else {
+                    style.outline.order = style.order;
+                }
+
+                // Don't let outline be above inner line
+                if (style.outline.order > style.order) {
+                    style.outline.order = style.order;
+                }
+
+                // Outlines are always at half-layer intervals to avoid conflicting with inner lines
+                style.outline.order -= 0.5;
+
+                style.outline.preprocessed = true; // signal that we've already wrapped properties in cache objects
             }
-
-            // Don't let outline be above inner line
-            if (style.outline.order > style.order) {
-                style.outline.order = style.order;
-            }
-
-            // Outlines are always at half-layer intervals to avoid conflicting with inner lines
-            style.outline.order -= 0.5;
-
-            style.outline.preprocessed = true; // signal that we've already wrapped properties in cache objects
         }
         else {
             style.outline.width = null;
