@@ -160,7 +160,7 @@ StyleParser.cacheProperty = function(val, context) {
 
 StyleParser.convertUnits = function(val, context) {
     // pre-parsed units
-    if (val.val) {
+    if (val.val != null) {
         if (val.units === 'px') { // convert from pixels
             return val.val * context.meters_per_pixel;
         }
