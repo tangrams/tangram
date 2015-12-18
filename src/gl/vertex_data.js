@@ -1,5 +1,3 @@
-/* global VertexData */
-
 import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
 import {log} from '../utils/utils';
 

@@ -1,4 +1,3 @@
-/*global Texture */
 // Texture management
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';

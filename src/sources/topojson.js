@@ -3,31 +3,6 @@ import {GeoJSONSource, GeoJSONTileSource} from './geojson';
 
 import topojson from 'topojson';
 
-
-/**
- Mapzen/OSM.US-style TopoJSON vector tiles
- @class TopoJSONTileSource
-*/
-export class TopoJSONTileSource extends GeoJSONTileSource {
-
-    constructor(source) {
-        let _this = super(source);
-
-        // Replace with non-tiled source if tiled source failed to instantiate
-        if (_this !== this) {
-            return new TopoJSONSource(source);
-        }
-    }
-
-    parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
-        data = TopoJSONSource.prototype.toGeoJSON(data);
-        this.prepareGeoJSON(data, tile, source);
-    }
-
-}
-
-
 /**
  TopoJSON standalone (non-tiled) source
  Uses geojson-vt split into tiles client-side
@@ -57,6 +32,29 @@ export class TopoJSONSource extends GeoJSONSource {
             data = layers;
         }
         return data;
+    }
+
+}
+
+/**
+ Mapzen/OSM.US-style TopoJSON vector tiles
+ @class TopoJSONTileSource
+*/
+export class TopoJSONTileSource extends GeoJSONTileSource {
+
+    constructor(source) {
+        let _this = super(source);
+
+        // Replace with non-tiled source if tiled source failed to instantiate
+        if (_this !== this) {
+            return new TopoJSONSource(source);
+        }
+    }
+
+    parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
+        data = TopoJSONSource.prototype.toGeoJSON(data);
+        this.prepareGeoJSON(data, tile, source);
     }
 
 }

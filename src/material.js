@@ -1,4 +1,3 @@
-/*global Material */
 import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 import {StyleParser} from './styles/style_parser';

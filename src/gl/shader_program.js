@@ -1,4 +1,3 @@
-/* global ShaderProgram */
 // GL program wrapper to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma blocks into shaders), etc.
 

@@ -5,57 +5,6 @@ import Geo from '../geo';
 // For tiling GeoJSON client-side
 import geojsonvt from 'geojson-vt';
 
-
-/**
- Mapzen/OSM.US-style GeoJSON vector tiles
- @class GeoJSONTileSource
-*/
-export class GeoJSONTileSource extends NetworkTileSource {
-
-    constructor(source) {
-        super(source);
-
-        // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
-        if (!this.urlHasTilePattern(this.url)) {
-            // Check instance type from parent class
-            if (this instanceof GeoJSONTileSource) {
-                // Replace instance type
-                return new GeoJSONSource(source);
-            }
-            else {
-                // Pass back to parent class to instantiate
-                return null;
-            }
-        }
-        return this;
-    }
-
-    parseSourceData (tile, source, response) {
-        let data = JSON.parse(response);
-        this.prepareGeoJSON(data, tile, source);
-    }
-
-    prepareGeoJSON (data, tile, source) {
-        // Apply optional data transform
-        if (typeof this.transform === 'function') {
-            data = this.transform(data, this.extra_data);
-        }
-
-        source.layers = GeoJSONSource.prototype.getLayers(data);
-
-        // A "synthetic" tile that adjusts the tile min anchor to account for tile longitude wrapping
-        let anchor = {
-            coords: tile.coords,
-            min: Geo.metersForTile(Geo.wrapTile(tile.coords, { x: true }))
-        };
-
-        DataSource.projectData(source); // mercator projection
-        DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
-    }
-
-}
-
-
 /**
  GeoJSON standalone (non-tiled) source
  Uses geojson-vt split into tiles client-side
@@ -164,6 +113,55 @@ export class GeoJSONSource extends NetworkSource {
         else {
             return data;
         }
+    }
+
+}
+
+/**
+ Mapzen/OSM.US-style GeoJSON vector tiles
+ @class GeoJSONTileSource
+*/
+export class GeoJSONTileSource extends NetworkTileSource {
+
+    constructor(source) {
+        super(source);
+
+        // Check for URL tile pattern, if not found, treat as standalone GeoJSON/TopoJSON object
+        if (!this.urlHasTilePattern(this.url)) {
+            // Check instance type from parent class
+            if (this instanceof GeoJSONTileSource) {
+                // Replace instance type
+                return new GeoJSONSource(source);
+            }
+            else {
+                // Pass back to parent class to instantiate
+                return null;
+            }
+        }
+        return this;
+    }
+
+    parseSourceData (tile, source, response) {
+        let data = JSON.parse(response);
+        this.prepareGeoJSON(data, tile, source);
+    }
+
+    prepareGeoJSON (data, tile, source) {
+        // Apply optional data transform
+        if (typeof this.transform === 'function') {
+            data = this.transform(data, this.extra_data);
+        }
+
+        source.layers = GeoJSONSource.prototype.getLayers(data);
+
+        // A "synthetic" tile that adjusts the tile min anchor to account for tile longitude wrapping
+        let anchor = {
+            coords: tile.coords,
+            min: Geo.metersForTile(Geo.wrapTile(tile.coords, { x: true }))
+        };
+
+        DataSource.projectData(source); // mercator projection
+        DataSource.scaleData(source, anchor); // re-scale from meters to local tile coords
     }
 
 }

@@ -1,4 +1,3 @@
-/*global Scene */
 import Geo from './geo';
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';

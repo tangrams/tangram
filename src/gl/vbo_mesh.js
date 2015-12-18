@@ -1,4 +1,3 @@
-/* global VBOMesh */
 // Manage rendering for primitives
 import ShaderProgram from './shader_program';
 import VertexArrayObject from './vao';

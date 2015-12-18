@@ -1,4 +1,3 @@
-/*global Tile */
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';

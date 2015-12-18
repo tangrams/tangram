@@ -1,5 +1,3 @@
-/* global VertexLayout */
-
 import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexData from './vertex_data';
 

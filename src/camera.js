@@ -1,4 +1,3 @@
-/*global Camera */
 import Geo from './geo';
 import Utils from './utils/utils';
 import ShaderProgram from './gl/shader_program';
