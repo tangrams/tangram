@@ -72,8 +72,8 @@ export default class LabelLine extends Label {
 
     updateBBoxes () {
         let upp = this.options.units_per_pixel;
-        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * upp;
-        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * upp;
+        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
+        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
         // apply offset, x positive, y pointing down
         let offset = Vector.rot(this.options.offset, this.angle);

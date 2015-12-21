@@ -21,8 +21,8 @@ export default class LabelPoint extends Label {
     }
 
     updateBBoxes () {
-        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
-        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
+        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel * Label.epsilon;
+        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel * Label.epsilon;
 
         let p = [
             this.position[0] + (this.options.offset[0] * this.options.units_per_pixel),

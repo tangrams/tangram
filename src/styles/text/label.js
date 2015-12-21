@@ -83,3 +83,5 @@ export default class Label {
         return this.occluded(bboxes);
     }
 }
+
+Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding
