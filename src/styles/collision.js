@@ -2,7 +2,7 @@ import RepeatGroup from './repeat_group';
 
 import log from 'loglevel';
 
-var Collision = {};
+var Collision;
 
 export default Collision = {
 
