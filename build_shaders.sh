@@ -10,4 +10,4 @@ for f in `find . -name '*.glsl'`; do
     echo '"";';
     echo;
 done;
-echo "module.exports = shaderSources;";
+echo "export default shaderSources;";
