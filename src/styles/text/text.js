@@ -164,7 +164,7 @@ Object.assign(TextStyle, {
                             q.label.texcoords = text_info.texcoords;
 
                             this.feature_style.label = q.label;
-                            Style.addFeature.call(this, q.feature, q.draw, q.context, q.label);
+                            Style.addFeature.call(this, q.feature, q.draw, q.context);
                         });
                     }
 
