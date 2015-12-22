@@ -144,10 +144,6 @@ Object.assign(TextStyle, {
             this.texts[tile] = texts;
 
             let labels = this.createLabels(tile, queue);
-            if (!labels) {
-                Collision.collide({}, this.name, tile);
-                return this.finishTile(tile); // no labels created for this tile
-            }
 
             return Collision.collide(labels, this.name, tile).then(labels => {
                 if (labels.length === 0) {
@@ -186,24 +182,23 @@ Object.assign(TextStyle, {
     },
 
     createLabels (tile, feature_queue) {
-        let priorities = {}; // labels, group by priority
+        let labels = [];
 
         for (let f=0; f < feature_queue.length; f++) {
             let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
             let text_info = this.texts[tile][text_settings_key][text];
 
-            let labels = LabelBuilder.buildFromGeometry(text_info.size, feature.geometry, layout);
-            for (let i = 0; i < labels.length; ++i) {
-                let label = labels[i];
-                priorities[layout.priority] = priorities[layout.priority] || [];
-                priorities[layout.priority].push({
+            let feature_labels = LabelBuilder.buildFromGeometry(text_info.size, feature.geometry, layout);
+            for (let i = 0; i < feature_labels.length; i++) {
+                let label = feature_labels[i];
+                labels.push({
                     feature, draw, context,
                     text, text_settings_key, layout, label
                 });
             }
         }
 
-        return priorities;
+        return labels;
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization

@@ -36,7 +36,6 @@ export default Collision = {
     },
 
     // Add collision objects for a style
-    // `objects` is grouped by priority
     collide (objects, style, tile) {
         let state = this.tiles[tile];
         if (!state) {
@@ -44,11 +43,14 @@ export default Collision = {
             return;
         }
 
+        // Group by priority and style
         let tile_objects = state.objects;
-
-        for (let priority in objects) {
+        for (let i=0; i < objects.length; i++) {
+            let obj = objects[i];
+            let priority = obj.layout.priority;
             tile_objects[priority] = tile_objects[priority] || {};
-            tile_objects[priority][style] = objects[priority];
+            tile_objects[priority][style] = tile_objects[priority][style] || [];
+            tile_objects[priority][style].push(obj);
         }
 
         // Remove from pending style set, if no more styles, do collision & finish tile

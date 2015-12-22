@@ -197,7 +197,7 @@ Object.assign(Points, {
         let queue = this.queues[tile];
         this.queues[tile] = [];
 
-        let boxes = {}; // grouped by priority
+        let boxes = [];
         queue.forEach(q => {
             // TODO: support other types besides single points
             let style = q.style;
@@ -207,10 +207,7 @@ Object.assign(Points, {
             if (geometry.type === 'Point') {
                 q.label = new LabelPoint(geometry.coordinates, style, style);
                 q.layout = style;
-
-                // TODO: collision manager should accept flat list of objects w/priority properties
-                boxes[style.priority] = boxes[style.priority] || [];
-                boxes[style.priority].push(q);
+                boxes.push(q);
             }
         });
 
