@@ -290,10 +290,12 @@ Object.assign(TextStyle, {
         this.texcoord_scale = label.texcoords;
 
         this.buildQuad(
-            [label.position],
-            label.size.logical_size,
-            Utils.radToDeg(label.angle) || 0, vertex_data,
-            vertex_template, label.options.offset
+            [label.position],                   // position
+            label.size.logical_size,            // size in pixels
+            Utils.radToDeg(label.angle) || 0,   // angle in degrees
+            label.options.offset,               // offset from center in pixels
+            label.texcoords,                    // texture UVs
+            vertex_data, vertex_template        // VBO and data for current vertex
         );
     },
 

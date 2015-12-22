@@ -214,7 +214,6 @@ Object.assign(Points, {
         return Collision.collide(boxes, this.name, tile).then(boxes => {
             boxes.forEach(q => {
                 this.feature_style = q.style;
-                this.texcoord_scale = q.style.texcoord_scale;
                 Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
 
@@ -262,7 +261,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad (points, size, angle, vertex_data, vertex_template, offset) {
+    buildQuad (points, size, angle, offset, texcoord_scale, vertex_data, vertex_template) {
         Builders.buildQuadsForPoints(
             points,
             vertex_data,
@@ -278,7 +277,7 @@ Object.assign(Points, {
                 quad_scale: Utils.scaleInt16(1, 256),
                 offset,
                 angle: Utils.scaleInt16(angle, 360),
-                texcoord_scale: this.texcoord_scale,
+                texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535
             }
         );
@@ -289,7 +288,10 @@ Object.assign(Points, {
             return;
         }
 
-        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), style.offset);
+        this.buildQuad(
+            points,
+            style.size, style.angle, style.offset, style.texcoord_scale,
+            vertex_data, this.makeVertexTemplate(style));
     },
 
     buildPolygons(polygons, style, vertex_data) {
