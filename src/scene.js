@@ -103,16 +103,9 @@ export default class Scene {
         this.selection = null;
         this.texture_listener = null;
 
-        // Debug config
-        this.debug = {
-            profile: {
-                geometry_build: false
-            },
-            timeRebuild: this._timeRebuild.bind(this)
-        };
-
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
+        this.setupDebug();
 
         this.logLevel = options.logLevel || 'warn';
         log.setLevel(this.logLevel);
@@ -1248,6 +1241,39 @@ export default class Scene {
             });
         };
         cycle();
+    }
+
+    // Debug config and functions
+    setupDebug () {
+        let scene = this;
+        this.debug = {
+            profile: {
+                geometry_build: false
+            },
+
+            // Return geometry counts of visible tiles, grouped by style name
+            geometryCountByStyle () {
+                let counts = {};
+                for (let tile of scene.tile_manager.getRenderableTiles()) {
+                    for (let style in tile.meshes) {
+                        counts[style] = counts[style] || 0;
+                        counts[style] += tile.meshes[style].geometry_count;
+                    }
+                }
+                return counts;
+            },
+
+            geometryCountByBaseStyle () {
+                let style_counts = scene.debug.geometryCountByStyle();
+                let counts = {};
+                for (let style in style_counts) {
+                    let base = scene.styles[style].built_in ? style : scene.styles[style].base;
+                    counts[base] = counts[base] || 0;
+                    counts[base] += style_counts[style];
+                }
+                return counts;
+            }
+        };
     }
 
 }
