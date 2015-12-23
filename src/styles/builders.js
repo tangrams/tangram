@@ -15,19 +15,17 @@ Builders.tile_bounds = [
     { x: Geo.tile_scale, y: -Geo.tile_scale } // TODO: correct for flipped y-axis?
 ];
 
-// Re-scale UVs from [0, 1] range to a smaller area within the image
-Builders.scaleTexcoordsToSprite = function (uv, area_origin, area_size, tex_size) {
-    var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
-    var suv = [];
-    suv[0] = (uv[0] * area_size[0] + area_origin[0]) / tex_size[0];
-    suv[1] = (uv[1] * area_size[1] + area_origin_y) / tex_size[1];
-    return suv;
-};
+Builders.defaultUVs = [0, 0, 1, 1]; // single allocation for default values
 
+// Re-scale UVs from [0, 1] range to a smaller area within the image
 Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
+    var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
+
     return [
-        Builders.scaleTexcoordsToSprite([0, 0], area_origin, area_size, tex_size),
-        Builders.scaleTexcoordsToSprite([1, 1], area_origin, area_size, tex_size)
+        area_origin[0] / tex_size[0],
+        area_origin_y / tex_size[1],
+        (area_size[0] + area_origin[0]) / tex_size[0],
+        (area_size[1] + area_origin_y) / tex_size[1]
     ];
 };
 
@@ -40,7 +38,7 @@ Builders.buildPolygons = function (
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
     }
 
     var num_polygons = polygons.length;
@@ -102,7 +100,7 @@ Builders.buildExtrudedPolygons = function (
     // Fit UVs to wall quad
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -188,7 +186,7 @@ Builders.buildPolylines = function (
 
     // Build variables
     texcoord_normalize = texcoord_normalize || 1;
-    var [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+    var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
 
     // Values that are constant for each line and are passed to helper functions
     var constants = {
@@ -585,7 +583,7 @@ Builders.buildQuadsForPoints = function (points, vertex_data, vertex_template,
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
 
-        let [[min_u, min_v], [max_u, max_v]] = texcoord_scale || [[0, 0], [1, 1]];
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
