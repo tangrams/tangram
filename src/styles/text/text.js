@@ -161,9 +161,11 @@ Object.assign(TextStyle, {
                         labels.forEach(q => {
                             let text_settings_key = q.text_settings_key;
                             let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][q.text];
+
+                            q.label.logical_size = text_info.size.logical_size; // add styling properties to label
                             q.label.texcoords = text_info.texcoords;
 
-                            this.feature_style.label = q.label;
+                            this.feature_style.label = q.label; // set instance styling object expected by Style class
                             Style.addFeature.call(this, q.feature, q.draw, q.context);
                         });
                     }
@@ -188,7 +190,7 @@ Object.assign(TextStyle, {
             let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
             let text_info = this.texts[tile][text_settings_key][text];
 
-            let feature_labels = LabelBuilder.buildFromGeometry(text_info.size, feature.geometry, layout);
+            let feature_labels = LabelBuilder.buildFromGeometry(text_info.size.collision_size, feature.geometry, layout);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
                 labels.push({
@@ -274,8 +276,11 @@ Object.assign(TextStyle, {
             draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
         }
 
-        // Offset (parse each array component)
+        // Offset (2d array)
         draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
+        // Buffer (1d value or or 2d array)
+        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         // Repeat rules
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
@@ -287,11 +292,9 @@ Object.assign(TextStyle, {
         let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
 
-        this.texcoord_scale = label.texcoords;
-
         this.buildQuad(
             [label.position],                   // position
-            label.size.logical_size,            // size in pixels
+            label.logical_size,            // size in pixels
             Utils.radToDeg(label.angle) || 0,   // angle in degrees
             label.options.offset,               // offset from center in pixels
             label.texcoords,                    // texture UVs

@@ -123,17 +123,17 @@ Object.assign(Points, {
         style.size = draw.size;
         if (!style.size) {
             if (sprite_info) {
-                style.size = { value: sprite_info.size };
+                style.size = sprite_info.size;
             }
             else {
-                style.size = { value: [16, 16] };
+                style.size = [16, 16];
             }
         }
+        else {
+            style.size = StyleParser.cacheProperty(style.size, context);
+        }
 
-        // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = StyleParser.cacheProperty(style.size, context);
-
-        // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
+        // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
             Math.min((style.size[0] || style.size), 256),
             Math.min((style.size[1] || style.size), 256)
@@ -151,17 +151,15 @@ Object.assign(Points, {
         // rendering a single point at the polygon's centroid can be enabled
         style.centroid = draw.centroid;
 
-        // Offset applied to point in screen space
-        style.offset = (Array.isArray(draw.offset) && draw.offset.map(parseFloat)) || [0, 0];
+        // Offset and buffer applied to point in screen space
+        style.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
+        style.offset = PointAnchor.computeOffset(style.offset, style.size, draw.anchor); // anchor adjustment
 
-        // anchor
-        style.offset = PointAnchor.computeOffset(style.offset, style.size, draw.anchor);
+        style.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
 
         // TODO: clean up, these are to satisfy label interface
         style.units_per_pixel = tile.units_per_pixel; // pass style to collision manager as 'layout'
         style.collide = (draw.collide === false) ? false : true; // pass style to collision manager as 'layout'
-        style.collision_size = style.size; // pass style to label constructor as 'size'
-        style.buffer = [0, 0];
         style.id = feature;
 
         let priority = draw.priority;
@@ -205,7 +203,7 @@ Object.assign(Points, {
             let geometry = feature.geometry;
 
             if (geometry.type === 'Point') {
-                q.label = new LabelPoint(geometry.coordinates, style, style);
+                q.label = new LabelPoint(geometry.coordinates, style.size, style);
                 q.layout = style;
                 boxes.push(q);
             }
@@ -225,6 +223,13 @@ Object.assign(Points, {
         draw.color = StyleParser.colorCacheObject(draw.color);
         draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
         draw.size = StyleParser.cacheObject(draw.size, parseFloat);
+
+        // Offset (2d array)
+        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
+        // Buffer (1d value or or 2d array)
+        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+
         return draw;
     },
 

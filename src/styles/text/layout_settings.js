@@ -15,20 +15,9 @@ export default LayoutSettings = {
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
         layout.anchor = draw.anchor;
 
-        // label offset in pixel (applied in screen space)
-        layout.offset = StyleParser.cacheProperty(draw.offset, context) || LayoutSettings.zeroPair;
-
-        // label buffer in pixel
-        let buffer = draw.buffer;
-        if (buffer != null) {
-            if (!Array.isArray(buffer)) {
-                buffer = [buffer, buffer]; // buffer can be 1D or 2D
-            }
-
-            buffer[0] = parseFloat(buffer[0]);
-            buffer[1] = parseFloat(buffer[1]);
-        }
-        layout.buffer = buffer || LayoutSettings.zeroPair;
+        // label offset and buffer in pixel (applied in screen space)
+        layout.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
+        layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
 
         // label priority (lower is higher)
         let priority = draw.priority;
@@ -80,5 +69,3 @@ export default LayoutSettings = {
     }
 
 };
-
-LayoutSettings.zeroPair = Object.freeze([0, 0]); // single allocation for zero values that won't be modified
