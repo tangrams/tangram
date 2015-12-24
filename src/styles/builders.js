@@ -164,6 +164,9 @@ Builders.buildExtrudedPolygons = function (
     }
 };
 
+// TODO:
+//  - Pre posees the line into segments on not over tile edge 
+
 // Build tessellated triangles for a polyline
 Builders.buildPolylines = function (
     lines,
@@ -178,11 +181,15 @@ Builders.buildPolylines = function (
         texcoord_normalize,
         scaling_index,
         scaling_normalize,
-        join, cap
+        join, cap,
+        miter_limit,
+        units_per_pixel
     }) {
 
+    // Caps and Joins are coded with the amount of extra triangles
     var cornersOnCap = (cap === "square") ? 2 : ((cap === "round") ? 3 : 0);  // Butt is the implicit default
     var trianglesOnJoin = (join === "bevel") ? 1 : ((join === "round") ? 3 : 0);  // Miter is the implicit default
+    var miter_len_max = (miter_limit)? miter_limit : 3; // Miter limit distance
 
     // Build variables
     texcoord_normalize = texcoord_normalize || 1;
@@ -201,9 +208,11 @@ Builders.buildPolylines = function (
         texcoords: texcoord_index && [],
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
-        nPairs: 0
+        nPairs: 0,
+        units_per_pixel
     };
 
+    // For each LINE in a MULTI-LINE
     for (var ln = 0; ln < lines.length; ln++) {
         var line = lines[ln];
         var lineSize = line.length;
@@ -225,56 +234,80 @@ Builders.buildPolylines = function (
         var isPrev = false,
             isNext = true;
 
-        // Add vertices to buffer according to their index
-        indexPairs(constants);
+        // NOTE:
+        //      - all this variables are created for each line in a polyline
+        //      - memory whise, how expensive is to re allocate this variables over and over?
 
-        // Do this with the rest (except the last one)
+        // For each LINE SEGMENT in a LINE
         for (let i = 0; i < lineSize ; i++) {
 
-            // There is a next one?
-            isNext = i+1 < lineSize;
+            // PREPARATION OF DATA (prev, current and next vertices)
+            // =========================================
+            // The algorithm iterates trough the segments of a polyline.
+            // First needs to find previus and next vertices to calulate 
+            // normals.
+            // Also to figurate if need to add extra triangles for caps and joins
 
+            // Assign PREV coordinate
+            // ----------------------
             if (isPrev) {
                 // If there is a previous one, copy the current (previous) values on *Prev
                 coordPrev = coordCurr;
                 normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
             } else if (i === 0 && closed_polygon === true) {
                 // If it's the first point and is a closed polygon
-
+                //  ... see if need to wrap arround by setting the last element on the line
+                //      as the previus one.
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
+                    // If the line is over a tile edge and need to be remove skip the wrapping arround
+                    if (Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
                         needToClose = false;
                     }
                 }
 
                 if (needToClose) {
+                    // If is the case that need to be closed by wrapping around, compute PREV against
+                    // the last element on the line
                     coordPrev = line[lineSize-2];
                     normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
                     isPrev = true;
                 }
             }
 
-            // Assign current coordinate
+            // Assign CURRENT coordinate 
+            // ----------------------
+            // (not normals yet. Why? Because we don't have enought data about the prev and next vertices)
             coordCurr = line[i];
 
+            // Assign NEXT coordinate
+            // ----------------------
+
+            // There is a next one?
+            isNext = i+1 < lineSize;
+
             if (isNext) {
+                // If it assign
                 coordNext = line[i+1];
             } else if (closed_polygon === true) {
-                // If it's the last point in a closed polygon
+                // If it's the last point in a closed polygon 
+                // ... wrap arround by computing againts the second one
+                // (why not the first one? Because the first one is the same as the last one)
                 coordNext = line[1];
                 isNext = true;
             }
 
             if (isNext) {
                 // If it's not the last one get next coordinates and calculate the right normal
-
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
                     if (Builders.isOnTileEdge(coordCurr, coordNext, { tolerance: tile_edge_tolerance })) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
+                            // If arrives to here it have everything it needs so add the vertices
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+
+                            // Every time it adds a pair need to increment the counter
                             constants.nPairs++;
 
                             // Add vertices to buffer acording their index
@@ -286,7 +319,9 @@ Builders.buildPolylines = function (
                 }
             }
 
-            //  Compute current normal
+            // Now that we have a previus and next is time to... 
+            // Compute CURRENT normal
+            // ----------------------
             if (isPrev) {
                 //  If there is a PREVIOUS ...
                 if (isNext) {
@@ -310,19 +345,31 @@ Builders.buildPolylines = function (
                 }
             }
 
+            //  ADDING DATA ( segments, caps and joins)
+            // =========================================
             if (isPrev || isNext) {
                 // If it's the BEGINNING of a LINE
                 if (i === 0 && !isPrev && !closed_polygon) {
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
-                // If it's a JOIN
-                if(trianglesOnJoin !== 0 && isPrev && isNext) {
+                var thisJoin = trianglesOnJoin;
+                //  Check Miter limit according to
+                //  https://github.com/tangrams/tangram/blob/5e7686d477bfc0069656157b3d46ba5bac5aab39/src/gl/gl_builders.js#L309
+                var len_sq = Vector.lengthSq(normCurr);
+                if (thisJoin === 0 && (len_sq > (miter_len_max * miter_len_max)) ){
+                    thisJoin = 1; // add bevel
+                }
+
+                // If is a JOIN
+                if (thisJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
-                            i/lineSize, trianglesOnJoin,
+                            i/lineSize, thisJoin,
                             constants);
-                } else {
+                }
+                // If is a SEGMENT (or regular join, that means miter)
+                else {
                     addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
 
@@ -344,8 +391,9 @@ Builders.buildPolylines = function (
     }
 };
 
-// Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
+// Helper function for polyline tesselation
+// add two equidistant pairs of vertices (internal method for polyline builder)
+function addPolylineVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
     if (scalingVecs) {
         //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
         vertices.push(coord);
@@ -356,16 +404,16 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
                        coord[1] + normal[1] * halfWidth]);
     }
 
-    // c) Add UVs if they are enabled
+    // c. Add UVs if they are enabled
     if (texcoords) {
         texcoords.push(uv);
     }
 }
 
-//  Add to equidistant pairs of vertices (internal method for polyline builder)
+//  Add two equidistant vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, v_pct, constants) {
-    addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-    addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addPolylineVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    addPolylineVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
 }
 
 //  Tessalate a FAN geometry between points A       B
@@ -383,45 +431,142 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     // because we are going to add more triangles.
     indexPairs(constants);
 
+    // Initial parameters
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
+    // Calculate the angle between A and B 
+    var angle_delta = Vector.angleBetween(nA, nB);
 
-    var angle_delta = Vector.dot(nA, nB);
-    if (angle_delta < -1) {
-        angle_delta = -1;
+    // If the numbers of triangles is 3 use on rounds caps and joins
+    if (numTriangles === 3) {
+        // ... if that's the case try to simplify the number of triangles
+        var w = constants.halfWidth*2;
+
+        // Core ecuation taked from here (http://slabode.exofire.net/circle_draw.shtml) adapted from circle to what ever angle we have
+        var dist = Vector.length(Vector.sub( Vector.mult(nA,w), Vector.mult(nB,w)))/constants.units_per_pixel;
+        numTriangles = Math.ceil( (100*Math.sqrt(dist)/360)*angle_delta );
+        numTriangles = Math.min(15, Math.max(1,numTriangles));  // Limit the max and min
+
+        // Debug it
+        // console.log("Circle: dist:",dist,"angle:",angle_delta, "U/pixel:",constants.units_per_pixel," -> # triangles", numTriangles);
+
+        // If is a cap and have less than 2 triangles skip
+        if (angle_delta >= 3.14 && numTriangles < 2) {
+            return;
+        }
     }
-    angle_delta = Math.acos(angle_delta)/numTriangles;
+    // Calculate the angle for each triangle
+    var angle_step = angle_delta/numTriangles;
 
+    // Joins that turn left or right behave diferently...
+    // triangles need to be rotated in diferent directions
     if (!signed) {
-        angle_delta *= -1;
+        angle_step *= -1;
     }
 
+    // Starting values for UVs
     var uvCurr = Vector.set(uA);
     var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
 
     //  Add the FIRST and CENTER vertex
     //  The triangles will be composed in a FAN style around it
-    addVertex(coord, nC, uC, constants);
+    addPolylineVertex(coord, nC, uC, constants);
 
     //  Add first corner
-    addVertex(coord, normCurr, uA, constants);
+    addPolylineVertex(coord, normCurr, uA, constants);
 
     // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
+        uvCurr = Vector.add(uvCurr,uv_delta);
+        addPolylineVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+    }
 
-        if (numTriangles === 4 && (t === 0 || t === numTriangles - 2)) {
+    // Index the vertices
+    for (var i = 0; i < numTriangles; i++) {
+        if (signed) {
+            addIndex(i+2, constants);
+            addIndex(0, constants);
+            addIndex(i+1, constants);
+        } else {
+            addIndex(i+1, constants);
+            addIndex(0, constants);
+            addIndex(i+2, constants);
+        }
+    }
+
+    // Clear the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
+//  Tessalate a SQUARE geometry between A and B     + ........+ 
+//  and interpolating their UVs                     : \  2  / : 
+//                                                  : 1\   /3 :
+//                                                  A -- C -- B                                         
+function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
+
+    // Add previous vertices to buffer and clear the buffers and index pairs
+    // because we are going to add more triangles.
+    indexPairs(constants);
+
+    // Initial parameters
+    var uvCurr = Vector.set(uA);
+    var uv_delta = Vector.div(Vector.sub(uB,uA), 4);
+    var normCurr = Vector.set(nA);
+    var normPrev = [0,0];
+
+    // First and last cap have different directions
+    var angle_step = 0.78539816339; // PI/4 = 45 degrees
+    if (!signed) {
+        angle_step *= -1;
+    }
+
+    //  Add the FIRST and CENTER vertex
+    //  The triangles will be add in a FAN style around it
+    //
+    //                       A -- C
+    addPolylineVertex(coord, nC, uC, constants);
+
+    //  Add first corner     +
+    //                       :
+    //                       A -- C
+    addPolylineVertex(coord, normCurr, uA, constants);
+
+    // Iterate through the rest of the coorners completing the triangles
+    // (except the corner 1 to save one triangle to be draw )
+    for (var t = 0; t < 4; t++) {
+
+        // 0     1     2
+        //  + ........+ 
+        //  : \     / : 
+        //  :  \   /  :
+        //  A -- C -- B  3 
+
+        normPrev = Vector.normalize(normCurr);
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
+        
+        if (t === 0 || t === 2) {
+            // In order to make this "fan" look like a square the mitters need to be streach
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
             normCurr = Vector.mult(normCurr, scale*scale);
         }
 
         uvCurr = Vector.add(uvCurr,uv_delta);
 
-        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+        if (t !== 1) {
+            //  Add computed corner (except the corner 1)
+            addPolylineVertex(coord, normCurr, uvCurr, constants);      
+        }
     }
 
-    for (var i = 0; i < numTriangles; i++) {
+    for (var i = 0; i < 3; i++) {
         if (signed) {
             addIndex(i+2, constants);
             addIndex(0, constants);
@@ -454,13 +599,14 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nC = Vector.neg(T[1]),  // normal to center (-vP)
         nB = T[2];              // normal to point B (bT)
 
-    var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+    var uA, uC, uB;
 
     if (signed) {
-        addVertex(coords[1], nA, uA, constants);
-        addVertex(coords[1], nC, uC, constants);
+        uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+        addPolylineVertex(coords[1], nA, uA, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
     } else {
         nA = Vector.neg(T[0]);
         nC = T[1];
@@ -468,18 +614,18 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
         uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-        addVertex(coords[1], nC, uC, constants);
-        addVertex(coords[1], nA, uA, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nA, uA, constants);
     }
 
     addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
 
     if (signed) {
-        addVertex(coords[1], nB, uB, constants);
-        addVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nB, uB, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
     } else {
-        addVertex(coords[1], nC, uC, constants);
-        addVertex(coords[1], nB, uB, constants);
+        addPolylineVertex(coords[1], nC, uC, constants);
+        addPolylineVertex(coords[1], nB, uB, constants);
     }
 }
 
@@ -492,20 +638,32 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     }
 
     // UVs
-    var uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
-        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
-        uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
+    var uvA, uvC, uvB;
 
     if (!isBeginning) {
         uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
         uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
         uvB = [constants.max_u,constants.max_v];
+    } else {
+        uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
+        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
+        uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
     }
 
-    addFan( coord,
-            Vector.neg(normal), [0, 0], normal,
-            uvA, uvC, uvB,
-            isBeginning, numCorners*2, constants);
+    if ( numCorners === 2 ){
+        // If caps are set as squares
+        addSquare( coord, 
+                   Vector.neg(normal), [0, 0], normal, 
+                   uvA, uvC, uvB, 
+                   isBeginning, 
+                   constants);
+    } else {
+        // If caps are set as round ( numCorners===3 )
+        addFan( coord,
+                Vector.neg(normal), [0, 0], normal,
+                uvA, uvC, uvB,
+                isBeginning, numCorners, constants);
+    }
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
