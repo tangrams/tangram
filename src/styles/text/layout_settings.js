@@ -1,17 +1,19 @@
 import Geo from '../../geo';
 import {StyleParser} from '../style_parser';
 
-var LayoutSettings;
+// Common layout settings
+export var LayoutSettings = {
 
-export default LayoutSettings = {
-
-   compute (feature, draw, text, context, tile) {
-        let layout = {};
+   compute (target, feature, draw, context, tile) {
+        let layout = target || {};
         layout.id = feature;
         layout.units_per_pixel = tile.units_per_pixel || 1;
 
+        // collision flag
+        layout.collide = (draw.collide === false) ? false : true;
+
         // label anchors (point labels only)
-        // label will be adjusted in the given direction, relatove to its original point
+        // label position will be adjusted in the given direction, relative to its original point
         // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
         layout.anchor = draw.anchor;
 
@@ -30,6 +32,24 @@ export default LayoutSettings = {
             priority = -1 >>> 0; // default to max priority value if none set
         }
         layout.priority = priority;
+
+        return layout;
+    }
+
+};
+
+// Additional text-specific layout settings
+export var TextLayoutSettings = {
+
+   compute (target, feature, draw, context, tile, text) {
+        let layout = target || {};
+
+        // common settings
+        layout = LayoutSettings.compute(layout, feature, draw, context, tile);
+
+        // tile boundary handling
+        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 
         // label line exceed percentage
         if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
@@ -57,13 +77,6 @@ export default LayoutSettings = {
             layout.repeat_group = draw.key; // default to unique set of matching layers
         }
         layout.repeat_group += '/' + text;
-
-        // collision flag
-        layout.collide = (draw.collide === false) ? false : true;
-
-        // tile boundary handling
-        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
-        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
 
         return layout;
     }

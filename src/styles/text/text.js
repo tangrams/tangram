@@ -8,7 +8,7 @@ import {Points} from '../points/points';
 import CanvasText from './canvas_text';
 import LabelBuilder from './label_builder';
 import TextSettings from './text_settings';
-import LayoutSettings from './layout_settings';
+import {TextLayoutSettings} from './layout_settings';
 import Collision from '../collision';
 import {StyleParser} from '../style_parser';
 
@@ -91,7 +91,7 @@ Object.assign(TextStyle, {
         }
 
         // Compute text style and layout settings for this feature label
-        let layout = LayoutSettings.compute(feature, draw, text, context, tile);
+        let layout = TextLayoutSettings.compute({}, feature, draw, context, tile, text);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
@@ -162,10 +162,13 @@ Object.assign(TextStyle, {
                             let text_settings_key = q.text_settings_key;
                             let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][q.text];
 
-                            q.label.logical_size = text_info.size.logical_size; // add styling properties to label
-                            q.label.texcoords = text_info.texcoords;
+                            // setup styling object expected by Style class
+                            let style = this.feature_style;
+                            style.label = q.label;
+                            style.size = text_info.size.logical_size;
+                            style.angle = Utils.radToDeg(q.label.angle) || 0;
+                            style.texcoords = text_info.texcoords;
 
-                            this.feature_style.label = q.label; // set instance styling object expected by Style class
                             Style.addFeature.call(this, q.feature, q.draw, q.context);
                         });
                     }
@@ -286,32 +289,6 @@ Object.assign(TextStyle, {
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
-    },
-
-    build (style, vertex_data) {
-        let vertex_template = this.makeVertexTemplate(style);
-        let label = style.label;
-
-        this.buildQuad(
-            [label.position],                   // position
-            label.logical_size,            // size in pixels
-            Utils.radToDeg(label.angle) || 0,   // angle in degrees
-            label.options.offset,               // offset from center in pixels
-            label.texcoords,                    // texture UVs
-            vertex_data, vertex_template        // VBO and data for current vertex
-        );
-    },
-
-    buildLines (lines, style, vertex_data) {
-        this.build(style, vertex_data);
-    },
-
-    buildPoints (points, style, vertex_data) {
-        this.build(style, vertex_data);
-    },
-
-    buildPolygons (points, style, vertex_data) {
-        this.build(style, vertex_data);
     }
 
 });

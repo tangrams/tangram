@@ -11,6 +11,7 @@ import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import PointAnchor from './point_anchor';
 import LabelPoint from '../text/label_point';
+import {LayoutSettings} from '../text/layout_settings';
 import Collision from '../collision';
 
 import log from 'loglevel';
@@ -111,9 +112,9 @@ Object.assign(Points, {
         let sprite_info;
         if (this.texture && sprite) {
             sprite_info = Texture.getSpriteInfo(this.texture, sprite);
-            style.texcoord_scale = sprite_info.texcoords;
+            style.texcoords = sprite_info.texcoords;
         } else {
-            style.texcoord_scale = null;
+            style.texcoords = null;
         }
 
         // points can be placed off the ground
@@ -141,37 +142,11 @@ Object.assign(Points, {
 
         style.angle = StyleParser.evalProp(draw.angle, context) || 0;
 
-        // factor by which point scales from current zoom level to next zoom level
-        style.scale = draw.scale || 1;
+        // polygons rendering as points will render at the polygon's centroid by default,
+        // but can be set to render at each individual polygon point instead
+        style.centroid = (draw.centroid != null) ? draw.centroid : true;
 
-        // to store bbox by tiles
-        style.tile = tile; // TODO: is this used??? should it be?
-
-        // polygons rendering as points will render each individual polygon point by default, but
-        // rendering a single point at the polygon's centroid can be enabled
-        style.centroid = draw.centroid;
-
-        // Offset and buffer applied to point in screen space
-        style.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
-        style.offset = PointAnchor.computeOffset(style.offset, style.size, draw.anchor); // anchor adjustment
-
-        style.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
-
-        // TODO: clean up, these are to satisfy label interface
-        style.units_per_pixel = tile.units_per_pixel; // pass style to collision manager as 'layout'
-        style.collide = (draw.collide === false) ? false : true; // pass style to collision manager as 'layout'
-        style.id = feature;
-
-        let priority = draw.priority;
-        if (priority != null) {
-            if (typeof priority === 'function') {
-                priority = priority(context);
-            }
-        }
-        else {
-            priority = -1 >>> 0; // default to max priority value if none set
-        }
-        style.priority = priority;
+        LayoutSettings.compute(style, feature, draw, context, tile);
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
@@ -195,23 +170,33 @@ Object.assign(Points, {
         let queue = this.queues[tile];
         this.queues[tile] = [];
 
+        // For each feature, create one or more point labels
         let boxes = [];
         queue.forEach(q => {
-            // TODO: support other types besides single points
             let style = q.style;
             let feature = q.feature;
             let geometry = feature.geometry;
 
-            if (geometry.type === 'Point') {
-                q.label = new LabelPoint(geometry.coordinates, style.size, style);
-                q.layout = style;
-                boxes.push(q);
+            let feature_labels = this.buildLabelsFromGeometry(style.size, geometry, style);
+            for (let i = 0; i < feature_labels.length; i++) {
+                let label = feature_labels[i];
+                boxes.push({
+                    feature,
+                    draw: q.draw,
+                    context: q.context,
+                    style,
+                    layout: style,
+                    label
+                });
             }
         });
 
+        // Submit point labels for collision, then build geometry for remaining ones
         return Collision.collide(boxes, this.name, tile).then(boxes => {
             boxes.forEach(q => {
                 this.feature_style = q.style;
+                this.feature_style.label = q.label;
+
                 Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
 
@@ -288,38 +273,88 @@ Object.assign(Points, {
         );
     },
 
-    buildPoints (points, style, vertex_data) {
-        if (!style.size) {
-            return;
-        }
+    // Build quad for point sprite
+    build (style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        let label = style.label;
 
         this.buildQuad(
-            points,
-            style.size, style.angle, style.offset, style.texcoord_scale,
-            vertex_data, this.makeVertexTemplate(style));
+            [label.position],               // position
+            style.size,                     // size in pixels
+            style.angle,                    // angle in degrees
+            label.options.offset,           // offset from center in pixels
+            style.texcoords,                // texture UVs
+            vertex_data, vertex_template    // VBO and data for current vertex
+        );
     },
 
-    buildPolygons(polygons, style, vertex_data) {
-        // Render polygons as individual points, or centroid
-        if (!style.centroid) {
-            for (let poly=0; poly < polygons.length; poly++) {
-                let polygon = polygons[poly];
-                for (let r=0; r < polygon.length; r++) {
-                    this.buildPoints(polygon[r], style, vertex_data);
+    // Override to pass-through to generic point builder
+    buildLines (lines, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
+    buildPoints (points, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
+    buildPolygons (points, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
+    // Builds one or more point labels for a geometry
+    buildLabelsFromGeometry (size, geometry, options) {
+        let labels = [];
+
+        if (geometry.type === "Point") {
+            labels.push(new LabelPoint(geometry.coordinates, size, options));
+        }
+        else if (geometry.type === "MultiPoint") {
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                let point = points[i];
+                labels.push(new LabelPoint(point, size, options));
+            }
+        }
+        else if (geometry.type === "LineString") {
+            // Point at each line vertex
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                labels.push(new LabelPoint(points[i], size, options));
+            }
+        }
+        else if (geometry.type === "MultiLineString") {
+            // Point at each line vertex
+            let lines = geometry.coordinates;
+            for (let ln = 0; ln < lines.length; ln++) {
+                let points = lines[ln];
+                for (let i = 0; i < points.length; ++i) {
+                    labels.push(new LabelPoint(points[i], size, options));
                 }
             }
         }
-        else {
-            let centroid = Geo.multiCentroid(polygons);
-            this.buildPoints([centroid], style, vertex_data);
+        else if (geometry.type === "Polygon") {
+            // Point at polygon centroid (of outer ring)
+            if (options.centroid) {
+                let centroid = Geo.centroid(geometry.coordinates[0]);
+                labels.push(new LabelPoint(centroid, size, options));
+            }
+            // Point at each polygon vertex (all rings)
+            else {
+                let rings = geometry.coordinates;
+                for (let ln = 0; ln < rings.length; ln++) {
+                    let points = rings[ln];
+                    for (let i = 0; i < points.length; ++i) {
+                        labels.push(new LabelPoint(points[i], size, options));
+                    }
+                }
+            }
         }
-    },
+        else if (geometry.type === "MultiPolygon") {
+            let centroid = Geo.multiCentroid(geometry.coordinates);
+            labels.push(new LabelPoint(centroid, size, options));
+        }
 
-    buildLines(lines, style, vertex_data) {
-        // Render lines as individual points
-        for (let ln=0; ln < lines.length; ln++) {
-            this.buildPoints(lines[ln], style, vertex_data);
-        }
+        return labels;
     }
 
 });
