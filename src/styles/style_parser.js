@@ -246,7 +246,6 @@ StyleParser.colorForString = function(string) {
         color[0] /= 255;
         color[1] /= 255;
         color[2] /= 255;
-        color[3] = 1;
     }
     else {
         color = StyleParser.defaults.color;
