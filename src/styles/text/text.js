@@ -3,10 +3,12 @@
 import Texture from '../../gl/texture';
 import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
+import Geo from '../../geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
 import CanvasText from './canvas_text';
-import LabelBuilder from './label_builder';
+import LabelPoint from './label_point';
+import LabelLine from './label_line';
 import TextSettings from './text_settings';
 import {TextLayoutSettings} from './layout_settings';
 import Collision from '../collision';
@@ -193,7 +195,7 @@ Object.assign(TextStyle, {
             let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
             let text_info = this.texts[tile][text_settings_key][text];
 
-            let feature_labels = LabelBuilder.buildFromGeometry(text_info.size.collision_size, feature.geometry, layout);
+            let feature_labels = this.buildLabelsFromGeometry(text_info.size.collision_size, feature.geometry, layout);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
                 labels.push({
@@ -289,6 +291,41 @@ Object.assign(TextStyle, {
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
+    },
+
+    // Builds one or more labels for a geometry
+    buildLabelsFromGeometry (size, geometry, options) {
+        let labels = [];
+
+        if (geometry.type === "LineString") {
+            let lines = geometry.coordinates;
+
+            labels.push(new LabelLine(size, lines, options));
+        } else if (geometry.type === "MultiLineString") {
+            let lines = geometry.coordinates;
+
+            for (let i = 0; i < lines.length; ++i) {
+                let line = lines[i];
+                labels.push(new LabelLine(size, line, options));
+            }
+        } else if (geometry.type === "Point") {
+            labels.push(new LabelPoint(geometry.coordinates, size, options));
+        } else if (geometry.type === "MultiPoint") {
+            let points = geometry.coordinates;
+
+            for (let i = 0; i < points.length; ++i) {
+                let point = points[i];
+                labels.push(new LabelPoint(point, size, options));
+            }
+        } else if (geometry.type === "Polygon") {
+            let centroid = Geo.centroid(geometry.coordinates[0]);
+            labels.push(new LabelPoint(centroid, size, options));
+        } else if (geometry.type === "MultiPolygon") {
+            let centroid = Geo.multiCentroid(geometry.coordinates);
+            labels.push(new LabelPoint(centroid, size, options));
+        }
+
+        return labels;
     }
 
 });

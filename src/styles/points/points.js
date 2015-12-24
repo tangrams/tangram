@@ -9,7 +9,6 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
-import PointAnchor from './point_anchor';
 import LabelPoint from '../text/label_point';
 import {LayoutSettings} from '../text/layout_settings';
 import Collision from '../collision';
