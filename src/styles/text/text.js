@@ -7,11 +7,10 @@ import Geo from '../../geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
 import CanvasText from './canvas_text';
-import LabelPoint from './label_point';
-import LabelLine from './label_line';
+import Collision from '../../labels/collision';
+import LabelPoint from '../../labels/label_point';
+import LabelLine from '../../labels/label_line';
 import TextSettings from './text_settings';
-import {TextLayoutSettings} from './layout_settings';
-import Collision from '../collision';
 import {StyleParser} from '../style_parser';
 
 import log from 'loglevel';
@@ -93,7 +92,7 @@ Object.assign(TextStyle, {
         }
 
         // Compute text style and layout settings for this feature label
-        let layout = TextLayoutSettings.compute({}, feature, draw, context, tile, text);
+        let layout = this.computeLayout({}, feature, draw, context, tile, text);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
 
@@ -291,6 +290,47 @@ Object.assign(TextStyle, {
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
+    },
+
+    // Additional text-specific layout settings
+    computeLayout (target, feature, draw, context, tile, text) {
+        let layout = target || {};
+
+        // common settings w/points
+        layout = Points.computeLayout(layout, feature, draw, context, tile);
+
+        // tile boundary handling
+        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
+
+        // label line exceed percentage
+        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
+            layout.line_exceed = parseFloat(draw.line_exceed.substr(0,draw.line_exceed.length-1));
+        }
+        else {
+            layout.line_exceed = 80;
+        }
+
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.cacheProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance == null) {
+            layout.repeat_distance = Geo.tile_size;
+        }
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key
+        if (typeof draw.repeat_group === 'function') {
+            layout.repeat_group = draw.repeat_group(context);
+        }
+        else if (typeof draw.repeat_group === 'string') {
+            layout.repeat_group = draw.repeat_group;
+        }
+        else {
+            layout.repeat_group = draw.key; // default to unique set of matching layers
+        }
+        layout.repeat_group += '/' + text;
+
+        return layout;
     },
 
     // Builds one or more labels for a geometry

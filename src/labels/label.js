@@ -1,6 +1,6 @@
 import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
-import Utils from '../../utils/utils';
-import OBB from '../../utils/obb';
+import Utils from '../utils/utils';
+import OBB from '../utils/obb';
 
 import log from 'loglevel';
 

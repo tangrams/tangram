@@ -1,7 +1,7 @@
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import Collision from './styles/collision';
+import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 

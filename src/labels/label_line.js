@@ -1,6 +1,6 @@
-import Vector from '../../vector';
+import Vector from '../vector';
 import Label from './label';
-import OBB from '../../utils/obb';
+import OBB from '../utils/obb';
 
 export default class LabelLine extends Label {
 

@@ -9,9 +9,8 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
-import LabelPoint from '../text/label_point';
-import {LayoutSettings} from '../text/layout_settings';
-import Collision from '../collision';
+import Collision from '../../labels/collision';
+import LabelPoint from '../../labels/label_point';
 
 import log from 'loglevel';
 
@@ -145,7 +144,7 @@ Object.assign(Points, {
         // but can be set to render at each individual polygon point instead
         style.centroid = (draw.centroid != null) ? draw.centroid : true;
 
-        LayoutSettings.compute(style, feature, draw, context, tile);
+        this.computeLayout(style, feature, draw, context, tile);
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
@@ -215,6 +214,95 @@ Object.assign(Points, {
         draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         return draw;
+    },
+
+    // Compute label layout-related properties
+    computeLayout (target, feature, draw, context, tile) {
+        let layout = target || {};
+        layout.id = feature;
+        layout.units_per_pixel = tile.units_per_pixel || 1;
+
+        // collision flag
+        layout.collide = (draw.collide === false) ? false : true;
+
+        // label anchors (point labels only)
+        // label position will be adjusted in the given direction, relative to its original point
+        // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+        layout.anchor = draw.anchor;
+
+        // label offset and buffer in pixel (applied in screen space)
+        layout.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
+        layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
+
+        // label priority (lower is higher)
+        let priority = draw.priority;
+        if (priority != null) {
+            if (typeof priority === 'function') {
+                priority = priority(context);
+            }
+        }
+        else {
+            priority = -1 >>> 0; // default to max priority value if none set
+        }
+        layout.priority = priority;
+
+        return layout;
+    },
+
+    // Builds one or more point labels for a geometry
+    buildLabelsFromGeometry (size, geometry, options) {
+        let labels = [];
+
+        if (geometry.type === "Point") {
+            labels.push(new LabelPoint(geometry.coordinates, size, options));
+        }
+        else if (geometry.type === "MultiPoint") {
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                let point = points[i];
+                labels.push(new LabelPoint(point, size, options));
+            }
+        }
+        else if (geometry.type === "LineString") {
+            // Point at each line vertex
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                labels.push(new LabelPoint(points[i], size, options));
+            }
+        }
+        else if (geometry.type === "MultiLineString") {
+            // Point at each line vertex
+            let lines = geometry.coordinates;
+            for (let ln = 0; ln < lines.length; ln++) {
+                let points = lines[ln];
+                for (let i = 0; i < points.length; ++i) {
+                    labels.push(new LabelPoint(points[i], size, options));
+                }
+            }
+        }
+        else if (geometry.type === "Polygon") {
+            // Point at polygon centroid (of outer ring)
+            if (options.centroid) {
+                let centroid = Geo.centroid(geometry.coordinates[0]);
+                labels.push(new LabelPoint(centroid, size, options));
+            }
+            // Point at each polygon vertex (all rings)
+            else {
+                let rings = geometry.coordinates;
+                for (let ln = 0; ln < rings.length; ln++) {
+                    let points = rings[ln];
+                    for (let i = 0; i < points.length; ++i) {
+                        labels.push(new LabelPoint(points[i], size, options));
+                    }
+                }
+            }
+        }
+        else if (geometry.type === "MultiPolygon") {
+            let centroid = Geo.multiCentroid(geometry.coordinates);
+            labels.push(new LabelPoint(centroid, size, options));
+        }
+
+        return labels;
     },
 
     /**
@@ -298,62 +386,6 @@ Object.assign(Points, {
 
     buildPolygons (points, style, vertex_data) {
         this.build(style, vertex_data);
-    },
-
-    // Builds one or more point labels for a geometry
-    buildLabelsFromGeometry (size, geometry, options) {
-        let labels = [];
-
-        if (geometry.type === "Point") {
-            labels.push(new LabelPoint(geometry.coordinates, size, options));
-        }
-        else if (geometry.type === "MultiPoint") {
-            let points = geometry.coordinates;
-            for (let i = 0; i < points.length; ++i) {
-                let point = points[i];
-                labels.push(new LabelPoint(point, size, options));
-            }
-        }
-        else if (geometry.type === "LineString") {
-            // Point at each line vertex
-            let points = geometry.coordinates;
-            for (let i = 0; i < points.length; ++i) {
-                labels.push(new LabelPoint(points[i], size, options));
-            }
-        }
-        else if (geometry.type === "MultiLineString") {
-            // Point at each line vertex
-            let lines = geometry.coordinates;
-            for (let ln = 0; ln < lines.length; ln++) {
-                let points = lines[ln];
-                for (let i = 0; i < points.length; ++i) {
-                    labels.push(new LabelPoint(points[i], size, options));
-                }
-            }
-        }
-        else if (geometry.type === "Polygon") {
-            // Point at polygon centroid (of outer ring)
-            if (options.centroid) {
-                let centroid = Geo.centroid(geometry.coordinates[0]);
-                labels.push(new LabelPoint(centroid, size, options));
-            }
-            // Point at each polygon vertex (all rings)
-            else {
-                let rings = geometry.coordinates;
-                for (let ln = 0; ln < rings.length; ln++) {
-                    let points = rings[ln];
-                    for (let i = 0; i < points.length; ++i) {
-                        labels.push(new LabelPoint(points[i], size, options));
-                    }
-                }
-            }
-        }
-        else if (geometry.type === "MultiPolygon") {
-            let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, options));
-        }
-
-        return labels;
     }
 
 });

@@ -1,7 +1,7 @@
 import Label from './label';
-import Geo from '../../geo';
-import OBB from '../../utils/obb';
-import PointAnchor from '../points/point_anchor';
+import Geo from '../geo';
+import OBB from '../utils/obb';
+import PointAnchor from '../styles/points/point_anchor';
 
 export default class LabelPoint extends Label {
 
