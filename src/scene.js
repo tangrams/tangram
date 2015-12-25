@@ -1223,32 +1223,32 @@ export default class Scene {
         WorkerBroker.postMessage(this.workers, 'self.profileEnd', name);
     }
 
-    // Rebuild geometry a given # of times and print average, min, max timings
-    _timeRebuild (num = 1, options = {}) {
-        let times = [];
-        let cycle = () => {
-            let start = +new Date();
-            this.rebuild(options).then(() => {
-                times.push(+new Date() - start);
-
-                if (times.length < num) {
-                    cycle();
-                }
-                else {
-                    let avg = ~~(times.reduce((a, b) => a + b) / times.length);
-                    log.info(`Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
-                }
-            });
-        };
-        cycle();
-    }
-
     // Debug config and functions
     setupDebug () {
         let scene = this;
         this.debug = {
             profile: {
                 geometry_build: false
+            },
+
+            // Rebuild geometry a given # of times and print average, min, max timings
+            timeRebuild (num = 1, options = {}) {
+                let times = [];
+                let cycle = () => {
+                    let start = +new Date();
+                    scene.rebuild(options).then(() => {
+                        times.push(+new Date() - start);
+
+                        if (times.length < num) {
+                            cycle();
+                        }
+                        else {
+                            let avg = ~~(times.reduce((a, b) => a + b) / times.length);
+                            log.info(`Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
+                        }
+                    });
+                };
+                cycle();
             },
 
             // Return geometry counts of visible tiles, grouped by style name
