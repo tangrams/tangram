@@ -89,7 +89,7 @@ StyleParser.cacheObject = function (obj, transform = null) {
     }
 
     if (obj.value) {
-        return { value: obj.value }; // clone existing cache object
+        return { value: obj.value, zoom: obj.zoom }; // clone existing cache object
     }
 
     let c = { value: obj };
@@ -291,16 +291,16 @@ StyleParser.cacheColor = function(val, context = {}) {
             return val.static;
         }
         // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
-        else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
-            if (!val.zoom) {
-                val.zoom = {};
-                // Parse any string colors inside stops
+        else if (val.zoom) {
+            // Parse any string colors inside stops, the first time we encounter this property
+            if (!val.zoom_preprocessed) {
                 for (let i=0; i < val.value.length; i++) {
                     let v = val.value[i];
                     if (v && typeof v[1] === 'string') {
                         v[1] = StyleParser.colorForString(v[1]);
                     }
                 }
+                val.zoom_preprocessed = true;
             }
 
             // Calculate color for current zoom
