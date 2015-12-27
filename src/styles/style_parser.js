@@ -92,16 +92,19 @@ StyleParser.cacheObject = function (obj, transform = null) {
         return { value: obj.value }; // clone existing cache object
     }
 
+    let c = { value: obj };
+
     if (typeof transform === 'function') {
-        if (Array.isArray(obj) && Array.isArray(obj[0])) { // zoom stops
-            obj = obj.map(v => [v[0], transform(v[1])]);
+        if (Array.isArray(c.value) && Array.isArray(c.value[0])) { // zoom stops
+            c.value = c.value.map(v => [v[0], transform(v[1])]);
+            c.zoom = {}; // will hold values interpolated by zoom
         }
-        else if (typeof obj !== 'function') { // don't transform functions
-            obj = transform(obj); // single value
+        else if (typeof c.value !== 'function') { // don't transform functions
+            c.value = transform(c.value); // single value
         }
     }
 
-    return { value: obj };
+    return c;
 };
 
 // Convert old-style color macro into a function
@@ -219,15 +222,16 @@ StyleParser.cacheDistance = function(val, context) {
             return v;
         }
         // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
-        else {
+        else if (val.zoom) {
             // Calculate value for current zoom
-            val.zoom = val.zoom || {};
-
             // Do final unit conversion as late as possible, when interpolation values have been determined
             val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value,
                 v => StyleParser.convertUnits(v, context));
 
             return val.zoom[context.zoom];
+        }
+        else {
+            return StyleParser.convertUnits(val.value, context);
         }
     }
 };
