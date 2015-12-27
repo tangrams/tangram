@@ -197,8 +197,10 @@ Builders.buildPolylines = function (
     var trianglesOnJoin = trianglesForJoin[join] || 0;  // default 'miter'
 
     // Build variables
-    texcoord_normalize = texcoord_normalize || 1;
-    var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+    if (texcoord_index) {
+        texcoord_normalize = texcoord_normalize || 1;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+    }
 
     // Values that are constant for each line and are passed to helper functions
     var constants = {
@@ -376,8 +378,14 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 
 //  Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, v_pct, constants) {
-    addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-    addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    if (constants.texcoords) {
+        addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+    }
+    else {
+        addVertex(coord, normal, null, constants);
+        addVertex(coord, Vector.neg(normal), null, constants);
+    }
 }
 
 //  Tessalate a FAN geometry between points A       B
@@ -408,8 +416,10 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
         angle_delta *= -1;
     }
 
-    var uvCurr = Vector.set(uA);
-    var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
+    if (constants.texcoords) {
+        var uvCurr = Vector.set(uA);
+        var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
+    }
 
     //  Add the FIRST and CENTER vertex
     //  The triangles will be composed in a FAN style around it
@@ -428,7 +438,9 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
             normCurr = Vector.mult(normCurr, scale*scale);
         }
 
-        uvCurr = Vector.add(uvCurr,uv_delta);
+        if (constants.texcoords) {
+            uvCurr = Vector.add(uvCurr,uv_delta);
+        }
 
         addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
     }
@@ -466,9 +478,11 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nC = Vector.neg(T[1]),  // normal to center (-vP)
         nB = T[2];              // normal to point B (bT)
 
-    var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-        uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+    if (constants.texcoords) {
+        var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+            uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
+            uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+    }
 
     if (signed) {
         addVertex(coords[1], nA, uA, constants);
@@ -477,9 +491,12 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nA = Vector.neg(T[0]);
         nC = T[1];
         nB = Vector.neg(T[2]);
-        uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-        uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-        uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+
+        if (constants.texcoords) {
+            uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+            uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+            uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+        }
         addVertex(coords[1], nC, uC, constants);
         addVertex(coords[1], nA, uA, constants);
     }
@@ -504,20 +521,24 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     }
 
     // UVs
-    var uvA = [constants.min_u,constants.min_v],                        // Beginning angle UVs
-        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v],   // center point UVs
-        uvB = [constants.max_u,constants.min_v];                        // Ending angle UVs
-
-    if (!isBeginning) {
-        uvA = [constants.min_u,constants.max_v],                        // Begining angle UVs
-        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v],   // center point UVs
-        uvB = [constants.max_u,constants.max_v];
+    var uvA, uvB, uvC;
+    if (constants.texcoords) {
+        if (isBeginning) {
+            uvA = [constants.min_u,constants.min_v];                                        // Beginning angle UVs
+            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
+            uvB = [constants.max_u,constants.min_v];                                        // Ending angle UVs
+        }
+        else {
+            uvA = [constants.min_u,constants.max_v];                                        // Begining angle UVs
+            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v];   // Center point UVs
+            uvB = [constants.max_u,constants.max_v];                                        // Ending angle UVs
+        }
     }
 
-    addFan( coord,
-            Vector.neg(normal), [0, 0], normal,
-            uvA, uvC, uvB,
-            isBeginning, numCorners*2, constants);
+    addFan(coord,
+           Vector.neg(normal), [0, 0], normal,
+           uvA, uvC, uvB,
+           isBeginning, numCorners*2, constants);
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
