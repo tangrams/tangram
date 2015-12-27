@@ -165,6 +165,18 @@ Builders.buildExtrudedPolygons = function (
 };
 
 // Build tessellated triangles for a polyline
+var cornersForCap = {
+    butt: 0,
+    square: 2,
+    round: 3
+};
+
+var trianglesForJoin = {
+    miter: 0,
+    bevel: 1,
+    round: 3
+};
+
 Builders.buildPolylines = function (
     lines,
     width,
@@ -181,8 +193,8 @@ Builders.buildPolylines = function (
         join, cap
     }) {
 
-    var cornersOnCap = (cap === "square") ? 2 : ((cap === "round") ? 3 : 0);  // Butt is the implicit default
-    var trianglesOnJoin = (join === "bevel") ? 1 : ((join === "round") ? 3 : 0);  // Miter is the implicit default
+    var cornersOnCap = cornersForCap[cap] || 0;         // default 'butt'
+    var trianglesOnJoin = trianglesForJoin[join] || 0;  // default 'miter'
 
     // Build variables
     texcoord_normalize = texcoord_normalize || 1;
