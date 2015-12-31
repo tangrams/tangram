@@ -181,15 +181,13 @@ export default class Tile {
 
             // Get data for one or more layers from source
             let source_layers = Tile.getDataForSource(data, layer.data, layer_name);
-            if (source_layers.length === 0) {
-                continue;
-            }
 
             // Render features in layer
-            source_layers.forEach(source_layer => {
+            for (let s=0; s < source_layers.length; s++) {
+                let source_layer = source_layers[s];
                 let geom = source_layer.geom;
                 if (!geom) {
-                    return;
+                    continue;
                 }
 
                 for (let f = 0; f < geom.features.length; f++) {
@@ -233,7 +231,7 @@ export default class Tile {
 
                     tile.debug.features++;
                 }
-            });
+            }
         }
         tile.debug.rendering = +new Date() - tile.debug.rendering;
 
@@ -241,7 +239,8 @@ export default class Tile {
         let tile_styles = StyleManager.stylesForTile(tile.key);
         tile.mesh_data = {};
         let queue = [];
-        for (let style_name of tile_styles) {
+        for (let s=0; s < tile_styles.length; s++) {
+            let style_name = tile_styles[s];
             let style = styles[style_name];
             queue.push(style.endData(tile.key).then((style_data) => {
                 if (style_data) {

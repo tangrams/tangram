@@ -169,11 +169,13 @@ export class RuleTree extends Rule {
                     let draw_rules = rules.map(x => x && x.calculatedDraw);
                     let draw_keys = {};
 
-                    for (let rule of draw_rules) {
+                    for (let r=0; r < draw_rules.length; r++) {
+                        let rule = draw_rules[r];
                         if (!rule) {
                             continue;
                         }
-                        for (let group of rule) {
+                        for (let g=0; g < rule.length; g++) {
+                            let group = rule[g];
                             for (let key in group) {
                                 draw_keys[key] = true;
                             }
