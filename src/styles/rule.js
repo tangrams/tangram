@@ -9,14 +9,15 @@ export let ruleCache = {};
 
 function cacheKey (rules) {
     if (rules.length > 1) {
-        rules = rules.sort((a, b) => a.id - b.id);
-        var k = rules[0].id;
+        rules = rules.sort((a, b) => a - b);
+        var k = rules[0];
         for (var i=1; i < rules.length; i++) {
-            k += '/' + rules[i].id;
+            k += '/' + rules[i];
         }
+
         return k;
     }
-    return rules[0].id;
+    return rules[0];
 }
 
 // Merge matching layer rule trees into a final draw group
@@ -150,12 +151,12 @@ export class RuleTree extends Rule {
     }
 
     buildDrawGroups(context) {
-        let rules  = [];
+        let rules = [], rule_ids = [];
         //TODO, should this function take a RuleTree
-        matchFeature(context, [this], rules);
+        matchFeature(context, [this], rules, rule_ids);
 
         if (rules.length > 0) {
-            let cache_key = cacheKey(rules);
+            let cache_key = cacheKey(rule_ids);
 
             // Only evaluate each rule combination once (undefined means not yet evaluated,
             // null means evaluated with no draw object)
@@ -328,7 +329,7 @@ function doesMatch(filter, context) {
     return ((typeof filter === 'function' && filter(context)) || (filter == null));
 }
 
-export function matchFeature(context, rules, collectedRules) {
+export function matchFeature(context, rules, collectedRules, collectedRulesIds) {
     let matched = false;
     let childMatched = false;
 
@@ -343,6 +344,7 @@ export function matchFeature(context, rules, collectedRules) {
             if (doesMatch(current.filter, context)) {
                 matched = true;
                 collectedRules.push(current);
+                collectedRulesIds.push(current.id);
             }
 
         } else if (current instanceof RuleTree) {
@@ -352,11 +354,13 @@ export function matchFeature(context, rules, collectedRules) {
                 childMatched = matchFeature(
                     context,
                     current.rules,
-                    collectedRules
+                    collectedRules,
+                    collectedRulesIds
                 );
 
                 if (!childMatched) {
                     collectedRules.push(current);
+                    collectedRulesIds.push(current.id);
                 }
             }
         }
