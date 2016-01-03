@@ -9,7 +9,6 @@ export let ruleCache = {};
 
 function cacheKey (rules) {
     if (rules.length > 1) {
-        rules = rules.sort((a, b) => a - b);
         var k = rules[0];
         for (var i=1; i < rules.length; i++) {
             k += '/' + rules[i];
