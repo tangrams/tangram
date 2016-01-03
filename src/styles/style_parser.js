@@ -89,7 +89,7 @@ StyleParser.cacheObject = function (obj, transform = null) {
     }
 
     if (obj.value) {
-        return { value: obj.value, zoom: obj.zoom }; // clone existing cache object
+        return { value: obj.value, zoom: (obj.zoom ? {} : null) }; // clone existing cache object
     }
 
     let c = { value: obj };
