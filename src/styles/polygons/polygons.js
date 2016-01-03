@@ -58,12 +58,8 @@ Object.assign(Polygons, {
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
-        style.extrude = rule_style.extrude;
+        style.extrude = StyleParser.evalProp(rule_style.extrude, context);
         if (style.extrude) {
-            if (typeof style.extrude === 'function') {
-                style.extrude = style.extrude(context);
-            }
-
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
             }

@@ -90,12 +90,8 @@ Object.assign(Lines, {
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
-        style.extrude = rule_style.extrude;
+        style.extrude = StyleParser.evalProp(rule_style.extrude, context);
         if (style.extrude) {
-            if (typeof style.extrude === 'function') {
-                style.extrude = style.extrude(context);
-            }
-
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
             }

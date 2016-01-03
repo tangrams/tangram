@@ -66,10 +66,7 @@ Object.assign(Points, {
             return null;
         }
 
-        let sprite = style.sprite = rule_style.sprite;
-        if (typeof sprite === 'function') {
-            sprite = sprite(context);
-        }
+        let sprite = style.sprite = StyleParser.evalProp(rule_style.sprite, context);
         style.sprite_default = rule_style.sprite_default; // optional fallback if 'sprite' not found
 
         // if point has texture and sprites, require a valid sprite to draw
@@ -125,10 +122,7 @@ Object.assign(Points, {
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = rule_style.angle || 0;
-        if (typeof style.angle === 'function') {
-            style.angle = style.angle(context);
-        }
+        style.angle = StyleParser.evalProp(rule_style.angle, context) || 0;
 
         // factor by which point scales from current zoom level to next zoom level
         style.scale = rule_style.scale || 1;

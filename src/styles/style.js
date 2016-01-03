@@ -184,12 +184,7 @@ export var Style = {
             var selectable = false;
             style.interactive = rule_style.interactive;
             if (this.selection) {
-                if (typeof style.interactive === 'function') {
-                    selectable = style.interactive(context);
-                }
-                else {
-                    selectable = style.interactive;
-                }
+                selectable = StyleParser.evalProp(style.interactive, context);
             }
 
             // If feature is marked as selectable

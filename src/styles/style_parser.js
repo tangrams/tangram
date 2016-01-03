@@ -375,3 +375,11 @@ StyleParser.calculateOrder = function(order, context) {
 
     return order;
 };
+
+// Evaluate a function-based property, or pass-through static value
+StyleParser.evalProp = function(prop, context) {
+    if (typeof prop === 'function') {
+        return prop(context);
+    }
+    return prop;
+};
