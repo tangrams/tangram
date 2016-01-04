@@ -9,11 +9,6 @@ Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
 Geo.circumference_meters = Geo.half_circumference_meters * 2;
 Geo.min_zoom_meters_per_pixel = Geo.circumference_meters / Geo.tile_size; // min zoom draws world as 2 tiles wide
-Geo.meters_per_tile = [];
-
-for (var z=0; z <= Geo.max_zoom; z++) {
-    Geo.meters_per_tile[z] = Geo.circumference_meters / Math.pow(2, z);
-}
 
 let meters_per_pixel = [];
 Geo.metersPerPixel = function (z) {
@@ -21,18 +16,21 @@ Geo.metersPerPixel = function (z) {
     return meters_per_pixel[z];
 };
 
+let meters_per_tile = [];
 Geo.metersPerTile = function (z) {
-    return Geo.circumference_meters / Math.pow(2, z);
+    meters_per_tile[z] = meters_per_tile[z] || Geo.circumference_meters / Math.pow(2, z);
+    return meters_per_tile[z];
 };
 
 // Conversion functions based on an defined tile scale
-Geo.units_per_meter = [];
 Geo.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
 
-for (let z=0; z <= Geo.max_zoom; z++) {
-    Geo.units_per_meter[z] = Geo.tile_scale / (Geo.tile_size * Geo.meters_per_pixel[z]);
-}
+let units_per_meter = [];
+Geo.unitsPerMeter = function (z) {
+    units_per_meter[z] = units_per_meter[z] || Geo.tile_scale / (Geo.tile_size * Geo.metersPerPixel(z));
+    return units_per_meter[z];
+};
 
 // Convert tile location to mercator meters - multiply by pixels per tile, then by meters per pixel, adjust for map origin
 Geo.metersForTile = function (tile) {

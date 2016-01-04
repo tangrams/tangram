@@ -51,6 +51,9 @@ export default class Tile {
             this.units_per_pixel /= Math.pow(2, this.style_zoom - this.coords.z);
         }
 
+        this.meters_per_pixel = Geo.metersPerPixel(this.coords.z);
+        this.units_per_meter = Geo.unitsPerMeter(this.coords.z);
+
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.textures = []; // textures that the tile owns (labels, etc.)
     }
@@ -139,6 +142,8 @@ export default class Tile {
             min: this.min,
             max: this.max,
             units_per_pixel: this.units_per_pixel,
+            meters_per_pixel: this.meters_per_pixel,
+            units_per_meter: this.units_per_meter,
             style_zoom: this.style_zoom,
             generation: this.generation,
             debug: this.debug

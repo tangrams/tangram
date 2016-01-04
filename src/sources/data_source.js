@@ -70,13 +70,14 @@ export default class DataSource {
      Re-scale geometries within each source to internal tile units
     */
     static scaleData (source, {coords: {z}, min, max}) {
+        let units_per_meter = Geo.unitsPerMeter(z);
         for (var t in source.layers) {
             var num_features = source.layers[t].features.length;
             for (var f=0; f < num_features; f++) {
                 var feature = source.layers[t].features[f];
                 Geo.transformGeometry(feature.geometry, coord => {
-                    coord[0] = (coord[0] - min.x) * Geo.units_per_meter[z];
-                    coord[1] = (coord[1] - min.y) * Geo.units_per_meter[z] * -1; // flip coords positive
+                    coord[0] = (coord[0] - min.x) * units_per_meter;
+                    coord[1] = (coord[1] - min.y) * units_per_meter * -1; // flip coords positive
                 });
             }
         }

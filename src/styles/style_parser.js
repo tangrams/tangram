@@ -75,8 +75,8 @@ StyleParser.getFeatureParseContext = function (feature, tile) {
         tile,
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
-        meters_per_pixel: Geo.metersPerPixel(tile.coords.z),
-        units_per_meter: Geo.units_per_meter[tile.coords.z]
+        meters_per_pixel: tile.meters_per_pixel,
+        units_per_meter: tile.units_per_meter
     };
 };
 
