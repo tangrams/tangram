@@ -4,7 +4,7 @@ var Geo;
 export default Geo = {};
 
 // Projection constants
-Geo.max_zoom = 18;
+Geo.default_max_zoom = 18;
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
 Geo.circumference_meters = Geo.half_circumference_meters * 2;

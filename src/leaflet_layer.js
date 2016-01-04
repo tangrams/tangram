@@ -94,7 +94,7 @@ function extendLeaflet(options) {
 
                     this._updating_tangram = true;
                     var view = map.getCenter();
-                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.max_zoom);
+                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_max_zoom);
 
                     this.scene.setView(view);
                     this.scene.immediateRedraw();
@@ -256,7 +256,7 @@ function extendLeaflet(options) {
 
             updateView: function () {
                 var view = this._map.getCenter();
-                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.max_zoom);
+                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_max_zoom);
                 this.scene.setView(view);
             },
 
