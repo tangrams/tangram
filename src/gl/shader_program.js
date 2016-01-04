@@ -569,7 +569,7 @@ ShaderProgram.buildExtensionString = function (extensions) {
     extensions = extensions || [];
     let str = "";
     for (let ext of extensions) {
-        str += `#extension GL_${ext} : enable\n`;
+        str += `#ifdef GL_${ext}\n#extension GL_${ext} : enable\n#endif\n`;
     }
     return str;
 };
