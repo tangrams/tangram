@@ -110,6 +110,7 @@ class Rule {
         }
 
         try {
+            this.buildZooms();
             this.filter = match(this.filter);
         }
         catch(e) {
@@ -117,6 +118,33 @@ class Rule {
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
             msg += `failed with error ${e.message}, ${e.stack}`;
             log.warn(msg);
+        }
+    }
+
+    // Zooms often cull large swaths of the layer rule tree, so they get special treatment and are checked first
+    buildZooms() {
+        let zoom = this.filter && this.filter.$zoom;
+        let ztype = typeof zoom;
+        if (zoom != null && ztype !== 'function') { // don't accelerate function-based filters
+            this.zooms = {};
+
+            if (ztype === 'number') {
+                this.zooms[zoom] = true;
+            }
+            else if (Array.isArray(zoom)) {
+                for (let z=0; z < zoom.length; z++) {
+                    this.zooms[zoom[z]] = true;
+                }
+            }
+            else if (ztype === 'object' && (zoom.min != null || zoom.max != null)) {
+                let zmin = zoom.min || 0;
+                let zmax = zoom.max || 25; // TODO: replace constant for max possible zoom
+                for (let z=zmin; z < zmax; z++) {
+                    this.zooms[z] = true;
+                }
+            }
+
+            delete this.filter.$zoom; // don't process zoom through usual generic filter logic
         }
     }
 
@@ -324,8 +352,13 @@ export function parseRules(rules) {
 }
 
 
-function doesMatch(filter, context) {
-    return ((typeof filter === 'function' && filter(context)) || (filter == null));
+function doesMatch(rule, context) {
+    // zoom pre-filter: skip rest of filter if out of rule zoom range
+    if (rule.zooms != null && !rule.zooms[context.zoom]) {
+        return false;
+    }
+
+    return ((typeof rule.filter === 'function' && rule.filter(context)) || (rule.filter == null));
 }
 
 export function matchFeature(context, rules, collectedRules, collectedRulesIds) {
@@ -340,14 +373,14 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
 
         if (current instanceof RuleLeaf) {
 
-            if (doesMatch(current.filter, context)) {
+            if (doesMatch(current, context)) {
                 matched = true;
                 collectedRules.push(current);
                 collectedRulesIds.push(current.id);
             }
 
         } else if (current instanceof RuleTree) {
-            if (doesMatch(current.filter, context)) {
+            if (doesMatch(current, context)) {
                 matched = true;
 
                 childMatched = matchFeature(
