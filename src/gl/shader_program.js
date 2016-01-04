@@ -145,19 +145,27 @@ export default class ShaderProgram {
         // Build & inject extensions & defines
         // This is done *after* code injection so that we can add defines for which code points were injected
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
-        let header = `// Program: ${info}\n` +
-            ShaderProgram.buildExtensionString(extensions);
+        let header = `// Program: ${info}\n`;
+        let precision = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n';
 
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
-        this.computed_vertex_source = header + ShaderProgram.buildDefineString(defines) + this.computed_vertex_source;
+        this.computed_vertex_source =
+            header +
+            ShaderProgram.buildDefineString(defines) +
+            this.computed_vertex_source;
 
+        // Precision qualifier only valid in fragment shader
+        // NB: '#extension' statements added to fragment shader only, as IE11 throws error when they appear in
+        // vertex shader (even when guarded by #ifdef), and no WebGL extensions require '#extension' in vertex shaders
         defines['TANGRAM_VERTEX_SHADER'] = false;
         defines['TANGRAM_FRAGMENT_SHADER'] = true;
-        this.computed_fragment_source = header + ShaderProgram.buildDefineString(defines) + this.computed_fragment_source;
-
-        // Add precision qualifier
-        this.computed_fragment_source = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n' + this.computed_fragment_source;
+        this.computed_fragment_source =
+            ShaderProgram.buildExtensionString(extensions) +
+            header +
+            precision +
+            ShaderProgram.buildDefineString(defines) +
+            this.computed_fragment_source;
 
         // Compile & set uniforms to cached values
         try {
