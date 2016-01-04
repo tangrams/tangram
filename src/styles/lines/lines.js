@@ -110,7 +110,9 @@ Object.assign(Lines, {
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
-        style.outline = style.outline || {};
+        // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
+        style.outline = style.outline || { width: {}, next_width: {}, color: {}, preprocessed: true };
+
         if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
             // outline width in meters
             // NB: multiply by 2 because outline is applied on both sides of line
@@ -119,13 +121,14 @@ Object.assign(Lines, {
 
             if ((outline_width === 0 && outline_next_width === 0) || outline_width < 0 || outline_next_width < 0) {
                 // skip lines that don't interpolate between zero or greater width
-                style.outline.width = null;
-                style.outline.color = null;
+                style.outline.width.value = null;
+                style.outline.next_width.value = null;
+                style.outline.color.value = null;
             }
             else {
                 // Maintain consistent outline width around the line fill
-                style.outline.width = { value: outline_width + width };
-                style.outline.next_width = { value: outline_next_width + next_width };
+                style.outline.width.value = outline_width + width;
+                style.outline.next_width.value = outline_next_width + next_width;
 
                 style.outline.color = rule_style.outline.color;
                 style.outline.cap = rule_style.outline.cap || rule_style.cap;
@@ -147,13 +150,12 @@ Object.assign(Lines, {
 
                 // Outlines are always at half-layer intervals to avoid conflicting with inner lines
                 style.outline.order -= 0.5;
-
-                style.outline.preprocessed = true; // signal that we've already wrapped properties in cache objects
             }
         }
         else {
-            style.outline.width = null;
-            style.outline.color = null;
+            style.outline.width.value = null;
+            style.outline.next_width.value = null;
+            style.outline.color.value = null;
         }
 
         return style;
@@ -243,7 +245,7 @@ Object.assign(Lines, {
         );
 
         // Outline
-         if (style.outline && style.outline.color != null && style.outline.width != null) {
+         if (style.outline && style.outline.color.value != null && style.outline.width.value != null) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
                 outline_style.addFeature(context.feature, style.outline, context);
