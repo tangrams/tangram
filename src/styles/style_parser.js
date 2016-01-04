@@ -165,7 +165,7 @@ StyleParser.convertUnits = function(val, context) {
     // pre-parsed units
     if (val.val != null) {
         if (val.units === 'px') { // convert from pixels
-            return val.val * context.meters_per_pixel;
+            return val.val * Geo.metersPerPixel(context.zoom);
         }
         return val.val;
     }
@@ -178,7 +178,7 @@ StyleParser.convertUnits = function(val, context) {
         }
 
         if (units === 'px') { // convert from pixels
-            val *= context.meters_per_pixel;
+            val *= Geo.metersPerPixel(context.zoom);
         }
     }
     // multiple values or stops
