@@ -108,7 +108,9 @@ StyleManager.loadRemoteStyles = function (styles, base) {
                 // Mixin remote styles, within each remote file
                 // TODO: may not handle multiple levels of mixins, and will not handle nested remote files
                 for (var source_name in data) {
-                    let source_import = urls[url] && urls[url].find(s => s.source_name === source_name);
+                    let source_import = urls[url] && urls[url].filter(s => s.source_name === source_name);
+                    source_import = source_import && source_import[0];
+
                     if (source_import) {
                         // use imported name if different from name in source file
                         data[source_name].name = source_import.target_name;
