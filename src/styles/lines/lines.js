@@ -111,7 +111,7 @@ Object.assign(Lines, {
 
         // Construct an outline style
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
-        style.outline = style.outline || { width: {}, next_width: {}, color: {}, preprocessed: true };
+        style.outline = style.outline || { width: {}, next_width: {}, preprocessed: true };
 
         if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
             // outline width in meters
@@ -123,7 +123,7 @@ Object.assign(Lines, {
                 // skip lines that don't interpolate between zero or greater width
                 style.outline.width.value = null;
                 style.outline.next_width.value = null;
-                style.outline.color.value = null;
+                style.outline.color = null;
             }
             else {
                 // Maintain consistent outline width around the line fill
@@ -155,7 +155,7 @@ Object.assign(Lines, {
         else {
             style.outline.width.value = null;
             style.outline.next_width.value = null;
-            style.outline.color.value = null;
+            style.outline.color = null;
         }
 
         return style;
@@ -245,7 +245,7 @@ Object.assign(Lines, {
         );
 
         // Outline
-         if (style.outline && style.outline.color.value != null && style.outline.width.value != null) {
+         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
             var outline_style = StyleManager.styles[style.outline.style];
             if (outline_style) {
                 outline_style.addFeature(context.feature, style.outline, context);
