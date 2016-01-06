@@ -31,9 +31,7 @@ Tests are included to ensure that the code functions as expected. To run all of 
 ```shell
 npm test
 ```
-Every time this runs, an new browser instance is created. If you wish to
-have a single browser instance and run the test suite against that
-instance do the following,
+Every time this runs, a new browser instance is created. If you wish to have a single browser instance and run the test suite against that instance do the following,
 
 ```shell
 make karma-start
