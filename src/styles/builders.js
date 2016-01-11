@@ -190,11 +190,18 @@ Builders.buildPolylines = function (
         texcoord_normalize,
         scaling_index,
         scaling_normalize,
-        join, cap
+        join, cap,
+        miter_limit
     }) {
 
     var cornersOnCap = cornersForCap[cap] || 0;         // default 'butt'
     var trianglesOnJoin = trianglesForJoin[join] || 0;  // default 'miter'
+
+    // Configure miter limit
+    if (trianglesOnJoin === 0) {
+        miter_limit = miter_limit || 3; // default miter limit
+        var miter_len_sq = miter_limit * miter_limit;
+    }
 
     // Build variables
     if (texcoord_index) {
@@ -330,8 +337,13 @@ Builders.buildPolylines = function (
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
+                //  Miter limit: if miter join is too sharp, convert to bevel instead
+                if (trianglesOnJoin === 0 && Vector.lengthSq(normCurr) > miter_len_sq) {
+                    trianglesOnJoin = trianglesForJoin['bevel']; // switch to bevel
+                }
+
                 // If it's a JOIN
-                if(trianglesOnJoin !== 0 && isPrev && isNext) {
+                if (trianglesOnJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
                             i/lineSize, trianglesOnJoin,

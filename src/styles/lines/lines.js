@@ -107,6 +107,7 @@ Object.assign(Lines, {
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
+        style.miter_limit = rule_style.miter_limit;
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
@@ -133,6 +134,7 @@ Object.assign(Lines, {
                 style.outline.color = rule_style.outline.color;
                 style.outline.cap = rule_style.outline.cap || rule_style.cap;
                 style.outline.join = rule_style.outline.join || rule_style.join;
+                style.outline.miter_limit = rule_style.outline.miter_limit || rule_style.miter_limit;
                 style.outline.style = rule_style.outline.style || this.name;
 
                 // Explicitly defined outline order, or inherited from inner line
@@ -233,6 +235,7 @@ Object.assign(Lines, {
             {
                 cap: style.cap,
                 join: style.join,
+                miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
                 texcoord_index: this.vertex_layout.index.a_texcoord,
