@@ -78,6 +78,7 @@ export default class Scene {
         this.last_render_count = 0;
         this.render_count_changed = false;
         this.frame = 0;
+        this.queue_screenshot = null;
         this.resetTime();
 
         this.zoom = null;
@@ -599,6 +600,7 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
+        this.completeScreenshot(); // completes screenshot capture if requested
         this.updateViewComplete(); // fires event when rendered tile set or style changes
 
         // Post-render loop hook
@@ -1212,6 +1214,43 @@ export default class Scene {
 
     resetViewComplete () {
         this.last_complete_generation = null;
+    }
+
+    // Take a screenshot
+    // Asynchronous because we have to wait for next render to capture buffer
+    // Returns a promise
+    screenshot () {
+        if (this.queue_screenshot != null) {
+            return this.queue_screenshot.promise; // only capture one screenshot at a time
+        }
+
+        this.requestRedraw();
+
+        // Will resolve once rendering is complete and render buffer is captured
+        this.queue_screenshot = {};
+        this.queue_screenshot.promise = new Promise((resolve, reject) => {
+            this.queue_screenshot.resolve = resolve;
+            this.queue_screenshot.reject = reject;
+        });
+        return this.queue_screenshot.promise;
+    }
+
+    // Called after rendering, captures render buffer and resolves promise with image data
+    completeScreenshot () {
+        if (this.queue_screenshot != null) {
+            // Adapted from: https://gist.github.com/unconed/4370822
+            var image = this.canvas.toDataURL('image/png').slice(22); // slice strips host/mimetype/etc.
+            var data = atob(image); // convert base64 to binary without UTF-8 mangling
+            var buffer = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; ++i) {
+                buffer[i] = data.charCodeAt(i);
+            }
+            var blob = new Blob([buffer], { type: 'image/png' });
+
+            // Resolve with both blob, and raw buffer
+            this.queue_screenshot.resolve({ blob, buffer });
+            this.queue_screenshot = null;
+        }
     }
 
 
