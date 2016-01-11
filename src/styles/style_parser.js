@@ -14,6 +14,7 @@ export var StyleParser = {};
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
+                var scene = context.scene;
                 var $zoom = context.zoom;
                 var $layer = context.layer;
                 var $geometry = context.geometry;
@@ -71,10 +72,11 @@ StyleParser.macros = {
 };
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
-StyleParser.getFeatureParseContext = function (feature, tile) {
+StyleParser.getFeatureParseContext = function (feature, tile, config) {
     return {
         feature,
         tile,
+        scene: config.scene,
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,

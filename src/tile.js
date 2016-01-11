@@ -194,7 +194,8 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, rules, styles) {
+    static buildGeometry (tile, config, rules, styles) {
+        let layers = config.layers;
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -233,7 +234,7 @@ export default class Tile {
                         continue; // skip features w/o geometry (valid GeoJSON)
                     }
 
-                    let context = StyleParser.getFeatureParseContext(feature, tile);
+                    let context = StyleParser.getFeatureParseContext(feature, tile, config);
                     context.winding = tile.default_winding;
                     context.layer = source_layer.layer; // add data source layer name
 
