@@ -123,6 +123,10 @@ export default TileManager = {
         return tiles;
     },
 
+    isLoadingVisibleTiles() {
+        return Object.keys(this.tiles).some(k => this.tiles[k].visible && this.tiles[k].loading);
+    },
+
     // Queue a tile for load
     queueCoordinate(coords) {
         this.queued_coords[this.queued_coords.length] = coords;

@@ -74,6 +74,9 @@ export default class Scene {
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
+        this.render_count = 0;
+        this.last_render_count = 0;
+        this.render_count_changed = false;
         this.frame = 0;
         this.resetTime();
 
@@ -105,6 +108,7 @@ export default class Scene {
 
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
+        this.last_complete_generation = 0; // last generation id with a complete view
         this.setupDebug();
 
         this.logLevel = options.logLevel || 'warn';
@@ -595,6 +599,7 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
+        this.updateViewComplete(); // fires event when rendered tile set or style changes
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -649,7 +654,10 @@ export default class Scene {
             gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
 
+        this.render_count_changed = false;
         if (this.render_count !== this.last_render_count) {
+            this.render_count_changed = true;
+
             this.getFeatureSelectionMapSize().then(size => {
                 log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
             }, () => {}); // no op when promise rejects (only print last response)
@@ -1191,6 +1199,19 @@ export default class Scene {
     // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
     resetTime() {
         this.start_time = +new Date();
+    }
+
+    // Fires event when rendered tile set or style changes
+    updateViewComplete () {
+        if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
+            !this.tile_manager.isLoadingVisibleTiles()) {
+            this.last_complete_generation = this.generation;
+            this.trigger('view_complete');
+        }
+    }
+
+    resetViewComplete () {
+        this.last_complete_generation = null;
     }
 
 
