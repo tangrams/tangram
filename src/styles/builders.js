@@ -120,7 +120,7 @@ Builders.buildExtrudedPolygons = function (
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
-                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], { tolerance: tile_edge_tolerance })) {
+                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], tile_edge_tolerance)) {
                     continue; // don't extrude tile edges
                 }
 
@@ -257,7 +257,7 @@ Builders.buildPolylines = function (
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], { tolerance: tile_edge_tolerance })) {
+                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], tile_edge_tolerance)) {
                         needToClose = false;
                     }
                 }
@@ -285,7 +285,7 @@ Builders.buildPolylines = function (
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (Builders.isOnTileEdge(coordCurr, coordNext, { tolerance: tile_edge_tolerance })) {
+                    if (Builders.isOnTileEdge(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -666,11 +666,8 @@ Builders.triangulatePolygon = function (contours)
 };
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-Builders.isOnTileEdge = function (pa, pb, options) {
-    options = options || {};
-
-    var tolerance_function = options.tolerance_function || Builders.valuesWithinTolerance;
-    var tolerance = options.tolerance || 1;
+Builders.isOnTileEdge = function (pa, pb, tolerance) {
+    var tolerance_function = Builders.valuesWithinTolerance;
     var tile_min = Builders.tile_bounds[0];
     var tile_max = Builders.tile_bounds[1];
     var edge = null;
