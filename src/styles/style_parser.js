@@ -197,10 +197,11 @@ StyleParser.convertUnits = function(val, context) {
 
 // Pre-parse units from string values
 StyleParser.cacheUnits = function (val) {
-    if (typeof val === 'string' && val.trim().slice(-2) === 'px') {
-        return { units: 'px', val: parseFloat(val) };
+    var obj = { val: parseFloat(val) };
+    if (obj.val !== 0 && typeof val === 'string' && val.trim().slice(-2) === 'px') {
+        obj.units = 'px';
     }
-    return { val: parseFloat(val) };
+    return obj;
 };
 
 // Takes a distance cache object and returns a distance value for this zoom
