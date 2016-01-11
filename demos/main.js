@@ -184,19 +184,6 @@ Enjoy!
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
     map.on('move', updateURL);
 
-    // Take a screenshot and save file
-    function screenshot() {
-        // Adapted from: https://gist.github.com/unconed/4370822
-        var image = scene.canvas.toDataURL('image/png').slice(22); // slice strips host/mimetype/etc.
-        var data = atob(image); // convert base64 to binary without UTF-8 mangling
-        var buf = new Uint8Array(data.length);
-        for (var i = 0; i < data.length; ++i) {
-            buf[i] = data.charCodeAt(i);
-        }
-        var blob = new Blob([buf], { type: 'image/png' });
-        saveAs(blob, 'tangram-' + (+new Date()) + '.png'); // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
-    }
-
     // Render/GL stats: http://spite.github.io/rstats/
     // Activate with 'rstats' anywhere in options list in URL
     if (url_ui && url_ui.indexOf('rstats') >= 0) {
@@ -419,10 +406,12 @@ Enjoy!
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
 
-        // Screenshot
+        // Take a screenshot and save to file
         gui.screenshot = function () {
-            gui.queue_screenshot = true;
-            scene.requestRedraw();
+            return scene.screenshot().then(function(screenshot) {
+                // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
+                saveAs(screenshot.blob, 'tangram-' + (+new Date()) + '.png');
+            });
         };
         gui.add(gui, 'screenshot');
 
@@ -552,12 +541,6 @@ Enjoy!
             rS('glbuffers').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
             rS('features').set(scene.tile_manager.getDebugSum('features'));
             rS().update();
-        }
-
-        // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
-        if (gui.queue_screenshot == true) {
-            gui.queue_screenshot = false;
-            screenshot();
         }
     }
 
