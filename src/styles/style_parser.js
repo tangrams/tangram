@@ -396,3 +396,40 @@ StyleParser.evalProp = function(prop, context) {
     }
     return prop;
 };
+
+// Substitutes scene properties (those defined in the `config.scene` object) for any style values
+// of the form `scene.`, for example `color: scene.park_color` would be replaced with the value (if any)
+// defined for the `park_color` property in `config.scene.park_color`.
+StyleParser.applySceneProperties = function (obj, scene) {
+    // Convert string
+    if (typeof obj === 'string') {
+        var key = (obj.slice(0, 6) === 'scene.') && obj.slice(6);
+        var val;
+        if (key) {
+            var dot = key.split('.');
+            if (dot.length > 0) { // nested props, e.g. 'scene.roads.color'
+                var src = scene;
+                for (var k=0; k < dot.length; k++) {
+                    val = src[dot[k]];
+                    if (val) {
+                        src = val;
+                    }
+                }
+            }
+            else {
+                val = scene[key]; // top-level prop, e.g. 'scene.color'
+            }
+        }
+
+        if (val) {
+            obj = val; // replace property value if scene property found
+        }
+    }
+    // Loop through object properties
+    else if (typeof obj === 'object') {
+        for (let p in obj) {
+            obj[p] = StyleParser.applySceneProperties(obj[p], scene);
+        }
+    }
+    return obj;
+};
