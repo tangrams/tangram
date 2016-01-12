@@ -106,6 +106,15 @@ Vector.angle = function ([x, y]) {
     return Math.atan2(y,x);
 };
 
+// Get angle between two vectors
+Vector.angleBetween = function(A, B){
+    var delta = Vector.dot(A, B);
+    if (delta < -1) {
+        delta = -1;
+    }
+    return Math.acos(delta);
+};
+
 // Compare two points
 Vector.isEqual = function (v1, v2) {
     var len = v1.length;
