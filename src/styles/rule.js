@@ -83,6 +83,7 @@ class Rule {
         // Denormalize layer name & properties to draw groups
         if (this.draw) {
             for (let group in this.draw) {
+                this.draw[group] = this.draw[group] || {};
                 this.draw[group].layer_name = this.full_name;
 
                 if (this.properties !== undefined) {
