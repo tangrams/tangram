@@ -464,44 +464,20 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     }
 }
 
-//  addBevel    A       B
-//               \ . . /
-//                \ p /
-//                 \./
-//   
+//  addBevel    A ----- B
+//             / \ , . / \
+//           /   /\   /\  \
+//              /  \ /   \ \
+//                / C \
 function addBevel (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
     // Add previous vertices to buffer and clear the buffers and index pairs
     // because we are going to add more triangles.
     indexPairs(constants);
 
-    // Initial parameters
-    var normCurr = Vector.set(nA);
-
-    // Calculate the angle between A and B 
-    var angle_delta = Vector.angleBetween(nA, nB);
-
-    // Joins that turn left or right behave diferently...
-    // triangles need to be rotated in diferent directions
-    if (!signed) {
-        angle_delta *= -1;
-    }
-
-    if (constants.texcoords) {
-        var uvCurr = Vector.set(uA);
-        var uv_delta = Vector.sub(uB,uA);
-    }
-
     //  Add the FIRST and CENTER vertex
-    //  The triangles will be composed in a FAN style around it
     addVertex(coord, nC, uC, constants);
-
-    //  Add first corner
-    addVertex(coord, normCurr, uA, constants);
-    normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
-    if (constants.texcoords) {
-        uvCurr = Vector.add(uvCurr,uv_delta);
-    }
-    addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+    addVertex(coord, nA, uA, constants);
+    addVertex(coord, nB, uB, constants);
 
     if (signed) {
         addIndex(2, constants);
