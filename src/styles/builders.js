@@ -585,13 +585,10 @@ function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
 //  Add special joins (not miter) types that require FAN tessellations
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
-
-    var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
-
-    var nA = T[0],              // normal to point A (aT)
-        nC = Vector.neg(T[1]),  // normal to center (-vP)
-        nB = T[2];              // normal to point B (bT)
+    var nA = normals[0],              // normal to point A (aT)
+        nC = Vector.neg(normals[1]),  // normal to center (-vP)
+        nB = normals[2];              // normal to point B (bT)
 
     if (constants.texcoords) {
         var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
@@ -603,9 +600,9 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         addVertex(coords[1], nA, uA, constants);
         addVertex(coords[1], nC, uC, constants);
     } else {
-        nA = Vector.neg(T[0]);
-        nC = T[1];
-        nB = Vector.neg(T[2]);
+        nA = Vector.neg(normals[0]);
+        nC = normals[1];
+        nB = Vector.neg(normals[2]);
 
         if (constants.texcoords) {
             uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
