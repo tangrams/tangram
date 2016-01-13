@@ -670,21 +670,24 @@ Builders.isOnTileEdge = function (pa, pb, tolerance) {
     var tolerance_function = Builders.valuesWithinTolerance;
     var tile_min = Builders.tile_bounds[0];
     var tile_max = Builders.tile_bounds[1];
-    var edge = null;
 
+    // Left
     if (tolerance_function(pa[0], tile_min.x, tolerance) && tolerance_function(pb[0], tile_min.x, tolerance)) {
-        edge = 'left';
+        return true;
     }
+    // Right
     else if (tolerance_function(pa[0], tile_max.x, tolerance) && tolerance_function(pb[0], tile_max.x, tolerance)) {
-        edge = 'right';
+        return true;
     }
+    // Top
     else if (tolerance_function(pa[1], tile_min.y, tolerance) && tolerance_function(pb[1], tile_min.y, tolerance)) {
-        edge = 'top';
+        return true;
     }
+    // Bottom
     else if (tolerance_function(pa[1], tile_max.y, tolerance) && tolerance_function(pb[1], tile_max.y, tolerance)) {
-        edge = 'bottom';
+        return true;
     }
-    return edge;
+    return false;
 };
 
 Builders.valuesWithinTolerance = function (a, b, tolerance) {
