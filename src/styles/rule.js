@@ -83,6 +83,7 @@ class Rule {
         // Denormalize layer name & properties to draw groups
         if (this.draw) {
             for (let group in this.draw) {
+                this.draw[group] = this.draw[group] || {};
                 this.draw[group].layer_name = this.full_name;
 
                 if (this.properties !== undefined) {
@@ -188,47 +189,41 @@ export class RuleTree extends Rule {
             // Only evaluate each rule combination once (undefined means not yet evaluated,
             // null means evaluated with no draw object)
             if (ruleCache[cache_key] === undefined) {
-                // Visible?
-                if (rules.some(x => x.visible === false)) {
-                    ruleCache[cache_key] = null;
+                // Find all the unique visible draw blocks for this rule tree
+                let draw_rules = rules.map(x => x && x.visible !== false && x.calculatedDraw);
+                let draw_keys = {};
+
+                for (let r=0; r < draw_rules.length; r++) {
+                    let rule = draw_rules[r];
+                    if (!rule) {
+                        continue;
+                    }
+                    for (let g=0; g < rule.length; g++) {
+                        let group = rule[g];
+                        for (let key in group) {
+                            draw_keys[key] = true;
+                        }
+                    }
                 }
-                else {
-                    // Find all the unique draw blocks for this rule tree
-                    let draw_rules = rules.map(x => x && x.calculatedDraw);
-                    let draw_keys = {};
 
-                    for (let r=0; r < draw_rules.length; r++) {
-                        let rule = draw_rules[r];
-                        if (!rule) {
-                            continue;
-                        }
-                        for (let g=0; g < rule.length; g++) {
-                            let group = rule[g];
-                            for (let key in group) {
-                                draw_keys[key] = true;
-                            }
-                        }
+                // Calculate each draw group
+                for (let draw_key in draw_keys) {
+                    ruleCache[cache_key] = ruleCache[cache_key] || {};
+                    ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key);
+
+                    // Only save the ones that weren't null
+                    if (!ruleCache[cache_key][draw_key]) {
+                        delete ruleCache[cache_key][draw_key];
                     }
-
-                    // Calculate each draw group
-                    for (let draw_key in draw_keys) {
-                        ruleCache[cache_key] = ruleCache[cache_key] || {};
-                        ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key);
-
-                        // Only save the ones that weren't null
-                        if (!ruleCache[cache_key][draw_key]) {
-                            delete ruleCache[cache_key][draw_key];
-                        }
-                        else {
-                            ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
-                            ruleCache[cache_key][draw_key].layers = rules.map(x => x && x.full_name);
-                        }
+                    else {
+                        ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                        ruleCache[cache_key][draw_key].layers = rules.map(x => x && x.full_name);
                     }
+                }
 
-                    // No rules evaluated
-                    if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
-                        ruleCache[cache_key] = null;
-                    }
+                // No rules evaluated
+                if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
+                    ruleCache[cache_key] = null;
                 }
             }
             return ruleCache[cache_key];
