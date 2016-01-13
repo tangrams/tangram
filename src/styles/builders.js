@@ -15,7 +15,9 @@ Builders.tile_bounds = [
     { x: Geo.tile_scale, y: -Geo.tile_scale } // TODO: correct for flipped y-axis?
 ];
 
-Builders.defaultUVs = [0, 0, 1, 1]; // single allocation for default values
+const default_uvs = [0, 0, 1, 1];
+const zero_vec2 = [0, 0];
+const up_vec3 = [0, 0, 1];
 
 // Re-scale UVs from [0, 1] range to a smaller area within the image
 Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
@@ -38,7 +40,7 @@ Builders.buildPolygons = function (
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
     var num_polygons = polygons.length;
@@ -100,7 +102,7 @@ Builders.buildExtrudedPolygons = function (
     // Fit UVs to wall quad
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -138,7 +140,7 @@ Builders.buildExtrudedPolygons = function (
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
                 var normal = Vector.cross(
-                    [0, 0, 1],
+                    up_vec3,
                     Vector.normalize([contour[w+1][0] - contour[w][0], contour[w+1][1] - contour[w][1], 0])
                 );
 
@@ -199,7 +201,7 @@ Builders.buildPolylines = function (
     // Build variables
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
     // Values that are constant for each line and are passed to helper functions
@@ -500,11 +502,11 @@ function addBevel (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
 }
 
 
-//  Tessalate a SQUARE geometry between A and B     + ........+ 
-//  and interpolating their UVs                     : \  2  / : 
+//  Tessalate a SQUARE geometry between A and B     + ........+
+//  and interpolating their UVs                     : \  2  / :
 //                                                  : 1\   /3 :
-//                                                  A -- C -- B                                         
-function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
+//                                                  A -- C -- B
+function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
 
     // Add previous vertices to buffer and clear the buffers and index pairs
     // because we are going to add more triangles.
@@ -526,7 +528,7 @@ function addSquare (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
     //  The triangles will be add in a FAN style around it
     //
     //                       A -- C
-    addVertex(coord, nC, uC, constants);
+    addVertex(coord, zero_vec2, uC, constants);
 
     //  Add first corner     +
     //                       :
@@ -639,29 +641,29 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     // UVs
     var uvA, uvB, uvC;
     if (constants.texcoords) {
+        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
+
         if (isBeginning) {
             uvA = [constants.min_u,constants.min_v];                                        // Beginning angle UVs
-            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
             uvB = [constants.max_u,constants.min_v];                                        // Ending angle UVs
         }
         else {
             uvA = [constants.min_u,constants.max_v];                                        // Begining angle UVs
-            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v];   // Center point UVs
             uvB = [constants.max_u,constants.max_v];                                        // Ending angle UVs
         }
     }
 
     if ( numCorners === 2 ){
         // If caps are set as squares
-        addSquare( coord, 
-                   Vector.neg(normal), [0, 0], normal, 
-                   uvA, uvC, uvB, 
-                   isBeginning, 
+        addSquare( coord,
+                   Vector.neg(normal), normal,
+                   uvA, uvC, uvB,
+                   isBeginning,
                    constants);
     } else {
         // If caps are set as round ( numCorners===3 )
         addFan( coord,
-                Vector.neg(normal), [0, 0], normal,
+                Vector.neg(normal), zero_vec2, normal,
                 uvA, uvC, uvB,
                 isBeginning, numCorners*2, constants);
     }
@@ -742,7 +744,7 @@ Builders.buildQuadsForPoints = function (points, vertex_data, vertex_template,
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
 
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
