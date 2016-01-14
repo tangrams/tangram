@@ -141,6 +141,10 @@ export class NetworkSource extends DataSource {
     constructor (source) {
         super(source);
         this.response_type = ""; // use to set explicit XHR type
+
+        if (this.url == null) {
+            throw Error('Network data source must provide a `url` property');
+        }
     }
 
     _load (dest) {

@@ -59,7 +59,14 @@ Object.assign(self, {
         config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
         self.sources.tiles = {}; // clear previous sources
         for (let name in config.sources) {
-            let source = DataSource.create(Object.assign({}, config.sources[name], {name}));
+            let source;
+            try {
+                source = DataSource.create(Object.assign({}, config.sources[name], {name}));
+            }
+            catch(e) {
+                continue;
+            }
+
             if (!source) {
                 continue;
             }

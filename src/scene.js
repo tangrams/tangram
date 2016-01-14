@@ -965,12 +965,18 @@ export default class Scene {
     loadDataSources() {
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
-            this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
 
-            if (!this.sources[name]) {
+            try {
+                this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+                if (!this.sources[name]) {
+                    throw {};
+                }
+            }
+            catch(e) {
                 delete this.sources[name];
-                log.warn(`Scene: could not create data source`, source);
-                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+                let message = `Could not create data source: ${e.message}`;
+                log.warn(`Scene: ${message}`, source);
+                this.trigger('warning', { type: 'sources', source, message });
             }
         }
     }
