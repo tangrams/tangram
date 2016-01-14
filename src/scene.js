@@ -1238,17 +1238,19 @@ export default class Scene {
     // Called after rendering, captures render buffer and resolves promise with image data
     completeScreenshot () {
         if (this.queue_screenshot != null) {
+            // Get data URL, convert to blob
+            // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
             // Adapted from: https://gist.github.com/unconed/4370822
-            var image = this.canvas.toDataURL('image/png').slice(22); // slice strips host/mimetype/etc.
-            var data = atob(image); // convert base64 to binary without UTF-8 mangling
+            var url = this.canvas.toDataURL('image/png');
+            var data = atob(url.slice(22));
             var buffer = new Uint8Array(data.length);
             for (var i = 0; i < data.length; ++i) {
                 buffer[i] = data.charCodeAt(i);
             }
             var blob = new Blob([buffer], { type: 'image/png' });
 
-            // Resolve with both blob, and raw buffer
-            this.queue_screenshot.resolve({ blob });
+            // Resolve with screenshot data
+            this.queue_screenshot.resolve({ url, blob });
             this.queue_screenshot = null;
         }
     }
