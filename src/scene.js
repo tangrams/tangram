@@ -74,7 +74,11 @@ export default class Scene {
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
+        this.render_count = 0;
+        this.last_render_count = 0;
+        this.render_count_changed = false;
         this.frame = 0;
+        this.queue_screenshot = null;
         this.resetTime();
 
         this.zoom = null;
@@ -105,6 +109,7 @@ export default class Scene {
 
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
+        this.last_complete_generation = 0; // last generation id with a complete view
         this.setupDebug();
 
         this.logLevel = options.logLevel || 'warn';
@@ -595,6 +600,8 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
+        this.completeScreenshot(); // completes screenshot capture if requested
+        this.updateViewComplete(); // fires event when rendered tile set or style changes
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -649,7 +656,10 @@ export default class Scene {
             gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
 
+        this.render_count_changed = false;
         if (this.render_count !== this.last_render_count) {
+            this.render_count_changed = true;
+
             this.getFeatureSelectionMapSize().then(size => {
                 log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
             }, () => {}); // no op when promise rejects (only print last response)
@@ -1197,6 +1207,58 @@ export default class Scene {
     // Reset internal clock, mostly useful for consistent experience when changing styles/debugging
     resetTime() {
         this.start_time = +new Date();
+    }
+
+    // Fires event when rendered tile set or style changes
+    updateViewComplete () {
+        if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
+            !this.tile_manager.isLoadingVisibleTiles()) {
+            this.last_complete_generation = this.generation;
+            this.trigger('view_complete');
+        }
+    }
+
+    resetViewComplete () {
+        this.last_complete_generation = null;
+    }
+
+    // Take a screenshot
+    // Asynchronous because we have to wait for next render to capture buffer
+    // Returns a promise
+    screenshot () {
+        if (this.queue_screenshot != null) {
+            return this.queue_screenshot.promise; // only capture one screenshot at a time
+        }
+
+        this.requestRedraw();
+
+        // Will resolve once rendering is complete and render buffer is captured
+        this.queue_screenshot = {};
+        this.queue_screenshot.promise = new Promise((resolve, reject) => {
+            this.queue_screenshot.resolve = resolve;
+            this.queue_screenshot.reject = reject;
+        });
+        return this.queue_screenshot.promise;
+    }
+
+    // Called after rendering, captures render buffer and resolves promise with image data
+    completeScreenshot () {
+        if (this.queue_screenshot != null) {
+            // Get data URL, convert to blob
+            // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
+            // Adapted from: https://gist.github.com/unconed/4370822
+            var url = this.canvas.toDataURL('image/png');
+            var data = atob(url.slice(22));
+            var buffer = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; ++i) {
+                buffer[i] = data.charCodeAt(i);
+            }
+            var blob = new Blob([buffer], { type: 'image/png' });
+
+            // Resolve with screenshot data
+            this.queue_screenshot.resolve({ url, blob });
+            this.queue_screenshot = null;
+        }
     }
 
 
