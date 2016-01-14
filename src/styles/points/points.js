@@ -9,7 +9,8 @@ import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
-import PointAnchor from './point_anchor';
+import Collision from '../../labels/collision';
+import LabelPoint from '../../labels/label_point';
 
 import log from 'loglevel';
 
@@ -53,21 +54,35 @@ Object.assign(Points, {
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
         }
+
+        this.queues = {};
     },
 
-    _parseFeature (feature, rule_style, context) {
-        var style = this.feature_style;
-        let tile = context.tile.key;
+    reset () {
+        this.queues = {};
+    },
 
-        style.color = this.parseColor(rule_style.color, context);
+    // Override to queue features instead of processing immediately
+    addFeature (feature, draw, context) {
+        let tile = context.tile;
+
+        // Called here because otherwise it will be delayed until the feature queue is parsed,
+        // and we want the preprocessing done before we evaluate text style below
+        draw = this.preprocess(draw);
+        if (!draw) {
+            return;
+        }
+
+        let style = {};
+        style.color = this.parseColor(draw.color, context);
 
         // require color or texture
         if (!style.color && !this.texture) {
             return null;
         }
 
-        let sprite = style.sprite = StyleParser.evalProp(rule_style.sprite, context);
-        style.sprite_default = rule_style.sprite_default; // optional fallback if 'sprite' not found
+        let sprite = style.sprite = StyleParser.evalProp(draw.sprite, context);
+        style.sprite_default = draw.sprite_default; // optional fallback if 'sprite' not found
 
         // if point has texture and sprites, require a valid sprite to draw
         if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
@@ -89,65 +104,205 @@ Object.assign(Points, {
                 }
             }
         }
+        style.sprite = sprite;
 
         // Sets texcoord scale if needed (e.g. for sprite sub-area)
         let sprite_info;
         if (this.texture && sprite) {
             sprite_info = Texture.getSpriteInfo(this.texture, sprite);
-            this.texcoord_scale = sprite_info.texcoords;
+            style.texcoords = sprite_info.texcoords;
         } else {
-            this.texcoord_scale = null;
+            style.texcoords = null;
         }
 
         // points can be placed off the ground
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
-        style.size = rule_style.size;
+        style.size = draw.size;
         if (!style.size) {
             if (sprite_info) {
-                style.size = { value: sprite_info.size };
+                style.size = sprite_info.size;
             }
             else {
-                style.size = { value: [16, 16] };
+                style.size = [16, 16];
             }
         }
+        else {
+            style.size = StyleParser.cacheProperty(style.size, context);
+        }
 
-        // point style only supports sizes in pixel units, so unit conversion flag is off
-        style.size = StyleParser.cacheProperty(style.size, context);
-
-        // scale size to 16-bit signed int, with a max allowed width + height of 128 pixels
+        // size will be scaled to 16-bit signed int, so max allowed width + height of 256 pixels
         style.size = [
             Math.min((style.size[0] || style.size), 256),
             Math.min((style.size[1] || style.size), 256)
         ];
 
-        style.angle = StyleParser.evalProp(rule_style.angle, context) || 0;
+        style.angle = StyleParser.evalProp(draw.angle, context) || 0;
 
-        // factor by which point scales from current zoom level to next zoom level
-        style.scale = rule_style.scale || 1;
+        // polygons rendering as points will render at the polygon's centroid by default,
+        // but can be set to render at each individual polygon point instead
+        style.centroid = (draw.centroid != null) ? draw.centroid : true;
 
-        // to store bbox by tiles
-        style.tile = tile;
+        this.computeLayout(style, feature, draw, context, tile);
 
-        // polygons rendering as points will render each individual polygon point by default, but
-        // rendering a single point at the polygon's centroid can be enabled
-        style.centroid = rule_style.centroid;
+        // Queue the feature for processing
+        if (!this.tile_data[tile.key]) {
+            this.startData(tile.key);
+        }
 
-        // Offset applied to point in screen space
-        style.offset = (Array.isArray(rule_style.offset) && rule_style.offset.map(parseFloat)) || [0, 0];
+        if (!this.queues[tile.key]) {
+            this.queues[tile.key] = [];
+        }
 
-        // anchor
-        style.offset = PointAnchor.computeOffset(style.offset, style.size, rule_style.anchor);
+        this.queues[tile.key].push({
+            feature, draw, context, style
+        });
 
-        return style;
+        // Register with collision manager
+        Collision.addStyle(this.name, tile.key);
+    },
+
+    // Override
+    endData (tile) {
+        let queue = this.queues[tile];
+        this.queues[tile] = [];
+
+        // For each feature, create one or more point labels
+        let boxes = [];
+        queue.forEach(q => {
+            let style = q.style;
+            let feature = q.feature;
+            let geometry = feature.geometry;
+
+            let feature_labels = this.buildLabelsFromGeometry(style.size, geometry, style);
+            for (let i = 0; i < feature_labels.length; i++) {
+                let label = feature_labels[i];
+                boxes.push({
+                    feature,
+                    draw: q.draw,
+                    context: q.context,
+                    style,
+                    layout: style,
+                    label
+                });
+            }
+        });
+
+        // Submit point labels for collision, then build geometry for remaining ones
+        return Collision.collide(boxes, this.name, tile).then(boxes => {
+            boxes.forEach(q => {
+                this.feature_style = q.style;
+                this.feature_style.label = q.label;
+
+                Style.addFeature.call(this, q.feature, q.draw, q.context);
+            });
+
+            return Style.endData.call(this, tile);
+        });
     },
 
     _preprocess (draw) {
         draw.color = StyleParser.colorCacheObject(draw.color);
         draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
         draw.size = StyleParser.cacheObject(draw.size, parseFloat);
+
+        // Offset (2d array)
+        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
+        // Buffer (1d value or or 2d array)
+        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+
         return draw;
+    },
+
+    // Compute label layout-related properties
+    computeLayout (target, feature, draw, context, tile) {
+        let layout = target || {};
+        layout.id = feature;
+        layout.units_per_pixel = tile.units_per_pixel || 1;
+
+        // collision flag
+        layout.collide = (draw.collide === false) ? false : true;
+
+        // label anchors (point labels only)
+        // label position will be adjusted in the given direction, relative to its original point
+        // one of: left, right, top, bottom, top-left, top-right, bottom-left, bottom-right
+        layout.anchor = draw.anchor;
+
+        // label offset and buffer in pixel (applied in screen space)
+        layout.offset = StyleParser.cacheProperty(draw.offset, context) || StyleParser.zeroPair;
+        layout.buffer = StyleParser.cacheProperty(draw.buffer, context) || StyleParser.zeroPair;
+
+        // label priority (lower is higher)
+        let priority = draw.priority;
+        if (priority != null) {
+            if (typeof priority === 'function') {
+                priority = priority(context);
+            }
+        }
+        else {
+            priority = -1 >>> 0; // default to max priority value if none set
+        }
+        layout.priority = priority;
+
+        return layout;
+    },
+
+    // Builds one or more point labels for a geometry
+    buildLabelsFromGeometry (size, geometry, options) {
+        let labels = [];
+
+        if (geometry.type === "Point") {
+            labels.push(new LabelPoint(geometry.coordinates, size, options));
+        }
+        else if (geometry.type === "MultiPoint") {
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                let point = points[i];
+                labels.push(new LabelPoint(point, size, options));
+            }
+        }
+        else if (geometry.type === "LineString") {
+            // Point at each line vertex
+            let points = geometry.coordinates;
+            for (let i = 0; i < points.length; ++i) {
+                labels.push(new LabelPoint(points[i], size, options));
+            }
+        }
+        else if (geometry.type === "MultiLineString") {
+            // Point at each line vertex
+            let lines = geometry.coordinates;
+            for (let ln = 0; ln < lines.length; ln++) {
+                let points = lines[ln];
+                for (let i = 0; i < points.length; ++i) {
+                    labels.push(new LabelPoint(points[i], size, options));
+                }
+            }
+        }
+        else if (geometry.type === "Polygon") {
+            // Point at polygon centroid (of outer ring)
+            if (options.centroid) {
+                let centroid = Geo.centroid(geometry.coordinates[0]);
+                labels.push(new LabelPoint(centroid, size, options));
+            }
+            // Point at each polygon vertex (all rings)
+            else {
+                let rings = geometry.coordinates;
+                for (let ln = 0; ln < rings.length; ln++) {
+                    let points = rings[ln];
+                    for (let i = 0; i < points.length; ++i) {
+                        labels.push(new LabelPoint(points[i], size, options));
+                    }
+                }
+            }
+        }
+        else if (geometry.type === "MultiPolygon") {
+            let centroid = Geo.multiCentroid(geometry.coordinates);
+            labels.push(new LabelPoint(centroid, size, options));
+        }
+
+        return labels;
     },
 
     /**
@@ -183,7 +338,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad (points, size, angle, vertex_data, vertex_template, offset) {
+    buildQuad (points, size, angle, offset, texcoord_scale, vertex_data, vertex_template) {
         Builders.buildQuadsForPoints(
             points,
             vertex_data,
@@ -199,41 +354,38 @@ Object.assign(Points, {
                 quad_scale: Utils.scaleInt16(1, 256),
                 offset,
                 angle: Utils.scaleInt16(angle, 360),
-                texcoord_scale: this.texcoord_scale,
+                texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535
             }
         );
     },
 
+    // Build quad for point sprite
+    build (style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        let label = style.label;
+
+        this.buildQuad(
+            [label.position],               // position
+            style.size,                     // size in pixels
+            style.angle,                    // angle in degrees
+            label.options.offset,           // offset from center in pixels
+            style.texcoords,                // texture UVs
+            vertex_data, vertex_template    // VBO and data for current vertex
+        );
+    },
+
+    // Override to pass-through to generic point builder
+    buildLines (lines, style, vertex_data) {
+        this.build(style, vertex_data);
+    },
+
     buildPoints (points, style, vertex_data) {
-        if (!style.size) {
-            return;
-        }
-
-        this.buildQuad(points, style.size, style.angle, vertex_data, this.makeVertexTemplate(style), style.offset);
+        this.build(style, vertex_data);
     },
 
-    buildPolygons(polygons, style, vertex_data) {
-        // Render polygons as individual points, or centroid
-        if (!style.centroid) {
-            for (let poly=0; poly < polygons.length; poly++) {
-                let polygon = polygons[poly];
-                for (let r=0; r < polygon.length; r++) {
-                    this.buildPoints(polygon[r], style, vertex_data);
-                }
-            }
-        }
-        else {
-            let centroid = Geo.multiCentroid(polygons);
-            this.buildPoints([centroid], style, vertex_data);
-        }
-    },
-
-    buildLines(lines, style, vertex_data) {
-        // Render lines as individual points
-        for (let ln=0; ln < lines.length; ln++) {
-            this.buildPoints(lines[ln], style, vertex_data);
-        }
+    buildPolygons (points, style, vertex_data) {
+        this.build(style, vertex_data);
     }
 
 });

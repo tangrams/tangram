@@ -1,33 +1,40 @@
 import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
-import Utils from '../../utils/utils';
-import OBB from '../../utils/obb';
+import Utils from '../utils/utils';
+import OBB from '../utils/obb';
 
 import log from 'loglevel';
 
 export default class Label {
 
-    constructor (text, size, options) {
-        Object.assign(this, {
-            text,
-            size,
-            options,
-            position: null,
-            aabb: null,
-        });
+    constructor (size, options = {}) {
+        this.size = size;
+        this.options = options;
+        this.position = null;
+        this.aabb = null;
+        this.obb = null;
     }
 
     // check for overlaps with other labels in the tile
-    occluded (aabbs) {
+    occluded (bboxes) {
         let intersect = false;
+        let aabbs = bboxes.aabb;
+        let obbs = bboxes.obb;
 
-        // Broadphase
+        // Broad phase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                log.trace(`${this.text} broad phase collide`, this, this.aabb, aabbs[j]);
+                log.trace('collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
+
+                // Skip narrow phase collision if no rotation
+                if (this.obb.angle === 0 && obbs[j].angle === 0) {
+                    log.trace('collision: skip narrow phase collide because neither is rotated', this.options.id, this, this.obb, obbs[j]);
+                    intersect = true;
+                    return true;
+                }
 
                 // Narrow phase
-                if (OBB.intersect(this.aabb.obb, aabbs[j].obb)) {
-                    log.trace(`${this.text} narrow phase collide`, this, this.aabb.obb, aabbs[j].obb);
+                if (OBB.intersect(this.obb, obbs[j])) {
+                    log.trace('collision: narrow phase collide', this.options.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
@@ -37,8 +44,9 @@ export default class Label {
     }
 
     // Add this label's bounding box to the provided set
-    add (aabbs) {
-        aabbs.push(this.aabb);
+    add (bboxes) {
+        bboxes.aabb.push(this.aabb);
+        bboxes.obb.push(this.obb);
     }
 
     // checks whether the label is within the tile boundaries
@@ -55,7 +63,7 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard (aabbs) {
+    discard (bboxes) {
         // Should the label be culled if it can't fit inside the tile bounds?
         if (this.options.cull_from_tile) {
             let in_tile = this.inTileBounds();
@@ -72,6 +80,8 @@ export default class Label {
         }
 
         // If the label hasn't been discarded yet, check to see if it's occluded by other labels
-        return this.occluded(aabbs);
+        return this.occluded(bboxes);
     }
 }
+
+Label.epsilon = 0.9999; // tolerance around collision boxes, prevent perfectly adjacent objects from colliding

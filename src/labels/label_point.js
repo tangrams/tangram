@@ -1,39 +1,36 @@
 import Label from './label';
-import Geo from '../../geo';
-import OBB from '../../utils/obb';
-import PointAnchor from '../points/point_anchor';
+import Geo from '../geo';
+import OBB from '../utils/obb';
+import PointAnchor from '../styles/points/point_anchor';
 
 export default class LabelPoint extends Label {
 
-    constructor (text, position, size, options) {
-        super(text, size, options);
+    constructor (position, size, options) {
+        super(size, options);
         this.position = [position[0], position[1]];
         this.update();
     }
 
     update() {
         this.options.offset = this.computeOffset();
-        this.aabb = this.computeAABB();
+        this.updateBBoxes();
     }
 
     computeOffset () {
-        return PointAnchor.computeOffset(this.options.offset, this.size.collision_size, this.options.anchor);
+        return PointAnchor.computeOffset(this.options.offset, this.size, this.options.anchor);
     }
 
-    computeAABB () {
-        let width = (this.size.collision_size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel;
-        let height = (this.size.collision_size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel;
+    updateBBoxes () {
+        let width = (this.size[0] + this.options.buffer[0] * 2) * this.options.units_per_pixel * Label.epsilon;
+        let height = (this.size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel * Label.epsilon;
 
         let p = [
             this.position[0] + (this.options.offset[0] * this.options.units_per_pixel),
             this.position[1] - (this.options.offset[1] * this.options.units_per_pixel)
         ];
 
-        let obb = new OBB(p[0], p[1], 0, width, height);
-        let aabb = obb.getExtent();
-        aabb.obb = obb;
-
-        return aabb;
+        this.obb = new OBB(p[0], p[1], 0, width, height);
+        this.aabb = this.obb.getExtent();
     }
 
     // Try to move the label into the tile bounds
@@ -62,7 +59,7 @@ export default class LabelPoint extends Label {
         }
 
         if (updated) {
-            this.aabb = this.computeAABB();
+            this.updateBBoxes();
         }
 
         return this.inTileBounds();

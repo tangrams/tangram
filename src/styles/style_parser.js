@@ -34,6 +34,8 @@ StyleParser.wrapFunction = function (func) {
 
 // Style parsing
 
+StyleParser.zeroPair = Object.freeze([0, 0]); // single allocation for zero values that won't be modified
+
 // Style defaults
 StyleParser.defaults = {
     color: [1, 1, 1, 1],

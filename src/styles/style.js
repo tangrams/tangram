@@ -6,7 +6,6 @@ import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
 import Material from '../material';
 import Light from '../light';
-import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import log from 'loglevel';
@@ -206,7 +205,7 @@ export var Style = {
     },
 
     _parseFeature (feature, rule_style, context) {
-        throw new MethodNotImplemented('_parseFeature');
+        return this.feature_style;
     },
 
     preprocess (rule_style) {
