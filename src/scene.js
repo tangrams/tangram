@@ -1002,7 +1002,7 @@ export default class Scene {
     //
     setDataSource (name, config) {
         if (!name || !config || !config.type || (!config.url && !config.data)) {
-            log.error("No name provide or not valid config:", name, config);
+            log.error("No name provided or not a valid config:", name, config);
             return;
         }
 
@@ -1012,7 +1012,6 @@ export default class Scene {
         if (source.data && typeof source.data === 'object') {
             source.url = Utils.createObjectURL(new Blob([JSON.stringify(source.data)]));
             delete source.data;
-            // TODO: add path normalization logic
         }
 
         if (load) {
