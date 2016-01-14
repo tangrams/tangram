@@ -409,7 +409,7 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
 
-    // Calculate the angle between A and B 
+    // Calculate the angle between A and B
     var angle_delta = Vector.angleBetween(nA, nB);
 
     // Calculate the angle for each triangle
@@ -513,10 +513,12 @@ function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
     indexPairs(constants);
 
     // Initial parameters
-    var uvCurr = Vector.set(uA);
-    var uv_delta = Vector.div(Vector.sub(uB,uA), 4);
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
+    if (constants.texcoords) {
+        var uvCurr = Vector.set(uA);
+        var uv_delta = Vector.div(Vector.sub(uB,uA), 4);
+    }
 
     // First and last cap have different directions
     var angle_step = 0.78539816339; // PI/4 = 45 degrees
@@ -540,25 +542,27 @@ function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
     for (var t = 0; t < 4; t++) {
 
         // 0     1     2
-        //  + ........+ 
-        //  : \     / : 
+        //  + ........+
+        //  : \     / :
         //  :  \   /  :
-        //  A -- C -- B  3 
+        //  A -- C -- B  3
 
         normPrev = Vector.normalize(normCurr);
         normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
-        
+
         if (t === 0 || t === 2) {
             // In order to make this "fan" look like a square the mitters need to be streach
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
             normCurr = Vector.mult(normCurr, scale*scale);
         }
 
-        uvCurr = Vector.add(uvCurr,uv_delta);
+        if (constants.texcoords) {
+            uvCurr = Vector.add(uvCurr,uv_delta);
+        }
 
         if (t !== 1) {
             //  Add computed corner (except the corner 1)
-            addVertex(coord, normCurr, uvCurr, constants);      
+            addVertex(coord, normCurr, uvCurr, constants);
         }
     }
 
