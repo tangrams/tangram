@@ -1248,7 +1248,7 @@ export default class Scene {
             var blob = new Blob([buffer], { type: 'image/png' });
 
             // Resolve with both blob, and raw buffer
-            this.queue_screenshot.resolve({ blob, buffer });
+            this.queue_screenshot.resolve({ blob });
             this.queue_screenshot = null;
         }
     }
