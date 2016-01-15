@@ -729,7 +729,7 @@ export default class Scene {
 
                 // TODO: don't set uniforms when they haven't changed
                 program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
+                program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
                 program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
                 program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
                 program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
@@ -1005,7 +1005,7 @@ export default class Scene {
             this.rebuild();
         }
     }
-    
+
     loadDataSources() {
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
