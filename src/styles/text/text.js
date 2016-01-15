@@ -275,7 +275,7 @@ Object.assign(TextStyle, {
     // Called on main thread from worker, to create atlas of labels for a tile
     rasterizeTexts (tile, texts) {
         let canvas = new CanvasText();
-        let texture_size = canvas.setTextureTextPositions(texts);
+        let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // update canvas size & rasterize all the text strings we need

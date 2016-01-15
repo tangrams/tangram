@@ -360,6 +360,11 @@ Texture.syncTexturesToWorker = function (names) {
         });
 };
 
+// Report max texture size for a GL context
+Texture.getMaxTextureSize = function (gl) {
+    return gl.getParameter(gl.MAX_TEXTURE_SIZE);
+};
+
 // Global set of textures, by name
 Texture.textures = {};
 Texture.texture_configs = {};
