@@ -228,7 +228,7 @@ export default class CanvasText {
                     }
                 }
                 else { // start new column if taller than texture
-                    cx += widest; // TODO: check columns against max texture size
+                    cx += widest;
                     cy = 0;
                     text_info.position = [cx, cy];
                 }

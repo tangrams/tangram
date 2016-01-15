@@ -278,9 +278,17 @@ Object.assign(TextStyle, {
         let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
         log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
-        // update canvas size & rasterize all the text strings we need
-        canvas.resize(...texture_size);
-        canvas.rasterize(tile, texts, texture_size);
+        // fits in max texture size?
+        if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
+            // update canvas size & rasterize all the text strings we need
+            canvas.resize(...texture_size);
+            canvas.rasterize(tile, texts, texture_size);
+        }
+        else {
+            log.error([
+                `Label atlas for tile ${tile} is ${texture_size[0]}x${texture_size[1]}px, `,
+                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
+        }
 
         // create a texture
         let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
