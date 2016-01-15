@@ -4,6 +4,7 @@ import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
+import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
@@ -255,6 +256,7 @@ export var Style = {
 
     setGL (gl) {
         this.gl = gl;
+        this.max_texture_size = Texture.getMaxTextureSize(this.gl);
     },
 
     makeMesh (vertex_data, { uniforms } = {}) {
