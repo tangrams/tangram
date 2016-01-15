@@ -474,7 +474,7 @@ export default class Scene {
 
         this.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
-            if (tile.visible) {
+            if (tile.visible || tile.proxy) {
                 return false;
             }
 
@@ -576,8 +576,6 @@ export default class Scene {
     }
 
     update() {
-        this.tile_manager.loadQueuedCoordinates();
-
         // Render on demand
         var will_render = !(
             this.dirty === false ||

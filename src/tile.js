@@ -40,6 +40,7 @@ export default class Tile {
         this.coords = coords;
         this.coords = Tile.overZoomedCoordinate(this.coords, this.source.max_zoom);
         this.coord_key = Tile.coordKey(this.coords);
+        this.parent = this.coords.z && Tile.coordinateAtZoom(this.coords, this.coords.z - 1);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
@@ -140,6 +141,7 @@ export default class Tile {
             coord_key: this.coord_key,
             source: this.source.name,
             coords: this.coords,
+            parent: this.parent,
             min: this.min,
             max: this.max,
             units_per_pixel: this.units_per_pixel,

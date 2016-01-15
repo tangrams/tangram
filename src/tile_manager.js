@@ -81,13 +81,36 @@ export default TileManager = {
             this.visible_coords[Tile.coordKey(coords)] = coords;
         }
 
-        // Remove tiles too far outside of view
-        this.scene.pruneTileCoordinatesForView(); // TODO: return list to prune?
-
         this.forEachTile(tile => {
             this.updateVisibility(tile);
             tile.update(this.scene);
         });
+
+        this.loadQueuedCoordinates();
+        this.updateProxyTiles();
+        this.scene.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+    },
+
+    updateProxyTiles () {
+        let proxyable = [];
+        this.forEachTile(tile => {
+            if (tile.visible && tile.loading && tile.parent) {
+                proxyable.push(Tile.coordKey(tile.parent));
+            }
+        });
+
+        if (proxyable.length > 0) {
+            this.forEachTile(tile => {
+                if (proxyable.indexOf(tile.coord_key) > -1) {
+                    tile.proxy = true;
+                    tile.visible = true;
+                    tile.update(this.scene);
+                }
+                else {
+                    tile.proxy = false;
+                }
+            });
+        }
     },
 
     updateVisibility(tile) {
@@ -217,8 +240,7 @@ export default TileManager = {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            this.updateVisibility(tile);
-            tile.update(this.scene);
+            this.updateTilesForView();
             tile.buildMeshes(this.scene.styles);
             this.scene.requestRedraw();
         }
