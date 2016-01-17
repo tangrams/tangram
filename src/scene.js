@@ -85,6 +85,7 @@ export default class Scene {
         this.center = null;
 
         this.zooming = false;
+        this.zoom_direction = 0;
         this.preserve_tiles_within_zoom = 1;
         this.panning = false;
         this.container = options.container;
@@ -375,7 +376,8 @@ export default class Scene {
             zoom = tile_zoom;
         }
 
-        if (tile_zoom !== this.tileZoom(this.last_zoom)) {
+        let last_tile_zoom = this.tileZoom(this.last_zoom);
+        if (tile_zoom !== last_tile_zoom) {
             // Remove tiles outside current zoom that are still loading
             this.tile_manager.removeTiles(tile => {
                 if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
@@ -383,6 +385,8 @@ export default class Scene {
                     return true;
                 }
             });
+
+            this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
         }
 
         this.last_zoom = this.zoom;

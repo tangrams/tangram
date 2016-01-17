@@ -94,8 +94,10 @@ export default TileManager = {
     updateProxyTiles () {
         let proxyable = [];
         this.forEachTile(tile => {
-            if (tile.visible && tile.loading && tile.parent) {
-                proxyable.push(Tile.coordKey(tile.parent));
+            if (this.scene.zoom_direction === 1) {
+                if (tile.visible && tile.loading && tile.parent) {
+                    proxyable.push(Tile.coordKey(tile.parent));
+                }
             }
         });
 
