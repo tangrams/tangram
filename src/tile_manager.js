@@ -99,6 +99,11 @@ export default TileManager = {
                     proxyable.push(Tile.coordKey(tile.parent));
                 }
             }
+            else if (this.scene.zoom_direction === -1) {
+                if (tile.visible && tile.loading && tile.children) {
+                    proxyable.push(...tile.children.map(Tile.coordKey));
+                }
+            }
         });
 
         if (proxyable.length > 0) {

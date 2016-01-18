@@ -41,6 +41,7 @@ export default class Tile {
         this.coords = Tile.overZoomedCoordinate(this.coords, this.source.max_zoom);
         this.coord_key = Tile.coordKey(this.coords);
         this.parent = this.coords.z && Tile.coordinateAtZoom(this.coords, this.coords.z - 1);
+        this.children = Tile.childrenForCoordinate(this.coords);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
@@ -98,6 +99,16 @@ export default class Tile {
             return Tile.coordinateAtZoom({x, y, z}, max_zoom);
         }
         return {x, y, z};
+    }
+
+    static childrenForCoordinate({x, y, z}) {
+        z++;
+        x *= 2;
+        y *= 2;
+        return [
+            {x, y,      z}, {x: x+1, y,      z},
+            {x, y: y+1, z}, {x: x+1, y: y+1, z}
+        ];
     }
 
     // Sort a set of tile instances (which already have a distance from center tile computed)
