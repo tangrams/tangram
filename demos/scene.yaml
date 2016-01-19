@@ -156,10 +156,9 @@ styles:
 
 
 sources:
-    # When commented, demo main.js will set source based on URL - uncomment for testing
-    # osm:
-    #     type: TopoJSON
-    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
+    mapzen:
+        type: TopoJSON
+        url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
     #     # Data filtering demo with 'scripts' and 'transform' properties:
     #     # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
     #     # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
@@ -205,7 +204,7 @@ sources:
 layers:
 
     earth:
-        data: { source: osm }
+        data: { source: mapzen }
         draw:
             polygons:
                 style: flat
@@ -213,7 +212,7 @@ layers:
                 color: '#f0ebeb'
 
     landuse:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             # show smaller landuse areas at higher zooms
             any:
@@ -245,7 +244,7 @@ layers:
                     color: '#D9CFC3'
 
     water:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             any:
                 # show smaller water areas at higher zooms
@@ -262,7 +261,7 @@ layers:
                 color: '#9dc3de'
 
     roads:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             not: { kind: [rail] }
         draw:
@@ -363,7 +362,7 @@ layers:
                         width: 2px
 
     buildings:
-        data: { source: osm }
+        data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
 
         draw:
@@ -392,7 +391,7 @@ layers:
                     color: '#bddec5'
 
     road_labels:
-        data: { source: osm, layer: roads }
+        data: { source: mapzen, layer: roads }
         filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
@@ -442,7 +441,7 @@ layers:
                 visible: false
 
     poi_icons:
-        data: { source: osm, layer: pois }
+        data: { source: mapzen, layer: pois }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             points:
@@ -489,7 +488,7 @@ layers:
                 draw: { icons: { sprite: bookstore } }
 
     places:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             name: true
             not: { kind: [county, state, island] }
@@ -550,7 +549,7 @@ layers:
             visible: false
 
     point_labels:
-        data: { source: osm, layer: [pois, landuse] }
+        data: { source: mapzen, layer: [pois, landuse] }
         filter:
             name: true
 
@@ -596,7 +595,7 @@ layers:
                         fill: black
 
     # building_labels:
-    #     data: { source: osm, layer: buildings }
+    #     data: { source: mapzen, layer: buildings }
     #     filter:
     #         name: true
     #         any:
