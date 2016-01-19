@@ -86,7 +86,9 @@ export default SceneLoader = {
 
                     // Texture by URL, expand relative to scene file
                     if (typeof tex === 'string' && !config.textures[tex]) {
-                        style.texture = Utils.addBaseURL(tex, path);
+                        let texture_name = '__' + style_name;
+                        config.textures[texture_name] = { url: tex };
+                        style.texture = texture_name; // point style to location of texture
                     }
                     // Texture by object, move it to the global scene texture set and give it a default name
                     else if (typeof tex === 'object') {
@@ -99,10 +101,13 @@ export default SceneLoader = {
                 // If style has texture uniforms, expand texture URLs relative to scene file
                 if (style.shaders && style.shaders.uniforms) {
                     for (let {type, value, key, uniforms} of GLSL.parseUniforms(style.shaders.uniforms)) {
-                        if (type === 'sampler2D' && !config.textures[value]) {
-                            uniforms[key] = Utils.addBaseURL(value, path);
+                        if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
+                            let texture_name = '__' + style_name + '_uniform_' + key;
+                            config.textures[texture_name] = { url: value };
+                            uniforms[key] = texture_name; // point style to location of texture
                         }
                     }
+
                 }
 
                 // If style has material, expand texture URLs relative to scene file
@@ -115,11 +120,13 @@ export default SceneLoader = {
                             // Texture by URL, expand relative to scene file
                             if (typeof tex === 'string' &&
                                 !config.textures[tex]) {
-                                style.material[prop].texture = Utils.addBaseURL(tex, path);
+                                let texture_name = '__' + style_name + '_material_' + prop;
+                                config.textures[texture_name] = { url: tex };
+                                style.material[prop].texture = texture_name; // point style to location of texture
                             }
                             // Texture by object, move it to the global scene texture set and give it a default name
                             else if (typeof tex === 'object') {
-                                let texture_name = '__' + style_name;
+                                let texture_name = '__' + style_name + '_material_' + prop;
                                 config.textures[texture_name] = tex;
                                 style.material[prop].texture = texture_name; // point style to location of texture
                             }
@@ -132,7 +139,9 @@ export default SceneLoader = {
         // Add path to textures
         if (config.textures) {
             for (let texture of Utils.values(config.textures)) {
-                texture.url = Utils.addBaseURL(texture.url, path);
+                if (texture.url) {
+                    texture.url = Utils.addBaseURL(texture.url, path);
+                }
             }
         }
 
