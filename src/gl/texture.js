@@ -27,6 +27,7 @@ export default class Texture {
 
         this.name = name;
         this.filtering = options.filtering;
+        this.pixel_density = options.pixel_density || 1;
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
@@ -40,6 +41,7 @@ export default class Texture {
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
         this.sizes = {};        // sprite sizes (pixel size)
+        this.css_sizes = {};    // sprite sizes, adjusted for native texture pixel density
         log.trace(`creating Texture ${this.name}`);
     }
 
@@ -244,7 +246,9 @@ export default class Texture {
                 );
 
                 // Pixel size of sprite
+                // Divide by native texture density to get correct CSS pixels
                 this.sizes[s] = [sprite[2], sprite[3]];
+                this.css_sizes[s] = [sprite[2] / this.pixel_density, sprite[3] / this.pixel_density];
             }
         }
     }
@@ -268,7 +272,11 @@ Texture.destroy = function (gl) {
 // Get sprite pixel size and UVs
 Texture.getSpriteInfo = function (texname, sprite) {
     let texture = Texture.textures[texname];
-    return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
+    return texture && {
+        size: texture.sizes[sprite],
+        css_size: texture.css_sizes[sprite],
+        texcoords: texture.texcoords[sprite]
+    };
 };
 
 // Create a set of textures keyed in an object
@@ -332,9 +340,11 @@ Texture.getInfo = function (name) {
                 name: tex.name,
                 width: tex.width,
                 height: tex.height,
+                pixel_density: tex.pixel_density,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
+                css_sizes: tex.css_sizes,
                 filtering: tex.filtering,
                 power_of_2: tex.power_of_2,
                 valid: tex.valid

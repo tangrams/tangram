@@ -81,48 +81,21 @@ Object.assign(Points, {
             return null;
         }
 
-        let sprite = style.sprite = StyleParser.evalProp(draw.sprite, context);
-        style.sprite_default = draw.sprite_default; // optional fallback if 'sprite' not found
-
-        // if point has texture and sprites, require a valid sprite to draw
-        if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
-            if (!sprite && !style.sprite_default) {
-                return;
-            }
-            else if (!Texture.textures[this.texture].sprites[sprite]) {
-                // If sprite not found, check for default sprite
-                if (style.sprite_default) {
-                    sprite = style.sprite_default;
-                    if (!Texture.textures[this.texture].sprites[sprite]) {
-                        log.warn(`Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
-                        return;
-                    }
-                }
-                else {
-                    log.warn(`Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
-                    return;
-                }
-            }
-        }
-        style.sprite = sprite;
-
-        // Sets texcoord scale if needed (e.g. for sprite sub-area)
-        let sprite_info;
-        if (this.texture && sprite) {
-            sprite_info = Texture.getSpriteInfo(this.texture, sprite);
-            style.texcoords = sprite_info.texcoords;
-        } else {
-            style.texcoords = null;
-        }
-
         // points can be placed off the ground
         style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
+
+        // sprite
+        let sprite_info = this.parseSprite(draw, context);
+        if (sprite_info === false) {
+            return; // sprite requested but could not find, don't render
+        }
+        style.texcoords = sprite_info && sprite_info.texcoords;
 
         // point size defined explicitly, or defaults to sprite size, or generic fallback
         style.size = draw.size;
         if (!style.size) {
             if (sprite_info) {
-                style.size = sprite_info.size;
+                style.size = sprite_info.css_size;
             }
             else {
                 style.size = [16, 16];
@@ -214,6 +187,38 @@ Object.assign(Points, {
         draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         return draw;
+    },
+
+    // Determine sprite (if any) to render, and returns texture coords
+    // Returns sprite info if available, or false on unrecoverable error (null is a valid return value when no sprite specified)
+    parseSprite (draw, context) {
+        let sprite = StyleParser.evalProp(draw.sprite, context);
+
+        // if point has texture and sprites, require a valid sprite to draw
+        if (this.texture && Texture.textures[this.texture] && Texture.textures[this.texture].sprites) {
+            if (!sprite && !draw.sprite_default) {
+                return false;
+            }
+            else if (!Texture.textures[this.texture].sprites[sprite]) {
+                // If sprite not found, check for default sprite
+                if (draw.sprite_default) {
+                    sprite = draw.sprite_default;
+                    if (!Texture.textures[this.texture].sprites[sprite]) {
+                        log.warn(`Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
+                        return false;
+                    }
+                }
+                else {
+                    log.warn(`Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    return false;
+                }
+            }
+        }
+
+        // Gets sprite size and texcoord scale if needed (e.g. for sprite sub-area)
+        if (this.texture && sprite) {
+            return Texture.getSpriteInfo(this.texture, sprite);
+        }
     },
 
     // Compute label layout-related properties
