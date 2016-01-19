@@ -27,7 +27,7 @@ export default class Texture {
 
         this.name = name;
         this.filtering = options.filtering;
-        this.pixel_density = options.pixel_density || 1;
+        this.density = options.density || 1;
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
@@ -248,7 +248,7 @@ export default class Texture {
                 // Pixel size of sprite
                 // Divide by native texture density to get correct CSS pixels
                 this.sizes[s] = [sprite[2], sprite[3]];
-                this.css_sizes[s] = [sprite[2] / this.pixel_density, sprite[3] / this.pixel_density];
+                this.css_sizes[s] = [sprite[2] / this.density, sprite[3] / this.density];
             }
         }
     }
@@ -340,7 +340,7 @@ Texture.getInfo = function (name) {
                 name: tex.name,
                 width: tex.width,
                 height: tex.height,
-                pixel_density: tex.pixel_density,
+                density: tex.density,
                 sprites: tex.sprites,
                 texcoords: tex.texcoords,
                 sizes: tex.sizes,
