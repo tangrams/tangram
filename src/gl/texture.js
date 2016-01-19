@@ -98,7 +98,8 @@ export default class Texture {
             url = Utils.addBaseURL(url, Texture.base_url);
         }
 
-        this.source = Utils.cacheBusterForUrl(url);
+        this.url = Utils.cacheBusterForUrl(url); // save URL reference (will be overwritten when element is loaded below)
+        this.source = this.url;
         this.source_type = 'url';
 
         this.loading = new Promise((resolve, reject) => {
@@ -108,20 +109,20 @@ export default class Texture {
                     this.setElement(image, options);
                 }
                 catch (e) {
-                    log.warn(`Texture '${this.name}': failed to load url: '${url}'`, e, options);
-                    Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
+                    log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
+                    Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 }
 
                 resolve(this);
             };
             image.onerror = e => {
                 // Warn and resolve on error
-                log.warn(`Texture '${this.name}': failed to load url: '${url}'`, e, options);
-                Texture.trigger('warning', { message: `Failed to load texture from ${url}`, error: e, texture: options });
+                log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
+                Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 resolve(this);
             };
             image.crossOrigin = 'anonymous';
-            image.src = url;
+            image.src = this.source;
         });
         return this.loading;
     }
