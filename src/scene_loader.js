@@ -100,9 +100,6 @@ export default SceneLoader = {
 
                 // If style has texture uniforms, expand texture URLs relative to scene file
                 if (style.shaders && style.shaders.uniforms) {
-
-                    // TODO:
-                    //      - To separate the skipters for canvas/image/data obj on the parser... need a re-implementation of GLSL.parseUniforms()
                     for (let {type, value, key, uniforms} of GLSL.parseUniforms(style.shaders.uniforms)) {
                         if (type === 'sampler2D' && typeof value === 'string' && !config.textures[value]) {
                             let texture_name = '__' + style_name + '_uniform_' + key;
