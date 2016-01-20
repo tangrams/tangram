@@ -208,12 +208,14 @@ Object.assign(Points, {
     _preprocess (draw) {
         draw.color = StyleParser.colorCacheObject(draw.color);
         draw.z = StyleParser.cacheObject(draw.z, StyleParser.cacheUnits);
-        draw.size = StyleParser.cacheObject(draw.size, parseFloat);
+
+        // Size (1d value or 2d array)
+        draw.size = StyleParser.cacheObject(draw.size, v => Array.isArray(v) ? v.map(parseFloat) : parseFloat(v));
 
         // Offset (2d array)
         draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
 
-        // Buffer (1d value or or 2d array)
+        // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
         return draw;
