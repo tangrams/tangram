@@ -77,16 +77,8 @@ Object.assign(TextStyle, {
             return;
         }
 
-        // Collect text - default source is feature.properties.name
-        let text;
-        let source = draw.text_source || 'name';
-
-        if (typeof source === 'string') {
-            text = feature.properties[source];
-        } else if (typeof source === 'function') {
-            text = source(context);
-        }
-
+        // Compute label text
+        let text = this.parseTextSource(feature, draw, context);
         if (text == null) {
             return; // no text for this feature
         }
@@ -298,6 +290,37 @@ Object.assign(TextStyle, {
         draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
 
         return draw;
+    },
+
+    // Compute the label text, default is value of feature.properties.name
+    // - String value indicates a feature property look-up, e.g. `short_name` means use feature.properties.short_name
+    // - Function will use the return value as the label text (for custom labels)
+    // - Array (of strings and/or functions) defines a list of fallbacks, evaluated according to the above rules,
+    //   with the first non-null value used as the label text
+    //   e.g. `[name:es, name:en, name]` prefers Spanish names, followed by English, and last the default local name
+    parseTextSource (feature, draw, context) {
+        let text;
+        let source = draw.text_source || 'name';
+
+        if (Array.isArray(source)) {
+            for (let s=0; s < source.length; s++) {
+                if (typeof source[s] === 'string') {
+                    text = feature.properties[source[s]];
+                } else if (typeof source[s] === 'function') {
+                    text = source[s](context);
+                }
+
+                if (text) {
+                    break; // stop if we found a text property
+                }
+            }
+        }
+        else if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+        return text;
     },
 
     // Additional text-specific layout settings
