@@ -3,7 +3,7 @@
 #ifdef TANGRAM_VERTEX_SHADER
 
 vec4 modelPosition() {
-    return vec4(SHORT(a_position.xyz) / TANGRAM_TILE_SCALE, 1.);
+    return vec4(SHORT(a_position.xyz) / TANGRAM_TILE_SCALE, 1.) + vec4(0., 1., 0., 0.);
 }
 
 #endif
