@@ -146,13 +146,20 @@ export default class ShaderProgram {
         // This is done *after* code injection so that we can add defines for which code points were injected
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
         let header = `// Program: ${info}\n`;
-        let precision = '#if GL_FRAGMENT_PRECISION_HIGH == 1\nprecision highp float;\n#endif\n\n';
+        let precision = '';
+        if (this.gl.getShaderPrecisionFormat(this.gl.FRAGMENT_SHADER, this.gl.HIGH_FLOAT) != 0) {
+            precision = 'precision highp float;\n';
+        }
+        else {
+            precision = 'precision mediump float;\n';
+        }
 
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
         this.computed_vertex_source =
             header +
             ShaderProgram.buildDefineString(defines) +
+            precision +
             this.computed_vertex_source;
 
         // Precision qualifier only valid in fragment shader
@@ -163,8 +170,8 @@ export default class ShaderProgram {
         this.computed_fragment_source =
             ShaderProgram.buildExtensionString(extensions) +
             header +
-            precision +
             ShaderProgram.buildDefineString(defines) +
+            precision +
             this.computed_fragment_source;
 
         // Compile & set uniforms to cached values
