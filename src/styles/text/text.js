@@ -39,6 +39,10 @@ Object.assign(TextStyle, {
         // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
+        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
+        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
+        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
+
         this.reset();
     },
 

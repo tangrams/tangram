@@ -62,6 +62,14 @@ void main (void) {
     #endif
 
     #pragma tangram: color
+
+    // Fade out when tile is zooming out, e.g. acting as proxy tiles
+    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels
+    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.
+    #ifdef TANGRAM_FADE_ON_ZOOM_OUT
+        color.a *= clamp(0., 1., 1. - TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_tile_origin.z - u_map_position.z));
+    #endif
+
     #pragma tangram: filter
 
     gl_FragColor = color;
