@@ -146,7 +146,7 @@ export default class ShaderProgram {
         // This is done *after* code injection so that we can add defines for which code points were injected
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
         let header = `// Program: ${info}\n`;
-        let precision = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n';
+        let precision = '#if GL_FRAGMENT_PRECISION_HIGH == 1\nprecision highp float;\n#endif\n\n';
 
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
