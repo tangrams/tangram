@@ -159,8 +159,8 @@ export default class ShaderProgram {
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
         this.computed_vertex_source =
             header +
-            ShaderProgram.buildDefineString(defines) +
             precision +
+            ShaderProgram.buildDefineString(defines) +
             this.computed_vertex_source;
 
         // Precision qualifier only valid in fragment shader
@@ -171,8 +171,8 @@ export default class ShaderProgram {
         this.computed_fragment_source =
             ShaderProgram.buildExtensionString(extensions) +
             header +
-            ShaderProgram.buildDefineString(defines) +
             precision +
+            ShaderProgram.buildDefineString(defines) +
             this.computed_fragment_source;
 
         // Compile & set uniforms to cached values
