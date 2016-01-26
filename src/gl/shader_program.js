@@ -147,7 +147,8 @@ export default class ShaderProgram {
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
         let header = `// Program: ${info}\n`;
         let precision = '';
-        if (this.gl.getShaderPrecisionFormat(this.gl.FRAGMENT_SHADER, this.gl.HIGH_FLOAT) != 0) {
+        let high = this.gl.getShaderPrecisionFormat(this.gl.FRAGMENT_SHADER, this.gl.HIGH_FLOAT);
+        if (high && high.precision > 0) {
             precision = 'precision highp float;\n';
         }
         else {
