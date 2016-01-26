@@ -46,6 +46,12 @@ Object.assign(Lines, {
         }
 
         this.vertex_layout = new VertexLayout(attribs);
+
+        // Additional single-allocated object used for holding outline style as it is processed
+        // Separate from this.feature_style so that outline properties do not overwrite calculated
+        // inline properties (outline call is made *within* the inline call)
+        this.outline_feature_style = {};
+        this.inline_feature_style = this.feature_style; // save reference to main computed style object
     },
 
     // Calculate width at zoom given in `context`
@@ -224,9 +230,18 @@ Object.assign(Lines, {
     },
 
     buildLines(lines, style, vertex_data, context, options) {
-        var vertex_template = this.makeVertexTemplate(style);
+        // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
+        this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
+        if (style.outline && style.outline.color != null && style.outline.width.value != null) {
+            var outline_style = StyleManager.styles[style.outline.style];
+            if (outline_style) {
+                outline_style.addFeature(context.feature, style.outline, context);
+            }
+        }
 
         // Main line
+        this.feature_style = this.inline_feature_style; // restore calculated style for inline
+        let vertex_template = this.makeVertexTemplate(style);
         Builders.buildPolylines(
             lines,
             style.width,
@@ -246,14 +261,6 @@ Object.assign(Lines, {
                 tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
             }
         );
-
-        // Outline
-         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
-            var outline_style = StyleManager.styles[style.outline.style];
-            if (outline_style) {
-                outline_style.addFeature(context.feature, style.outline, context);
-            }
-        }
     },
 
     buildPolygons(polygons, style, vertex_data, context) {
