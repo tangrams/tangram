@@ -678,33 +678,28 @@ Builders.triangulatePolygon = function (contours)
 };
 
 // Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-// Note: mod operation filters out *any* tile edge, not just the edges of the "local" tile,
-// this is useful for cases where geometry is clipped to some other tile multiple, e.g. 3-tile bbox
-Builders.isOnTileEdge = function (pa, pb, tolerance) {
-    var tolerance_function = Builders.valuesWithinTolerance;
-    var tile_min = Builders.tile_bounds[0];
-    var tile_max = Builders.tile_bounds[1];
+Builders.isOnTileEdge = function (_a, _b, tolerance) {
+    let tile_min = Builders.tile_bounds[0];
+    let tile_max = Builders.tile_bounds[1];
 
-    // Left
-    if (tolerance_function(pa[0] % Geo.tile_scale, tile_min.x, tolerance) && tolerance_function(pb[0] % Geo.tile_scale, tile_min.x, tolerance)) {
-        return true;
+    // Note: mod operation filters out *any* tile edge, not just the edges of the "local" tile,
+    // this is useful for cases where geometry is clipped to some other tile multiple, e.g. 3-tile bbox
+    if (nearlyEqual(_a[0], _b[0], tolerance)) {
+        let x = _a[0] % tile_max.x;
+        if (nearlyEqual(x, tile_min.x, tolerance) || nearlyEqual(x, tile_max.x, tolerance)) {
+            return true;
+        }
     }
-    // Right
-    else if (tolerance_function(pa[0] % Geo.tile_scale, tile_max.x, tolerance) && tolerance_function(pb[0] % Geo.tile_scale, tile_max.x, tolerance)) {
-        return true;
-    }
-    // Top
-    else if (tolerance_function(pa[1] % Geo.tile_scale, tile_min.y, tolerance) && tolerance_function(pb[1] % Geo.tile_scale, tile_min.y, tolerance)) {
-        return true;
-    }
-    // Bottom
-    else if (tolerance_function(pa[1] % Geo.tile_scale, tile_max.y, tolerance) && tolerance_function(pb[1] % Geo.tile_scale, tile_max.y, tolerance)) {
-        return true;
+    if (nearlyEqual(_a[1], _b[1], tolerance)) {
+        let y = _a[1] % tile_max.y;
+        if (nearlyEqual(y, tile_min.y, tolerance) || nearlyEqual(y, tile_min.y, tolerance)) {
+            return true;
+        }
     }
     return false;
-};
+}
 
-Builders.valuesWithinTolerance = function (a, b, tolerance) {
+function nearlyEqual  (a, b, tolerance) {
     tolerance = tolerance || 1;
     return (Math.abs(a - b) < tolerance);
-};
+}
