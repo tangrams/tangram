@@ -697,7 +697,7 @@ Builders.isOnTileEdge = function (_a, _b, tolerance) {
         }
     }
     return false;
-}
+};
 
 function nearlyEqual  (a, b, tolerance) {
     tolerance = tolerance || 1;
