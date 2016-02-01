@@ -11,6 +11,7 @@ import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import Camera from './camera';
 import Light from './light';
+import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
@@ -483,17 +484,13 @@ export default class Scene {
             }
 
             // Discard if too far from current zoom
-            let zdiff = tile.coords.z - style_zoom;
+            let zdiff = tile.style_zoom - style_zoom;
             if (Math.abs(zdiff) > this.preserve_tiles_within_zoom) {
                 return true;
             }
 
             // Handle tiles at different zooms
-            let ztrans = Math.pow(2, zdiff);
-            let coords = {
-                x: Math.floor(tile.coords.x / ztrans),
-                y: Math.floor(tile.coords.y / ztrans)
-            };
+            let coords = Tile.coordinateAtZoom(tile.coords, style_zoom);
 
             // Discard tiles outside an area surrounding the viewport
             if (Math.abs(coords.x - this.center_tile.x) - border_tiles[0] > border_buffer) {
