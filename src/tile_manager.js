@@ -10,6 +10,7 @@ export default TileManager = {
     init(scene) {
         this.scene = scene;
         this.tiles = {};
+        this.coord_tiles = {};
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
@@ -18,6 +19,7 @@ export default TileManager = {
     destroy() {
         this.forEachTile(tile => tile.destroy());
         this.tiles = {};
+        this.coord_tiles = {};
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;
@@ -25,6 +27,8 @@ export default TileManager = {
 
     keepTile(tile) {
         this.tiles[tile.key] = tile;
+        this.coord_tiles[tile.coord_key] = this.coord_tiles[tile.coord_key] || new Set();
+        this.coord_tiles[tile.coord_key].add(tile);
     },
 
     hasTile(key) {
@@ -32,6 +36,13 @@ export default TileManager = {
     },
 
     forgetTile(key) {
+        if (this.hasTile(key)) {
+            let tile = this.tiles[key];
+            if (this.coord_tiles[tile.coord_key]) {
+                this.coord_tiles[tile.coord_key].delete(tile);
+            }
+        }
+
         delete this.tiles[key];
         this.tileBuildStop(key);
     },
@@ -91,33 +102,75 @@ export default TileManager = {
         this.scene.pruneTileCoordinatesForView(); // remove tiles too far outside of view
     },
 
+    getAncestorTile (coord, source, style_zoom) {
+        let key;
+
+        // First check overzoomed tiles at same coordinate zoom
+        if (style_zoom > coord.z) {
+            key = Tile.coordKey(coord);
+            if (this.coord_tiles[key]) {
+                for (let z = style_zoom - 1; z >= coord.z; z--) {
+                    for (let ancestor of this.coord_tiles[key]) {
+                        if (ancestor.style_zoom === z && ancestor.source.name === source.name) {
+                            return ancestor;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check tiles at next zoom up
+        key = Tile.coordKey(Tile.coordinateAtZoom(coord, coord.z - 1));
+        if (this.coord_tiles[key]) {
+            for (let ancestor of this.coord_tiles[key]) {
+                if (ancestor.source.name === source.name) {
+                    return ancestor; // found ancestor
+                }
+            }
+        }
+        // didn't find ancestor, try next level
+        // TODO: max depth levels to check
+        if (coord.z > 1) {
+            return this.getAncestorTile(Tile.coordinateAtZoom(coord, coord.z - 1), source, style_zoom);
+        }
+    },
+
     updateProxyTiles () {
-        let proxyable = [];
+        // Clear previous proxies
+        this.forEachTile(tile => tile.proxy = false);
+
+        // let proxyable = [];
         this.forEachTile(tile => {
             if (this.scene.zoom_direction === 1) {
                 if (tile.visible && tile.loading && tile.parent) {
-                    proxyable.push(Tile.coordKey(tile.parent));
+                    // proxyable.push(Tile.coordKey(tile.parent));
+                    let p = this.getAncestorTile(tile.coords, tile.source, tile.style_zoom);
+                    if (p) {
+                       p.proxy = true;
+                       p.visible = true;
+                       p.update(this.scene);
+                    }
                 }
             }
-            else if (this.scene.zoom_direction === -1) {
-                if (tile.visible && tile.loading && tile.children) {
-                    proxyable.push(...tile.children.map(Tile.coordKey));
-                }
-            }
+            // else if (this.scene.zoom_direction === -1) {
+            //     if (tile.visible && tile.loading && tile.children) {
+            //         proxyable.push(...tile.children.map(Tile.coordKey));
+            //     }
+            // }
         });
 
-        if (proxyable.length > 0) {
-            this.forEachTile(tile => {
-                if (proxyable.indexOf(tile.coord_key) > -1) {
-                    tile.proxy = true;
-                    tile.visible = true;
-                    tile.update(this.scene);
-                }
-                else {
-                    tile.proxy = false;
-                }
-            });
-        }
+        // if (proxyable.length > 0) {
+        //     this.forEachTile(tile => {
+        //         if (proxyable.indexOf(tile.coord_key) > -1) {
+        //             tile.proxy = true;
+        //             tile.visible = true;
+        //             tile.update(this.scene);
+        //         }
+        //         else {
+        //             tile.proxy = false;
+        //         }
+        //     });
+        // }
     },
 
     updateVisibility(tile) {
