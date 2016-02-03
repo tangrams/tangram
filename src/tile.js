@@ -37,8 +37,7 @@ export default class Tile {
         this.source = source;
         this.style_zoom = style_zoom; // zoom level to be used for styling
 
-        this.coords = coords;
-        this.coords = Tile.overZoomedCoordinate(this.coords, this.source.max_zoom);
+        this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.coord_key = Tile.coordKey(this.coords);
         this.parent = this.coords.z && Tile.coordinateAtZoom(this.coords, this.coords.z - 1);
         this.children = Tile.childrenForCoordinate(this.coords);
@@ -70,7 +69,7 @@ export default class Tile {
     }
 
     static key (coords, source, style_zoom) {
-        coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        coords = Tile.coordinateWithMaxZoom(coords, source.max_zoom);
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
@@ -94,7 +93,7 @@ export default class Tile {
         return false;
     }
 
-    static overZoomedCoordinate({x, y, z}, max_zoom) {
+    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
         if (max_zoom !== undefined && z > max_zoom) {
             return Tile.coordinateAtZoom({x, y, z}, max_zoom);
         }

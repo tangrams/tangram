@@ -135,42 +135,75 @@ export default TileManager = {
         }
     },
 
-    updateProxyTiles () {
-        // Clear previous proxies
-        this.forEachTile(tile => tile.proxy = false);
+    getDescendantTiles (coord, source, style_zoom, level = 0) {
+        let key;
 
-        // let proxyable = [];
-        this.forEachTile(tile => {
-            if (this.scene.zoom_direction === 1) {
-                if (tile.visible && tile.loading && tile.parent) {
-                    // proxyable.push(Tile.coordKey(tile.parent));
-                    let p = this.getAncestorTile(tile.coords, tile.source, tile.style_zoom);
-                    if (p) {
-                       p.proxy = true;
-                       p.visible = true;
-                       p.update(this.scene);
+        // First check overzoomed tiles at same coordinate zoom
+        // TODO
+
+        // Check tiles at next zoom down
+        let descendants = [];
+        for (let child of Tile.childrenForCoordinate(coord)) {
+            let found = false;
+            key = Tile.coordKey(child);
+            if (this.coord_tiles[key]) {
+                for (let descendant of this.coord_tiles[key]) {
+                    if (descendant.source.name === source.name) {
+                        descendants.push(descendant);
+                        found = true;
+                        break; // found descendant, look for next
                     }
                 }
             }
-            // else if (this.scene.zoom_direction === -1) {
-            //     if (tile.visible && tile.loading && tile.children) {
-            //         proxyable.push(...tile.children.map(Tile.coordKey));
-            //     }
-            // }
+
+            // didn't find child, try next level
+            // TODO: fix for true max view zoom
+            if (!found && level < 3) { //&& child.z < 20) {
+                descendants.push(...this.getDescendantTiles(child, source, style_zoom, level + 1));
+            }
+        }
+
+
+        return descendants;
+    },
+
+    updateProxyTiles () {
+        if (this.scene.zoom_direction === 0) {
+            return;
+        }
+
+        // Clear previous proxies
+        this.forEachTile(tile => tile.proxy = false);
+
+        let proxy = false;
+        this.forEachTile(tile => {
+            if (this.scene.zoom_direction === 1) {
+                if (tile.visible && tile.loading && tile.parent) {
+                    let p = this.getAncestorTile(tile.coords, tile.source, tile.style_zoom);
+                    if (p) {
+                        proxy = true;
+                        p.proxy = true;
+                        p.visible = true;
+                        p.update(this.scene);
+                    }
+                }
+            }
+            else if (this.scene.zoom_direction === -1) {
+                if (tile.visible && tile.loading) { // && tile.children) {
+                    let d = this.getDescendantTiles(tile.coords, tile.source, tile.style_zoom);
+                    for (let t of d) {
+                        proxy = true;
+                        t.proxy = true;
+                        t.visible = true;
+                        t.update(this.scene);
+                    }
+                }
+            }
         });
 
-        // if (proxyable.length > 0) {
-        //     this.forEachTile(tile => {
-        //         if (proxyable.indexOf(tile.coord_key) > -1) {
-        //             tile.proxy = true;
-        //             tile.visible = true;
-        //             tile.update(this.scene);
-        //         }
-        //         else {
-        //             tile.proxy = false;
-        //         }
-        //     });
-        // }
+        if (!proxy) {
+            this.scene.zoom_direction = 0;
+        }
     },
 
     updateVisibility(tile) {
@@ -249,7 +282,6 @@ export default TileManager = {
                 let tile = Tile.create({
                     source,
                     coords,
-                    // max_zoom: this.scene.findMaxZoom(), // TODO: replace with better max zoom handling
                     worker: this.scene.nextWorker(),
                     style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
                 });
