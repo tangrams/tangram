@@ -40,6 +40,9 @@ export default TileManager = {
             let tile = this.tiles[key];
             if (this.coord_tiles[tile.coords.key]) {
                 this.coord_tiles[tile.coords.key].delete(tile);
+                if (this.coord_tiles[tile.coords.key].size === 0) {
+                    delete this.coord_tiles[tile.coords.key];
+                }
             }
         }
 
