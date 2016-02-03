@@ -27,8 +27,8 @@ export default TileManager = {
 
     keepTile(tile) {
         this.tiles[tile.key] = tile;
-        this.coord_tiles[tile.coord_key] = this.coord_tiles[tile.coord_key] || new Set();
-        this.coord_tiles[tile.coord_key].add(tile);
+        this.coord_tiles[tile.coords.key] = this.coord_tiles[tile.coords.key] || new Set();
+        this.coord_tiles[tile.coords.key].add(tile);
     },
 
     hasTile(key) {
@@ -38,8 +38,8 @@ export default TileManager = {
     forgetTile(key) {
         if (this.hasTile(key)) {
             let tile = this.tiles[key];
-            if (this.coord_tiles[tile.coord_key]) {
-                this.coord_tiles[tile.coord_key].delete(tile);
+            if (this.coord_tiles[tile.coords.key]) {
+                this.coord_tiles[tile.coords.key].delete(tile);
             }
         }
 
@@ -89,7 +89,7 @@ export default TileManager = {
         let tile_coords = this.scene.findVisibleTileCoordinates();
         for (let coords of tile_coords) {
             this.queueCoordinate(coords);
-            this.visible_coords[Tile.coordKey(coords)] = coords;
+            this.visible_coords[coords.key] = coords;
         }
 
         this.forEachTile(tile => {
@@ -103,14 +103,11 @@ export default TileManager = {
     },
 
     getAncestorTile (coord, source, style_zoom) {
-        let key;
-
         // First check overzoomed tiles at same coordinate zoom
         if (style_zoom > coord.z) {
-            key = Tile.coordKey(coord);
-            if (this.coord_tiles[key]) {
+            if (this.coord_tiles[coord.key]) {
                 for (let z = style_zoom - 1; z >= coord.z; z--) {
-                    for (let ancestor of this.coord_tiles[key]) {
+                    for (let ancestor of this.coord_tiles[coord.key]) {
                         if (ancestor.style_zoom === z && ancestor.source.name === source.name) {
                             return ancestor;
                         }
@@ -120,9 +117,9 @@ export default TileManager = {
         }
 
         // Check tiles at next zoom up
-        key = Tile.coordKey(Tile.coordinateAtZoom(coord, coord.z - 1));
-        if (this.coord_tiles[key]) {
-            for (let ancestor of this.coord_tiles[key]) {
+        let parent = Tile.coordinateAtZoom(coord, coord.z - 1);
+        if (this.coord_tiles[parent.key]) {
+            for (let ancestor of this.coord_tiles[parent.key]) {
                 if (ancestor.source.name === source.name) {
                     return ancestor; // found ancestor
                 }
@@ -136,8 +133,6 @@ export default TileManager = {
     },
 
     getDescendantTiles (coord, source, style_zoom, level = 0) {
-        let key;
-
         // First check overzoomed tiles at same coordinate zoom
         // TODO
 
@@ -145,9 +140,8 @@ export default TileManager = {
         let descendants = [];
         for (let child of Tile.childrenForCoordinate(coord)) {
             let found = false;
-            key = Tile.coordKey(child);
-            if (this.coord_tiles[key]) {
-                for (let descendant of this.coord_tiles[key]) {
+            if (this.coord_tiles[child.key]) {
+                for (let descendant of this.coord_tiles[child.key]) {
                     if (descendant.source.name === source.name) {
                         descendants.push(descendant);
                         found = true;
@@ -212,7 +206,7 @@ export default TileManager = {
             return;
         }
 
-        if (this.visible_coords[tile.coord_key]) {
+        if (this.visible_coords[tile.coords.key]) {
             tile.visible = true;
         }
         else {

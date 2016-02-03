@@ -38,7 +38,6 @@ export default class Tile {
         this.style_zoom = style_zoom; // zoom level to be used for styling
 
         this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
-        this.coord_key = Tile.coordKey(this.coords);
         this.parent = this.coords.z && Tile.coordinateAtZoom(this.coords, this.coords.z - 1);
         this.children = Tile.childrenForCoordinate(this.coords);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
@@ -64,8 +63,12 @@ export default class Tile {
         return new Tile(spec);
     }
 
+    static coord(c) {
+        return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
+    }
+
     static coordKey({x, y, z}) {
-        return [x, y, z].join('/');
+        return x + '/' + y + '/' + z;
     }
 
     static key (coords, source, style_zoom) {
@@ -76,13 +79,31 @@ export default class Tile {
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
-    static coordinateAtZoom({x, y, z}, zoom) {
+    static coordinateAtZoom({x, y, z, key}, zoom) {
         if (z !== zoom) {
             let zscale = Math.pow(2, z - zoom);
             x = Math.floor(x / zscale);
             y = Math.floor(y / zscale);
+            z = zoom;
         }
-        return {x, y, z: zoom};
+        return Tile.coord({x, y, z});
+    }
+
+    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
+        if (max_zoom !== undefined && z > max_zoom) {
+            return Tile.coordinateAtZoom({x, y, z}, max_zoom);
+        }
+        return Tile.coord({x, y, z});
+    }
+
+    static childrenForCoordinate({x, y, z}) {
+        z++;
+        x *= 2;
+        y *= 2;
+        return [
+            Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
+            Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
+        ];
     }
 
     static isChild(parent, child) {
@@ -91,23 +112,6 @@ export default class Tile {
             return (parent.x === x && parent.y === y);
         }
         return false;
-    }
-
-    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
-        if (max_zoom !== undefined && z > max_zoom) {
-            return Tile.coordinateAtZoom({x, y, z}, max_zoom);
-        }
-        return {x, y, z};
-    }
-
-    static childrenForCoordinate({x, y, z}) {
-        z++;
-        x *= 2;
-        y *= 2;
-        return [
-            {x, y,      z}, {x: x+1, y,      z},
-            {x, y: y+1, z}, {x: x+1, y: y+1, z}
-        ];
     }
 
     // Sort a set of tile instances (which already have a distance from center tile computed)
@@ -148,7 +152,6 @@ export default class Tile {
     buildAsMessage() {
         return {
             key: this.key,
-            coord_key: this.coord_key,
             source: this.source.name,
             coords: this.coords,
             parent: this.parent,

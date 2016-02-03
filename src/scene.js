@@ -458,7 +458,7 @@ export default class Scene {
         let coords = [];
         for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
             for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
-                coords.push({ x, y, z });
+                coords.push(Tile.coord({ x, y, z }));
             }
         }
         return coords;
