@@ -205,6 +205,7 @@ export default class Tile {
                     }
 
                     let context = StyleParser.getFeatureParseContext(feature, tile);
+                    context.winding = tile.default_winding;
                     context.layer = source_layer.layer; // add data source layer name
 
                     // Get draw groups for this feature

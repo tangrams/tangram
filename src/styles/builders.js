@@ -87,7 +87,8 @@ Builders.buildExtrudedPolygons = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
-        texcoord_normalize
+        texcoord_normalize,
+        winding
     }) {
 
     // Top
@@ -124,23 +125,32 @@ Builders.buildExtrudedPolygons = function (
                     continue; // don't extrude tile edges
                 }
 
+                // Wall order is dependent on winding order, so that normals face outward
+                let w0, w1;
+                if (winding === 'CCW') {
+                    w0 = w;
+                    w1 = w+1;
+                }
+                else {
+                    w0 = w+1;
+                    w1 = w;
+                }
+
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 var wall_vertices = [
                     // Triangle
-                    [contour[w+1][0], contour[w+1][1], max_z],
-                    [contour[w+1][0], contour[w+1][1], min_z],
-                    [contour[w][0], contour[w][1], min_z],
+                    [contour[w1][0], contour[w1][1], max_z],
+                    [contour[w1][0], contour[w1][1], min_z],
+                    [contour[w0][0], contour[w0][1], min_z],
                     // Triangle
-                    [contour[w][0], contour[w][1], min_z],
-                    [contour[w][0], contour[w][1], max_z],
-                    [contour[w+1][0], contour[w+1][1], max_z]
+                    [contour[w0][0], contour[w0][1], min_z],
+                    [contour[w0][0], contour[w0][1], max_z],
+                    [contour[w1][0], contour[w1][1], max_z]
                 ];
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
-                var normal = Vector.cross(
-                    [0, 0, 1],
-                    Vector.normalize([contour[w+1][0] - contour[w][0], contour[w+1][1] - contour[w][1], 0])
-                );
+                let wall_vec = Vector.normalize([contour[w1][0] - contour[w0][0], contour[w1][1] - contour[w0][1], 0]);
+                let normal = Vector.cross([0, 0, 1], wall_vec);
 
                 // Update vertex template with current surface normal
                 vertex_template[normal_index + 0] = normal[0] * normal_normalize;
