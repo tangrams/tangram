@@ -96,14 +96,17 @@ export default class Tile {
         return Tile.coord({x, y, z});
     }
 
-    static childrenForCoordinate({x, y, z}) {
-        z++;
-        x *= 2;
-        y *= 2;
-        return [
-            Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
-            Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
-        ];
+    static childrenForCoordinate({x, y, z, key}) {
+        if (!Tile.coord_children[key]) {
+            z++;
+            x *= 2;
+            y *= 2;
+            Tile.coord_children[key] = [
+                Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
+                Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
+            ];
+        }
+        return Tile.coord_children[key];
     }
 
     static isChild(parent, child) {
@@ -466,3 +469,5 @@ export default class Tile {
     }
 
 }
+
+Tile.coord_children = {}; // only allocate children coordinates once per coordinate
