@@ -11,7 +11,6 @@ export default class DataSource {
         this.url = source.url;
         this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
         this.default_winding = null;
-        this.enforce_winding = source.enforce_winding || false; // whether to enforce winding order
 
         // Optional function to transform source data
         this.transform = source.transform;
@@ -106,14 +105,8 @@ export default class DataSource {
                             }
                         });
 
-                        // Optionally enforce winding order since not all data sources guarantee it
-                        if (this.enforce_winding) {
-                            Geo.enforceWinding(feature.geometry, 'CCW');
-                        }
                         // Use first encountered polygon winding order as default for data source
-                        else {
-                            this.updateDefaultWinding(feature.geometry);
-                        }
+                        this.updateDefaultWinding(feature.geometry);
                     });
                 }
             }
