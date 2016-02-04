@@ -10,6 +10,7 @@ export default class DataSource {
         this.name = source.name;
         this.url = source.url;
         this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
+        this.default_winding = null;
         this.enforce_winding = source.enforce_winding || false; // whether to enforce winding order
 
         // Optional function to transform source data
@@ -109,15 +110,34 @@ export default class DataSource {
                         if (this.enforce_winding) {
                             Geo.enforceWinding(feature.geometry, 'CCW');
                         }
+                        // Use first encountered polygon winding order as default for data source
+                        else {
+                            this.updateDefaultWinding(feature.geometry);
+                        }
                     });
                 }
             }
+
+            dest.default_winding = this.default_winding || 'CCW';
         });
     }
 
     // Sub-classes must implement
     _load(dest) {
         throw new MethodNotImplemented('_load');
+    }
+
+    // Infer winding for data source from first ring of provided geometry
+    updateDefaultWinding (geom) {
+        if (this.default_winding == null) {
+            if (geom.type === 'Polygon') {
+                this.default_winding = Geo.ringWinding(geom.coordinates[0]);
+            }
+            else if (geom.type === 'MultiPolygon') {
+                this.default_winding = Geo.ringWinding(geom.coordinates[0][0]);
+            }
+        }
+        return this.default_winding;
     }
 
     // Register a new data source type, under a type name
