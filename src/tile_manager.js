@@ -15,6 +15,7 @@ export default TileManager = {
         this.queued_coords = [];
         this.building_tiles = null;
         this.reset_visible_tiles = true;
+        this.max_proxy_descendant_depth = 3; // # of levels deep to search for descendant proxy tiles
     },
 
     destroy() {
@@ -160,7 +161,7 @@ export default TileManager = {
         }
     },
 
-    getDescendantTiles (coord, source, style_zoom, level = 0) {
+    getDescendantTiles (coord, source, style_zoom, level = 1) {
         // First check overzoomed tiles at same coordinate zoom
         // TODO
 
@@ -180,7 +181,7 @@ export default TileManager = {
 
             // didn't find child, try next level
             // TODO: fix for true max view zoom
-            if (!found && level < 3) { //&& child.z < 20) {
+            if (!found && level <= this.max_proxy_descendant_depth && child.z < 20) {
                 descendants.push(...this.getDescendantTiles(child, source, style_zoom, level + 1));
             }
         }
