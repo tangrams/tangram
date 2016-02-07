@@ -14,6 +14,7 @@ export default TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
+        this.reset_visible_tiles = true;
     },
 
     destroy() {
@@ -86,8 +87,9 @@ export default TileManager = {
         }
     },
 
-    updateTilesForView() {
+    updateTilesForView({ tile_update = false } = {}) {
         // Find visible tiles and load new ones
+        let prev_coords = Object.keys(this.visible_coords);
         this.visible_coords = {};
         let tile_coords = this.scene.findVisibleTileCoordinates();
         for (let coords of tile_coords) {
@@ -95,14 +97,37 @@ export default TileManager = {
             this.visible_coords[coords.key] = coords;
         }
 
-        this.forEachTile(tile => {
-            this.updateVisibility(tile);
-            tile.update(this.scene);
-        });
+        // Check if visible coords changed
+        // TODO: move to a new view manager object
+        let new_coords = Object.keys(this.visible_coords);
+        let coords_changed = false;
+        if (prev_coords.length !== new_coords.length) {
+            coords_changed = true;
+        }
+        else {
+            prev_coords.sort();
+            new_coords.sort();
+            if (!prev_coords.every((c, i) => new_coords[i] === c)) {
+                coords_changed = true;
+            }
+        }
 
-        this.loadQueuedCoordinates();
-        this.updateProxyTiles();
-        this.scene.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+        // Only update when states have changed:
+        //   - visible coordinates changed
+        //   - individual tile build finished (or aborted)
+        //   - hard reset of visible tiles (e.g. when reloading scene)
+        if (coords_changed || tile_update || this.reset_visible_tiles) {
+            this.reset_visible_tiles = false;
+
+            this.forEachTile(tile => {
+                this.updateVisibility(tile);
+                tile.update(this.scene);
+            });
+
+            this.loadQueuedCoordinates();
+            this.updateProxyTiles();
+            this.scene.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+        }
     },
 
     getAncestorTile (coord, source, style_zoom) {
@@ -225,6 +250,13 @@ export default TileManager = {
         }
     },
 
+    // Remove tiles that aren't visible, and flag remaining visible ones to be updated
+    // (for loading, proxy, etc.)
+    resetVisibleTiles () {
+        this.removeTiles(tile => !tile.visible);
+        this.reset_visible_tiles = true;
+    },
+
     getRenderableTiles() {
         let tiles = [];
         for (let t in this.tiles) {
@@ -313,7 +345,7 @@ export default TileManager = {
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
             Tile.abortBuild(tile);
-            this.updateTilesForView();
+            this.updateTilesForView({ tile_update: true });
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
@@ -321,7 +353,7 @@ export default TileManager = {
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
-            this.updateTilesForView();
+            this.updateTilesForView({ tile_update: true });
         }
         else {
             // Update tile with properties from worker
@@ -329,7 +361,7 @@ export default TileManager = {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            this.updateTilesForView();
+            this.updateTilesForView({ tile_update: true });
             tile.buildMeshes(this.scene.styles);
             this.scene.requestRedraw();
         }

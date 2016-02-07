@@ -144,8 +144,8 @@ export default class Scene {
                     Texture.subscribe(this.texture_listener);
                 }
 
-                // Remove tiles before rebuilding
-                this.tile_manager.removeTiles(tile => !tile.visible);
+                // Reset tile manager visibility before rebuilding
+                this.tile_manager.resetVisibleTiles();
                 return this.updateConfig({ rebuild: true });
             }).then(() => {
                 this.updating--;
@@ -445,6 +445,7 @@ export default class Scene {
         this.dirty = true;
     }
 
+    // TODO: move to a new view manager object
     findVisibleTileCoordinates({ buffer } = {}) {
         if (!this.bounds_meters) {
             return [];
