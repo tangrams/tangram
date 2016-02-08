@@ -133,9 +133,9 @@ export default TileManager = {
 
     getAncestorTile (coord, source, style_zoom) {
         // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom > coord.z) {
+        if (style_zoom > source.max_zoom) {
             if (this.coord_tiles[coord.key]) {
-                for (let z = style_zoom - 1; z >= coord.z; z--) {
+                for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
                     for (let ancestor of this.coord_tiles[coord.key]) {
                         if (ancestor.style_zoom === z && ancestor.source.name === source.name) {
                             return ancestor;
@@ -157,16 +157,30 @@ export default TileManager = {
         // didn't find ancestor, try next level
         // TODO: max depth levels to check
         if (coord.z > 1) {
-            return this.getAncestorTile(Tile.coordinateAtZoom(coord, coord.z - 1), source, style_zoom);
+            return this.getAncestorTile(Tile.coordinateAtZoom(coord, coord.z - 1), source, style_zoom - 1);
         }
     },
 
     getDescendantTiles (coord, source, style_zoom, level = 1) {
+        let descendants = [];
+
         // First check overzoomed tiles at same coordinate zoom
-        // TODO
+        if (style_zoom >= source.max_zoom) {
+            if (this.coord_tiles[coord.key]) {
+                // TODO: don't hardcode max view zoom
+                for (let z = style_zoom + 1; z <= 20; z++) {
+                    for (let descendant of this.coord_tiles[coord.key]) {
+                        if (descendant.style_zoom === z && descendant.source.name === source.name) {
+                            descendants.push(descendant);
+                            return descendants;
+                        }
+                    }
+                }
+            }
+            return descendants;
+        }
 
         // Check tiles at next zoom down
-        let descendants = [];
         for (let child of Tile.childrenForCoordinate(coord)) {
             let found = false;
             if (this.coord_tiles[child.key]) {
@@ -180,12 +194,10 @@ export default TileManager = {
             }
 
             // didn't find child, try next level
-            // TODO: fix for true max view zoom
-            if (!found && level <= this.max_proxy_descendant_depth && child.z < 20) {
-                descendants.push(...this.getDescendantTiles(child, source, style_zoom, level + 1));
+            if (!found && level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
+                descendants.push(...this.getDescendantTiles(child, source, style_zoom + 1, level + 1));
             }
         }
-
 
         return descendants;
     },
