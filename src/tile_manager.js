@@ -1,4 +1,5 @@
 import Tile from './tile';
+import Geo from './geo';
 import Utils from './utils/utils';
 
 import log from 'loglevel';
@@ -167,8 +168,8 @@ export default TileManager = {
         // First check overzoomed tiles at same coordinate zoom
         if (style_zoom >= source.max_zoom) {
             if (this.coord_tiles[coord.key]) {
-                // TODO: don't hardcode max view zoom
-                for (let z = style_zoom + 1; z <= 20; z++) {
+                let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
+                for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
                     for (let descendant of this.coord_tiles[coord.key]) {
                         if (descendant.style_zoom === z && descendant.source.name === source.name) {
                             descendants.push(descendant);

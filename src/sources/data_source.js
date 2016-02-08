@@ -37,7 +37,7 @@ export default class DataSource {
         }
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = config.max_zoom || Geo.default_max_zoom;
+        this.max_zoom = config.max_zoom || Geo.default_source_max_zoom;
     }
 
     // Create a tile source by type, factory-style
