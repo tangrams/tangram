@@ -16,7 +16,7 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, source, worker, style_zoom }) {
+    constructor({ coords, style_zoom, source, worker, tile_manager }) {
         Object.assign(this, {
             coords: {
                 x: null,
@@ -34,6 +34,7 @@ export default class Tile {
         });
 
         this.worker = worker;
+        this.tile_manager = tile_manager;
         this.source = source;
         this.style_zoom = style_zoom; // zoom level to be used for styling
 
@@ -393,7 +394,8 @@ export default class Tile {
         log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
-    update(scene) {
+    update() {
+        let scene = this.tile_manager.scene;
         let coords = this.coords;
         if (coords.z !== scene.center_tile.z) {
             coords = Tile.coordinateAtZoom(coords, scene.center_tile.z);
