@@ -38,8 +38,6 @@ export default class Tile {
         this.style_zoom = style_zoom; // zoom level to be used for styling
 
         this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
-        this.parent = this.coords.z && Tile.coordinateAtZoom(this.coords, this.coords.z - 1);
-        this.children = Tile.childrenForCoordinate(this.coords);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),

@@ -30,8 +30,42 @@ export default TileManager = {
 
     keepTile(tile) {
         this.tiles[tile.key] = tile;
-        this.coord_tiles[tile.coords.key] = this.coord_tiles[tile.coords.key] || new Set();
-        this.coord_tiles[tile.coords.key].add(tile);
+        this.addTileCoord(tile);
+
+        // Increment reference count up the tile pyramid
+        for (let z = tile.coords.z - 1; z >= 0; z--) {
+            let up = Tile.coordinateAtZoom(tile.coords, z);
+            this.incTileCount(up);
+        }
+    },
+
+    addTileCoord(tile) {
+        if (!this.coord_tiles[tile.coords.key]) {
+            this.coord_tiles[tile.coords.key] = { tiles: new Set(), descendants: 0 };
+        }
+        else if (!this.coord_tiles[tile.coords.key].tiles) {
+            this.coord_tiles[tile.coords.key].tiles = new Set();
+        }
+        this.coord_tiles[tile.coords.key].tiles.add(tile);
+    },
+
+    incTileCount(coord) {
+        if (!this.coord_tiles[coord.key]) {
+            this.coord_tiles[coord.key] = { descendants: 0 };
+        }
+        this.coord_tiles[coord.key].descendants++;
+    },
+
+    decTileCount(coord) {
+        if (!this.coord_tiles[coord.key]) {
+            this.coord_tiles[coord.key] = { descendants: 0 };
+        }
+        else {
+            this.coord_tiles[coord.key].descendants--;
+            if (this.coord_tiles[coord.key].descendants === 0 && !this.coord_tiles[coord.key].tiles) {
+                delete this.coord_tiles[coord.key];
+            }
+        }
     },
 
     hasTile(key) {
@@ -42,10 +76,23 @@ export default TileManager = {
         if (this.hasTile(key)) {
             let tile = this.tiles[key];
             if (this.coord_tiles[tile.coords.key]) {
-                this.coord_tiles[tile.coords.key].delete(tile);
-                if (this.coord_tiles[tile.coords.key].size === 0) {
-                    delete this.coord_tiles[tile.coords.key];
+                this.coord_tiles[tile.coords.key].tiles.delete(tile);
+                if (this.coord_tiles[tile.coords.key].tiles.size === 0) {
+                    if (this.coord_tiles[tile.coords.key].tiles.descendants === 0) {
+                        // remove whole coord
+                        delete this.coord_tiles[tile.coords.key];
+                    }
+                    else {
+                        // or at least tiles
+                        delete this.coord_tiles[tile.coords.key].tiles;
+                    }
                 }
+            }
+
+            // Decrement reference count up the tile pyramid
+            for (let z = tile.coords.z - 1; z >= 0; z--) {
+                let up = Tile.coordinateAtZoom(tile.coords, z);
+                this.decTileCount(up);
             }
         }
 
@@ -135,9 +182,9 @@ export default TileManager = {
     getAncestorTile (coord, source, style_zoom) {
         // First check overzoomed tiles at same coordinate zoom
         if (style_zoom > source.max_zoom) {
-            if (this.coord_tiles[coord.key]) {
+            if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].tiles) {
                 for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
-                    for (let ancestor of this.coord_tiles[coord.key]) {
+                    for (let ancestor of this.coord_tiles[coord.key].tiles) {
                         if (ancestor.style_zoom === z && ancestor.source.name === source.name) {
                             return ancestor;
                         }
@@ -148,8 +195,8 @@ export default TileManager = {
 
         // Check tiles at next zoom up
         let parent = Tile.coordinateAtZoom(coord, coord.z - 1);
-        if (this.coord_tiles[parent.key]) {
-            for (let ancestor of this.coord_tiles[parent.key]) {
+        if (this.coord_tiles[parent.key] && this.coord_tiles[parent.key].tiles) {
+            for (let ancestor of this.coord_tiles[parent.key].tiles) {
                 if (ancestor.source.name === source.name) {
                     return ancestor; // found ancestor
                 }
@@ -167,10 +214,10 @@ export default TileManager = {
 
         // First check overzoomed tiles at same coordinate zoom
         if (style_zoom >= source.max_zoom) {
-            if (this.coord_tiles[coord.key]) {
+            if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].tiles) {
                 let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
                 for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-                    for (let descendant of this.coord_tiles[coord.key]) {
+                    for (let descendant of this.coord_tiles[coord.key].tiles) {
                         if (descendant.style_zoom === z && descendant.source.name === source.name) {
                             descendants.push(descendant);
                             return descendants;
@@ -182,21 +229,23 @@ export default TileManager = {
         }
 
         // Check tiles at next zoom down
-        for (let child of Tile.childrenForCoordinate(coord)) {
-            let found = false;
-            if (this.coord_tiles[child.key]) {
-                for (let descendant of this.coord_tiles[child.key]) {
-                    if (descendant.source.name === source.name) {
-                        descendants.push(descendant);
-                        found = true;
-                        break; // found descendant, look for next
+        if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].descendants > 0) {
+            for (let child of Tile.childrenForCoordinate(coord)) {
+                let found = false;
+                if (this.coord_tiles[child.key] && this.coord_tiles[child.key].tiles) {
+                    for (let descendant of this.coord_tiles[child.key].tiles) {
+                        if (descendant.source.name === source.name) {
+                            descendants.push(descendant);
+                            found = true;
+                            break; // found descendant, look for next
+                        }
                     }
                 }
-            }
 
-            // didn't find child, try next level
-            if (!found && level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
-                descendants.push(...this.getDescendantTiles(child, source, style_zoom + 1, level + 1));
+                // didn't find child, try next level
+                if (!found && level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
+                    descendants.push(...this.getDescendantTiles(child, source, style_zoom + 1, level + 1));
+                }
             }
         }
 
@@ -214,7 +263,7 @@ export default TileManager = {
         let proxy = false;
         this.forEachTile(tile => {
             if (this.scene.zoom_direction === 1) {
-                if (tile.visible && tile.loading && tile.parent) {
+                if (tile.visible && tile.loading && tile.coords.z > 0) {
                     let p = this.getAncestorTile(tile.coords, tile.source, tile.style_zoom);
                     if (p) {
                         proxy = true;
@@ -225,7 +274,7 @@ export default TileManager = {
                 }
             }
             else if (this.scene.zoom_direction === -1) {
-                if (tile.visible && tile.loading) { // && tile.children) {
+                if (tile.visible && tile.loading) {
                     let d = this.getDescendantTiles(tile.coords, tile.source, tile.style_zoom);
                     for (let t of d) {
                         proxy = true;
