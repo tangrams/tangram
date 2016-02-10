@@ -1007,8 +1007,12 @@ export default class Scene {
     }
 
     loadDataSources() {
+        let reset = []; // sources to reset
+        let prev_source_names = Object.keys(this.sources);
+
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
+            let prev_source = this.sources[name];
 
             try {
                 this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
@@ -1022,6 +1026,26 @@ export default class Scene {
                 log.warn(`Scene: ${message}`, source);
                 this.trigger('warning', { type: 'sources', source, message });
             }
+
+            // Data source changed?
+            if (DataSource.changed(this.sources[name], prev_source)) {
+                reset.push(name);
+            }
+        }
+
+        // Sources that were removed
+        for (let s of prev_source_names) {
+            if (!this.config.sources[s]) {
+                delete this.sources[s]; // TODO: remove from workers too?
+                reset.push(s);
+            }
+        }
+
+        // Remove tiles from sources that have changed
+        if (reset.length > 0) {
+            this.tile_manager.removeTiles(tile => {
+                return (reset.indexOf(tile.source.name) > -1);
+            });
         }
     }
 

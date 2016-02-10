@@ -5,25 +5,26 @@ import Utils from '../utils/utils';
 
 export default class DataSource {
 
-    constructor (source) {
-        this.id = source.id;
-        this.name = source.name;
-        this.url = source.url;
-        this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
+    constructor (config) {
+        this.config = config; // save original config
+        this.id = config.id;
+        this.name = config.name;
+        this.url = config.url;
+        this.pad_scale = config.pad_scale || 0.0005; // scale tile up by small factor to cover seams
         this.default_winding = null;
 
         // Optional function to transform source data
-        this.transform = source.transform;
+        this.transform = config.transform;
         if (typeof this.transform === 'function') {
             this.transform.bind(this);
         }
 
         // Optional additional data to pass to the transform function
-        this.extra_data = source.extra_data;
+        this.extra_data = config.extra_data;
 
         // Optional additional scripts made available to the transform function
-        if (typeof importScripts === 'function' && source.scripts) {
-            source.scripts.forEach(function(s, si) {
+        if (typeof importScripts === 'function' && config.scripts) {
+            config.scripts.forEach(function(s, si) {
                 try {
                     importScripts(s);
                     Utils.log('info', 'DataSource: loaded library: ' + s);
@@ -36,7 +37,7 @@ export default class DataSource {
         }
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = source.max_zoom || Geo.default_max_zoom;
+        this.max_zoom = config.max_zoom || Geo.default_max_zoom;
     }
 
     // Create a tile source by type, factory-style
@@ -44,6 +45,18 @@ export default class DataSource {
         if (DataSource.types[source.type]) {
             return new DataSource.types[source.type](source);
         }
+    }
+
+    // Check if a data source definition changed
+    static changed (source, prev_source) {
+        if (!source || !prev_source) {
+            return true;
+        }
+
+        let cur = Object.assign({}, source.config, { id: null }); // null out ids since we don't want to compare them
+        let prev = Object.assign({}, prev_source.config, { id: null });
+
+        return JSON.stringify(cur) !== JSON.stringify(prev);
     }
 
     // Mercator projection
