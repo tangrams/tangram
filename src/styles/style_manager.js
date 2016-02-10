@@ -488,10 +488,10 @@ StyleManager.compile = function (keys, scene) {
 };
 
 // Get all styles with mesh data for a given tile
-StyleManager.stylesForTile = function (tile) {
+StyleManager.stylesForTile = function (tile_key) {
     let styles = [];
     for (let s in Styles) {
-        if (Styles[s].hasDataForTile(tile)) {
+        if (Styles[s].hasDataForTile(tile_key)) {
             styles.push(s);
         }
     }
