@@ -109,7 +109,9 @@ export default class Tile {
         });
     }
 
-    freeResources() {
+    // Free resources owned by tile
+    // Optionally pass textures to preserve
+    freeResources(preserve = {}) {
         if (this.meshes) {
             for (let m in this.meshes) {
                 this.meshes[m].destroy();
@@ -118,9 +120,11 @@ export default class Tile {
 
         if (this.textures) {
             for (let t of this.textures) {
-                let texture = Texture.textures[t];
-                if (texture) {
-                    texture.destroy();
+                if (!preserve.textures || preserve.textures.indexOf(t) === -1) {
+                    let texture = Texture.textures[t];
+                    if (texture) {
+                        texture.destroy();
+                    }
                 }
             }
         }
@@ -334,14 +338,12 @@ export default class Tile {
             return;
         }
 
-        // Cleanup existing VBOs
-        this.freeResources();
-
         // Debug
         this.debug.geometries = 0;
         this.debug.buffer_size = 0;
 
         // Create VBOs
+        let meshes = {}, textures = []; // new resources, to be swapped in
         let mesh_data = this.mesh_data;
         if (mesh_data) {
             for (var s in mesh_data) {
@@ -349,22 +351,26 @@ export default class Tile {
                     this.debug.buffer_size += mesh_data[s].vertex_data.byteLength;
                     if (!styles[s]) {
                         log.warn(`Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
-                        this.meshes = {};
                         break;
                     }
-                    this.meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
-                    this.debug.geometries += this.meshes[s].geometry_count;
+                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                    this.debug.geometries += meshes[s].geometry_count;
                 }
 
                 // Assign ownership to textures if needed
                 if (mesh_data[s].textures) {
-                    this.textures.push(...mesh_data[s].textures);
+                    textures.push(...mesh_data[s].textures);
                 }
             }
         }
+        delete this.mesh_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
+
+        // Swap in new data, free old data
+        this.freeResources({ textures }); // textures to preserve are passed (avoid flickering from delete/re-create)
+        this.meshes = meshes;
+        this.textures = textures;
 
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
-        this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
         this.printDebug();
     }
 
