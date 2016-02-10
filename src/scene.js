@@ -1218,11 +1218,12 @@ export default class Scene {
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
-        this.syncConfigToWorker();
+
         if (rebuild) {
             return this.rebuildGeometry().then(() => { this.updating--; this.requestRedraw(); });
         }
         else {
+            this.syncConfigToWorker();
             this.updating--;
             this.requestRedraw();
             return Promise.resolve();
