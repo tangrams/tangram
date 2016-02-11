@@ -694,10 +694,10 @@ Builders.outsideTile = function (_a, _b, tolerance) {
     let tile_max = Builders.tile_bounds[1];
 
     // TODO: fix flipped Y coords here, confusing with 'max' reference
-    if ((_a[0] < tile_min.x + tolerance && _b[0] < tile_min.x + tolerance) ||
-        (_a[0] > tile_max.x - tolerance && _b[0] > tile_max.x - tolerance) ||
-        (_a[1] > tile_min.y - tolerance && _b[1] > tile_min.y - tolerance) ||
-        (_a[1] < tile_max.y + tolerance && _b[1] < tile_max.y + tolerance)) {
+    if ((_a[0] <= tile_min.x + tolerance && _b[0] <= tile_min.x + tolerance) ||
+        (_a[0] >= tile_max.x - tolerance && _b[0] >= tile_max.x - tolerance) ||
+        (_a[1] >= tile_min.y - tolerance && _b[1] >= tile_min.y - tolerance) ||
+        (_a[1] <= tile_max.y + tolerance && _b[1] <= tile_max.y + tolerance)) {
         return true;
     }
 
