@@ -121,7 +121,7 @@ Builders.buildExtrudedPolygons = function (
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
-                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], tile_edge_tolerance)) {
+                if (remove_tile_edges && Builders.outsideTile(contour[w], contour[w+1], tile_edge_tolerance)) {
                     continue; // don't extrude tile edges
                 }
 
@@ -274,7 +274,7 @@ Builders.buildPolylines = function (
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], tile_edge_tolerance)) {
+                    if(Builders.outsideTile(line[i], line[lineSize-2], tile_edge_tolerance)) {
                         needToClose = false;
                     }
                 }
@@ -302,7 +302,7 @@ Builders.buildPolylines = function (
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (Builders.isOnTileEdge(coordCurr, coordNext, tile_edge_tolerance)) {
+                    if (Builders.outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -687,29 +687,19 @@ Builders.triangulatePolygon = function (contours)
     return earcut(contours);
 };
 
-// Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-Builders.isOnTileEdge = function (_a, _b, tolerance) {
+// Tests if a line segment (from point A to B) is outside the tile bounds
+// (within a certain tolerance to account for geometry nearly on tile edges)
+Builders.outsideTile = function (_a, _b, tolerance) {
     let tile_min = Builders.tile_bounds[0];
     let tile_max = Builders.tile_bounds[1];
 
-    // Note: mod operation filters out *any* tile edge, not just the edges of the "local" tile,
-    // this is useful for cases where geometry is clipped to some other tile multiple, e.g. 3-tile bbox
-    if (nearlyEqual(_a[0], _b[0], tolerance)) {
-        let x = _a[0] % tile_max.x;
-        if (nearlyEqual(x, tile_min.x, tolerance) || nearlyEqual(x, tile_max.x, tolerance)) {
-            return true;
-        }
+    // TODO: fix flipped Y coords here, confusing with 'max' reference
+    if ((_a[0] <= tile_min.x + tolerance && _b[0] <= tile_min.x + tolerance) ||
+        (_a[0] >= tile_max.x - tolerance && _b[0] >= tile_max.x - tolerance) ||
+        (_a[1] >= tile_min.y - tolerance && _b[1] >= tile_min.y - tolerance) ||
+        (_a[1] <= tile_max.y + tolerance && _b[1] <= tile_max.y + tolerance)) {
+        return true;
     }
-    if (nearlyEqual(_a[1], _b[1], tolerance)) {
-        let y = _a[1] % tile_max.y;
-        if (nearlyEqual(y, tile_min.y, tolerance) || nearlyEqual(y, tile_min.y, tolerance)) {
-            return true;
-        }
-    }
+
     return false;
 };
-
-function nearlyEqual  (a, b, tolerance) {
-    tolerance = tolerance || 1;
-    return (Math.abs(a - b) < tolerance);
-}
