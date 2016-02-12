@@ -8,6 +8,10 @@ uniform float u_device_pixel_ratio;
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
+#ifdef TANGRAM_RASTER_TEXTURE
+    uniform sampler2D TANGRAM_RASTER_TEXTURE;
+#endif
+
 varying vec4 v_position;
 varying vec3 v_normal;
 varying vec4 v_color;
@@ -41,6 +45,12 @@ void main (void) {
 
     // Modify normal before lighting
     #pragma tangram: normal
+
+    // Get color from raster tile texture
+    #ifdef TANGRAM_RASTER_TEXTURE
+        // note: vertex color is multiplied to tint texture color
+        color *= texture2D(TANGRAM_RASTER_TEXTURE, v_texcoord.xy);
+    #endif
 
     // Modify color and material properties before lighting
     #if !defined(TANGRAM_LIGHTING_VERTEX)

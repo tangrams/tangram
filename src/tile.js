@@ -295,7 +295,7 @@ export default class Tile {
             Collision.resetTile(tile.key);
 
             // Return keys to be transfered to main thread
-            return ['mesh_data'];
+            return ['mesh_data', 'texture'];
         });
     }
 
