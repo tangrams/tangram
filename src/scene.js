@@ -370,7 +370,13 @@ export default class Scene {
     }
 
     setZoom(zoom) {
-        this.zooming = false;
+        if (this.zooming) {
+            this.zooming = false;
+        }
+        else {
+            this.last_zoom = this.zoom;
+        }
+
         let tile_zoom = this.tileZoom(zoom);
 
         if (!this.continuous_zoom) {
@@ -485,8 +491,8 @@ export default class Scene {
             }
 
             // Discard if too far from current zoom
-            let zdiff = tile.style_zoom - style_zoom;
-            if (Math.abs(zdiff) > this.preserve_tiles_within_zoom) {
+            let zdiff = Math.abs(tile.style_zoom - style_zoom);
+            if (zdiff > this.preserve_tiles_within_zoom) {
                 return true;
             }
 
