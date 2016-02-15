@@ -155,7 +155,6 @@ export default class Tile {
             key: this.key,
             source: this.source.name,
             coords: this.coords,
-            parent: this.parent,
             min: this.min,
             max: this.max,
             units_per_pixel: this.units_per_pixel,
