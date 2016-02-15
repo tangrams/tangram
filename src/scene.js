@@ -1214,19 +1214,26 @@ export default class Scene {
         this.loadDataSources();
         this.loadTextures();
         this.setBackground();
-        this.updateBounds();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
         this.syncConfigToWorker();
+
+        // Optionally rebuild geometry
+        let done;
         if (rebuild) {
-            return this.rebuildGeometry().then(() => { this.updating--; this.requestRedraw(); });
+            done = this.rebuildGeometry();
         }
         else {
-            this.updating--;
-            this.requestRedraw();
-            return Promise.resolve();
+            done = Promise.resolve();
         }
+
+        // Finish by updating bounds and re-rendering
+        return done.then(() => {
+            this.updating--;
+            this.updateBounds();
+            this.requestRedraw();
+        });
     }
 
     // Serialize config and send to worker
