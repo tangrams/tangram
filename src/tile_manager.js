@@ -1,28 +1,27 @@
 import Tile from './tile';
+import TilePyramid from './tile_pyramid';
 import Geo from './geo';
 import Utils from './utils/utils';
 
 import log from 'loglevel';
 
-var TileManager;
-
-export default TileManager = {
+const TileManager = {
 
     init(scene) {
         this.scene = scene;
         this.tiles = {};
-        this.coord_tiles = {};
+        this.pyramid = TilePyramid;
+        this.pyramid.reset();
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
         this.reset_visible_tiles = true;
-        this.max_proxy_descendant_depth = 3; // # of levels deep to search for descendant proxy tiles
     },
 
     destroy() {
         this.forEachTile(tile => tile.destroy());
         this.tiles = {};
-        this.coord_tiles = {};
+        this.pyramid.reset();
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;
@@ -30,42 +29,7 @@ export default TileManager = {
 
     keepTile(tile) {
         this.tiles[tile.key] = tile;
-        this.addTileCoord(tile);
-
-        // Increment reference count up the tile pyramid
-        for (let z = tile.coords.z - 1; z >= 0; z--) {
-            let up = Tile.coordinateAtZoom(tile.coords, z);
-            this.incTileCount(up);
-        }
-    },
-
-    addTileCoord(tile) {
-        if (!this.coord_tiles[tile.coords.key]) {
-            this.coord_tiles[tile.coords.key] = { tiles: new Set(), descendants: 0 };
-        }
-        else if (!this.coord_tiles[tile.coords.key].tiles) {
-            this.coord_tiles[tile.coords.key].tiles = new Set();
-        }
-        this.coord_tiles[tile.coords.key].tiles.add(tile);
-    },
-
-    incTileCount(coord) {
-        if (!this.coord_tiles[coord.key]) {
-            this.coord_tiles[coord.key] = { descendants: 0 };
-        }
-        this.coord_tiles[coord.key].descendants++;
-    },
-
-    decTileCount(coord) {
-        if (!this.coord_tiles[coord.key]) {
-            this.coord_tiles[coord.key] = { descendants: 0 };
-        }
-        else {
-            this.coord_tiles[coord.key].descendants--;
-            if (this.coord_tiles[coord.key].descendants === 0 && !this.coord_tiles[coord.key].tiles) {
-                delete this.coord_tiles[coord.key];
-            }
-        }
+        this.pyramid.addTile(tile);
     },
 
     hasTile(key) {
@@ -75,25 +39,7 @@ export default TileManager = {
     forgetTile(key) {
         if (this.hasTile(key)) {
             let tile = this.tiles[key];
-            if (this.coord_tiles[tile.coords.key]) {
-                this.coord_tiles[tile.coords.key].tiles.delete(tile);
-                if (this.coord_tiles[tile.coords.key].tiles.size === 0) {
-                    if (this.coord_tiles[tile.coords.key].tiles.descendants === 0) {
-                        // remove whole coord
-                        delete this.coord_tiles[tile.coords.key];
-                    }
-                    else {
-                        // or at least tiles
-                        delete this.coord_tiles[tile.coords.key].tiles;
-                    }
-                }
-            }
-
-            // Decrement reference count up the tile pyramid
-            for (let z = tile.coords.z - 1; z >= 0; z--) {
-                let up = Tile.coordinateAtZoom(tile.coords, z);
-                this.decTileCount(up);
-            }
+            this.pyramid.removeTile(tile);
         }
 
         delete this.tiles[key];
@@ -179,79 +125,6 @@ export default TileManager = {
         }
     },
 
-    getAncestorTile (coord, source, style_zoom) {
-        // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom > source.max_zoom) {
-            if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].tiles) {
-                for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
-                    for (let ancestor of this.coord_tiles[coord.key].tiles) {
-                        if (ancestor.style_zoom === z && ancestor.source.name === source.name) {
-                            return ancestor;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Check tiles at next zoom up
-        let parent = Tile.coordinateAtZoom(coord, coord.z - 1);
-        if (this.coord_tiles[parent.key] && this.coord_tiles[parent.key].tiles) {
-            for (let ancestor of this.coord_tiles[parent.key].tiles) {
-                if (ancestor.source.name === source.name) {
-                    return ancestor; // found ancestor
-                }
-            }
-        }
-        // didn't find ancestor, try next level
-        // TODO: max depth levels to check
-        if (coord.z > 1) {
-            return this.getAncestorTile(Tile.coordinateAtZoom(coord, coord.z - 1), source, style_zoom - 1);
-        }
-    },
-
-    getDescendantTiles (coord, source, style_zoom, level = 1) {
-        let descendants = [];
-
-        // First check overzoomed tiles at same coordinate zoom
-        if (style_zoom >= source.max_zoom) {
-            if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].tiles) {
-                let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
-                for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-                    for (let descendant of this.coord_tiles[coord.key].tiles) {
-                        if (descendant.style_zoom === z && descendant.source.name === source.name) {
-                            descendants.push(descendant);
-                            return descendants;
-                        }
-                    }
-                }
-            }
-            return descendants;
-        }
-
-        // Check tiles at next zoom down
-        if (this.coord_tiles[coord.key] && this.coord_tiles[coord.key].descendants > 0) {
-            for (let child of Tile.childrenForCoordinate(coord)) {
-                let found = false;
-                if (this.coord_tiles[child.key] && this.coord_tiles[child.key].tiles) {
-                    for (let descendant of this.coord_tiles[child.key].tiles) {
-                        if (descendant.source.name === source.name) {
-                            descendants.push(descendant);
-                            found = true;
-                            break; // found descendant, look for next
-                        }
-                    }
-                }
-
-                // didn't find child, try next level
-                if (!found && level <= this.max_proxy_descendant_depth && child.z <= source.max_zoom) {
-                    descendants.push(...this.getDescendantTiles(child, source, style_zoom + 1, level + 1));
-                }
-            }
-        }
-
-        return descendants;
-    },
-
     updateProxyTiles () {
         if (this.scene.zoom_direction === 0) {
             return;
@@ -264,7 +137,7 @@ export default TileManager = {
         this.forEachTile(tile => {
             if (this.scene.zoom_direction === 1) {
                 if (tile.visible && tile.loading && tile.coords.z > 0) {
-                    let p = this.getAncestorTile(tile.coords, tile.source, tile.style_zoom);
+                    let p = this.pyramid.getAncestor(tile);
                     if (p) {
                         proxy = true;
                         p.proxy = true;
@@ -275,7 +148,7 @@ export default TileManager = {
             }
             else if (this.scene.zoom_direction === -1) {
                 if (tile.visible && tile.loading) {
-                    let d = this.getDescendantTiles(tile.coords, tile.source, tile.style_zoom);
+                    let d = this.pyramid.getDescendants(tile);
                     for (let t of d) {
                         proxy = true;
                         t.proxy = true;
@@ -474,3 +347,5 @@ export default TileManager = {
     }
 
 };
+
+export default TileManager;
