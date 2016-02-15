@@ -189,7 +189,8 @@ export default TileManager = {
         tile.update(this.scene);
         tile.build(this.scene.generation)
             .then(message => this.buildTileCompleted(message))
-            .catch(() => {
+            .catch(e => {
+                log.error(`Error building tile ${tile.key}:`, e);
                 this.forgetTile(tile.key);
                 Tile.abortBuild(tile);
             });
