@@ -37,9 +37,11 @@ describe('Tile', function() {
             let unzoomed_coords = { x: Math.floor(coords.x*2), y: Math.floor(coords.y*2), z: 18 };
             let overzoomed_coords = { x: Math.floor(coords.x/4), y: Math.floor(coords.y/4), z: 15 };
 
-            let overzoomed = Tile.overZoomedCoordinate(unzoomed_coords, 15);
+            let overzoomed = Tile.coordinateWithMaxZoom(unzoomed_coords, 15);
 
-            assert.deepEqual(overzoomed, overzoomed_coords);
+            assert.deepEqual(overzoomed.x, overzoomed_coords.x);
+            assert.deepEqual(overzoomed.y, overzoomed_coords.y);
+            assert.deepEqual(overzoomed.z, overzoomed_coords.z);
         });
 
     });
