@@ -27,7 +27,7 @@ Object.assign(RasterStyle, {
         }
 
         // Enable raster flag
-        this.defines.TANGRAM_RASTER_TEXTURE = 'u_raster_texture';
+        this.defines.TANGRAM_RASTER_TEXTURE = true;
     },
 
     _preprocess (draw) {
@@ -42,15 +42,20 @@ Object.assign(RasterStyle, {
             let texture = tile.texture; // TODO: call data source to get this directly?
             if (texture) {
                 tile_data.uniforms = tile_data.uniforms || {};
-                tile_data.uniforms[this.defines.TANGRAM_RASTER_TEXTURE] = texture.url;
+                tile_data.uniforms.u_raster_texture = texture.url;
                 tile_data.textures = [texture.url]; // assign texture ownership to tile
 
                 // Load textures on main thread and return when done
                 // We want to block the building of a raster tile mesh until its texture is loaded,
                 // to avoid flickering while loading (texture will render as black)
-                return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', { [texture.url]: texture }).then(() => {
-                    return tile_data;
-                });
+                return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', { [texture.url]: texture })
+                    .then((textures) => {
+                        // Set texture width/height (returned after loading from main thread)
+                        tile_data.uniforms.u_raster_texture_size = textures[0];
+                        tile_data.uniforms.u_raster_texture_pixel_size = [1 / textures[0][0], 1 / textures[0][1]];
+                        return tile_data;
+                    }
+                );
             }
 
             return tile_data;
@@ -59,8 +64,9 @@ Object.assign(RasterStyle, {
 
     // Called on main thread
     loadTextures (textures) {
-        // NB: only return # of textures loaded, because we can't send actual texture objects to worker
-        return Texture.createFromObject(this.gl, textures).then(textures => textures.length);
+        // NB: only return size of textures loaded, because we can't send actual texture objects to worker
+        return Texture.createFromObject(this.gl, textures)
+            .then(textures => textures.map(t => [t.width, t.height]));
     }
 
 });
