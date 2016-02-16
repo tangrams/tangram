@@ -1,6 +1,5 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
-import Geo from './geo';
 import Utils from './utils/utils';
 
 import log from 'loglevel';
