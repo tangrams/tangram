@@ -118,6 +118,10 @@ export default class Scene {
         log.setLevel(this.logLevel);
     }
 
+    static create (config, options = {}) {
+        return new Scene(config, options);
+    }
+
     // Load (or reload) scene config
     // Optionally specify new scene file URL
     load(config_source = null, config_path = null) {
@@ -1416,9 +1420,3 @@ export default class Scene {
     }
 
 }
-
-// Static methods/state
-
-Scene.create = function (config, options = {}) {
-    return new Scene(config, options);
-};
