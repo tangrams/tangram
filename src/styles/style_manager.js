@@ -212,7 +212,7 @@ StyleManager.mix = function (style, styles) {
 
         // Track which styles were mixed into this one
         for (let s of sources) {
-            style.mixed[s] = true;
+            style.mixed[s.name] = true;
         }
     }
     sources.push(style);
