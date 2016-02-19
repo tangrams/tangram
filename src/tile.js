@@ -5,6 +5,7 @@ import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
+import {mat4, vec3} from 'gl-matrix';
 import log from 'loglevel';
 
 export default class Tile {
@@ -380,6 +381,19 @@ export default class Tile {
         this.debug.geom_ratio = (this.debug.geometries / this.debug.features).toFixed(1);
         this.mesh_data = null; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
         this.printDebug();
+    }
+
+    // Update model matrix and tile uniforms
+    setupProgram (matrix, program) {
+        // Tile origin
+        program.uniform('3f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom);
+
+        // Model matrix - transform tile space into world space (meters, absolute mercator position)
+        mat4.identity(matrix.model);
+        mat4.translate(matrix.model, matrix.model, vec3.fromValues(this.min.x, this.min.y, 0));
+        mat4.scale(matrix.model, matrix.model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+        mat4.copy(matrix.model32, matrix.model);
+        program.uniform('Matrix4fv', 'u_model', false, matrix.model32);
     }
 
     /**

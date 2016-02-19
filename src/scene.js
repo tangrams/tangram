@@ -30,10 +30,6 @@ StyleManager.register(Points);
 StyleManager.register(TextStyle);
 
 import log from 'loglevel';
-import glMatrix from 'gl-matrix';
-let mat4 = glMatrix.mat4;
-let mat3 = glMatrix.mat3;
-let vec3 = glMatrix.vec3;
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
@@ -89,16 +85,7 @@ export default class Scene {
         this.lights = null;
         this.background = null;
 
-        // Model-view matrices
-        // 64-bit versions are for CPU calcuations
-        // 32-bit versions are downsampled and sent to GPU
-        this.modelMatrix = new Float64Array(16);
-        this.modelMatrix32 = new Float32Array(16);
-        this.modelViewMatrix = new Float64Array(16);
-        this.modelViewMatrix32 = new Float32Array(16);
-        this.normalMatrix = new Float64Array(9);
-        this.normalMatrix32 = new Float32Array(9);
-        this.inverseNormalMatrix32 = new Float32Array(9);
+        this.createMatrices();
 
         // Listen to related objects
         this.listeners = {
@@ -556,26 +543,10 @@ export default class Scene {
 
             // Tile-specific state
             // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+            tile.setupProgram(this.matrix, program);
 
-            // Tile origin
-            program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
-
-            // Model matrix - transform tile space into world space (meters, absolute mercator position)
-            mat4.identity(this.modelMatrix);
-            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
-            mat4.copy(this.modelMatrix32, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
-
-            // Model view matrix - transform tile space into view space (meters, relative to camera)
-            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-            // Normal matrices - transforms surface normals into view space
-            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-            mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
-            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
-            program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
+            // Model-view and normal matrices
+            this.camera.setMatrices(this.matrix, program);
 
             // Render tile
             tile.meshes[style].render();
@@ -929,6 +900,20 @@ export default class Scene {
 
         // Compile newly active styles
         return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
+    }
+
+    // Allocate model-view matrices
+    // 64-bit versions are for CPU calcuations
+    // 32-bit versions are downsampled and sent to GPU
+    createMatrices () {
+        this.matrix = {};
+        this.matrix.model = new Float64Array(16);
+        this.matrix.model32 = new Float32Array(16);
+        this.matrix.model_view = new Float64Array(16);
+        this.matrix.model_view32 = new Float32Array(16);
+        this.matrix.normal = new Float64Array(9);
+        this.matrix.normal32 = new Float32Array(9);
+        this.matrix.inverse_normal32 = new Float32Array(9);
     }
 
     // Create camera
