@@ -947,10 +947,10 @@ export default class Scene {
     createCamera() {
         let active_camera = this._active_camera;
         if (active_camera) {
-            this.camera = Camera.create(active_camera, this, this.config.cameras[this._active_camera]);
+            this.camera = Camera.create(active_camera, this.view, this.config.cameras[this._active_camera]);
 
             // TODO: replace this and move all position info to camera
-            this.camera.updateScene();
+            this.camera.updateView();
         }
     }
 

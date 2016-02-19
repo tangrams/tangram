@@ -9,42 +9,36 @@ var vec3 = glMatrix.vec3;
 // Abstract base class
 export default class Camera {
 
-    constructor(name, scene, options = {}) {
-        this.scene = scene;
+    constructor(name, view, options = {}) {
+        this.view = view;
         this.position = options.position;
         this.zoom = options.zoom;
-        // this.updateScene();
     }
 
     // Create a camera by type name, factory-style
-    static create(name, scene, config) {
+    static create(name, view, config) {
         switch (config.type) {
             case 'isometric':
-                return new IsometricCamera(name, scene, config);
+                return new IsometricCamera(name, view, config);
             case 'flat':
-                return new FlatCamera(name, scene, config);
+                return new FlatCamera(name, view, config);
             case 'perspective':
             /* falls through */
             default:
-                return new PerspectiveCamera(name, scene, config);
+                return new PerspectiveCamera(name, view, config);
         }
     }
 
     // Update method called once per frame
     update() {
-        // this.updateScene();
     }
 
     // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
     setupProgram(program) {
     }
 
-    /**
-        Sync camera position and/or zoom to scene
-        position: [lat, lng] or [lat, lng, zoom]
-        zoom: zoom
-    */
-    updateScene () {
+    // Sync camera position/zoom to scene view
+    updateView () {
         if (this.position || this.zoom) {
             var view = {};
             if (this.position) {
@@ -53,7 +47,7 @@ export default class Camera {
             if (this.zoom) {
                 view.zoom = this.zoom;
             }
-            this.scene.view.setView(view);
+            this.view.setView(view);
         }
     }
 
@@ -76,8 +70,8 @@ export default class Camera {
 */
 class PerspectiveCamera extends Camera {
 
-    constructor(name, scene, options = {}) {
-        super(name, scene, options);
+    constructor(name, view, options = {}) {
+        super(name, view, options);
         this.type = 'perspective';
 
         // a single scalar, or pairs of stops mapping zoom levels, e.g. [zoom, focal length]
@@ -141,17 +135,17 @@ class PerspectiveCamera extends Camera {
         // TODO: only re-calculate these vars when necessary
 
         // Height of the viewport in meters at current zoom
-        var viewport_height = this.scene.view.css_size.height * Geo.metersPerPixel(this.scene.view.zoom);
+        var viewport_height = this.view.css_size.height * Geo.metersPerPixel(this.view.zoom);
 
         // Compute camera properties to fit desired view
         var { height, fov } = this.constrainCamera({
             view_height: viewport_height,
-            focal_length: Utils.interpolate(this.scene.view.zoom, this.focal_length),
-            fov: Utils.interpolate(this.scene.view.zoom, this.fov)
+            focal_length: Utils.interpolate(this.view.zoom, this.focal_length),
+            fov: Utils.interpolate(this.view.zoom, this.fov)
          });
 
         // View matrix
-        var position = [this.scene.view.center_meters.x, this.scene.view.center_meters.y, height];
+        var position = [this.view.center_meters.x, this.view.center_meters.y, height];
         this.position_meters = position;
 
         // mat4.lookAt(this.viewMatrix,
@@ -165,11 +159,11 @@ class PerspectiveCamera extends Camera {
             vec3.fromValues(0, 1, 0));
 
         // Projection matrix
-        mat4.perspective(this.projectionMatrix, fov, this.scene.view.view_aspect, 1, height * 2);
+        mat4.perspective(this.projectionMatrix, fov, this.view.view_aspect, 1, height * 2);
 
         // Convert vanishing point from pixels to viewport space
-        this.vanishing_point_skew[0] = this.vanishing_point[0] / this.scene.view.css_size.width;
-        this.vanishing_point_skew[1] = this.vanishing_point[1] / this.scene.view.css_size.height;
+        this.vanishing_point_skew[0] = this.vanishing_point[0] / this.view.css_size.width;
+        this.vanishing_point_skew[1] = this.vanishing_point[1] / this.view.css_size.height;
 
         // Adjust projection matrix to include vanishing point skew
         this.projectionMatrix[8] = -this.vanishing_point_skew[0]; // z column of x row, e.g. amount z skews x
@@ -180,7 +174,7 @@ class PerspectiveCamera extends Camera {
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
         mat4.translate(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                viewport_height/2 * this.scene.view.view_aspect * -this.vanishing_point_skew[0],
+                viewport_height/2 * this.view.view_aspect * -this.vanishing_point_skew[0],
                 viewport_height/2 * -this.vanishing_point_skew[1],
                 0
             )
@@ -210,8 +204,8 @@ class PerspectiveCamera extends Camera {
 // straight upwards on screen at their true height, [0, .5] would draw them up at half-height, [1, 0] would be sideways, etc.
 class IsometricCamera extends Camera {
 
-    constructor(name, scene, options = {}) {
-        super(name, scene, options);
+    constructor(name, view, options = {}) {
+        super(name, view, options);
         this.type = 'isometric';
         this.axis = options.axis || { x: 0, y: 1 };
         if (this.axis.length === 2) {
@@ -245,8 +239,8 @@ class IsometricCamera extends Camera {
     update() {
         super.update();
 
-        this.viewport_height = this.scene.view.css_size.height * Geo.metersPerPixel(this.scene.view.zoom);
-        var position = [this.scene.view.center_meters.x, this.scene.view.center_meters.y, this.viewport_height];
+        this.viewport_height = this.view.css_size.height * Geo.metersPerPixel(this.view.zoom);
+        var position = [this.view.center_meters.x, this.view.center_meters.y, this.viewport_height];
         this.position_meters = position;
 
         // View
@@ -257,15 +251,15 @@ class IsometricCamera extends Camera {
         mat4.identity(this.projectionMatrix);
 
         // apply isometric skew
-        this.projectionMatrix[8] = this.axis.x / this.scene.view.view_aspect;    // z column of x row, e.g. amount z skews x
+        this.projectionMatrix[8] = this.axis.x / this.view.view_aspect;    // z column of x row, e.g. amount z skews x
         this.projectionMatrix[9] = this.axis.y;                             // z column of x row, e.g. amount z skews y
 
         // convert meters to viewport
         mat4.scale(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                2 / this.scene.view.viewport_meters.x,
-                2 / this.scene.view.viewport_meters.y,
-                2 / this.scene.view.viewport_meters.y
+                2 / this.view.viewport_meters.x,
+                2 / this.view.viewport_meters.y,
+                2 / this.view.viewport_meters.y
             )
         );
     }
@@ -283,8 +277,8 @@ class IsometricCamera extends Camera {
 // Flat projection (e.g. just top-down, no perspective) - a degenerate isometric camera
 class FlatCamera extends IsometricCamera {
 
-    constructor(name, scene, options = {}) {
-        super(name, scene, options);
+    constructor(name, view, options = {}) {
+        super(name, view, options);
         this.type = 'flat';
     }
 
