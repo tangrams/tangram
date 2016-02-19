@@ -1,4 +1,3 @@
-import Geo from './geo';
 import Utils from './utils/utils';
 import ShaderProgram from './gl/shader_program';
 
@@ -135,7 +134,7 @@ class PerspectiveCamera extends Camera {
         // TODO: only re-calculate these vars when necessary
 
         // Height of the viewport in meters at current zoom
-        var viewport_height = this.view.css_size.height * Geo.metersPerPixel(this.view.zoom);
+        var viewport_height = this.view.size.css.height * this.view.meters_per_pixel;
 
         // Compute camera properties to fit desired view
         var { height, fov } = this.constrainCamera({
@@ -145,7 +144,7 @@ class PerspectiveCamera extends Camera {
          });
 
         // View matrix
-        var position = [this.view.center_meters.x, this.view.center_meters.y, height];
+        var position = [this.view.center.meters.x, this.view.center.meters.y, height];
         this.position_meters = position;
 
         // mat4.lookAt(this.viewMatrix,
@@ -159,11 +158,11 @@ class PerspectiveCamera extends Camera {
             vec3.fromValues(0, 1, 0));
 
         // Projection matrix
-        mat4.perspective(this.projectionMatrix, fov, this.view.view_aspect, 1, height * 2);
+        mat4.perspective(this.projectionMatrix, fov, this.view.aspect, 1, height * 2);
 
         // Convert vanishing point from pixels to viewport space
-        this.vanishing_point_skew[0] = this.vanishing_point[0] / this.view.css_size.width;
-        this.vanishing_point_skew[1] = this.vanishing_point[1] / this.view.css_size.height;
+        this.vanishing_point_skew[0] = this.vanishing_point[0] / this.view.size.css.width;
+        this.vanishing_point_skew[1] = this.vanishing_point[1] / this.view.size.css.height;
 
         // Adjust projection matrix to include vanishing point skew
         this.projectionMatrix[8] = -this.vanishing_point_skew[0]; // z column of x row, e.g. amount z skews x
@@ -174,7 +173,7 @@ class PerspectiveCamera extends Camera {
         // plane of the map matches that expected by a traditional web mercator map at this [lat, lng, zoom].
         mat4.translate(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                viewport_height/2 * this.view.view_aspect * -this.vanishing_point_skew[0],
+                viewport_height/2 * this.view.aspect * -this.vanishing_point_skew[0],
                 viewport_height/2 * -this.vanishing_point_skew[1],
                 0
             )
@@ -239,8 +238,8 @@ class IsometricCamera extends Camera {
     update() {
         super.update();
 
-        this.viewport_height = this.view.css_size.height * Geo.metersPerPixel(this.view.zoom);
-        var position = [this.view.center_meters.x, this.view.center_meters.y, this.viewport_height];
+        this.viewport_height = this.view.size.css.height * this.view.meters_per_pixel;
+        var position = [this.view.center.meters.x, this.view.center.meters.y, this.viewport_height];
         this.position_meters = position;
 
         // View
@@ -251,15 +250,15 @@ class IsometricCamera extends Camera {
         mat4.identity(this.projectionMatrix);
 
         // apply isometric skew
-        this.projectionMatrix[8] = this.axis.x / this.view.view_aspect;    // z column of x row, e.g. amount z skews x
-        this.projectionMatrix[9] = this.axis.y;                             // z column of x row, e.g. amount z skews y
+        this.projectionMatrix[8] = this.axis.x / this.view.aspect; // z column of x row, e.g. amount z skews x
+        this.projectionMatrix[9] = this.axis.y;                    // z column of x row, e.g. amount z skews y
 
         // convert meters to viewport
         mat4.scale(this.projectionMatrix, this.projectionMatrix,
             vec3.fromValues(
-                2 / this.view.viewport_meters.x,
-                2 / this.view.viewport_meters.y,
-                2 / this.view.viewport_meters.y
+                2 / this.view.size.meters.x,
+                2 / this.view.size.meters.y,
+                2 / this.view.size.meters.y
             )
         );
     }

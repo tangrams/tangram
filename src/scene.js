@@ -340,26 +340,20 @@ export default class Scene {
         if (Utils.updateDevicePixelRatio()) {
             WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
                 .then(() => this.rebuild())
-                .then(() => this.resizeMap(this.view.css_size.width, this.view.css_size.height));
+                .then(() => this.resizeMap(this.view.size.css.width, this.view.size.css.height));
         }
     }
 
     resizeMap(width, height) {
         this.dirty = true;
 
-        this.view.css_size = { width: width, height: height };
-        this.view.device_size = {
-            width: Math.round(this.view.css_size.width * Utils.device_pixel_ratio),
-            height: Math.round(this.view.css_size.height * Utils.device_pixel_ratio)
-        };
-        this.view.view_aspect = this.view.css_size.width / this.view.css_size.height;
-        this.view.updateBounds();
+        this.view.setViewportSize(width, height);
 
         if (this.canvas) {
-            this.canvas.style.width = this.view.css_size.width + 'px';
-            this.canvas.style.height = this.view.css_size.height + 'px';
-            this.canvas.width = this.view.device_size.width;
-            this.canvas.height = this.view.device_size.height;
+            this.canvas.style.width = this.view.size.css.width + 'px';
+            this.canvas.style.height = this.view.size.css.height + 'px';
+            this.canvas.width = this.view.size.device.width;
+            this.canvas.height = this.view.size.device.height;
 
             if (this.gl) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -449,12 +443,6 @@ export default class Scene {
 
     render() {
         var gl = this.gl;
-
-        // Map transforms
-        // TODO move to view
-        if (!this.view.center_meters) {
-            return;
-        }
 
         // Update styles, camera, lights
         this.camera.update();
@@ -692,8 +680,8 @@ export default class Scene {
 
         // Point scaled to [0..1] range
         var point = {
-            x: pixel.x * Utils.device_pixel_ratio / this.view.device_size.width,
-            y: pixel.y * Utils.device_pixel_ratio / this.view.device_size.height
+            x: pixel.x * Utils.device_pixel_ratio / this.view.size.device.width,
+            y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed

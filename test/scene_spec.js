@@ -116,7 +116,7 @@ describe('Scene', function () {
         });
 
         it('sets the device size property', () => {
-            assert.deepEqual(subject.device_size, {
+            assert.deepEqual(subject.size.device, {
                 height: computedHeight,
                 width: computedWidth
             });

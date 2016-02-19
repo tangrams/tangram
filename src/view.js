@@ -14,25 +14,36 @@ export default class View {
 
         this.zoom = null;
         this.center = null;
+        this.bounds = null;
+        this.meters_per_pixel = null;
 
+        this.panning = false;
         this.zooming = false;
         this.zoom_direction = 0;
-        this.preserve_tiles_within_zoom = 1;
-        this.panning = false;
 
-        // this.meters_per_pixel
-        // this.css_size
-        // this.device_size
-        // this.view_aspect
-        // this.viewport_meters
-        // this.center_meters
-        // this.center_tile
-        // this.bounds_meters
+        // Size of viewport in CSS pixels, device pixels, and mercator meters
+        this.size = {
+            css: {},
+            device: {},
+            meters: {}
+        };
+        this.aspect = null;
 
         this.buffer = 0;
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
+    }
+
+    // Set logical pixel size of viewport
+    setViewportSize (width, height) {
+        this.size.css = { width, height };
+        this.size.device = {
+            width: Math.round(this.size.css.width * Utils.device_pixel_ratio),
+            height: Math.round(this.size.css.height * Utils.device_pixel_ratio)
+        };
+        this.aspect = this.size.css.width / this.size.css.height;
+        this.updateBounds();
     }
 
     // Set the map view, can be passed an object with lat/lng and/or zoom
@@ -115,7 +126,7 @@ export default class View {
 
     ready() {
         // TODO: better concept of "readiness" state?
-        if (this.css_size == null || this.center == null || this.zoom == null) {
+        if (this.size.css == null || this.center == null || this.zoom == null) {
              return false;
         }
         return true;
@@ -130,25 +141,26 @@ export default class View {
         this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
 
         // Size of the half-viewport in meters at current zoom
-        this.viewport_meters = {
-            x: this.css_size.width * this.meters_per_pixel,
-            y: this.css_size.height * this.meters_per_pixel
+        this.size.meters = {
+            x: this.size.css.width * this.meters_per_pixel,
+            y: this.size.css.height * this.meters_per_pixel
         };
 
         // Center of viewport in meters, and tile
         let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-        this.center_meters = { x, y };
+        this.center.meters = { x, y };
 
-        this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], this.tile_zoom);
+        this.center.tile = Geo.tileForMeters([this.center.meters.x, this.center.meters.y], this.tile_zoom);
 
-        this.bounds_meters = {
+        // Bounds in meters
+        this.bounds = {
             sw: {
-                x: this.center_meters.x - this.viewport_meters.x / 2,
-                y: this.center_meters.y - this.viewport_meters.y / 2
+                x: this.center.meters.x - this.size.meters.x / 2,
+                y: this.center.meters.y - this.size.meters.y / 2
             },
             ne: {
-                x: this.center_meters.x + this.viewport_meters.x / 2,
-                y: this.center_meters.y + this.viewport_meters.y / 2
+                x: this.center.meters.x + this.size.meters.x / 2,
+                y: this.center.meters.y + this.size.meters.y / 2
             }
         };
 
@@ -160,13 +172,13 @@ export default class View {
 
     // TODO: move to a new view manager object
     findVisibleTileCoordinates() {
-        if (!this.bounds_meters) {
+        if (!this.bounds) {
             return [];
         }
 
         let z = this.tile_zoom;
-        let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
-        let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
+        let sw = Geo.tileForMeters([this.bounds.sw.x, this.bounds.sw.y], z);
+        let ne = Geo.tileForMeters([this.bounds.ne.x, this.bounds.ne.y], z);
 
         let coords = [];
         for (let x = sw.x - this.buffer; x <= ne.x + this.buffer; x++) {
@@ -186,8 +198,8 @@ export default class View {
 
         // Remove tiles that are a specified # of tiles outside of the viewport border
         let border_tiles = [
-            Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
-            Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
+            Math.ceil((Math.floor(this.size.css.width / Geo.tile_size) + 2) / 2),
+            Math.ceil((Math.floor(this.size.css.height / Geo.tile_size) + 2) / 2)
         ];
         let style_zoom = this.tileZoom(this.zoom);
 
@@ -207,11 +219,11 @@ export default class View {
             let coords = Tile.coordinateAtZoom(tile.coords, style_zoom);
 
             // Discard tiles outside an area surrounding the viewport
-            if (Math.abs(coords.x - this.center_tile.x) - border_tiles[0] > this.buffer) {
+            if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {
                 log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
                 return true;
             }
-            else if (Math.abs(coords.y - this.center_tile.y) - border_tiles[1] > this.buffer) {
+            else if (Math.abs(coords.y - this.center.tile.y) - border_tiles[1] > this.buffer) {
                 log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
                 return true;
             }
@@ -220,8 +232,8 @@ export default class View {
     }
 
     setupProgram (program) {
-        program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-        program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
+        program.uniform('2f', 'u_resolution', this.size.device.width, this.size.device.height);
+        program.uniform('3f', 'u_map_position', this.center.meters.x, this.center.meters.y, this.zoom);
         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
         program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
     }

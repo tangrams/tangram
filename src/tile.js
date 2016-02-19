@@ -410,10 +410,10 @@ export default class Tile {
 
     update(view) {
         let coords = this.coords;
-        if (coords.z !== view.center_tile.z) {
-            coords = Tile.coordinateAtZoom(coords, view.center_tile.z);
+        if (coords.z !== view.center.tile.z) {
+            coords = Tile.coordinateAtZoom(coords, view.center.tile.z);
         }
-        this.center_dist = Math.abs(view.center_tile.x - coords.x) + Math.abs(view.center_tile.y - coords.y);
+        this.center_dist = Math.abs(view.center.tile.x - coords.x) + Math.abs(view.center.tile.y - coords.y);
     }
 
     // Slice a subset of keys out of a tile

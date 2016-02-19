@@ -25,7 +25,7 @@ const TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;
-        // this.view
+        this.view = null;
     },
 
     keepTile(tile) {
@@ -225,8 +225,8 @@ const TileManager = {
 
         // Sort queued tiles from center tile
         this.queued_coords.sort((a, b) => {
-            let ad = Math.abs(this.view.center_tile.x - a.x) + Math.abs(this.view.center_tile.y - a.y);
-            let bd = Math.abs(this.view.center_tile.x - b.x) + Math.abs(this.view.center_tile.y - b.y);
+            let ad = Math.abs(this.view.center.tile.x - a.x) + Math.abs(this.view.center.tile.y - a.y);
+            let bd = Math.abs(this.view.center.tile.x - b.x) + Math.abs(this.view.center.tile.y - b.y);
             return (bd > ad ? -1 : (bd === ad ? 0 : 1));
         });
         this.queued_coords.forEach(coords => this.loadCoordinate(coords));
@@ -236,7 +236,7 @@ const TileManager = {
     // Load all tiles to cover a given logical tile coordinate
     loadCoordinate(coords) {
         // Skip if not at current scene zoom
-        if (coords.z !== this.view.center_tile.z) {
+        if (coords.z !== this.view.center.tile.z) {
             return;
         }
 
