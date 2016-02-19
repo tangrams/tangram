@@ -170,7 +170,6 @@ export default class View {
         this.scene.requestRedraw(); // TODO automate via move event?
     }
 
-    // TODO: move to a new view manager object
     findVisibleTileCoordinates() {
         if (!this.bounds) {
             return [];

@@ -252,7 +252,7 @@ const TileManager = {
                     source,
                     coords,
                     worker: this.scene.nextWorker(),
-                    style_zoom: this.view.styleZoom(coords.z) // TODO: replace?
+                    style_zoom: this.view.styleZoom(coords.z)
                 });
 
                 this.keepTile(tile);
