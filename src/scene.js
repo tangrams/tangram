@@ -9,6 +9,7 @@ import {Style} from './styles/style';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
+import View from './view';
 import Camera from './camera';
 import Light from './light';
 import Tile from './tile';
@@ -45,11 +46,10 @@ export default class Scene {
         this.initializing = false;
         this.sources = {};
 
+        this.view = new View(this, options);
         this.tile_manager = TileManager;
-        this.tile_manager.init(this);
+        this.tile_manager.init({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
-        this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
-        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
@@ -80,15 +80,9 @@ export default class Scene {
         this.render_count_changed = false;
         this.frame = 0;
         this.queue_screenshot = null;
+        this.selection = null;
         this.resetTime();
 
-        this.zoom = null;
-        this.center = null;
-
-        this.zooming = false;
-        this.zoom_direction = 0;
-        this.preserve_tiles_within_zoom = 1;
-        this.panning = false;
         this.container = options.container;
 
         this.camera = null;
@@ -106,8 +100,13 @@ export default class Scene {
         this.normalMatrix32 = new Float32Array(9);
         this.inverseNormalMatrix32 = new Float32Array(9);
 
-        this.selection = null;
-        this.texture_listener = null;
+        // Listen to related objects
+        this.listeners = {
+            view: {
+                move: () => this.trigger('move')
+            }
+        };
+        this.view.subscribe(this.listeners.view);
 
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
@@ -140,12 +139,12 @@ export default class Scene {
                 this.createCanvas();
                 this.resetFeatureSelection();
 
-                if (!this.texture_listener) {
-                    this.texture_listener = {
+                if (!this.listeners.texture) {
+                    this.listeners.texture = {
                         update: () => this.dirty = true,
                         warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
                     };
-                    Texture.subscribe(this.texture_listener);
+                    Texture.subscribe(this.listeners.texture);
                 }
 
                 // Reset tile manager visibility before rebuilding
@@ -200,8 +199,9 @@ export default class Scene {
 
         this.unsubscribeAll(); // clear all event listeners
 
-        Texture.unsubscribe(this.texture_listener);
-        this.texture_listener = null;
+        this.view.unsubscribe(this.listeners.view);
+        Texture.unsubscribe(this.listeners.texture);
+        this.listeners = null;
 
         if (this.canvas && this.canvas.parentNode) {
             this.canvas.parentNode.removeChild(this.canvas);
@@ -327,193 +327,12 @@ export default class Scene {
         return worker;
     }
 
-    /**
-        Set the map view, can be passed an object with lat/lng and/or zoom
-    */
-    setView({ lng, lat, zoom } = {}) {
-        var changed = false;
-
-        // Set center
-        if (typeof lng === 'number' && typeof lat === 'number') {
-            if (!this.center || lng !== this.center.lng || lat !== this.center.lat) {
-                changed = true;
-                this.center = { lng: Geo.wrapLng(lng), lat };
-            }
-        }
-
-        // Set zoom
-        if (typeof zoom === 'number' && zoom !== this.zoom) {
-            changed = true;
-            this.setZoom(zoom);
-        }
-
-        if (changed) {
-            this.updateBounds();
-        }
-        return changed;
-    }
-
-    startZoom() {
-        this.last_zoom = this.zoom;
-        this.zooming = true;
-    }
-
-    // Choose the base zoom level to use for a given fractional zoom
-    baseZoom(zoom) {
-        return Math.floor(zoom);
-    }
-
-    // For a given view zoom, what tile zoom should be loaded?
-    tileZoom(view_zoom) {
-        return this.baseZoom(view_zoom) - this.tile_simplification_level;
-    }
-
-    // For a given tile zoom, what style zoom should be used?
-    styleZoom(tile_zoom) {
-        return this.baseZoom(tile_zoom) + this.tile_simplification_level;
-    }
-
-    setZoom(zoom) {
-        if (this.zooming) {
-            this.zooming = false;
-        }
-        else {
-            this.last_zoom = this.zoom;
-        }
-
-        let tile_zoom = this.tileZoom(zoom);
-
-        if (!this.continuous_zoom) {
-            zoom = tile_zoom;
-        }
-
-        let last_tile_zoom = this.tileZoom(this.last_zoom);
-        if (tile_zoom !== last_tile_zoom) {
-            // Remove tiles outside current zoom that are still loading
-            this.tile_manager.removeTiles(tile => {
-                if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
-                    log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
-                    return true;
-                }
-            });
-
-            this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
-        }
-
-        this.last_zoom = this.zoom;
-        this.zoom = zoom;
-        this.tile_zoom = tile_zoom;
-
-        this.updateBounds();
-
-        this.dirty = true;
-    }
-
-    viewReady() {
-        if (this.css_size == null || this.center == null || this.zoom == null || Object.keys(this.sources).length === 0) {
+    // Scene is ready for rendering
+    ready() {
+        if (!this.view.ready() || Object.keys(this.sources).length === 0) {
              return false;
         }
         return true;
-    }
-
-    // Calculate viewport bounds based on current center and zoom
-    updateBounds() {
-        // TODO: better concept of "readiness" state?
-        if (!this.viewReady()) {
-            return;
-        }
-
-        this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
-
-        // Size of the half-viewport in meters at current zoom
-        this.viewport_meters = {
-            x: this.css_size.width * this.meters_per_pixel,
-            y: this.css_size.height * this.meters_per_pixel
-        };
-
-        // Center of viewport in meters, and tile
-        let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-        this.center_meters = { x, y };
-
-        let z = this.tileZoom(this.zoom);
-        this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], z);
-
-        this.bounds_meters = {
-            sw: {
-                x: this.center_meters.x - this.viewport_meters.x / 2,
-                y: this.center_meters.y - this.viewport_meters.y / 2
-            },
-            ne: {
-                x: this.center_meters.x + this.viewport_meters.x / 2,
-                y: this.center_meters.y + this.viewport_meters.y / 2
-            }
-        };
-
-        this.tile_manager.updateTilesForView();
-
-        this.trigger('move');
-        this.dirty = true;
-    }
-
-    // TODO: move to a new view manager object
-    findVisibleTileCoordinates({ buffer } = {}) {
-        if (!this.bounds_meters) {
-            return [];
-        }
-
-        let z = this.tileZoom(this.zoom);
-        let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
-        let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
-        buffer = buffer || 0;
-
-        let coords = [];
-        for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
-            for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
-                coords.push(Tile.coord({ x, y, z }));
-            }
-        }
-        return coords;
-    }
-
-    // Remove tiles too far outside of view
-    pruneTileCoordinatesForView(border_buffer = 2) {
-        if (!this.viewReady()) {
-            return;
-        }
-
-        // Remove tiles that are a specified # of tiles outside of the viewport border
-        let border_tiles = [
-            Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
-            Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
-        ];
-        let style_zoom = this.tileZoom(this.zoom);
-
-        this.tile_manager.removeTiles(tile => {
-            // Ignore visible tiles
-            if (tile.visible || tile.proxy) {
-                return false;
-            }
-
-            // Discard if too far from current zoom
-            let zdiff = Math.abs(tile.style_zoom - style_zoom);
-            if (zdiff > this.preserve_tiles_within_zoom) {
-                return true;
-            }
-
-            // Handle tiles at different zooms
-            let coords = Tile.coordinateAtZoom(tile.coords, style_zoom);
-
-            // Discard tiles outside an area surrounding the viewport
-            if (Math.abs(coords.x - this.center_tile.x) - border_tiles[0] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
-                return true;
-            }
-            else if (Math.abs(coords.y - this.center_tile.y) - border_tiles[1] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
-                return true;
-            }
-            return false;
-        });
     }
 
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
@@ -521,26 +340,26 @@ export default class Scene {
         if (Utils.updateDevicePixelRatio()) {
             WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
                 .then(() => this.rebuild())
-                .then(() => this.resizeMap(this.css_size.width, this.css_size.height));
+                .then(() => this.resizeMap(this.view.css_size.width, this.view.css_size.height));
         }
     }
 
     resizeMap(width, height) {
         this.dirty = true;
 
-        this.css_size = { width: width, height: height };
-        this.device_size = {
-            width: Math.round(this.css_size.width * Utils.device_pixel_ratio),
-            height: Math.round(this.css_size.height * Utils.device_pixel_ratio)
+        this.view.css_size = { width: width, height: height };
+        this.view.device_size = {
+            width: Math.round(this.view.css_size.width * Utils.device_pixel_ratio),
+            height: Math.round(this.view.css_size.height * Utils.device_pixel_ratio)
         };
-        this.view_aspect = this.css_size.width / this.css_size.height;
-        this.updateBounds();
+        this.view.view_aspect = this.view.css_size.width / this.view.css_size.height;
+        this.view.updateBounds();
 
         if (this.canvas) {
-            this.canvas.style.width = this.css_size.width + 'px';
-            this.canvas.style.height = this.css_size.height + 'px';
-            this.canvas.width = this.device_size.width;
-            this.canvas.height = this.device_size.height;
+            this.canvas.style.width = this.view.css_size.width + 'px';
+            this.canvas.style.height = this.view.css_size.height + 'px';
+            this.canvas.width = this.view.device_size.width;
+            this.canvas.height = this.view.device_size.height;
 
             if (this.gl) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -593,7 +412,7 @@ export default class Scene {
             this.dirty === false ||
             this.initialized === false ||
             this.updating > 0 ||
-            this.viewReady() === false
+            this.ready() === false
         );
 
         // Pre-render loop hook
@@ -632,7 +451,8 @@ export default class Scene {
         var gl = this.gl;
 
         // Map transforms
-        if (!this.center_meters) {
+        // TODO move to view
+        if (!this.view.center_meters) {
             return;
         }
 
@@ -650,7 +470,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
-            if (this.panning) {
+            if (this.view.panning) {
                 this.selection.clearPendingRequests();
                 return;
             }
@@ -738,12 +558,8 @@ export default class Scene {
                 this.styles[style].setup();
 
                 // TODO: don't set uniforms when they haven't changed
-                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
                 program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
-                program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
-                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-                program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
-
+                this.view.setupProgram(program);
                 this.camera.setupProgram(program);
                 for (let i in this.lights) {
                     this.lights[i].setupProgram(program);
@@ -876,8 +692,8 @@ export default class Scene {
 
         // Point scaled to [0..1] range
         var point = {
-            x: pixel.x * Utils.device_pixel_ratio / this.device_size.width,
-            y: pixel.y * Utils.device_pixel_ratio / this.device_size.height
+            x: pixel.x * Utils.device_pixel_ratio / this.view.device_size.width,
+            y: pixel.y * Utils.device_pixel_ratio / this.view.device_size.height
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
@@ -944,6 +760,7 @@ export default class Scene {
     }
 
     // Tile manager finished building tiles
+    // TODO move to tile manager
     tileManagerBuildDone() {
         if (this.building) {
             log.info(`Scene: build geometry finished`);
@@ -1241,7 +1058,7 @@ export default class Scene {
         // Finish by updating bounds and re-rendering
         return done.then(() => {
             this.updating--;
-            this.updateBounds();
+            this.view.updateBounds();
             this.requestRedraw();
         });
     }

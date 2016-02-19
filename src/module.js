@@ -7,7 +7,8 @@ import Utils from './utils/utils';
 import {leafletLayer} from './leaflet_layer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
-import {SceneWorker} from '../src/scene_worker';
+import Scene from './scene';
+import {SceneWorker} from './scene_worker';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';
@@ -51,6 +52,7 @@ var debug = {
     Texture,
     Material,
     Light,
+    Scene,
     SceneWorker,
     WorkerBroker,
     ruleCache,

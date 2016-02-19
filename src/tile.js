@@ -408,12 +408,12 @@ export default class Tile {
         log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
-    update(scene) {
+    update(view) {
         let coords = this.coords;
-        if (coords.z !== scene.center_tile.z) {
-            coords = Tile.coordinateAtZoom(coords, scene.center_tile.z);
+        if (coords.z !== view.center_tile.z) {
+            coords = Tile.coordinateAtZoom(coords, view.center_tile.z);
         }
-        this.center_dist = Math.abs(scene.center_tile.x - coords.x) + Math.abs(scene.center_tile.y - coords.y);
+        this.center_dist = Math.abs(view.center_tile.x - coords.x) + Math.abs(view.center_tile.y - coords.y);
     }
 
     // Slice a subset of keys out of a tile

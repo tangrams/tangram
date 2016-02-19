@@ -6,8 +6,9 @@ import log from 'loglevel';
 
 const TileManager = {
 
-    init(scene) {
+    init({ scene, view }) {
         this.scene = scene;
+        this.view = view;
         this.tiles = {};
         this.pyramid = TilePyramid;
         this.pyramid.reset();
@@ -24,6 +25,7 @@ const TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;
+        // this.view
     },
 
     keepTile(tile) {
@@ -81,11 +83,11 @@ const TileManager = {
         }
     },
 
-    updateTilesForView({ tile_update = false } = {}) {
+    updateTilesForView() {
         // Find visible tiles and load new ones
         let prev_coords = Object.keys(this.visible_coords);
         this.visible_coords = {};
-        let tile_coords = this.scene.findVisibleTileCoordinates();
+        let tile_coords = this.view.findVisibleTileCoordinates();
         for (let coords of tile_coords) {
             this.queueCoordinate(coords);
             this.visible_coords[coords.key] = coords;
@@ -108,24 +110,27 @@ const TileManager = {
 
         // Only update when states have changed:
         //   - visible coordinates changed
-        //   - individual tile build finished (or aborted)
         //   - hard reset of visible tiles (e.g. when reloading scene)
-        if (coords_changed || tile_update || this.reset_visible_tiles) {
-            this.reset_visible_tiles = false;
-
-            this.forEachTile(tile => {
-                this.updateVisibility(tile);
-                tile.update(this.scene);
-            });
-
-            this.loadQueuedCoordinates();
-            this.updateProxyTiles();
-            this.scene.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+        if (coords_changed || this.reset_visible_tiles) {
+            this.updateTileStates();
         }
     },
 
+    updateTileStates () {
+        this.reset_visible_tiles = false;
+
+        this.forEachTile(tile => {
+            this.updateVisibility(tile);
+            tile.update(this.view);
+        });
+
+        this.loadQueuedCoordinates();
+        this.updateProxyTiles();
+        this.view.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+    },
+
     updateProxyTiles () {
-        if (this.scene.zoom_direction === 0) {
+        if (this.view.zoom_direction === 0) {
             return;
         }
 
@@ -134,37 +139,37 @@ const TileManager = {
 
         let proxy = false;
         this.forEachTile(tile => {
-            if (this.scene.zoom_direction === 1) {
+            if (this.view.zoom_direction === 1) {
                 if (tile.visible && tile.loading && tile.coords.z > 0) {
                     let p = this.pyramid.getAncestor(tile);
                     if (p) {
                         proxy = true;
                         p.proxy = true;
                         p.visible = true;
-                        p.update(this.scene);
+                        p.update(this.view);
                     }
                 }
             }
-            else if (this.scene.zoom_direction === -1) {
+            else if (this.view.zoom_direction === -1) {
                 if (tile.visible && tile.loading) {
                     let d = this.pyramid.getDescendants(tile);
                     for (let t of d) {
                         proxy = true;
                         t.proxy = true;
                         t.visible = true;
-                        t.update(this.scene);
+                        t.update(this.view);
                     }
                 }
             }
         });
 
         if (!proxy) {
-            this.scene.zoom_direction = 0;
+            this.view.zoom_direction = 0;
         }
     },
 
     updateVisibility(tile) {
-        if (tile.style_zoom !== this.scene.tile_zoom) {
+        if (tile.style_zoom !== this.view.tile_zoom) {
             tile.visible = false;
             return;
         }
@@ -220,8 +225,8 @@ const TileManager = {
 
         // Sort queued tiles from center tile
         this.queued_coords.sort((a, b) => {
-            let ad = Math.abs(this.scene.center_tile.x - a.x) + Math.abs(this.scene.center_tile.y - a.y);
-            let bd = Math.abs(this.scene.center_tile.x - b.x) + Math.abs(this.scene.center_tile.y - b.y);
+            let ad = Math.abs(this.view.center_tile.x - a.x) + Math.abs(this.view.center_tile.y - a.y);
+            let bd = Math.abs(this.view.center_tile.x - b.x) + Math.abs(this.view.center_tile.y - b.y);
             return (bd > ad ? -1 : (bd === ad ? 0 : 1));
         });
         this.queued_coords.forEach(coords => this.loadCoordinate(coords));
@@ -231,7 +236,7 @@ const TileManager = {
     // Load all tiles to cover a given logical tile coordinate
     loadCoordinate(coords) {
         // Skip if not at current scene zoom
-        if (coords.z !== this.scene.center_tile.z) {
+        if (coords.z !== this.view.center_tile.z) {
             return;
         }
 
@@ -241,13 +246,13 @@ const TileManager = {
                 continue;
             }
 
-            let key = Tile.key(coords, source, this.scene.tile_zoom);
+            let key = Tile.key(coords, source, this.view.tile_zoom);
             if (key && !this.hasTile(key)) {
                 let tile = Tile.create({
                     source,
                     coords,
                     worker: this.scene.nextWorker(),
-                    style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
+                    style_zoom: this.view.styleZoom(coords.z) // TODO: replace?
                 });
 
                 this.keepTile(tile);
@@ -265,7 +270,7 @@ const TileManager = {
     buildTile(tile) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
-        tile.update(this.scene);
+        tile.update(this.view);
         tile.build(this.scene.generation)
             .then(message => this.buildTileCompleted(message))
             .catch(e => {
@@ -281,7 +286,7 @@ const TileManager = {
         if (this.tiles[tile.key] == null) {
             log.trace(`discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
             Tile.abortBuild(tile);
-            this.updateTilesForView({ tile_update: true });
+            this.updateTileStates();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
@@ -289,7 +294,7 @@ const TileManager = {
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
-            this.updateTilesForView({ tile_update: true });
+            this.updateTileStates();
         }
         else {
             // Update tile with properties from worker
@@ -297,7 +302,7 @@ const TileManager = {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            this.updateTilesForView({ tile_update: true });
+            this.updateTileStates();
             tile.buildMeshes(this.scene.styles);
             this.scene.requestRedraw();
         }
