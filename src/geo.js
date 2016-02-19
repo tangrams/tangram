@@ -240,7 +240,14 @@ Geo.multiPolygonArea = function (polygons) {
 };
 
 Geo.ringWinding = function (ring) {
-    return Geo.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
+    let area = Geo.signedPolygonAreaSum(ring);
+    if (area > 0) {
+        return 'CW';
+    }
+    else if (area < 0) {
+        return 'CCW';
+    }
+    // return undefined on zero area polygon
 };
 
 // Enforce winding order on outer/inner rings
