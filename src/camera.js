@@ -49,16 +49,16 @@ export default class Camera {
     }
 
     // Set model-view and normal matrices
-    setMatrices (matrix, program) {
+    setupMatrices (matrices, program) {
         // Model view matrix - transform tile space into view space (meters, relative to camera)
-        mat4.multiply(matrix.model_view32, this.view_matrix, matrix.model);
-        program.uniform('Matrix4fv', 'u_modelView', false, matrix.model_view32);
+        mat4.multiply(matrices.model_view32, this.view_matrix, matrices.model);
+        program.uniform('Matrix4fv', 'u_modelView', false, matrices.model_view32);
 
         // Normal matrices - transforms surface normals into view space
-        mat3.normalFromMat4(matrix.normal32, matrix.model_view32);
-        mat3.invert(matrix.inverse_normal32, matrix.normal32);
-        program.uniform('Matrix3fv', 'u_normalMatrix', false, matrix.normal32);
-        program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, matrix.inverse_normal32);
+        mat3.normalFromMat4(matrices.normal32, matrices.model_view32);
+        mat3.invert(matrices.inverse_normal32, matrices.normal32);
+        program.uniform('Matrix3fv', 'u_normalMatrix', false, matrices.normal32);
+        program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, matrices.inverse_normal32);
     }
 
 }

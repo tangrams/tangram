@@ -1,5 +1,6 @@
 import Geo from './geo';
 import Tile from './tile';
+import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
 
@@ -11,6 +12,7 @@ export default class View {
         subscribeMixin(this);
 
         this.scene = scene;
+        this.createMatrices();
 
         this.zoom = null;
         this.center = null;
@@ -33,6 +35,54 @@ export default class View {
         this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
         this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.preserve_tiles_within_zoom = 1;
+
+        this.reset();
+    }
+
+    // Reset state before scene config is updated
+    reset () {
+        this.createCamera();
+    }
+
+    // Create camera
+    createCamera () {
+        let active_camera = this.getActiveCamera();
+        if (active_camera) {
+            this.camera = Camera.create(active_camera, this, this.scene.config.cameras[active_camera]);
+            this.camera.updateView();
+        }
+    }
+
+    // Get active camera - for public API
+    getActiveCamera () {
+        if (this.scene.config && this.scene.config.cameras) {
+            for (let name in this.scene.config.cameras) {
+                if (this.scene.config.cameras[name].active) {
+                    return name;
+                }
+            }
+        }
+    }
+
+    // Set active camera and recompile - for public API
+    setActiveCamera (name) {
+        let prev = this.getActiveCamera();
+        if (this.scene.config.cameras[name]) {
+            this.scene.config.cameras[name].active = true;
+
+            // Clear previously active camera
+            if (prev && prev !== name && this.scene.config.cameras[prev]) {
+                delete this.scene.config.cameras[prev].active;
+            }
+        }
+
+        this.scene.updateConfig();
+        return this.getActiveCamera();
+    }
+
+    // Update method called once per frame
+    update () {
+        this.camera.update();
     }
 
     // Set logical pixel size of viewport
@@ -230,11 +280,38 @@ export default class View {
         });
     }
 
+    // Allocate model-view matrices
+    // 64-bit versions are for CPU calcuations
+    // 32-bit versions are downsampled and sent to GPU
+    createMatrices () {
+        this.matrices = {};
+        this.matrices.model = new Float64Array(16);
+        this.matrices.model32 = new Float32Array(16);
+        this.matrices.model_view = new Float64Array(16);
+        this.matrices.model_view32 = new Float32Array(16);
+        this.matrices.normal = new Float64Array(9);
+        this.matrices.normal32 = new Float32Array(9);
+        this.matrices.inverse_normal32 = new Float32Array(9);
+    }
+
+    // Calculate and set model/view and normal matrices for a tile
+    setupTile (tile, program) {
+        // Tile-specific state
+        // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
+        tile.setupProgram(this.matrices, program);
+
+        // Model-view and normal matrices
+        this.camera.setupMatrices(this.matrices, program);
+    }
+
+    // Set general uniforms that must be updated once per program
     setupProgram (program) {
         program.uniform('2f', 'u_resolution', this.size.device.width, this.size.device.height);
         program.uniform('3f', 'u_map_position', this.center.meters.x, this.center.meters.y, this.zoom);
         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
         program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
+
+        this.camera.setupProgram(program);
     }
 
 }

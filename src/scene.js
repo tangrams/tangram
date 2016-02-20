@@ -10,7 +10,6 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
-import Camera from './camera';
 import Light from './light';
 import Tile from './tile';
 import TileManager from './tile_manager';
@@ -81,11 +80,8 @@ export default class Scene {
 
         this.container = options.container;
 
-        this.camera = null;
         this.lights = null;
         this.background = null;
-
-        this.createMatrices();
 
         // Listen to related objects
         this.listeners = {
@@ -432,7 +428,7 @@ export default class Scene {
         var gl = this.gl;
 
         // Update styles, camera, lights
-        this.camera.update();
+        this.view.update();
         Object.keys(this.active_styles).forEach(i => this.styles[i].update());
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
@@ -535,18 +531,13 @@ export default class Scene {
                 // TODO: don't set uniforms when they haven't changed
                 program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
                 this.view.setupProgram(program);
-                this.camera.setupProgram(program);
                 for (let i in this.lights) {
                     this.lights[i].setupProgram(program);
                 }
             }
 
             // Tile-specific state
-            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-            tile.setupProgram(this.matrix, program);
-
-            // Model-view and normal matrices
-            this.camera.setMatrices(this.matrix, program);
+            this.view.setupTile(tile, program);
 
             // Render tile
             tile.meshes[style].render();
@@ -902,64 +893,14 @@ export default class Scene {
         return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
-    // Allocate model-view matrices
-    // 64-bit versions are for CPU calcuations
-    // 32-bit versions are downsampled and sent to GPU
-    createMatrices () {
-        this.matrix = {};
-        this.matrix.model = new Float64Array(16);
-        this.matrix.model32 = new Float32Array(16);
-        this.matrix.model_view = new Float64Array(16);
-        this.matrix.model_view32 = new Float32Array(16);
-        this.matrix.normal = new Float64Array(9);
-        this.matrix.normal32 = new Float32Array(9);
-        this.matrix.inverse_normal32 = new Float32Array(9);
-    }
-
-    // Create camera
-    createCamera() {
-        let active_camera = this._active_camera;
-        if (active_camera) {
-            this.camera = Camera.create(active_camera, this.view, this.config.cameras[this._active_camera]);
-            this.camera.updateView();
-        }
-    }
-
     // Get active camera - for public API
     getActiveCamera() {
-        return this._active_camera;
+        return this.view.getActiveCamera();
     }
 
-    // Set active camera and recompile - for public API
+    // Set active camera - for public API
     setActiveCamera(name) {
-        this._active_camera = name;
-        this.updateConfig();
-        return this._active_camera;
-    }
-
-    // Internal management of active camera
-    get _active_camera() {
-        if (this.config && this.config.cameras) {
-            for (var name in this.config.cameras) {
-                if (this.config.cameras[name].active) {
-                    return name;
-                }
-            }
-        }
-    }
-
-    set _active_camera(name) {
-        var prev = this._active_camera;
-
-        // Set new active camera
-        if (this.config.cameras[name]) {
-            this.config.cameras[name].active = true;
-
-            // Clear previously active camera
-            if (prev && prev !== name && this.config.cameras[prev]) {
-                delete this.config.cameras[prev].active;
-            }
-        }
+        return this.view.setActiveCamera(name);
     }
 
     // Create lighting
@@ -1007,7 +948,7 @@ export default class Scene {
         this.config.scene = this.config.scene || {};
 
         StyleManager.init();
-        this.createCamera();
+        this.view.reset();
         this.createLights();
         this.loadDataSources();
         this.loadTextures();
