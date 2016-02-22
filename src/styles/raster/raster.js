@@ -5,6 +5,7 @@ import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import {StyleParser} from '../style_parser';
 import {Polygons} from '../polygons/polygons';
+import {RasterTileSource} from '../../sources/raster';
 
 export let RasterStyle = Object.create(Polygons);
 
@@ -34,6 +35,14 @@ Object.assign(RasterStyle, {
         else if (this.apply === 'normal') {
             this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
         }
+
+        // Optionally import rasters into style
+        if (typeof this.rasters === 'string') {
+            this.rasters = [this.rasters];
+        }
+        else if (!Array.isArray(this.rasters)) {
+            this.rasters = null;
+        }
     },
 
     _preprocess (draw) {
@@ -42,10 +51,19 @@ Object.assign(RasterStyle, {
         return this.super._preprocess.apply(this, arguments);
     },
 
-    endData (tile) {
+    endData (tile, sources) {
         return this.super.endData.call(this, tile).then(tile_data => {
             // Add tile texture to mesh
             let texture = tile.texture; // TODO: call data source to get this directly?
+
+            // Use texture from alternate raster source
+            if (!texture && this.rasters) {
+                let rs = sources[this.rasters[0]];
+                if (rs && rs instanceof RasterTileSource) {
+                    texture = rs.tileTexture(tile);
+                }
+            }
+
             if (texture) {
                 tile_data.uniforms = tile_data.uniforms || {};
                 tile_data.uniforms.u_raster_texture = texture.url;

@@ -188,7 +188,7 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, rules, styles) {
+    static buildGeometry (tile, layers, rules, styles, sources) {
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -274,7 +274,7 @@ export default class Tile {
         for (let s=0; s < tile_styles.length; s++) {
             let style_name = tile_styles[s];
             let style = styles[style_name];
-            queue.push(style.endData(tile).then((style_data) => {
+            queue.push(style.endData(tile, sources).then((style_data) => {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,
