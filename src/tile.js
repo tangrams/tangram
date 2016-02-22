@@ -25,6 +25,7 @@ export default class Tile {
 
         this.visible = false;
         this.proxy = null;
+        this.proxy_depth = 0;
         this.loading = false;
         this.loaded = false;
         this.error = null;
@@ -433,14 +434,18 @@ export default class Tile {
         this.proxy = tile;
         if (tile) {
             this.visible = true;
+            this.proxy_depth = Math.abs(this.style_zoom - this.proxy.style_zoom); // draw all proxies behind
             this.update();
+        }
+        else {
+            this.proxy_depth = 0;
         }
     }
 
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('3f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom);
+        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.proxy_depth);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
