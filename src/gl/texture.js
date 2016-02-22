@@ -17,6 +17,7 @@ export default class Texture {
         this.bind();
 
         this.name = name;
+        this.retain_count = 0;
         this.source = null;
         this.source_type = null;
         this.config_type = null;
@@ -32,6 +33,9 @@ export default class Texture {
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
+            // Preserve previous retain count
+            this.retain_count = Texture.textures[this.name].retain_count;
+            Texture.textures[this.name].retain_count = 0; // allow to be freed
             Texture.textures[this.name].destroy();
         }
 
@@ -45,6 +49,10 @@ export default class Texture {
 
     // Destroy a single texture instance
     destroy() {
+        if (this.retain_count > 0) {
+            log.error(`Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
+        }
+
         if (!this.valid) {
             return;
         }
@@ -55,6 +63,21 @@ export default class Texture {
         delete Texture.textures[this.name];
         this.valid = false;
         log.trace(`destroying Texture ${this.name}`);
+    }
+
+    retain () {
+        this.retain_count++;
+    }
+
+    release () {
+        if (this.retain_count <= 0) {
+            log.error(`Texture '${this.name}': releasing texture with retain count of '${this.retain_count}'`);
+        }
+
+        this.retain_count--;
+        if (this.retain_count <= 0) {
+            this.destroy();
+        }
     }
 
     bind(unit) {
@@ -288,8 +311,20 @@ export default class Texture {
 
 // Static/class methods and state
 
-Texture.create = function constructor(gl, name, options) {
+Texture.create = function (gl, name, options) {
     return new Texture(gl, name, options);
+};
+
+Texture.retain = function (name) {
+    if (Texture.textures[name]) {
+        Texture.textures[name].retain();
+    }
+};
+
+Texture.release = function (name) {
+    if (Texture.textures[name]) {
+        Texture.textures[name].release();
+    }
 };
 
 // Destroy all texture instances for a given GL context

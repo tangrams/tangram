@@ -121,8 +121,7 @@ export default class Tile {
     }
 
     // Free resources owned by tile
-    // Optionally pass textures to preserve
-    freeResources(preserve = {}) {
+    freeResources () {
         if (this.meshes) {
             for (let m in this.meshes) {
                 this.meshes[m].destroy();
@@ -131,12 +130,7 @@ export default class Tile {
 
         if (this.textures) {
             for (let t of this.textures) {
-                if (!preserve.textures || preserve.textures.indexOf(t) === -1) {
-                    let texture = Texture.textures[t];
-                    if (texture) {
-                        texture.destroy();
-                    }
-                }
+                Texture.release(t);
             }
         }
 
@@ -381,8 +375,9 @@ export default class Tile {
                     this.debug.geometries += meshes[s].geometry_count;
                 }
 
-                // Assign ownership to textures if needed
+                // Retain textures
                 if (mesh_data[s].textures) {
+                    mesh_data[s].textures.forEach(t => Texture.retain(t));
                     textures.push(...mesh_data[s].textures);
                 }
             }
@@ -390,7 +385,7 @@ export default class Tile {
         delete this.mesh_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
 
         // Swap in new data, free old data
-        this.freeResources({ textures }); // textures to preserve are passed (avoid flickering from delete/re-create)
+        this.freeResources();
         this.meshes = meshes;
         this.textures = textures;
 
