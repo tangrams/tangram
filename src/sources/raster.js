@@ -1,4 +1,5 @@
 import DataSource, {NetworkTileSource} from './data_source';
+import Tile from '../tile';
 import Geo from '../geo';
 
 export class RasterTileSource extends NetworkTileSource {
@@ -44,11 +45,13 @@ export class RasterTileSource extends NetworkTileSource {
 
     // Return texture info for a raster tile
     tileTexture (tile) {
-        if (!this.textures[tile.key]) {
-            let url = this.formatUrl(this.url, tile);
-            this.textures[tile.key] = { url, filtering: this.filtering };
+        let key = tile.coord_key;
+        if (!this.textures[key]) {
+            let coords = Tile.overZoomedCoordinate(tile.coords, this.max_zoom);
+            let url = this.formatUrl(this.url, { coords });
+            this.textures[key] = { url, filtering: this.filtering };
         }
-        return this.textures[tile.key];
+        return this.textures[key];
     }
 
 }
