@@ -9,15 +9,23 @@ describe('Tile', function() {
 
     let subject,
         scene,
+        view,
         coords = { x: 38603, y: 49255, z: 17 };
 
     beforeEach(() => {
         scene = makeScene({});
-        TileManager.init(scene);
-        sinon.stub(scene, 'findVisibleTileCoordinates').returns([]);
-        scene.setView(nycLatLng);
+        view = scene.view;
+        TileManager.init({ scene, view });
+        sinon.stub(view, 'findVisibleTileCoordinates').returns([]);
+        view.setView(nycLatLng);
         return scene.load().then(() => {
-            subject = Tile.create({coords, style_zoom: coords.z, source: scene.sources.osm, worker: scene.nextWorker()});
+            subject = Tile.create({
+                coords,
+                style_zoom: coords.z,
+                source: scene.sources.osm,
+                worker: scene.nextWorker(),
+                view: view
+            });
         });
     });
 
@@ -70,8 +78,8 @@ describe('Tile', function() {
     describe('sets visibility', () => {
 
         beforeEach(() => {
-            scene.findVisibleTileCoordinates.restore();
-            scene.updateBounds();
+            view.findVisibleTileCoordinates.restore();
+            view.updateBounds();
         });
 
         describe('without a source max_zoom', () => {
@@ -82,13 +90,13 @@ describe('Tile', function() {
             });
 
             it('is NOT visible when scene is lower than tile zoom', () => {
-                scene.setZoom(16);
+                view.setZoom(16);
                 TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
 
             it('is NOT visible when scene is higher than tile zoom', () => {
-                scene.setZoom(18);
+                view.setZoom(18);
                 TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
@@ -106,15 +114,15 @@ describe('Tile', function() {
             });
 
             it('is visible when scene is higher than tile zoom and tile is at its max zoom', () => {
-                scene.setZoom(18);
-                subject = Tile.create({coords, style_zoom: scene.zoom, source: scene.sources.osm, worker: scene.nextWorker()});
+                view.setZoom(18);
+                subject = Tile.create({coords, view: view, style_zoom: view.zoom, source: scene.sources.osm, worker: scene.nextWorker()});
                 TileManager.updateVisibility(subject);
                 assert.isTrue(subject.visible);
             });
 
             it('is NOT visible when scene is higher than tile zoom and tile is NOT at its max zoom', () => {
-                scene.setZoom(14);
-                subject = Tile.create({coords, style_zoom: scene.zoom, source: scene.sources.osm, worker: scene.nextWorker()});
+                view.setZoom(14);
+                subject = Tile.create({coords, view: view, style_zoom: scene.zoom, source: scene.sources.osm, worker: scene.nextWorker()});
                 TileManager.updateVisibility(subject);
                 assert.isFalse(subject.visible);
             });
