@@ -66,7 +66,14 @@ Object.assign(RasterStyle, {
     loadTextures (textures) {
         // NB: only return size of textures loaded, because we can't send actual texture objects to worker
         return Texture.createFromObject(this.gl, textures)
-            .then(textures => textures.map(t => [t.width, t.height]));
+            .then(() => {
+                return Promise.all(Object.keys(textures).map(t => {
+                    return Texture.textures[t] && Texture.textures[t].load()
+                }).filter(x => x));
+            })
+            .then(textures => {
+                return textures.map(t => [t.width, t.height]);
+            });
     }
 
 });
