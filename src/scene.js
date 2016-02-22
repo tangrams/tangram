@@ -1,4 +1,3 @@
-import Geo from './geo';
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
@@ -11,11 +10,12 @@ import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
 import View from './view';
 import Light from './light';
-import Tile from './tile';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
+
+import log from 'loglevel';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -27,8 +27,6 @@ StyleManager.register(Polygons);
 StyleManager.register(Lines);
 StyleManager.register(Points);
 StyleManager.register(TextStyle);
-
-import log from 'loglevel';
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
