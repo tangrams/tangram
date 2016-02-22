@@ -18,33 +18,26 @@ export default class Tile {
         worker: web worker to handle tile construction
     */
     constructor({ coords, style_zoom, source, worker, view }) {
-        Object.assign(this, {
-            coords: {
-                x: null,
-                y: null,
-                z: null
-            },
-            debug: {},
-            loading: false,
-            loaded: false,
-            error: null,
-            worker: null,
-            generation: null,
-            visible: false,
-            center_dist: 0
-        });
-
         this.worker = worker;
         this.view = view;
         this.source = source;
-        this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.generation = null;
+
+        this.visible = false;
+        this.proxy = null;
+        this.loading = false;
+        this.loaded = false;
+        this.error = null;
+        this.debug = {};
 
         this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
+        this.style_zoom = style_zoom; // zoom level to be used for styling
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+        this.center_dist = 0;
 
         // Units per pixel needs to account for over-zooming
         this.units_per_pixel = Geo.units_per_pixel;
