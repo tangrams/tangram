@@ -135,7 +135,7 @@ const TileManager = {
         }
 
         // Clear previous proxies
-        this.forEachTile(tile => tile.proxy = false);
+        this.forEachTile(tile => tile.setProxyFor(null));
 
         let proxy = false;
         this.forEachTile(tile => {
@@ -143,10 +143,8 @@ const TileManager = {
                 if (tile.visible && tile.loading && tile.coords.z > 0) {
                     let p = this.pyramid.getAncestor(tile);
                     if (p) {
+                        p.setProxyFor(tile);
                         proxy = true;
-                        p.proxy = true;
-                        p.visible = true;
-                        p.update();
                     }
                 }
             }
@@ -154,10 +152,8 @@ const TileManager = {
                 if (tile.visible && tile.loading) {
                     let d = this.pyramid.getDescendants(tile);
                     for (let t of d) {
+                        t.setProxyFor(tile);
                         proxy = true;
-                        t.proxy = true;
-                        t.visible = true;
-                        t.update();
                     }
                 }
             }

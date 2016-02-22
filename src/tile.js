@@ -177,6 +177,20 @@ export default class Tile {
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
     }
 
+    /**
+        Called on worker to cancel loading
+        Static method because the worker only has object representations of tile data, there is no
+        tile instance created yet.
+    */
+    static cancel(tile) {
+        if (tile) {
+            if (tile.source_data && tile.source_data.request) {
+                tile.source_data.request.abort();
+            }
+            Tile.abortBuild(tile);
+        }
+    }
+
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
     static buildGeometry (tile, layers, rules, styles) {
@@ -383,19 +397,6 @@ export default class Tile {
         this.printDebug();
     }
 
-    // Update model matrix and tile uniforms
-    setupProgram ({ model, model32 }, program) {
-        // Tile origin
-        program.uniform('3f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom);
-
-        // Model - transform tile space into world space (meters, absolute mercator position)
-        mat4.identity(model);
-        mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
-        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
-        mat4.copy(model32, model);
-        program.uniform('Matrix4fv', 'u_model', false, model32);
-    }
-
     /**
         Called on main thread when web worker completes processing, but tile has since been discarded
         Frees resources that would have been transferred to the tile object.
@@ -418,16 +419,35 @@ export default class Tile {
         }
     }
 
-    printDebug () {
-        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
-    }
-
-    update() {
+    // Update relative to view
+    update () {
         let coords = this.coords;
         if (coords.z !== this.view.center.tile.z) {
             coords = Tile.coordinateAtZoom(coords, this.view.center.tile.z);
         }
         this.center_dist = Math.abs(this.view.center.tile.x - coords.x) + Math.abs(this.view.center.tile.y - coords.y);
+    }
+
+    // Set as a proxy tile for another tile
+    setProxyFor (tile) {
+        this.proxy = tile;
+        if (tile) {
+            this.visible = true;
+            this.update();
+        }
+    }
+
+    // Update model matrix and tile uniforms
+    setupProgram ({ model, model32 }, program) {
+        // Tile origin
+        program.uniform('3f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom);
+
+        // Model - transform tile space into world space (meters, absolute mercator position)
+        mat4.identity(model);
+        mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
+        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+        mat4.copy(model32, model);
+        program.uniform('Matrix4fv', 'u_model', false, model32);
     }
 
     // Slice a subset of keys out of a tile
@@ -456,20 +476,6 @@ export default class Tile {
         return tile_subset;
     }
 
-    /**
-        Called on worker to cancel loading
-        Static method because the worker only has object representations of tile data, there is no
-        tile instance created yet.
-    */
-    static cancel(tile) {
-        if (tile) {
-            if (tile.source_data && tile.source_data.request) {
-                tile.source_data.request.abort();
-            }
-            Tile.abortBuild(tile);
-        }
-    }
-
     merge(other) {
         for (var key in other) {
             if (key !== 'key') {
@@ -477,6 +483,10 @@ export default class Tile {
             }
         }
         return this;
+    }
+
+    printDebug () {
+        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
 }
