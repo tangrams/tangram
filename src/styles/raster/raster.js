@@ -68,7 +68,7 @@ Object.assign(RasterStyle, {
         return Texture.createFromObject(this.gl, textures)
             .then(() => {
                 return Promise.all(Object.keys(textures).map(t => {
-                    return Texture.textures[t] && Texture.textures[t].load()
+                    return Texture.textures[t] && Texture.textures[t].load();
                 }).filter(x => x));
             })
             .then(textures => {
