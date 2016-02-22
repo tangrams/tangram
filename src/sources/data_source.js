@@ -174,9 +174,7 @@ export class NetworkSource extends DataSource {
     }
 
     _load (dest) {
-        // super.load(dest);
-
-        let url = this.formatUrl(dest);
+        let url = this.formatUrl(this.url, dest);
 
         let source_data = dest.source_data;
         source_data.url = url;
@@ -210,7 +208,7 @@ export class NetworkSource extends DataSource {
 
     // Sub-classes must implement:
 
-    formatUrl (dest) {
+    formatUrl (url_template, dest) {
         throw new MethodNotImplemented('formatUrl');
     }
 
@@ -236,9 +234,9 @@ export class NetworkTileSource extends NetworkSource {
         }
     }
 
-    formatUrl(tile) {
+    formatUrl(url_template, tile) {
         let coords = Geo.wrapTile(tile.coords, { x: true });
-        var url = this.url.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+        let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
 
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);

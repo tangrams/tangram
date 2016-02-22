@@ -86,7 +86,7 @@ export default TileManager = {
 
         this.forEachTile(tile => {
             this.updateVisibility(tile);
-            tile.update(this.scene);
+            tile.update();
         });
     },
 
@@ -168,6 +168,7 @@ export default TileManager = {
                     coords,
                     // max_zoom: this.scene.findMaxZoom(), // TODO: replace with better max zoom handling
                     worker: this.scene.nextWorker(),
+                    tile_manager: this,
                     style_zoom: this.scene.styleZoom(coords.z) // TODO: replace?
                 });
 
@@ -186,7 +187,7 @@ export default TileManager = {
     buildTile(tile) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
-        tile.update(this.scene);
+        tile.update();
         tile.build(this.scene.generation)
             .then(message => this.buildTileCompleted(message))
             .catch(e => {
@@ -218,9 +219,9 @@ export default TileManager = {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            this.updateVisibility(tile);
-            tile.update(this.scene);
             tile.buildMeshes(this.scene.styles);
+            this.updateVisibility(tile);
+            tile.update();
             this.scene.requestRedraw();
         }
 

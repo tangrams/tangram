@@ -151,7 +151,7 @@ Object.assign(Points, {
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
-            this.startData(tile.key);
+            this.startData(tile);
         }
 
         if (!this.queues[tile.key]) {
@@ -168,8 +168,8 @@ Object.assign(Points, {
 
     // Override
     endData (tile) {
-        let queue = this.queues[tile];
-        this.queues[tile] = [];
+        let queue = this.queues[tile.key];
+        this.queues[tile.key] = [];
 
         // For each feature, create one or more point labels
         let boxes = [];
@@ -193,7 +193,7 @@ Object.assign(Points, {
         });
 
         // Submit point labels for collision, then build geometry for remaining ones
-        return Collision.collide(boxes, this.name, tile).then(boxes => {
+        return Collision.collide(boxes, this.name, tile.key).then(boxes => {
             boxes.forEach(q => {
                 this.feature_style = q.style;
                 this.feature_style.label = q.label;

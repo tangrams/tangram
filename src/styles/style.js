@@ -98,28 +98,28 @@ export var Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData (tile) {
-        this.tile_data[tile] = {
+        this.tile_data[tile.key] = {
             vertex_data: null,
             uniforms: null
         };
-        return this.tile_data[tile];
+        return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile];
+        var tile_data = this.tile_data[tile.key];
         if (tile_data && tile_data.vertex_data) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
             tile_data.vertex_data = tile_data.vertex_data.buffer;
         }
-        this.tile_data[tile] = null;
+        this.tile_data[tile.key] = null;
         return Promise.resolve(tile_data);
     },
 
     // Has mesh data for a given tile?
-    hasDataForTile (tile) {
-        return this.tile_data[tile] != null;
+    hasDataForTile (tile_key) {
+        return this.tile_data[tile_key] != null;
     },
 
     addFeature (feature, rule, context) {
@@ -129,7 +129,7 @@ export var Style = {
         }
 
         if (!this.tile_data[tile.key]) {
-            this.startData(tile.key);
+            this.startData(tile);
         }
 
         let style = this.parseFeature.apply(this, arguments); // allow subclasses to pass extra args

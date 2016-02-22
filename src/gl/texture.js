@@ -73,9 +73,12 @@ export default class Texture {
         }
     }
 
-    load(options = {}) {
-        this.loading = null;
+    load(options) {
+        if (!options) {
+            return this.loading || Promise.resolve(this);
+        }
 
+        this.loading = null;
         if (typeof options.url === 'string') {
             this.config_type = 'url';
             this.setUrl(options.url, options);
@@ -87,9 +90,10 @@ export default class Texture {
             this.setData(options.width, options.height, options.data, options);
         }
 
-        if (this.loading) {
-            return this.loading.then((tex) => { this.calculateSprites(); return tex; });
-        }
+        this.loading =
+            (this.loading && this.loading.then(() => { this.calculateSprites(); return this; })) ||
+            Promise.resolve(this);
+        return this.loading;
     }
 
     // Sets texture from an url
