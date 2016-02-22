@@ -19,6 +19,7 @@ export default class Texture {
         this.name = name;
         this.source = null;
         this.source_type = null;
+        this.config_type = null;
         this.loading = null;    // a Promise object to track the loading state of this texture
         this.filtering = options.filtering;
         this.sprites = options.sprites;
@@ -72,20 +73,27 @@ export default class Texture {
         }
     }
 
-    load(options = {}) {
-        this.loading = null;
+    load(options) {
+        if (!options) {
+            return this.loading || Promise.resolve(this);
+        }
 
+        this.loading = null;
         if (typeof options.url === 'string') {
+            this.config_type = 'url';
             this.setUrl(options.url, options);
         } else if (options.element) {
+            this.config_type = 'element';
             this.setElement(options.element, options);
         } else if (options.data && options.width && options.height) {
+            this.config_type = 'data';
             this.setData(options.width, options.height, options.data, options);
         }
 
-        if (this.loading) {
-            return this.loading.then((tex) => { this.calculateSprites(); return tex; });
-        }
+        this.loading =
+            (this.loading && this.loading.then(() => { this.calculateSprites(); return this; })) ||
+            Promise.resolve(this);
+        return this.loading;
     }
 
     // Sets texture from an url
@@ -182,9 +190,8 @@ export default class Texture {
         this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.UNPACK_PREMULTIPLY_ALPHA_WEBGL || false);
 
         // Image or Canvas element
-        if (this.source_type === 'element' &&
-            (this.source instanceof HTMLCanvasElement || this.source instanceof HTMLVideoElement ||
-             (this.source instanceof HTMLImageElement && this.source.complete))) {
+        if (this.source instanceof HTMLCanvasElement || this.source instanceof HTMLVideoElement ||
+            (this.source instanceof HTMLImageElement && this.source.complete)) {
 
             this.width = this.source.width;
             this.height = this.source.height;
@@ -328,7 +335,7 @@ Texture.changed = function (name, config) {
     let texture = Texture.textures[name];
     if (texture) { // cached texture
         // canvas/image-based textures are considered dynamic and always refresh
-        if (texture.source_type === 'element' || config.element != null) {
+        if (texture.config_type === 'element' || config.element != null) {
             return true;
         }
 

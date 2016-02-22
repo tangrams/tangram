@@ -956,7 +956,6 @@ export default class Scene {
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
-        this.syncConfigToWorker();
 
         // Optionally rebuild geometry
         let done;
@@ -964,7 +963,7 @@ export default class Scene {
             done = this.rebuildGeometry();
         }
         else {
-            done = Promise.resolve();
+            done = this.syncConfigToWorker(); // rebuildGeometry() already syncs config
         }
 
         // Finish by updating bounds and re-rendering
@@ -979,7 +978,7 @@ export default class Scene {
     syncConfigToWorker() {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.config_serialized = Utils.serializeWithFunctions(this.config);
-        WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+        return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
             config: this.config_serialized,
             generation: this.generation
         });

@@ -212,7 +212,7 @@ StyleManager.mix = function (style, styles) {
 
         // Track which styles were mixed into this one
         for (let s of sources) {
-            style.mixed[s] = true;
+            style.mixed[s.name] = true;
         }
     }
     sources.push(style);
@@ -488,10 +488,10 @@ StyleManager.compile = function (keys, scene) {
 };
 
 // Get all styles with mesh data for a given tile
-StyleManager.stylesForTile = function (tile) {
+StyleManager.stylesForTile = function (tile_key) {
     let styles = [];
     for (let s in Styles) {
-        if (Styles[s].hasDataForTile(tile)) {
+        if (Styles[s].hasDataForTile(tile_key)) {
             styles.push(s);
         }
     }

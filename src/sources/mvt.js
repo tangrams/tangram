@@ -89,6 +89,10 @@ export class MVTSource extends NetworkTileSource {
         let outer_winding;
         for (let ring of geom.coordinates) {
             let winding = Geo.ringWinding(ring);
+            if (winding == null) {
+                continue; // skip zero-area rings
+            }
+
             outer_winding = outer_winding || winding; // assume first ring indicates outer ring winding
 
             if (winding === outer_winding && poly.length > 0) {

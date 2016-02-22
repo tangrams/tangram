@@ -121,7 +121,7 @@ const TileManager = {
 
         this.forEachTile(tile => {
             this.updateVisibility(tile);
-            tile.update(this.view);
+            tile.update();
         });
 
         this.loadQueuedCoordinates();
@@ -146,7 +146,7 @@ const TileManager = {
                         proxy = true;
                         p.proxy = true;
                         p.visible = true;
-                        p.update(this.view);
+                        p.update();
                     }
                 }
             }
@@ -157,7 +157,7 @@ const TileManager = {
                         proxy = true;
                         t.proxy = true;
                         t.visible = true;
-                        t.update(this.view);
+                        t.update();
                     }
                 }
             }
@@ -252,7 +252,8 @@ const TileManager = {
                     source,
                     coords,
                     worker: this.scene.nextWorker(),
-                    style_zoom: this.view.styleZoom(coords.z)
+                    style_zoom: this.view.styleZoom(coords.z),
+                    view: this.view
                 });
 
                 this.keepTile(tile);
@@ -270,7 +271,7 @@ const TileManager = {
     buildTile(tile) {
         this.tileBuildStart(tile.key);
         this.updateVisibility(tile);
-        tile.update(this.view);
+        tile.update();
         tile.build(this.scene.generation)
             .then(message => this.buildTileCompleted(message))
             .catch(e => {
@@ -302,8 +303,8 @@ const TileManager = {
                 tile = this.tiles[tile.key].merge(tile);
             }
 
-            this.updateTileStates();
             tile.buildMeshes(this.scene.styles);
+            this.updateTileStates();
             this.scene.requestRedraw();
         }
 

@@ -58,7 +58,7 @@ Object.assign(TextStyle, {
 
     // Called on worker thread to release tile-specific resources
     freeTile (tile) {
-        delete this.texts[tile];
+        delete this.texts[tile.key];
     },
 
     // Free tile-specific resources before finshing style construction
@@ -107,7 +107,7 @@ Object.assign(TextStyle, {
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
-            this.startData(tile.key);
+            this.startData(tile);
         }
 
         if (!this.queues[tile.key]) {
@@ -125,24 +125,24 @@ Object.assign(TextStyle, {
 
     // Override
     endData (tile) {
-        let queue = this.queues[tile];
-        this.queues[tile] = [];
+        let queue = this.queues[tile.key];
+        this.queues[tile.key] = [];
 
-        if (Object.keys(this.texts[tile]||{}).length === 0) {
+        if (Object.keys(this.texts[tile.key]||{}).length === 0) {
             return Promise.resolve();
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile, this.texts[tile]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.key, this.texts[tile.key]).then(texts => {
             if (!texts) {
-                Collision.collide({}, this.name, tile);
+                Collision.collide({}, this.name, tile.key);
                 return this.finishTile(tile);
             }
-            this.texts[tile] = texts;
+            this.texts[tile.key] = texts;
 
-            let labels = this.createLabels(tile, queue);
+            let labels = this.createLabels(tile.key, queue);
 
-            return Collision.collide(labels, this.name, tile).then(labels => {
+            return Collision.collide(labels, this.name, tile.key).then(labels => {
                 if (labels.length === 0) {
                     return this.finishTile(tile); // no labels visible for this tile
                 }
@@ -150,14 +150,14 @@ Object.assign(TextStyle, {
                 this.cullTextStyles(texts, labels);
 
                 // second call to main thread, for rasterizing the set of texts
-                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile, texts).then(({ texts, texture }) => {
+                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
                     if (texts) {
-                        this.texts[tile] = texts;
+                        this.texts[tile.key] = texts;
 
                         // Build queued features
                         labels.forEach(q => {
                             let text_settings_key = q.text_settings_key;
-                            let text_info = this.texts[tile] && this.texts[tile][text_settings_key] && this.texts[tile][text_settings_key][q.text];
+                            let text_info = this.texts[tile.key] && this.texts[tile.key][text_settings_key] && this.texts[tile.key][text_settings_key][q.text];
 
                             // setup styling object expected by Style class
                             let style = this.feature_style;
@@ -183,12 +183,12 @@ Object.assign(TextStyle, {
         });
     },
 
-    createLabels (tile, feature_queue) {
+    createLabels (tile_key, feature_queue) {
         let labels = [];
 
         for (let f=0; f < feature_queue.length; f++) {
             let { feature, draw, context, text, text_settings_key, layout } = feature_queue[f];
-            let text_info = this.texts[tile][text_settings_key][text];
+            let text_info = this.texts[tile_key][text_settings_key][text];
 
             let feature_labels = this.buildLabelsFromGeometry(text_info.size.collision_size, feature.geometry, layout);
             for (let i = 0; i < feature_labels.length; i++) {
@@ -233,30 +233,30 @@ Object.assign(TextStyle, {
     // Called on main thread from worker, to compute the size of each text string,
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
-    calcTextSizes (tile, texts) {
-        return this.canvas.textSizes(tile, texts);
+    calcTextSizes (tile_key, texts) {
+        return this.canvas.textSizes(tile_key, texts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
-    rasterizeTexts (tile, texts) {
+    rasterizeTexts (tile_key, texts) {
         let canvas = new CanvasText();
         let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
-        log.trace(`text summary for tile ${tile}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+        log.trace(`text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // fits in max texture size?
         if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
             // update canvas size & rasterize all the text strings we need
             canvas.resize(...texture_size);
-            canvas.rasterize(tile, texts, texture_size);
+            canvas.rasterize(tile_key, texts, texture_size);
         }
         else {
             log.error([
-                `Label atlas for tile ${tile} is ${texture_size[0]}x${texture_size[1]}px, `,
+                `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
                 `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
         }
 
         // create a texture
-        let t = 'labels-' + tile + '-' + (TextStyle.texture_id++);
+        let t = 'labels-' + tile_key + '-' + (TextStyle.texture_id++);
         Texture.create(this.gl, t, {
             element: canvas.canvas,
             filtering: 'linear',
