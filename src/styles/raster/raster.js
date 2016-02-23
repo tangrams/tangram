@@ -56,6 +56,11 @@ Object.assign(RasterStyle, {
                 // to avoid flickering while loading (texture will render as black)
                 return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', { [texture.url]: texture })
                     .then((textures) => {
+                        if (!textures || textures.length < 1) {
+                            // TODO: warning
+                            return tile_data;
+                        }
+
                         // Set texture width/height (returned after loading from main thread)
                         tile_data.uniforms.u_raster_texture_size = textures[0];
                         tile_data.uniforms.u_raster_texture_pixel_size = [1 / textures[0][0], 1 / textures[0][1]];
