@@ -26,8 +26,14 @@ Object.assign(RasterStyle, {
             WorkerBroker.addTarget(this.main_thread_target, this);
         }
 
-        // Enable raster flag
+        // Enable raster texture and configure how it is applied
         this.defines.TANGRAM_RASTER_TEXTURE = true;
+        if (this.apply == null || this.apply === 'color') { // default to applying as color
+            this.defines.TANGRAM_RASTER_TEXTURE_COLOR = true;
+        }
+        else if (this.apply === 'normal') {
+            this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
+        }
     },
 
     _preprocess (draw) {
