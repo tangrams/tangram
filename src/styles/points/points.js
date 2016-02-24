@@ -168,6 +168,11 @@ Object.assign(Points, {
 
     // Override
     endData (tile) {
+        if (tile.canceled) {
+            Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
+            return;
+        }
+
         let queue = this.queues[tile.key];
         this.queues[tile.key] = [];
 

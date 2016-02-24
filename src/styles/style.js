@@ -107,6 +107,11 @@ export var Style = {
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
+        if (tile.canceled) {
+            Utils.log('warn', `stop tile build because tile was removed: ${tile.key}`);
+            return;
+        }
+
         var tile_data = this.tile_data[tile.key];
         if (tile_data && tile_data.vertex_data) {
             // Only keep final byte buffer

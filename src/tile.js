@@ -185,6 +185,7 @@ export default class Tile {
     */
     static cancel(tile) {
         if (tile) {
+            tile.canceled = true;
             if (tile.source_data && tile.source_data.request) {
                 tile.source_data.request.abort();
             }
@@ -231,6 +232,11 @@ export default class Tile {
                     let feature = geom.features[f];
                     if (feature.geometry == null) {
                         continue; // skip features w/o geometry (valid GeoJSON)
+                    }
+
+                    if (tile.canceled) {
+                        Utils.log('warn', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
+                        return;
                     }
 
                     let context = StyleParser.getFeatureParseContext(feature, tile);
