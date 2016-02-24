@@ -41,12 +41,17 @@ void main (void) {
     // Apply a texture
     #ifdef TANGRAM_POINT_TEXTURE
         color *= texture2D(u_texture, v_texcoord);
+
+        // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
+        #ifdef TANGRAM_UNMULTIPLY_ALPHA
+            color.rgb /= max(color.a, 0.001);
+        #endif
     // Draw a point
     #else
         // Fade alpha near circle edge
         vec2 uv = v_texcoord * 2. - 1.;
         float point_dist = length(uv);
-        color.a = clamp(1. - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., 1.);
+        color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
@@ -54,11 +59,6 @@ void main (void) {
         if (color.a < TANGRAM_ALPHA_DISCARD) {
             discard;
         }
-    #endif
-
-    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
-    #ifdef TANGRAM_UNMULTIPLY_ALPHA
-        color.rgb /= max(color.a, 0.001);
     #endif
 
     #pragma tangram: color
