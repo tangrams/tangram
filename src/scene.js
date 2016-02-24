@@ -912,7 +912,7 @@ export default class Scene {
             light.name = i.replace('-', '_'); // light names are injected in shaders, can't have hyphens
             light.visible = (light.visible === false) ? false : true;
             if (light.visible) {
-                this.lights[light.name] = Light.create(this, light);
+                this.lights[light.name] = Light.create(this.view, light);
             }
         }
         Light.inject(this.lights);
