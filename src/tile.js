@@ -5,7 +5,7 @@ import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
-import {mat4, vec3} from 'gl-matrix';
+import {mat4, vec3} from './utils/gl-matrix';
 import log from 'loglevel';
 
 export default class Tile {
