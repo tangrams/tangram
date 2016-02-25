@@ -236,6 +236,8 @@ StyleManager.mix = function (style, styles) {
     // Merges - property-specific rules for merging values
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
     style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
+    // style.rasters = ...sources.map(
+    // style.rasters = [...new Set()]
 
     // Mix shader properties
     StyleManager.mixShaders(style, styles, sources);

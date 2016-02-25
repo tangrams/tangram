@@ -36,13 +36,13 @@ Object.assign(RasterStyle, {
             this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
         }
 
-        // Optionally import rasters into style
-        if (typeof this.rasters === 'string') {
-            this.rasters = [this.rasters];
-        }
-        else if (!Array.isArray(this.rasters)) {
-            this.rasters = null;
-        }
+        // // Optionally import rasters into style
+        // if (typeof this.rasters === 'string') {
+        //     this.rasters = [this.rasters];
+        // }
+        // else if (!Array.isArray(this.rasters)) {
+        //     this.rasters = null;
+        // }
     },
 
     _preprocess (draw) {
@@ -52,22 +52,26 @@ Object.assign(RasterStyle, {
     },
 
     endData (tile, sources) {
-        return this.super.endData.call(this, tile).then(tile_data => {
+        // Add tile texture to mesh
+        // let texture = tile.texture; // TODO: call data source to get this directly?
+
+        return this.super.endData.call(this, tile, sources).then(tile_data => {
             // Add tile texture to mesh
             let texture = tile.texture; // TODO: call data source to get this directly?
 
-            // Use texture from alternate raster source
-            if (!texture && this.rasters) {
-                let rs = sources[this.rasters[0]];
-                if (rs && rs instanceof RasterTileSource) {
-                    texture = rs.tileTexture(tile);
-                }
-            }
+            // // Use texture from alternate raster source
+            // if (!texture && this.rasters) {
+            //     let rs = sources[this.rasters[0]];
+            //     if (rs && rs instanceof RasterTileSource) {
+            //         texture = rs.tileTexture(tile);
+            //     }
+            // }
 
             if (texture) {
                 tile_data.uniforms = tile_data.uniforms || {};
                 tile_data.uniforms.u_raster_texture = texture.url;
-                tile_data.textures = [texture.url]; // assign texture ownership to tile
+                tile_data.textures = tile_data.textures || [];
+                tile_data.textures.push(texture.url); // assign texture ownership to tile
 
                 // Load textures on main thread and return when done
                 // We want to block the building of a raster tile mesh until its texture is loaded,
@@ -89,21 +93,20 @@ Object.assign(RasterStyle, {
 
             return tile_data;
         });
-    },
+    }//,
 
-    // Called on main thread
-    loadTextures (textures) {
-        // NB: only return size of textures loaded, because we can't send actual texture objects to worker
-        return Texture.createFromObject(this.gl, textures)
-            .then(() => {
-                return Promise.all(Object.keys(textures).map(t => {
-                    return Texture.textures[t] && Texture.textures[t].load();
-                }).filter(x => x));
-            })
-            .then(textures => {
-                textures.forEach(t => t.retain());
-                return textures.map(t => [t.width, t.height]);
-            });
-    }
+    // // Called on main thread
+    // loadTextures (textures) {
+    //     // NB: only return size of textures loaded, because we can't send actual texture objects to worker
+    //     return Texture.createFromObject(this.gl, textures)
+    //         .then(() => {
+    //             return Promise.all(Object.keys(textures).map(t => {
+    //                 return Texture.textures[t] && Texture.textures[t].load();
+    //             }).filter(x => x));
+    //         })
+    //         .then(textures => {
+    //             return textures.map(t => [t.width, t.height]);
+    //         });
+    // }
 
 });

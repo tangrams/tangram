@@ -62,9 +62,9 @@ Object.assign(TextStyle, {
     },
 
     // Free tile-specific resources before finshing style construction
-    finishTile(tile) {
+    finishTile(tile, sources) {
         this.freeTile(tile);
-        return Style.endData.call(this, tile);
+        return Style.endData.call(this, tile, sources);
     },
 
     // Override to queue features instead of processing immediately
@@ -124,7 +124,7 @@ Object.assign(TextStyle, {
     },
 
     // Override
-    endData (tile) {
+    endData (tile, sources) {
         let queue = this.queues[tile.key];
         this.queues[tile.key] = [];
 
@@ -136,7 +136,7 @@ Object.assign(TextStyle, {
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.key, this.texts[tile.key]).then(texts => {
             if (!texts) {
                 Collision.collide({}, this.name, tile.key);
-                return this.finishTile(tile);
+                return this.finishTile(tile, sources);
             }
             this.texts[tile.key] = texts;
 
@@ -144,7 +144,7 @@ Object.assign(TextStyle, {
 
             return Collision.collide(labels, this.name, tile.key).then(labels => {
                 if (labels.length === 0) {
-                    return this.finishTile(tile); // no labels visible for this tile
+                    return this.finishTile(tile, sources); // no labels visible for this tile
                 }
 
                 this.cullTextStyles(texts, labels);
@@ -170,11 +170,13 @@ Object.assign(TextStyle, {
                         });
                     }
 
-                    return this.finishTile(tile).then(tile_data => {
+                    return this.finishTile(tile, sources).then(tile_data => {
                         // Attach tile-specific label atlas to mesh as a texture uniform
                         if (texture && tile_data) {
-                            tile_data.uniforms = { u_texture: texture };
-                            tile_data.textures = [texture]; // assign texture ownership to tile
+                            tile_data.uniforms = tile_data.uniforms || {};
+                            tile_data.uniforms.u_texture = texture;
+                            tile_data.textures = tile_data.textures || [];
+                            tile_data.textures.push(texture); // assign texture ownership to tile
                             return tile_data;
                         }
                     });

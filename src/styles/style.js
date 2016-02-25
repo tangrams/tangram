@@ -7,7 +7,10 @@ import VBOMesh from '../gl/vbo_mesh';
 import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
+import {RasterTileSource} from '../sources/raster';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
+import Utils from '../utils/utils';
+import WorkerBroker from '../utils/worker_broker';
 
 import log from 'loglevel';
 
@@ -32,6 +35,12 @@ export var Style = {
         this.tile_data = {};
         this.feature_options = {};
 
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = 'Style-' + this.name;
+        if (Utils.isMainThread) {
+            WorkerBroker.addTarget(this.main_thread_target, this);
+        }
+
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
 
@@ -53,6 +62,14 @@ export var Style = {
 
         // Set lighting mode: fragment, vertex, or none (specified as 'false')
         Light.setMode(this.lighting, this);
+
+        // Optionally import rasters into style
+        if (typeof this.rasters === 'string') {
+            this.rasters = [this.rasters];
+        }
+        else if (!Array.isArray(this.rasters)) {
+            this.rasters = null;
+        }
 
         this.initialized = true;
     },
@@ -106,15 +123,19 @@ export var Style = {
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
-    endData (tile) {
+    endData (tile, sources) {
         var tile_data = this.tile_data[tile.key];
+        this.tile_data[tile.key] = null;
+
         if (tile_data && tile_data.vertex_data) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
             tile_data.vertex_data = tile_data.vertex_data.buffer;
         }
-        this.tile_data[tile.key] = null;
-        return Promise.resolve(tile_data);
+
+        return this.buildTextures(tile, tile_data, sources).then(() => tile_data);
+
+        // return Promise.resolve(tile_data);
     },
 
     // Has mesh data for a given tile?
@@ -380,6 +401,62 @@ export var Style = {
         }
         return defines;
 
+    },
+
+    // Pull in raster tile textures
+    buildTextures (tile, tile_data, sources) {
+        let textures = {};
+        // let textures = tile_data.load_textures || {};
+        if (this.rasters) {
+            for (let r=0; r < this.rasters.length; r++) {
+                let r = this.rasters[r];
+                let rs = sources[r];
+                if (rs && rs instanceof RasterTileSource) {
+                    let tex = rs.tileTexture(tile);
+                    textures[tex.url] =  tex;
+
+                    tile_data.uniforms = tile_data.uniforms || {};
+                    tile_data.uniforms[`u_raster_${r}`] = tex.url;
+
+                    tile_data.textures = tile_data.textures || [];
+                    tile_data.textures.push(tex.url);
+                }
+            }
+        }
+
+        if (Object.keys(textures).length > 0) {
+            // Load textures on main thread and return when done
+            // We want to block the building of a raster tile mesh until its texture is loaded,
+            // to avoid flickering while loading (texture will render as black)
+            return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', textures)
+                .then((textures) => {
+                    if (!textures || textures.length < 1) {
+                        // TODO: warning
+                        return tile_data;
+                    }
+
+                    // Set texture width/height (returned after loading from main thread)
+                    // tile_data.uniforms.u_raster_texture_size = textures[0];
+                    // tile_data.uniforms.u_raster_texture_pixel_size = [1 / textures[0][0], 1 / textures[0][1]];
+                    return tile_data;
+                }
+            );
+        }
+        return Promise.resolve(tile_data);
+    },
+
+    // Called on main thread
+    loadTextures (textures) {
+        // NB: only return size of textures loaded, because we can't send actual texture objects to worker
+        return Texture.createFromObject(this.gl, textures)
+            .then(() => {
+                return Promise.all(Object.keys(textures).map(t => {
+                    return Texture.textures[t] && Texture.textures[t].load();
+                }).filter(x => x));
+            })
+            .then(textures => {
+                return textures.map(t => [t.width, t.height]);
+            });
     },
 
     // Setup any GL state for rendering

@@ -167,7 +167,7 @@ Object.assign(Points, {
     },
 
     // Override
-    endData (tile) {
+    endData (tile, sources) {
         let queue = this.queues[tile.key];
         this.queues[tile.key] = [];
 
@@ -201,7 +201,7 @@ Object.assign(Points, {
                 Style.addFeature.call(this, q.feature, q.draw, q.context);
             });
 
-            return Style.endData.call(this, tile);
+            return Style.endData.call(this, tile, sources);
         });
     },
 
