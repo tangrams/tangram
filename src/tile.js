@@ -103,9 +103,9 @@ export default class Tile {
         return Tile.coord_children[key];
     }
 
-    static isChild(parent, child) {
-        if (child.z > parent.z) {
-            let {x, y} = Tile.coordinateAtZoom(child, parent.z);
+    static isDescendant(parent, descendant) {
+        if (descendant.z > parent.z) {
+            let {x, y} = Tile.coordinateAtZoom(descendant, parent.z);
             return (parent.x === x && parent.y === y);
         }
         return false;

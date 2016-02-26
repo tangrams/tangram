@@ -176,7 +176,7 @@ const TileManager = {
         else {
             // brute force
             for (let key in this.visible_coords) {
-                if (Tile.isChild(tile.coords, this.visible_coords[key])) {
+                if (Tile.isDescendant(tile.coords, this.visible_coords[key])) {
                     tile.visible = true;
                     return;
                 }
