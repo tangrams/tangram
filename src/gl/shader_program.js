@@ -285,7 +285,7 @@ export default class ShaderProgram {
             inject = null;
 
             // Check vertex shader
-            if (!GLSL.isUniformDefined(name, vs) && GLSL.isSymbolReferenced(name, vs)) {
+            if (!GLSL.isUniformDefined(name, vs)) {
                 if (!inject) {
                     inject = GLSL.defineUniform(name, uniforms[name]);
                 }
@@ -294,7 +294,7 @@ export default class ShaderProgram {
 
             }
             // Check fragment shader
-            if (!GLSL.isUniformDefined(name, fs) && GLSL.isSymbolReferenced(name, fs)) {
+            if (!GLSL.isUniformDefined(name, fs)) {
                 if (!inject) {
                     inject = GLSL.defineUniform(name, uniforms[name]);
                 }
