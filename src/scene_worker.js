@@ -98,7 +98,7 @@ Object.assign(self, {
 
         // Expand styles
         config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);
-        self.styles = StyleManager.build(config.styles, { generation: self.generation });
+        self.styles = StyleManager.build(config.styles, { generation: self.generation, sources: self.sources.tiles });
 
         // Parse each top-level layer as a separate rule tree
         self.layers = config.layers;
@@ -150,7 +150,7 @@ Object.assign(self, {
 
                         tile.loading = false;
                         tile.loaded = true;
-                        Tile.buildGeometry(tile, self.layers, self.rules, self.styles, self.sources.tiles).then(keys => {
+                        Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
                             resolve({ tile: Tile.slice(tile, keys) });
                         });
                     }).catch((error) => {
@@ -168,7 +168,7 @@ Object.assign(self, {
                 Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self.layers, self.rules, self.styles, self.sources.tiles).then(keys => {
+                return Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
                     return { tile: Tile.slice(tile, keys) };
                 });
             }

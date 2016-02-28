@@ -20,9 +20,10 @@ export class RasterTileSource extends NetworkTileSource {
         tile.pad_scale = this.pad_scale;
 
         // Set texture info for this tile
-        tile.texture = this.tileTexture(tile);
+        tile.raster_tile_texture = this.tileTexture(tile);
 
         // Generate a single quad that fills the entire tile
+        let scale = Geo.tile_scale;
         tile.source_data.layers = {
             _default: {
                 type: 'FeatureCollection',
@@ -30,8 +31,8 @@ export class RasterTileSource extends NetworkTileSource {
                     geometry: {
                         type: 'Polygon',
                         coordinates: [[
-                            [0, 0], [Geo.tile_scale, 0],
-                            [Geo.tile_scale, -Geo.tile_scale], [0, -Geo.tile_scale], [0, 0]
+                            [0, 0], [scale, 0],
+                            [scale, -scale], [0, -scale], [0, 0]
                         ]]
                     },
                     properties: {}

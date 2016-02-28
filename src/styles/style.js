@@ -17,12 +17,13 @@ import log from 'loglevel';
 // Base class
 
 export var Style = {
-    init ({ generation } = {}) {
+    init ({ generation, sources } = {}) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
         this.generation = generation;               // scene generation id this style was created for
+        this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -123,7 +124,7 @@ export var Style = {
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
-    endData (tile, sources) {
+    endData (tile) {
         var tile_data = this.tile_data[tile.key];
         this.tile_data[tile.key] = null;
 
@@ -133,9 +134,9 @@ export var Style = {
             tile_data.vertex_data = tile_data.vertex_data.buffer;
         }
 
-        return this.buildTextures(tile, tile_data, sources).then(() => tile_data);
-
-        // return Promise.resolve(tile_data);
+        // Load any style/tile-specific textures
+        // Blocks mesh completion to avoid flickering
+        return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
     },
 
     // Has mesh data for a given tile?
@@ -305,7 +306,7 @@ export var Style = {
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
         var block_scopes = (this.shaders && this.shaders.block_scopes);
-        var uniforms = (this.shaders && this.shaders.uniforms);
+        var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms, this.buildRasterUniforms());
 
         // accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
@@ -403,42 +404,69 @@ export var Style = {
 
     },
 
-    // Pull in raster tile textures
-    buildTextures (tile, tile_data, sources) {
-        let textures = {};
-        // let textures = tile_data.load_textures || {};
+    // Define uniforms for raster tile textures
+    buildRasterUniforms () {
+        let uniforms = {};
         if (this.rasters) {
-            for (let r=0; r < this.rasters.length; r++) {
-                let r = this.rasters[r];
-                let rs = sources[r];
-                if (rs && rs instanceof RasterTileSource) {
-                    let tex = rs.tileTexture(tile);
-                    textures[tex.url] =  tex;
+            for (let rname of this.rasters) {
+                uniforms[`u_raster_${rname}`] = rname;
+            }
+        }
+        return uniforms;
+    },
 
-                    tile_data.uniforms = tile_data.uniforms || {};
-                    tile_data.uniforms[`u_raster_${r}`] = tex.url;
+    // Load raster tile textures
+    buildRasterTextures (tile, tile_data) {
+        let configs = {}; // texture configs, keyed by texture name
+        let rasters = {}; // { name, config, uniform_scope }, keyed by texture name
 
-                    tile_data.textures = tile_data.textures || [];
-                    tile_data.textures.push(tex.url);
+        // Start with tile-specific rasters
+        if (tile.rasters) {
+            for (let rname in tile.rasters) {
+                configs[rname] = tile.rasters[rname].config;
+                rasters[rname] = tile.rasters[rname];
+            }
+        }
+
+        // Add style-level rasters
+        if (this.rasters) {
+            for (let rname of this.rasters) {
+                let rsource = this.sources[rname];
+                if (rsource && rsource instanceof RasterTileSource) {
+                    let config = rsource.tileTexture(tile);
+                    configs[config.url] = config;
+                    rasters[config.url] = {
+                        name: config.url,
+                        config,
+                        uniform_scope: `raster_${rname}` // TODO: add uniform definitions to shader program
+                    };
                 }
             }
         }
 
-        if (Object.keys(textures).length > 0) {
+        if (Object.keys(configs).length > 0) {
             // Load textures on main thread and return when done
             // We want to block the building of a raster tile mesh until its texture is loaded,
             // to avoid flickering while loading (texture will render as black)
-            return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', textures)
-                .then((textures) => {
+            return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
+                .then(textures => {
                     if (!textures || textures.length < 1) {
                         // TODO: warning
                         return tile_data;
                     }
 
-                    // Set texture width/height (returned after loading from main thread)
-                    // tile_data.uniforms.u_raster_texture_size = textures[0];
-                    // tile_data.uniforms.u_raster_texture_pixel_size = [1 / textures[0][0], 1 / textures[0][1]];
-                    return tile_data;
+                    // Set texture uniforms (returned after loading from main thread)
+                    tile_data.uniforms = tile_data.uniforms || {};
+                    tile_data.textures = tile_data.textures || [];
+
+                    for (let [tname, width, height] of textures) {
+                        let raster = rasters[tname];
+                        tile_data.uniforms[`u_${raster.uniform_scope}`] = tname;
+                        tile_data.uniforms[`u_${raster.uniform_scope}_size`] = [width, height];
+                        tile_data.uniforms[`u_${raster.uniform_scope}_pixel_size`] = [1/width, 1/height];
+                        tile_data.textures.push(tname);
+                        return tile_data;
+                    }
                 }
             );
         }
@@ -447,7 +475,7 @@ export var Style = {
 
     // Called on main thread
     loadTextures (textures) {
-        // NB: only return size of textures loaded, because we can't send actual texture objects to worker
+        // NB: only return name and size of textures loaded, because we can't send actual texture objects to worker
         return Texture.createFromObject(this.gl, textures)
             .then(() => {
                 return Promise.all(Object.keys(textures).map(t => {
@@ -455,7 +483,7 @@ export var Style = {
                 }).filter(x => x));
             })
             .then(textures => {
-                return textures.map(t => [t.width, t.height]);
+                return textures.map(t => [t.name, t.width, t.height]);
             });
     },
 
