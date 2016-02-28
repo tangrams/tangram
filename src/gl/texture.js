@@ -22,6 +22,7 @@ export default class Texture {
         this.source_type = null;
         this.config_type = null;
         this.loading = null;    // a Promise object to track the loading state of this texture
+        this.loaded = false;    // successfully loaded as expected
         this.filtering = options.filtering;
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
@@ -141,14 +142,17 @@ export default class Texture {
                     this.setElement(image, options);
                 }
                 catch (e) {
+                    this.loaded = false;
                     log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                     Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 }
 
+                this.loaded = true;
                 resolve(this);
             };
             image.onerror = e => {
                 // Warn and resolve on error
+                this.loaded = false;
                 log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                 Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 resolve(this);
@@ -170,6 +174,7 @@ export default class Texture {
         this.update(options);
         this.setFiltering(options);
 
+        this.loaded = true;
         this.loading = Promise.resolve(this);
         return this.loading;
     }
@@ -193,12 +198,14 @@ export default class Texture {
             this.setFiltering(options);
         }
         else {
+            this.loaded = false;
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
             msg += `selector string, or a <canvas>, <image> or <video> object`;
             log.warn(`Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }
 
+        this.loaded = true;
         this.loading = Promise.resolve(this);
         return this.loading;
     }
