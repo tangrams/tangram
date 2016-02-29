@@ -12,8 +12,8 @@ describe('Scene', function () {
 
     beforeEach(() => {
         subject = makeScene({});
-        sinon.stub(subject, 'findVisibleTileCoordinates').returns([]);
-        subject.setView(nycLatLng);
+        sinon.stub(subject.view, 'findVisibleTileCoordinates').returns([]);
+        subject.view.setView(nycLatLng);
     });
 
     afterEach(() => {
@@ -116,7 +116,7 @@ describe('Scene', function () {
         });
 
         it('sets the device size property', () => {
-            assert.deepEqual(subject.device_size, {
+            assert.deepEqual(subject.view.size.device, {
                 height: computedHeight,
                 width: computedWidth
             });
@@ -153,19 +153,20 @@ describe('Scene', function () {
 
     });
 
-    describe('.setView(lng, lat)', () => {
+    describe('.view.setView(lng, lat)', () => {
         let {lng, lat, zoom} = nycLatLng;
 
         beforeEach(() => {
-            subject.setView(nycLatLng);
+            subject.view.setView(nycLatLng);
         });
 
-        it('sets the scene center', () => {
-            assert.deepEqual(subject.center, {lng, lat});
+        it('sets the view center', () => {
+            assert.equal(subject.view.center.lng, lng);
+            assert.equal(subject.view.center.lat, lat);
         });
 
-        it('sets the scene zoom', () => {
-            assert.equal(subject.zoom, zoom);
+        it('sets the view zoom', () => {
+            assert.equal(subject.view.zoom, zoom);
         });
 
         it('marks the scene as dirty', () => {
@@ -173,27 +174,27 @@ describe('Scene', function () {
         });
     });
 
-    describe('.startZoom()', () => {
+    describe('.view.startZoom()', () => {
 
         beforeEach(() => {
-            subject.startZoom();
+            subject.view.startZoom();
         });
 
         it('sets the last zoom property with the value of the current zoom', () => {
-            assert.equal(subject.last_zoom, subject.zoom);
+            assert.equal(subject.view.last_zoom, subject.view.zoom);
         });
 
-        it('marks the scene as zooming', () => {
-            assert.isTrue(subject.zooming);
+        it('marks the view as zooming', () => {
+            assert.isTrue(subject.view.zooming);
         });
 
     });
 
     // TODO this method does a lot of stuff
-    describe('.setZoom(zoom)', () => {
+    describe('.view.setZoom(zoom)', () => {
 
         beforeEach(() => {
-            subject.setZoom(10);
+            subject.view.setZoom(10);
         });
 
         it('marks the scene as dirty', () => {
@@ -201,7 +202,7 @@ describe('Scene', function () {
         });
 
         it('updates the zoom level', () => {
-            assert.equal(subject.zoom, 10);
+            assert.equal(subject.view.zoom, 10);
         });
 
     });
@@ -211,7 +212,7 @@ describe('Scene', function () {
         beforeEach(() => {
             sinon.spy(subject, 'render');
 
-            subject.setView(nycLatLng);
+            subject.view.setView(nycLatLng);
             return subject.load();
         });
 

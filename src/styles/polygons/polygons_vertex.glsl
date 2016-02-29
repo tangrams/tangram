@@ -1,7 +1,7 @@
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
-uniform vec3 u_tile_origin;
+uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 
@@ -110,7 +110,9 @@ void main() {
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(SHORT(a_position.w), position);
+
+    // w coordinates hold feature layer, and additional proxy offset (set to 0 for non-proxy tiles)
+    applyLayerOrder(SHORT(a_position.w) + u_tile_origin.w, position);
 
     gl_Position = position;
 }

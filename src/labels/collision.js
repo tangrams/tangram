@@ -39,8 +39,8 @@ export default Collision = {
     collide (objects, style, tile) {
         let state = this.tiles[tile];
         if (!state) {
-            log.warn('Collision.collide() called with null tile', tile, this.tiles, Object.keys(this.tiles[tile]).length, style, objects);
-            return;
+            log.trace('Collision.collide() called with null tile', tile, this.tiles, style, objects);
+            return Promise.reject(Error('Collision.collide() called with null tile', tile, this.tiles, style, objects));
         }
 
         // Group by priority and style

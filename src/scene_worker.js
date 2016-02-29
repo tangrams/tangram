@@ -177,7 +177,13 @@ Object.assign(self, {
 
     // Load this tile's data source
     loadTileSourceData (tile) {
-        return self.sources.tiles[tile.source].load(tile);
+        if (self.sources.tiles[tile.source]) {
+            return self.sources.tiles[tile.source].load(tile);
+        }
+        else {
+            tile.source_data = { error: `Data source '${tile.source}' not found` };
+            return Promise.resolve(tile);
+        }
     },
 
     // Remove tile

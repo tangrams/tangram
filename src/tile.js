@@ -5,6 +5,7 @@ import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
+import {mat4, vec3} from './utils/gl-matrix';
 import log from 'loglevel';
 
 export default class Tile {
@@ -16,36 +17,28 @@ export default class Tile {
         coords: object with {x, y, z} properties identifying tile coordinate location
         worker: web worker to handle tile construction
     */
-    constructor({ coords, style_zoom, source, worker, tile_manager }) {
-        Object.assign(this, {
-            coords: {
-                x: null,
-                y: null,
-                z: null
-            },
-            debug: {},
-            loading: false,
-            loaded: false,
-            error: null,
-            worker: null,
-            generation: null,
-            visible: false,
-            center_dist: 0
-        });
-
+    constructor({ coords, style_zoom, source, worker, view }) {
         this.worker = worker;
-        this.tile_manager = tile_manager;
+        this.view = view;
         this.source = source;
-        this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.generation = null;
 
-        this.coords = coords;
-        this.coords = Tile.overZoomedCoordinate(this.coords, this.source.max_zoom);
-        this.coord_key = Tile.coordKey(this.coords);
+        this.visible = false;
+        this.proxy = null;
+        this.proxy_depth = 0;
+        this.loading = false;
+        this.loaded = false;
+        this.error = null;
+        this.debug = {};
+
+        this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
+        this.style_zoom = style_zoom; // zoom level to be used for styling
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
         this.span = { x: (this.max.x - this.min.x), y: (this.max.y - this.min.y) };
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
+        this.center_dist = 0;
 
         // Units per pixel needs to account for over-zooming
         this.units_per_pixel = Geo.units_per_pixel;
@@ -64,40 +57,58 @@ export default class Tile {
         return new Tile(spec);
     }
 
+    static coord(c) {
+        return {x: c.x, y: c.y, z: c.z, key: Tile.coordKey(c)};
+    }
+
     static coordKey({x, y, z}) {
-        return [x, y, z].join('/');
+        return x + '/' + y + '/' + z;
     }
 
     static key (coords, source, style_zoom) {
-        coords = Tile.overZoomedCoordinate(coords, source.max_zoom);
+        coords = Tile.coordinateWithMaxZoom(coords, source.max_zoom);
         if (coords.y < 0 || coords.y >= (1 << coords.z) || coords.z < 0) {
             return; // cull tiles out of range (x will wrap)
         }
         return [source.name, style_zoom, coords.x, coords.y, coords.z].join('/');
     }
 
-    static coordinateAtZoom({x, y, z}, zoom) {
+    static coordinateAtZoom({x, y, z, key}, zoom) {
         if (z !== zoom) {
             let zscale = Math.pow(2, z - zoom);
             x = Math.floor(x / zscale);
             y = Math.floor(y / zscale);
+            z = zoom;
         }
-        return {x, y, z: zoom};
+        return Tile.coord({x, y, z});
     }
 
-    static isChild(parent, child) {
-        if (child.z > parent.z) {
-            let {x, y} = Tile.coordinateAtZoom(child, parent.z);
-            return (parent.x === x && parent.y === y);
-        }
-        return false;
-    }
-
-    static overZoomedCoordinate({x, y, z}, max_zoom) {
+    static coordinateWithMaxZoom({x, y, z}, max_zoom) {
         if (max_zoom !== undefined && z > max_zoom) {
             return Tile.coordinateAtZoom({x, y, z}, max_zoom);
         }
-        return {x, y, z};
+        return Tile.coord({x, y, z});
+    }
+
+    static childrenForCoordinate({x, y, z, key}) {
+        if (!Tile.coord_children[key]) {
+            z++;
+            x *= 2;
+            y *= 2;
+            Tile.coord_children[key] = [
+                Tile.coord({x, y,      z}), Tile.coord({x: x+1, y,      z}),
+                Tile.coord({x, y: y+1, z}), Tile.coord({x: x+1, y: y+1, z})
+            ];
+        }
+        return Tile.coord_children[key];
+    }
+
+    static isDescendant(parent, descendant) {
+        if (descendant.z > parent.z) {
+            let {x, y} = Tile.coordinateAtZoom(descendant, parent.z);
+            return (parent.x === x && parent.y === y);
+        }
+        return false;
     }
 
     // Sort a set of tile instances (which already have a distance from center tile computed)
@@ -142,7 +153,6 @@ export default class Tile {
     buildAsMessage() {
         return {
             key: this.key,
-            coord_key: this.coord_key,
             source: this.source.name,
             coords: this.coords,
             min: this.min,
@@ -166,6 +176,20 @@ export default class Tile {
             this.loading = true;
         }
         return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
+    }
+
+    /**
+        Called on worker to cancel loading
+        Static method because the worker only has object representations of tile data, there is no
+        tile instance created yet.
+    */
+    static cancel(tile) {
+        if (tile) {
+            if (tile.source_data && tile.source_data.request) {
+                tile.source_data.request.abort();
+            }
+            Tile.abortBuild(tile);
+        }
     }
 
     // Process geometry for tile - called by web worker
@@ -396,17 +420,39 @@ export default class Tile {
         }
     }
 
-    printDebug () {
-        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+    // Update relative to view
+    update () {
+        let coords = this.coords;
+        if (coords.z !== this.view.center.tile.z) {
+            coords = Tile.coordinateAtZoom(coords, this.view.center.tile.z);
+        }
+        this.center_dist = Math.abs(this.view.center.tile.x - coords.x) + Math.abs(this.view.center.tile.y - coords.y);
     }
 
-    update() {
-        let scene = this.tile_manager.scene;
-        let coords = this.coords;
-        if (coords.z !== scene.center_tile.z) {
-            coords = Tile.coordinateAtZoom(coords, scene.center_tile.z);
+    // Set as a proxy tile for another tile
+    setProxyFor (tile) {
+        this.proxy = tile;
+        if (tile) {
+            this.visible = true;
+            this.proxy_depth = Math.abs(this.style_zoom - this.proxy.style_zoom); // draw all proxies behind
+            this.update();
         }
-        this.center_dist = Math.abs(scene.center_tile.x - coords.x) + Math.abs(scene.center_tile.y - coords.y);
+        else {
+            this.proxy_depth = 0;
+        }
+    }
+
+    // Update model matrix and tile uniforms
+    setupProgram ({ model, model32 }, program) {
+        // Tile origin
+        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.proxy_depth);
+
+        // Model - transform tile space into world space (meters, absolute mercator position)
+        mat4.identity(model);
+        mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
+        mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
+        mat4.copy(model32, model);
+        program.uniform('Matrix4fv', 'u_model', false, model32);
     }
 
     // Slice a subset of keys out of a tile
@@ -435,20 +481,6 @@ export default class Tile {
         return tile_subset;
     }
 
-    /**
-        Called on worker to cancel loading
-        Static method because the worker only has object representations of tile data, there is no
-        tile instance created yet.
-    */
-    static cancel(tile) {
-        if (tile) {
-            if (tile.source_data && tile.source_data.request) {
-                tile.source_data.request.abort();
-            }
-            Tile.abortBuild(tile);
-        }
-    }
-
     merge(other) {
         for (var key in other) {
             if (key !== 'key') {
@@ -458,4 +490,10 @@ export default class Tile {
         return this;
     }
 
+    printDebug () {
+        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+    }
+
 }
+
+Tile.coord_children = {}; // only allocate children coordinates once per coordinate

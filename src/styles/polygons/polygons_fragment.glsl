@@ -1,7 +1,7 @@
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
-uniform vec3 u_tile_origin;
+uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 
@@ -31,7 +31,7 @@ varying vec4 v_world_position;
 void main (void) {
     // Initialize globals
     #pragma tangram: setup
-    
+
     vec4 color = v_color;
     vec3 normal = TANGRAM_NORMAL;
 
