@@ -221,9 +221,9 @@ class PointLight extends Light {
         this.type = 'point';
         this.struct_name = 'PointLight';
 
-        this.position = config.position || [0, 0, 0];
+        this.position = config.position || [0, 0, 100px];
         this.position_eye = []; // position in eyespace
-        this.origin = config.origin || 'world';
+        this.origin = config.origin || 'ground';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
 
         if (config.radius) {
