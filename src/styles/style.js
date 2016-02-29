@@ -8,6 +8,7 @@ import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
+import Utils from '../utils/utils';
 
 import log from 'loglevel';
 
