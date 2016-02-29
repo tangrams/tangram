@@ -35,6 +35,7 @@ Object.assign(RasterStyle, {
         else if (this.apply === 'normal') {
             this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
         }
+        this.defines.TANGRAM_MODEL_POSITION_VARYING = true;
     },
 
     _preprocess (draw) {
