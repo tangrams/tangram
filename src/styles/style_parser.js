@@ -267,6 +267,11 @@ StyleParser.colorForString = function(string) {
 StyleParser.cacheColor = function(val, context = {}) {
     if (val.dynamic) {
         let v = val.dynamic(context);
+
+        if (typeof v === 'string') {
+            v = StyleParser.colorForString(v);
+        }
+
         if (v && v[3] == null) {
             v[3] = 1; // default alpha
         }
@@ -283,6 +288,11 @@ StyleParser.cacheColor = function(val, context = {}) {
         if (typeof val.value === 'function') {
             val.dynamic = val.value;
             let v = val.dynamic(context);
+
+            if (typeof v === 'string') {
+                v = StyleParser.colorForString(v);
+            }
+
             if (v && v[3] == null) {
                 v[3] = 1; // default alpha
             }
