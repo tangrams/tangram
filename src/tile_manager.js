@@ -126,7 +126,7 @@ const TileManager = {
 
         this.loadQueuedCoordinates();
         this.updateProxyTiles();
-        this.view.pruneTileCoordinatesForView(); // remove tiles too far outside of view
+        this.view.pruneTilesForView();
     },
 
     updateProxyTiles () {
@@ -165,24 +165,22 @@ const TileManager = {
     },
 
     updateVisibility(tile) {
-        if (tile.style_zoom !== this.view.tile_zoom) {
-            tile.visible = false;
-            return;
-        }
-
-        if (this.visible_coords[tile.coords.key]) {
-            tile.visible = true;
-        }
-        else {
-            // brute force
-            for (let key in this.visible_coords) {
-                if (Tile.isDescendant(tile.coords, this.visible_coords[key])) {
-                    tile.visible = true;
-                    return;
+        tile.visible = false;
+        if (tile.style_zoom === this.view.tile_zoom) {
+            // let coord = Tile.coordinateAtZoom(tile.coords, this.view.tile_zoom);
+            // if (this.visible_coords[coord.key]) {
+            if (this.visible_coords[tile.coords.key]) {
+                tile.visible = true;
+            }
+            else {
+                // brute force
+                for (let key in this.visible_coords) {
+                    if (Tile.isDescendant(tile.coords, this.visible_coords[key])) {
+                        tile.visible = true;
+                        break;
+                    }
                 }
             }
-
-            tile.visible = false;
         }
     },
 

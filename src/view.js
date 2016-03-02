@@ -8,7 +8,7 @@ import log from 'loglevel';
 
 export default class View {
 
-    constructor(scene, options) {
+    constructor (scene, options) {
         subscribeMixin(this);
 
         this.scene = scene;
@@ -97,7 +97,7 @@ export default class View {
     }
 
     // Set the map view, can be passed an object with lat/lng and/or zoom
-    setView({ lng, lat, zoom } = {}) {
+    setView ({ lng, lat, zoom } = {}) {
         var changed = false;
 
         // Set center
@@ -120,7 +120,7 @@ export default class View {
         return changed;
     }
 
-    setZoom(zoom) {
+    setZoom (zoom) {
         if (this.zooming) {
             this.zooming = false;
         }
@@ -135,14 +135,7 @@ export default class View {
         }
 
         if (tile_zoom !== last_tile_zoom) {
-            // Remove tiles outside current zoom that are still loading
-            this.scene.tile_manager.removeTiles(tile => {
-                if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
-                    log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
-                    return true;
-                }
-            });
-
+            this.pruneLoadingTiles(tile_zoom);
             this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
         }
 
@@ -154,27 +147,27 @@ export default class View {
         this.scene.requestRedraw();
     }
 
-    startZoom() {
+    startZoom () {
         this.last_zoom = this.zoom;
         this.zooming = true;
     }
 
     // Choose the base zoom level to use for a given fractional zoom
-    baseZoom(zoom) {
+    baseZoom (zoom) {
         return Math.floor(zoom);
     }
 
     // For a given view zoom, what tile zoom should be loaded?
-    tileZoom(view_zoom) {
+    tileZoom (view_zoom) {
         return this.baseZoom(view_zoom) - this.tile_simplification_level;
     }
 
     // For a given tile zoom, what style zoom should be used?
-    styleZoom(tile_zoom) {
+    styleZoom (tile_zoom) {
         return this.baseZoom(tile_zoom) + this.tile_simplification_level;
     }
 
-    ready() {
+    ready () {
         // TODO: better concept of "readiness" state?
         if (this.size.css == null || this.center == null || this.zoom == null) {
              return false;
@@ -183,7 +176,7 @@ export default class View {
     }
 
     // Calculate viewport bounds based on current center and zoom
-    updateBounds() {
+    updateBounds () {
         if (!this.ready()) {
             return;
         }
@@ -220,7 +213,7 @@ export default class View {
         this.scene.requestRedraw(); // TODO automate via move event?
     }
 
-    findVisibleTileCoordinates() {
+    findVisibleTileCoordinates () {
         if (!this.bounds) {
             return [];
         }
@@ -238,8 +231,18 @@ export default class View {
         return coords;
     }
 
+    // Remove tiles outside given zoom that are still loading
+    pruneLoadingTiles (tile_zoom) {
+        this.scene.tile_manager.removeTiles(tile => {
+            if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
+                log.trace(`removed ${tile.key} (was loading, but outside zoom ${tile_zoom})`);
+                return true;
+            }
+        });
+    }
+
     // Remove tiles too far outside of view
-    pruneTileCoordinatesForView() {
+    pruneTilesForView () {
         // TODO: will this function ever be called when view isn't ready?
         if (!this.ready()) {
             return;
@@ -250,7 +253,6 @@ export default class View {
             Math.ceil((Math.floor(this.size.css.width / Geo.tile_size) + 2) / 2),
             Math.ceil((Math.floor(this.size.css.height / Geo.tile_size) + 2) / 2)
         ];
-        let style_zoom = this.tileZoom(this.zoom);
 
         this.scene.tile_manager.removeTiles(tile => {
             // Ignore visible tiles
@@ -259,21 +261,21 @@ export default class View {
             }
 
             // Discard if too far from current zoom
-            let zdiff = Math.abs(tile.style_zoom - style_zoom);
+            let zdiff = Math.abs(tile.style_zoom - this.tile_zoom);
             if (zdiff > this.preserve_tiles_within_zoom) {
                 return true;
             }
 
             // Handle tiles at different zooms
-            let coords = Tile.coordinateAtZoom(tile.coords, style_zoom);
+            let coords = Tile.coordinateAtZoom(tile.coords, this.tile_zoom);
 
             // Discard tiles outside an area surrounding the viewport
             if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {
-                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
+                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             else if (Math.abs(coords.y - this.center.tile.y) - border_tiles[1] > this.buffer) {
-                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
+                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             return false;
