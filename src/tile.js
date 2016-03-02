@@ -375,9 +375,8 @@ export default class Tile {
                     this.debug.geometries += meshes[s].geometry_count;
                 }
 
-                // Retain textures
+                // Assign texture ownership to tiles
                 if (mesh_data[s].textures) {
-                    mesh_data[s].textures.forEach(t => Texture.retain(t));
                     textures.push(...mesh_data[s].textures);
                 }
             }
@@ -406,8 +405,8 @@ export default class Tile {
                     for (let t of textures) {
                         let texture = Texture.textures[t];
                         if (texture) {
-                            log.trace(`destroying texture ${t} for tile ${tile.key}`);
-                            texture.destroy();
+                            log.trace(`releasing texture ${t} for tile ${tile.key}`);
+                            texture.release();
                         }
                     }
                 }

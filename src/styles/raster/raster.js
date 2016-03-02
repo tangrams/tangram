@@ -83,6 +83,7 @@ Object.assign(RasterStyle, {
                 }).filter(x => x));
             })
             .then(textures => {
+                textures.forEach(t => t.retain());
                 return textures.map(t => [t.width, t.height]);
             });
     }
