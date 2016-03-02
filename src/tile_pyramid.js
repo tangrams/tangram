@@ -86,7 +86,7 @@ const TilePyramid = {
             let source_tiles = this.sourceTiles(coords, source);
             if (source_tiles) {
                 for (let z = style_zoom - 1; z >= source.max_zoom; z--) {
-                    if (source_tiles.has(z)) {
+                    if (source_tiles.has(z) && source_tiles.get(z).loaded) {
                         return source_tiles.get(z);
                     }
                 }
@@ -98,7 +98,7 @@ const TilePyramid = {
         style_zoom--;
         let parent = Tile.coordinateAtZoom(coords, coords.z - 1);
         let parent_tiles = this.sourceTiles(parent, source);
-        if (parent_tiles && parent_tiles.has(style_zoom)) {
+        if (parent_tiles && parent_tiles.has(style_zoom) && parent_tiles.get(style_zoom).loaded) {
             return parent_tiles.get(style_zoom);
         }
         // didn't find ancestor, try next level
@@ -117,7 +117,7 @@ const TilePyramid = {
             if (source_tiles) {
                 let search_max_zoom = Math.max(Geo.default_view_max_zoom, style_zoom + this.max_proxy_descendant_depth);
                 for (let z = style_zoom + 1; z <= search_max_zoom; z++) {
-                    if (source_tiles.has(z)) {
+                    if (source_tiles.has(z) && source_tiles.get(z).loaded) {
                         descendants.push(source_tiles.get(z));
                         return descendants;
                     }
@@ -131,7 +131,7 @@ const TilePyramid = {
             style_zoom++;
             for (let child of Tile.childrenForCoordinate(coords)) {
                 let child_tiles = this.sourceTiles(child, source);
-                if (child_tiles && child_tiles.has(style_zoom)) {
+                if (child_tiles && child_tiles.has(style_zoom) && child_tiles.get(style_zoom).loaded) {
                     descendants.push(child_tiles.get(style_zoom));
                 }
                 // didn't find child, try next level
