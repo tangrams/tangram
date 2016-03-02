@@ -51,6 +51,7 @@ export default class Texture {
     destroy() {
         if (this.retain_count > 0) {
             log.error(`Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
+            return;
         }
 
         if (!this.valid) {
