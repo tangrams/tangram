@@ -65,7 +65,7 @@ void main() {
         vec2 extrude = SCALE_8(a_extrude.xy);
         float width = SHORT(a_extrude.z);
         float dwdz = SHORT(a_extrude.w);
-        float dz = clamp(u_map_position.z - abs(u_tile_origin.z), 0.0, 1.0);
+        float dz = max(u_map_position.z - u_tile_origin.z, 0.);
 
         // Interpolate between zoom levels
         width += dwdz * dz;
