@@ -1,8 +1,5 @@
 // Raster tile rendering style
 
-import Texture from '../../gl/texture';
-import WorkerBroker from '../../utils/worker_broker';
-import Utils from '../../utils/utils';
 import {StyleParser} from '../style_parser';
 import {Polygons} from '../polygons/polygons';
 import {RasterTileSource} from '../../sources/raster';
