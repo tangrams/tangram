@@ -483,6 +483,7 @@ export var Style = {
                 }).filter(x => x));
             })
             .then(textures => {
+                textures.forEach(t => t.retain());
                 return textures.map(t => [t.name, t.width, t.height]);
             });
     },
