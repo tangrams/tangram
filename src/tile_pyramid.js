@@ -46,11 +46,8 @@ const TilePyramid = {
 
     removeTile(tile) {
         // Remove target tile
+        let source_tiles = this.sourceTiles(tile.coords, tile.source);
         let key = tile.coords.key;
-        let source_tiles =
-            this.coords[key] &&
-            this.coords[key].sources &&
-            this.coords[key].sources.get(tile.source.name);
 
         if (source_tiles) {
             source_tiles.delete(tile.style_zoom);
@@ -59,11 +56,11 @@ const TilePyramid = {
                 this.coords[key].sources.delete(tile.source.name);
                 if (this.coords[key].sources.size === 0) {
                     delete this.coords[key].sources;
-                }
 
-                if (this.coords[key].descendants === 0) {
-                    // remove whole coord
-                    delete this.coords[key];
+                    if (this.coords[key].descendants === 0) {
+                        // remove whole coord
+                        delete this.coords[key];
+                    }
                 }
             }
         }
