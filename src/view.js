@@ -135,7 +135,6 @@ export default class View {
         }
 
         if (tile_zoom !== last_tile_zoom) {
-            this.pruneLoadingTiles(tile_zoom);
             this.zoom_direction = tile_zoom > last_tile_zoom ? 1 : -1;
         }
 
@@ -231,16 +230,6 @@ export default class View {
         return coords;
     }
 
-    // Remove tiles outside given zoom that are still loading
-    pruneLoadingTiles (tile_zoom) {
-        this.scene.tile_manager.removeTiles(tile => {
-            if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
-                log.trace(`removed ${tile.key} (was loading, but outside zoom ${tile_zoom})`);
-                return true;
-            }
-        });
-    }
-
     // Remove tiles too far outside of view
     pruneTilesForView () {
         // TODO: will this function ever be called when view isn't ready?
@@ -258,6 +247,11 @@ export default class View {
             // Ignore visible tiles
             if (tile.visible || tile.proxy) {
                 return false;
+            }
+
+            // Remove tiles outside given zoom that are still loading
+            if (tile.loading && tile.style_zoom !== this.tile_zoom) {
+                return true;
             }
 
             // Discard if too far from current zoom
