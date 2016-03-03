@@ -112,7 +112,8 @@ void main() {
     cameraProjection(position);
 
     // w coordinates hold feature layer, and additional proxy offset (set to 0 for non-proxy tiles)
-    applyLayerOrder(SHORT(a_position.w) + u_tile_origin.w, position);
+    // +1 is to keep all layers including proxies > 0
+    applyLayerOrder(SHORT(a_position.w) + u_tile_origin.w + 1., position);
 
     gl_Position = position;
 }
