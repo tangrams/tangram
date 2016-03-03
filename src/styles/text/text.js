@@ -26,12 +26,6 @@ Object.assign(TextStyle, {
     init() {
         this.super.init.apply(this, arguments);
 
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = 'TextStyle-' + this.name;
-        if (Utils.isMainThread) {
-            WorkerBroker.addTarget(this.main_thread_target, this);
-        }
-
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;

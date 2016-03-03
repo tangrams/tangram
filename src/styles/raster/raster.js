@@ -21,12 +21,6 @@ Object.assign(RasterStyle, {
 
         this.super.init.apply(this, arguments);
 
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = 'RasterStyle-' + this.name;
-        if (Utils.isMainThread) {
-            WorkerBroker.addTarget(this.main_thread_target, this);
-        }
-
         // Enable raster texture and configure how it is applied
         this.defines.TANGRAM_RASTER_TEXTURE = true;
         if (this.apply == null || this.apply === 'color') { // default to applying as color
