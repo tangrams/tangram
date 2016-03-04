@@ -2,7 +2,6 @@
 
 import {StyleParser} from '../style_parser';
 import {Polygons} from '../polygons/polygons';
-import {RasterTileSource} from '../../sources/raster';
 
 export let RasterStyle = Object.create(Polygons);
 
