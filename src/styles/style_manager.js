@@ -236,8 +236,18 @@ StyleManager.mix = function (style, styles) {
     // Merges - property-specific rules for merging values
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
     style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
-    // style.rasters = ...sources.map(
-    // style.rasters = [...new Set()]
+    let rasters = {};
+    for (let raster of sources.map(x => x.rasters).filter(x => x)) {
+        // single raster
+        if (typeof raster === 'string') {
+            rasters[raster] = true;
+        }
+        // array of rasters
+        else if (Array.isArray(raster)) {
+            raster.forEach(x => rasters[x] = true);
+        }
+    }
+    style.rasters = Object.keys(rasters); // merge all rasters into one unique array
 
     // Mix shader properties
     StyleManager.mixShaders(style, styles, sources);
