@@ -248,6 +248,7 @@ StyleManager.mix = function (style, styles) {
         }
     }
     style.rasters = Object.keys(rasters); // merge all rasters into one unique array
+    style.raster_default = sources.map(x => x.raster_default).filter(x => x).pop();
 
     // Mix shader properties
     StyleManager.mixShaders(style, styles, sources);

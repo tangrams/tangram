@@ -9,9 +9,9 @@ uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
 #ifdef TANGRAM_RASTER_TEXTURE
-    uniform sampler2D u_raster_texture;         // raster texture sampler
-    uniform vec2 u_raster_texture_size;         // width/height pixel dimensions of raster texture
-    uniform vec2 u_raster_texture_pixel_size;   // UV size of a single pixel in raster texture
+    uniform sampler2D u_raster_texture_default;         // raster texture sampler
+    uniform vec2 u_raster_texture_default_size;         // width/height pixel dimensions of raster texture
+    uniform vec2 u_raster_texture_default_pixel_size;   // UV size of a single pixel in raster texture
 #endif
 
 varying vec4 v_position;
