@@ -151,12 +151,12 @@ function setupMainThread () {
             messages[message_id] = { method, message, resolve, reject };
         });
 
-        worker.postMessage({
+        worker.postMessage(JSON.stringify({
             type: 'main_send',      // mark message as method invocation from main thread
             message_id,             // unique id for this message, for life of program
             method,                 // will dispatch to a function of this name within the worker
             message                 // message payload
-        });
+        }));
 
         message_id++;
         return promise;
@@ -173,18 +173,19 @@ function setupMainThread () {
 
         // Listen for messages coming back from the worker, and fulfill that message's promise
         worker.addEventListener('message', (event) => {
-            if (event.data.type !== 'worker_reply') {
+            let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+            if (data.type !== 'worker_reply') {
                 return;
             }
 
             // Pass the result to the promise
-            var id = event.data.message_id;
+            var id = data.message_id;
             if (messages[id]) {
-                if (event.data.error) {
-                    messages[id].reject(event.data.error);
+                if (data.error) {
+                    messages[id].reject(data.error);
                 }
                 else {
-                    messages[id].resolve(event.data.message);
+                    messages[id].resolve(data.message);
                 }
                 delete messages[id];
             }
@@ -193,27 +194,29 @@ function setupMainThread () {
         // Listen for messages initiating a call from the worker, dispatch them,
         // and send any return value back to the worker
         worker.addEventListener('message', (event) => {
+            let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+
             // Unique id for this message & return call to main thread
-            var id = event.data.message_id;
-            if (event.data.type !== 'worker_send' || id == null) {
+            var id = data.message_id;
+            if (data.type !== 'worker_send' || id == null) {
                 return;
             }
 
             // Call the requested method and save the return value
-            // var target = targets[event.data.target];
-            var [method_name, target] = findTarget(event.data.method);
+            // var target = targets[data.target];
+            var [method_name, target] = findTarget(data.method);
             if (!target) {
-                throw Error(`Worker broker could not dispatch message type ${event.data.method} on target ${event.data.target} because no object with that name is registered on main thread`);
+                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
             }
 
             var method = (typeof target[method_name] === 'function') && target[method_name];
             if (!method) {
-                throw Error(`Worker broker could not dispatch message type ${event.data.method} on target ${event.data.target} because object has no method with that name`);
+                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
             }
 
             var result, error;
             try {
-                result = method.apply(target, event.data.message);
+                result = method.apply(target, data.message);
             }
             catch(e) {
                 // Thrown errors will be passed back (in string form) to worker
@@ -221,17 +224,22 @@ function setupMainThread () {
             }
 
             // Send return value to worker
-            let transferables;
+            let payload, transferables;
             // Async result
             if (result instanceof Promise) {
                 result.then((value) => {
-                    transferables = findTransferables(value);
-
-                    worker.postMessage({
+                    payload = {
                         type: 'main_reply',
                         message_id: id,
                         message: value
-                    }, transferables.map(t => t.object));
+                    };
+
+                    transferables = findTransferables(value);
+                    if (transferables.length === 0) {
+                        payload = JSON.stringify(payload); // can stringify if not sending transferable objects
+                    }
+
+                    worker.postMessage(payload, transferables.map(t => t.object));
 
                     freeTransferables(transferables);
                     // if (transferables.length > 0) {
@@ -248,14 +256,19 @@ function setupMainThread () {
             }
             // Immediate result
             else {
-                transferables = findTransferables(result);
-
-                worker.postMessage({
+                payload = {
                     type: 'main_reply',
                     message_id: id,
                     message: result,
                     error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-                }, transferables.map(t => t.object));
+                };
+
+                transferables = findTransferables(result);
+                if (transferables.length === 0) {
+                    payload = JSON.stringify(payload); // can stringify if not sending transferable objects
+                }
+
+                worker.postMessage(payload, transferables.map(t => t.object));
 
                 freeTransferables(transferables);
                 // if (transferables.length > 0) {
@@ -308,18 +321,19 @@ function setupWorkerThread () {
 
     // Listen for messages coming back from the main thread, and fulfill that message's promise
     self.addEventListener('message', (event) => {
-        if (event.data.type !== 'main_reply') {
+        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+        if (data.type !== 'main_reply') {
             return;
         }
 
         // Pass the result to the promise
-        var id = event.data.message_id;
+        var id = data.message_id;
         if (messages[id]) {
-            if (event.data.error) {
-                messages[id].reject(event.data.error);
+            if (data.error) {
+                messages[id].reject(data.error);
             }
             else {
-                messages[id].resolve(event.data.message);
+                messages[id].resolve(data.message);
             }
             delete messages[id];
         }
@@ -327,27 +341,29 @@ function setupWorkerThread () {
 
     // Receive messages from main thread, dispatch them, and send back a reply
     self.addEventListener('message', (event) => {
+        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+
         // Unique id for this message & return call to main thread
-        var id = event.data.message_id;
-        if (event.data.type !== 'main_send' || id == null) {
+        var id = data.message_id;
+        if (data.type !== 'main_send' || id == null) {
             return;
         }
 
         // Call the requested worker method and save the return value
-        var [method_name, target] = findTarget(event.data.method);
+        var [method_name, target] = findTarget(data.method);
         if (!target) {
-            throw Error(`Worker broker could not dispatch message type ${event.data.method} on target ${event.data.target} because no object with that name is registered on main thread`);
+            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
         }
 
         var method = (typeof target[method_name] === 'function') && target[method_name];
 
         if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${event.data.method} because worker has no method with that name`);
+            throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
         }
 
         var result, error;
         try {
-            result = method.apply(target, event.data.message);
+            result = method.apply(target, data.message);
         }
         catch(e) {
             // Thrown errors will be passed back (in string form) to main thread
@@ -355,17 +371,22 @@ function setupWorkerThread () {
         }
 
         // Send return value to main thread
-        let transferables;
+        let payload, transferables;
         // Async result
         if (result instanceof Promise) {
             result.then((value) => {
-                transferables = findTransferables(value);
-
-                self.postMessage({
+                payload = {
                     type: 'worker_reply',
                     message_id: id,
                     message: value
-                }, transferables.map(t => t.object));
+                };
+
+                transferables = findTransferables(value);
+                if (transferables.length === 0) {
+                    payload = JSON.stringify(payload); // can stringify if not sending transferable objects
+                }
+
+                self.postMessage(payload, transferables.map(t => t.object));
 
                 freeTransferables(transferables);
                 // if (transferables.length > 0) {
@@ -381,14 +402,19 @@ function setupWorkerThread () {
         }
         // Immediate result
         else {
-            transferables = findTransferables(result);
-
-            self.postMessage({
+            payload = {
                 type: 'worker_reply',
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-            }, transferables.map(t => t.object));
+            };
+
+            transferables = findTransferables(result);
+            if (transferables.length === 0) {
+                payload = JSON.stringify(payload); // can stringify if not sending transferable objects
+            }
+
+            self.postMessage(payload, transferables.map(t => t.object));
 
             freeTransferables(transferables);
             // if (transferables.length > 0) {
