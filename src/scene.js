@@ -21,12 +21,14 @@ import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
 import {Points} from './styles/points/points';
 import {TextStyle} from './styles/text/text';
+import {RasterStyle} from './styles/raster/raster';
 
 // Add built-in rendering styles
 StyleManager.register(Polygons);
 StyleManager.register(Lines);
 StyleManager.register(Points);
 StyleManager.register(TextStyle);
+StyleManager.register(RasterStyle);
 
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {

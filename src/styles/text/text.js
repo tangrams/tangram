@@ -262,6 +262,7 @@ Object.assign(TextStyle, {
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });
+        Texture.retain(t);
 
         return { texts, texture: t }; // texture is returned by name (not instance)
     },

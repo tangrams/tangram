@@ -8,6 +8,12 @@ uniform float u_device_pixel_ratio;
 uniform mat3 u_normalMatrix;
 uniform mat3 u_inverseNormalMatrix;
 
+#ifdef TANGRAM_RASTER_TEXTURE
+    uniform sampler2D u_raster_texture;         // raster texture sampler
+    uniform vec2 u_raster_texture_size;         // width/height pixel dimensions of raster texture
+    uniform vec2 u_raster_texture_pixel_size;   // UV size of a single pixel in raster texture
+#endif
+
 varying vec4 v_position;
 varying vec3 v_normal;
 varying vec4 v_color;
@@ -35,6 +41,20 @@ void main (void) {
     vec4 color = v_color;
     vec3 normal = TANGRAM_NORMAL;
 
+    // Get value from raster tile texture
+    #ifdef TANGRAM_RASTER_TEXTURE
+        vec4 raster = texture2D(u_raster_texture, v_texcoord.xy);
+
+        #ifdef TANGRAM_RASTER_TEXTURE_COLOR
+            // note: vertex color is multiplied to tint texture color
+            color *= raster;
+        #endif
+        #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
+            normal = normalize(raster.rgb * 2. - 1.);
+        #endif
+    #endif
+
+    // Apply normal from material
     #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
         calculateNormal(normal);
     #endif
