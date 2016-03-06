@@ -2,7 +2,7 @@ import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/bo
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
 
-import log from 'loglevel';
+// import log from 'loglevel';
 
 export default class Label {
 
