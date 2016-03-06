@@ -173,7 +173,7 @@ function setupMainThread () {
 
         // Listen for messages coming back from the worker, and fulfill that message's promise
         worker.addEventListener('message', (event) => {
-            let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+            let data = maybeDecode(event.data);
             if (data.type !== 'worker_reply') {
                 return;
             }
@@ -194,7 +194,7 @@ function setupMainThread () {
         // Listen for messages initiating a call from the worker, dispatch them,
         // and send any return value back to the worker
         worker.addEventListener('message', (event) => {
-            let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+            let data = maybeDecode(event.data);
 
             // Unique id for this message & return call to main thread
             var id = data.message_id;
@@ -235,9 +235,7 @@ function setupMainThread () {
                     };
 
                     transferables = findTransferables(value);
-                    if (transferables.length === 0) {
-                        payload = JSON.stringify(payload); // can stringify if not sending transferable objects
-                    }
+                    payload = maybeEncode(payload, transferables);
 
                     worker.postMessage(payload, transferables.map(t => t.object));
 
@@ -264,9 +262,7 @@ function setupMainThread () {
                 };
 
                 transferables = findTransferables(result);
-                if (transferables.length === 0) {
-                    payload = JSON.stringify(payload); // can stringify if not sending transferable objects
-                }
+                payload = maybeEncode(payload, transferables);
 
                 worker.postMessage(payload, transferables.map(t => t.object));
 
@@ -321,7 +317,7 @@ function setupWorkerThread () {
 
     // Listen for messages coming back from the main thread, and fulfill that message's promise
     self.addEventListener('message', (event) => {
-        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+        let data = maybeDecode(event.data);
         if (data.type !== 'main_reply') {
             return;
         }
@@ -341,7 +337,7 @@ function setupWorkerThread () {
 
     // Receive messages from main thread, dispatch them, and send back a reply
     self.addEventListener('message', (event) => {
-        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+        let data = maybeDecode(event.data);
 
         // Unique id for this message & return call to main thread
         var id = data.message_id;
@@ -382,9 +378,7 @@ function setupWorkerThread () {
                 };
 
                 transferables = findTransferables(value);
-                if (transferables.length === 0) {
-                    payload = JSON.stringify(payload); // can stringify if not sending transferable objects
-                }
+                payload = maybeEncode(payload, transferables);
 
                 self.postMessage(payload, transferables.map(t => t.object));
 
@@ -410,9 +404,7 @@ function setupWorkerThread () {
             };
 
             transferables = findTransferables(result);
-            if (transferables.length === 0) {
-                payload = JSON.stringify(payload); // can stringify if not sending transferable objects
-            }
+            payload = maybeEncode(payload, transferables);
 
             self.postMessage(payload, transferables.map(t => t.object));
 
@@ -465,6 +457,19 @@ function freeTransferables(transferables) {
         return;
     }
     transferables.filter(t => t.parent && t.property).forEach(t => delete t.parent[t.property]);
+}
+
+// Message payload can be stringified for faster transfer, if it does not include transferable objects
+function maybeEncode (payload, transferables) {
+    if (transferables.length === 0) {
+        payload = JSON.stringify(payload);
+    }
+    return payload;
+}
+
+// Parse stringified message payload
+function maybeDecode (data) {
+    return (typeof data === 'string' ? JSON.parse(data) : data);
 }
 
 // Setup this thread as appropriate
