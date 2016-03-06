@@ -224,21 +224,23 @@ function setupMainThread () {
             }
 
             // Send return value to worker
-            let payload, transferables;
+            let payload, transferables = [];
+
             // Async result
             if (result instanceof Promise) {
                 result.then((value) => {
+                    if (value instanceof WorkerBroker.returnWithTransferables) {
+                        transferables = value.transferables;
+                        value = value.value;
+                    }
+
                     payload = {
                         type: 'main_reply',
                         message_id: id,
                         message: value
                     };
-
-                    transferables = findTransferables(value);
                     payload = maybeEncode(payload, transferables);
-
                     worker.postMessage(payload, transferables.map(t => t.object));
-
                     freeTransferables(transferables);
                     // if (transferables.length > 0) {
                     //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
@@ -254,18 +256,19 @@ function setupMainThread () {
             }
             // Immediate result
             else {
+                if (result instanceof WorkerBroker.returnWithTransferables) {
+                    transferables = result.transferables;
+                    result = result.value;
+                }
+
                 payload = {
                     type: 'main_reply',
                     message_id: id,
                     message: result,
                     error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                 };
-
-                transferables = findTransferables(result);
                 payload = maybeEncode(payload, transferables);
-
                 worker.postMessage(payload, transferables.map(t => t.object));
-
                 freeTransferables(transferables);
                 // if (transferables.length > 0) {
                 //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
@@ -367,21 +370,23 @@ function setupWorkerThread () {
         }
 
         // Send return value to main thread
-        let payload, transferables;
+        let payload, transferables = [];
+
         // Async result
         if (result instanceof Promise) {
             result.then((value) => {
+                if (value instanceof WorkerBroker.returnWithTransferables) {
+                    transferables = value.transferables;
+                    value = value.value;
+                }
+
                 payload = {
                     type: 'worker_reply',
                     message_id: id,
                     message: value
                 };
-
-                transferables = findTransferables(value);
                 payload = maybeEncode(payload, transferables);
-
                 self.postMessage(payload, transferables.map(t => t.object));
-
                 freeTransferables(transferables);
                 // if (transferables.length > 0) {
                 //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
@@ -396,18 +401,19 @@ function setupWorkerThread () {
         }
         // Immediate result
         else {
+            if (result instanceof WorkerBroker.returnWithTransferables) {
+                transferables = result.transferables;
+                result = result.value;
+            }
+
             payload = {
                 type: 'worker_reply',
                 message_id: id,
                 message: result,
                 error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
             };
-
-            transferables = findTransferables(result);
             payload = maybeEncode(payload, transferables);
-
             self.postMessage(payload, transferables.map(t => t.object));
-
             freeTransferables(transferables);
             // if (transferables.length > 0) {
             //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
@@ -416,6 +422,17 @@ function setupWorkerThread () {
     });
 
 }
+
+// Special return value wrapper, to indicate that we want to find and include
+// transferable objects in the response message
+WorkerBroker.returnWithTransferables = function (value) {
+    if (!(this instanceof WorkerBroker.returnWithTransferables)) {
+        return new WorkerBroker.returnWithTransferables(value);
+    }
+
+    this.value = value;
+    this.transferables = findTransferables(this.value);
+};
 
 // Build a list of transferable objects from a source object
 // Returns a list of info about each transferable:
