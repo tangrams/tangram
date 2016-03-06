@@ -95,7 +95,7 @@ export default Collision = {
                         // check for repeats
                         let check = RepeatGroup.check(label, layout, tile);
                         if (check) {
-                            log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                            // log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
                             continue;
                         }
                         // register as placed for future repeat culling
@@ -104,9 +104,9 @@ export default Collision = {
                         label.add(bboxes); // add label to currently visible set
                         keep[style].push(objects[i]);
                     }
-                    else if (layout.collide) {
-                        log.trace(`discard label '${label.text}' due to collision`);
-                    }
+                    // else if (layout.collide) {
+                    //     log.trace(`discard label '${label.text}' due to collision`);
+                    // }
                 }
             }
         }

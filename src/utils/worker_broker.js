@@ -234,9 +234,9 @@ function setupMainThread () {
                     }, transferables.map(t => t.object));
 
                     freeTransferables(transferables);
-                    if (transferables.length > 0) {
-                        Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-                    }
+                    // if (transferables.length > 0) {
+                    //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+                    // }
 
                 }, (error) => {
                     worker.postMessage({
@@ -258,9 +258,9 @@ function setupMainThread () {
                 }, transferables.map(t => t.object));
 
                 freeTransferables(transferables);
-                if (transferables.length > 0) {
-                    Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-                }
+                // if (transferables.length > 0) {
+                //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+                // }
             }
         });
 
@@ -368,9 +368,9 @@ function setupWorkerThread () {
                 }, transferables.map(t => t.object));
 
                 freeTransferables(transferables);
-                if (transferables.length > 0) {
-                    Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-                }
+                // if (transferables.length > 0) {
+                //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+                // }
             }, (error) => {
                 self.postMessage({
                     type: 'worker_reply',
@@ -391,9 +391,9 @@ function setupWorkerThread () {
             }, transferables.map(t => t.object));
 
             freeTransferables(transferables);
-            if (transferables.length > 0) {
-                Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-            }
+            // if (transferables.length > 0) {
+            //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+            // }
         }
     });
 
