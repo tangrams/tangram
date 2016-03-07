@@ -403,6 +403,10 @@ StyleParser.evalProp = function(prop, context) {
 // of the form `scene.`, for example `color: scene.park_color` would be replaced with the value (if any)
 // defined for the `park_color` property in `config.scene.park_color`.
 StyleParser.applySceneProperties = function (config) {
+    if (!config.scene || Object.keys(config.scene).length === 0) {
+        return config; // no scene properties to transform
+    }
+
     const separator = '_$_';
     const props = flattenProperties(config.scene, separator);
 
