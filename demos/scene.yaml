@@ -159,7 +159,7 @@ sources:
     mapzen:
         type: TopoJSON
         url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
-        params:
+        url_params:
             api_key: vector-tiles-HqUVidw
         max_zoom: 16
         # # Data filtering demo with 'scripts' and 'transform' properties:
