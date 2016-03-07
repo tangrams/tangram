@@ -96,9 +96,6 @@ Object.assign(self, {
             self.tiles = {};
         }
 
-        // Replace scene properties
-        config = StyleParser.applySceneProperties(config);
-
         // Expand styles
         config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);
         self.styles = StyleManager.build(config.styles, { generation: self.generation });
