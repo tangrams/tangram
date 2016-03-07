@@ -97,7 +97,7 @@ Object.assign(self, {
         }
 
         // Replace scene properties
-        config = StyleParser.applySceneProperties(config, config.scene);
+        config = StyleParser.applySceneProperties(config);
 
         // Expand styles
         config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);

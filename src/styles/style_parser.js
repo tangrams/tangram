@@ -402,36 +402,43 @@ StyleParser.evalProp = function(prop, context) {
 // Substitutes scene properties (those defined in the `config.scene` object) for any style values
 // of the form `scene.`, for example `color: scene.park_color` would be replaced with the value (if any)
 // defined for the `park_color` property in `config.scene.park_color`.
-StyleParser.applySceneProperties = function (obj, scene) {
-    // Convert string
-    if (typeof obj === 'string') {
-        var key = (obj.slice(0, 6) === 'scene.') && obj.slice(6);
-        var val;
-        if (key) {
-            var dot = key.split('.');
-            if (dot.length > 0) { // nested props, e.g. 'scene.roads.color'
-                var src = scene;
-                for (var k=0; k < dot.length; k++) {
-                    val = src[dot[k]];
-                    if (val) {
-                        src = val;
-                    }
-                }
-            }
-            else {
-                val = scene[key]; // top-level prop, e.g. 'scene.color'
-            }
-        }
+StyleParser.applySceneProperties = function (config) {
+    const separator = '_$_';
+    const props = flattenProperties(config.scene, separator);
 
-        if (val) {
-            obj = val; // replace property value if scene property found
+    function applyProps (obj) {
+        // Convert string
+        if (typeof obj === 'string') {
+            let key = (obj.slice(0, 6) === 'scene.') && (obj.slice(6).replace(/\./g, separator));
+            if (key && props[key]) {
+                obj = props[key];
+            }
         }
-    }
-    // Loop through object properties
-    else if (typeof obj === 'object') {
-        for (let p in obj) {
-            obj[p] = StyleParser.applySceneProperties(obj[p], scene);
+        // Loop through object properties
+        else if (typeof obj === 'object') {
+            for (let p in obj) {
+                obj[p] = applyProps(obj[p]);
+            }
         }
+        return obj;
     }
-    return obj;
+
+    return applyProps(config);
 };
+
+// Flatten nested properties for simpler string look-ups
+// e.g. scene.background.color -> scene_$_background_$_color
+function flattenProperties (obj, separator = '_$_', prefix = null, props = {}) {
+    prefix = prefix ? (prefix + separator) : '';
+
+    for (let p in obj) {
+        let key = prefix + p;
+        let val = obj[p];
+        props[key] = val;
+
+        if (typeof val === 'object' && !Array.isArray(val)) {
+            flattenProperties(val, separator, key, props);
+        }
+    }
+    return props;
+}
