@@ -236,7 +236,12 @@ Builders.buildPolylines = function (
     };
 
     for (var ln = 0; ln < lines.length; ln++) {
-        var line = lines[ln];
+        // Remove dupe points from lines
+        var line = dedupeLine(lines[ln], closed_polygon);
+        if (!line) {
+            continue; // skip if no valid line remaining
+        }
+
         var lineSize = line.length;
 
         // Ignore non-lines
@@ -379,6 +384,31 @@ Builders.buildPolylines = function (
         }
     }
 };
+
+// Remove duplicate points from a line, creating a new line only when points must be removed
+function dedupeLine (line, closed) {
+    let i, dupes;
+
+    // Collect dupe points
+    for (i=0; i < line.length - 1; i++) {
+        if (line[i][0] === line[i+1][0] && line[i][1] === line[i+1][1]) {
+            dupes = dupes || [];
+            dupes.push(i);
+        }
+    }
+
+    // Remove dupe points
+    if (dupes) {
+        line = line.slice(0);
+        dupes.forEach(d => line.splice(d, 1));
+    }
+
+    // Line needs at least 2 points, polygon needs at least 3 (+1 to close)
+    if (!closed && line.length < 2 || closed && line.length < 4) {
+        return;
+    }
+    return line;
+}
 
 // Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
