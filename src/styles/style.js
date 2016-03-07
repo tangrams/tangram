@@ -106,14 +106,19 @@ export var Style = {
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile.key];
-        if (tile_data && tile_data.vertex_data) {
-            // Only keep final byte buffer
-            tile_data.vertex_data.end();
-            tile_data.vertex_data = tile_data.vertex_data.buffer;
-        }
-        this.tile_data[tile.key] = null;
-        return Promise.resolve(tile_data);
+       var tile_data = this.tile_data[tile.key];
+       this.tile_data[tile.key] = null;
+
+       if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
+           // Only keep final byte buffer
+           tile_data.vertex_data.end();
+           tile_data.vertex_data = tile_data.vertex_data.buffer;
+       }
+       else {
+           tile_data = null; // don't send tile data back if doesn't have geometry
+       }
+
+       return Promise.resolve(tile_data);
     },
 
     // Has mesh data for a given tile?
