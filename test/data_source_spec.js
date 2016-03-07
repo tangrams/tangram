@@ -51,12 +51,9 @@ describe('DataSource', () => {
         it('sets the max_zoom level', () => {
             assert.equal(subject.max_zoom, max_zoom);
         });
-        it('sets the url', () => {
-            assert.equal(subject.url, url);
-        });
     });
 
-    describe('DataSource.create(type, url_template, options)', () => {
+    describe('DataSource.create(options)', () => {
 
         describe('when I ask for a GeoJSON source with a tile template URL', () => {
             let subject = DataSource.create(_.merge({type: 'GeoJSON'}, options));
@@ -155,6 +152,17 @@ describe('DataSource', () => {
 
             assert.deepEqual(firstFeature.geometry.coordinates, [-0.006075396068253094,-0.006075396068253094]);
         });
+    });
+
+    describe('NetworkSource', () => {
+
+        describe('when creating an instance of a subclass of NetworkSource', () => {
+            let subject = DataSource.create(_.merge({type: 'GeoJSON'}, options));
+            it('sets the url', () => {
+                assert.equal(subject.url, url);
+            });
+        });
+
     });
 
     describe('NetworkTileSource', () => {
