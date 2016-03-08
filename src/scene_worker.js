@@ -151,7 +151,7 @@ Object.assign(self, {
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
-                            resolve({ tile: Tile.slice(tile, keys) });
+                            resolve(WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) }));
                         });
                     }).catch((error) => {
                         tile.loading = false;
@@ -169,7 +169,7 @@ Object.assign(self, {
 
                 // Build geometry
                 return Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
-                    return { tile: Tile.slice(tile, keys) };
+                    return WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) });
                 });
             }
         });

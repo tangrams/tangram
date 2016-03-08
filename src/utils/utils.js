@@ -235,12 +235,12 @@ Utils.stringToFunction = function(val, wrap) {
 Utils.log = function (level, ...msg) {
     level = level || 'info';
     if (Utils.isWorkerThread) {
-        self.postMessage({
+        self.postMessage(JSON.stringify({
             type: 'log',
             level: level,
             worker_id: self._worker_id,
             msg: msg
-        });
+        }));
     }
     else if (typeof log[level] === 'function') {
         log[level](...msg);

@@ -1067,11 +1067,12 @@ export default class Scene {
 
     // Log messages pass through from web workers
     workerLogMessage(event) {
-        if (event.data.type !== 'log') {
+        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+        if (data.type !== 'log') {
             return;
         }
 
-        var { worker_id, level, msg } = event.data;
+        var { worker_id, level, msg } = data;
 
         if (log[level]) {
             log[level](`worker ${worker_id}:`,  ...msg);
