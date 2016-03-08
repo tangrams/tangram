@@ -434,7 +434,7 @@ export default class Tile {
         this.proxy = tile;
         if (tile) {
             this.visible = true;
-            this.proxy_depth = -0.5; // draw all proxies a half-layer behind
+            this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             this.update();
         }
         else {
