@@ -10,7 +10,7 @@ export default class DataSource {
         this.id = config.id;
         this.name = config.name;
         this.url = config.url;
-        this.pad_scale = config.pad_scale || 0.0005; // scale tile up by small factor to cover seams
+        this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
 
         // Optional function to transform source data
