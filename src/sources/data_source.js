@@ -9,7 +9,6 @@ export default class DataSource {
         this.config = config; // save original config
         this.id = config.id;
         this.name = config.name;
-        this.url = config.url;
         this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
 
@@ -166,6 +165,7 @@ export class NetworkSource extends DataSource {
 
     constructor (source) {
         super(source);
+        this.url = Utils.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
 
         if (this.url == null) {
