@@ -321,7 +321,7 @@ Object.assign(Points, {
         this.fillVertexTemplate('a_position', 0, { size: 2 });
         this.fillVertexTemplate('a_position', style.z || 0, { size: 1, offset: 2 });
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.fillVertexTemplate('a_position', style.order || 0, { size: 1, offset: 3 });
+        this.fillVertexTemplate('a_position', this.scaleOrder(style.order), { size: 1, offset: 3 });
 
         // scaling vector - (x, y) components per pixel, z = angle, w = scaling factor
         this.fillVertexTemplate('a_shape', 0, { size: 4 });

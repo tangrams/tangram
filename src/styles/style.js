@@ -239,6 +239,11 @@ export var Style = {
         return order;
     },
 
+    // Expand final precision for half-layers (for outlines)
+    scaleOrder (order) {
+        return order * 2;
+    },
+
     // Parse a color of choose a default if acceptable, return undefined if color missing
     parseColor(color, context) {
         // Need either a color, or a shader block for 'color' or 'filter'
