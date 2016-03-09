@@ -445,7 +445,8 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.proxy_depth);
+        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.coords.z);
+        program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
