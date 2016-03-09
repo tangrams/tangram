@@ -4,9 +4,9 @@ import {StyleParser} from './style_parser';
 import FeatureSelection from '../selection';
 import ShaderProgram from '../gl/shader_program';
 import VBOMesh from '../gl/vbo_mesh';
+import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
-import {MethodNotImplemented} from '../utils/errors';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 
 import log from 'loglevel';
@@ -30,7 +30,6 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
-        this.feature_options = {};
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -98,28 +97,33 @@ export var Style = {
 
     // Returns an object to hold feature data (for a tile or other object)
     startData (tile) {
-        this.tile_data[tile] = {
+        this.tile_data[tile.key] = {
             vertex_data: null,
             uniforms: null
         };
-        return this.tile_data[tile];
+        return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        var tile_data = this.tile_data[tile];
-        if (tile_data && tile_data.vertex_data) {
-            // Only keep final byte buffer
-            tile_data.vertex_data.end();
-            tile_data.vertex_data = tile_data.vertex_data.buffer;
-        }
-        this.tile_data[tile] = null;
-        return Promise.resolve(tile_data);
+       var tile_data = this.tile_data[tile.key];
+       this.tile_data[tile.key] = null;
+
+       if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
+           // Only keep final byte buffer
+           tile_data.vertex_data.end();
+           tile_data.vertex_data = tile_data.vertex_data.buffer;
+       }
+       else {
+           tile_data = null; // don't send tile data back if doesn't have geometry
+       }
+
+       return Promise.resolve(tile_data);
     },
 
     // Has mesh data for a given tile?
-    hasDataForTile (tile) {
-        return this.tile_data[tile] != null;
+    hasDataForTile (tile_key) {
+        return this.tile_data[tile_key] != null;
     },
 
     addFeature (feature, rule, context) {
@@ -129,7 +133,7 @@ export var Style = {
         }
 
         if (!this.tile_data[tile.key]) {
-            this.startData(tile.key);
+            this.startData(tile);
         }
 
         let style = this.parseFeature.apply(this, arguments); // allow subclasses to pass extra args
@@ -206,7 +210,7 @@ export var Style = {
     },
 
     _parseFeature (feature, rule_style, context) {
-        throw new MethodNotImplemented('_parseFeature');
+        return this.feature_style;
     },
 
     preprocess (rule_style) {
@@ -235,6 +239,11 @@ export var Style = {
         return order;
     },
 
+    // Expand final precision for half-layers (for outlines)
+    scaleOrder (order) {
+        return order * 2;
+    },
+
     // Parse a color of choose a default if acceptable, return undefined if color missing
     parseColor(color, context) {
         // Need either a color, or a shader block for 'color' or 'filter'
@@ -256,6 +265,7 @@ export var Style = {
 
     setGL (gl) {
         this.gl = gl;
+        this.max_texture_size = Texture.getMaxTextureSize(this.gl);
     },
 
     makeMesh (vertex_data, { uniforms } = {}) {

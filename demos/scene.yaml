@@ -78,7 +78,7 @@ styles:
                         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
                         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
                     }
-                color: |
+                filter: |
                     // modulate hue by z-position and time, then convert to RGB and set pixel color
                     vec3 c = vec3(worldPosition().z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
@@ -156,45 +156,45 @@ styles:
 
 
 sources:
-    # When commented, demo main.js will set source based on URL - uncomment for testing
-    # osm:
-    #     type: TopoJSON
-    #     url:  http://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw
-    #     # Data filtering demo with 'scripts' and 'transform' properties:
-    #     # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
-    #     # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
-    #     # That feature is then filtered on below in the 'roads' layer.
-    #     # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
-    #     # transform: |
-    #     #     function(data, extra_data) {
-
-    #     #         if (data.roads &&
-    #     #             data.roads.features &&
-    #     #             data.landuse &&
-    #     #             data.landuse.features) {
-
-    #     #             data.roads.features.forEach(function(road) {
-    #     #                 for (var i=0; i < data.landuse.features.length; i++) {
-    #     #                     var land = data.landuse.features[i];
-
-    #     #                     if (land.properties.kind !== 'park') {
-    #     #                         continue;
-    #     #                     }
-
-    #     #                     try {
-    #     #                         if (turf.intersect(road, land)) {
-    #     #                             road.properties.intersects_park = true;
-    #     #                         }
-    #     #                     }
-    #     #                     catch(e){
-    #     #                         //debugger;
-    #     #                     }
-    #     #                 }
-    #     #                 return true;
-    #     #             });
-    #     #         }
-    #     #         return data;
-    #     #     }
+    mapzen:
+        type: TopoJSON
+        url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
+        url_params:
+            api_key: vector-tiles-HqUVidw
+        max_zoom: 16
+        # # Data filtering demo with 'scripts' and 'transform' properties:
+        # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
+        # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
+        # That feature is then filtered on below in the 'roads' layer.
+        # scripts: ['https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js']
+        # transform: |
+        #     function(data, extra_data) {
+        #         if (data.roads &&
+        #             data.roads.features &&
+        #             data.landuse &&
+        #             data.landuse.features) {
+        #
+        #             data.roads.features.forEach(function(road) {
+        #                 for (var i=0; i < data.landuse.features.length; i++) {
+        #                     var land = data.landuse.features[i];
+        #                     if (land.properties.kind !== 'park') {
+        #                         continue;
+        #                     }
+        #
+        #                     try {
+        #                         if (turf.intersect(road, land)) {
+        #                             road.properties.intersects_park = true;
+        #                         }
+        #                     }
+        #                     catch(e){
+        #                         //debugger;
+        #                     }
+        #                 }
+        #                 return true;
+        #             });
+        #         }
+        #         return data;
+        #     }
     # schools:
     #     type: GeoJSON
     #     url: data/school-districts-polygon.geojson
@@ -205,15 +205,15 @@ sources:
 layers:
 
     earth:
-        data: { source: osm }
+        data: { source: mapzen }
         draw:
             polygons:
                 style: flat
-                order: 0
+                order: function () { return feature.sort_key; }
                 color: '#f0ebeb'
 
     landuse:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             # show smaller landuse areas at higher zooms
             any:
@@ -224,14 +224,13 @@ layers:
                 - { $zoom: { min: 15 } }
         draw:
             polygons:
-                order: 1
+                order: function () { return feature.sort_key; }
                 interactive: true
                 style: flat
         green:
             filter: { kind: [park, graveyard, cemetery, forest, recreation_ground] }
             draw:
                 polygons:
-                    order: 2
                     color: '#bddec5'
         blue:
             filter: { kind: [commercial, industrial] }
@@ -245,7 +244,7 @@ layers:
                     color: '#D9CFC3'
 
     water:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             any:
                 # show smaller water areas at higher zooms
@@ -258,11 +257,11 @@ layers:
             polygons:
                 interactive: true
                 style: flat
-                order: 3
+                order: function () { return feature.sort_key; }
                 color: '#9dc3de'
 
     roads:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             not: { kind: [rail] }
         draw:
@@ -270,11 +269,11 @@ layers:
                 style: flat_lines
                 color: white
                 width: 12
-                order: function () { return feature.sort_key + 5; }
+                order: function () { return feature.sort_key; }
                 outline:
                     color: [[16, '#999'], [18, '#aaa']]
                     width: [[15, 0], [16, 2]]
-                    order: 4 # put all outlines below all roads (for now)
+                    order: 352 # put all outlines below all roads
 
         rounded:
             filter: { $zoom: { min: 18 } }
@@ -346,12 +345,10 @@ layers:
                     lines:
                         color: [[13, '#FFE4B5'], [16, white]]
                         width: [[11, 3px], [12, 5px], [13, 10px], [15, 75]]
-                        order: 39
                         cap: square
                         outline:
                             color: orange
                             width: [[11, 0px], [12, 1px], [13, 2px], [15, 12.5]]
-                            order: 38
 
         # apply outline to roads intersecting parks - see data source transform example in `sources`
         land:
@@ -363,12 +360,12 @@ layers:
                         width: 2px
 
     buildings:
-        data: { source: osm }
+        data: { source: mapzen }
         filter: { $zoom: { min: 14 } }
 
         draw:
             polygons:
-                order: 50
+                order: function () { return feature.sort_key; }
                 color: [.65, .65, .65]
 
         # turn interactive feature selection on for buildings with names
@@ -392,12 +389,13 @@ layers:
                     color: '#bddec5'
 
     road_labels:
-        data: { source: osm, layer: roads }
+        data: { source: mapzen, layer: roads }
         filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
                 text:
+                    text_source: [name:en, name]
                     priority: 2
                     font:
                         fill: '#666'
@@ -409,6 +407,7 @@ layers:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
                 text:
+                    text_source: [name:en, name]
                     priority: 5
                     font:
                         fill: '#666'
@@ -442,7 +441,7 @@ layers:
                 visible: false
 
     poi_icons:
-        data: { source: osm, layer: pois }
+        data: { source: mapzen, layer: pois }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 } }
         draw:
             points:
@@ -489,7 +488,7 @@ layers:
                 draw: { icons: { sprite: bookstore } }
 
     places:
-        data: { source: osm }
+        data: { source: mapzen }
         filter:
             name: true
             not: { kind: [county, state, island] }
@@ -504,6 +503,7 @@ layers:
                 - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
             text:
+                text_source: [name:en, name]
                 priority: 1
                 font:
                     family: Helvetica
@@ -550,7 +550,7 @@ layers:
             visible: false
 
     point_labels:
-        data: { source: osm, layer: [pois, landuse] }
+        data: { source: mapzen, layer: [pois, landuse] }
         filter:
             name: true
 
@@ -569,6 +569,7 @@ layers:
                     - { $zoom: { min: 18 } }
             draw:
                 text:
+                    text_source: [name:en, name]
                     priority: 4
                     font:
                         family: Lucida Grande
@@ -585,6 +586,7 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
+                    text_source: [name:en, name]
                     # align: left
                     anchor: bottom
                     offset: [[13, [0, 6px]], [15, [0, 9px]]]
@@ -596,7 +598,7 @@ layers:
                         fill: black
 
     # building_labels:
-    #     data: { source: osm, layer: buildings }
+    #     data: { source: mapzen, layer: buildings }
     #     filter:
     #         name: true
     #         any:

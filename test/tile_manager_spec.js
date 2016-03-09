@@ -11,13 +11,14 @@ let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
 describe('TileManager', function () {
 
-    let scene;
+    let scene, view;
 
     beforeEach(() => {
         scene = makeScene({});
-        TileManager.init(scene);
-        sinon.stub(scene, 'findVisibleTileCoordinates').returns([]);
-        scene.setView(nycLatLng);
+        view = scene.view;
+        TileManager.init({ scene, view });
+        sinon.stub(view, 'findVisibleTileCoordinates').returns([]);
+        view.setView(nycLatLng);
     });
 
     afterEach(() => {

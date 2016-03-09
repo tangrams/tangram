@@ -1,7 +1,7 @@
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
-uniform vec3 u_tile_origin;
+uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 
@@ -41,12 +41,17 @@ void main (void) {
     // Apply a texture
     #ifdef TANGRAM_POINT_TEXTURE
         color *= texture2D(u_texture, v_texcoord);
+
+        // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
+        #ifdef TANGRAM_UNMULTIPLY_ALPHA
+            color.rgb /= max(color.a, 0.001);
+        #endif
     // Draw a point
     #else
         // Fade alpha near circle edge
         vec2 uv = v_texcoord * 2. - 1.;
         float point_dist = length(uv);
-        color.a = clamp(1. - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., 1.);
+        color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute
@@ -56,12 +61,15 @@ void main (void) {
         }
     #endif
 
-    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
-    #ifdef TANGRAM_UNMULTIPLY_ALPHA
-        color.rgb /= max(color.a, 0.001);
+    #pragma tangram: color
+
+    // Fade out when tile is zooming out, e.g. acting as proxy tiles
+    // NB: this is mostly done to compensate for text label collision happening at the label's 1x zoom. As labels
+    // in proxy tiles are scaled down, they begin to overlap, and the fade is a simple way to ease the transition.
+    #ifdef TANGRAM_FADE_ON_ZOOM_OUT
+        color.a *= clamp(1. - TANGRAM_FADE_ON_ZOOM_OUT_RATE * (u_tile_origin.z - u_map_position.z), 0., 1.);
     #endif
 
-    #pragma tangram: color
     #pragma tangram: filter
 
     gl_FragColor = color;

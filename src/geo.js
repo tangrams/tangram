@@ -4,7 +4,8 @@ var Geo;
 export default Geo = {};
 
 // Projection constants
-Geo.default_max_zoom = 18;
+Geo.default_source_max_zoom = 18;
+Geo.default_view_max_zoom = 20;
 Geo.tile_size = 256;
 Geo.half_circumference_meters = 20037508.342789244;
 Geo.circumference_meters = Geo.half_circumference_meters * 2;
@@ -240,7 +241,14 @@ Geo.multiPolygonArea = function (polygons) {
 };
 
 Geo.ringWinding = function (ring) {
-    return Geo.signedPolygonAreaSum(ring) > 0 ? 'CW' : 'CCW';
+    let area = Geo.signedPolygonAreaSum(ring);
+    if (area > 0) {
+        return 'CW';
+    }
+    else if (area < 0) {
+        return 'CCW';
+    }
+    // return undefined on zero area polygon
 };
 
 // Enforce winding order on outer/inner rings

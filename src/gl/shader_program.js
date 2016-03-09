@@ -146,12 +146,20 @@ export default class ShaderProgram {
         // This is done *after* code injection so that we can add defines for which code points were injected
         let info = (this.name ? (this.name + ' / id ' + this.id) : ('id ' + this.id));
         let header = `// Program: ${info}\n`;
-        let precision = '#ifdef GL_ES\nprecision highp float;\n#endif\n\n';
+        let precision = '';
+        let high = this.gl.getShaderPrecisionFormat(this.gl.FRAGMENT_SHADER, this.gl.HIGH_FLOAT);
+        if (high && high.precision > 0) {
+            precision = 'precision highp float;\n';
+        }
+        else {
+            precision = 'precision mediump float;\n';
+        }
 
         defines['TANGRAM_VERTEX_SHADER'] = true;
         defines['TANGRAM_FRAGMENT_SHADER'] = false;
         this.computed_vertex_source =
             header +
+            precision +
             ShaderProgram.buildDefineString(defines) +
             this.computed_vertex_source;
 
@@ -367,8 +375,7 @@ export default class ShaderProgram {
     setTextureUniform(uniform_name, texture_name) {
         var texture = Texture.textures[texture_name];
         if (texture == null) {
-            texture = new Texture(this.gl, texture_name);
-            texture.load(texture_name);
+            texture = Texture.create(this.gl, texture_name, { url: texture_name });
         }
 
         texture.bind(this.texture_unit);

@@ -81,14 +81,21 @@ export class MVTSource extends NetworkTileSource {
     }
 
     // Decode multipolygons, which are encoded as a single set of rings
-    // Outer rings are wound CW, inner are CCW
-    // A CW ring indicates the start of a new polygon
+    // Winding order of first ring is assumed to indicate exterior ring,
+    // the opposite winding order indicates the start of a new polygon.
     static decodeMultiPolygon (geom) {
         let polys = [];
         let poly = [];
+        let outer_winding;
         for (let ring of geom.coordinates) {
             let winding = Geo.ringWinding(ring);
-            if (winding === 'CW' && poly.length > 0) {
+            if (winding == null) {
+                continue; // skip zero-area rings
+            }
+
+            outer_winding = outer_winding || winding; // assume first ring indicates outer ring winding
+
+            if (winding === outer_winding && poly.length > 0) {
                 polys.push(poly);
                 poly = [];
             }

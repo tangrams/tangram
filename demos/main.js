@@ -19,56 +19,10 @@ Enjoy!
 */
 
 (function () {
-    'use strict';
 
-    var tile_sources = {
-        'mapzen': {
-            type: 'MVT',
-            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.mvt?api_key=vector-tiles-HqUVidw'
-        },
-        'mapzen-geojson': {
-            type: 'GeoJSON',
-            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'//,
-            // transform: function(data) {
-            //     // You can edit the tile data here before it gets projected
-            //     // and rendered
-            //     return data;
-            // },
-            // scripts: [
-            //     // importScripts doesn't like the agnostic //example.com proto
-            //     'http://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js'
-            // ]
-        },
-        'mapzen-dev': {
-            type: 'GeoJSON',
-            url: 'https://vector.dev.mapzen.com/osm/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
-        },
-        'mapzen-local': {
-            type: 'GeoJSON',
-            url: '//localhost:8080/all/{z}/{x}/{y}.json?api_key=vector-tiles-HqUVidw'
-        },
-        'mapzen-topojson': {
-            type: 'TopoJSON',
-            url: 'https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson?api_key=vector-tiles-HqUVidw'
-        },
-
-        // 'osm': {
-        //     type: 'GeoJSON',
-        //     url: '//tile.openstreetmap.us/vectiles-all/{z}/{x}/{y}.json'
-        // },
-
-        'mapbox': {
-            type: 'MVT',
-            url: 'https://{s:[a,b,c,d]}.tiles.mapbox.com/v4/mapbox.mapbox-streets-v6-dev/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiYmNhbXBlciIsImEiOiJWUmh3anY0In0.1fgSTNWpQV8-5sBjGbBzGg',
-            max_zoom: 15
-        }
-
-    },
-    default_tile_source = 'mapzen',
-    scene_url = 'demos/scene.yaml',
-    osm_debug = false,
-    rS, url_hash, map_start_location, url_ui, url_style;
-
+    var scene_url = 'demos/scene.yaml',
+        osm_debug = false,
+        rS, url_hash, map_start_location, url_style;
 
     getValuesFromUrl();
 
@@ -89,14 +43,13 @@ Enjoy!
             attribution: '<a href="https://mapzen.com/tangram" target="_blank">Tangram</a> | &copy; OSM contributors | <a href="https://mapzen.com/" target="_blank">Mapzen</a>'
         });
 
+    // useful events to subscribe to
     layer.scene.subscribe({
         load: function (msg) {
-            var config = msg.config;
-            // If no source was set in scene definition, set one based on the URL
-            if (!config.sources || !config.sources['osm']) {
-                config.sources = config.sources || {};
-                config.sources['osm'] = tile_sources[default_tile_source];
-            }
+            // scene was loaded
+        },
+        view_complete: function (msg) {
+            // new set of map tiles was rendered
         },
         error: function (msg) {
             // debugger;
@@ -112,41 +65,32 @@ Enjoy!
     /*** URL parsing ***/
 
     // URL hash pattern is one of:
-    // #[source]
     // #[lat],[lng],[zoom]
-    // #[source],[lat],[lng],[zoom]
-    // #[source],[location name]
+    // #[source],[lat],[lng],[zoom] (legacy)
     function getValuesFromUrl() {
 
         url_hash = window.location.hash.slice(1, window.location.hash.length).split(',');
 
-        // Get tile source from URL
-        if (url_hash.length >= 1 && tile_sources[url_hash[0]] != null) {
-            default_tile_source = url_hash[0];
-        }
-
         // Get location from URL
         map_start_location = [40.70531887544228, -74.00976419448853, 16]; // NYC
 
-        if (url_hash.length === 3) {
-            map_start_location = url_hash.slice(0, 3);
-        }
-        if (url_hash.length > 3) {
-            map_start_location = url_hash.slice(1, 4);
-        }
-
-        if (url_hash.length > 4) {
-            url_ui = url_hash.slice(4);
-
-            // Style on URL?
-            url_style;
-            if (url_ui) {
-                var re = new RegExp(/(?:style|mode)=(\w+)/);
-                url_ui.forEach(function(u) {
-                    var match = u.match(re);
-                    url_style = (match && match.length > 1 && match[1]);
-                });
+        if (url_hash.length >= 3) {
+            // Note: backwards compatibility with old demo links, deprecate?
+            if (typeof parseFloat(url_hash[0]) === 'number' && !isNaN(parseFloat(url_hash[0]))) {
+                map_start_location = url_hash.slice(0, 3);
             }
+            else if (typeof parseFloat(url_hash[1]) === 'number' && !isNaN(parseFloat(url_hash[1]))) {
+                map_start_location = url_hash.slice(1, 4);
+            }
+        }
+
+        if (url_hash.length > 3) {
+            // Style on URL?
+            var re = new RegExp(/(?:style|mode)=(\w+)/);
+            url_hash.forEach(function(u) {
+                var match = u.match(re);
+                url_style = (match && match.length > 1 && match[1]);
+            });
         }
 
     }
@@ -158,7 +102,7 @@ Enjoy!
         clearTimeout(update_url_timeout);
         update_url_timeout = setTimeout(function() {
             var center = map.getCenter();
-            var url_options = [default_tile_source, center.lat, center.lng, map.getZoom()];
+            var url_options = [center.lat, center.lng, map.getZoom()];
 
             if (rS) {
                 url_options.push('rstats');
@@ -184,22 +128,9 @@ Enjoy!
     map.setView(map_start_location.slice(0, 2), map_start_location[2]);
     map.on('move', updateURL);
 
-    // Take a screenshot and save file
-    function screenshot() {
-        // Adapted from: https://gist.github.com/unconed/4370822
-        var image = scene.canvas.toDataURL('image/png').slice(22); // slice strips host/mimetype/etc.
-        var data = atob(image); // convert base64 to binary without UTF-8 mangling
-        var buf = new Uint8Array(data.length);
-        for (var i = 0; i < data.length; ++i) {
-            buf[i] = data.charCodeAt(i);
-        }
-        var blob = new Blob([buf], { type: 'image/png' });
-        saveAs(blob, 'tangram-' + (+new Date()) + '.png'); // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
-    }
-
     // Render/GL stats: http://spite.github.io/rstats/
     // Activate with 'rstats' anywhere in options list in URL
-    if (url_ui && url_ui.indexOf('rstats') >= 0) {
+    if (url_hash.indexOf('rstats') >= 0) {
         var glS = new glStats();
         glS.fractions = []; // turn this off till we need it
 
@@ -419,10 +350,12 @@ Enjoy!
         gui['feature info'] = true;
         gui.add(gui, 'feature info');
 
-        // Screenshot
+        // Take a screenshot and save to file
         gui.screenshot = function () {
-            gui.queue_screenshot = true;
-            scene.requestRedraw();
+            return scene.screenshot().then(function(screenshot) {
+                // uses FileSaver.js: https://github.com/eligrey/FileSaver.js/
+                saveAs(screenshot.blob, 'tangram-' + (+new Date()) + '.png');
+            });
         };
         gui.add(gui, 'screenshot');
 
@@ -552,12 +485,6 @@ Enjoy!
             rS('glbuffers').set((scene.tile_manager.getDebugSum('buffer_size') / (1024*1024)).toFixed(2));
             rS('features').set(scene.tile_manager.getDebugSum('features'));
             rS().update();
-        }
-
-        // Screenshot needs to happen in the requestAnimationFrame callback, or the frame buffer might already be cleared
-        if (gui.queue_screenshot == true) {
-            gui.queue_screenshot = false;
-            screenshot();
         }
     }
 

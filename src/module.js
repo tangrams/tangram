@@ -7,7 +7,8 @@ import Utils from './utils/utils';
 import {leafletLayer} from './leaflet_layer';
 
 // The scene worker is only activated when a worker thread is instantiated, but must always be loaded
-import {SceneWorker} from '../src/scene_worker';
+import Scene from './scene';
+import {SceneWorker} from './scene_worker';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';
@@ -28,13 +29,10 @@ import WorkerBroker from './utils/worker_broker';
 import {ruleCache} from './styles/rule';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
+import Collision from './labels/collision';
 import FeatureSelection from './selection';
 
 import yaml from 'js-yaml';
-import glMatrix from 'gl-matrix';
-
-// Default to 64-bit because we need the extra precision when multiplying matrices w/mercator projected values
-glMatrix.glMatrix.setMatrixArrayType(Float64Array);
 
 // Make some modules accessible for debugging
 var debug = {
@@ -50,11 +48,13 @@ var debug = {
     Texture,
     Material,
     Light,
+    Scene,
     SceneWorker,
     WorkerBroker,
     ruleCache,
     StyleManager,
     StyleParser,
+    Collision,
     FeatureSelection
 };
 

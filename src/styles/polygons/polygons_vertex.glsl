@@ -1,7 +1,7 @@
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_map_position;
-uniform vec3 u_tile_origin;
+uniform vec4 u_tile_origin;
 uniform float u_meters_per_pixel;
 uniform float u_device_pixel_ratio;
 
@@ -40,10 +40,6 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
-#if defined(TANGRAM_LIGHTING_VERTEX)
-    varying vec4 v_lighting;
-#endif
-
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -65,7 +61,7 @@ void main() {
         vec2 extrude = SCALE_8(a_extrude.xy);
         float width = SHORT(a_extrude.z);
         float dwdz = SHORT(a_extrude.w);
-        float dz = clamp(u_map_position.z - abs(u_tile_origin.z), 0.0, 1.0);
+        float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 1.);
 
         // Interpolate between zoom levels
         width += dwdz * dz;
@@ -93,8 +89,8 @@ void main() {
     v_normal = normalize(u_normalMatrix * TANGRAM_NORMAL);
     v_color = a_color;
 
-    // Vertex lighting
     #if defined(TANGRAM_LIGHTING_VERTEX)
+        // Vertex lighting
         vec4 color = a_color;
         vec3 normal = TANGRAM_NORMAL;
 
@@ -104,13 +100,20 @@ void main() {
         // Modify color and material properties before lighting
         #pragma tangram: color
 
-        v_lighting = calculateLighting(position.xyz, normal, color);
+        v_color = calculateLighting(position.xyz, normal, color);
+    #elif !defined(TANGRAM_LIGHTING_FRAGMENT) // lighting: false
+        // No lighting
+        vec4 color = a_color;
+        #pragma tangram: color
         v_color = color;
     #endif
 
     // Camera
     cameraProjection(position);
-    applyLayerOrder(SHORT(a_position.w), position);
+
+    // w coordinates hold feature layer, and additional proxy offset (set to 0 for non-proxy tiles)
+    // +1 is to keep all layers including proxies > 0
+    applyLayerOrder(SHORT(a_position.w) + u_tile_origin.w + 1., position);
 
     gl_Position = position;
 }

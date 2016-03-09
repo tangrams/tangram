@@ -34,6 +34,5 @@ wood:
                     );
                 }
 
-            # fragment: |
-            color: |
-                color.rgb = wood(worldPosition().xyz);
+            filter: |
+                color.rgb *= wood(worldPosition().xyz);

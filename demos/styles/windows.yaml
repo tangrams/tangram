@@ -5,7 +5,7 @@ windows:
     material:
         emission: 0
         diffuse: 1
-    # lighting: false
+    lighting: fragment
 
     shaders:
         uniforms:

@@ -46,6 +46,12 @@ Object.assign(Lines, {
         }
 
         this.vertex_layout = new VertexLayout(attribs);
+
+        // Additional single-allocated object used for holding outline style as it is processed
+        // Separate from this.feature_style so that outline properties do not overwrite calculated
+        // inline properties (outline call is made *within* the inline call)
+        this.outline_feature_style = {};
+        this.inline_feature_style = this.feature_style; // save reference to main computed style object
     },
 
     // Calculate width at zoom given in `context`
@@ -107,6 +113,7 @@ Object.assign(Lines, {
 
         style.cap = rule_style.cap;
         style.join = rule_style.join;
+        style.miter_limit = rule_style.miter_limit;
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
@@ -133,6 +140,7 @@ Object.assign(Lines, {
                 style.outline.color = rule_style.outline.color;
                 style.outline.cap = rule_style.outline.cap || rule_style.cap;
                 style.outline.join = rule_style.outline.join || rule_style.join;
+                style.outline.miter_limit = rule_style.outline.miter_limit || rule_style.miter_limit;
                 style.outline.style = rule_style.outline.style || this.name;
 
                 // Explicitly defined outline order, or inherited from inner line
@@ -188,7 +196,7 @@ Object.assign(Lines, {
         this.vertex_template[i++] = style.z || 0;
 
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.vertex_template[i++] = style.order;
+        this.vertex_template[i++] = this.scaleOrder(style.order);
 
         // extrusion vector
         this.vertex_template[i++] = 0;
@@ -222,9 +230,18 @@ Object.assign(Lines, {
     },
 
     buildLines(lines, style, vertex_data, context, options) {
-        var vertex_template = this.makeVertexTemplate(style);
+        // Outline (build first so that blended geometry without a depth test is drawn first/under the inner line)
+        this.feature_style = this.outline_feature_style; // swap in outline-specific style holder
+        if (style.outline && style.outline.color != null && style.outline.width.value != null) {
+            var outline_style = StyleManager.styles[style.outline.style];
+            if (outline_style) {
+                outline_style.addFeature(context.feature, style.outline, context);
+            }
+        }
 
         // Main line
+        this.feature_style = this.inline_feature_style; // restore calculated style for inline
+        let vertex_template = this.makeVertexTemplate(style);
         Builders.buildPolylines(
             lines,
             style.width,
@@ -233,6 +250,7 @@ Object.assign(Lines, {
             {
                 cap: style.cap,
                 join: style.join,
+                miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
                 texcoord_index: this.vertex_layout.index.a_texcoord,
@@ -243,14 +261,6 @@ Object.assign(Lines, {
                 tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
             }
         );
-
-        // Outline
-         if (style.outline && style.outline.color != null && style.outline.width.value != null) {
-            var outline_style = StyleManager.styles[style.outline.style];
-            if (outline_style) {
-                outline_style.addFeature(context.feature, style.outline, context);
-            }
-        }
     },
 
     buildPolygons(polygons, style, vertex_data, context) {

@@ -1,4 +1,3 @@
-import Geo from './geo';
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
@@ -9,12 +8,14 @@ import {Style} from './styles/style';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import SceneLoader from './scene_loader';
-import Camera from './camera';
+import View from './view';
 import Light from './light';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
+
+import log from 'loglevel';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -27,12 +28,6 @@ StyleManager.register(Lines);
 StyleManager.register(Points);
 StyleManager.register(TextStyle);
 
-import log from 'loglevel';
-import glMatrix from 'gl-matrix';
-let mat4 = glMatrix.mat4;
-let mat3 = glMatrix.mat3;
-let vec3 = glMatrix.vec3;
-
 // Load scene definition: pass an object directly, or a URL as string to load remotely
 export default class Scene {
 
@@ -44,11 +39,10 @@ export default class Scene {
         this.initializing = false;
         this.sources = {};
 
+        this.view = new View(this, options);
         this.tile_manager = TileManager;
-        this.tile_manager.init(this);
+        this.tile_manager.init({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
-        this.continuous_zoom = (typeof options.continuousZoom === 'boolean') ? options.continuousZoom : true;
-        this.tile_simplification_level = 0; // level-of-detail downsampling to apply to tile loading
         this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
@@ -74,41 +68,38 @@ export default class Scene {
         this.render_loop = !options.disableRenderLoop;  // disable render loop - app will have to manually call Scene.render() per frame
         this.render_loop_active = false;
         this.render_loop_stop = false;
+        this.render_count = 0;
+        this.last_render_count = 0;
+        this.render_count_changed = false;
         this.frame = 0;
+        this.queue_screenshot = null;
+        this.selection = null;
         this.resetTime();
 
-        this.zoom = null;
-        this.center = null;
-
-        this.zooming = false;
-        this.preserve_tiles_within_zoom = 1;
-        this.panning = false;
         this.container = options.container;
 
-        this.camera = null;
         this.lights = null;
         this.background = null;
 
-        // Model-view matrices
-        // 64-bit versions are for CPU calcuations
-        // 32-bit versions are downsampled and sent to GPU
-        this.modelMatrix = new Float64Array(16);
-        this.modelMatrix32 = new Float32Array(16);
-        this.modelViewMatrix = new Float64Array(16);
-        this.modelViewMatrix32 = new Float32Array(16);
-        this.normalMatrix = new Float64Array(9);
-        this.normalMatrix32 = new Float32Array(9);
-        this.inverseNormalMatrix32 = new Float32Array(9);
-
-        this.selection = null;
-        this.texture_listener = null;
+        // Listen to related objects
+        this.listeners = {
+            view: {
+                move: () => this.trigger('move')
+            }
+        };
+        this.view.subscribe(this.listeners.view);
 
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
+        this.last_complete_generation = 0; // last generation id with a complete view
         this.setupDebug();
 
         this.logLevel = options.logLevel || 'warn';
         log.setLevel(this.logLevel);
+    }
+
+    static create (config, options = {}) {
+        return new Scene(config, options);
     }
 
     // Load (or reload) scene config
@@ -129,16 +120,16 @@ export default class Scene {
                 this.createCanvas();
                 this.resetFeatureSelection();
 
-                if (!this.texture_listener) {
-                    this.texture_listener = {
+                if (!this.listeners.texture) {
+                    this.listeners.texture = {
                         update: () => this.dirty = true,
                         warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
                     };
-                    Texture.subscribe(this.texture_listener);
+                    Texture.subscribe(this.listeners.texture);
                 }
 
-                // Remove tiles before rebuilding
-                this.tile_manager.removeTiles(tile => !tile.visible);
+                // Reset tile manager visibility before rebuilding
+                this.tile_manager.resetVisibleTiles();
                 return this.updateConfig({ rebuild: true });
             }).then(() => {
                 this.updating--;
@@ -189,8 +180,9 @@ export default class Scene {
 
         this.unsubscribeAll(); // clear all event listeners
 
-        Texture.unsubscribe(this.texture_listener);
-        this.texture_listener = null;
+        this.view.unsubscribe(this.listeners.view);
+        Texture.unsubscribe(this.listeners.texture);
+        this.listeners = null;
 
         if (this.canvas && this.canvas.parentNode) {
             this.canvas.parentNode.removeChild(this.canvas);
@@ -316,187 +308,12 @@ export default class Scene {
         return worker;
     }
 
-    /**
-        Set the map view, can be passed an object with lat/lng and/or zoom
-    */
-    setView({ lng, lat, zoom } = {}) {
-        var changed = false;
-
-        // Set center
-        if (typeof lng === 'number' && typeof lat === 'number') {
-            if (!this.center || lng !== this.center.lng || lat !== this.center.lat) {
-                changed = true;
-                this.center = { lng: Geo.wrapLng(lng), lat };
-            }
-        }
-
-        // Set zoom
-        if (typeof zoom === 'number' && zoom !== this.zoom) {
-            changed = true;
-            this.setZoom(zoom);
-        }
-
-        if (changed) {
-            this.updateBounds();
-        }
-        return changed;
-    }
-
-    startZoom() {
-        this.last_zoom = this.zoom;
-        this.zooming = true;
-    }
-
-    // Choose the base zoom level to use for a given fractional zoom
-    baseZoom(zoom) {
-        return Math.floor(zoom);
-    }
-
-    // For a given view zoom, what tile zoom should be loaded?
-    tileZoom(view_zoom) {
-        return this.baseZoom(view_zoom) - this.tile_simplification_level;
-    }
-
-    // For a given tile zoom, what style zoom should be used?
-    styleZoom(tile_zoom) {
-        return this.baseZoom(tile_zoom) + this.tile_simplification_level;
-    }
-
-    setZoom(zoom) {
-        this.zooming = false;
-        let tile_zoom = this.tileZoom(zoom);
-
-        if (!this.continuous_zoom) {
-            zoom = tile_zoom;
-        }
-
-        if (tile_zoom !== this.tileZoom(this.last_zoom)) {
-            // Remove tiles outside current zoom that are still loading
-            this.tile_manager.removeTiles(tile => {
-                if (tile.loading && this.tileZoom(tile.coords.z) !== tile_zoom) {
-                    log.trace(`removed ${tile.key} (was loading, but outside current zoom)`);
-                    return true;
-                }
-            });
-        }
-
-        this.last_zoom = this.zoom;
-        this.zoom = zoom;
-        this.tile_zoom = tile_zoom;
-
-        this.updateBounds();
-
-        this.dirty = true;
-    }
-
-    viewReady() {
-        if (this.css_size == null || this.center == null || this.zoom == null || Object.keys(this.sources).length === 0) {
+    // Scene is ready for rendering
+    ready() {
+        if (!this.view.ready() || Object.keys(this.sources).length === 0) {
              return false;
         }
         return true;
-    }
-
-    // Calculate viewport bounds based on current center and zoom
-    updateBounds() {
-        // TODO: better concept of "readiness" state?
-        if (!this.viewReady()) {
-            return;
-        }
-
-        this.meters_per_pixel = Geo.metersPerPixel(this.zoom);
-
-        // Size of the half-viewport in meters at current zoom
-        this.viewport_meters = {
-            x: this.css_size.width * this.meters_per_pixel,
-            y: this.css_size.height * this.meters_per_pixel
-        };
-
-        // Center of viewport in meters, and tile
-        let [x, y] = Geo.latLngToMeters([this.center.lng, this.center.lat]);
-        this.center_meters = { x, y };
-
-        let z = this.tileZoom(this.zoom);
-        this.center_tile = Geo.tileForMeters([this.center_meters.x, this.center_meters.y], z);
-
-        this.bounds_meters = {
-            sw: {
-                x: this.center_meters.x - this.viewport_meters.x / 2,
-                y: this.center_meters.y - this.viewport_meters.y / 2
-            },
-            ne: {
-                x: this.center_meters.x + this.viewport_meters.x / 2,
-                y: this.center_meters.y + this.viewport_meters.y / 2
-            }
-        };
-
-        this.tile_manager.updateTilesForView();
-
-        this.trigger('move');
-        this.dirty = true;
-    }
-
-    findVisibleTileCoordinates({ buffer } = {}) {
-        if (!this.bounds_meters) {
-            return [];
-        }
-
-        let z = this.tileZoom(this.zoom);
-        let sw = Geo.tileForMeters([this.bounds_meters.sw.x, this.bounds_meters.sw.y], z);
-        let ne = Geo.tileForMeters([this.bounds_meters.ne.x, this.bounds_meters.ne.y], z);
-        buffer = buffer || 0;
-
-        let coords = [];
-        for (let x = sw.x - buffer; x <= ne.x + buffer; x++) {
-            for (let y = ne.y - buffer; y <= sw.y + buffer; y++) {
-                coords.push({ x, y, z });
-            }
-        }
-        return coords;
-    }
-
-    // Remove tiles too far outside of view
-    pruneTileCoordinatesForView(border_buffer = 2) {
-        if (!this.viewReady()) {
-            return;
-        }
-
-        // Remove tiles that are a specified # of tiles outside of the viewport border
-        let border_tiles = [
-            Math.ceil((Math.floor(this.css_size.width / Geo.tile_size) + 2) / 2),
-            Math.ceil((Math.floor(this.css_size.height / Geo.tile_size) + 2) / 2)
-        ];
-        let style_zoom = this.tileZoom(this.zoom);
-
-        this.tile_manager.removeTiles(tile => {
-            // Ignore visible tiles
-            if (tile.visible) {
-                return false;
-            }
-
-            // Discard if too far from current zoom
-            let zdiff = tile.coords.z - style_zoom;
-            if (Math.abs(zdiff) > this.preserve_tiles_within_zoom) {
-                return true;
-            }
-
-            // Handle tiles at different zooms
-            let ztrans = Math.pow(2, zdiff);
-            let coords = {
-                x: Math.floor(tile.coords.x / ztrans),
-                y: Math.floor(tile.coords.y / ztrans)
-            };
-
-            // Discard tiles outside an area surrounding the viewport
-            if (Math.abs(coords.x - this.center_tile.x) - border_tiles[0] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
-                return true;
-            }
-            else if (Math.abs(coords.y - this.center_tile.y) - border_tiles[1] > border_buffer) {
-                log.trace(`Scene: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${style_zoom}) for being too far out of visible area ***`);
-                return true;
-            }
-            return false;
-        });
     }
 
     // Resize the map when device pixel ratio changes, e.g. when switching between displays
@@ -504,26 +321,20 @@ export default class Scene {
         if (Utils.updateDevicePixelRatio()) {
             WorkerBroker.postMessage(this.workers, 'self.updateDevicePixelRatio', Utils.device_pixel_ratio)
                 .then(() => this.rebuild())
-                .then(() => this.resizeMap(this.css_size.width, this.css_size.height));
+                .then(() => this.resizeMap(this.view.size.css.width, this.view.size.css.height));
         }
     }
 
     resizeMap(width, height) {
         this.dirty = true;
 
-        this.css_size = { width: width, height: height };
-        this.device_size = {
-            width: Math.round(this.css_size.width * Utils.device_pixel_ratio),
-            height: Math.round(this.css_size.height * Utils.device_pixel_ratio)
-        };
-        this.view_aspect = this.css_size.width / this.css_size.height;
-        this.updateBounds();
+        this.view.setViewportSize(width, height);
 
         if (this.canvas) {
-            this.canvas.style.width = this.css_size.width + 'px';
-            this.canvas.style.height = this.css_size.height + 'px';
-            this.canvas.width = this.device_size.width;
-            this.canvas.height = this.device_size.height;
+            this.canvas.style.width = this.view.size.css.width + 'px';
+            this.canvas.style.height = this.view.size.css.height + 'px';
+            this.canvas.width = this.view.size.device.width;
+            this.canvas.height = this.view.size.device.height;
 
             if (this.gl) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -571,14 +382,12 @@ export default class Scene {
     }
 
     update() {
-        this.tile_manager.loadQueuedCoordinates();
-
         // Render on demand
         var will_render = !(
             this.dirty === false ||
             this.initialized === false ||
             this.updating > 0 ||
-            this.viewReady() === false
+            this.ready() === false
         );
 
         // Pre-render loop hook
@@ -595,6 +404,8 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
+        this.completeScreenshot(); // completes screenshot capture if requested
+        this.updateViewComplete(); // fires event when rendered tile set or style changes
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -614,13 +425,8 @@ export default class Scene {
     render() {
         var gl = this.gl;
 
-        // Map transforms
-        if (!this.center_meters) {
-            return;
-        }
-
         // Update styles, camera, lights
-        this.camera.update();
+        this.view.update();
         Object.keys(this.active_styles).forEach(i => this.styles[i].update());
         Object.keys(this.lights).forEach(i => this.lights[i].update());
 
@@ -633,7 +439,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
-            if (this.panning) {
+            if (this.view.panning) {
                 this.selection.clearPendingRequests();
                 return;
             }
@@ -649,7 +455,10 @@ export default class Scene {
             gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
 
+        this.render_count_changed = false;
         if (this.render_count !== this.last_render_count) {
+            this.render_count_changed = true;
+
             this.getFeatureSelectionMapSize().then(size => {
                 log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
             }, () => {}); // no op when promise rejects (only print last response)
@@ -718,40 +527,15 @@ export default class Scene {
                 this.styles[style].setup();
 
                 // TODO: don't set uniforms when they haven't changed
-                program.uniform('2f', 'u_resolution', this.device_size.width, this.device_size.height);
-                program.uniform('1f', 'u_time', ((+new Date()) - this.start_time) / 1000);
-                program.uniform('3f', 'u_map_position', this.center_meters.x, this.center_meters.y, this.zoom);
-                program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
-                program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
-
-                this.camera.setupProgram(program);
+                program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
+                this.view.setupProgram(program);
                 for (let i in this.lights) {
                     this.lights[i].setupProgram(program);
                 }
             }
 
             // Tile-specific state
-            // TODO: calc these once per tile (currently being needlessly re-calculated per-tile-per-style)
-
-            // Tile origin
-            program.uniform('3f', 'u_tile_origin', tile.min.x, tile.min.y, tile.style_zoom);
-
-            // Model matrix - transform tile space into world space (meters, absolute mercator position)
-            mat4.identity(this.modelMatrix);
-            mat4.translate(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.min.x, tile.min.y, 0));
-            mat4.scale(this.modelMatrix, this.modelMatrix, vec3.fromValues(tile.span.x / Geo.tile_scale, -1 * tile.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
-            mat4.copy(this.modelMatrix32, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_model', false, this.modelMatrix32);
-
-            // Model view matrix - transform tile space into view space (meters, relative to camera)
-            mat4.multiply(this.modelViewMatrix32, this.camera.viewMatrix, this.modelMatrix);
-            program.uniform('Matrix4fv', 'u_modelView', false, this.modelViewMatrix32);
-
-            // Normal matrices - transforms surface normals into view space
-            mat3.normalFromMat4(this.normalMatrix32, this.modelViewMatrix32);
-            mat3.invert(this.inverseNormalMatrix32, this.normalMatrix32);
-            program.uniform('Matrix3fv', 'u_normalMatrix', false, this.normalMatrix32);
-            program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, this.inverseNormalMatrix32);
+            this.view.setupTile(tile, program);
 
             // Render tile
             tile.meshes[style].render();
@@ -856,8 +640,8 @@ export default class Scene {
 
         // Point scaled to [0..1] range
         var point = {
-            x: pixel.x * Utils.device_pixel_ratio / this.device_size.width,
-            y: pixel.y * Utils.device_pixel_ratio / this.device_size.height
+            x: pixel.x * Utils.device_pixel_ratio / this.view.size.device.width,
+            y: pixel.y * Utils.device_pixel_ratio / this.view.size.device.height
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
@@ -924,6 +708,7 @@ export default class Scene {
     }
 
     // Tile manager finished building tiles
+    // TODO move to tile manager
     tileManagerBuildDone() {
         if (this.building) {
             log.info(`Scene: build geometry finished`);
@@ -962,16 +747,80 @@ export default class Scene {
         });
     }
 
+    // Add source to a scene, arguments `name` and `config` need to be provided:
+    //  - If the name doesn't match a sources it will create it
+    //  - the `config` obj follow the YAML scene spec, ex: ```{type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson"]}```
+    //    that looks like:
+    //
+    //      scene.setDataSource("osm", {type: 'TopoJSON', url: "//vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson" });
+    //
+    //  - also can be pass a ```data``` obj: ```{type: 'GeoJSON', data: JSObj ]}```
+    //
+    //      var geojson_data = {};
+    //      ...
+    //      scene.setDataSource("dynamic_data", {type: 'GeoJSON', data: geojson_data });
+    //
+    setDataSource (name, config) {
+        if (!name || !config || !config.type || (!config.url && !config.data)) {
+            log.error("No name provided or not a valid config:", name, config);
+            return;
+        }
+
+        let load = (this.config.sources[name] == null);
+        let source = this.config.sources[name] = Object.assign({}, config);
+
+        if (source.data && typeof source.data === 'object') {
+            source.url = Utils.createObjectURL(new Blob([JSON.stringify(source.data)]));
+            delete source.data;
+        }
+
+        if (load) {
+            this.updateConfig({ rebuild: true });
+        } else {
+            this.rebuild();
+        }
+    }
+
     loadDataSources() {
+        let reset = []; // sources to reset
+        let prev_source_names = Object.keys(this.sources);
+
         for (var name in this.config.sources) {
             let source = this.config.sources[name];
-            this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+            let prev_source = this.sources[name];
 
-            if (!this.sources[name]) {
-                delete this.sources[name];
-                log.warn(`Scene: could not create data source`, source);
-                this.trigger('warning', { type: 'sources', source, message: `Could not create data source` });
+            try {
+                this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+                if (!this.sources[name]) {
+                    throw {};
+                }
             }
+            catch(e) {
+                delete this.sources[name];
+                let message = `Could not create data source: ${e.message}`;
+                log.warn(`Scene: ${message}`, source);
+                this.trigger('warning', { type: 'sources', source, message });
+            }
+
+            // Data source changed?
+            if (DataSource.changed(this.sources[name], prev_source)) {
+                reset.push(name);
+            }
+        }
+
+        // Sources that were removed
+        for (let s of prev_source_names) {
+            if (!this.config.sources[s]) {
+                delete this.sources[s]; // TODO: remove from workers too?
+                reset.push(s);
+            }
+        }
+
+        // Remove tiles from sources that have changed
+        if (reset.length > 0) {
+            this.tile_manager.removeTiles(tile => {
+                return (reset.indexOf(tile.source.name) > -1);
+            });
         }
     }
 
@@ -1042,52 +891,14 @@ export default class Scene {
         return Object.keys(this.active_styles).filter(s => prev_styles.indexOf(s) === -1);
     }
 
-    // Create camera
-    createCamera() {
-        let active_camera = this._active_camera;
-        if (active_camera) {
-            this.camera = Camera.create(active_camera, this, this.config.cameras[this._active_camera]);
-
-            // TODO: replace this and move all position info to camera
-            this.camera.updateScene();
-        }
-    }
-
     // Get active camera - for public API
     getActiveCamera() {
-        return this._active_camera;
+        return this.view.getActiveCamera();
     }
 
-    // Set active camera and recompile - for public API
+    // Set active camera - for public API
     setActiveCamera(name) {
-        this._active_camera = name;
-        this.updateConfig();
-        return this._active_camera;
-    }
-
-    // Internal management of active camera
-    get _active_camera() {
-        if (this.config && this.config.cameras) {
-            for (var name in this.config.cameras) {
-                if (this.config.cameras[name].active) {
-                    return name;
-                }
-            }
-        }
-    }
-
-    set _active_camera(name) {
-        var prev = this._active_camera;
-
-        // Set new active camera
-        if (this.config.cameras[name]) {
-            this.config.cameras[name].active = true;
-
-            // Clear previously active camera
-            if (prev && prev !== name && this.config.cameras[prev]) {
-                delete this.config.cameras[prev].active;
-            }
-        }
+        return this.view.setActiveCamera(name);
     }
 
     // Create lighting
@@ -1101,7 +912,7 @@ export default class Scene {
             light.name = i.replace('-', '_'); // light names are injected in shaders, can't have hyphens
             light.visible = (light.visible === false) ? false : true;
             if (light.visible) {
-                this.lights[light.name] = Light.create(this, light);
+                this.lights[light.name] = Light.create(this.view, light);
             }
         }
         Light.inject(this.lights);
@@ -1135,31 +946,37 @@ export default class Scene {
         this.config.scene = this.config.scene || {};
 
         StyleManager.init();
-        this.createCamera();
+        this.view.reset();
         this.createLights();
         this.loadDataSources();
         this.loadTextures();
         this.setBackground();
-        this.updateBounds();
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();
-        this.syncConfigToWorker();
+
+        // Optionally rebuild geometry
+        let done;
         if (rebuild) {
-            return this.rebuildGeometry().then(() => { this.updating--; this.requestRedraw(); });
+            done = this.rebuildGeometry();
         }
         else {
-            this.updating--;
-            this.requestRedraw();
-            return Promise.resolve();
+            done = this.syncConfigToWorker(); // rebuildGeometry() already syncs config
         }
+
+        // Finish by updating bounds and re-rendering
+        return done.then(() => {
+            this.updating--;
+            this.view.updateBounds();
+            this.requestRedraw();
+        });
     }
 
     // Serialize config and send to worker
     syncConfigToWorker() {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
         this.config_serialized = Utils.serializeWithFunctions(this.config);
-        WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
+        return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
             config: this.config_serialized,
             generation: this.generation
         });
@@ -1193,16 +1010,69 @@ export default class Scene {
         this.start_time = +new Date();
     }
 
+    // Fires event when rendered tile set or style changes
+    updateViewComplete () {
+        if ((this.render_count_changed || this.generation !== this.last_complete_generation) &&
+            !this.tile_manager.isLoadingVisibleTiles()) {
+            this.last_complete_generation = this.generation;
+            this.trigger('view_complete');
+        }
+    }
+
+    resetViewComplete () {
+        this.last_complete_generation = null;
+    }
+
+    // Take a screenshot
+    // Asynchronous because we have to wait for next render to capture buffer
+    // Returns a promise
+    screenshot () {
+        if (this.queue_screenshot != null) {
+            return this.queue_screenshot.promise; // only capture one screenshot at a time
+        }
+
+        this.requestRedraw();
+
+        // Will resolve once rendering is complete and render buffer is captured
+        this.queue_screenshot = {};
+        this.queue_screenshot.promise = new Promise((resolve, reject) => {
+            this.queue_screenshot.resolve = resolve;
+            this.queue_screenshot.reject = reject;
+        });
+        return this.queue_screenshot.promise;
+    }
+
+    // Called after rendering, captures render buffer and resolves promise with image data
+    completeScreenshot () {
+        if (this.queue_screenshot != null) {
+            // Get data URL, convert to blob
+            // Strip host/mimetype/etc., convert base64 to binary without UTF-8 mangling
+            // Adapted from: https://gist.github.com/unconed/4370822
+            var url = this.canvas.toDataURL('image/png');
+            var data = atob(url.slice(22));
+            var buffer = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; ++i) {
+                buffer[i] = data.charCodeAt(i);
+            }
+            var blob = new Blob([buffer], { type: 'image/png' });
+
+            // Resolve with screenshot data
+            this.queue_screenshot.resolve({ url, blob });
+            this.queue_screenshot = null;
+        }
+    }
+
 
     // Stats/debug/profiling methods
 
     // Log messages pass through from web workers
     workerLogMessage(event) {
-        if (event.data.type !== 'log') {
+        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
+        if (data.type !== 'log') {
             return;
         }
 
-        var { worker_id, level, msg } = event.data;
+        var { worker_id, level, msg } = data;
 
         if (log[level]) {
             log[level](`worker ${worker_id}:`,  ...msg);
@@ -1277,9 +1147,3 @@ export default class Scene {
     }
 
 }
-
-// Static methods/state
-
-Scene.create = function (config, options = {}) {
-    return new Scene(config, options);
-};

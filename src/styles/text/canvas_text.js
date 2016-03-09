@@ -198,28 +198,44 @@ export default class CanvasText {
         }
     }
 
-    setTextureTextPositions (texts) {
-        // Find widest label and sum of all label heights
-        let widest = 0, height = 0;
-
+    // Place text labels within an atlas of the given max size
+    setTextureTextPositions (texts, max_texture_size) {
+        // Find widest label
+        let widest = 0;
         for (let style in texts) {
             let text_infos = texts[style];
-
             for (let text in text_infos) {
-                let text_info = text_infos[text];
-                let size = text_info.size.texture_size;
-
-                text_info.position = [0, height];
-
+                let size = text_infos[text].size.texture_size;
                 if (size[0] > widest) {
                     widest = size[0];
                 }
-
-                height += size[1];
             }
         }
 
-        return [ widest, height ];
+        // Layout labels, stacked in columns
+        let cx = 0, cy = 0; // current x/y position in atlas
+        let height = 0;     // overall atlas height
+        for (let style in texts) {
+            let text_infos = texts[style];
+            for (let text in text_infos) {
+                let text_info = text_infos[text];
+                let size = text_info.size.texture_size;
+                if (cy + size[1] < max_texture_size) {
+                    text_info.position = [cx, cy]; // add label to current column
+                    cy += size[1];
+                    if (cy > height) {
+                        height = cy;
+                    }
+                }
+                else { // start new column if taller than texture
+                    cx += widest;
+                    cy = 0;
+                    text_info.position = [cx, cy];
+                }
+            }
+        }
+
+        return [cx + widest, height]; // overall atlas size
     }
 
     // Called before rasterization

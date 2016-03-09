@@ -107,7 +107,7 @@ Object.assign(Polygons, {
         this.vertex_template[i++] = style.z || 0;
 
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.vertex_template[i++] = style.order;
+        this.vertex_template[i++] = this.scaleOrder(style.order);
 
         // normal
         this.vertex_template[i++] = 0;
@@ -144,7 +144,8 @@ Object.assign(Polygons, {
             texcoord_scale: this.texcoord_scale,
             texcoord_normalize: 65535, // scale UVs to unsigned shorts
             remove_tile_edges: !style.tile_edges,
-            tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
+            tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4,
+            winding: context.winding
         };
 
         // Extruded polygons (e.g. 3D buildings)

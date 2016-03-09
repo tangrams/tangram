@@ -1,7 +1,7 @@
 import chai from 'chai';
 let assert = chai.assert;
 
-import LabelPoint from '../src/styles/text/label_point';
+import LabelPoint from '../src/labels/label_point';
 
 let label;
 
@@ -10,9 +10,9 @@ describe('Labels', () => {
     describe('LabelPoint', () => {
 
         beforeEach(() => {
-            let size = { collision_size: [1000, 500] };
+            let size = [1000, 500];
             let p = [2000, -1000];
-            label = new LabelPoint('Test', p, size, {
+            label = new LabelPoint(p, size, {
                 units_per_pixel: 1,
                 offset: [0, 0],
                 buffer: [0, 0]

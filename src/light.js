@@ -7,9 +7,9 @@ import {StyleParser} from './styles/style_parser';
 // Abstract light
 export default class Light {
 
-    constructor (scene, config) {
+    constructor (view, config) {
         this.name = config.name;
-        this.scene = scene;
+        this.view = view;
 
         if (config.ambient == null || typeof config.ambient === 'number') {
             this.ambient = GLSL.expandVec4(config.ambient || 0);
@@ -35,9 +35,9 @@ export default class Light {
 
     // Create a light by type name, factory-style
     // 'config' must include 'name' and 'type', along with any other type-specific properties
-    static create (scene, config) {
+    static create (view, config) {
         if (Light.types[config.type]) {
-            return new Light.types[config.type](scene, config);
+            return new Light.types[config.type](view, config);
         }
     }
 
@@ -172,8 +172,8 @@ Light.enabled = true; // lighting can be globally enabled/disabled
 // Light subclasses
 class AmbientLight extends Light {
 
-    constructor(scene, config) {
-        super(scene, config);
+    constructor(view, config) {
+        super(view, config);
         this.type = 'ambient';
         this.struct_name = 'AmbientLight';
     }
@@ -192,8 +192,8 @@ Light.types['ambient'] = AmbientLight;
 
 class DirectionalLight extends Light {
 
-    constructor(scene, config) {
-        super(scene, config);
+    constructor(view, config) {
+        super(view, config);
         this.type = 'directional';
         this.struct_name = 'DirectionalLight';
 
@@ -216,14 +216,14 @@ Light.types['directional'] = DirectionalLight;
 
 class PointLight extends Light {
 
-    constructor (scene, config) {
-        super(scene, config);
+    constructor (view, config) {
+        super(view, config);
         this.type = 'point';
         this.struct_name = 'PointLight';
 
-        this.position = config.position || [0, 0, 0];
+        this.position = config.position || [0, 0, '100px'];
         this.position_eye = []; // position in eyespace
-        this.origin = config.origin || 'world';
+        this.origin = config.origin || 'ground';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
 
         if (config.radius) {
@@ -263,23 +263,23 @@ class PointLight extends Light {
 
             // Move light's world position into camera space
             let [x, y] = Geo.latLngToMeters(this.position);
-            this.position_eye[0] = x - this.scene.camera.position_meters[0];
-            this.position_eye[1] = y - this.scene.camera.position_meters[1];
+            this.position_eye[0] = x - this.view.camera.position_meters[0];
+            this.position_eye[1] = y - this.view.camera.position_meters[1];
 
             this.position_eye[2] = StyleParser.convertUnits(this.position[2],
-                { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) });
-            this.position_eye[2] = this.position_eye[2] - this.scene.camera.position_meters[2];
+                { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
+            this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
         }
         if (this.origin === 'ground' || this.origin === 'camera') {
             // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
             this.position_eye = StyleParser.convertUnits(this.position,
-                { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) });
+                { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
 
             if (this.origin === 'ground') {
                 // Leave light's xy in camera space, but z needs to be moved relative to ground plane
-                this.position_eye[2] = this.position_eye[2] - this.scene.camera.position_meters[2];
+                this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
             }
         }
     }
@@ -297,13 +297,13 @@ class PointLight extends Light {
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.innerRadius`,
                 StyleParser.convertUnits(this.radius[0],
-                    { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) }));
+                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) }));
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.outerRadius`,
                 StyleParser.convertUnits(this.radius[1],
-                    { zoom: this.scene.zoom, meters_per_pixel: Geo.metersPerPixel(this.scene.zoom) }));
+                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) }));
         }
     }
 }
@@ -312,8 +312,8 @@ Light.types['point'] = PointLight;
 
 class SpotLight extends PointLight {
 
-    constructor (scene, config) {
-        super(scene, config);
+    constructor (view, config) {
+        super(view, config);
         this.type = 'spotlight';
         this.struct_name = 'SpotLight';
 

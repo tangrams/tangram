@@ -95,10 +95,10 @@ Vector.perp = function (v1, v2) {
 
 // Get 2D vector rotated
 Vector.rot = function (v, a) {
-    var vr = Vector.length(v);
-    var va = Vector.angle(v);
-    return [vr * Math.cos(va+a),
-            vr * Math.sin(va+a)];
+    var c = Math.cos(a);
+    var s = Math.sin(a);
+    return [v[0] * c - v[1] * s,
+            v[0] * s + v[1] * c];
 };
 
 // Get 2D heading angle

@@ -94,9 +94,9 @@ function extendLeaflet(options) {
 
                     this._updating_tangram = true;
                     var view = map.getCenter();
-                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_max_zoom);
+                    view.zoom = Math.min(map.getZoom(), map.getMaxZoom() || Geo.default_view_max_zoom);
 
-                    this.scene.setView(view);
+                    this.scene.view.setView(view);
                     this.scene.immediateRedraw();
                     this.reverseTransform();
                     this._updating_tangram = false;
@@ -109,18 +109,18 @@ function extendLeaflet(options) {
                     }
 
                     this._updating_tangram = true;
-                    this.scene.startZoom();
+                    this.scene.view.startZoom();
                     this._updating_tangram = false;
                 };
                 map.on('zoomstart', this.hooks.zoomstart);
 
                 this.hooks.dragstart = () => {
-                    this.scene.panning = true;
+                    this.scene.view.panning = true;
                 };
                 map.on('dragstart', this.hooks.dragstart);
 
                 this.hooks.dragend = () => {
-                    this.scene.panning = false;
+                    this.scene.view.panning = false;
                 };
                 map.on('dragend', this.hooks.dragend);
 
@@ -204,7 +204,7 @@ function extendLeaflet(options) {
             // Note: this should be deprecated once leaflet continuous zoom is more widely used and the
             // default behavior is presumably improved
             modifyScrollWheelBehavior: function (map) {
-                if (this.scene.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
+                if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
                     let layer = this;
                     let enabled = map.scrollWheelZoom.enabled();
                     if (enabled) {
@@ -256,8 +256,8 @@ function extendLeaflet(options) {
 
             updateView: function () {
                 var view = this._map.getCenter();
-                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_max_zoom);
-                this.scene.setView(view);
+                view.zoom = Math.min(this._map.getZoom(), this._map.getMaxZoom() || Geo.default_view_max_zoom);
+                this.scene.view.setView(view);
             },
 
             updateSize: function () {
@@ -270,7 +270,7 @@ function extendLeaflet(options) {
                     return;
                 }
                 this._updating_tangram = true;
-                this._map.setView([this.scene.center.lat, this.scene.center.lng], this.scene.zoom, { animate: false });
+                this._map.setView([this.scene.view.center.lat, this.scene.view.center.lng], this.scene.view.zoom, { animate: false });
                 this.reverseTransform();
                 this._updating_tangram = false;
             },

@@ -5,25 +5,25 @@ import Utils from '../utils/utils';
 
 export default class DataSource {
 
-    constructor (source) {
-        this.id = source.id;
-        this.name = source.name;
-        this.url = source.url;
-        this.pad_scale = source.pad_scale || 0.0005; // scale tile up by small factor to cover seams
-        this.enforce_winding = source.enforce_winding || false; // whether to enforce winding order
+    constructor (config) {
+        this.config = config; // save original config
+        this.id = config.id;
+        this.name = config.name;
+        this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
+        this.default_winding = null; // winding order will adapt to data source
 
         // Optional function to transform source data
-        this.transform = source.transform;
+        this.transform = config.transform;
         if (typeof this.transform === 'function') {
             this.transform.bind(this);
         }
 
         // Optional additional data to pass to the transform function
-        this.extra_data = source.extra_data;
+        this.extra_data = config.extra_data;
 
         // Optional additional scripts made available to the transform function
-        if (typeof importScripts === 'function' && source.scripts) {
-            source.scripts.forEach(function(s, si) {
+        if (typeof importScripts === 'function' && config.scripts) {
+            config.scripts.forEach(function(s, si) {
                 try {
                     importScripts(s);
                     Utils.log('info', 'DataSource: loaded library: ' + s);
@@ -36,7 +36,7 @@ export default class DataSource {
         }
 
         // overzoom will apply for zooms higher than this
-        this.max_zoom = source.max_zoom || Geo.default_max_zoom;
+        this.max_zoom = config.max_zoom || Geo.default_source_max_zoom;
     }
 
     // Create a tile source by type, factory-style
@@ -44,6 +44,18 @@ export default class DataSource {
         if (DataSource.types[source.type]) {
             return new DataSource.types[source.type](source);
         }
+    }
+
+    // Check if a data source definition changed
+    static changed (source, prev_source) {
+        if (!source || !prev_source) {
+            return true;
+        }
+
+        let cur = Object.assign({}, source.config, { id: null }); // null out ids since we don't want to compare them
+        let prev = Object.assign({}, prev_source.config, { id: null });
+
+        return JSON.stringify(cur) !== JSON.stringify(prev);
     }
 
     // Mercator projection
@@ -105,19 +117,32 @@ export default class DataSource {
                             }
                         });
 
-                        // Optionally enforce winding order since not all data sources guarantee it
-                        if (this.enforce_winding) {
-                            Geo.enforceWinding(feature.geometry, 'CCW');
-                        }
+                        // Use first encountered polygon winding order as default for data source
+                        this.updateDefaultWinding(feature.geometry);
                     });
                 }
             }
+
+            dest.default_winding = this.default_winding || 'CCW';
         });
     }
 
     // Sub-classes must implement
     _load(dest) {
         throw new MethodNotImplemented('_load');
+    }
+
+    // Infer winding for data source from first ring of provided geometry
+    updateDefaultWinding (geom) {
+        if (this.default_winding == null) {
+            if (geom.type === 'Polygon') {
+                this.default_winding = Geo.ringWinding(geom.coordinates[0]);
+            }
+            else if (geom.type === 'MultiPolygon') {
+                this.default_winding = Geo.ringWinding(geom.coordinates[0][0]);
+            }
+        }
+        return this.default_winding;
     }
 
     // Register a new data source type, under a type name
@@ -140,13 +165,16 @@ export class NetworkSource extends DataSource {
 
     constructor (source) {
         super(source);
+        this.url = Utils.addParamsToURL(source.url, source.url_params);
         this.response_type = ""; // use to set explicit XHR type
+
+        if (this.url == null) {
+            throw Error('Network data source must provide a `url` property');
+        }
     }
 
     _load (dest) {
-        // super.load(dest);
-
-        let url = this.formatUrl(dest);
+        let url = this.formatUrl(this.url, dest);
 
         let source_data = dest.source_data;
         source_data.url = url;
@@ -180,7 +208,7 @@ export class NetworkSource extends DataSource {
 
     // Sub-classes must implement:
 
-    formatUrl (dest) {
+    formatUrl (url_template, dest) {
         throw new MethodNotImplemented('formatUrl');
     }
 
@@ -206,9 +234,9 @@ export class NetworkTileSource extends NetworkSource {
         }
     }
 
-    formatUrl(tile) {
+    formatUrl(url_template, tile) {
         let coords = Geo.wrapTile(tile.coords, { x: true });
-        var url = this.url.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
+        let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z);
 
         if (this.url_hosts != null) {
             url = url.replace(/{s:\[([^}+]+)\]}/, this.url_hosts[this.next_host]);

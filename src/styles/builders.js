@@ -89,7 +89,8 @@ Builders.buildExtrudedPolygons = function (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
-        texcoord_normalize
+        texcoord_normalize,
+        winding
     }) {
 
     // Top
@@ -122,27 +123,36 @@ Builders.buildExtrudedPolygons = function (
             var contour = polygon[q];
 
             for (var w=0; w < contour.length - 1; w++) {
-                if (remove_tile_edges && Builders.isOnTileEdge(contour[w], contour[w+1], tile_edge_tolerance)) {
+                if (remove_tile_edges && Builders.outsideTile(contour[w], contour[w+1], tile_edge_tolerance)) {
                     continue; // don't extrude tile edges
+                }
+
+                // Wall order is dependent on winding order, so that normals face outward
+                let w0, w1;
+                if (winding === 'CCW') {
+                    w0 = w;
+                    w1 = w+1;
+                }
+                else {
+                    w0 = w+1;
+                    w1 = w;
                 }
 
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 var wall_vertices = [
                     // Triangle
-                    [contour[w+1][0], contour[w+1][1], max_z],
-                    [contour[w+1][0], contour[w+1][1], min_z],
-                    [contour[w][0], contour[w][1], min_z],
+                    [contour[w1][0], contour[w1][1], max_z],
+                    [contour[w1][0], contour[w1][1], min_z],
+                    [contour[w0][0], contour[w0][1], min_z],
                     // Triangle
-                    [contour[w][0], contour[w][1], min_z],
-                    [contour[w][0], contour[w][1], max_z],
-                    [contour[w+1][0], contour[w+1][1], max_z]
+                    [contour[w0][0], contour[w0][1], min_z],
+                    [contour[w0][0], contour[w0][1], max_z],
+                    [contour[w1][0], contour[w1][1], max_z]
                 ];
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
-                var normal = Vector.cross(
-                    up_vec3,
-                    Vector.normalize([contour[w+1][0] - contour[w][0], contour[w+1][1] - contour[w][1], 0])
-                );
+                let wall_vec = Vector.normalize([contour[w1][0] - contour[w0][0], contour[w1][1] - contour[w0][1], 0]);
+                let normal = Vector.cross(up_vec3, wall_vec);
 
                 // Update vertex template with current surface normal
                 vertex_template[normal_index + 0] = normal[0] * normal_normalize;
@@ -192,11 +202,18 @@ Builders.buildPolylines = function (
         texcoord_normalize,
         scaling_index,
         scaling_normalize,
-        join, cap
+        join, cap,
+        miter_limit
     }) {
 
     var cornersOnCap = cornersForCap[cap] || 0;         // default 'butt'
     var trianglesOnJoin = trianglesForJoin[join] || 0;  // default 'miter'
+
+    // Configure miter limit
+    if (trianglesOnJoin === 0) {
+        miter_limit = miter_limit || 3; // default miter limit
+        var miter_len_sq = miter_limit * miter_limit;
+    }
 
     // Build variables
     if (texcoord_index) {
@@ -221,7 +238,12 @@ Builders.buildPolylines = function (
     };
 
     for (var ln = 0; ln < lines.length; ln++) {
-        var line = lines[ln];
+        // Remove dupe points from lines
+        var line = dedupeLine(lines[ln], closed_polygon);
+        if (!line) {
+            continue; // skip if no valid line remaining
+        }
+
         var lineSize = line.length;
 
         // Ignore non-lines
@@ -259,7 +281,7 @@ Builders.buildPolylines = function (
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.isOnTileEdge(line[i], line[lineSize-2], tile_edge_tolerance)) {
+                    if(Builders.outsideTile(line[i], line[lineSize-2], tile_edge_tolerance)) {
                         needToClose = false;
                     }
                 }
@@ -287,7 +309,7 @@ Builders.buildPolylines = function (
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (Builders.isOnTileEdge(coordCurr, coordNext, tile_edge_tolerance)) {
+                    if (Builders.outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, i/lineSize, constants);
@@ -332,8 +354,13 @@ Builders.buildPolylines = function (
                     addCap(coordCurr, normCurr, cornersOnCap, true, constants);
                 }
 
+                //  Miter limit: if miter join is too sharp, convert to bevel instead
+                if (trianglesOnJoin === 0 && Vector.lengthSq(normCurr) > miter_len_sq) {
+                    trianglesOnJoin = trianglesForJoin['bevel']; // switch to bevel
+                }
+
                 // If it's a JOIN
-                if(trianglesOnJoin !== 0 && isPrev && isNext) {
+                if (trianglesOnJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
                             i/lineSize, trianglesOnJoin,
@@ -359,6 +386,31 @@ Builders.buildPolylines = function (
         }
     }
 };
+
+// Remove duplicate points from a line, creating a new line only when points must be removed
+function dedupeLine (line, closed) {
+    let i, dupes;
+
+    // Collect dupe points
+    for (i=0; i < line.length - 1; i++) {
+        if (line[i][0] === line[i+1][0] && line[i][1] === line[i+1][1]) {
+            dupes = dupes || [];
+            dupes.push(i);
+        }
+    }
+
+    // Remove dupe points
+    if (dupes) {
+        line = line.slice(0);
+        dupes.forEach(d => line.splice(d, 1));
+    }
+
+    // Line needs at least 2 points, polygon needs at least 3 (+1 to close)
+    if (!closed && line.length < 2 || closed && line.length < 4) {
+        return;
+    }
+    return line;
+}
 
 // Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoords }) {
@@ -797,32 +849,19 @@ Builders.triangulatePolygon = function (contours)
     return earcut(contours);
 };
 
-// Tests if a line segment (from point A to B) is nearly coincident with the edge of a tile
-Builders.isOnTileEdge = function (pa, pb, tolerance) {
-    var tolerance_function = Builders.valuesWithinTolerance;
-    var tile_min = Builders.tile_bounds[0];
-    var tile_max = Builders.tile_bounds[1];
+// Tests if a line segment (from point A to B) is outside the tile bounds
+// (within a certain tolerance to account for geometry nearly on tile edges)
+Builders.outsideTile = function (_a, _b, tolerance) {
+    let tile_min = Builders.tile_bounds[0];
+    let tile_max = Builders.tile_bounds[1];
 
-    // Left
-    if (tolerance_function(pa[0], tile_min.x, tolerance) && tolerance_function(pb[0], tile_min.x, tolerance)) {
+    // TODO: fix flipped Y coords here, confusing with 'max' reference
+    if ((_a[0] <= tile_min.x + tolerance && _b[0] <= tile_min.x + tolerance) ||
+        (_a[0] >= tile_max.x - tolerance && _b[0] >= tile_max.x - tolerance) ||
+        (_a[1] >= tile_min.y - tolerance && _b[1] >= tile_min.y - tolerance) ||
+        (_a[1] <= tile_max.y + tolerance && _b[1] <= tile_max.y + tolerance)) {
         return true;
     }
-    // Right
-    else if (tolerance_function(pa[0], tile_max.x, tolerance) && tolerance_function(pb[0], tile_max.x, tolerance)) {
-        return true;
-    }
-    // Top
-    else if (tolerance_function(pa[1], tile_min.y, tolerance) && tolerance_function(pb[1], tile_min.y, tolerance)) {
-        return true;
-    }
-    // Bottom
-    else if (tolerance_function(pa[1], tile_max.y, tolerance) && tolerance_function(pb[1], tile_max.y, tolerance)) {
-        return true;
-    }
+
     return false;
-};
-
-Builders.valuesWithinTolerance = function (a, b, tolerance) {
-    tolerance = tolerance || 1;
-    return (Math.abs(a - b) < tolerance);
 };
