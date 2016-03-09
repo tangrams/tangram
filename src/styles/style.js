@@ -8,6 +8,7 @@ import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
+import Utils from '../utils/utils';
 
 import log from 'loglevel';
 
@@ -106,6 +107,11 @@ export var Style = {
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
+        if (tile.canceled) {
+            Utils.log('warn', `stop tile build because tile was removed: ${tile.key}`);
+            return;
+        }
+
        var tile_data = this.tile_data[tile.key];
        this.tile_data[tile.key] = null;
 

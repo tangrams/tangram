@@ -36,7 +36,7 @@ export default class Scene {
         subscribeMixin(this);
 
         this.initialized = false;
-        this.initializing = false;
+        this.initializing = null; // will be a promise that resolves when scene is loaded
         this.sources = {};
 
         this.view = new View(this, options);
@@ -106,15 +106,14 @@ export default class Scene {
     // Optionally specify new scene file URL
     load(config_source = null, config_path = null) {
         if (this.initializing) {
-            return Promise.resolve();
+            return this.initializing;
         }
 
         this.updating++;
         this.initialized = false;
-        this.initializing = true;
 
         // Load scene definition (sources, styles, etc.), then create styles & workers
-        return this.loadScene(config_source, config_path)
+        this.initializing = this.loadScene(config_source, config_path)
             .then(() => this.createWorkers())
             .then(() => {
                 this.createCanvas();
@@ -133,7 +132,7 @@ export default class Scene {
                 return this.updateConfig({ rebuild: true });
             }).then(() => {
                 this.updating--;
-                this.initializing = false;
+                this.initializing = null;
                 this.initialized = true;
                 this.last_valid_config_source = this.config_source;
                 this.last_valid_config_path = this.config_path;
@@ -143,7 +142,7 @@ export default class Scene {
                 }
                 this.requestRedraw();
         }).catch(error => {
-            this.initializing = false;
+            this.initializing = null;
             this.updating = 0;
 
             // Report and revert to last valid config if available
@@ -167,6 +166,8 @@ export default class Scene {
             log.error(message, error);
             throw error;
         });
+
+        return this.initializing;
     }
 
     // For API compatibility
