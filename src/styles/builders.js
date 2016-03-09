@@ -15,7 +15,9 @@ Builders.tile_bounds = [
     { x: Geo.tile_scale, y: -Geo.tile_scale } // TODO: correct for flipped y-axis?
 ];
 
-Builders.defaultUVs = [0, 0, 1, 1]; // single allocation for default values
+const default_uvs = [0, 0, 1, 1];
+const zero_vec2 = [0, 0];
+const up_vec3 = [0, 0, 1];
 
 // Re-scale UVs from [0, 1] range to a smaller area within the image
 Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
@@ -38,7 +40,7 @@ Builders.buildPolygons = function (
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
     var num_polygons = polygons.length;
@@ -101,7 +103,7 @@ Builders.buildExtrudedPolygons = function (
     // Fit UVs to wall quad
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
         var texcoords = [
             [min_u, max_v],
             [min_u, min_v],
@@ -150,7 +152,7 @@ Builders.buildExtrudedPolygons = function (
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
                 let wall_vec = Vector.normalize([contour[w1][0] - contour[w0][0], contour[w1][1] - contour[w0][1], 0]);
-                let normal = Vector.cross([0, 0, 1], wall_vec);
+                let normal = Vector.cross(up_vec3, wall_vec);
 
                 // Update vertex template with current surface normal
                 vertex_template[normal_index + 0] = normal[0] * normal_normalize;
@@ -216,7 +218,7 @@ Builders.buildPolylines = function (
     // Build variables
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
     // Values that are constant for each line and are passed to helper functions
@@ -455,17 +457,20 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     // because we are going to add more triangles.
     indexPairs(constants);
 
+    // Initial parameters
     var normCurr = Vector.set(nA);
     var normPrev = [0,0];
 
-    var angle_delta = Vector.dot(nA, nB);
-    if (angle_delta < -1) {
-        angle_delta = -1;
-    }
-    angle_delta = Math.acos(angle_delta)/numTriangles;
+    // Calculate the angle between A and B
+    var angle_delta = Vector.angleBetween(nA, nB);
 
+    // Calculate the angle for each triangle
+    var angle_step = angle_delta/numTriangles;
+
+    // Joins that turn left or right behave diferently...
+    // triangles need to be rotated in diferent directions
     if (!signed) {
-        angle_delta *= -1;
+        angle_step *= -1;
     }
 
     if (constants.texcoords) {
@@ -483,9 +488,122 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
     // Iterate through the rest of the corners
     for (var t = 0; t < numTriangles; t++) {
         normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot( Vector.normalize(normCurr), angle_delta);     //  Rotate the extrusion normal
+        normCurr = Vector.rot(Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
+        if (constants.texcoords) {
+            uvCurr = Vector.add(uvCurr,uv_delta);
+        }
+        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+    }
 
-        if (numTriangles === 4 && (t === 0 || t === numTriangles - 2)) {
+    // Index the vertices
+    for (var i = 0; i < numTriangles; i++) {
+        if (signed) {
+            addIndex(i+2, constants);
+            addIndex(0, constants);
+            addIndex(i+1, constants);
+        } else {
+            addIndex(i+1, constants);
+            addIndex(0, constants);
+            addIndex(i+2, constants);
+        }
+    }
+
+    // Clear the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
+//  addBevel    A ----- B
+//             / \ , . / \
+//           /   /\   /\  \
+//              /  \ /   \ \
+//                / C \
+function addBevel (coord, nA, nC, nB, uA, uC, uB, signed, constants) {
+    // Add previous vertices to buffer and clear the buffers and index pairs
+    // because we are going to add more triangles.
+    indexPairs(constants);
+
+    //  Add the FIRST and CENTER vertex
+    addVertex(coord, nC, uC, constants);
+    addVertex(coord, nA, uA, constants);
+    addVertex(coord, nB, uB, constants);
+
+    if (signed) {
+        addIndex(2, constants);
+        addIndex(0, constants);
+        addIndex(1, constants);
+    } else {
+        addIndex(1, constants);
+        addIndex(0, constants);
+        addIndex(2, constants);
+    }
+
+    // Clear the buffer
+    constants.vertices = [];
+    if (constants.scalingVecs) {
+        constants.scalingVecs = [];
+    }
+    if (constants.texcoords) {
+        constants.texcoords = [];
+    }
+}
+
+
+//  Tessalate a SQUARE geometry between A and B     + ........+
+//  and interpolating their UVs                     : \  2  / :
+//                                                  : 1\   /3 :
+//                                                  A -- C -- B
+function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
+
+    // Add previous vertices to buffer and clear the buffers and index pairs
+    // because we are going to add more triangles.
+    indexPairs(constants);
+
+    // Initial parameters
+    var normCurr = Vector.set(nA);
+    var normPrev = [0,0];
+    if (constants.texcoords) {
+        var uvCurr = Vector.set(uA);
+        var uv_delta = Vector.div(Vector.sub(uB,uA), 4);
+    }
+
+    // First and last cap have different directions
+    var angle_step = 0.78539816339; // PI/4 = 45 degrees
+    if (!signed) {
+        angle_step *= -1;
+    }
+
+    //  Add the FIRST and CENTER vertex
+    //  The triangles will be add in a FAN style around it
+    //
+    //                       A -- C
+    addVertex(coord, zero_vec2, uC, constants);
+
+    //  Add first corner     +
+    //                       :
+    //                       A -- C
+    addVertex(coord, normCurr, uA, constants);
+
+    // Iterate through the rest of the coorners completing the triangles
+    // (except the corner 1 to save one triangle to be draw )
+    for (var t = 0; t < 4; t++) {
+
+        // 0     1     2
+        //  + ........+
+        //  : \     / :
+        //  :  \   /  :
+        //  A -- C -- B  3
+
+        normPrev = Vector.normalize(normCurr);
+        normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
+
+        if (t === 0 || t === 2) {
+            // In order to make this "fan" look like a square the mitters need to be streach
             var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
             normCurr = Vector.mult(normCurr, scale*scale);
         }
@@ -494,10 +612,13 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
             uvCurr = Vector.add(uvCurr,uv_delta);
         }
 
-        addVertex(coord, normCurr, uvCurr, constants);      //  Add computed corner
+        if (t !== 1) {
+            //  Add computed corner (except the corner 1)
+            addVertex(coord, normCurr, uvCurr, constants);
+        }
     }
 
-    for (var i = 0; i < numTriangles; i++) {
+    for (var i = 0; i < 3; i++) {
         if (signed) {
             addIndex(i+2, constants);
             addIndex(0, constants);
@@ -522,13 +643,10 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, constants)
 //  Add special joins (not miter) types that require FAN tessellations
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, v_pct, nTriangles, constants) {
-
-    var T = [Vector.set(normals[0]), Vector.set(normals[1]), Vector.set(normals[2])];
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
-
-    var nA = T[0],              // normal to point A (aT)
-        nC = Vector.neg(T[1]),  // normal to center (-vP)
-        nB = T[2];              // normal to point B (bT)
+    var nA = normals[0],              // normal to point A (aT)
+        nC = Vector.neg(normals[1]),  // normal to center (-vP)
+        nB = normals[2];              // normal to point B (bT)
 
     if (constants.texcoords) {
         var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
@@ -540,9 +658,9 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         addVertex(coords[1], nA, uA, constants);
         addVertex(coords[1], nC, uC, constants);
     } else {
-        nA = Vector.neg(T[0]);
-        nC = T[1];
-        nB = Vector.neg(T[2]);
+        nA = Vector.neg(normals[0]);
+        nC = normals[1];
+        nB = Vector.neg(normals[2]);
 
         if (constants.texcoords) {
             uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
@@ -553,7 +671,11 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         addVertex(coords[1], nA, uA, constants);
     }
 
-    addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
+    if (nTriangles === 1) {
+        addBevel(coords[1], nA, nC, nB, uA, uC, uB, signed, constants);
+    } else if (nTriangles > 1){
+        addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, constants);
+    }
 
     if (signed) {
         addVertex(coords[1], nB, uB, constants);
@@ -575,22 +697,32 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     // UVs
     var uvA, uvB, uvC;
     if (constants.texcoords) {
+        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
+
         if (isBeginning) {
             uvA = [constants.min_u,constants.min_v];                                        // Beginning angle UVs
-            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
             uvB = [constants.max_u,constants.min_v];                                        // Ending angle UVs
         }
         else {
             uvA = [constants.min_u,constants.max_v];                                        // Begining angle UVs
-            uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.max_v];   // Center point UVs
             uvB = [constants.max_u,constants.max_v];                                        // Ending angle UVs
         }
     }
 
-    addFan(coord,
-           Vector.neg(normal), [0, 0], normal,
-           uvA, uvC, uvB,
-           isBeginning, numCorners*2, constants);
+    if ( numCorners === 2 ){
+        // If caps are set as squares
+        addSquare( coord,
+                   Vector.neg(normal), normal,
+                   uvA, uvC, uvB,
+                   isBeginning,
+                   constants);
+    } else {
+        // If caps are set as round ( numCorners===3 )
+        addFan( coord,
+                Vector.neg(normal), zero_vec2, normal,
+                uvA, uvC, uvB,
+                isBeginning, numCorners*2, constants);
+    }
 }
 
 // Add a vertex based on the index position into the VBO (internal method for polyline builder)
@@ -668,7 +800,7 @@ Builders.buildQuadsForPoints = function (points, vertex_data, vertex_template,
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
 
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || Builders.defaultUVs;
+        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
         texcoords = [
             [min_u, min_v],
             [max_u, min_v],
