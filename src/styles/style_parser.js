@@ -14,7 +14,7 @@ export var StyleParser = {};
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
-                var scene = context.scene;
+                var global = context.global;
                 var $zoom = context.zoom;
                 var $layer = context.layer;
                 var $geometry = context.geometry;
@@ -76,7 +76,7 @@ StyleParser.getFeatureParseContext = function (feature, tile, config) {
     return {
         feature,
         tile,
-        scene: config.scene,
+        global: config.global,
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,
@@ -399,21 +399,21 @@ StyleParser.evalProp = function(prop, context) {
     return prop;
 };
 
-// Substitutes scene properties (those defined in the `config.scene` object) for any style values
-// of the form `scene.`, for example `color: scene.park_color` would be replaced with the value (if any)
-// defined for the `park_color` property in `config.scene.park_color`.
-StyleParser.applySceneProperties = function (config) {
-    if (!config.scene || Object.keys(config.scene).length === 0) {
-        return config; // no scene properties to transform
+// Substitutes global scene properties (those defined in the `config.global` object) for any style values
+// of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
+// defined for the `park_color` property in `config.global.park_color`.
+StyleParser.applyGlobalProperties = function (config) {
+    if (!config.global || Object.keys(config.global).length === 0) {
+        return config; // no global properties to transform
     }
 
     const separator = '_$_';
-    const props = flattenProperties(config.scene, separator);
+    const props = flattenProperties(config.global, separator);
 
     function applyProps (obj) {
         // Convert string
         if (typeof obj === 'string') {
-            let key = (obj.slice(0, 6) === 'scene.') && (obj.slice(6).replace(/\./g, separator));
+            let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
             if (key && props[key]) {
                 obj = props[key];
             }
@@ -431,7 +431,7 @@ StyleParser.applySceneProperties = function (config) {
 };
 
 // Flatten nested properties for simpler string look-ups
-// e.g. scene.background.color -> scene_$_background_$_color
+// e.g. global.background.color -> global_$_background_$_color
 function flattenProperties (obj, separator = '_$_', prefix = null, props = {}) {
     prefix = prefix ? (prefix + separator) : '';
 
