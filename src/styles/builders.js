@@ -315,7 +315,6 @@ Builders.buildPolylines = function (
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), constants);
-                            // addVertexPair(coordCurr, normCurr, i/lineSize, constants);
                             constants.nPairs++;
 
                             // Add vertices to buffer acording their index
@@ -370,7 +369,6 @@ Builders.buildPolylines = function (
                             constants);
                 } else {
                     addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), constants);
-                    // addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
 
                 if (isNext) {
@@ -435,14 +433,11 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 }
 
 //  Add to equidistant pairs of vertices (internal method for polyline builder)
-// function addVertexPair (coord, normal, v_pct, constants) {
 function addVertexPair (coord, normal, dist, constants) {
     if (constants.texcoords) {
         constants.totalDist += dist/constants.uvScale;
         addVertex(coord, normal, [constants.max_u, constants.totalDist], constants);
         addVertex(coord, Vector.neg(normal), [constants.min_u, constants.totalDist], constants);
-        // addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        // addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     }
     else {
         addVertex(coord, normal, null, constants);
