@@ -234,7 +234,9 @@ Builders.buildPolylines = function (
         texcoords: texcoord_index && [],
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
-        nPairs: 0
+        nPairs: 0,
+        uvScale: (4096*10),
+        totalDist: 0
     };
 
     for (var ln = 0; ln < lines.length; ln++) {
@@ -312,7 +314,8 @@ Builders.buildPolylines = function (
                     if (Builders.outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
-                            addVertexPair(coordCurr, normCurr, i/lineSize, constants);
+                            addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), constants);
+                            // addVertexPair(coordCurr, normCurr, i/lineSize, constants);
                             constants.nPairs++;
 
                             // Add vertices to buffer acording their index
@@ -363,10 +366,11 @@ Builders.buildPolylines = function (
                 if (trianglesOnJoin !== 0 && isPrev && isNext) {
                     addJoin([coordPrev, coordCurr, coordNext],
                             [normPrev,normCurr, normNext],
-                            i/lineSize, trianglesOnJoin,
+                            trianglesOnJoin,
                             constants);
                 } else {
-                    addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
+                    addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), constants);
+                    // addVertexPair(coordCurr, normCurr, i/(lineSize-1), constants);
                 }
 
                 if (isNext) {
@@ -431,10 +435,14 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 }
 
 //  Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertexPair (coord, normal, v_pct, constants) {
+// function addVertexPair (coord, normal, v_pct, constants) {
+function addVertexPair (coord, normal, dist, constants) {
     if (constants.texcoords) {
-        addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
-        addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        constants.totalDist += dist/constants.uvScale;
+        addVertex(coord, normal, [constants.max_u, constants.totalDist], constants);
+        addVertex(coord, Vector.neg(normal), [constants.min_u, constants.totalDist], constants);
+        // addVertex(coord, normal, [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
+        // addVertex(coord, Vector.neg(normal), [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v], constants);
     }
     else {
         addVertex(coord, normal, null, constants);
@@ -642,16 +650,19 @@ function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
 
 //  Add special joins (not miter) types that require FAN tessellations
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
-function addJoin (coords, normals, v_pct, nTriangles, constants) {
+// function addJoin (coords, normals, v_pct, nTriangles, constants) {
+function addJoin (coords, normals, nTriangles, constants) {
+    constants.totalDist += Vector.length(Vector.sub(coords[1], coords[0])) / constants.uvScale;
+
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
     var nA = normals[0],              // normal to point A (aT)
         nC = Vector.neg(normals[1]),  // normal to center (-vP)
         nB = normals[2];              // normal to point B (bT)
 
     if (constants.texcoords) {
-        var uA = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-            uC = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v],
-            uB = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+        var uA = [constants.max_u, constants.totalDist],
+            uC = [constants.min_u, constants.totalDist],
+            uB = [constants.max_u, constants.totalDist];
     }
 
     if (signed) {
@@ -663,9 +674,9 @@ function addJoin (coords, normals, v_pct, nTriangles, constants) {
         nB = Vector.neg(normals[2]);
 
         if (constants.texcoords) {
-            uA = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-            uC = [constants.max_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
-            uB = [constants.min_u, (1-v_pct)*constants.min_v + v_pct*constants.max_v];
+            uA = [constants.min_u, constants.totalDist];
+            uC = [constants.max_u, constants.totalDist];
+            uB = [constants.min_u, constants.totalDist];
         }
         addVertex(coords[1], nC, uC, constants);
         addVertex(coords[1], nA, uA, constants);
