@@ -708,15 +708,15 @@ function addCap (coord, normal, numCorners, isBeginning, constants) {
     // UVs
     var uvA, uvB, uvC;
     if (constants.texcoords) {
-        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.min_v];   // Center point UVs
+        uvC = [constants.min_u+(constants.max_u-constants.min_u)/2, constants.totalDist];   // Center point UVs
 
         if (isBeginning) {
-            uvA = [constants.min_u,constants.min_v];                                        // Beginning angle UVs
-            uvB = [constants.max_u,constants.min_v];                                        // Ending angle UVs
+            uvA = [constants.min_u, constants.totalDist];                                        // Beginning angle UVs
+            uvB = [constants.max_u, constants.totalDist];                                        // Ending angle UVs
         }
         else {
-            uvA = [constants.min_u,constants.max_v];                                        // Begining angle UVs
-            uvB = [constants.max_u,constants.max_v];                                        // Ending angle UVs
+            uvA = [constants.min_u, constants.totalDist];                                        // Begining angle UVs
+            uvB = [constants.max_u, constants.totalDist];                                        // Ending angle UVs
         }
     }
 
