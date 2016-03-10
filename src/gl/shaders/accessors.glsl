@@ -1,9 +1,17 @@
-// Vertex position in model space: [0, 1] range over the local tile
-// Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.
 #ifdef TANGRAM_VERTEX_SHADER
 
+// Vertex position in model space: [0, 1] range over the local tile
+// Note positions can be outside that range due to unclipped geometry, geometry higher than a unit cube, etc.
 vec4 modelPosition() {
-    return vec4(SHORT(a_position.xyz) / TANGRAM_TILE_SCALE, 1.) + vec4(0., 1., 0., 0.);
+    return
+        vec4(
+            SHORT(a_position.xyz)                       // scale normalized short to full range
+            / TANGRAM_TILE_SCALE                        // scale coords to ~0-1 range
+            * exp2(u_tile_origin.z - u_tile_origin.w),  // adjust for tile overzooming
+        1.)
+        + vec4(0., 1., 0., 0.);
+        // NB: additional offset to account for unusual Tangram JS y coords,
+        // should be refactored to remove
 }
 
 #endif

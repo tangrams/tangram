@@ -107,7 +107,7 @@ Object.assign(Polygons, {
         this.vertex_template[i++] = style.z || 0;
 
         // layer order - w coord of 'position' attribute (for packing efficiency)
-        this.vertex_template[i++] = style.order;
+        this.vertex_template[i++] = this.scaleOrder(style.order);
 
         // normal
         this.vertex_template[i++] = 0;

@@ -128,6 +128,11 @@ Object.assign(TextStyle, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.key, this.texts[tile.key]).then(texts => {
+            if (tile.canceled) {
+                Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
+                return;
+            }
+
             if (!texts) {
                 Collision.collide({}, this.name, tile.key);
                 return this.finishTile(tile);
@@ -137,6 +142,11 @@ Object.assign(TextStyle, {
             let labels = this.createLabels(tile.key, queue);
 
             return Collision.collide(labels, this.name, tile.key).then(labels => {
+                if (tile.canceled) {
+                    Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+                    return;
+                }
+
                 if (labels.length === 0) {
                     return this.finishTile(tile); // no labels visible for this tile
                 }
@@ -145,6 +155,11 @@ Object.assign(TextStyle, {
 
                 // second call to main thread, for rasterizing the set of texts
                 return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
+                    if (tile.canceled) {
+                        Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                        return;
+                    }
+
                     if (texts) {
                         this.texts[tile.key] = texts;
 

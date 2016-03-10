@@ -121,15 +121,15 @@ Object.assign(self, {
     // Build a tile: load from tile source if building for first time, otherwise rebuild with existing data
     buildTile ({ tile }) {
         // Tile cached?
-        if (self.tiles[tile.key] != null) {
+        if (self.getTile(tile.key) != null) {
             // Already loading?
-            if (self.tiles[tile.key].loading === true) {
+            if (self.getTile(tile.key).loading === true) {
                 return;
             }
         }
 
         // Update tile cache
-        tile = self.tiles[tile.key] = Object.assign(self.tiles[tile.key] || {}, tile);
+        tile = self.tiles[tile.key] = Object.assign(self.getTile(tile.key) || {}, tile);
 
         // Update config (styles, etc.), then build tile
         return self.awaitConfiguration().then(() => {
@@ -143,6 +143,11 @@ Object.assign(self, {
                     tile.error = null;
 
                     self.loadTileSourceData(tile).then(() => {
+                        if (!self.getTile(tile.key)) {
+                            Utils.log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
+                            return;
+                        }
+
                         // Warn and continue on data source error
                         if (tile.source_data.error) {
                             Utils.log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
@@ -151,7 +156,7 @@ Object.assign(self, {
                         tile.loading = false;
                         tile.loaded = true;
                         Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
-                            resolve({ tile: Tile.slice(tile, keys) });
+                            resolve(WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) }));
                         });
                     }).catch((error) => {
                         tile.loading = false;
@@ -169,7 +174,7 @@ Object.assign(self, {
 
                 // Build geometry
                 return Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
-                    return { tile: Tile.slice(tile, keys) };
+                    return WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) });
                 });
             }
         });
@@ -184,6 +189,10 @@ Object.assign(self, {
             tile.source_data = { error: `Data source '${tile.source}' not found` };
             return Promise.resolve(tile);
         }
+    },
+
+    getTile(key) {
+        return self.tiles[key];
     },
 
     // Remove tile

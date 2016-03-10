@@ -4,6 +4,7 @@ import {StyleManager} from './styles/style_manager';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
+import Utils from './utils/utils';
 
 import {mat4, vec3} from './utils/gl-matrix';
 import log from 'loglevel';
@@ -179,6 +180,7 @@ export default class Tile {
     */
     static cancel(tile) {
         if (tile) {
+            tile.canceled = true;
             if (tile.source_data && tile.source_data.request) {
                 tile.source_data.request.abort();
             }
@@ -225,6 +227,11 @@ export default class Tile {
                     let feature = geom.features[f];
                     if (feature.geometry == null) {
                         continue; // skip features w/o geometry (valid GeoJSON)
+                    }
+
+                    if (tile.canceled) {
+                        Utils.log('debug', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
+                        return;
                     }
 
                     let context = StyleParser.getFeatureParseContext(feature, tile);
@@ -428,7 +435,7 @@ export default class Tile {
         this.proxy = tile;
         if (tile) {
             this.visible = true;
-            this.proxy_depth = -0.5; // draw all proxies a half-layer behind
+            this.proxy_depth = 1; // draw proxies a half-layer back (order is scaled 2x to avoid integer truncation)
             this.update();
         }
         else {
@@ -439,7 +446,8 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.proxy_depth);
+        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.coords.z);
+        program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);

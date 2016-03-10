@@ -34,7 +34,6 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
-        this.feature_options = {};
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = 'Style-' + this.name;
@@ -125,18 +124,26 @@ export var Style = {
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
+        if (tile.canceled) {
+            Utils.log('debug', `stop tile build because tile was removed: ${tile.key}`);
+            return;
+        }
+
         var tile_data = this.tile_data[tile.key];
         this.tile_data[tile.key] = null;
 
-        if (tile_data && tile_data.vertex_data) {
+        if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
             tile_data.vertex_data = tile_data.vertex_data.buffer;
-        }
 
-        // Load any style/tile-specific textures
-        // Blocks mesh completion to avoid flickering
-        return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
+            // Load any style/tile-specific textures
+            // Blocks mesh completion to avoid flickering
+            return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
+        }
+        else {
+            return Promise.resolve(null); // don't send tile data back if doesn't have geometry
+        }
     },
 
     // Has mesh data for a given tile?
@@ -255,6 +262,11 @@ export var Style = {
             return StyleParser.calculateOrder(order, context);
         }
         return order;
+    },
+
+    // Expand final precision for half-layers (for outlines)
+    scaleOrder (order) {
+        return order * 2;
     },
 
     // Parse a color of choose a default if acceptable, return undefined if color missing

@@ -112,7 +112,7 @@ class Rule {
 
         try {
             this.buildZooms();
-            this.filter = match(this.filter);
+            this.filter = this.filter && match(this.filter);
         }
         catch(e) {
             // Invalid filter

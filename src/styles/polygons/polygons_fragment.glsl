@@ -43,38 +43,39 @@ void main (void) {
     #pragma tangram: setup
 
     vec4 color = v_color;
-    vec3 normal = TANGRAM_NORMAL;
 
     // Get value from raster tile texture
     #ifdef TANGRAM_RASTER_TEXTURE
         vec4 raster = texture2D(u_raster_texture, v_model_position.xy);
-
-        #ifdef TANGRAM_RASTER_TEXTURE_COLOR
-            // note: vertex color is multiplied to tint texture color
-            color *= raster;
-        #endif
-        #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
-            normal = normalize(raster.rgb * 2. - 1.);
-        #endif
     #endif
 
-    // Apply normal from material
-    #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
-        calculateNormal(normal);
-    #endif
-
-    // Modify normal before lighting
-    #pragma tangram: normal
-
-    // Modify color and material properties before lighting
-    #if !defined(TANGRAM_LIGHTING_VERTEX)
-    #pragma tangram: color
+    #ifdef TANGRAM_RASTER_TEXTURE_COLOR
+        // note: vertex color is multiplied to tint texture color
+        color *= raster;
     #endif
 
     #if defined(TANGRAM_LIGHTING_FRAGMENT)
+        // Fragment lighting
+        vec3 normal = TANGRAM_NORMAL;
+
+        // Apply normal from raster tile
+        // TODO: precedence / disambiguation between raster tile and material normals?
+        #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
+            normal = normalize(raster.rgb * 2. - 1.);
+        #endif
+
+        // Apply normal from material
+        #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
+            calculateNormal(normal);
+        #endif
+
+        // Modify normal before lighting
+        #pragma tangram: normal
+
+        // Modify color and material properties before lighting
+        #pragma tangram: color
+
         color = calculateLighting(v_position.xyz - u_eye, normal, color);
-    #elif defined(TANGRAM_LIGHTING_VERTEX)
-        color = v_lighting;
     #endif
 
     // Modify color after lighting (filter-like effects that don't require a additional render passes)
