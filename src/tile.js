@@ -236,7 +236,7 @@ export default class Tile {
                     }
 
                     if (tile.canceled) {
-                        Utils.log('warn', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
+                        Utils.log('debug', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
                         return;
                     }
 
