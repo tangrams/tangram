@@ -41,6 +41,10 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
+#if defined(TANGRAM_LIGHTING_VERTEX)
+    varying vec4 v_lighting;
+#endif
+
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -92,21 +96,13 @@ void main() {
 
     #if defined(TANGRAM_LIGHTING_VERTEX)
         // Vertex lighting
-        vec4 color = a_color;
-        vec3 normal = TANGRAM_NORMAL;
+        vec3 normal = v_normal;
 
         // Modify normal before lighting
         #pragma tangram: normal
 
-        // Modify color and material properties before lighting
-        #pragma tangram: color
-
-        v_color = calculateLighting(position.xyz, normal, color);
-    #elif !defined(TANGRAM_LIGHTING_FRAGMENT) // lighting: false
-        // No lighting
-        vec4 color = a_color;
-        #pragma tangram: color
-        v_color = color;
+        // Pass lighting intensity to fragment shader
+        v_lighting = calculateLighting(position.xyz - u_eye, normal, vec4(1.));
     #endif
 
     // Camera
