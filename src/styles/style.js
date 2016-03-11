@@ -63,14 +63,6 @@ export var Style = {
         // Set lighting mode: fragment, vertex, or none (specified as 'false')
         Light.setMode(this.lighting, this);
 
-        // Optionally import rasters into style
-        if (typeof this.rasters === 'string') {
-            this.rasters = [this.rasters];
-        }
-        else if (!Array.isArray(this.rasters)) {
-            this.rasters = null;
-        }
-
         this.initialized = true;
     },
 
@@ -137,7 +129,7 @@ export var Style = {
             tile_data.vertex_data.end();
             tile_data.vertex_data = tile_data.vertex_data.buffer;
 
-            // Load any style/tile-specific textures
+            // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
             return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
         }
@@ -318,7 +310,7 @@ export var Style = {
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
         var block_scopes = (this.shaders && this.shaders.block_scopes);
-        var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms, this.buildRasterUniforms());
+        var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms);
 
         // accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
@@ -416,45 +408,19 @@ export var Style = {
 
     },
 
-    // Define uniforms for raster tile textures
-    buildRasterUniforms () {
-        let uniforms = {};
-        if (this.rasters) {
-            for (let rname of this.rasters) {
-                uniforms[`u_raster_${rname}`] = rname;
-            }
-        }
-        return uniforms;
-    },
-
     // Load raster tile textures
     buildRasterTextures (tile, tile_data) {
-        let configs = {}; // texture configs, keyed by texture name
-        let rasters = {}; // { name, config, uniform_scope }, keyed by texture name
+        let configs = {}; // texture configs to pass to texture builder, keyed by texture name
+        let index = {};   // index into raster sampler array, keyed by texture name
 
-        // Start with tile-specific rasters
-        if (tile.rasters) {
-            for (let rname in tile.rasters) {
-                configs[rname] = tile.rasters[rname].config;
-                rasters[rname] = tile.rasters[rname];
+        // TODO: data source could retrieve raster texture URLs
+        tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
+            if (source instanceof RasterTileSource) {
+                let config = source.tileTexture(tile);
+                configs[config.url] = config;
+                index[config.url] = i;
             }
-        }
-
-        // Add style-level rasters
-        if (this.rasters) {
-            for (let rname of this.rasters) {
-                let rsource = this.sources[rname];
-                if (rsource && rsource instanceof RasterTileSource) {
-                    let config = rsource.tileTexture(tile);
-                    configs[config.url] = config;
-                    rasters[config.url] = {
-                        name: config.url,
-                        config,
-                        uniform_scope: `raster_${rname}` // TODO: add uniform definitions to shader program
-                    };
-                }
-            }
-        }
+        });
 
         if (Object.keys(configs).length > 0) {
             // Load textures on main thread and return when done
@@ -471,14 +437,13 @@ export var Style = {
                     tile_data.uniforms = tile_data.uniforms || {};
                     tile_data.textures = tile_data.textures || [];
 
-                    for (let [tname, width, height] of textures) {
-                        let raster = rasters[tname];
-                        tile_data.uniforms[`u_${raster.uniform_scope}`] = tname;
-                        tile_data.uniforms[`u_${raster.uniform_scope}_size`] = [width, height];
-                        tile_data.uniforms[`u_${raster.uniform_scope}_pixel_size`] = [1/width, 1/height];
+                    let raster_unis = tile_data.uniforms['u_rasters'] = [];
+                    for (let [tname/*, width, height*/] of textures) {
+                        raster_unis[index[tname]] = tname;
                         tile_data.textures.push(tname);
-                        return tile_data;
                     }
+
+                    return tile_data;
                 }
             );
         }

@@ -61,7 +61,7 @@ Object.assign(self, {
         for (let name in config.sources) {
             let source;
             try {
-                source = DataSource.create(Object.assign({}, config.sources[name], {name}));
+                source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources.tiles);
             }
             catch(e) {
                 continue;

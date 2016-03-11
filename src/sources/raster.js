@@ -7,20 +7,22 @@ export class RasterTileSource extends NetworkTileSource {
     constructor(source) {
         super(source);
 
+        if (this.rasters.indexOf(this.name) === -1) {
+            this.rasters.unshift(this.name); // add this raster as the first
+        }
         this.filtering = source.filtering; // optional texture filtering (nearest, linear, mipmap)
 
         // save texture objects by tile key, so URL remains stable if tile is built multiple times,
         // e.g. avoid re-loading the same tile texture under a different subdomain when using tile hosts
         this.textures = {};
+
     }
 
     load(tile) {
         tile.source_data = {};
         tile.source_data.layers = {};
         tile.pad_scale = this.pad_scale;
-
-        // Set texture info for this tile
-        tile.raster_tile_texture = this.tileTexture(tile);
+        tile.rasters = [...this.rasters]; // copy list of rasters to load for tile
 
         // Generate a single quad that fills the entire tile
         let scale = Geo.tile_scale;

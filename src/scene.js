@@ -793,7 +793,7 @@ export default class Scene {
             let prev_source = this.sources[name];
 
             try {
-                this.sources[name] = DataSource.create(Object.assign({}, source, {name}));
+                this.sources[name] = DataSource.create(Object.assign({}, source, {name}), this.sources);
                 if (!this.sources[name]) {
                     throw {};
                 }
@@ -948,10 +948,10 @@ export default class Scene {
         this.updating++;
         this.config.scene = this.config.scene || {};
 
-        StyleManager.init();
+        this.loadDataSources();
+        StyleManager.init(this.sources); // after data sources but before lights
         this.view.reset();
         this.createLights();
-        this.loadDataSources();
         this.loadTextures();
         this.setBackground();
 

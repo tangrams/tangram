@@ -6,6 +6,7 @@ import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import mergeObjects from '../utils/merge';
 import Geo from '../geo';
+import {RasterTileSource} from '../sources/raster';
 
 import log from 'loglevel';
 
@@ -19,7 +20,7 @@ StyleManager.styles = Styles;
 StyleManager.baseStyle = Style;
 
 // Global configuration for all styles
-StyleManager.init = function () {
+StyleManager.init = function (sources) {
     ShaderProgram.removeBlock('global');
     ShaderProgram.removeBlock('setup');
 
@@ -34,6 +35,9 @@ StyleManager.init = function () {
 
     // Feature selection global
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
+
+    // Add raster samplers
+    StyleManager.setupRasters(sources);
 
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('setup', shaderSources['gl/shaders/selection_vertex']);
@@ -236,19 +240,6 @@ StyleManager.mix = function (style, styles) {
     // Merges - property-specific rules for merging values
     style.defines = Object.assign({}, ...sources.map(x => x.defines).filter(x => x)); // internal defines (not user-defined)
     style.material = Object.assign({}, ...sources.map(x => x.material).filter(x => x));
-    let rasters = {};
-    for (let raster of sources.map(x => x.rasters).filter(x => x)) {
-        // single raster
-        if (typeof raster === 'string') {
-            rasters[raster] = true;
-        }
-        // array of rasters
-        else if (Array.isArray(raster)) {
-            raster.forEach(x => rasters[x] = true);
-        }
-    }
-    style.rasters = Object.keys(rasters); // merge all rasters into one unique array
-    style.raster_default = sources.map(x => x.raster_default).filter(x => x).pop();
 
     // Mix shader properties
     StyleManager.mixShaders(style, styles, sources);
@@ -374,6 +365,18 @@ StyleManager.mixShaders = function (style, styles, sources) {
 
     style.shaders = shaders; // assign back to style
     return style;
+};
+
+// Add raster samplers
+StyleManager.setupRasters = function (sources) {
+    let num_rasters = Object.keys(sources).filter(s => sources[s] instanceof RasterTileSource).length;
+    if (num_rasters > 0) {
+        ShaderProgram.addBlock('global', `
+            #ifdef TANGRAM_FRAGMENT_SHADER
+            uniform sampler2D u_rasters[${num_rasters}];
+            #endif
+        `);
+    }
 };
 
 // Create a new style
