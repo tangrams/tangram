@@ -199,7 +199,7 @@ export var Style = {
 
             // If feature is marked as selectable
             if (selectable) {
-                style.selection_color = FeatureSelection.makeColor(feature, context.tile);
+                style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
             }
             else {
                 style.selection_color = FeatureSelection.defaultColor;

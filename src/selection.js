@@ -210,12 +210,13 @@ export default class FeatureSelection {
         return this.map[key];
     }
 
-    static makeColor(feature, tile) {
+    static makeColor(feature, tile, context) {
         var selector = this.makeEntry(tile);
         selector.feature = {
             id: feature.id,
             properties: feature.properties,
-            tile: tile.key
+            tile: tile.key,
+            layers: context.layers
         };
 
         return selector.color;
