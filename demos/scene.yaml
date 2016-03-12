@@ -1,4 +1,4 @@
-# include: transit.yaml
+# import: transit.yaml
 
 cameras:
     perspective:

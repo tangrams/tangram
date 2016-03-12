@@ -1,6 +1,6 @@
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
-// import mergeObjects from './utils/merge';
+import mergeObjects from './utils/merge';
 import {StyleManager} from './styles/style_manager';
 
 var SceneLoader;
@@ -12,8 +12,8 @@ export default SceneLoader = {
         return SceneLoader.loadSceneRecursive(url, path).then(SceneLoader.finalize);
     },
 
-    // Loads scene files from URL, recursively loading 'included' scenes
-    // Optional *initial* path only (won't be passed to recursive 'include' calls)
+    // Loads scene files from URL, recursively loading 'import' scenes
+    // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
     loadSceneRecursive(url, path = null) {
@@ -30,29 +30,29 @@ export default SceneLoader = {
                 then(styles => StyleManager.loadShaderBlocks(styles, path)). // TODO: deprecate remote shader blocks?
                 then(() => {
                     // accept single-string or array
-                    // if (typeof config.include === 'string') {
-                    //     config.include = [config.include];
-                    // }
+                    if (typeof config.import === 'string') {
+                        config.import = [config.import];
+                    }
 
-                    // if (!Array.isArray(config.include)) {
+                    if (!Array.isArray(config.import)) {
                         SceneLoader.normalize(config, path);
                         return config;
-                    // }
+                    }
 
-                    // Collect URLs of scenes to include
-                    // let includes = [];
-                    // for (let url of config.include) {
-                    //     includes.push(Utils.addBaseURL(url, path));
-                    // }
-                    // delete config.include; // don't want to merge this property
+                    // Collect URLs of scenes to import
+                    let imports = [];
+                    for (let url of config.import) {
+                        imports.push(Utils.addBaseURL(url, path));
+                    }
+                    delete config.import; // don't want to merge this property
 
-                    // return Promise.
-                    //     all(includes.map(url => SceneLoader.loadSceneRecursive(url))).
-                    //     then(configs => {
-                    //         config = mergeObjects({}, ...configs, config);
-                    //         SceneLoader.normalize(config, path);
-                    //         return config;
-                    //     });
+                    return Promise.
+                        all(imports.map(url => SceneLoader.loadSceneRecursive(url))).
+                        then(configs => {
+                            config = mergeObjects({}, ...configs, config);
+                            SceneLoader.normalize(config, path);
+                            return config;
+                        });
                 });
         });
     },
