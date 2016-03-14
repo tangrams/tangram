@@ -1,7 +1,6 @@
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
-import {StyleManager} from './styles/style_manager';
 
 var SceneLoader;
 
@@ -26,33 +25,29 @@ export default SceneLoader = {
         }
 
         return Utils.loadResource(url).then(config => {
-            return StyleManager.loadRemoteStyles(config.styles, path).
-                then(styles => StyleManager.loadShaderBlocks(styles, path)). // TODO: deprecate remote shader blocks?
-                then(() => {
-                    // accept single-string or array
-                    if (typeof config.import === 'string') {
-                        config.import = [config.import];
-                    }
+            // accept single-string or array
+            if (typeof config.import === 'string') {
+                config.import = [config.import];
+            }
 
-                    if (!Array.isArray(config.import)) {
-                        SceneLoader.normalize(config, path);
-                        return config;
-                    }
+            if (!Array.isArray(config.import)) {
+                SceneLoader.normalize(config, path);
+                return config;
+            }
 
-                    // Collect URLs of scenes to import
-                    let imports = [];
-                    for (let url of config.import) {
-                        imports.push(Utils.addBaseURL(url, path));
-                    }
-                    delete config.import; // don't want to merge this property
+            // Collect URLs of scenes to import
+            let imports = [];
+            for (let url of config.import) {
+                imports.push(Utils.addBaseURL(url, path));
+            }
+            delete config.import; // don't want to merge this property
 
-                    return Promise.
-                        all(imports.map(url => SceneLoader.loadSceneRecursive(url))).
-                        then(configs => {
-                            config = mergeObjects({}, ...configs, config);
-                            SceneLoader.normalize(config, path);
-                            return config;
-                        });
+            return Promise.
+                all(imports.map(url => SceneLoader.loadSceneRecursive(url))).
+                then(configs => {
+                    config = mergeObjects({}, ...configs, config);
+                    SceneLoader.normalize(config, path);
+                    return config;
                 });
         });
     },

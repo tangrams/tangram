@@ -1,4 +1,9 @@
-# import: transit.yaml
+import:
+    - styles/halftone.yaml
+    - styles/windows.yaml
+    - styles/water.yaml
+    - styles/popup.yaml
+    # - transit.yaml
 
 cameras:
     perspective:
@@ -49,22 +54,6 @@ textures:
             bookstore: [0, 333, 32, 32]
 
 styles:
-    water:
-        base: polygons
-        animated: true
-        shaders:
-            defines:
-                EFFECT_NOISE_ANIMATED: true
-            blocks:
-                global:
-                    url: shaders/glsl-noise-periodic-3d.glsl
-                color: |
-                    color.rgb *=
-                        abs(pnoise(
-                            (worldPosition().xyz + vec3(u_time * 5., u_time * 7.5, u_time * 10.)) / 10.0,
-                            vec3(TANGRAM_WORLD_POSITION_WRAP / 10.0))
-                        ) / 4. + .75;
-
     rainbow:
         base: polygons
         animated: true
@@ -82,9 +71,6 @@ styles:
                     // modulate hue by z-position and time, then convert to RGB and set pixel color
                     vec3 c = vec3(worldPosition().z * .003 + u_time / 10., 1.0, 1.0);
                     color.rgb = hsv2rgb(c);
-
-    popup:
-        url: styles/popup.yaml
 
     elevator:
         base: polygons
@@ -106,15 +92,6 @@ styles:
             emission:
                 texture: images/sunset.jpg
                 mapping: spheremap
-
-    halftone_polygons:
-        url: styles/halftone.yaml
-
-    halftone_lines:
-        url: styles/halftone.yaml
-
-    windows:
-        url: styles/windows.yaml
 
     flat:
         base: polygons
