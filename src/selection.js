@@ -215,8 +215,15 @@ export default class FeatureSelection {
         selector.feature = {
             id: feature.id,
             properties: feature.properties,
-            tile: tile.key,
-            layers: context.layers
+            layers: context.layers,
+            tile: {
+                key: tile.key,
+                coords: tile.coords,
+                style_zoom: tile.style_zoom,
+                source: tile.source,
+                generation: tile.generation
+
+            }
         };
 
         return selector.color;
