@@ -200,6 +200,7 @@ Builders.buildPolylines = function (
         texcoord_index,
         texcoord_scale,
         texcoord_normalize,
+        texcoord_ratio,
         scaling_index,
         scaling_normalize,
         join, cap,
@@ -218,6 +219,7 @@ Builders.buildPolylines = function (
     // Build variables
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
+        texcoord_ratio = texcoord_ratio || 1;
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
 
@@ -235,7 +237,7 @@ Builders.buildPolylines = function (
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0,
-        uvScale: (4096*10),
+        uvScale: 1/((width*texcoord_ratio)*4096),//1/(4096*10),
         totalDist: 0
     };
 
@@ -435,7 +437,8 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 //  Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, dist, constants) {
     if (constants.texcoords) {
-        constants.totalDist += dist/constants.uvScale;
+        constants.totalDist += dist*constants.uvScale;
+        // console.log(dist, constants.totalDist);
         addVertex(coord, normal, [constants.max_u, constants.totalDist], constants);
         addVertex(coord, Vector.neg(normal), [constants.min_u, constants.totalDist], constants);
     }
@@ -647,7 +650,7 @@ function addSquare (coord, nA, nB, uA, uC, uB, signed, constants) {
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 // function addJoin (coords, normals, v_pct, nTriangles, constants) {
 function addJoin (coords, normals, nTriangles, constants) {
-    constants.totalDist += Vector.length(Vector.sub(coords[1], coords[0])) / constants.uvScale;
+    constants.totalDist += Vector.length(Vector.sub(coords[1], coords[0]))*constants.uvScale;
 
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
     var nA = normals[0],              // normal to point A (aT)
