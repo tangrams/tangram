@@ -130,6 +130,10 @@ function extendLeaflet(options) {
                 // Modify default leaflet scroll wheel behavior
                 this.modifyScrollWheelBehavior(map);
 
+                // Setup feature selection
+                this.setupSelectionEventHandlers(map);
+                this.setSelectionEvents(this.options.events);
+
                 // Add GL canvas to layer container
                 this.scene.container = this.getContainer();
 
@@ -165,6 +169,8 @@ function extendLeaflet(options) {
                 map.off('zoomstart', this.hooks.zoomstart);
                 map.off('dragstart', this.hooks.dragstart);
                 map.off('dragend', this.hooks.dragend);
+                map.off('click', this.hooks.click);
+                map.off('mousemove', this.hooks.mousemove);
                 this.hooks = {};
 
                 if (this.scene) {
@@ -291,6 +297,40 @@ function extendLeaflet(options) {
 
                 var top_left = this._map.containerPointToLayerPoint([0, 0]);
                 L.DomUtil.setPosition(this.scene.container, top_left);
+            },
+
+            // Tie Leaflet event handlers to Tangram feature selection
+            setupSelectionEventHandlers: function (map) {
+                this._selection_events = {};
+
+                this.hooks.click = (event) => {
+                    if (typeof this._selection_events.click === 'function') {
+                        this.scene.getFeatureAt(event.containerPoint).
+                            then(selection => {
+                                let results = Object.assign({}, selection, { leaflet_event: event });
+                                this._selection_events.click(results);
+                            });
+                    }
+                };
+                map.on('click', this.hooks.click);
+
+                this.hooks.mousemove = (event) => {
+                    if (typeof this._selection_events.hover === 'function') {
+                        this.scene.getFeatureAt(event.containerPoint).
+                            then(selection => {
+                                let results = Object.assign({}, selection, { leaflet_event: event });
+                                this._selection_events.hover(results);
+                            });
+                    }
+                };
+                map.on('mousemove', this.hooks.mousemove);
+            },
+
+            // Set user-defined handlers for feature selection events
+            // Currently only one handler can be defined for each event type
+            // Event types are: `click`, `hover` (leaflet `mousemove`)
+            setSelectionEvents: function (events) {
+                this._selection_events = Object.assign(this._selection_events, events);
             }
 
         });
