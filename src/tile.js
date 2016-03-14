@@ -261,11 +261,7 @@ export default class Tile {
                             continue;
                         }
 
-                        context.properties = group.properties; // add rule-specific properties to context
-
                         style.addFeature(feature, group, context);
-
-                        context.properties = null; // clear group-specific properties
                     }
 
                     tile.debug.features++;

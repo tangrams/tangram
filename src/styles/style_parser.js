@@ -7,10 +7,10 @@ export var StyleParser = {};
 
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
+// - global: user-defined properties on the `global` object in the scene file
 // - $zoom: the current map zoom level
 // - $geometry: the type of geometry, 'point', 'line', or 'polygon'
 // - $meters_per_pixel: conversion for meters/pixels at current map zoom
-// - properties: user-defined properties on the style-rule object in the stylesheet
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
@@ -19,7 +19,6 @@ StyleParser.wrapFunction = function (func) {
                 var $layer = context.layer;
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
-                var properties = context.properties;
 
                 var val = (${func}());
 

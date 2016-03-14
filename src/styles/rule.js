@@ -3,7 +3,7 @@ import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
 import log from 'loglevel';
 
-export const whiteList = ['filter', 'draw', 'visible', 'data', 'properties'];
+export const whiteList = ['filter', 'draw', 'visible', 'data'];
 
 export let ruleCache = {};
 
@@ -70,7 +70,7 @@ export function mergeTrees(matchingTrees, group) {
 
 class Rule {
 
-    constructor({name, parent, draw, visible, filter, properties}) {
+    constructor({name, parent, draw, visible, filter}) {
         this.id = Rule.id++;
         this.parent = parent;
         this.name = name;
@@ -78,17 +78,12 @@ class Rule {
         this.draw = draw;
         this.filter = filter;
         this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
-        this.properties = properties !== undefined ? properties : (this.parent && this.parent.properties);
 
-        // Denormalize layer name & properties to draw groups
+        // Denormalize layer name to draw groups
         if (this.draw) {
             for (let group in this.draw) {
                 this.draw[group] = this.draw[group] || {};
                 this.draw[group].layer_name = this.full_name;
-
-                if (this.properties !== undefined) {
-                    this.draw[group].properties = this.properties;
-                }
             }
         }
 
@@ -162,15 +157,15 @@ Rule.id = 0;
 
 
 export class RuleLeaf extends Rule {
-    constructor({name, parent, draw, visible, filter, properties}) {
-        super({name, parent, draw, visible, filter, properties});
+    constructor({name, parent, draw, visible, filter}) {
+        super({name, parent, draw, visible, filter});
     }
 
 }
 
 export class RuleTree extends Rule {
-    constructor({name, parent, draw, visible, rules, filter, properties}) {
-        super({name, parent, draw, visible, filter, properties});
+    constructor({name, parent, draw, visible, rules, filter}) {
+        super({name, parent, draw, visible, filter});
         this.rules = rules || [];
     }
 
@@ -364,7 +359,6 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
 
     for (let r=0; r < rules.length; r++) {
         let current = rules[r];
-        context.properties = current.properties;
 
         if (current instanceof RuleLeaf) {
 
@@ -391,8 +385,6 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
                 }
             }
         }
-
-        context.properties = null;
     }
 
     return matched;

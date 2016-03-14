@@ -151,7 +151,7 @@ export default SceneLoader = {
 
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize(config) {
-        // Replace scene properties
+        // Replace global scene properties
         config = StyleParser.applyGlobalProperties(config);
 
         // Assign ids to data sources
