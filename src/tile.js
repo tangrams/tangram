@@ -34,6 +34,8 @@ export default class Tile {
 
         this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
+        this.overzoom2 = Math.pow(2, this.overzoom);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
@@ -42,10 +44,7 @@ export default class Tile {
         this.center_dist = 0;
 
         // Units per pixel needs to account for over-zooming
-        this.units_per_pixel = Geo.units_per_pixel;
-        if (this.style_zoom > this.coords.z) {
-            this.units_per_pixel /= Math.pow(2, this.style_zoom - this.coords.z);
-        }
+        this.units_per_pixel = Geo.units_per_pixel / this.overzoom2;
 
         this.meters_per_pixel = Geo.metersPerPixel(this.coords.z);
         this.units_per_meter = Geo.unitsPerMeter(this.coords.z);
@@ -162,6 +161,8 @@ export default class Tile {
             meters_per_pixel: this.meters_per_pixel,
             units_per_meter: this.units_per_meter,
             style_zoom: this.style_zoom,
+            overzoom: this.overzoom,
+            overzoom2: this.overzoom2,
             generation: this.generation,
             debug: this.debug
         };
