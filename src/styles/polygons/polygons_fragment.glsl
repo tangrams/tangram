@@ -19,6 +19,10 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
+#if defined(TANGRAM_LIGHTING_VERTEX)
+    varying vec4 v_lighting;
+#endif
+
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -29,26 +33,31 @@ void main (void) {
     #pragma tangram: setup
 
     vec4 color = v_color;
+    vec3 normal = TANGRAM_NORMAL;
 
-    #if defined(TANGRAM_LIGHTING_FRAGMENT)
-        // Fragment lighting
-
-        vec3 normal = TANGRAM_NORMAL;
-
-        #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
-            calculateNormal(normal);
-        #endif
-
-        // Modify normal before lighting
-        #pragma tangram: normal
-
-        // Modify color and material properties before lighting
-        #pragma tangram: color
-
-        color = calculateLighting(v_position.xyz - u_eye, normal, color);
+    // Normal material texture (fragment lighting only)
+    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)
+        calculateNormal(normal);
     #endif
 
-    // Modify color after lighting (filter-like effects that don't require a additional render passes)
+    // Normal modification applied here for fragment lighting or no lighting,
+    // and in vertex shader for vertex lighting
+    #if !defined(TANGRAM_LIGHTING_VERTEX)
+        #pragma tangram: normal
+    #endif
+
+    // Color modification before lighting is applied
+    #pragma tangram: color
+
+    #if defined(TANGRAM_LIGHTING_FRAGMENT)
+        // Calculate per-fragment lighting
+        color = calculateLighting(v_position.xyz - u_eye, normal, color);
+    #elif defined(TANGRAM_LIGHTING_VERTEX)
+        // Apply lighting intensity interpolated from vertex shader
+        color *= v_lighting;
+    #endif
+
+    // Post-processing effects (modify color after lighting)
     #pragma tangram: filter
 
     gl_FragColor = color;
