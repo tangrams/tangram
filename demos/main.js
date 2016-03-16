@@ -408,14 +408,6 @@ Enjoy!
     selection_info.style.display = 'block';
 
     function onFeatureHover (selection) {
-        // Don't show labels while panning
-        if (scene.panning == true) {
-            if (selection_info.parentNode != null) {
-                selection_info.parentNode.removeChild(selection_info);
-            }
-            return;
-        }
-
         // Show selection info
         var feature = selection.feature;
         if (feature != null) {
@@ -429,7 +421,9 @@ Enjoy!
                 selection_info.style.left = (selection.pixel.x + 5) + 'px';
                 selection_info.style.top = (selection.pixel.y + 15) + 'px';
                 selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-                map.getContainer().appendChild(selection_info);
+                if (selection_info.parentNode == null) {
+                    map.getContainer().appendChild(selection_info);
+                }
             }
             else if (selection_info.parentNode != null) {
                 selection_info.parentNode.removeChild(selection_info);

@@ -171,6 +171,7 @@ function extendLeaflet(options) {
                 map.off('dragend', this.hooks.dragend);
                 map.off('click', this.hooks.click);
                 map.off('mousemove', this.hooks.mousemove);
+                map.off('mouseout', this.hooks.mouseout);
                 this.hooks = {};
 
                 if (this.scene) {
@@ -324,6 +325,14 @@ function extendLeaflet(options) {
                     }
                 };
                 map.on('mousemove', this.hooks.mousemove);
+
+                this.hooks.mouseout = (event) => {
+                    // When mouse leaves map, send an additional selection event to indicate no feature is selected
+                    if (typeof this._selection_events.hover === 'function') {
+                        this._selection_events.hover({ changed: true, leaflet_event: event });
+                    }
+                };
+                map.on('mouseout', this.hooks.mouseout);
             },
 
             // Set user-defined handlers for feature selection events
