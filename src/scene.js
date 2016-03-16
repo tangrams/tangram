@@ -440,7 +440,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
-            if (this.view.panning) {
+            if (this.view.panning || this.view.zooming) {
                 this.selection.clearPendingRequests();
                 return;
             }
