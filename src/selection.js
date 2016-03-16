@@ -204,8 +204,21 @@ export default class FeatureSelection {
         };
         this.map_size++;
 
-        this.tiles[tile.key] = this.tiles[tile.key] || [];
-        this.tiles[tile.key].push(key);
+        // Initialize tile-specific tracking info
+        if (!this.tiles[tile.key]) {
+            this.tiles[tile.key] = {
+                entries: [],                        // set of feature entries in this thread
+                tile: {                             // subset of tile properties to pass back with feature
+                    key: tile.key,
+                    coords: tile.coords,
+                    style_zoom: tile.style_zoom,
+                    source: tile.source,
+                    generation: tile.generation
+                }
+            };
+        }
+
+        this.tiles[tile.key].entries.push(key);
 
         return this.map[key];
     }
@@ -216,14 +229,7 @@ export default class FeatureSelection {
             id: feature.id,
             properties: feature.properties,
             layers: context.layers,
-            tile: {
-                key: tile.key,
-                coords: tile.coords,
-                style_zoom: tile.style_zoom,
-                source: tile.source,
-                generation: tile.generation
-
-            }
+            tile: this.tiles[tile.key].tile
         };
 
         return selector.color;
@@ -237,9 +243,9 @@ export default class FeatureSelection {
     }
 
     static clearTile(key) {
-        if (Array.isArray(this.tiles[key])) {
-            this.tiles[key].forEach(k => delete this.map[k]);
-            this.map_size -= this.tiles[key].length;
+        if (this.tiles[key]) {
+            this.tiles[key].entries.forEach(k => delete this.map[k]);
+            this.map_size -= this.tiles[key].entries.length;
             delete this.tiles[key];
         }
     }
