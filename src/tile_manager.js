@@ -1,6 +1,5 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
-import Utils from './utils/utils';
 
 import log from 'loglevel';
 
@@ -159,8 +158,6 @@ const TileManager = {
     updateVisibility(tile) {
         tile.visible = false;
         if (tile.style_zoom === this.view.tile_zoom) {
-            // let coord = Tile.coordinateAtZoom(tile.coords, this.view.tile_zoom);
-            // if (this.visible_coords[coord.key]) {
             if (this.visible_coords[tile.coords.key]) {
                 tile.visible = true;
             }
