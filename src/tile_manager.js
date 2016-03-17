@@ -15,7 +15,6 @@ const TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
-        this.reset_visible_tiles = true;
     },
 
     destroy() {
@@ -108,17 +107,10 @@ const TileManager = {
             }
         }
 
-        // Only update when states have changed:
-        //   - visible coordinates changed
-        //   - hard reset of visible tiles (e.g. when reloading scene)
-        if (coords_changed || this.reset_visible_tiles) {
-            this.updateTileStates();
-        }
+        this.updateTileStates();
     },
 
     updateTileStates () {
-        this.reset_visible_tiles = false;
-
         this.forEachTile(tile => {
             this.updateVisibility(tile);
             tile.update();
@@ -184,11 +176,9 @@ const TileManager = {
         }
     },
 
-    // Remove tiles that aren't visible, and flag remaining visible ones to be updated
-    // (for loading, proxy, etc.)
-    resetVisibleTiles () {
+    // Remove tiles that aren't visible, and flag remaining visible ones to be updated (for loading, proxy, etc.)
+    pruneToVisibleTiles () {
         this.removeTiles(tile => !tile.visible);
-        this.reset_visible_tiles = true;
     },
 
     getRenderableTiles() {

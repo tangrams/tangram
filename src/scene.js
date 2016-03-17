@@ -127,8 +127,8 @@ export default class Scene {
                     Texture.subscribe(this.listeners.texture);
                 }
 
-                // Reset tile manager visibility before rebuilding
-                this.tile_manager.resetVisibleTiles();
+                // Only retain visible tiles for rebuilding
+                this.tile_manager.pruneToVisibleTiles();
                 return this.updateConfig({ rebuild: true });
             }).then(() => {
                 this.updating--;
