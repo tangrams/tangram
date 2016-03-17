@@ -235,7 +235,8 @@ const TileManager = {
         }
 
         // Determine necessary tiles for each source
-        for (let source of Utils.values(this.scene.sources)) {
+        for (let s in this.scene.sources) {
+            let source = this.scene.sources[s];
             if (!source.tiled) {
                 continue;
             }
