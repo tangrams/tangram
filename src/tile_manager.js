@@ -258,7 +258,11 @@ const TileManager = {
         this.updateVisibility(tile);
         tile.update();
         tile.build(this.scene.generation)
-            .then(message => this.buildTileCompleted(message))
+            .then(message => {
+                if (message) { // empty message means tile build was aborted
+                    this.buildTileCompleted(message);
+                }
+            })
             .catch(e => {
                 log.error(`Error building tile ${tile.key}:`, e);
                 this.forgetTile(tile.key);
