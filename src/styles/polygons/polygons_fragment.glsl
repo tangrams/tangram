@@ -37,6 +37,7 @@ void main (void) {
     #pragma tangram: setup
 
     vec4 color = v_color;
+    vec3 normal = TANGRAM_NORMAL;
 
     // Get value from raster tile texture
     #ifdef TANGRAM_RASTER_TEXTURE
@@ -48,31 +49,30 @@ void main (void) {
         color *= raster;
     #endif
 
-    #if defined(TANGRAM_LIGHTING_FRAGMENT)
-        // Fragment lighting
-        vec3 normal = TANGRAM_NORMAL;
-
-        // Apply normal from raster tile
-        // TODO: precedence / disambiguation between raster tile and material normals?
-        #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
-            normal = normalize(raster.rgb * 2. - 1.);
-        #endif
-
-        // Apply normal from material
-        #ifdef TANGRAM_MATERIAL_NORMAL_TEXTURE
-            calculateNormal(normal);
-        #endif
-
-        // Modify normal before lighting
-        #pragma tangram: normal
-
-        // Modify color and material properties before lighting
-        #pragma tangram: color
-
-        color = calculateLighting(v_position.xyz - u_eye, normal, color);
+    // Apply normal from raster tile
+    // TODO: precedence / disambiguation between raster tile and material normals?
+    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
+        normal = normalize(raster.rgb * 2. - 1.);
     #endif
 
-    // Modify color after lighting (filter-like effects that don't require a additional render passes)
+    // Normal modification applied here for fragment lighting or no lighting,
+    // and in vertex shader for vertex lighting
+    #if !defined(TANGRAM_LIGHTING_VERTEX)
+        #pragma tangram: normal
+    #endif
+
+    // Color modification before lighting is applied
+    #pragma tangram: color
+
+    #if defined(TANGRAM_LIGHTING_FRAGMENT)
+        // Calculate per-fragment lighting
+        color = calculateLighting(v_position.xyz - u_eye, normal, color);
+    #elif defined(TANGRAM_LIGHTING_VERTEX)
+        // Apply lighting intensity interpolated from vertex shader
+        color *= v_lighting;
+    #endif
+
+    // Post-processing effects (modify color after lighting)
     #pragma tangram: filter
 
     gl_FragColor = color;

@@ -261,6 +261,7 @@ export default class Tile {
                             continue;
                         }
 
+                        context.layers = group.layers;  // add matching draw layers
                         context.properties = group.properties; // add rule-specific properties to context
 
                         style.addFeature(feature, group, context);

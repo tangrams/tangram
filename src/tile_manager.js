@@ -1,6 +1,5 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
-import Utils from './utils/utils';
 
 import log from 'loglevel';
 
@@ -15,7 +14,6 @@ const TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
-        this.reset_visible_tiles = true;
     },
 
     destroy() {
@@ -108,17 +106,10 @@ const TileManager = {
             }
         }
 
-        // Only update when states have changed:
-        //   - visible coordinates changed
-        //   - hard reset of visible tiles (e.g. when reloading scene)
-        if (coords_changed || this.reset_visible_tiles) {
-            this.updateTileStates();
-        }
+        this.updateTileStates();
     },
 
     updateTileStates () {
-        this.reset_visible_tiles = false;
-
         this.forEachTile(tile => {
             this.updateVisibility(tile);
             tile.update();
@@ -167,8 +158,6 @@ const TileManager = {
     updateVisibility(tile) {
         tile.visible = false;
         if (tile.style_zoom === this.view.tile_zoom) {
-            // let coord = Tile.coordinateAtZoom(tile.coords, this.view.tile_zoom);
-            // if (this.visible_coords[coord.key]) {
             if (this.visible_coords[tile.coords.key]) {
                 tile.visible = true;
             }
@@ -184,11 +173,9 @@ const TileManager = {
         }
     },
 
-    // Remove tiles that aren't visible, and flag remaining visible ones to be updated
-    // (for loading, proxy, etc.)
-    resetVisibleTiles () {
+    // Remove tiles that aren't visible, and flag remaining visible ones to be updated (for loading, proxy, etc.)
+    pruneToVisibleTiles () {
         this.removeTiles(tile => !tile.visible);
-        this.reset_visible_tiles = true;
     },
 
     getRenderableTiles() {
@@ -235,7 +222,8 @@ const TileManager = {
         }
 
         // Determine necessary tiles for each source
-        for (let source of Utils.values(this.scene.sources)) {
+        for (let s in this.scene.sources) {
+            let source = this.scene.sources[s];
             if (!source.tiled) {
                 continue;
             }
@@ -267,7 +255,11 @@ const TileManager = {
         this.updateVisibility(tile);
         tile.update();
         tile.build(this.scene.generation)
-            .then(message => this.buildTileCompleted(message))
+            .then(message => {
+                if (message) { // empty message means tile build was aborted
+                    this.buildTileCompleted(message);
+                }
+            })
             .catch(e => {
                 log.error(`Error building tile ${tile.key}:`, e);
                 this.forgetTile(tile.key);
