@@ -6,7 +6,6 @@ import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import mergeObjects from '../utils/merge';
 import Geo from '../geo';
-import {RasterTileSource} from '../sources/raster';
 
 import log from 'loglevel';
 
@@ -20,7 +19,7 @@ StyleManager.styles = Styles;
 StyleManager.baseStyle = Style;
 
 // Global configuration for all styles
-StyleManager.init = function (sources) {
+StyleManager.init = function () {
     ShaderProgram.removeBlock('global');
     ShaderProgram.removeBlock('setup');
 
@@ -35,9 +34,6 @@ StyleManager.init = function (sources) {
 
     // Feature selection global
     ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
-
-    // Add raster samplers
-    StyleManager.setupRasters(sources);
 
     // Feature selection vertex shader support
     ShaderProgram.replaceBlock('setup', shaderSources['gl/shaders/selection_vertex']);
@@ -224,6 +220,7 @@ StyleManager.mix = function (style, styles) {
     // Flags - OR'd, true if any style has it set
     style.animated = sources.some(x => x && x.animated);
     style.texcoords = sources.some(x => x && x.texcoords);
+    style.raster = sources.some(x => x && x.raster);
 
     // Overwrites - last definition wins
     style.base = sources.map(x => x.base).filter(x => x).pop();
@@ -365,18 +362,6 @@ StyleManager.mixShaders = function (style, styles, sources) {
 
     style.shaders = shaders; // assign back to style
     return style;
-};
-
-// Add raster samplers
-StyleManager.setupRasters = function (sources) {
-    let num_rasters = Object.keys(sources).filter(s => sources[s] instanceof RasterTileSource).length;
-    if (num_rasters > 0) {
-        ShaderProgram.addBlock('global', `
-            #ifdef TANGRAM_FRAGMENT_SHADER
-            uniform sampler2D u_rasters[${num_rasters}];
-            #endif
-        `);
-    }
 };
 
 // Create a new style

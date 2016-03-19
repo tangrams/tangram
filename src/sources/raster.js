@@ -15,7 +15,6 @@ export class RasterTileSource extends NetworkTileSource {
         // save texture objects by tile key, so URL remains stable if tile is built multiple times,
         // e.g. avoid re-loading the same tile texture under a different subdomain when using tile hosts
         this.textures = {};
-
     }
 
     load(tile) {

@@ -63,6 +63,9 @@ export var Style = {
         // Set lighting mode: fragment, vertex, or none (specified as 'false')
         Light.setMode(this.lighting, this);
 
+        // Setup raster samplers if needed
+        this.setupRasters();
+
         this.initialized = true;
     },
 
@@ -312,7 +315,7 @@ export var Style = {
         var block_scopes = (this.shaders && this.shaders.block_scopes);
         var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms);
 
-        // accept a single extension, or an array of extensions
+        // Accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
         if (typeof extensions === 'string') {
             extensions = [extensions];
@@ -408,8 +411,33 @@ export var Style = {
 
     },
 
+    // Setup raster access in shaders
+    setupRasters () {
+        if (!this.raster) {
+            return;
+        }
+
+        let sources = this.sources;
+        let num_rasters = Object.keys(sources).filter(s => sources[s] instanceof RasterTileSource).length;
+        if (num_rasters > 0) {
+            // Use model position for raster tile texture UVs
+            this.defines.TANGRAM_MODEL_POSITION_VARYING = true;
+
+            // Samplers
+            this.replaceShaderBlock('raster', `
+                #ifdef TANGRAM_FRAGMENT_SHADER
+                uniform sampler2D u_rasters[${num_rasters}];
+                #endif
+            `, 'Raster');
+        }
+    },
+
     // Load raster tile textures
     buildRasterTextures (tile, tile_data) {
+        if (!this.raster) {
+            return Promise.resolve(tile_data);
+        }
+
         let configs = {}; // texture configs to pass to texture builder, keyed by texture name
         let index = {};   // index into raster sampler array, keyed by texture name
 

@@ -948,10 +948,10 @@ export default class Scene {
         this.updating++;
         this.config.scene = this.config.scene || {};
 
-        this.loadDataSources();
-        StyleManager.init(this.sources); // after data sources but before lights
+        StyleManager.init();
         this.view.reset();
         this.createLights();
+        this.loadDataSources();
         this.loadTextures();
         this.setBackground();
 

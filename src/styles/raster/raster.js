@@ -12,7 +12,8 @@ Object.assign(RasterStyle, {
     selection: false, // no feature selection by default
 
     init() {
-        // Enable texture UVs since they're required for raster tiles
+        // Required for raster tiles
+        this.raster = true;
         this.texcoords = true;
 
         this.super.init.apply(this, arguments);
@@ -25,9 +26,6 @@ Object.assign(RasterStyle, {
         else if (this.apply === 'normal') {
             this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
         }
-
-        // Use model position for raster tile texture UVs
-        this.defines.TANGRAM_MODEL_POSITION_VARYING = true;
     },
 
     _preprocess (draw) {
