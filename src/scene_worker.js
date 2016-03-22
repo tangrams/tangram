@@ -101,8 +101,7 @@ Object.assign(self, {
         self.styles = StyleManager.build(config.styles, { generation: self.generation });
 
         // Parse each top-level layer as a separate rule tree
-        self.layers = config.layers;
-        self.rules = parseRules(self.layers);
+        self.rules = parseRules(config.layers);
 
         // Sync tetxure info from main thread
         self.syncing_textures = self.syncTextures(config.textures);
@@ -155,7 +154,7 @@ Object.assign(self, {
 
                         tile.loading = false;
                         tile.loaded = true;
-                        Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
+                        Tile.buildGeometry(tile, self.config, self.rules, self.styles).then(keys => {
                             resolve(WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) }));
                         });
                     }).catch((error) => {
@@ -173,7 +172,7 @@ Object.assign(self, {
                 Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self.layers, self.rules, self.styles).then(keys => {
+                return Tile.buildGeometry(tile, self.config, self.rules, self.styles).then(keys => {
                     return WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) });
                 });
             }
