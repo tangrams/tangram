@@ -1,5 +1,13 @@
 # include: transit.yaml
 
+global:
+    language: en # OSM language code
+    language_text_source: |
+        function() {
+            // Use preferred language label if available
+            return (global.language && feature['name:'+global.language]) || feature.name;
+        }
+
 cameras:
     perspective:
         type: perspective
@@ -395,7 +403,7 @@ layers:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
                 text:
-                    text_source: [name:en, name]
+                    text_source: global.language_text_source
                     priority: 2
                     font:
                         fill: '#666'
@@ -407,7 +415,7 @@ layers:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
                 text:
-                    text_source: [name:en, name]
+                    text_source: global.language_text_source
                     priority: 5
                     font:
                         fill: '#666'
@@ -503,7 +511,7 @@ layers:
                 - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
         draw:
             text:
-                text_source: [name:en, name]
+                text_source: global.language_text_source
                 priority: 1
                 font:
                     family: Helvetica
@@ -569,7 +577,7 @@ layers:
                     - { $zoom: { min: 18 } }
             draw:
                 text:
-                    text_source: [name:en, name]
+                    text_source: global.language_text_source
                     priority: 4
                     font:
                         family: Lucida Grande
@@ -586,7 +594,7 @@ layers:
                 $zoom: { min: 18 }
             draw:
                 text:
-                    text_source: [name:en, name]
+                    text_source: global.language_text_source
                     # align: left
                     anchor: bottom
                     offset: [[13, [0, 6px]], [15, [0, 9px]]]

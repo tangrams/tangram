@@ -334,6 +334,22 @@ Enjoy!
             this.onResize();
         };
 
+        // Language selector
+        var langs = {
+            '(default)': null,
+            'English': 'en',
+            'Russian': 'ru',
+            'Japanese': 'ja',
+            'German': 'de',
+            'French': 'fr',
+            'Arabic': 'ar'
+        };
+        gui.language = 'en';
+        gui.add(gui, 'language', langs).onChange(function(value) {
+            scene.config.global.language = value;
+            scene.updateConfig({ rebuild: true });
+        });
+
         // Camera
         var camera_types = {
             'Flat': 'flat',
