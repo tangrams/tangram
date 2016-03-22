@@ -36,6 +36,9 @@ Enjoy!
 
         layer = Tangram.leafletLayer({
             scene: scene_url,
+            events: {
+                hover: onFeatureHover
+            },
             preUpdate: preUpdate,
             postUpdate: postUpdate,
             // highDensityDisplay: false,
@@ -417,58 +420,35 @@ Enjoy!
     }
 
     // Feature selection
-    function initFeatureSelection () {
-        // Selection info shown on hover
-        var selection_info = document.createElement('div');
-        selection_info.setAttribute('class', 'label');
-        selection_info.style.display = 'block';
+    var selection_info = document.createElement('div'); // shown on hover
+    selection_info.setAttribute('class', 'label');
+    selection_info.style.display = 'block';
 
-        // Show selected feature on hover
-        map.getContainer().addEventListener('mousemove', function (event) {
-            if (gui['feature info'] == false) {
-                if (selection_info.parentNode != null) {
-                    selection_info.parentNode.removeChild(selection_info);
-                }
-
-                return;
+    function onFeatureHover (selection) {
+        // Show selection info
+        var feature = selection.feature;
+        if (feature != null) {
+            var label = '';
+            if (feature.properties.name != null) {
+                label = feature.properties.name;
             }
+            // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
 
-            var pixel = { x: event.clientX, y: event.clientY };
-
-            scene.getFeatureAt(pixel).then(function(selection) {
-                if (!selection) {
-                    return;
-                }
-                var feature = selection.feature;
-                if (feature != null) {
-                    var label = '';
-                    if (feature.properties.name != null) {
-                        label = feature.properties.name;
-                    }
-                    // Object.keys(feature.properties).forEach(p => label += `<b>${p}:</b> ${feature.properties[p]}<br>`);
-
-                    if (label != '') {
-                        selection_info.style.left = (pixel.x + 5) + 'px';
-                        selection_info.style.top = (pixel.y + 15) + 'px';
-                        selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
-                        map.getContainer().appendChild(selection_info);
-                    }
-                    else if (selection_info.parentNode != null) {
-                        selection_info.parentNode.removeChild(selection_info);
-                    }
-                }
-                else if (selection_info.parentNode != null) {
-                    selection_info.parentNode.removeChild(selection_info);
-                }
-            });
-
-            // Don't show labels while panning
-            if (scene.panning == true) {
-                if (selection_info.parentNode != null) {
-                    selection_info.parentNode.removeChild(selection_info);
+            if (label != '') {
+                selection_info.style.left = (selection.pixel.x + 5) + 'px';
+                selection_info.style.top = (selection.pixel.y + 15) + 'px';
+                selection_info.innerHTML = '<span class="labelInner">' + label + '</span>';
+                if (selection_info.parentNode == null) {
+                    map.getContainer().appendChild(selection_info);
                 }
             }
-        });
+            else if (selection_info.parentNode != null) {
+                selection_info.parentNode.removeChild(selection_info);
+            }
+        }
+        else if (selection_info.parentNode != null) {
+            selection_info.parentNode.removeChild(selection_info);
+        }
     }
 
     // Pre-render hook
@@ -516,8 +496,6 @@ Enjoy!
                 style_options.setup(url_style);
             }
             updateURL();
-
-            initFeatureSelection();
         });
         layer.addTo(map);
 
