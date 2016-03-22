@@ -342,7 +342,8 @@ Enjoy!
             'Japanese': 'ja',
             'German': 'de',
             'French': 'fr',
-            'Arabic': 'ar'
+            'Arabic': 'ar',
+            'Spanish': 'es'
         };
         gui.language = 'en';
         gui.add(gui, 'language', langs).onChange(function(value) {
