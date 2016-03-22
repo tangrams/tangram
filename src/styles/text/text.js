@@ -418,7 +418,7 @@ Object.assign(TextStyle, {
 
     // Build one or more labels for a line geometry
     buildLineLabels (size, line, options, labels) {
-        let subdiv = Math.min(options.subdiv, line.length);
+        let subdiv = Math.min(options.subdiv, line.length - 1);
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
             // in which it will attempt to place
