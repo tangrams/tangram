@@ -17,7 +17,7 @@ import log from 'loglevel';
 // Base class
 
 export var Style = {
-    init ({ generation, sources } = {}) {
+    init ({ generation, sources = {} } = {}) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
