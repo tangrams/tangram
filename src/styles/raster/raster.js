@@ -14,7 +14,6 @@ Object.assign(RasterStyle, {
     init() {
         // Required for raster tiles
         this.raster = true;
-        this.texcoords = true;
 
         this.super.init.apply(this, arguments);
 
