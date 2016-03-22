@@ -41,9 +41,9 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
-// Optional model position (useful for texture UVs in world/tile space)
-#ifdef TANGRAM_MODEL_POSITION_VARYING
-    varying vec4 v_model_position;
+// Optional model position varying for tile coordinate zoom
+#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+    varying vec4 v_modelpos_base_zoom;
 #endif
 
 #if defined(TANGRAM_LIGHTING_VERTEX)
@@ -66,8 +66,8 @@ void main() {
     #endif
 
     // Pass model position to fragment shader
-    #ifdef TANGRAM_MODEL_POSITION_VARYING
-        v_model_position = modelPosition();
+    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+        v_modelpos_base_zoom = modelPositionBaseZoom();
     #endif
 
     // Position

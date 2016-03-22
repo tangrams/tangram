@@ -419,20 +419,18 @@ export var Style = {
 
         let sources = this.sources;
         let num_rasters = Object.keys(sources).filter(s => sources[s] instanceof RasterTileSource).length;
-        if (num_rasters > 0) {
-            // Use model position for raster tile texture UVs
-            this.defines.TANGRAM_MODEL_POSITION_VARYING = true;
 
-            // Samplers
-            this.replaceShaderBlock('raster', `
-                #ifdef TANGRAM_FRAGMENT_SHADER
-                uniform sampler2D u_rasters[${num_rasters}];
-                #endif
-            `, 'Raster');
+        this.defines.TANGRAM_NUM_RASTERS = `int(${num_rasters})`;
+        if (num_rasters > 0) {
+            // Use model position of tile's coordinate zoom for raster tile texture UVs
+            this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
+
+            // Uniforms and macros for raster samplers
+            this.replaceShaderBlock('raster', shaderSources['gl/shaders/rasters'], 'Raster');
         }
     },
 
-    // Load raster tile textures
+    // Load raster tile textures and set uniforms
     buildRasterTextures (tile, tile_data) {
         if (!this.raster) {
             return Promise.resolve(tile_data);
@@ -465,10 +463,35 @@ export var Style = {
                     tile_data.uniforms = tile_data.uniforms || {};
                     tile_data.textures = tile_data.textures || [];
 
-                    let raster_unis = tile_data.uniforms['u_rasters'] = [];
-                    for (let [tname/*, width, height*/] of textures) {
-                        raster_unis[index[tname]] = tname;
+                    let u_samplers = tile_data.uniforms['u_rasters'] = [];
+                    let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
+                    let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
+
+                    for (let [tname, twidth, theight] of textures) {
+                        let i = index[tname];
+                        let coords = configs[tname].coords; // tile coords of raster tile
+
+                        u_samplers[i] = tname;
                         tile_data.textures.push(tname);
+
+                        u_sizes[i] = [twidth, theight];
+
+                        // Tile geometry may be at a higher zoom than the raster tile texture,
+                        // (e.g. an overzoomed raster tile), in which case we need to adjust the
+                        // raster texture UVs to offset to the appropriate starting point for
+                        // this geometry tile.
+                        if (tile.coords.z > coords.z) {
+                            let dz = tile.coords.z - coords.z;
+                            let dz2 = Math.pow(2, dz);
+                            u_offsets[i] = [
+                                (tile.coords.x % dz2) / dz2,
+                                (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
+                                1 / dz2
+                            ];
+                        }
+                        else {
+                            u_offsets[i] = [0, 0, 1];
+                        }
                     }
 
                     return tile_data;

@@ -51,7 +51,7 @@ export class RasterTileSource extends NetworkTileSource {
         if (!this.textures[key]) {
             let coords = Tile.coordinateWithMaxZoom(tile.coords, this.max_zoom);
             let url = this.formatUrl(this.url, { coords });
-            this.textures[key] = { url, filtering: this.filtering };
+            this.textures[key] = { url, filtering: this.filtering, coords };
         }
         return this.textures[key];
     }

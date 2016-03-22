@@ -19,8 +19,8 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
-#ifdef TANGRAM_MODEL_POSITION_VARYING
-    varying vec4 v_model_position;
+#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+    varying vec4 v_modelpos_base_zoom;
 #endif
 
 #if defined(TANGRAM_LIGHTING_VERTEX)
@@ -42,7 +42,7 @@ void main (void) {
 
     // Get value from raster tile texture
     #ifdef TANGRAM_RASTER_TEXTURE
-        vec4 raster = texture2D(u_rasters[0], v_model_position.xy);
+        vec4 raster = sampleRaster(0);
     #endif
 
     #ifdef TANGRAM_RASTER_TEXTURE_COLOR
