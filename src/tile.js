@@ -385,7 +385,11 @@ export default class Tile {
 
                 // Assign texture ownership to tiles
                 if (mesh_data[s].textures) {
-                    textures.push(...mesh_data[s].textures);
+                    mesh_data[s].textures.forEach(t => {
+                        if (textures.indexOf(t) === -1) {
+                            textures.push(t);
+                        }
+                    });
                 }
             }
         }
