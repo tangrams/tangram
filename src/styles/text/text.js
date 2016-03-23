@@ -155,11 +155,6 @@ Object.assign(TextStyle, {
 
                 // second call to main thread, for rasterizing the set of texts
                 return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
-                    if (tile.canceled) {
-                        Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-                        return;
-                    }
-
                     if (texts) {
                         this.texts[tile.key] = texts;
 
@@ -182,9 +177,7 @@ Object.assign(TextStyle, {
                     return this.finishTile(tile).then(tile_data => {
                         // Attach tile-specific label atlas to mesh as a texture uniform
                         if (texture && tile_data) {
-                            tile_data.uniforms = tile_data.uniforms || {};
                             tile_data.uniforms.u_texture = texture;
-                            tile_data.textures = tile_data.textures || [];
                             tile_data.textures.push(texture); // assign texture ownership to tile
                             return tile_data;
                         }

@@ -112,18 +112,14 @@ export var Style = {
     startData (tile) {
         this.tile_data[tile.key] = {
             vertex_data: null,
-            uniforms: null
+            uniforms: {},
+            textures: []
         };
         return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        if (tile.canceled) {
-            Utils.log('debug', `stop tile build because tile was removed: ${tile.key}`);
-            return;
-        }
-
         var tile_data = this.tile_data[tile.key];
         this.tile_data[tile.key] = null;
 

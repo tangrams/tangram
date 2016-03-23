@@ -229,11 +229,6 @@ export default class Tile {
                         continue; // skip features w/o geometry (valid GeoJSON)
                     }
 
-                    if (tile.canceled) {
-                        Utils.log('debug', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
-                        return;
-                    }
-
                     let context = StyleParser.getFeatureParseContext(feature, tile);
                     context.winding = tile.default_winding;
                     context.layer = source_layer.layer; // add data source layer name
@@ -384,11 +379,13 @@ export default class Tile {
                 }
 
                 // Assign texture ownership to tiles
+                // Note that it's valid for a single texture to be referenced from multiple styles
+                // (e.g. same raster texture attached to multiple sources). This means the same
+                // texture may be added to the tile's texture list more than once, which ensures
+                // that it is properly released (to match its retain count).
                 if (mesh_data[s].textures) {
                     mesh_data[s].textures.forEach(t => {
-                        if (textures.indexOf(t) === -1) {
-                            textures.push(t);
-                        }
+                        textures.push(t);
                     });
                 }
             }
