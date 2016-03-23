@@ -413,11 +413,20 @@ export var Style = {
             return;
         }
 
-        let sources = this.sources;
-        let num_rasters = Object.keys(sources).filter(s => sources[s] instanceof RasterTileSource).length;
+        // A given style may be built with multiple data sources, each of which may attach
+        // a variable number of raster sources (0 to N, where N is the max number of raster sources
+        // defined for the scene). This means we don't know *which* or *how many* rasters will be
+        // bound now, at initial compile-time; we only know this at geometry build-time. To ensure
+        // that we can bind as many raster sources as needed, we declare our uniform arrays to hold
+        // the maximum number of possible sources. At render time, only the necessary number of rasters
+        // are bound (the remaining slots aren't intended to be accessed).
+        let num_raster_sources =
+            Object.keys(this.sources)
+            .filter(s => this.sources[s] instanceof RasterTileSource)
+            .length;
 
-        this.defines.TANGRAM_NUM_RASTERS = `int(${num_rasters})`;
-        if (num_rasters > 0) {
+        this.defines.TANGRAM_NUM_RASTER_SOURCES = `int(${num_raster_sources})`;
+        if (num_raster_sources > 0) {
             // Use model position of tile's coordinate zoom for raster tile texture UVs
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
 
@@ -444,57 +453,58 @@ export var Style = {
             }
         });
 
-        if (Object.keys(configs).length > 0) {
-            // Load textures on main thread and return when done
-            // We want to block the building of a raster tile mesh until its texture is loaded,
-            // to avoid flickering while loading (texture will render as black)
-            return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
-                .then(textures => {
-                    if (!textures || textures.length < 1) {
-                        // TODO: warning
-                        return tile_data;
-                    }
+        if (Object.keys(configs).length === 0) {
+            return Promise.resolve(tile_data);
+        }
 
-                    // Set texture uniforms (returned after loading from main thread)
-                    tile_data.uniforms = tile_data.uniforms || {};
-                    tile_data.textures = tile_data.textures || [];
-
-                    let u_samplers = tile_data.uniforms['u_rasters'] = [];
-                    let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
-                    let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
-
-                    for (let [tname, twidth, theight] of textures) {
-                        let i = index[tname];
-                        let coords = configs[tname].coords; // tile coords of raster tile
-
-                        u_samplers[i] = tname;
-                        tile_data.textures.push(tname);
-
-                        u_sizes[i] = [twidth, theight];
-
-                        // Tile geometry may be at a higher zoom than the raster tile texture,
-                        // (e.g. an overzoomed raster tile), in which case we need to adjust the
-                        // raster texture UVs to offset to the appropriate starting point for
-                        // this geometry tile.
-                        if (tile.coords.z > coords.z) {
-                            let dz = tile.coords.z - coords.z;
-                            let dz2 = Math.pow(2, dz);
-                            u_offsets[i] = [
-                                (tile.coords.x % dz2) / dz2,
-                                (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
-                                1 / dz2
-                            ];
-                        }
-                        else {
-                            u_offsets[i] = [0, 0, 1];
-                        }
-                    }
-
+        // Load textures on main thread and return when done
+        // We want to block the building of a raster tile mesh until its texture is loaded,
+        // to avoid flickering while loading (texture will render as black)
+        return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
+            .then(textures => {
+                if (!textures || textures.length < 1) {
+                    // TODO: warning
                     return tile_data;
                 }
-            );
-        }
-        return Promise.resolve(tile_data);
+
+                // Set texture uniforms (returned after loading from main thread)
+                tile_data.uniforms = tile_data.uniforms || {};
+                tile_data.textures = tile_data.textures || [];
+
+                let u_samplers = tile_data.uniforms['u_rasters'] = [];
+                let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
+                let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
+
+                for (let [tname, twidth, theight] of textures) {
+                    let i = index[tname];
+                    let raster_coords = configs[tname].coords; // tile coords of raster tile
+
+                    u_samplers[i] = tname;
+                    tile_data.textures.push(tname);
+
+                    u_sizes[i] = [twidth, theight];
+
+                    // Tile geometry may be at a higher zoom than the raster tile texture,
+                    // (e.g. an overzoomed raster tile), in which case we need to adjust the
+                    // raster texture UVs to offset to the appropriate starting point for
+                    // this geometry tile.
+                    if (tile.coords.z > raster_coords.z) {
+                        let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
+                        let dz2 = Math.pow(2, dz);
+                        u_offsets[i] = [
+                            (tile.coords.x % dz2) / dz2,
+                            (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
+                            1 / dz2
+                        ];
+                    }
+                    else {
+                        u_offsets[i] = [0, 0, 1];
+                    }
+                }
+
+                return tile_data;
+            }
+        );
     },
 
     // Called on main thread

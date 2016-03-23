@@ -1,9 +1,9 @@
 // Uniforms defining raster textures and macros for accessing them
 
 #ifdef TANGRAM_FRAGMENT_SHADER
-uniform sampler2D u_rasters[TANGRAM_NUM_RASTERS];    // raster tile texture samplers
-uniform vec2 u_raster_sizes[TANGRAM_NUM_RASTERS];    // raster tile texture sizes (width/height in pixels)
-uniform vec3 u_raster_offsets[TANGRAM_NUM_RASTERS];  // raster tile texture UV starting offset for tile
+uniform sampler2D u_rasters[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture samplers
+uniform vec2 u_raster_sizes[TANGRAM_NUM_RASTER_SOURCES];    // raster tile texture sizes (width/height in pixels)
+uniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile texture UV starting offset for tile
 
 // Note: the raster accessors below are #defines rather than functions to
 // avoid issues with constant integer expressions for array indices

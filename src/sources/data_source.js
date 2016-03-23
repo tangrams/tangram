@@ -12,7 +12,8 @@ export default class DataSource {
         this.name = config.name;
         this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
-        this.rasters = Array.isArray(config.rasters) ? config.rasters : []; // attached raster tile sources
+        this.rasters = // attached raster tile sources
+            Array.isArray(config.rasters) ? [...new Set(config.rasters)] : []; // de-dupe with set conversion
 
         // Optional function to transform source data
         this.transform = config.transform;
