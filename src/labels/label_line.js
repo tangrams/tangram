@@ -7,8 +7,12 @@ export default class LabelLine extends Label {
     constructor (size, lines, options) {
         super(size, options);
 
-        this.segment_index = 0;
         this.lines = lines;
+
+        // optionally limit the line segments that the label may be placed in, by specifying a segment index range
+        // used as a coarse subdivide for placing multiple labels per line geometry
+        this.segment_index = options.segment_start || 0;
+        this.segment_max = options.segment_end || this.lines.length;
         this.update();
     }
 
@@ -20,7 +24,7 @@ export default class LabelLine extends Label {
     }
 
     moveNextSegment () {
-        if (this.segment_index + 1 >= this.lines.length - 1) {
+        if (this.segment_index + 1 >= this.segment_max - 1) {
             return false;
         }
 

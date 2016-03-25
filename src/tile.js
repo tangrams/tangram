@@ -33,6 +33,8 @@ export default class Tile {
 
         this.coords = Tile.coordinateWithMaxZoom(coords, this.source.max_zoom);
         this.style_zoom = style_zoom; // zoom level to be used for styling
+        this.overzoom = Math.max(this.style_zoom - this.coords.z, 0); // number of levels of overzooming
+        this.overzoom2 = Math.pow(2, this.overzoom);
         this.key = Tile.key(this.coords, this.source, this.style_zoom);
         this.min = Geo.metersForTile(this.coords);
         this.max = Geo.metersForTile({x: this.coords.x + 1, y: this.coords.y + 1, z: this.coords.z }),
@@ -41,10 +43,7 @@ export default class Tile {
         this.center_dist = 0;
 
         // Units per pixel needs to account for over-zooming
-        this.units_per_pixel = Geo.units_per_pixel;
-        if (this.style_zoom > this.coords.z) {
-            this.units_per_pixel /= Math.pow(2, this.style_zoom - this.coords.z);
-        }
+        this.units_per_pixel = Geo.units_per_pixel / this.overzoom2;
 
         this.meters_per_pixel = Geo.metersPerPixel(this.coords.z);
         this.units_per_meter = Geo.unitsPerMeter(this.coords.z);
@@ -155,6 +154,8 @@ export default class Tile {
             meters_per_pixel: this.meters_per_pixel,
             units_per_meter: this.units_per_meter,
             style_zoom: this.style_zoom,
+            overzoom: this.overzoom,
+            overzoom2: this.overzoom2,
             generation: this.generation,
             debug: this.debug
         };
@@ -189,7 +190,8 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, layers, rules, styles) {
+    static buildGeometry (tile, config, rules, styles) {
+        let layers = config.layers;
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -228,7 +230,7 @@ export default class Tile {
                         continue; // skip features w/o geometry (valid GeoJSON)
                     }
 
-                    let context = StyleParser.getFeatureParseContext(feature, tile);
+                    let context = StyleParser.getFeatureParseContext(feature, tile, config);
                     context.winding = tile.default_winding;
                     context.layer = source_layer.layer; // add data source layer name
 
@@ -256,11 +258,8 @@ export default class Tile {
                         }
 
                         context.layers = group.layers;  // add matching draw layers
-                        context.properties = group.properties; // add rule-specific properties to context
 
                         style.addFeature(feature, group, context);
-
-                        context.properties = null; // clear group-specific properties
                     }
 
                     tile.debug.features++;

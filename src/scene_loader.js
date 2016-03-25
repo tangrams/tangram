@@ -2,6 +2,7 @@ import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 // import mergeObjects from './utils/merge';
 import {StyleManager} from './styles/style_manager';
+import {StyleParser} from './styles/style_parser';
 
 var SceneLoader;
 
@@ -150,6 +151,9 @@ export default SceneLoader = {
 
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize(config) {
+        // Replace global scene properties
+        config = StyleParser.applyGlobalProperties(config);
+
         // Assign ids to data sources
         let source_id = 0;
         for (let source in config.sources) {

@@ -370,6 +370,9 @@ Object.assign(TextStyle, {
         }
         layout.repeat_group += '/' + text;
 
+        // Max number of subdivisions to try
+        layout.subdiv = tile.overzoom2;
+
         return layout;
     },
 
@@ -378,15 +381,11 @@ Object.assign(TextStyle, {
         let labels = [];
 
         if (geometry.type === "LineString") {
-            let lines = geometry.coordinates;
-
-            labels.push(new LabelLine(size, lines, options));
+            this.buildLineLabels(size, geometry.coordinates, options, labels);
         } else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
-
             for (let i = 0; i < lines.length; ++i) {
-                let line = lines[i];
-                labels.push(new LabelLine(size, line, options));
+                this.buildLineLabels(size, lines[i], options, labels);
             }
         } else if (geometry.type === "Point") {
             labels.push(new LabelPoint(geometry.coordinates, size, options));
@@ -394,8 +393,7 @@ Object.assign(TextStyle, {
             let points = geometry.coordinates;
 
             for (let i = 0; i < points.length; ++i) {
-                let point = points[i];
-                labels.push(new LabelPoint(point, size, options));
+                labels.push(new LabelPoint(points[i], size, options));
             }
         } else if (geometry.type === "Polygon") {
             let centroid = Geo.centroid(geometry.coordinates[0]);
@@ -406,6 +404,26 @@ Object.assign(TextStyle, {
         }
 
         return labels;
+    },
+
+    // Build one or more labels for a line geometry
+    buildLineLabels (size, line, options, labels) {
+        let subdiv = Math.min(options.subdiv, line.length - 1);
+        if (subdiv > 1) {
+            // Create multiple labels for line, with each allotted a range of segments
+            // in which it will attempt to place
+            let seg_per_div = (line.length - 1) / subdiv;
+            for (let i=0; i < subdiv; i++) {
+                options.segment_start = Math.floor(i * seg_per_div);
+                options.segment_end = Math.floor((i+1) * seg_per_div);
+                labels.push(new LabelLine(size, line, options));
+            }
+            options.segment_start = null;
+            options.segment_end = null;
+        }
+        else {
+            labels.push(new LabelLine(size, line, options));
+        }
     }
 
 });

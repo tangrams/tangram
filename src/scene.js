@@ -407,8 +407,8 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
-        this.completeScreenshot(); // completes screenshot capture if requested
         this.updateViewComplete(); // fires event when rendered tile set or style changes
+        this.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
@@ -442,7 +442,7 @@ export default class Scene {
 
         // Render selection pass (if needed)
         if (this.selection.pendingRequests()) {
-            if (this.view.panning) {
+            if (this.view.panning || this.view.zooming) {
                 this.selection.clearPendingRequests();
                 return;
             }
@@ -648,7 +648,9 @@ export default class Scene {
         };
 
         this.dirty = true; // need to make sure the scene re-renders for these to be processed
-        return this.selection.getFeatureAt(point).catch(r => Promise.resolve(r));
+        return this.selection.getFeatureAt(point).
+            then(selection => Object.assign(selection, { pixel })).
+            catch(error => Promise.resolve({ error }));
     }
 
     // Rebuild geometry, without re-parsing the config or re-compiling styles
@@ -658,7 +660,9 @@ export default class Scene {
     }
 
     // Rebuild all tiles
-    rebuildGeometry({ sync = true } = {}) {
+    // sync: boolean of whether to sync the config object to the worker
+    // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
+    rebuildGeometry({ sync = true, sources = null } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -691,17 +695,14 @@ export default class Scene {
             this.resetFeatureSelection();
             this.resetTime();
 
-            // Rebuild visible tiles, sorted from center
-            let build = [];
-            this.tile_manager.forEachTile((tile) => {
-                if (tile.visible) {
-                    build.push(tile);
-                }
-                else {
-                    this.tile_manager.removeTile(tile.key);
+            // Rebuild visible tiles
+            this.tile_manager.pruneToVisibleTiles();
+            this.tile_manager.forEachTile(tile => {
+                if (!sources || sources.indexOf(tile.source.name) > -1) {
+                    this.tile_manager.buildTile(tile);
                 }
             });
-            this.tile_manager.buildTiles(build);
+            this.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
         }).then(() => {
             // Profiling
             if (this.debug.profile.geometry_build) {
@@ -778,9 +779,9 @@ export default class Scene {
         }
 
         if (load) {
-            this.updateConfig({ rebuild: true });
+            return this.updateConfig({ rebuild: { sources: [name] } });
         } else {
-            this.rebuild();
+            return this.rebuild({ sources: [name] });
         }
     }
 
@@ -943,6 +944,7 @@ export default class Scene {
     }
 
     // Update scene config, and optionally rebuild geometry
+    // rebuild can be boolean, or an object containing rebuild options to passthrough
     updateConfig({ rebuild } = {}) {
         this.generation++;
         this.updating++;
@@ -959,13 +961,9 @@ export default class Scene {
         this.updateStyles();
 
         // Optionally rebuild geometry
-        let done;
-        if (rebuild) {
-            done = this.rebuildGeometry();
-        }
-        else {
-            done = this.syncConfigToWorker(); // rebuildGeometry() already syncs config
-        }
+        let done = rebuild ?
+            this.rebuildGeometry(typeof rebuild === 'object' && rebuild) :
+            this.syncConfigToWorker(); // rebuildGeometry() also syncs config
 
         // Finish by updating bounds and re-rendering
         return done.then(() => {

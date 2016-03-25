@@ -206,7 +206,7 @@ export default class View {
             }
         };
 
-        this.scene.tile_manager.updateTilesForView(this.view);
+        this.scene.tile_manager.updateTilesForView();
 
         this.trigger('move');
         this.scene.requestRedraw(); // TODO automate via move event?
