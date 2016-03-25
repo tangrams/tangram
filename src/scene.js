@@ -778,9 +778,9 @@ export default class Scene {
         }
 
         if (load) {
-            this.updateConfig({ rebuild: true });
+            return this.updateConfig({ rebuild: { sources: [name] } });
         } else {
-            this.rebuild();
+            return this.rebuild({ sources: [name] });
         }
     }
 
