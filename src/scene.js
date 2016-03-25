@@ -658,7 +658,9 @@ export default class Scene {
     }
 
     // Rebuild all tiles
-    rebuildGeometry({ sync = true } = {}) {
+    // sync: boolean of whether to sync the config object to the worker
+    // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
+    rebuildGeometry({ sync = true, sources = null } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -691,17 +693,14 @@ export default class Scene {
             this.resetFeatureSelection();
             this.resetTime();
 
-            // Rebuild visible tiles, sorted from center
-            let build = [];
-            this.tile_manager.forEachTile((tile) => {
-                if (tile.visible) {
-                    build.push(tile);
-                }
-                else {
-                    this.tile_manager.removeTile(tile.key);
+            // Rebuild visible tiles
+            this.tile_manager.pruneToVisibleTiles();
+            this.tile_manager.forEachTile(tile => {
+                if (!sources || sources.indexOf(tile.source.name) > -1) {
+                    this.tile_manager.buildTile(tile);
                 }
             });
-            this.tile_manager.buildTiles(build);
+            this.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
         }).then(() => {
             // Profiling
             if (this.debug.profile.geometry_build) {
@@ -943,6 +942,7 @@ export default class Scene {
     }
 
     // Update scene config, and optionally rebuild geometry
+    // rebuild can be boolean, or an object containing rebuild options to passthrough
     updateConfig({ rebuild } = {}) {
         this.generation++;
         this.updating++;
@@ -959,13 +959,9 @@ export default class Scene {
         this.updateStyles();
 
         // Optionally rebuild geometry
-        let done;
-        if (rebuild) {
-            done = this.rebuildGeometry();
-        }
-        else {
-            done = this.syncConfigToWorker(); // rebuildGeometry() already syncs config
-        }
+        let done = rebuild ?
+            this.rebuildGeometry(typeof rebuild === 'object' && rebuild) :
+            this.syncConfigToWorker(); // rebuildGeometry() also syncs config
 
         // Finish by updating bounds and re-rendering
         return done.then(() => {
