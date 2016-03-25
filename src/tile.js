@@ -4,7 +4,6 @@ import {StyleManager} from './styles/style_manager';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
-import Utils from './utils/utils';
 
 import {mat4, vec3} from './utils/gl-matrix';
 import log from 'loglevel';
