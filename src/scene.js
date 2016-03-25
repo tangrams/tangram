@@ -405,8 +405,8 @@ export default class Scene {
         // Render the scene
         this.updateDevicePixelRatio();
         this.render();
-        this.completeScreenshot(); // completes screenshot capture if requested
         this.updateViewComplete(); // fires event when rendered tile set or style changes
+        this.completeScreenshot(); // completes screenshot capture if requested
 
         // Post-render loop hook
         if (typeof this.postUpdate === 'function') {
