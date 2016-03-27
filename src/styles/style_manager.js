@@ -103,13 +103,12 @@ StyleManager.mix = function (style, styles) {
     // Flags - OR'd, true if any style has it set
     style.animated = sources.some(x => x && x.animated);
     style.texcoords = sources.some(x => x && x.texcoords);
-    style.raster = sources.some(x => x && x.raster);
 
     // Overwrites - last definition wins
     style.base = sources.map(x => x.base).filter(x => x).pop();
     style.lighting = sources.map(x => x.lighting).filter(x => x != null).pop();
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
-    style.apply = sources.map(x => x.apply).filter(x => x != null).pop(); // specifies how raster texture is applied
+    style.raster = sources.map(x => x.raster).filter(x => x != null).pop();
     if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
         // only mix blend if explicitly set, otherwise let base style choose blending mode
         // hasOwnProperty check gives preference to base style prototype

@@ -407,11 +407,25 @@ export var Style = {
 
     },
 
+    // Determines if 'raster' parameter is set to a valid value
+    hasRasters () {
+        return (['color', 'normal', 'custom'].indexOf(this.raster) > -1);
+    },
+
     // Setup raster access in shaders
     setupRasters () {
-        if (!this.raster) {
+        if (!this.hasRasters()) {
             return;
         }
+
+        // Enable raster textures and configure how first raster is applied
+        if (this.raster === 'color') {
+            this.defines.TANGRAM_RASTER_TEXTURE_COLOR = true;
+        }
+        else if (this.raster === 'normal') {
+            this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
+        }
+        // else custom raster (samplers will be made available but not automatically applied)
 
         // A given style may be built with multiple data sources, each of which may attach
         // a variable number of raster sources (0 to N, where N is the max number of raster sources
@@ -437,7 +451,7 @@ export var Style = {
 
     // Load raster tile textures and set uniforms
     buildRasterTextures (tile, tile_data) {
-        if (!this.raster) {
+        if (!this.hasRasters()) {
             return Promise.resolve(tile_data);
         }
 

@@ -13,18 +13,9 @@ Object.assign(RasterStyle, {
 
     init() {
         // Required for raster tiles
-        this.raster = true;
+        this.raster = this.raster || 'color';
 
         this.super.init.apply(this, arguments);
-
-        // Enable raster texture and configure how it is applied
-        this.defines.TANGRAM_RASTER_TEXTURE = true;
-        if (this.apply == null || this.apply === 'color') { // default to applying as color
-            this.defines.TANGRAM_RASTER_TEXTURE_COLOR = true;
-        }
-        else if (this.apply === 'normal') {
-            this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
-        }
     },
 
     _preprocess (draw) {

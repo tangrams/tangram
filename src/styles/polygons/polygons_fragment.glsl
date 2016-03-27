@@ -40,20 +40,14 @@ void main (void) {
     vec4 color = v_color;
     vec3 normal = TANGRAM_NORMAL;
 
-    // Get value from raster tile texture
-    #ifdef TANGRAM_RASTER_TEXTURE
-        vec4 raster = sampleRaster(0);
-    #endif
-
+    // Apply raster to vertex color
     #ifdef TANGRAM_RASTER_TEXTURE_COLOR
-        // note: vertex color is multiplied to tint texture color
-        color *= raster;
+        color *= sampleRaster(0); // multiplied to tint texture color
     #endif
 
     // Apply normal from raster tile
-    // TODO: precedence / disambiguation between raster tile and material normals?
     #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
-        normal = normalize(raster.rgb * 2. - 1.);
+        normal = normalize(sampleRaster(0).rgb * 2. - 1.);
     #endif
 
     // Normal modification applied here for fragment lighting or no lighting,
