@@ -703,6 +703,7 @@ export default class Scene {
                 }
             });
             this.tile_manager.updateTilesForView(); // picks up additional tiles for any new/changed data sources
+            this.tile_manager.checkBuildQueue();    // resolve immediately if no tiles to build
         }).then(() => {
             // Profiling
             if (this.debug.profile.geometry_build) {
