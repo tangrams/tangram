@@ -786,7 +786,7 @@ export default class Scene {
         }
     }
 
-    loadDataSources() {
+    createDataSources() {
         let reset = []; // sources to reset
         let prev_source_names = Object.keys(this.sources);
 
@@ -954,7 +954,7 @@ export default class Scene {
         StyleManager.init();
         this.view.reset();
         this.createLights();
-        this.loadDataSources();
+        this.createDataSources();
         this.loadTextures();
         this.setBackground();
 
