@@ -827,6 +827,14 @@ export default class Scene {
                 return (reset.indexOf(tile.source.name) > -1);
             });
         }
+
+        // Mark sources that generate geometry tiles
+        // (all except those that are only raster sources attached to other sources)
+        for (let layer of Utils.values(this.config.layers)) {
+            if (layer.data && this.sources[layer.data.source]) {
+                this.sources[layer.data.source].geometry_tiles = true;
+            }
+        }
     }
 
     // Load all textures in the scene definition
