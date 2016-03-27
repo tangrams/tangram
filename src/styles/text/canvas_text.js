@@ -1,6 +1,8 @@
 import Utils from '../../utils/utils';
 import Builders from '../builders';
 
+import FontFaceObserver from 'fontfaceobserver';
+
 export default class CanvasText {
 
     constructor () {
@@ -34,27 +36,58 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    textSizes (tile, texts) {
+    // Collect fonts from tile text set and block on load
+    loadFonts (texts) {
+        let fonts = {};
+        let queue = [];
         for (let style in texts) {
             let text_infos = texts[style];
-
             for (let text in text_infos) {
                 let text_settings = text_infos[text].text_settings;
-                // update text sizes
-                this.setFont(tile, text_settings); // TODO: only set once above
-                Object.assign(
-                    text_infos[text],
-                    this.textSize(
-                        text,
-                        tile,
-                        text_settings.transform,
-                        text_settings.text_wrap
-                    )
-                );
+                let first_family = text_settings.family.split(',')[0];
+                fonts[first_family] = true;
             }
         }
 
-        return texts;
+        for (let family in fonts) {
+            if (CanvasText.fonts[family] === undefined) {
+                queue.push(
+                    new FontFaceObserver(family) // TODO: add font style options
+                        .check()
+                        // .then(() => CanvasText.fonts[family] = true, () => CanvasText.fonts[family] = false)
+                        .then(() => { console.log(`***** ${family} available`), CanvasText.fonts[family] = true }, () => { console.log(`***** ${family} NOT available`), CanvasText.fonts[family] = false })
+                        .then(() => Promise.resolve(family))
+                );
+                console.log(`***** START FONT CHECK FOR: ${family} `);
+            }
+        }
+
+        return Promise.all(queue);
+    }
+
+    textSizes (tile, texts) {
+        return this.loadFonts(texts).then(() => {
+            for (let style in texts) {
+                let text_infos = texts[style];
+
+                for (let text in text_infos) {
+                    let text_settings = text_infos[text].text_settings;
+                    // update text sizes
+                    this.setFont(tile, text_settings);
+                    Object.assign(
+                        text_infos[text],
+                        this.textSize(
+                            text,
+                            tile,
+                            text_settings.transform,
+                            text_settings.text_wrap
+                        )
+                    );
+                }
+            }
+
+            return texts;
+        });
     }
 
     // Computes width and height of text based on current font style
@@ -182,7 +215,7 @@ export default class CanvasText {
             for (let text in text_infos) {
                 let info = text_infos[text];
 
-                this.setFont(tile, info.text_settings); // TODO: only set once above
+                this.setFont(tile, info.text_settings);
                 this.drawText(info.lines, info.position, info.size, tile, {
                     stroke: info.text_settings.stroke,
                     transform: info.text_settings.transform,
@@ -282,3 +315,5 @@ export default class CanvasText {
 
 // Extract font size and units
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
+
+CanvasText.fonts = {}; // detected fonts
