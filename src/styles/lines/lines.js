@@ -115,7 +115,6 @@ Object.assign(Lines, {
         style.join = rule_style.join;
         style.miter_limit = rule_style.miter_limit;
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
-        style.texcoord_ratio = rule_style.texcoord_ratio || 1;
 
         // Construct an outline style
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
@@ -256,8 +255,7 @@ Object.assign(Lines, {
                 scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_scale: this.texcoord_scale,
-                texcoord_normalize: 65535,// scale UVs to unsigned shorts
-                texcoord_ratio: style.texcoord_ratio,
+                texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
                 tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4
