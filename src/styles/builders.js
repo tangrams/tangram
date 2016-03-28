@@ -316,7 +316,10 @@ Builders.buildPolylines = function (
                     if (Builders.outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
-                            addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), context);
+                            addVertexPair(
+                                coordCurr, normCurr,
+                                context.texcoords && Vector.length(Vector.sub(coordCurr, coordPrev)),
+                                context);
                             context.nPairs++;
 
                             // Add vertices to buffer acording their index
@@ -370,7 +373,10 @@ Builders.buildPolylines = function (
                             trianglesOnJoin,
                             context);
                 } else {
-                    addVertexPair(coordCurr, normCurr, Vector.length(Vector.sub(coordCurr, coordPrev)), context);
+                    addVertexPair(
+                        coordCurr, normCurr,
+                        context.texcoords && Vector.length(Vector.sub(coordCurr, coordPrev)),
+                        context);
                 }
 
                 if (isNext) {
@@ -648,17 +654,17 @@ function addSquare (coord, nA, nB, uA, uC, uB, signed, context) {
 //  Add special joins (not miter) types that require FAN tessellations
 //  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
 function addJoin (coords, normals, nTriangles, context) {
-    context.totalDist += Vector.length(Vector.sub(coords[1], coords[0])) * context.uvScale;
-
     var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
     var nA = normals[0],              // normal to point A (aT)
         nC = Vector.neg(normals[1]),  // normal to center (-vP)
         nB = normals[2];              // normal to point B (bT)
+    var uA, uB, uC;
 
     if (context.texcoords) {
-        var uA = [context.max_u, context.totalDist],
-            uC = [context.min_u, context.totalDist],
-            uB = [context.max_u, context.totalDist];
+        context.totalDist += Vector.length(Vector.sub(coords[1], coords[0])) * context.uvScale;
+        uA = [context.max_u, context.totalDist];
+        uC = [context.min_u, context.totalDist];
+        uB = uA;
     }
 
     if (signed) {
@@ -672,7 +678,7 @@ function addJoin (coords, normals, nTriangles, context) {
         if (context.texcoords) {
             uA = [context.min_u, context.totalDist];
             uC = [context.max_u, context.totalDist];
-            uB = [context.min_u, context.totalDist];
+            uB = uA;
         }
         addVertex(coords[1], nC, uC, context);
         addVertex(coords[1], nA, uA, context);
@@ -705,15 +711,8 @@ function addCap (coord, normal, numCorners, isBeginning, context) {
     var uvA, uvB, uvC;
     if (context.texcoords) {
         uvC = [context.min_u+(context.max_u-context.min_u)/2, context.totalDist];   // Center point UVs
-
-        if (isBeginning) {
-            uvA = [context.min_u, context.totalDist];                                        // Beginning angle UVs
-            uvB = [context.max_u, context.totalDist];                                        // Ending angle UVs
-        }
-        else {
-            uvA = [context.min_u, context.totalDist];                                        // Begining angle UVs
-            uvB = [context.max_u, context.totalDist];                                        // Ending angle UVs
-        }
+        uvA = [context.min_u, context.totalDist];                                   // Beginning angle UVs
+        uvB = [context.max_u, context.totalDist];                                   // Ending angle UVs
     }
 
     if ( numCorners === 2 ){
