@@ -54,7 +54,7 @@ void main() {
     #ifdef TANGRAM_TEXTURE_COORDS
         v_texcoord = a_texcoord;
         #ifdef TANGRAM_EXTRUDE_LINES
-        v_texcoord.y *= 4096.;
+            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;
         #endif
     #endif
 

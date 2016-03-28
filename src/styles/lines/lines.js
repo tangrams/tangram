@@ -41,6 +41,9 @@ Object.assign(Lines, {
         if (this.texcoords) {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
 
+            // Scaling factor to add precision to line texture V coordinate packed as normalized short
+            this.defines.TANGRAM_V_SCALE_ADJUST = Geo.tile_scale;
+
             // Add vertex attribute for UVs only when needed
             attribs.push({ name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true });
         }

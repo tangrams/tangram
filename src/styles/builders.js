@@ -189,6 +189,9 @@ var trianglesForJoin = {
     round: 3
 };
 
+// Scaling factor to add precision to line texture V coordinate packed as normalized short
+const v_scale_adjust = Geo.tile_scale;
+
 Builders.buildPolylines = function (
     lines,
     width,
@@ -237,7 +240,7 @@ Builders.buildPolylines = function (
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
         nPairs: 0,
-        uvScale: 1/((width*texcoord_ratio)*4096),
+        v_scale: 1 / ((width * texcoord_ratio) * v_scale_adjust), // scales line texture as a ratio of the line's width
         totalDist: 0
     };
 
@@ -443,7 +446,7 @@ function addVertex(coord, normal, uv, { halfWidth, vertices, scalingVecs, texcoo
 //  Add to equidistant pairs of vertices (internal method for polyline builder)
 function addVertexPair (coord, normal, dist, context) {
     if (context.texcoords) {
-        context.totalDist += dist*context.uvScale;
+        context.total_dist += dist * context.v_scale;
         addVertex(coord, normal, [context.max_u, context.totalDist], context);
         addVertex(coord, Vector.neg(normal), [context.min_u, context.totalDist], context);
     }
@@ -661,9 +664,9 @@ function addJoin (coords, normals, nTriangles, context) {
     var uA, uB, uC;
 
     if (context.texcoords) {
-        context.totalDist += Vector.length(Vector.sub(coords[1], coords[0])) * context.uvScale;
-        uA = [context.max_u, context.totalDist];
-        uC = [context.min_u, context.totalDist];
+        context.total_dist += Vector.length(Vector.sub(coords[1], coords[0])) * context.v_scale;
+        uA = [context.max_u, context.total_dist];
+        uC = [context.min_u, context.total_dist];
         uB = uA;
     }
 
