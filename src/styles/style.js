@@ -108,7 +108,7 @@ export var Style = {
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
         if (tile.canceled) {
-            Utils.log('warn', `stop tile build because tile was removed: ${tile.key}`);
+            Utils.log('debug', `stop tile build because tile was removed: ${tile.key}`);
             return;
         }
 
@@ -199,7 +199,7 @@ export var Style = {
 
             // If feature is marked as selectable
             if (selectable) {
-                style.selection_color = FeatureSelection.makeColor(feature, context.tile);
+                style.selection_color = FeatureSelection.makeColor(feature, context.tile, context);
             }
             else {
                 style.selection_color = FeatureSelection.defaultColor;

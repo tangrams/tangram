@@ -1,84 +1,85 @@
-# 3d dots
-dots:
-    base: polygons
-    shaders:
-        uniforms:
-            u_dot_grid_scale: 0.02
-            u_dot_scale: 0.07
-            u_dot_background_color: [.5, .2, .2]
-            u_dot_color: [1, 1, 1]
-        blocks:
-            global: |
+styles:
+    # 3d dots
+    dots:
+        base: polygons
+        shaders:
+            uniforms:
+                u_dot_grid_scale: 0.02
+                u_dot_scale: 0.07
+                u_dot_background_color: [.5, .2, .2]
+                u_dot_color: [1, 1, 1]
+            blocks:
+                global: |
 
-                vec3 dots (vec3 pos) {
-                    vec3 color = u_dot_background_color;
+                    vec3 dots (vec3 pos) {
+                        vec3 color = u_dot_background_color;
 
-                    const float dot_fuzz = .15; // antialias range as % of dot radius
+                        const float dot_fuzz = .15; // antialias range as % of dot radius
 
-                    // Rotate to get better dot coverage across 3d geometry
-                    float dot_angle = radians(45.);
-                    // float dot_angle = u_time / 100000.;
-                    mat4 dot_rotate;
+                        // Rotate to get better dot coverage across 3d geometry
+                        float dot_angle = radians(45.);
+                        // float dot_angle = u_time / 100000.;
+                        mat4 dot_rotate;
 
-                    dot_rotate = mat4(
-                        // rotate z
-                        vec4(cos(dot_angle), sin(dot_angle), 0., 0.),
-                        vec4(-sin(dot_angle), cos(dot_angle), 0., 0.),
-                        vec4(0., 0., 1., 0.),
-                        vec4(0., 0., 0., 1.)
-                    );
+                        dot_rotate = mat4(
+                            // rotate z
+                            vec4(cos(dot_angle), sin(dot_angle), 0., 0.),
+                            vec4(-sin(dot_angle), cos(dot_angle), 0., 0.),
+                            vec4(0., 0., 1., 0.),
+                            vec4(0., 0., 0., 1.)
+                        );
 
-                    dot_rotate *= mat4(
-                        // rotate x
-                        vec4(1., 0., 0., 0.),
-                        vec4(0., cos(dot_angle), sin(dot_angle), 0.),
-                        vec4(0., -sin(dot_angle), cos(dot_angle), 0.),
-                        vec4(0., 0., 0., 1.)
-                    );
+                        dot_rotate *= mat4(
+                            // rotate x
+                            vec4(1., 0., 0., 0.),
+                            vec4(0., cos(dot_angle), sin(dot_angle), 0.),
+                            vec4(0., -sin(dot_angle), cos(dot_angle), 0.),
+                            vec4(0., 0., 0., 1.)
+                        );
 
-                    // dot_rotate *= mat4(
-                    //     // rotate y
-                    //     vec4(cos(dot_angle), 0., sin(dot_angle), 0.),
-                    //     vec4(0., 1., 0., 0.),
-                    //     vec4(-sin(dot_angle), 0., cos(dot_angle), 0.),
-                    //     vec4(0., 0., 0., 1.)
-                    // );
+                        // dot_rotate *= mat4(
+                        //     // rotate y
+                        //     vec4(cos(dot_angle), 0., sin(dot_angle), 0.),
+                        //     vec4(0., 1., 0., 0.),
+                        //     vec4(-sin(dot_angle), 0., cos(dot_angle), 0.),
+                        //     vec4(0., 0., 0., 1.)
+                        // );
 
-                    pos = (dot_rotate * vec4(pos, 1.)).xyz;
+                        pos = (dot_rotate * vec4(pos, 1.)).xyz;
 
-                    // offset experiments
-                    // pos += vec3(u_time * 10., u_time * 10., 0.);
-                    // pos += vec3(0., 0., u_time * 10.);
-                    // pos += vec3(u_time * 10., u_time * 10., u_time * 10.);
+                        // offset experiments
+                        // pos += vec3(u_time * 10., u_time * 10., 0.);
+                        // pos += vec3(0., 0., u_time * 10.);
+                        // pos += vec3(u_time * 10., u_time * 10., u_time * 10.);
 
-                    vec3 scaledXYZ = pos * u_dot_grid_scale;
-                    vec3 cell = floor(scaledXYZ);
-                    vec3 offset = scaledXYZ - cell;
-                    vec3 currentOffset;
+                        vec3 scaledXYZ = pos * u_dot_grid_scale;
+                        vec3 cell = floor(scaledXYZ);
+                        vec3 offset = scaledXYZ - cell;
+                        vec3 currentOffset;
 
-                    float priority = -1.0;
-                    for (float i = -1.0; i <= 0.0; i++) {
-                        for (float j = -1.0; j <= 0.0; j++) {
-                            for (float k = -1.0; k <= 0.0; k++) {
-                                vec3 currentCell = cell + vec3(i, j, k);
-                                vec3 cellOffset = offset - vec3(i, j, k);
-                                vec2 randomXY = currentCell.xy + currentCell.z * 0.003;
-                                currentOffset = cellOffset - (vec3(0.5, 0.5, 0.5));
+                        float priority = -1.0;
+                        for (float i = -1.0; i <= 0.0; i++) {
+                            for (float j = -1.0; j <= 0.0; j++) {
+                                for (float k = -1.0; k <= 0.0; k++) {
+                                    vec3 currentCell = cell + vec3(i, j, k);
+                                    vec3 cellOffset = offset - vec3(i, j, k);
+                                    vec2 randomXY = currentCell.xy + currentCell.z * 0.003;
+                                    currentOffset = cellOffset - (vec3(0.5, 0.5, 0.5));
 
-                                float radius = dot(currentOffset, currentOffset);
-                                if (radius < u_dot_scale) {
-                                    color = u_dot_color;
-                                }
-                                else if (radius < u_dot_scale * (1. + dot_fuzz)) {
-                                    color = mix(u_dot_background_color, u_dot_color, ((u_dot_scale * (1. + dot_fuzz)) - radius) / (u_dot_scale * dot_fuzz));
+                                    float radius = dot(currentOffset, currentOffset);
+                                    if (radius < u_dot_scale) {
+                                        color = u_dot_color;
+                                    }
+                                    else if (radius < u_dot_scale * (1. + dot_fuzz)) {
+                                        color = mix(u_dot_background_color, u_dot_color, ((u_dot_scale * (1. + dot_fuzz)) - radius) / (u_dot_scale * dot_fuzz));
+                                    }
                                 }
                             }
                         }
+
+                        return color;
                     }
 
-                    return color;
-                }
-
-            filter: color.rgb *= dots(worldPosition().xyz);
-            # fragment: color *= dots(worldPosition().xyz + vec3(0., 0., u_time * 25.)); // animated dots
-            # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(worldPosition().xyz); } // apply only to up-facing surfaces
+                filter: color.rgb *= dots(worldPosition().xyz);
+                # fragment: color *= dots(worldPosition().xyz + vec3(0., 0., u_time * 25.)); // animated dots
+                # fragment: vec3 n = abs(v_normal); if (n.z > n.x && n.z > n.y) { color *= dots(worldPosition().xyz); } // apply only to up-facing surfaces

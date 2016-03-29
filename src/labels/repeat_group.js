@@ -74,7 +74,7 @@ export default class RepeatGroup {
                 this.groups[tile][layout.repeat_group] = new RepeatGroup(
                     layout.repeat_group,
                     layout.repeat_distance,
-                    RepeatGroup.max_repeat_dist * layout.units_per_pixel
+                    RepeatGroup.max_repeat_dist
                 );
             }
             this.groups[tile][layout.repeat_group].add(obj);
@@ -88,4 +88,4 @@ RepeatGroup.groups = {};
 
 // Max repeat dist: for groups with a repeat dist beyond this threshold, only one label
 // will be allowed per group, e.g. set to tile size for one-label-per-tile
-RepeatGroup.max_repeat_dist = Geo.tile_size;
+RepeatGroup.max_repeat_dist = Geo.tile_scale;

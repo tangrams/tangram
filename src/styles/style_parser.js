@@ -7,18 +7,18 @@ export var StyleParser = {};
 
 // Wraps style functions and provides a scope of commonly accessible data:
 // - feature: the 'properties' of the feature, e.g. accessed as 'feature.name'
+// - global: user-defined properties on the `global` object in the scene file
 // - $zoom: the current map zoom level
 // - $geometry: the type of geometry, 'point', 'line', or 'polygon'
 // - $meters_per_pixel: conversion for meters/pixels at current map zoom
-// - properties: user-defined properties on the style-rule object in the stylesheet
 StyleParser.wrapFunction = function (func) {
     var f = `function(context) {
                 var feature = context.feature.properties;
+                var global = context.global;
                 var $zoom = context.zoom;
                 var $layer = context.layer;
                 var $geometry = context.geometry;
                 var $meters_per_pixel = context.meters_per_pixel;
-                var properties = context.properties;
 
                 var val = (${func}());
 
@@ -71,10 +71,11 @@ StyleParser.macros = {
 };
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
-StyleParser.getFeatureParseContext = function (feature, tile) {
+StyleParser.getFeatureParseContext = function (feature, tile, config) {
     return {
         feature,
         tile,
+        global: config.global,
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,
@@ -396,3 +397,51 @@ StyleParser.evalProp = function(prop, context) {
     }
     return prop;
 };
+
+// Substitutes global scene properties (those defined in the `config.global` object) for any style values
+// of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
+// defined for the `park_color` property in `config.global.park_color`.
+StyleParser.applyGlobalProperties = function (config) {
+    if (!config.global || Object.keys(config.global).length === 0) {
+        return config; // no global properties to transform
+    }
+
+    const separator = ':';
+    const props = flattenProperties(config.global, separator);
+
+    function applyProps (obj) {
+        // Convert string
+        if (typeof obj === 'string') {
+            let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
+            if (key && props[key]) {
+                obj = props[key];
+            }
+        }
+        // Loop through object properties
+        else if (typeof obj === 'object') {
+            for (let p in obj) {
+                obj[p] = applyProps(obj[p]);
+            }
+        }
+        return obj;
+    }
+
+    return applyProps(config);
+};
+
+// Flatten nested properties for simpler string look-ups
+// e.g. global.background.color -> 'global:background:color'
+function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
+    prefix = prefix ? (prefix + separator) : '';
+
+    for (let p in obj) {
+        let key = prefix + p;
+        let val = obj[p];
+        props[key] = val;
+
+        if (typeof val === 'object' && !Array.isArray(val)) {
+            flattenProperties(val, separator, key, props);
+        }
+    }
+    return props;
+}
