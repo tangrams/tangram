@@ -40,6 +40,8 @@ function main() {
         });
     }
 
+    bundle.transform('brfs');
+
     bundle.bundle(function(err, buf) {
         if (err) {
             console.error(err);

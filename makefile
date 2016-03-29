@@ -11,16 +11,12 @@ all: \
 
 debug: dist/tangram.debug.js
 
-dist/tangram.debug.js: .npm src/gl/shader_sources.js $(shell ./build_deps.sh)
+dist/tangram.debug.js: .npm $(shell ./build_deps.sh)
 	node build.js --debug=true --require './src/module.js' --runtime | $(DEREQUIRE) > dist/tangram.debug.js
 
 dist/tangram.min.js: dist/tangram.debug.js
 	$(UGLIFY) dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js
 	@gzip dist/tangram.min.js -c | wc -c | awk '{ printf "%.0fk minified+gzipped\n", $$1 / 1024 }'
-
-# Process shaders into strings and export as a module
-src/gl/shader_sources.js: $(shell find src/ -name '*.glsl')
-	bash ./build_shaders.sh > src/gl/shader_sources.js
 
 ### Tests
 
@@ -61,6 +57,5 @@ run-tests: build-testable
 # Clean all artifacts
 clean:
 	rm -f dist/*
-	rm -f src/gl/shader_sources.js
 
 .PHONY : clean all test lint build-testable karma-start run-tests
