@@ -15,7 +15,7 @@ export default class RenderState {
     }
 
     static initialize (gl) {
-        RenderState.defaults = {}
+        RenderState.defaults = {};
         // Culling
         RenderState.defaults.culling = true;
         RenderState.defaults.culling_face = gl.BACK;
