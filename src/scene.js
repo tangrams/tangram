@@ -579,17 +579,17 @@ export default class Scene {
 
         // Defaults
         // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-        depth_test = (depth_test === false) ? false : true;     // default true
-        depth_write = (depth_write === false) ? false : true;   // default true
-        cull_face = (cull_face === false) ? false : true;       // default true
-        blend = (blend != null) ? blend : false;                // default false
+        depth_test = (depth_test === false) ? false : RenderState.defaults.depth_test;      // default true
+        depth_write = (depth_write === false) ? false : RenderState.defaults.depth_write;   // default true
+        cull_face = (cull_face === false) ? false : RenderState.defaults.culling;           // default true
+        blend = (blend != null) ? blend : RenderState.defaults.blending;                    // default false
 
         // Reset frame state
         let gl = this.gl;
 
-        RenderState.depth_test.set({ depth_test: depth_test, depth_func: gl.LESS });
+        RenderState.depth_test.set({ depth_test: depth_test, depth_func: RenderState.defaults.depth_func });
         RenderState.depth_write.set({ depth_write: depth_write });
-        RenderState.culling.set({ cull: cull_face, face: gl.BACK });
+        RenderState.culling.set({ cull: cull_face, face: RenderState.defaults.culling_face });
 
         // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
         // http://webglfundamentals.org/webgl/lessons/webgl-and-alpha.html
