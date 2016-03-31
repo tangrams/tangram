@@ -4,7 +4,7 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
@@ -349,7 +349,7 @@ Object.assign(Points, {
     },
 
     buildQuad (points, size, angle, offset, texcoord_scale, vertex_data, vertex_template) {
-        Builders.buildQuadsForPoints(
+        buildQuadsForPoints(
             points,
             vertex_data,
             vertex_template,

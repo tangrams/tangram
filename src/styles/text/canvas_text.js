@@ -1,5 +1,5 @@
 import Utils from '../../utils/utils';
-import Builders from '../builders';
+import Texture from '../../gl/texture';
 
 export default class CanvasText {
 
@@ -189,7 +189,7 @@ export default class CanvasText {
                     align: info.text_settings.align
                 });
 
-                info.texcoords = Builders.getTexcoordsForSprite(
+                info.texcoords = Texture.getTexcoordsForSprite(
                     info.position,
                     info.size.texture_size,
                     texture_size

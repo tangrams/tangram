@@ -4,7 +4,7 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
 import Geo from '../../geo';
 
 export var Polygons = Object.create(Style);
@@ -150,7 +150,7 @@ Object.assign(Polygons, {
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
-            Builders.buildExtrudedPolygons(
+            buildExtrudedPolygons(
                 polygons,
                 style.z, style.height, style.min_height,
                 vertex_data, vertex_template,
@@ -161,7 +161,7 @@ Object.assign(Polygons, {
         }
         // Regular polygons
         else {
-            Builders.buildPolygons(
+            buildPolygons(
                 polygons,
                 vertex_data, vertex_template,
                 options
