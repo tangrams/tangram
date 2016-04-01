@@ -19,7 +19,7 @@ uniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile textu
 
 // Returns pixel location in raster tile texture at current model position
 #define currentRasterPixel(raster_index) \
-    (currentRasterUV(raster_index) * u_raster_sizes[raster_index])
+    (currentRasterUV(raster_index) * rasterPixelSize(raster_index))
 
 // Samples a raster tile texture for the current model position
 #define sampleRaster(raster_index) \
@@ -27,6 +27,10 @@ uniform vec3 u_raster_offsets[TANGRAM_NUM_RASTER_SOURCES];  // raster tile textu
 
 // Samples a raster tile texture for a given pixel
 #define sampleRasterAtPixel(raster_index, pixel) \
-    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / u_raster_sizes[raster_index])))
+    (texture2D(u_rasters[raster_index], adjustRasterUV(raster_index, (pixel) / rasterPixelSize(raster_index))))
+
+// Returns size of raster sampler in pixels
+#define rasterPixelSize(raster_index) \
+    (u_raster_sizes[raster_index])
 
 #endif
