@@ -296,7 +296,7 @@ Utils.updateDevicePixelRatio = function () {
 // Mark thread as main or worker
 (function() {
     try {
-        if (window.document !== undefined) {
+        if (window.document instanceof HTMLDocument) { // jshint ignore:line
             Utils.isWorkerThread = false;
             Utils.isMainThread   = true;
             Utils.updateDevicePixelRatio();
@@ -306,6 +306,11 @@ Utils.updateDevicePixelRatio = function () {
         if (self !== undefined) {
             Utils.isWorkerThread = true;
             Utils.isMainThread   = false;
+
+            // Patch for 3rd party libs that require these globals to be present. Specifically, FontFaceObserver.
+            // Brittle solution but allows that library to load on worker threads.
+            self.window = { document: {} };
+            self.document = self.window.document;
         }
     }
 })();
