@@ -26,12 +26,6 @@ Object.assign(TextStyle, {
     init() {
         this.super.init.apply(this, arguments);
 
-        // Provide a hook for this object to be called from worker threads
-        this.main_thread_target = 'TextStyle-' + this.name;
-        if (Utils.isMainThread) {
-            WorkerBroker.addTarget(this.main_thread_target, this);
-        }
-
         // Point style (parent class) requires texturing to be turned on
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
@@ -161,11 +155,6 @@ Object.assign(TextStyle, {
 
                 // second call to main thread, for rasterizing the set of texts
                 return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
-                    if (tile.canceled) {
-                        Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-                        return;
-                    }
-
                     if (texts) {
                         this.texts[tile.key] = texts;
 
@@ -188,8 +177,8 @@ Object.assign(TextStyle, {
                     return this.finishTile(tile).then(tile_data => {
                         // Attach tile-specific label atlas to mesh as a texture uniform
                         if (texture && tile_data) {
-                            tile_data.uniforms = { u_texture: texture };
-                            tile_data.textures = [texture]; // assign texture ownership to tile
+                            tile_data.uniforms.u_texture = texture;
+                            tile_data.textures.push(texture); // assign texture ownership to tile
                             return tile_data;
                         }
                     });
@@ -277,6 +266,7 @@ Object.assign(TextStyle, {
             filtering: 'linear',
             UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
         });
+        Texture.retain(t);
 
         return { texts, texture: t }; // texture is returned by name (not instance)
     },

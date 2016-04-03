@@ -7,20 +7,23 @@ import VBOMesh from '../gl/vbo_mesh';
 import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
+import {RasterTileSource} from '../sources/raster';
 import shaderSources from '../gl/shader_sources'; // built-in shaders
 import Utils from '../utils/utils';
+import WorkerBroker from '../utils/worker_broker';
 
 import log from 'loglevel';
 
 // Base class
 
 export var Style = {
-    init ({ generation } = {}) {
+    init ({ generation, sources = {} } = {}) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
 
         this.generation = generation;               // scene generation id this style was created for
+        this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
         this.selection = this.selection || false;   // flag indicating if this style supports feature selection
@@ -31,6 +34,12 @@ export var Style = {
         this.feature_style = {};                    // style for feature currently being parsed, shared to lessen GC/memory thrash
         this.vertex_template = [];                  // shared single-vertex template, filled out by each style
         this.tile_data = {};
+
+        // Provide a hook for this object to be called from worker threads
+        this.main_thread_target = 'Style-' + this.name;
+        if (Utils.isMainThread) {
+            WorkerBroker.addTarget(this.main_thread_target, this);
+        }
 
         // Default world coords to wrap every 100,000 meters, can turn off by setting this to 'false'
         this.defines.TANGRAM_WORLD_POSITION_WRAP = 100000;
@@ -53,6 +62,9 @@ export var Style = {
 
         // Set lighting mode: fragment, vertex, or none (specified as 'false')
         Light.setMode(this.lighting, this);
+
+        // Setup raster samplers if needed
+        this.setupRasters();
 
         this.initialized = true;
     },
@@ -100,31 +112,29 @@ export var Style = {
     startData (tile) {
         this.tile_data[tile.key] = {
             vertex_data: null,
-            uniforms: null
+            uniforms: {},
+            textures: []
         };
         return this.tile_data[tile.key];
     },
 
     // Finalizes an object holding feature data (for a tile or other object)
     endData (tile) {
-        if (tile.canceled) {
-            Utils.log('debug', `stop tile build because tile was removed: ${tile.key}`);
-            return;
+        var tile_data = this.tile_data[tile.key];
+        this.tile_data[tile.key] = null;
+
+        if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
+            // Only keep final byte buffer
+            tile_data.vertex_data.end();
+            tile_data.vertex_data = tile_data.vertex_data.buffer;
+
+            // Load raster tiles passed from data source
+            // Blocks mesh completion to avoid flickering
+            return this.buildRasterTextures(tile, tile_data).then(() => tile_data);
         }
-
-       var tile_data = this.tile_data[tile.key];
-       this.tile_data[tile.key] = null;
-
-       if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
-           // Only keep final byte buffer
-           tile_data.vertex_data.end();
-           tile_data.vertex_data = tile_data.vertex_data.buffer;
-       }
-       else {
-           tile_data = null; // don't send tile data back if doesn't have geometry
-       }
-
-       return Promise.resolve(tile_data);
+        else {
+            return Promise.resolve(null); // don't send tile data back if doesn't have geometry
+        }
     },
 
     // Has mesh data for a given tile?
@@ -299,9 +309,9 @@ export var Style = {
         // Get any custom code blocks, uniform dependencies, etc.
         var blocks = (this.shaders && this.shaders.blocks);
         var block_scopes = (this.shaders && this.shaders.block_scopes);
-        var uniforms = (this.shaders && this.shaders.uniforms);
+        var uniforms = Object.assign({}, this.shaders && this.shaders.uniforms);
 
-        // accept a single extension, or an array of extensions
+        // Accept a single extension, or an array of extensions
         var extensions = (this.shaders && this.shaders.extensions);
         if (typeof extensions === 'string') {
             extensions = [extensions];
@@ -395,6 +405,135 @@ export var Style = {
         }
         return defines;
 
+    },
+
+    // Determines if 'raster' parameter is set to a valid value
+    hasRasters () {
+        return (['color', 'normal', 'custom'].indexOf(this.raster) > -1);
+    },
+
+    // Setup raster access in shaders
+    setupRasters () {
+        if (!this.hasRasters()) {
+            return;
+        }
+
+        // Enable raster textures and configure how first raster is applied
+        if (this.raster === 'color') {
+            this.defines.TANGRAM_RASTER_TEXTURE_COLOR = true;
+        }
+        else if (this.raster === 'normal') {
+            this.defines.TANGRAM_RASTER_TEXTURE_NORMAL = true;
+        }
+        // else custom raster (samplers will be made available but not automatically applied)
+
+        // A given style may be built with multiple data sources, each of which may attach
+        // a variable number of raster sources (0 to N, where N is the max number of raster sources
+        // defined for the scene). This means we don't know *which* or *how many* rasters will be
+        // bound now, at initial compile-time; we only know this at geometry build-time. To ensure
+        // that we can bind as many raster sources as needed, we declare our uniform arrays to hold
+        // the maximum number of possible sources. At render time, only the necessary number of rasters
+        // are bound (the remaining slots aren't intended to be accessed).
+        let num_raster_sources =
+            Object.keys(this.sources)
+            .filter(s => this.sources[s] instanceof RasterTileSource)
+            .length;
+
+        this.defines.TANGRAM_NUM_RASTER_SOURCES = `int(${num_raster_sources})`;
+        if (num_raster_sources > 0) {
+            // Use model position of tile's coordinate zoom for raster tile texture UVs
+            this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
+
+            // Uniforms and macros for raster samplers
+            this.replaceShaderBlock('raster', shaderSources['gl/shaders/rasters'], 'Raster');
+        }
+    },
+
+    // Load raster tile textures and set uniforms
+    buildRasterTextures (tile, tile_data) {
+        if (!this.hasRasters()) {
+            return Promise.resolve(tile_data);
+        }
+
+        let configs = {}; // texture configs to pass to texture builder, keyed by texture name
+        let index = {};   // index into raster sampler array, keyed by texture name
+
+        // TODO: data source could retrieve raster texture URLs
+        tile.rasters.map(r => this.sources[r]).filter(x => x).forEach((source, i) => {
+            if (source instanceof RasterTileSource) {
+                let config = source.tileTexture(tile);
+                configs[config.url] = config;
+                index[config.url] = i;
+            }
+        });
+
+        if (Object.keys(configs).length === 0) {
+            return Promise.resolve(tile_data);
+        }
+
+        // Load textures on main thread and return when done
+        // We want to block the building of a raster tile mesh until its texture is loaded,
+        // to avoid flickering while loading (texture will render as black)
+        return WorkerBroker.postMessage(this.main_thread_target+'.loadTextures', configs)
+            .then(textures => {
+                if (!textures || textures.length < 1) {
+                    // TODO: warning
+                    return tile_data;
+                }
+
+                // Set texture uniforms (returned after loading from main thread)
+                tile_data.uniforms = tile_data.uniforms || {};
+                tile_data.textures = tile_data.textures || [];
+
+                let u_samplers = tile_data.uniforms['u_rasters'] = [];
+                let u_sizes = tile_data.uniforms['u_raster_sizes'] = [];
+                let u_offsets = tile_data.uniforms['u_raster_offsets'] = [];
+
+                for (let [tname, twidth, theight] of textures) {
+                    let i = index[tname];
+                    let raster_coords = configs[tname].coords; // tile coords of raster tile
+
+                    u_samplers[i] = tname;
+                    tile_data.textures.push(tname);
+
+                    u_sizes[i] = [twidth, theight];
+
+                    // Tile geometry may be at a higher zoom than the raster tile texture,
+                    // (e.g. an overzoomed raster tile), in which case we need to adjust the
+                    // raster texture UVs to offset to the appropriate starting point for
+                    // this geometry tile.
+                    if (tile.coords.z > raster_coords.z) {
+                        let dz = tile.coords.z - raster_coords.z; // # of levels raster source is overzoomed
+                        let dz2 = Math.pow(2, dz);
+                        u_offsets[i] = [
+                            (tile.coords.x % dz2) / dz2,
+                            (dz2 - 1 - (tile.coords.y % dz2)) / dz2, // GL texture coords are +Y up
+                            1 / dz2
+                        ];
+                    }
+                    else {
+                        u_offsets[i] = [0, 0, 1];
+                    }
+                }
+
+                return tile_data;
+            }
+        );
+    },
+
+    // Called on main thread
+    loadTextures (textures) {
+        // NB: only return name and size of textures loaded, because we can't send actual texture objects to worker
+        return Texture.createFromObject(this.gl, textures)
+            .then(() => {
+                return Promise.all(Object.keys(textures).map(t => {
+                    return Texture.textures[t] && Texture.textures[t].load();
+                }).filter(x => x));
+            })
+            .then(textures => {
+                textures.forEach(t => t.retain());
+                return textures.map(t => [t.name, t.width, t.height]);
+            });
     },
 
     // Setup any GL state for rendering

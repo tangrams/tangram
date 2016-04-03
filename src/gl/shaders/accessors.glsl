@@ -14,6 +14,17 @@ vec4 modelPosition() {
         // should be refactored to remove
 }
 
+// Position in model space as above, but according to tile coordinate (as opposed to style) zoom
+// e.g. unadjusted for tile overzooming
+vec4 modelPositionBaseZoom() {
+    return
+        vec4(
+            SHORT(a_position.xyz)   // scale normalized short to full range
+            / TANGRAM_TILE_SCALE,   // scale coords to ~0-1 range
+        1.)
+        + vec4(0., 1., 0., 0.);
+}
+
 #endif
 
 // Vertex position in world coordinates, useful for 3d procedural textures, etc.

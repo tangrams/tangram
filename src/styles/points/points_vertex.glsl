@@ -26,6 +26,7 @@ varying vec4 v_world_position;
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
+#pragma tangram: raster
 #pragma tangram: global
 
 vec2 rotate2D(vec2 _st, float _angle) {

@@ -196,6 +196,7 @@ export default SceneLoader = {
         // Ensure top-level properties
         config.lights = config.lights || {};
         config.styles = config.styles || {};
+        config.layers = config.layers || {};
 
         return config;
     }
