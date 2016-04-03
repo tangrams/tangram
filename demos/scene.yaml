@@ -400,11 +400,6 @@ layers:
         data: { source: mapzen, layer: roads }
         filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
 
-        draw:
-            text:
-                font:
-                    family: Helvetica #Indie Flower
-
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
@@ -413,7 +408,7 @@ layers:
                     priority: 2
                     font:
                         fill: '#666'
-                        # family: Helvetica
+                        family: Helvetica
                         size: 12px
                         stroke: { color: white, width: 4 }
 
@@ -426,7 +421,7 @@ layers:
                     font:
                         fill: '#666'
                         stroke: { color: white, width: 4 }
-                        # family: Helvetica
+                        family: Helvetica
                         size: 12px
 
             major_road:
@@ -435,7 +430,7 @@ layers:
                     text:
                         priority: 3
                         font:
-                            # family: Helvetica
+                            family: Helvetica
                             size: 16px
                             stroke: { color: white, width: 4 }
 
@@ -607,7 +602,7 @@ layers:
                     move_into_tile: false
                     priority: 6
                     font:
-                        family: Poiret One
+                        family: Montserrat
                         size: 12px
                         fill: black
 
