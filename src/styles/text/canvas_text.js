@@ -2,6 +2,7 @@ import Utils from '../../utils/utils';
 import Builders from '../builders';
 
 import FontFaceObserver from 'fontfaceobserver';
+import log from 'loglevel';
 
 export default class CanvasText {
 
@@ -38,8 +39,8 @@ export default class CanvasText {
 
     // Collect fonts from tile text set and block on load
     loadFonts (texts) {
+        // TODO: more efficient font collection, maybe pre-de-duped by text style
         let fonts = {};
-        let queue = [];
         for (let style in texts) {
             let text_infos = texts[style];
             for (let text in text_infos) {
@@ -49,14 +50,24 @@ export default class CanvasText {
             }
         }
 
+        let queue = [];
         for (let family in fonts) {
             if (CanvasText.fonts[family] === undefined) {
-                CanvasText.fonts[family] = new FontFaceObserver(family) // TODO: add font style options
+                // TODO: add font style options
+                CanvasText.fonts[family] = (new FontFaceObserver(family))
                     .check()
-                    // .then(() => CanvasText.fonts[family] = true, () => CanvasText.fonts[family] = false)
-                    .then(() => { console.log(`***** ${family} available`), CanvasText.fonts[family] = true }, () => { console.log(`***** ${family} NOT available`), CanvasText.fonts[family] = false })
-                    .then(() => Promise.resolve(family));
-                console.log(`***** START FONT CHECK FOR: ${family} `);
+                    .then(
+                        () => {
+                            // Promise resolves, font is available
+                            CanvasText.fonts[family] = true;
+                            log.debug(`Font '${family}' is available`);
+                        },
+                        () => {
+                            // Promise rejects, font is not available
+                            CanvasText.fonts[family] = false;
+                            log.debug(`Font '${family}' is NOT available`);
+                    });
+                log.debug(`Check availability for font '${family}'`);
             }
 
             if (CanvasText.fonts[family] instanceof Promise) {
