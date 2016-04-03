@@ -51,14 +51,16 @@ export default class CanvasText {
 
         for (let family in fonts) {
             if (CanvasText.fonts[family] === undefined) {
-                queue.push(
-                    new FontFaceObserver(family) // TODO: add font style options
-                        .check()
-                        // .then(() => CanvasText.fonts[family] = true, () => CanvasText.fonts[family] = false)
-                        .then(() => { console.log(`***** ${family} available`), CanvasText.fonts[family] = true }, () => { console.log(`***** ${family} NOT available`), CanvasText.fonts[family] = false })
-                        .then(() => Promise.resolve(family))
-                );
+                CanvasText.fonts[family] = new FontFaceObserver(family) // TODO: add font style options
+                    .check()
+                    // .then(() => CanvasText.fonts[family] = true, () => CanvasText.fonts[family] = false)
+                    .then(() => { console.log(`***** ${family} available`), CanvasText.fonts[family] = true }, () => { console.log(`***** ${family} NOT available`), CanvasText.fonts[family] = false })
+                    .then(() => Promise.resolve(family));
                 console.log(`***** START FONT CHECK FOR: ${family} `);
+            }
+
+            if (CanvasText.fonts[family] instanceof Promise) {
+                queue.push(CanvasText.fonts[family]);
             }
         }
 
