@@ -5,12 +5,15 @@ import Utils from '../utils/utils';
 
 export default class DataSource {
 
-    constructor (config) {
+    constructor (config, sources) {
         this.config = config; // save original config
+        this.sources = sources; // full set of data sources TODO: centralize these like textures?
         this.id = config.id;
         this.name = config.name;
         this.pad_scale = config.pad_scale || 0.0001; // scale tile up by small factor to cover seams
         this.default_winding = null; // winding order will adapt to data source
+        this.rasters = // attached raster tile sources
+            Array.isArray(config.rasters) ? [...new Set(config.rasters)] : []; // de-dupe with set conversion
 
         // Optional function to transform source data
         this.transform = config.transform;
@@ -40,9 +43,9 @@ export default class DataSource {
     }
 
     // Create a tile source by type, factory-style
-    static create (source) {
+    static create (source, sources) {
         if (DataSource.types[source.type]) {
-            return new DataSource.types[source.type](source);
+            return new DataSource.types[source.type](source, sources);
         }
     }
 
@@ -99,6 +102,7 @@ export default class DataSource {
         dest.source_data = {};
         dest.source_data.layers = {};
         dest.pad_scale = this.pad_scale;
+        dest.rasters = [...this.rasters]; // copy list of rasters to load for tile
 
         return this._load(dest).then((dest) => {
             // Post-processing
@@ -124,6 +128,7 @@ export default class DataSource {
             }
 
             dest.default_winding = this.default_winding || 'CCW';
+            return dest;
         });
     }
 

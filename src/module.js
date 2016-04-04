@@ -18,6 +18,7 @@ import DataSource from './sources/data_source';
 import './sources/geojson';
 import './sources/topojson';
 import './sources/mvt';
+import './sources/raster';
 import TileManager from './tile_manager';
 import GLSL from './gl/glsl';
 import ShaderProgram from './gl/shader_program';

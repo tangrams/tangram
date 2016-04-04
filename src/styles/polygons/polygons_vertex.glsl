@@ -41,6 +41,11 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
+// Optional model position varying for tile coordinate zoom
+#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+    varying vec4 v_modelpos_base_zoom;
+#endif
+
 #if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
@@ -48,6 +53,7 @@ varying vec4 v_world_position;
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
+#pragma tangram: raster
 #pragma tangram: global
 
 void main() {
@@ -57,6 +63,14 @@ void main() {
     // Texture UVs
     #ifdef TANGRAM_TEXTURE_COORDS
         v_texcoord = a_texcoord;
+        #ifdef TANGRAM_EXTRUDE_LINES
+            v_texcoord.y *= TANGRAM_V_SCALE_ADJUST;
+        #endif
+    #endif
+
+    // Pass model position to fragment shader
+    #ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+        v_modelpos_base_zoom = modelPositionBaseZoom();
     #endif
 
     // Position

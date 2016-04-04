@@ -406,7 +406,7 @@ StyleParser.applyGlobalProperties = function (config) {
         return config; // no global properties to transform
     }
 
-    const separator = '_$_';
+    const separator = ':';
     const props = flattenProperties(config.global, separator);
 
     function applyProps (obj) {
@@ -430,8 +430,8 @@ StyleParser.applyGlobalProperties = function (config) {
 };
 
 // Flatten nested properties for simpler string look-ups
-// e.g. global.background.color -> global_$_background_$_color
-function flattenProperties (obj, separator = '_$_', prefix = null, props = {}) {
+// e.g. global.background.color -> 'global:background:color'
+function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
     prefix = prefix ? (prefix + separator) : '';
 
     for (let p in obj) {

@@ -1,138 +1,139 @@
-# Halftone shaders adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
-halftone:
-    shaders:
-        blocks:
-            global: |
-                float dot_frequency = 100.4748637184972;
+styles:
+    # Halftone shaders adapted from: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
+    halftone:
+        shaders:
+            blocks:
+                global: |
+                    float dot_frequency = 100.4748637184972;
 
-                // Antialiasing
-                float aastep(float threshold, const float freq, float value) {
-                    const float scale = 2.;
-                    const float y_rot = 0.;
-                    float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
-                    return smoothstep(threshold-afwidth, threshold+afwidth, value);
-                }
+                    // Antialiasing
+                    float aastep(float threshold, const float freq, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
 
-            filter: |
-                // Distance to nearest point in a grid of
-                // (frequency x frequency) points over the unit square
-                // Scale dot size for a subset of zoom
-                const float max_scale_zoom = 19.;
-                const float min_scale_zoom = 17.;
-                const float scale_zoom_factor = .25;
-                float zoom_frequency = dot_frequency / u_device_pixel_ratio;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                filter: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency / u_device_pixel_ratio;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
 
-                float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
+                    float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
-                // Sample based on screenspace
-                const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
-                vec2 st = gl_FragCoord.xy / pixel_scale;
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
 
-                // But peg to map center so dots on ground plane stay in place as we move
-                // (there's what looks like some floating point precision crawl, but it's not too bad)
-                const float dot_wrap = 1000.;
-                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
-                // Rotate dot & find nearest dot distance
-                vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
-                vec2 nearest = 2.0 * fract(zoom_frequency * st2) - 1.0;
-                float dist = length(nearest);
+                    // Rotate dot & find nearest dot distance
+                    vec2 st2 = mat2(0.707, -0.707, 0.707, 0.707) * st;
+                    vec2 nearest = 2.0 * fract(zoom_frequency * st2) - 1.0;
+                    float dist = length(nearest);
 
-                // Modulate the size of the dots
-                float radius = clamp(sqrt(1.0 - color.g), 0.001, 1.); // use green channel, clamp to avoid giant dot
+                    // Modulate the size of the dots
+                    float radius = clamp(sqrt(1.0 - color.g), 0.001, 1.); // use green channel, clamp to avoid giant dot
 
-                // Color mix
-                const vec3 white = vec3(1.0, 1.0, 1.0);
-                const vec3 black = vec3(0.0, 0.0, 0.0);
-                // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, zoom_frequency, dist));
-                color.rgb = mix(black, white, aastep(radius, zoom_frequency, dist));
+                    // Color mix
+                    const vec3 white = vec3(1.0, 1.0, 1.0);
+                    const vec3 black = vec3(0.0, 0.0, 0.0);
+                    // color = mix(black + (color * float(halftone_colored)), white, aastep(radius, zoom_frequency, dist));
+                    color.rgb = mix(black, white, aastep(radius, zoom_frequency, dist));
 
-halftone_polygons:
-    base: polygons
-    mix: halftone
+    halftone_polygons:
+        base: polygons
+        mix: halftone
 
-halftone_lines:
-    base: lines
-    mix: halftone
+    halftone_lines:
+        base: lines
+        mix: halftone
 
-# Color version simulating CMYK printing process
-color_halftone:
-    shaders:
-        uniforms:
-            dot_frequency: 100.
-            dot_scale: 1.5
-            true_color: false
+    # Color version simulating CMYK printing process
+    color_halftone:
+        shaders:
+            uniforms:
+                dot_frequency: 100.
+                dot_scale: 1.5
+                true_color: false
 
-        blocks:
-            global: |
+            blocks:
+                global: |
 
-                // Antialiasing
-                float aastep(float threshold, const float freq, float value) {
-                    const float scale = 2.;
-                    const float y_rot = 0.;
-                    float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
-                    return smoothstep(threshold-afwidth, threshold+afwidth, value);
-                }
+                    // Antialiasing
+                    float aastep(float threshold, const float freq, float value) {
+                        const float scale = 2.;
+                        const float y_rot = 0.;
+                        float afwidth = freq * (1.0/200.0) / scale / cos(y_rot);
+                        return smoothstep(threshold-afwidth, threshold+afwidth, value);
+                    }
 
-            filter: |
-                // Distance to nearest point in a grid of
-                // (frequency x frequency) points over the unit square
-                // Scale dot size for a subset of zoom
-                const float max_scale_zoom = 19.;
-                const float min_scale_zoom = 17.;
-                const float scale_zoom_factor = .25;
-                float zoom_frequency = dot_frequency / u_device_pixel_ratio;
-                zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
+                filter: |
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    // Scale dot size for a subset of zoom
+                    const float max_scale_zoom = 19.;
+                    const float min_scale_zoom = 17.;
+                    const float scale_zoom_factor = .25;
+                    float zoom_frequency = dot_frequency / u_device_pixel_ratio;
+                    zoom_frequency *= 1. + ((max_scale_zoom - clamp(u_map_position.z, min_scale_zoom, max_scale_zoom)) * scale_zoom_factor);
 
-                float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
+                    float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
 
-                // Sample based on screenspace
-                const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
-                vec2 st = gl_FragCoord.xy / pixel_scale;
+                    // Sample based on screenspace
+                    const float pixel_scale = 695.; // arbitrary pixel_scale based on playing w/values
+                    vec2 st = gl_FragCoord.xy / pixel_scale;
 
-                // But peg to map center so dots on ground plane stay in place as we move
-                // (there's what looks like some floating point precision crawl, but it's not too bad)
-                const float dot_wrap = 1000.;
-                st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
+                    // But peg to map center so dots on ground plane stay in place as we move
+                    // (there's what looks like some floating point precision crawl, but it's not too bad)
+                    const float dot_wrap = 1000.;
+                    st += mod(u_map_position.xy / meter_pixels, dot_wrap) / pixel_scale;
 
-                vec3 white = vec3(0.97);
-                vec3 black = vec3(0.1);
+                    vec3 white = vec3(0.97);
+                    vec3 black = vec3(0.1);
 
-                // Perform a rough RGB-to-CMYK conversion
-                vec4 cmyk;
-                cmyk.xyz = 1.0 - color.rgb;
-                cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
-                if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
+                    // Perform a rough RGB-to-CMYK conversion
+                    vec4 cmyk;
+                    cmyk.xyz = 1.0 - color.rgb;
+                    cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
+                    if (!true_color) {cmyk.xyz -= cmyk.w;} // Subtract K equivalent from CMY
 
-                // Distance to nearest point in a grid of
-                // (frequency x frequency) points over the unit square
-                vec2 Kst = zoom_frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
-                vec2 Kuv = dot_scale*fract(Kst)-(dot_scale/2.);
-                float k = aastep(0.0, zoom_frequency, sqrt(cmyk.w)-length(Kuv));
-                vec2 Cst = zoom_frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
-                vec2 Cuv = dot_scale*fract(Cst)-(dot_scale/2.);
-                float c = aastep(0.0, zoom_frequency, sqrt(cmyk.x)-length(Cuv));
-                vec2 Mst = zoom_frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
-                vec2 Muv = dot_scale*fract(Mst)-(dot_scale/2.);
-                float m = aastep(0.0, zoom_frequency, sqrt(cmyk.y)-length(Muv));
-                vec2 Yst = zoom_frequency*st; // 0 deg
-                vec2 Yuv = dot_scale*fract(Yst)-(dot_scale/2.);
-                float y = aastep(0.0, zoom_frequency, sqrt(cmyk.z)-length(Yuv));
+                    // Distance to nearest point in a grid of
+                    // (frequency x frequency) points over the unit square
+                    vec2 Kst = zoom_frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
+                    vec2 Kuv = dot_scale*fract(Kst)-(dot_scale/2.);
+                    float k = aastep(0.0, zoom_frequency, sqrt(cmyk.w)-length(Kuv));
+                    vec2 Cst = zoom_frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
+                    vec2 Cuv = dot_scale*fract(Cst)-(dot_scale/2.);
+                    float c = aastep(0.0, zoom_frequency, sqrt(cmyk.x)-length(Cuv));
+                    vec2 Mst = zoom_frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
+                    vec2 Muv = dot_scale*fract(Mst)-(dot_scale/2.);
+                    float m = aastep(0.0, zoom_frequency, sqrt(cmyk.y)-length(Muv));
+                    vec2 Yst = zoom_frequency*st; // 0 deg
+                    vec2 Yuv = dot_scale*fract(Yst)-(dot_scale/2.);
+                    float y = aastep(0.0, zoom_frequency, sqrt(cmyk.z)-length(Yuv));
 
-                vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y); // most saturated color = .9
-                rgbscreen = mix(rgbscreen, black, 0.85*k); // darkest black = .85
+                    vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y); // most saturated color = .9
+                    rgbscreen = mix(rgbscreen, black, 0.85*k); // darkest black = .85
 
-                // Modulate the size of the dots
-                //float luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b); // HSP color model
-                //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
+                    // Modulate the size of the dots
+                    //float luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b); // HSP color model
+                    //float radius = clamp(sqrt(1.0 - luminance), 0.001, 1.); // use luminance, clamp to avoid giant dot
 
-                color.rgb = rgbscreen;
+                    color.rgb = rgbscreen;
 
-color_halftone_polygons:
-    base: polygons
-    mix: color_halftone
+    color_halftone_polygons:
+        base: polygons
+        mix: color_halftone
 
-color_halftone_lines:
-    base: lines
-    mix: color_halftone
+    color_halftone_lines:
+        base: lines
+        mix: color_halftone

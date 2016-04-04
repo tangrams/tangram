@@ -17,10 +17,12 @@ export default class Texture {
         this.bind();
 
         this.name = name;
+        this.retain_count = 0;
         this.source = null;
         this.source_type = null;
         this.config_type = null;
         this.loading = null;    // a Promise object to track the loading state of this texture
+        this.loaded = false;    // successfully loaded as expected
         this.filtering = options.filtering;
         this.sprites = options.sprites;
         this.texcoords = {};    // sprite UVs ([0, 1] range)
@@ -32,6 +34,9 @@ export default class Texture {
 
         // Destroy previous texture if present
         if (Texture.textures[this.name]) {
+            // Preserve previous retain count
+            this.retain_count = Texture.textures[this.name].retain_count;
+            Texture.textures[this.name].retain_count = 0; // allow to be freed
             Texture.textures[this.name].destroy();
         }
 
@@ -45,6 +50,11 @@ export default class Texture {
 
     // Destroy a single texture instance
     destroy() {
+        if (this.retain_count > 0) {
+            log.error(`Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
+            return;
+        }
+
         if (!this.valid) {
             return;
         }
@@ -55,6 +65,21 @@ export default class Texture {
         delete Texture.textures[this.name];
         this.valid = false;
         log.trace(`destroying Texture ${this.name}`);
+    }
+
+    retain () {
+        this.retain_count++;
+    }
+
+    release () {
+        if (this.retain_count <= 0) {
+            log.error(`Texture '${this.name}': releasing texture with retain count of '${this.retain_count}'`);
+        }
+
+        this.retain_count--;
+        if (this.retain_count <= 0) {
+            this.destroy();
+        }
     }
 
     bind(unit) {
@@ -117,14 +142,17 @@ export default class Texture {
                     this.setElement(image, options);
                 }
                 catch (e) {
+                    this.loaded = false;
                     log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                     Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 }
 
+                this.loaded = true;
                 resolve(this);
             };
             image.onerror = e => {
                 // Warn and resolve on error
+                this.loaded = false;
                 log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                 Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 resolve(this);
@@ -146,6 +174,7 @@ export default class Texture {
         this.update(options);
         this.setFiltering(options);
 
+        this.loaded = true;
         this.loading = Promise.resolve(this);
         return this.loading;
     }
@@ -169,12 +198,14 @@ export default class Texture {
             this.setFiltering(options);
         }
         else {
+            this.loaded = false;
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
             msg += `selector string, or a <canvas>, <image> or <video> object`;
             log.warn(`Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }
 
+        this.loaded = true;
         this.loading = Promise.resolve(this);
         return this.loading;
     }
@@ -288,8 +319,20 @@ export default class Texture {
 
 // Static/class methods and state
 
-Texture.create = function constructor(gl, name, options) {
+Texture.create = function (gl, name, options) {
     return new Texture(gl, name, options);
+};
+
+Texture.retain = function (name) {
+    if (Texture.textures[name]) {
+        Texture.textures[name].retain();
+    }
+};
+
+Texture.release = function (name) {
+    if (Texture.textures[name]) {
+        Texture.textures[name].release();
+    }
 };
 
 // Destroy all texture instances for a given GL context

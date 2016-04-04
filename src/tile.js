@@ -4,7 +4,6 @@ import {StyleManager} from './styles/style_manager';
 import Collision from './labels/collision';
 import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
-import Utils from './utils/utils';
 
 import {mat4, vec3} from './utils/gl-matrix';
 import log from 'loglevel';
@@ -121,8 +120,7 @@ export default class Tile {
     }
 
     // Free resources owned by tile
-    // Optionally pass textures to preserve
-    freeResources(preserve = {}) {
+    freeResources () {
         if (this.meshes) {
             for (let m in this.meshes) {
                 this.meshes[m].destroy();
@@ -131,12 +129,7 @@ export default class Tile {
 
         if (this.textures) {
             for (let t of this.textures) {
-                if (!preserve.textures || preserve.textures.indexOf(t) === -1) {
-                    let texture = Texture.textures[t];
-                    if (texture) {
-                        texture.destroy();
-                    }
-                }
+                Texture.release(t);
             }
         }
 
@@ -235,11 +228,6 @@ export default class Tile {
                     let feature = geom.features[f];
                     if (feature.geometry == null) {
                         continue; // skip features w/o geometry (valid GeoJSON)
-                    }
-
-                    if (tile.canceled) {
-                        Utils.log('debug', `stop tile build because tile after ${tile.debug.features} because it was removed: ${tile.key}`);
-                        return;
                     }
 
                     let context = StyleParser.getFeatureParseContext(feature, tile, config);
@@ -388,16 +376,22 @@ export default class Tile {
                     this.debug.geometries += meshes[s].geometry_count;
                 }
 
-                // Assign ownership to textures if needed
+                // Assign texture ownership to tiles
+                // Note that it's valid for a single texture to be referenced from multiple styles
+                // (e.g. same raster texture attached to multiple sources). This means the same
+                // texture may be added to the tile's texture list more than once, which ensures
+                // that it is properly released (to match its retain count).
                 if (mesh_data[s].textures) {
-                    textures.push(...mesh_data[s].textures);
+                    mesh_data[s].textures.forEach(t => {
+                        textures.push(t);
+                    });
                 }
             }
         }
         delete this.mesh_data; // TODO: might want to preserve this for rebuilding geometries when styles/etc. change?
 
         // Swap in new data, free old data
-        this.freeResources({ textures }); // textures to preserve are passed (avoid flickering from delete/re-create)
+        this.freeResources();
         this.meshes = meshes;
         this.textures = textures;
 
@@ -418,8 +412,8 @@ export default class Tile {
                     for (let t of textures) {
                         let texture = Texture.textures[t];
                         if (texture) {
-                            log.trace(`destroying texture ${t} for tile ${tile.key}`);
-                            texture.destroy();
+                            log.trace(`releasing texture ${t} for tile ${tile.key}`);
+                            texture.release();
                         }
                     }
                 }

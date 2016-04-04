@@ -61,7 +61,7 @@ Object.assign(self, {
         for (let name in config.sources) {
             let source;
             try {
-                source = DataSource.create(Object.assign({}, config.sources[name], {name}));
+                source = DataSource.create(Object.assign({}, config.sources[name], {name}), self.sources.tiles);
             }
             catch(e) {
                 continue;
@@ -98,7 +98,7 @@ Object.assign(self, {
 
         // Expand styles
         config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);
-        self.styles = StyleManager.build(config.styles, { generation: self.generation });
+        self.styles = StyleManager.build(config.styles, { generation: self.generation, sources: self.sources.tiles });
 
         // Parse each top-level layer as a separate rule tree
         self.rules = parseRules(config.layers);

@@ -19,6 +19,10 @@ varying vec4 v_world_position;
     varying vec2 v_texcoord;
 #endif
 
+#ifdef TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING
+    varying vec4 v_modelpos_base_zoom;
+#endif
+
 #if defined(TANGRAM_LIGHTING_VERTEX)
     varying vec4 v_lighting;
 #endif
@@ -26,6 +30,7 @@ varying vec4 v_world_position;
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
+#pragma tangram: raster
 #pragma tangram: global
 
 void main (void) {
@@ -35,9 +40,14 @@ void main (void) {
     vec4 color = v_color;
     vec3 normal = TANGRAM_NORMAL;
 
-    // Normal material texture (fragment lighting only)
-    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)
-        calculateNormal(normal);
+    // Apply raster to vertex color
+    #ifdef TANGRAM_RASTER_TEXTURE_COLOR
+        color *= sampleRaster(0); // multiplied to tint texture color
+    #endif
+
+    // Apply normal from raster tile
+    #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
+        normal = normalize(sampleRaster(0).rgb * 2. - 1.);
     #endif
 
     // Normal modification applied here for fragment lighting or no lighting,

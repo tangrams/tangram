@@ -75,123 +75,6 @@ StyleManager.remove = function (name) {
     delete Styles[name];
 };
 
-// Load style definitions from external URLs
-StyleManager.loadRemoteStyles = function (styles, base) {
-    // Collect URLs and modes to import from them
-    // This is done as a separate step becuase it is possible to import multiple modes from a single
-    // URL, and we want to avoid duplicate calls for the same file.
-    var urls = {};
-    for (var name in styles) {
-        var style = styles[name];
-        if (style.url) {
-            let url = style.url;
-            if (base) {
-                url = Utils.addBaseURL(url, base);
-            }
-
-            if (!urls[url]) {
-                urls[url] = [];
-            }
-
-            // Make a list of the styles to import for this URL
-            urls[url].push({
-                target_name: name,
-                source_name: style.name || name
-            });
-        }
-    }
-
-    // As each URL finishes loading, replace the target style(s)
-    return Promise.all(Object.keys(urls).map(url => {
-        return new Promise((resolve, reject) => {
-            Utils.loadResource(url).then((data) => {
-                // Mixin remote styles, within each remote file
-                // TODO: may not handle multiple levels of mixins, and will not handle nested remote files
-                for (var source_name in data) {
-                    let source_import = urls[url] && urls[url].filter(s => s.source_name === source_name);
-                    source_import = source_import && source_import[0];
-
-                    if (source_import) {
-                        // use imported name if different from name in source file
-                        data[source_name].name = source_import.target_name;
-                    }
-                    else {
-                        data[source_name].name = source_name;
-                    }
-
-                    data[source_name] = StyleManager.mix(data[source_name], data);
-                }
-
-                // Add remote styles to local styles
-                for (var target of urls[url]) {
-                    if (data && data[target.source_name]) {
-                        styles[target.target_name] = data[target.source_name];
-                    }
-                    else {
-                        delete styles[target.target_name];
-                        return reject(new Error(`StyleManager.loadRemoteStyles: error importing style ${target.target_name}, could not find source style ${target.source_name} in ${url}`));
-                    }
-                }
-                resolve();
-
-                this.selection = false;
-            }).catch((error) => {
-                log.error(`StyleManager.loadRemoteStyles: error importing style(s) ${JSON.stringify(urls[url])} from ${url}`, error);
-            });
-        });
-    })).then(() => Promise.resolve(styles));
-};
-
-// Preload shader blocks from external URLs
-StyleManager.loadShaderBlocks = function (styles, base) {
-    if (!styles) {
-        return Promise.resolve({});
-    }
-    var queue = [];
-    for (var style of Utils.values(styles)) {
-        if (style.shaders && style.shaders.blocks) {
-            let _blocks = style.shaders.blocks;
-
-            for (let [key, block] of Utils.entries(style.shaders.blocks)) {
-                let _key = key;
-
-                // Array of blocks
-                if (Array.isArray(block)) {
-                    for (let b=0; b < block.length; b++) {
-                        if (typeof block[b] === 'object' && block[b].url) {
-                            let _index = b;
-                            let url = block[b].url;
-                            if (base) {
-                                url = Utils.addBaseURL(url, base);
-                            }
-
-                            queue.push(Utils.io(Utils.cacheBusterForUrl(url)).then((data) => {
-                                _blocks[_key][_index] = data;
-                            }).catch((error) => {
-                                log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, _index, error);
-                            }));
-                        }
-                    }
-                }
-                // Single block
-                else if (typeof block === 'object' && block.url) {
-                    let url = block.url;
-                    if (base) {
-                        url = Utils.addBaseURL(url, base);
-                    }
-
-                    queue.push(Utils.io(Utils.cacheBusterForUrl(url)).then((data) => {
-                        _blocks[_key] = data;
-                    }).catch((error) => {
-                        log.error(`StyleManager.loadShaderBlocks: error loading shader block`, _blocks, _key, error);
-                    }));
-                }
-            }
-        }
-    }
-    return Promise.all(queue).then(() => Promise.resolve(styles)); // TODO: add error
-};
-
 StyleManager.mix = function (style, styles) {
     // Exit early if we have already applied mixins to this style
     if (style.mixed) {
@@ -225,6 +108,7 @@ StyleManager.mix = function (style, styles) {
     style.base = sources.map(x => x.base).filter(x => x).pop();
     style.lighting = sources.map(x => x.lighting).filter(x => x != null).pop();
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
+    style.raster = sources.map(x => x.raster).filter(x => x != null).pop();
     if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
         // only mix blend if explicitly set, otherwise let base style choose blending mode
         // hasOwnProperty check gives preference to base style prototype
