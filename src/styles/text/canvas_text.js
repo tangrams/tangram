@@ -16,7 +16,7 @@ export default class CanvasText {
     }
 
     // Set font style params for canvas drawing
-    setFont (tile, { font_css, fill, stroke, stroke_width, px_size }) {
+    setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
         this.text_buffer = 8; // pixel padding around text
         let ctx = this.context;
@@ -34,19 +34,18 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    textSizes (tile, texts) {
+    textSizes (texts) {
         for (let style in texts) {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
                 let text_settings = text_infos[text].text_settings;
                 // update text sizes
-                this.setFont(tile, text_settings); // TODO: only set once above
+                this.setFont(text_settings); // TODO: only set once above
                 Object.assign(
                     text_infos[text],
                     this.textSize(
                         text,
-                        tile,
                         text_settings.transform,
                         text_settings.text_wrap
                     )
@@ -59,7 +58,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, tile, transform, text_wrap) {
+    textSize (text, transform, text_wrap) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -142,7 +141,7 @@ export default class CanvasText {
     }
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], size, tile, { stroke, transform, align }) {
+    drawText (lines, [x, y], size, { stroke, transform, align }) {
         align = align || 'center';
 
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -175,15 +174,15 @@ export default class CanvasText {
         }
     }
 
-    rasterize (tile, texts, texture_size) {
+    rasterize (texts, texture_size) {
         for (let style in texts) {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
                 let info = text_infos[text];
 
-                this.setFont(tile, info.text_settings); // TODO: only set once above
-                this.drawText(info.lines, info.position, info.size, tile, {
+                this.setFont(info.text_settings); // TODO: only set once above
+                this.drawText(info.lines, info.position, info.size, {
                     stroke: info.text_settings.stroke,
                     transform: info.text_settings.transform,
                     align: info.text_settings.align
