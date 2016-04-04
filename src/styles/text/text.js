@@ -47,12 +47,14 @@ Object.assign(TextStyle, {
         }
         else if (Utils.isWorkerThread) {
             this.texts = {}; // unique texts, grouped by tile, by style
+            this.fonts = {}; // set of fonts rendered by tile
         }
     },
 
     // Called on worker thread to release tile-specific resources
     freeTile (tile) {
         delete this.texts[tile.key];
+        delete this.fonts[tile.key];
     },
 
     // Free tile-specific resources before finshing style construction
@@ -99,6 +101,16 @@ Object.assign(TextStyle, {
             };
         }
 
+        // add font face for current tile
+        let fonts = this.fonts[tile.key] = this.fonts[tile.key] || {};
+        if (!fonts[text_settings.font_face_key]) {
+            fonts[text_settings.font_face_key] = {
+                family: text_settings.first_family,
+                style: text_settings.style,
+                weight: text_settings.weight
+            };
+        }
+
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
             this.startData(tile);
@@ -127,7 +139,9 @@ Object.assign(TextStyle, {
         }
 
         // first call to main thread, ask for text pixel sizes
-        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', tile.key, this.texts[tile.key]).then(texts => {
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes',
+            tile.key, this.texts[tile.key], this.fonts[tile.key]).then(texts => {
+
             if (tile.canceled) {
                 Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return;
@@ -237,8 +251,8 @@ Object.assign(TextStyle, {
     // Called on main thread from worker, to compute the size of each text string,
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
-    calcTextSizes (tile_key, texts) {
-        return this.canvas.textSizes(tile_key, texts);
+    calcTextSizes (tile_key, texts, fonts) {
+        return this.canvas.textSizes(tile_key, texts, fonts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile

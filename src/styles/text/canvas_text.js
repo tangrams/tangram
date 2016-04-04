@@ -37,49 +37,41 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    // Collect fonts from tile text set and block on load
-    loadFonts (texts) {
-        // TODO: more efficient font collection, maybe pre-de-duped by text style
-        let fonts = {};
-        for (let style in texts) {
-            let text_infos = texts[style];
-            for (let text in text_infos) {
-                let text_settings = text_infos[text].text_settings;
-                let first_family = text_settings.family.split(',')[0];
-                fonts[first_family] = true;
-            }
-        }
-
+    // Check availability of font face set (asynchronous)
+    loadFonts (fonts) {
         let queue = [];
-        for (let family in fonts) {
-            if (CanvasText.fonts[family] === undefined) {
-                // TODO: add font style options
-                CanvasText.fonts[family] = (new FontFaceObserver(family))
+        for (let key in fonts) {
+            let face = fonts[key];
+            if (CanvasText.fonts[key] === undefined) { // only check each font face once
+                CanvasText.fonts[key] =
+                    // `face` contains `style` and `weight` params
+                    (new FontFaceObserver(face.family, face))
                     .check()
                     .then(
                         () => {
                             // Promise resolves, font is available
-                            CanvasText.fonts[family] = true;
-                            log.debug(`Font '${family}' is available`);
+                            CanvasText.fonts[key] = true;
+                            log.debug(`Font face '${key}' is available`);
                         },
                         () => {
                             // Promise rejects, font is not available
-                            CanvasText.fonts[family] = false;
-                            log.debug(`Font '${family}' is NOT available`);
-                    });
-                log.debug(`Check availability for font '${family}'`);
+                            CanvasText.fonts[key] = false;
+                            log.debug(`Font face '${key}' is NOT available`);
+                        }
+                    );
+                log.debug(`Check availability for font face '${key}'`);
             }
 
-            if (CanvasText.fonts[family] instanceof Promise) {
-                queue.push(CanvasText.fonts[family]);
+            if (CanvasText.fonts[key] instanceof Promise) {
+                queue.push(CanvasText.fonts[key]);
             }
         }
 
         return Promise.all(queue);
     }
 
-    textSizes (tile, texts) {
-        return this.loadFonts(texts).then(() => {
+    textSizes (tile, texts, fonts) {
+        return this.loadFonts(fonts).then(() => {
             for (let style in texts) {
                 let text_infos = texts[style];
 
