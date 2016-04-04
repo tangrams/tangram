@@ -18,10 +18,9 @@ export default TextSettings = {
             settings.stroke,
             settings.stroke_width,
             settings.transform,
-            settings.typeface,
             settings.text_wrap,
             settings.align
-        ].join('/'); // typeface for legacy
+        ].join('/');
     },
 
     defaults: {
@@ -64,7 +63,7 @@ export default TextSettings = {
         style.transform = draw.font.transform;
 
         // original size (not currently used, but useful for debugging)
-        style.size = draw.font.size || draw.font.typeface || this.defaults.size; // TODO: 'typeface' legacy syntax, deprecate
+        style.size = draw.font.size || this.defaults.size;
 
         // calculated pixel size
         style.px_size = StyleParser.cacheProperty(draw.font.px_size, context) || this.defaults.px_size;
@@ -76,12 +75,7 @@ export default TextSettings = {
             style.stroke_width *= Utils.device_pixel_ratio;
         }
 
-        if (draw.font.typeface) { // 'typeface' legacy syntax, deprecate
-            style.font_css = draw.font.typeface;
-        }
-        else {
-            style.font_css = this.fontCSS(style);
-        }
+        style.font_css = this.fontCSS(style);
 
         // Word wrap and text alignment
         // Not a font properties, but affect atlas of unique text textures
