@@ -2,179 +2,9 @@
 
 import Vector from '../vector';
 import Geo from '../geo';
+import { default_uvs, outsideTile } from './common';
 
-import earcut from 'earcut';
-
-var Builders;
-export default Builders = {};
-
-Builders.debug = false;
-
-Builders.tile_bounds = [
-    { x: 0, y: 0},
-    { x: Geo.tile_scale, y: -Geo.tile_scale } // TODO: correct for flipped y-axis?
-];
-
-const default_uvs = [0, 0, 1, 1];
 const zero_vec2 = [0, 0];
-const up_vec3 = [0, 0, 1];
-
-// Re-scale UVs from [0, 1] range to a smaller area within the image
-Builders.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
-    var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
-
-    return [
-        area_origin[0] / tex_size[0],
-        area_origin_y / tex_size[1],
-        (area_size[0] + area_origin[0]) / tex_size[0],
-        (area_size[1] + area_origin_y) / tex_size[1]
-    ];
-};
-
-// Tesselate a flat 2D polygon
-// x & y coordinates will be set as first two elements of provided vertex_template
-Builders.buildPolygons = function (
-    polygons,
-    vertex_data, vertex_template,
-    { texcoord_index, texcoord_scale, texcoord_normalize }) {
-
-    if (texcoord_index) {
-        texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
-    }
-
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var polygon = polygons[p];
-
-        // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
-        if (texcoord_index) {
-            var [min_x, min_y, max_x, max_y] = Geo.findBoundingBox(polygon);
-            var span_x = max_x - min_x;
-            var span_y = max_y - min_y;
-            var scale_u = (max_u - min_u) / span_x;
-            var scale_v = (max_v - min_v) / span_y;
-        }
-
-        // Tessellate
-        var vertices = Builders.triangulatePolygon(polygon);
-
-        // Add vertex data
-        var num_vertices = vertices.length;
-        for (var v=0; v < num_vertices; v++) {
-            var vertex = vertices[v];
-            vertex_template[0] = vertex[0];
-            vertex_template[1] = vertex[1];
-
-            // Add UVs
-            if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
-                vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
-            }
-
-            vertex_data.addVertex(vertex_template);
-        }
-    }
-};
-
-// Tesselate and extrude a flat 2D polygon into a simple 3D model with fixed height and add to GL vertex buffer
-Builders.buildExtrudedPolygons = function (
-    polygons,
-    z, height, min_height,
-    vertex_data, vertex_template,
-    normal_index,
-    normal_normalize,
-    {
-        remove_tile_edges,
-        tile_edge_tolerance,
-        texcoord_index,
-        texcoord_scale,
-        texcoord_normalize,
-        winding
-    }) {
-
-    // Top
-    var min_z = z + (min_height || 0);
-    var max_z = z + height;
-    vertex_template[2] = max_z;
-    Builders.buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
-
-    // Walls
-    // Fit UVs to wall quad
-    if (texcoord_index) {
-        texcoord_normalize = texcoord_normalize || 1;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
-        var texcoords = [
-            [min_u, max_v],
-            [min_u, min_v],
-            [max_u, min_v],
-
-            [max_u, min_v],
-            [max_u, max_v],
-            [min_u, max_v]
-        ];
-    }
-
-    var num_polygons = polygons.length;
-    for (var p=0; p < num_polygons; p++) {
-        var polygon = polygons[p];
-
-        for (var q=0; q < polygon.length; q++) {
-            var contour = polygon[q];
-
-            for (var w=0; w < contour.length - 1; w++) {
-                if (remove_tile_edges && Builders.outsideTile(contour[w], contour[w+1], tile_edge_tolerance)) {
-                    continue; // don't extrude tile edges
-                }
-
-                // Wall order is dependent on winding order, so that normals face outward
-                let w0, w1;
-                if (winding === 'CCW') {
-                    w0 = w;
-                    w1 = w+1;
-                }
-                else {
-                    w0 = w+1;
-                    w1 = w;
-                }
-
-                // Two triangles for the quad formed by each vertex pair, going from bottom to top height
-                var wall_vertices = [
-                    // Triangle
-                    [contour[w1][0], contour[w1][1], max_z],
-                    [contour[w1][0], contour[w1][1], min_z],
-                    [contour[w0][0], contour[w0][1], min_z],
-                    // Triangle
-                    [contour[w0][0], contour[w0][1], min_z],
-                    [contour[w0][0], contour[w0][1], max_z],
-                    [contour[w1][0], contour[w1][1], max_z]
-                ];
-
-                // Calc the normal of the wall from up vector and one segment of the wall triangles
-                let wall_vec = Vector.normalize([contour[w1][0] - contour[w0][0], contour[w1][1] - contour[w0][1], 0]);
-                let normal = Vector.cross(up_vec3, wall_vec);
-
-                // Update vertex template with current surface normal
-                vertex_template[normal_index + 0] = normal[0] * normal_normalize;
-                vertex_template[normal_index + 1] = normal[1] * normal_normalize;
-                vertex_template[normal_index + 2] = normal[2] * normal_normalize;
-
-                for (var wv=0; wv < wall_vertices.length; wv++) {
-                    vertex_template[0] = wall_vertices[wv][0];
-                    vertex_template[1] = wall_vertices[wv][1];
-                    vertex_template[2] = wall_vertices[wv][2];
-
-                    if (texcoord_index) {
-                        vertex_template[texcoord_index + 0] = texcoords[wv][0] * texcoord_normalize;
-                        vertex_template[texcoord_index + 1] = texcoords[wv][1] * texcoord_normalize;
-                    }
-
-                    vertex_data.addVertex(vertex_template);
-                }
-            }
-        }
-    }
-};
 
 // Build tessellated triangles for a polyline
 const corners_for_cap = {
@@ -192,7 +22,7 @@ const triangles_for_join = {
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 const v_scale_adjust = Geo.tile_scale;
 
-Builders.buildPolylines = function (
+export function buildPolylines (
     lines,
     width,
     vertex_data, vertex_template,
@@ -288,7 +118,7 @@ Builders.buildPolylines = function (
 
                 var needToClose = true;
                 if (remove_tile_edges) {
-                    if(Builders.outsideTile(line[i], line[lineSize-2], tile_edge_tolerance)) {
+                    if(outsideTile(line[i], line[lineSize-2], tile_edge_tolerance)) {
                         needToClose = false;
                     }
                 }
@@ -316,7 +146,7 @@ Builders.buildPolylines = function (
 
                 normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
                 if (remove_tile_edges) {
-                    if (Builders.outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+                    if (outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                         normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
                         if (isPrev) {
                             addVertexPair(
@@ -398,7 +228,7 @@ Builders.buildPolylines = function (
             addCap(coordCurr, normCurr, cornersOnCap , false, context);
         }
     }
-};
+}
 
 // Remove duplicate points from a line, creating a new line only when points must be removed
 function dedupeLine (line, closed) {
@@ -786,91 +616,3 @@ function indexPairs (context) {
         context.texcoords = [];
     }
 }
-
-// Build a billboard sprite quad centered on a point. Sprites are intended to be drawn in screenspace, and have
-// properties for width, height, angle, and a scale factor that can be used to interpolate the screenspace size
-// of a sprite between two zoom levels.
-Builders.buildQuadsForPoints = function (points, vertex_data, vertex_template,
-    { texcoord_index, position_index, shape_index, offset_index },
-    { quad, quad_scale, offset, angle, texcoord_scale, texcoord_normalize }) {
-    let w2 = quad[0] / 2;
-    let h2 = quad[1] / 2;
-    let scaling = [
-        [-w2, -h2],
-        [w2, -h2],
-        [w2, h2],
-
-        [-w2, -h2],
-        [w2, h2],
-        [-w2, h2]
-    ];
-
-    let texcoords;
-    if (texcoord_index) {
-        texcoord_normalize = texcoord_normalize || 1;
-
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
-        texcoords = [
-            [min_u, min_v],
-            [max_u, min_v],
-            [max_u, max_v],
-
-            [min_u, min_v],
-            [max_u, max_v],
-            [min_u, max_v]
-        ];
-    }
-
-    let num_points = points.length;
-    for (let p=0; p < num_points; p++) {
-        let point = points[p];
-
-        for (let pos=0; pos < 6; pos++) {
-            // Add texcoords
-            if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
-                vertex_template[texcoord_index + 1] = texcoords[pos][1] * texcoord_normalize;
-            }
-
-            vertex_template[position_index + 0] = point[0];
-            vertex_template[position_index + 1] = point[1];
-
-            vertex_template[shape_index + 0] = scaling[pos][0];
-            vertex_template[shape_index + 1] = scaling[pos][1];
-            vertex_template[shape_index + 2] = angle;
-            vertex_template[shape_index + 3] = quad_scale;
-
-            vertex_template[offset_index + 0] = offset[0];
-            vertex_template[offset_index + 1] = offset[1];
-
-            vertex_data.addVertex(vertex_template);
-        }
-    }
-};
-
-
-/* Utility functions */
-
-// Triangulation using earcut
-// https://github.com/mapbox/earcut
-Builders.triangulatePolygon = function (contours)
-{
-    return earcut(contours);
-};
-
-// Tests if a line segment (from point A to B) is outside the tile bounds
-// (within a certain tolerance to account for geometry nearly on tile edges)
-Builders.outsideTile = function (_a, _b, tolerance) {
-    let tile_min = Builders.tile_bounds[0];
-    let tile_max = Builders.tile_bounds[1];
-
-    // TODO: fix flipped Y coords here, confusing with 'max' reference
-    if ((_a[0] <= tile_min.x + tolerance && _b[0] <= tile_min.x + tolerance) ||
-        (_a[0] >= tile_max.x - tolerance && _b[0] >= tile_max.x - tolerance) ||
-        (_a[1] >= tile_min.y - tolerance && _b[1] >= tile_min.y - tolerance) ||
-        (_a[1] <= tile_max.y + tolerance && _b[1] <= tile_max.y + tolerance)) {
-        return true;
-    }
-
-    return false;
-};

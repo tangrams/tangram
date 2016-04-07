@@ -2,7 +2,6 @@
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
-import Builders from '../styles/builders';
 import log from 'loglevel';
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
@@ -302,7 +301,7 @@ export default class Texture {
                 let sprite = this.sprites[s];
 
                 // Map [0, 0] to [1, 1] coords to the appropriate sprite sub-area of the texture
-                this.texcoords[s] = Builders.getTexcoordsForSprite(
+                this.texcoords[s] = Texture.getTexcoordsForSprite(
                     [sprite[0], sprite[1]],
                     [sprite[2], sprite[3]],
                     [this.width, this.height]
@@ -350,6 +349,18 @@ Texture.destroy = function (gl) {
 Texture.getSpriteInfo = function (texname, sprite) {
     let texture = Texture.textures[texname];
     return texture && { size: texture.sizes[sprite], texcoords: texture.texcoords[sprite] };
+};
+
+// Re-scale UVs from [0, 1] range to a smaller area within the image
+Texture.getTexcoordsForSprite = function (area_origin, area_size, tex_size) {
+    var area_origin_y = tex_size[1] - area_origin[1] - area_size[1];
+
+    return [
+        area_origin[0] / tex_size[0],
+        area_origin_y / tex_size[1],
+        (area_size[0] + area_origin[0]) / tex_size[0],
+        (area_size[1] + area_origin_y) / tex_size[1]
+    ];
 };
 
 // Create a set of textures keyed in an object

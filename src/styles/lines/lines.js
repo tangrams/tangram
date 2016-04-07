@@ -5,7 +5,7 @@ import {StyleParser} from '../style_parser';
 import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 
@@ -245,7 +245,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_template = this.makeVertexTemplate(style);
-        Builders.buildPolylines(
+        buildPolylines(
             lines,
             style.width,
             vertex_data,
