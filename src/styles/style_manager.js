@@ -239,8 +239,10 @@ StyleManager.mixShaders = function (style, styles, sources) {
 
         // Add styles mixed in from this source - they could be multi-level ancestors,
         // beyond the first-level "parents" defined in this style's `mix` list
-        Object.assign(style.mixed, mixed_source);
+        Object.assign(mixed, mixed_source);
     }
+
+    Object.assign(style.mixed, mixed); // add all newly mixed styles
 
     style.shaders = shaders; // assign back to style
     return style;
@@ -303,7 +305,6 @@ StyleManager.initStyles = function (scene) {
 };
 
 // Given a style key in a set of styles to add, count the length of the inheritance chain
-// TODO: remove current (Styles) and future (styles) duplication, confusing
 StyleManager.inheritanceDepth = function (key, styles) {
     let parents = 0;
 
