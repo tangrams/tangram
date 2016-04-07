@@ -38,7 +38,8 @@ Context.resize = function (gl, width, height, device_pixel_ratio)
     device_pixel_ratio = device_pixel_ratio || window.devicePixelRatio || 1;
     gl.canvas.style.width = width + 'px';
     gl.canvas.style.height = height + 'px';
-    gl.canvas.width = Math.round(gl.canvas.style.width * device_pixel_ratio);
-    gl.canvas.height = Math.round(gl.canvas.style.width * device_pixel_ratio);
+    gl.canvas.width = Math.round(width * device_pixel_ratio);
+    gl.canvas.height = Math.round(height * device_pixel_ratio);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 };

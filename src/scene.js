@@ -330,19 +330,9 @@ export default class Scene {
 
     resizeMap(width, height) {
         this.dirty = true;
-
         this.view.setViewportSize(width, height);
-
-        if (this.canvas) {
-            this.canvas.style.width = this.view.size.css.width + 'px';
-            this.canvas.style.height = this.view.size.css.height + 'px';
-            this.canvas.width = this.view.size.device.width;
-            this.canvas.height = this.view.size.device.height;
-
-            if (this.gl) {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-            }
+        if (this.gl) {
+            Context.resize(this.gl, this.view.size.device.width, this.view.size.device.height, Utils.device_pixel_ratio);
         }
     }
 
