@@ -65,6 +65,12 @@ var debug = {
 
 if (Thread.is_main) {
     Utils.requestAnimationFramePolyfill();
+
+    // Attach Promise polyfill to window
+    // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
+    if (window.Promise === undefined) {
+        window.Promise = Promise;
+    }
 }
 
 module.exports = {
