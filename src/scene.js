@@ -332,7 +332,7 @@ export default class Scene {
         this.dirty = true;
         this.view.setViewportSize(width, height);
         if (this.gl) {
-            Context.resize(this.gl, this.view.size.device.width, this.view.size.device.height, Utils.device_pixel_ratio);
+            Context.resize(this.gl, width, height, Utils.device_pixel_ratio);
         }
     }
 

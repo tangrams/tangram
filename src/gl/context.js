@@ -23,10 +23,13 @@ Context.getContext = function getContext (canvas, options)
         throw new Error("Couldn't create WebGL context.");
     }
 
-    Context.resize(gl, window.innerWidth, window.innerHeight, options.device_pixel_ratio);
-    if (fullscreen === true) {
+    if (!fullscreen) {
+        Context.resize(gl, parseFloat(canvas.style.width), parseFloat(canvas.style.height), options.device_pixel_ratio);
+    }
+    else {
+        Context.resize(gl, window.innerWidth, window.innerHeight, options.device_pixel_ratio);
         window.addEventListener('resize', function () {
-            Context.resize(gl, window.innerWidth, window.innerHeight);
+            Context.resize(gl, window.innerWidth, window.innerHeight, options.device_pixel_ratio);
         });
     }
 
