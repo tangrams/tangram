@@ -61,13 +61,17 @@ var debug = {
 
 // Window can only be set in main thread
 if (Utils.isMainThread) {
-
     window.Tangram = module.exports = {
         leafletLayer,
         debug,
         version: version.string
     };
 
+    // Attach Promise polyfill to window
+    // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
+    if (window.Promise === undefined) {
+        window.Promise = Promise;
+    }
 }
 
 if (Utils.isWorkerThread) {
