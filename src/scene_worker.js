@@ -55,6 +55,9 @@ Object.assign(self, {
             }
         }
 
+        // Expand global properties
+        self.global = Utils.stringsToFunctions(config.global);
+
         // Create data sources
         config.sources = Utils.stringsToFunctions(config.sources); // parse new sources
         self.sources.tiles = {}; // clear previous sources
@@ -97,11 +100,12 @@ Object.assign(self, {
         }
 
         // Expand styles
-        config = Utils.stringsToFunctions(config, StyleParser.wrapFunction);
+        config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
         self.styles = StyleManager.build(config.styles, { generation: self.generation, sources: self.sources.tiles });
 
         // Parse each top-level layer as a separate rule tree
-        self.rules = parseRules(config.layers);
+        self.layers = Utils.stringsToFunctions(config.layers, StyleParser.wrapFunction);
+        self.rules = parseRules(self.layers);
 
         // Sync tetxure info from main thread
         self.syncing_textures = self.syncTextures(config.textures);
@@ -154,7 +158,7 @@ Object.assign(self, {
 
                         tile.loading = false;
                         tile.loaded = true;
-                        Tile.buildGeometry(tile, self.config, self.rules, self.styles).then(keys => {
+                        Tile.buildGeometry(tile, self).then(keys => {
                             resolve(WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) }));
                         });
                     }).catch((error) => {
@@ -172,7 +176,7 @@ Object.assign(self, {
                 Utils.log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
-                return Tile.buildGeometry(tile, self.config, self.rules, self.styles).then(keys => {
+                return Tile.buildGeometry(tile, self).then(keys => {
                     return WorkerBroker.returnWithTransferables({ tile: Tile.slice(tile, keys) });
                 });
             }
