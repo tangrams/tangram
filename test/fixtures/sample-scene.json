@@ -110,6 +110,24 @@
                         "position.xyz *= scale;"
                 }
             }
+        },
+
+        "ancestor": {
+            "base": "polygons",
+            "shaders": {
+                "blocks": {
+                    "global": "vec3 test () { return vec3(1.); }"
+                }
+            }
+        },
+        "parent1": {
+            "mix": "ancestor"
+        },
+        "parent2": {
+            "mix": "ancestor"
+        },
+        "descendant": {
+            "mix": ["parent1", "parent2"]
         }
     }
 }
