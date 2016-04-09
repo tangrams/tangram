@@ -59,33 +59,21 @@ var debug = {
     FeatureSelection
 };
 
-// Window can only be set in main thread
-if (Utils.isMainThread) {
-
-    window.Tangram = module.exports = {
-        leafletLayer,
-        debug,
-        version: version.string
-    };
-
-}
-
-if (Utils.isWorkerThread) {
-    self.Tangram = {
-        debug,
-        version: version.string
-    };
-}
-
 if (Utils.isMainThread) {
     Utils.requestAnimationFramePolyfill();
 }
 
 // Setup logging to prefix with Tangram version
 var originalFactory = log.methodFactory;
-log.methodFactory = function (methodName, logLevel) {
+log.methodFactory = function(methodName, logLevel) {
     var rawMethod = originalFactory(methodName, logLevel);
-    return function (...message) {
+    return function(...message) {
         rawMethod(`Tangram ${version.string}:`, ...message);
     };
+};
+
+module.exports = {
+    leafletLayer,
+    debug,
+    version: version.string
 };
