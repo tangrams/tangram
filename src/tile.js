@@ -231,7 +231,8 @@ export default class Tile {
 
                     let context = StyleParser.getFeatureParseContext(feature, tile, global);
                     context.winding = tile.default_winding;
-                    context.layer = source_layer.layer; // add data source layer name
+                    context.source_name = tile.source;          // add data source name
+                    context.source_layer = source_layer.layer;  // add data source layer name
 
                     // Get draw groups for this feature
                     let layer_rules = rules[layer_name];
@@ -306,7 +307,6 @@ export default class Tile {
             // If no layer specified, and a default source layer exists
             if (!source_config.layer && source_data.layers._default) {
                 layers.push({
-                    layer: '_default',
                     geom: source_data.layers._default
                 });
             }

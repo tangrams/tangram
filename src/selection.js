@@ -228,6 +228,8 @@ export default class FeatureSelection {
         selector.feature = {
             id: feature.id,
             properties: feature.properties,
+            source_name: context.source_name,
+            source_layer: context.source_layer,
             layers: context.layers,
             tile: this.tiles[tile.key].tile
         };
