@@ -231,8 +231,8 @@ export default class Tile {
 
                     let context = StyleParser.getFeatureParseContext(feature, tile, global);
                     context.winding = tile.default_winding;
-                    context.source_name = tile.source;          // add data source name
-                    context.source_layer = source_layer.layer;  // add data source layer name
+                    context.source = tile.source;        // add data source name
+                    context.layer = source_layer.layer;  // add data source layer name
 
                     // Get draw groups for this feature
                     let layer_rules = rules[layer_name];
