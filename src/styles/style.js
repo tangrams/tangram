@@ -17,7 +17,7 @@ import log from 'loglevel';
 // Base class
 
 export var Style = {
-    init ({ generation, sources = {} } = {}) {
+    init ({ generation, sources = {}, introspection } = {}) {
         if (!this.isBuiltIn()) {
             this.built_in = false; // explicitly set to false to avoid any confusion
         }
@@ -26,7 +26,8 @@ export var Style = {
         this.sources = sources;                     // data sources for scene
         this.defines = (this.hasOwnProperty('defines') && this.defines) || {}; // #defines to be injected into the shaders
         this.shaders = (this.hasOwnProperty('shaders') && this.shaders) || {}; // shader customization (uniforms, defines, blocks, etc.)
-        this.selection = this.selection || false;   // flag indicating if this style supports feature selection
+        this.introspection = introspection || false;
+        this.selection = this.selection || this.introspection || false;   // flag indicating if this style supports feature selection
         this.compiling = false;                     // programs are currently compiling
         this.compiled = false;                      // programs are finished compiling
         this.program = null;                        // GL program reference (for main render pass)
@@ -202,7 +203,7 @@ export var Style = {
 
             // Feature selection (only if style supports it)
             var selectable = false;
-            style.interactive = rule_style.interactive;
+            style.interactive = this.introspection || rule_style.interactive;
             if (this.selection) {
                 selectable = StyleParser.evalProp(style.interactive, context);
             }
