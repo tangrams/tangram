@@ -2,7 +2,6 @@ sources:
     osm:
         type: GeoJSON
         url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
-        max_zoom: 16
 
 layers:
     earth:
