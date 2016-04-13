@@ -17,7 +17,8 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "make test-ci"
+    "test": "make test-ci",
+    "watch": "./node_modules/budo/bin/cmd.js src/module.js:dist/tangram.debug.js --port 3000 --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
   },
   "author": {
     "name": "Mapzen",
@@ -66,6 +67,7 @@
     "babel-runtime": "5.8.29",
     "babelify": "6.4.0",
     "browserify": "6.1.0",
+    "budo": "^8.2.1",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
     "derequire": "2.0.3",
