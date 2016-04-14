@@ -1,4 +1,4 @@
-// Point rendering style
+// Point + text label rendering style
 
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
@@ -7,10 +7,14 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
+import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
+import TextSettings from '../text/text_settings';
+import CanvasText from '../text/canvas_text';
+import PointAnchor from './point_anchor';
 
 import log from 'loglevel';
 
@@ -42,12 +46,12 @@ Object.assign(Points, {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
+        this.vertex_layout = new VertexLayout(attribs);
+
         // If we're not rendering as overlay, we need a layer attribute
         if (this.blend !== 'overlay') {
             this.defines.TANGRAM_LAYER_ORDER = true;
         }
-
-        this.vertex_layout = new VertexLayout(attribs);
 
         if (this.texture) {
             this.defines.TANGRAM_POINT_TEXTURE = true;
@@ -55,16 +59,37 @@ Object.assign(Points, {
             this.shaders.uniforms.u_texture = this.texture;
         }
 
-        this.queues = {};
+        // Enable dual point/text mode
+        this.defines.TANGRAM_MULTI_SAMPLER = true;
+
+        // Fade out text when tile is zooming out, e.g. acting as proxy tiles
+        this.defines.TANGRAM_FADE_ON_ZOOM_OUT = true;
+        this.defines.TANGRAM_FADE_ON_ZOOM_OUT_RATE = 2; // fade at 2x, e.g. fully transparent at 0.5 zoom level away
+
+        this.collision_group_points = this.name+'-points';
+        this.collision_group_text = this.name+'-text';
+
+        this.reset();
     },
 
     reset () {
         this.queues = {};
+        this.links = {};
+
+        if (Utils.isMainThread) {
+            this.canvas = new CanvasText();
+        }
+        else if (Utils.isWorkerThread) {
+            this.texts = {}; // unique texts, grouped by tile, by style
+        }
     },
 
     // Override to queue features instead of processing immediately
     addFeature (feature, draw, context) {
         let tile = context.tile;
+        if (tile.generation !== this.generation) {
+            return;
+        }
 
         // Called here because otherwise it will be delayed until the feature queue is parsed,
         // and we want the preprocessing done before we evaluate text style below
@@ -75,6 +100,8 @@ Object.assign(Points, {
 
         let style = {};
         style.color = this.parseColor(draw.color, context);
+
+        // Point styling
 
         // require color or texture
         if (!style.color && !this.texture) {
@@ -142,28 +169,118 @@ Object.assign(Points, {
         ];
 
         style.angle = StyleParser.evalProp(draw.angle, context) || 0;
-
-        // polygons rendering as points will render at the polygon's centroid by default,
-        // but can be set to render at each individual polygon point instead
-        style.centroid = (draw.centroid != null) ? draw.centroid : true;
+        style.sampler = 0; // 0 = sprites
 
         this.computeLayout(style, feature, draw, context, tile);
+
+        // Text styling
+        let tf = draw.text && this.parseTextFeature(feature, draw.text, context, tile);
+        if (tf) {
+            // Text labels have a default priority of 0.5 below their parent point (+0.5, priority is lower-is-better)
+            // This can be overriden, as long as it is less than or equal to the default
+            tf.layout.priority = Math.min(tf.layout.priority, style.priority + 0.5);
+
+            // Additional anchor/offset for point:
+            // point's own anchor, text anchor applied to point, additional point offset
+            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.anchor);
+            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.text.anchor);
+            if (style.offset !== StyleParser.zeroPair) {        // point has an offset
+                if (tf.layout.offset === StyleParser.zeroPair) { // no text offset, use point's
+                    tf.layout.offset = style.offset;
+                }
+                else {                                          // text has offset, add point's
+                    tf.layout.offset[0] += style.offset[0];
+                    tf.layout.offset[1] += style.offset[1];
+                }
+            }
+
+            // Text labels attached to points should not be moved into tile
+            // (they should stay fixed relative to the point)
+            tf.layout.move_into_tile = false;
+
+            Collision.addStyle(this.collision_group_text, tile.key);
+        }
 
         // Queue the feature for processing
         if (!this.tile_data[tile.key]) {
             this.startData(tile);
         }
 
-        if (!this.queues[tile.key]) {
-            this.queues[tile.key] = [];
-        }
-
         this.queues[tile.key].push({
-            feature, draw, context, style
+            feature, draw, context, style,
+            text_feature: tf
         });
 
         // Register with collision manager
-        Collision.addStyle(this.name, tile.key);
+        Collision.addStyle(this.collision_group_points, tile.key);
+    },
+
+    parseTextFeature (feature, draw, context, tile) {
+        // Compute label text
+        let text = this.parseTextSource(feature, draw, context);
+        if (text == null) {
+            return; // no text for this feature
+        }
+
+        // Compute text style and layout settings for this feature label
+        let layout = this.computeTextLayout({}, feature, draw, context, tile, text);
+        let text_settings = TextSettings.compute(feature, draw, context);
+        let text_settings_key = TextSettings.key(text_settings);
+
+        // first label in tile, or with this style?
+        this.texts[tile.key] = this.texts[tile.key] || {};
+        this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
+
+        // unique text strings, grouped by text drawing style
+        if (!this.texts[tile.key][text_settings_key][text]) {
+            // first label with this text/style/tile combination, make a new label entry
+            this.texts[tile.key][text_settings_key][text] = {
+                text_settings,
+                ref: 0 // # of times this text/style combo appears in tile
+            };
+        }
+
+        return {
+            draw, text, text_settings_key, layout
+        };
+    },
+
+    // Compute the label text, default is value of feature.properties.name
+    // - String value indicates a feature property look-up, e.g. `short_name` means use feature.properties.short_name
+    // - Function will use the return value as the label text (for custom labels)
+    // - Array (of strings and/or functions) defines a list of fallbacks, evaluated according to the above rules,
+    //   with the first non-null value used as the label text
+    //   e.g. `[name:es, name:en, name]` prefers Spanish names, followed by English, and last the default local name
+    parseTextSource (feature, draw, context) {
+        let text;
+        let source = draw.text_source || 'name';
+
+        if (Array.isArray(source)) {
+            for (let s=0; s < source.length; s++) {
+                if (typeof source[s] === 'string') {
+                    text = feature.properties[source[s]];
+                } else if (typeof source[s] === 'function') {
+                    text = source[s](context);
+                }
+
+                if (text) {
+                    break; // stop if we found a text property
+                }
+            }
+        }
+        else if (typeof source === 'string') {
+            text = feature.properties[source];
+        } else if (typeof source === 'function') {
+            text = source(context);
+        }
+        return text;
+    },
+
+    // Override
+    startData (tile) {
+        this.queues[tile.key] = [];
+        this.links[tile.key] = {};
+        return Style.startData.call(this, tile);
     },
 
     // Override
@@ -176,38 +293,218 @@ Object.assign(Points, {
         let queue = this.queues[tile.key];
         this.queues[tile.key] = [];
 
-        // For each feature, create one or more point labels
+        // For each point feature, create one or more labels
+        let text_features = [];
         let boxes = [];
         queue.forEach(q => {
             let style = q.style;
             let feature = q.feature;
             let geometry = feature.geometry;
 
-            let feature_labels = this.buildLabelsFromGeometry(style.size, geometry, style);
+            let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
+                let link = Points.link_id++;
                 boxes.push({
                     feature,
                     draw: q.draw,
                     context: q.context,
                     style,
                     layout: style,
-                    label
+                    label,
+                    link
                 });
+
+                if (q.text_feature) {
+                    text_features.push({
+                        feature,
+                        draw: q.text_feature.draw,
+                        context: q.context,
+                        text: q.text_feature.text,
+                        text_settings_key: q.text_feature.text_settings_key,
+                        layout: q.text_feature.layout,
+                        point_label: label,
+                        link
+                    });
+                }
             }
         });
 
-        // Submit point labels for collision, then build geometry for remaining ones
-        return Collision.collide(boxes, this.name, tile.key).then(boxes => {
-            boxes.forEach(q => {
-                this.feature_style = q.style;
-                this.feature_style.label = q.label;
+        // Collide both points and text, then build features
+        return Promise.
+            all([
+                // Points
+                Collision.collide(boxes, this.collision_group_points, tile.key).then(boxes => {
+                    boxes.forEach(q => {
+                        this.feature_style = q.style;
+                        this.feature_style.label = q.label;
+                        this.links[tile.key][q.link] = true; // mark linked labels as visible
+                        Style.addFeature.call(this, q.feature, q.draw, q.context);
+                    });
+                }),
+                // Labels
+                this.renderTextLabels(tile, this.collision_group_text, text_features)
+            ]).then(([, { labels, texts, texture }]) => {
+                // Process labels
+                if (labels && texts) {
+                    // Build queued features
+                    labels.forEach(q => {
+                        // Only build visible links
+                        if (!this.links[tile.key][q.link]) {
+                            return;
+                        }
 
-                Style.addFeature.call(this, q.feature, q.draw, q.context);
+                        let text_settings_key = q.text_settings_key;
+                        let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+
+                        // setup styling object expected by Style class
+                        let style = this.feature_style;
+                        style.label = q.label;
+                        style.size = text_info.size.logical_size;
+                        style.angle = Utils.radToDeg(q.label.angle) || 0;
+                        style.sampler = 1; // non-0 = labels
+                        style.texcoords = text_info.texcoords;
+
+                        Style.addFeature.call(this, q.feature, q.draw, q.context);
+                    });
+                }
+                this.freeText(tile);
+
+                // Finish tile mesh
+                return Style.endData.call(this, tile).then(tile_data => {
+                    // Attach tile-specific label atlas to mesh as a texture uniform
+                    if (texture && tile_data) {
+                        tile_data.uniforms = { u_label_texture: texture };
+                        tile_data.textures = [texture]; // assign texture ownership to tile
+                    }
+                    return tile_data;
+                });
             });
+    },
 
-            return Style.endData.call(this, tile);
+    freeText (tile) {
+        delete this.texts[tile.key];
+    },
+
+    renderTextLabels (tile, collision_group, queue) {
+        if (Object.keys(this.texts[tile.key]||{}).length === 0) {
+            return Promise.resolve({});
+        }
+
+        // first call to main thread, ask for text pixel sizes
+        return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.key]).then(texts => {
+
+            if (tile.canceled) {
+                Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
+                return {};
+            }
+
+            if (!texts) {
+                Collision.collide({}, collision_group, tile.key);
+                return {};
+            }
+            this.texts[tile.key] = texts;
+
+            let labels = this.createLabels(tile.key, queue);
+
+            return Collision.collide(labels, collision_group, tile.key).then(labels => {
+                if (tile.canceled) {
+                    Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+                    return {};
+                }
+
+                if (labels.length === 0) {
+                    return {};
+                }
+
+                this.cullTextStyles(texts, labels);
+
+                // second call to main thread, for rasterizing the set of texts
+                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
+                    if (tile.canceled) {
+                        Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                        return {};
+                    }
+
+                    return { labels, texts, texture };
+                });
+            });
         });
+    },
+
+    createLabels (tile_key, feature_queue) {
+        let labels = [];
+        for (let f=0; f < feature_queue.length; f++) {
+            let fq = feature_queue[f];
+            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+            labels.push(fq);
+        }
+        return labels;
+    },
+
+    // Remove unused text/style combinations to avoid unnecessary rasterization
+    cullTextStyles(texts, labels) {
+        // Count how many times each text/style combination is used
+        for (let i=0; i < labels.length; i++) {
+            texts[labels[i].text_settings_key][labels[i].text].ref++;
+        }
+
+        // Remove text/style combinations that have no visible labels
+        for (let style in texts) {
+            for (let text in texts[style]) {
+                // no labels for this text
+                if (texts[style][text].ref < 1) {
+                    // console.log(`drop label text ${text} in style ${style}`);
+                    delete texts[style][text];
+                }
+            }
+        }
+
+        for (let style in texts) {
+            // no labels for this style
+            if (Object.keys(texts[style]).length === 0) {
+                // console.log(`drop label text style ${style}`);
+                delete texts[style];
+            }
+        }
+    },
+
+    // Called on main thread from worker, to compute the size of each text string,
+    // were it to be rendered. This info is then used to perform initial label culling, *before*
+    // labels are actually rendered.
+    calcTextSizes (texts) {
+        return this.canvas.textSizes(texts);
+    },
+
+    // Called on main thread from worker, to create atlas of labels for a tile
+    rasterizeTexts (tile_key, texts) {
+        let canvas = new CanvasText();
+        let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
+        log.trace(`text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+
+        // fits in max texture size?
+        if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
+            // update canvas size & rasterize all the text strings we need
+            canvas.resize(...texture_size);
+            canvas.rasterize(texts, texture_size);
+        }
+        else {
+            log.error([
+                `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
+                `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
+        }
+
+        // create a texture
+        let t = 'labels-' + tile_key + '-' + (Points.text_texture_id++);
+        Texture.create(this.gl, t, {
+            element: canvas.canvas,
+            filtering: 'linear',
+            UNPACK_PREMULTIPLY_ALPHA_WEBGL: true
+        });
+        Texture.retain(t);
+
+        return { texts, texture: t }; // texture is returned by name (not instance)
     },
 
     _preprocess (draw) {
@@ -223,6 +520,41 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
+        if (draw.text) {
+            draw.text = this._preprocessText(draw.text);
+            draw.text.key = draw.key; // copy layer key for use as label repeat group
+            draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
+        }
+
+        return draw;
+    },
+
+    _preprocessText (draw) {
+        if (!draw.font) {
+            return;
+        }
+
+        // Colors
+        draw.font.fill = StyleParser.cacheObject(draw.font.fill);
+        if (draw.font.stroke) {
+            draw.font.stroke.color = StyleParser.cacheObject(draw.font.stroke.color);
+        }
+
+        // Convert font and text stroke sizes
+        draw.font.px_size = StyleParser.cacheObject(draw.font.size, CanvasText.fontPixelSize);
+        if (draw.font.stroke && draw.font.stroke.width != null) {
+            draw.font.stroke.width = StyleParser.cacheObject(draw.font.stroke.width, parseFloat);
+        }
+
+        // Offset (2d array)
+        draw.offset = StyleParser.cacheObject(draw.offset, v => (Array.isArray(v) && v.map(parseFloat)) || 0);
+
+        // Buffer (1d value or or 2d array)
+        draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
+
+        // Repeat rules
+        draw.repeat_distance = StyleParser.cacheObject(draw.repeat_distance, parseFloat);
+
         return draw;
     },
 
@@ -234,6 +566,14 @@ Object.assign(Points, {
 
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;
+
+        // tile boundary handling - d
+        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : false;
+
+        // polygons rendering as points will render at the polygon's centroid by default,
+        // but can be set to render at each individual polygon point instead
+        layout.vertex = draw.vertex || (draw.centroid !== undefined && !draw.centroid) || false;
 
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
@@ -259,8 +599,52 @@ Object.assign(Points, {
         return layout;
     },
 
+    // Additional text-specific layout settings
+    computeTextLayout (target, feature, draw, context, tile, text) {
+        let layout = target || {};
+
+        // common settings w/points
+        layout = this.computeLayout(layout, feature, draw, context, tile);
+
+        // tile boundary handling
+        layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : true;
+        layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : true;
+
+        // label line exceed percentage
+        if (draw.line_exceed && draw.line_exceed.substr(-1) === '%') {
+            layout.line_exceed = parseFloat(draw.line_exceed.substr(0,draw.line_exceed.length-1));
+        }
+        else {
+            layout.line_exceed = 80;
+        }
+
+        // repeat minimum distance
+        layout.repeat_distance = StyleParser.cacheProperty(draw.repeat_distance, context);
+        if (layout.repeat_distance == null) {
+            layout.repeat_distance = Geo.tile_size;
+        }
+        layout.repeat_distance *= layout.units_per_pixel;
+
+        // repeat group key
+        if (typeof draw.repeat_group === 'function') {
+            layout.repeat_group = draw.repeat_group(context);
+        }
+        else if (typeof draw.repeat_group === 'string') {
+            layout.repeat_group = draw.repeat_group;
+        }
+        else {
+            layout.repeat_group = draw.key; // default to unique set of matching layers
+        }
+        layout.repeat_group += '/' + text;
+
+        // Max number of subdivisions to try
+        layout.subdiv = tile.overzoom2;
+
+        return layout;
+    },
+
     // Builds one or more point labels for a geometry
-    buildLabelsFromGeometry (size, geometry, options) {
+    buildLabels (size, geometry, options) {
         let labels = [];
 
         if (geometry.type === "Point") {
@@ -292,7 +676,7 @@ Object.assign(Points, {
         }
         else if (geometry.type === "Polygon") {
             // Point at polygon centroid (of outer ring)
-            if (options.centroid) {
+            if (!options.vertex) {
                 let centroid = Geo.centroid(geometry.coordinates[0]);
                 labels.push(new LabelPoint(centroid, size, options));
             }
@@ -348,7 +732,7 @@ Object.assign(Points, {
         return this.vertex_template;
     },
 
-    buildQuad (points, size, angle, offset, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad (points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -361,7 +745,7 @@ Object.assign(Points, {
             },
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
-                quad_scale: Utils.scaleInt16(1, 256),
+                quad_scale: sampler,
                 offset,
                 angle: Utils.scaleInt16(angle, 360),
                 texcoord_scale: texcoord_scale,
@@ -379,7 +763,8 @@ Object.assign(Points, {
             [label.position],               // position
             style.size,                     // size in pixels
             style.angle,                    // angle in degrees
-            label.options.offset,           // offset from center in pixels
+            style.sampler,                  // texture sampler to use
+            label.offset,                   // offset from center in pixels
             style.texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
@@ -399,3 +784,6 @@ Object.assign(Points, {
     }
 
 });
+
+Points.link_id = 0;
+Points.text_texture_id = 0; // namespaces per-tile label textures
