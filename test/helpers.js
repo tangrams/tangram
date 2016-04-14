@@ -8,7 +8,7 @@ import Scene from '../src/scene';
     - Stub the worker so that we only load it once, to avoid flooding connections (was causing disconnnect errors).
 */
 
-let worker_url = '/tangram.test-worker.js';
+let worker_url = '/tangram.test.js';
 
 function loadWorkerContent(url) {
     let xhr = new XMLHttpRequest(), response;

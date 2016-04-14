@@ -13,7 +13,7 @@ module.exports = function (config) {
                 'webgl.disable': false,
                 'webgl.msaa-force': true
             }
-        },
+        }
     };
 
     var browserList = Object.keys(customLaunchers);
@@ -21,30 +21,37 @@ module.exports = function (config) {
 
     config.set({
         basePath: '',
-        frameworks: ['mocha', 'sinon'],
+        frameworks: ['browserify', 'mocha', 'sinon'],
         files: [
             'node_modules/topojson/topojson.js',
             'node_modules/lodash/lodash.js',
-
-            { pattern: 'test/fixtures/*',
-              watched: false,
-              included: false,
-              served: true },
-
             'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js',
-            'dist/tangram.test-worker.js',
-            'dist/tangram.test.js'
+            {
+                pattern : 'test/fixtures/*',
+                watched : false,
+                included : false,
+                served : true
+            },
+            'dist/tangram.test.js',
+            'test/**/*.js'
         ],
 
         exclude: [  ],
-        preprocessors: {  },
+        preprocessors: {
+            'test/**/*.js' : ['browserify']
+        },
+        browserify : {
+            debug: true,
+            transform: [['babelify', {optional : 'runtime'}], 'brfs']
+        },
 
         plugins: [
             'karma-mocha',
             'karma-sinon',
             'karma-chrome-launcher',
             'karma-sauce-launcher',
-            'karma-mocha-reporter'
+            'karma-mocha-reporter',
+            'karma-browserify'
         ],
         reporters: ['mocha'],
 

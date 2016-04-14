@@ -1,5 +1,6 @@
 # Binaries
 UGLIFY = ./node_modules/.bin/uglifyjs
+BROWSERIFY = ./node_modules/.bin/browserify
 KARMA = ./node_modules/karma/bin/karma
 JSHINT = ./node_modules/.bin/jshint
 DEREQUIRE = ./node_modules/.bin/derequire
@@ -26,9 +27,8 @@ lint: .npm
 	$(JSHINT) `find test/ -name '*.js'`
 
 # Test-specific builds of the library
-build-testable: lint dist/tangram.debug.js
-	node build.js --debug=true --require './src/module.js' --runtime > dist/tangram.test-worker.js
-	node build.js --debug=true --all './test/*.js' --runtime > dist/tangram.test.js
+build-testable: lint
+	$(BROWSERIFY) src/module.js -o dist/tangram.test.js -t [ babelify --optional runtime ] -t brfs -s Tangram
 
 # Do a single test run, locally (opens browser, runs test, closes browser)
 test: build-testable
