@@ -1,6 +1,8 @@
-import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 import {StyleParser} from './styles/style_parser';
+
+let fs = require('fs');
+let shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
 
 export default class Material {
     constructor (config) {
@@ -90,7 +92,7 @@ export default class Material {
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 
-        style.replaceShaderBlock(Material.block, shaderSources['gl/shaders/material'], 'Material');
+        style.replaceShaderBlock(Material.block, shaderSrc_material, 'Material');
         style.addShaderBlock('setup', '\nmaterial = u_material;\n', 'Material');
     }
 

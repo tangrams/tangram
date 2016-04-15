@@ -11,8 +11,11 @@ import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
-
 import log from 'loglevel';
+
+let fs = require('fs');
+let shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
+let shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
 
 export var Points = Object.create(Style);
 
@@ -26,8 +29,8 @@ Object.assign(Points, {
         Style.init.apply(this, arguments);
 
         // Base shaders
-        this.vertex_shader_key = 'styles/points/points_vertex';
-        this.fragment_shader_key = 'styles/points/points_fragment';
+        this.vertex_shader_src = shaderSrc_pointsVertex;
+        this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
