@@ -18,15 +18,16 @@
   ],
   "scripts": {
     "test": "npm run lint && npm run build-test && npm run test-ci",
-    "test-ci": "karma start --browsers SL_Firefox --single-run",
-    "karma-start": "karma start --browsers Chrome --no-watch",
-    "karma-run": "karma run --browsers Chrome",
-    "lint": "jshint src/ && jshint test/",
-    "build": "npm run build-bundle && npm run build-minify",
-    "build-test": "browserify src/module.js -o dist/tangram.test.js -t [ babelify --optional runtime ] -t brfs -s Tangram",
-    "build-bundle": "browserify src/module.js -o dist/tangram.debug.js -t [ babelify --optional runtime ] -t brfs -s Tangram",
-    "build-minify": "uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js",
-    "watch": "budo src/module.js:dist/tangram.debug.js --port 3000 --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
+    "test-ci": "$(npm bin)/karma start --browsers SL_Firefox --single-run",
+    "karma-start": "$(npm bin)/karma start --browsers Chrome --no-watch",
+    "karma-run": "$(npm bin)/karma run --browsers Chrome",
+    "lint": "$(npm bin)/jshint src/ && jshint test/",
+    "build": "npm run build-bundle -- -o dist/tangram.debug.js && npm run build-minify",
+    "build-test": "npm run build-bundle -- -o dist/tangram.test.js",
+    "build-debug": "npm run build-bundle -- -o dist/tangram.debug.js",
+    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --optional runtime ] -t brfs -s Tangram -p browserify-derequire",
+    "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js",
+    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 3000 --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
   },
   "author": {
     "name": "Mapzen",
@@ -75,6 +76,7 @@
     "babel-runtime": "5.8.29",
     "babelify": "6.4.0",
     "browserify": "10.0.0",
+    "browserify-derequire": "^0.9.4",
     "budo": "^8.2.1",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
