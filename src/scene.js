@@ -547,17 +547,10 @@ export default class Scene {
         clear_color = (clear_color === false) ? false : true; // default true
         clear_depth = (clear_depth === false) ? false : true; // default true
 
-        // Reset frame state
+        // Set GL state
+        RenderState.depth_write.set({ depth_write: clear_depth });
+
         let gl = this.gl;
-
-        if (clear_color) {
-            gl.clearColor(...this.background.color);
-        }
-
-        if (clear_depth) {
-            gl.depthMask(true); // always clear depth if requested, even if depth write will be turned off
-        }
-
         if (clear_color || clear_depth) {
             let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
             gl.clear(mask);
@@ -940,6 +933,8 @@ export default class Scene {
         else {
             this.canvas.style.backgroundColor = 'transparent';
         }
+
+        this.gl.clearColor(...this.background.color);
     }
 
     // Update scene config, and optionally rebuild geometry
