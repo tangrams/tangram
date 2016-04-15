@@ -17,10 +17,11 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "npm run lint && npm run build-test && npm run test-ci",
-    "test-ci": "$(npm bin)/karma start --browsers SL_Firefox --single-run",
-    "karma-start": "$(npm bin)/karma start --browsers Chrome --no-watch",
-    "karma-run": "$(npm bin)/karma run --browsers Chrome",
+    "test": "npm run lint && npm run build-test && npm run test-local",
+    "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
+    "test-ci": "npm run lint && npm run build-test && ./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
+    "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
+    "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "$(npm bin)/jshint src/ && jshint test/",
     "build": "npm run build-bundle -- -o dist/tangram.debug.js && npm run build-minify",
     "build-test": "npm run build-bundle -- -o dist/tangram.test.js",
