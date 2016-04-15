@@ -17,11 +17,16 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "make test-ci",
-    "build": "npm run bundle && npm run minify",
-    "bundle": "browserify src/module.js -o dist/tangram.debug.js -t [ babelify --optional runtime ] -t brfs -s Tangram",
-    "minify": "./node_modules/.bin/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js",
-    "watch": "./node_modules/budo/bin/cmd.js src/module.js:dist/tangram.debug.js --port 3000 --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
+    "test": "npm run lint && npm run build-test && npm run test-ci",
+    "test-ci": "karma start --browsers SL_Firefox --single-run",
+    "karma-start": "karma start --browsers Chrome --no-watch",
+    "karma-run": "karma run --browsers Chrome",
+    "lint": "jshint src/ && jshint test/",
+    "build": "npm run build-bundle && npm run build-minify",
+    "build-test": "browserify src/module.js -o dist/tangram.test.js -t [ babelify --optional runtime ] -t brfs -s Tangram",
+    "build-bundle": "browserify src/module.js -o dist/tangram.debug.js -t [ babelify --optional runtime ] -t brfs -s Tangram",
+    "build-minify": "uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js",
+    "watch": "budo src/module.js:dist/tangram.debug.js --port 3000 --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
   },
   "author": {
     "name": "Mapzen",
