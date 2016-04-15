@@ -579,7 +579,7 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        RenderState.depth_test.set({ depth_test: depth_test, depth_func: RenderState.defaults.depth_func });
+        RenderState.depth_test.set({ depth_test: depth_test });
         RenderState.depth_write.set({ depth_write: depth_write });
         RenderState.culling.set({ cull: cull_face, face: RenderState.defaults.culling_face });
 
