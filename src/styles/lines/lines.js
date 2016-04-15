@@ -9,13 +9,17 @@ import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 
+let fs = require('fs');
+let shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/../polygons/polygons_vertex.glsl', 'utf8');
+let shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/../polygons/polygons_fragment.glsl', 'utf8');
+
 export var Lines = Object.create(Style);
 
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_key: 'styles/polygons/polygons_vertex', // re-use polygon shaders
-    fragment_shader_key: 'styles/polygons/polygons_fragment',
+    vertex_shader_src: shaderSrc_polygonsVertex,
+    fragment_shader_src: shaderSrc_polygonsFragment,
     selection: true, // turn feature selection on
 
     init() {
