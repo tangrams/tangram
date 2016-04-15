@@ -131,7 +131,7 @@ export default class Scene {
 
                 // Only retain visible tiles for rebuilding
                 this.tile_manager.pruneToVisibleTiles();
-                return this.updateConfig({ rebuild: true });
+                return this.updateConfig();
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -939,7 +939,7 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild } = {}) {
+    updateConfig({ rebuild = true } = {}) {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};

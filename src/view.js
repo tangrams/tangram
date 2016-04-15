@@ -76,7 +76,7 @@ export default class View {
             }
         }
 
-        this.scene.updateConfig();
+        this.scene.updateConfig({ rebuild: false });
         return this.getActiveCamera();
     }
 
