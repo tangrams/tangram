@@ -14,8 +14,8 @@ import LabelPoint from '../../labels/label_point';
 import log from 'loglevel';
 
 let fs = require('fs');
-let shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
-let shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
+const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
+const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
 
 export var Points = Object.create(Style);
 

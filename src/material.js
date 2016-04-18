@@ -2,7 +2,7 @@ import GLSL from './gl/glsl';
 import {StyleParser} from './styles/style_parser';
 
 let fs = require('fs');
-let shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
+const shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
 
 export default class Material {
     constructor (config) {

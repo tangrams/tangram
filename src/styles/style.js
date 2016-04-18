@@ -10,12 +10,11 @@ import Light from '../light';
 import {RasterTileSource} from '../sources/raster';
 import Utils from '../utils/utils';
 import WorkerBroker from '../utils/worker_broker';
-
 import log from 'loglevel';
 
 let fs = require('fs');
-let shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
-let shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
+const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
+const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
 
 // Base class
 

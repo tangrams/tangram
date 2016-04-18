@@ -5,10 +5,10 @@ import {StyleParser} from './styles/style_parser';
 
 let fs = require('fs');
 
-let shaderSrc_ambientLight = fs.readFileSync(__dirname + '/gl/shaders/ambientLight.glsl', 'utf8');
-let shaderSrc_directionalLight = fs.readFileSync(__dirname + '/gl/shaders/directionalLight.glsl', 'utf8');
-let shaderSrc_pointLight = fs.readFileSync(__dirname + '/gl/shaders/pointLight.glsl', 'utf8');
-let shaderSrc_spotLight = fs.readFileSync(__dirname + '/gl/shaders/spotLight.glsl', 'utf8');
+const shaderSrc_ambientLight = fs.readFileSync(__dirname + '/gl/shaders/ambientLight.glsl', 'utf8');
+const shaderSrc_directionalLight = fs.readFileSync(__dirname + '/gl/shaders/directionalLight.glsl', 'utf8');
+const shaderSrc_pointLight = fs.readFileSync(__dirname + '/gl/shaders/pointLight.glsl', 'utf8');
+const shaderSrc_spotLight = fs.readFileSync(__dirname + '/gl/shaders/spotLight.glsl', 'utf8');
 
 // Abstract light
 export default class Light {

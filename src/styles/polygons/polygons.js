@@ -8,8 +8,8 @@ import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
 import Geo from '../../geo';
 
 let fs = require('fs');
-let shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/polygons_vertex.glsl', 'utf8');
-let shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment.glsl', 'utf8');
+const shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/polygons_vertex.glsl', 'utf8');
+const shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment.glsl', 'utf8');
 
 export var Polygons = Object.create(Style);
 
