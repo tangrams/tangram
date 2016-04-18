@@ -45,9 +45,14 @@ void main (void) {
         color *= sampleRaster(0); // multiplied to tint texture color
     #endif
 
-    // Apply normal from raster tile
+    // First, get normal from raster tile (if applicable)
     #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
         normal = normalize(sampleRaster(0).rgb * 2. - 1.);
+    #endif
+
+    // Second, alter normal with normal map texture (if applicable)
+    #if defined(TANGRAM_LIGHTING_FRAGMENT) && defined(TANGRAM_MATERIAL_NORMAL_TEXTURE)
+        calculateNormal(normal);
     #endif
 
     // Normal modification applied here for fragment lighting or no lighting,

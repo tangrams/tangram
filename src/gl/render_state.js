@@ -30,7 +30,7 @@ export default class RenderState {
         // Depth test/write
         RenderState.defaults.depth_write = true;
         RenderState.defaults.depth_test = true;
-        RenderState.defaults.depth_func = gl.LESS;
+        gl.depthFunc(gl.LESS); // depth function only needs to be set once
 
     	// Culling
     	RenderState.culling = new RenderState(
@@ -79,15 +79,15 @@ export default class RenderState {
 
     	// Depth test
     	RenderState.depth_test = new RenderState(
-    		{ depth_test: RenderState.defaults.depth_test, depth_func: RenderState.defaults.depth_func },
-    		(value) => {
+            { depth_test: RenderState.defaults.depth_test },
+            (value) => {
     			if (value.depth_test) {
             		gl.enable(gl.DEPTH_TEST);
-        			gl.depthFunc(value.depth_func);
     			} else {
             		gl.disable(gl.DEPTH_TEST);
     			}
     		}
     	);
+
     }
 }

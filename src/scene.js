@@ -131,7 +131,7 @@ export default class Scene {
 
                 // Only retain visible tiles for rebuilding
                 this.tile_manager.pruneToVisibleTiles();
-                return this.updateConfig({ rebuild: true });
+                return this.updateConfig();
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -547,17 +547,10 @@ export default class Scene {
         clear_color = (clear_color === false) ? false : true; // default true
         clear_depth = (clear_depth === false) ? false : true; // default true
 
-        // Reset frame state
+        // Set GL state
+        RenderState.depth_write.set({ depth_write: clear_depth });
+
         let gl = this.gl;
-
-        if (clear_color) {
-            gl.clearColor(...this.background.color);
-        }
-
-        if (clear_depth) {
-            gl.depthMask(true); // always clear depth if requested, even if depth write will be turned off
-        }
-
         if (clear_color || clear_depth) {
             let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
             gl.clear(mask);
@@ -579,7 +572,7 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        RenderState.depth_test.set({ depth_test: depth_test, depth_func: RenderState.defaults.depth_func });
+        RenderState.depth_test.set({ depth_test: depth_test });
         RenderState.depth_write.set({ depth_write: depth_write });
         RenderState.culling.set({ cull: cull_face, face: RenderState.defaults.culling_face });
 
@@ -940,11 +933,13 @@ export default class Scene {
         else {
             this.canvas.style.backgroundColor = 'transparent';
         }
+
+        this.gl.clearColor(...this.background.color);
     }
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild } = {}) {
+    updateConfig({ rebuild = true } = {}) {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};

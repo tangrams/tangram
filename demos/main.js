@@ -213,7 +213,7 @@ Enjoy!
             }
 
             // Recompile/rebuild
-            scene.updateConfig({ rebuild: true });
+            scene.updateConfig();
             updateURL();
 
             // Force-update dat.gui
@@ -351,7 +351,7 @@ Enjoy!
         gui.language = 'en';
         gui.add(gui, 'language', langs).onChange(function(value) {
             scene.config.global.language = value;
-            scene.updateConfig({ rebuild: true });
+            scene.updateConfig();
         });
 
         // Camera
@@ -363,7 +363,6 @@ Enjoy!
         gui.camera = scene.getActiveCamera();
         gui.add(gui, 'camera', camera_types).onChange(function(value) {
             scene.setActiveCamera(value);
-            scene.updateConfig();
         });
 
         // Feature selection on hover
