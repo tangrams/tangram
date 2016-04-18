@@ -13,6 +13,12 @@ let shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment
 
 export var Polygons = Object.create(Style);
 
+// export shaders for use in lines.js
+export {
+    shaderSrc_polygonsVertex,
+    shaderSrc_polygonsFragment
+};
+
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,

@@ -8,10 +8,7 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
-
-let fs = require('fs');
-let shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/../polygons/polygons_vertex.glsl', 'utf8');
-let shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/../polygons/polygons_fragment.glsl', 'utf8');
+import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
 export var Lines = Object.create(Style);
 
