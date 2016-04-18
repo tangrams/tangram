@@ -2,12 +2,17 @@
 
 import Utils from '../utils/utils';
 import ShaderProgram from '../gl/shader_program';
-import shaderSources from '../gl/shader_sources'; // built-in shaders
 import {Style} from './style';
 import mergeObjects from '../utils/merge';
 import Geo from '../geo';
-
 import log from 'loglevel';
+
+let fs = require('fs');
+const shaderSrc_accessors = fs.readFileSync(__dirname + '/../gl/shaders/accessors.glsl', 'utf8');
+const shaderSrc_unpack = fs.readFileSync(__dirname + '/../gl/shaders/unpack.glsl', 'utf8');
+const shaderSrc_layerOrder = fs.readFileSync(__dirname + '/../gl/shaders/layer_order.glsl', 'utf8');
+const shaderSrc_selectionGlobals = fs.readFileSync(__dirname + '/../gl/shaders/selection_globals.glsl', 'utf8');
+const shaderSrc_selectionVertex = fs.readFileSync(__dirname + '/../gl/shaders/selection_vertex.glsl', 'utf8');
 
 export var StyleManager = {};
 export var Styles = {};
@@ -24,19 +29,19 @@ StyleManager.init = function () {
     ShaderProgram.removeBlock('setup');
 
     // Unpacking functions (for normalized vertex attributes)
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/unpack']);
+    ShaderProgram.addBlock('global', shaderSrc_unpack);
 
     // Model and world position accessors
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/accessors']);
+    ShaderProgram.addBlock('global', shaderSrc_accessors);
 
     // Layer re-ordering function
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/layer_order']);
+    ShaderProgram.addBlock('global', shaderSrc_layerOrder);
 
     // Feature selection global
-    ShaderProgram.addBlock('global', shaderSources['gl/shaders/selection_globals']);
+    ShaderProgram.addBlock('global', shaderSrc_selectionGlobals);
 
     // Feature selection vertex shader support
-    ShaderProgram.replaceBlock('setup', shaderSources['gl/shaders/selection_vertex']);
+    ShaderProgram.replaceBlock('setup', shaderSrc_selectionVertex);
 
     // Minimum value for float comparisons
     ShaderProgram.defines.TANGRAM_EPSILON = 0.00001;

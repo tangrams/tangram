@@ -8,14 +8,15 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
+import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
 export var Lines = Object.create(Style);
 
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_key: 'styles/polygons/polygons_vertex', // re-use polygon shaders
-    fragment_shader_key: 'styles/polygons/polygons_fragment',
+    vertex_shader_src: shaderSrc_polygonsVertex,
+    fragment_shader_src: shaderSrc_polygonsFragment,
     selection: true, // turn feature selection on
 
     init() {
