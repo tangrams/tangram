@@ -41,7 +41,7 @@ Any changes you make the the source files (including shaders) will rebuild and r
 Tests are included to ensure that the code functions as expected. To run all of the tests:
 
 ```shell
-npm run test-local
+npm test
 ```
 
 Every time this runs, a new browser instance is created. If you wish to have a single browser instance and run the test suite against that instance do the following,
