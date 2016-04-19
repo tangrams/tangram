@@ -86,18 +86,24 @@ Object.assign(Lines, {
             });
 
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_LINE_TEXTURE_RATIO = dasharray.length;
             this.defines.TANGRAM_ALPHA_DISCARD = 0.5;
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = texname;
+            this.shaders.uniforms.u_texture_ratio = dasharray.length;
         }
         // Specify a texture directly
         else if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            // TODO: set ratio based on texture size (must wait for texture to load)
-            this.defines.TANGRAM_LINE_TEXTURE_RATIO = this.defines.TANGRAM_LINE_TEXTURE_RATIO || 1;
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
+            this.shaders.uniforms.u_texture_ratio = 1;
+
+            // update line pattern aspect ratio after texture loads
+            Texture.getInfo(this.texture).then(texture => {
+                if (texture) {
+                    this.shaders.uniforms.u_texture_ratio = texture.height / texture.width;
+                }
+            });
         }
     },
 

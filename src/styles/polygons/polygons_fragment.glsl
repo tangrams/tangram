@@ -47,7 +47,7 @@ void main (void) {
 
     // Apply line texture
     #ifdef TANGRAM_LINE_TEXTURE
-        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / TANGRAM_LINE_TEXTURE_RATIO));
+        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));
         color *= texture2D(u_texture, _line_st);
     #endif
 
