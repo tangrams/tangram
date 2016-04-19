@@ -17,9 +17,11 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "npm run lint && npm run build-test && npm run test-ci",
-    "test-ci": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
-    "test-local": "npm run lint && npm run build-test && ./node_modules/karma/bin/karma start --browsers Chrome --single-run",
+    "start": "npm run watch",
+    "test": "npm run lint && npm run build-test && npm run test-local",
+    "test-ci": "npm run lint && npm run build-test && npm run test-remote",
+    "test-remote": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
+    "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
     "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
     "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
     "lint": "$(npm bin)/jshint src/ && jshint test/",
@@ -53,6 +55,9 @@
     },
     {
       "name": "Lou Huang"
+    },
+    {
+      "name": "David Valdman"
     }
   ],
   "license": "MIT",
@@ -91,7 +96,7 @@
     "karma-mocha-reporter": "1.0.0",
     "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "1.0.4",
-    "lodash": "2.4.1",
+    "lodash": "4.0.0",
     "mocha": "1.21.4",
     "sinon": "1.10.3",
     "uglify-js": "2.4.14",
