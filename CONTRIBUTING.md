@@ -28,13 +28,13 @@ The library will be minified in `dist/`, and `index.html` provides an example fo
 
 For more rapid development of Tangram we provide a watcher with incremental building and live reloading, simply run
 
-```
+```shell
 npm start
 ```
 
 and point your browser to http://localhost:8000
 
-Any changes you make the the source files (including shaders) will rebuild and reload on save.
+Any changes you make to the the source files (including shader code) will rebuild and reload on save.
 
 ### Testing
 
