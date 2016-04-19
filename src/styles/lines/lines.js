@@ -4,8 +4,10 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
+import renderDasharray from './dasharray';
 import Geo from '../../geo';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
@@ -37,6 +39,12 @@ Object.assign(Lines, {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
+        // Optional line texture or dasharray
+        // (latter will be rendered at compile-time, when GL context available)
+        if (this.texture || this.dasharray) {
+            this.texcoords = true;
+        }
+
         // Optional texture UVs
         if (this.texcoords) {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
@@ -55,6 +63,42 @@ Object.assign(Lines, {
         // inline properties (outline call is made *within* the inline call)
         this.outline_feature_style = {};
         this.inline_feature_style = this.feature_style; // save reference to main computed style object
+    },
+
+    // Override
+    compile () {
+        this.parseLineTexture();
+        return Style.compile.apply(this, arguments);
+    },
+
+    // Optionally apply a dasharray pattern to this line
+    parseLineTexture () {
+        // Specify a line pattern
+        if (this.dasharray) {
+            // TODO: add dasharray to style mixing
+            let dasharray = renderDasharray(this.dasharray);
+            let texname = this.name + '_dasharray';
+            Texture.create(this.gl, texname, {
+                data: dasharray.pixels,
+                height: dasharray.length,
+                width: 1,
+                filtering: 'nearest'
+            });
+
+            this.defines.TANGRAM_LINE_TEXTURE = true;
+            this.defines.TANGRAM_LINE_TEXTURE_RATIO = dasharray.length;
+            this.defines.TANGRAM_ALPHA_DISCARD = 0.5;
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_texture = texname;
+        }
+        // Specify a texture directly
+        else if (this.texture) {
+            this.defines.TANGRAM_LINE_TEXTURE = true;
+            // TODO: set ratio based on texture size (must wait for texture to load)
+            this.defines.TANGRAM_LINE_TEXTURE_RATIO = this.defines.TANGRAM_LINE_TEXTURE_RATIO || 1;
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_texture = this.texture;
+        }
     },
 
     // Calculate width at zoom given in `context`

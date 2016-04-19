@@ -45,6 +45,12 @@ void main (void) {
         color *= sampleRaster(0); // multiplied to tint texture color
     #endif
 
+    // Apply line texture
+    #ifdef TANGRAM_LINE_TEXTURE
+        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / TANGRAM_LINE_TEXTURE_RATIO));
+        color *= texture2D(u_texture, _line_st);
+    #endif
+
     // First, get normal from raster tile (if applicable)
     #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
         normal = normalize(sampleRaster(0).rgb * 2. - 1.);
@@ -74,6 +80,11 @@ void main (void) {
 
     // Post-processing effects (modify color after lighting)
     #pragma tangram: filter
+
+    // Alpha discard used instead of transparency
+    #if defined(TANGRAM_ALPHA_DISCARD) && !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
+        if (color.a < TANGRAM_ALPHA_DISCARD) discard;
+    #endif
 
     gl_FragColor = color;
 }
