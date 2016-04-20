@@ -477,7 +477,8 @@ export default class Scene {
         // Render styles
         let count = 0; // how many primitives were rendered
         let last_blend;
-        for (let style of styles) {
+        for (let s=0; s < styles.length; s++) {
+            let style = styles[s];
             // Only update render state when blend mode changes
             if (style.blend !== last_blend) {
                 let state = Object.assign({},
