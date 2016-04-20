@@ -35,17 +35,7 @@ Object.assign(TextStyle, {
 
     reset() {
         this.queues = {};
-    },
-
-    // Called on worker thread to release tile-specific resources
-    freeTile (tile) {
-        delete this.texts[tile.key];
-    },
-
-    // Free tile-specific resources before finshing style construction
-    finishTile(tile) {
-        this.freeTile(tile);
-        return Style.endData.call(this, tile);
+        this.resetText();
     },
 
     // Override to queue features instead of processing immediately
@@ -124,8 +114,10 @@ Object.assign(TextStyle, {
                     Style.addFeature.call(this, q.feature, q.draw, q.context);
                 });
             }
+            this.freeText(tile);
 
-            return this.finishTile(tile).then(tile_data => {
+            // Finish tile mesh
+            return Style.endData.call(this, tile).then(tile_data => {
                 // Attach tile-specific label atlas to mesh as a texture uniform
                 if (texture && tile_data) {
                     tile_data.uniforms.u_texture = texture;
@@ -138,7 +130,7 @@ Object.assign(TextStyle, {
 
     // Sets up caching for draw rule properties
     _preprocess (draw) {
-        return this._preprocessText(draw);
+        return this.preprocessText(draw);
     },
 
     // Builds one or more labels for a geometry
