@@ -39,17 +39,20 @@ export default class CanvasText {
             let text_infos = texts[style];
 
             for (let text in text_infos) {
-                let text_settings = text_infos[text].text_settings;
-                // update text sizes
-                this.setFont(text_settings); // TODO: only set once above
-                Object.assign(
-                    text_infos[text],
-                    this.textSize(
-                        text,
-                        text_settings.transform,
-                        text_settings.text_wrap
-                    )
-                );
+                // Use cached size, or compute via canvas
+                if (!CanvasText.text_size_cache[style] || !CanvasText.text_size_cache[style][text]) {
+                    let text_settings = text_infos[text].text_settings;
+                    this.setFont(text_settings); // TODO: only set once above
+                    CanvasText.text_size_cache[style] = CanvasText.text_size_cache[style] || {};
+                    CanvasText.text_size_cache[style][text] =
+                        this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                    CanvasText.cache.hits++;
+                }
+                else {
+                    CanvasText.cache.misses++;
+                }
+
+                Object.assign(text_infos[text], CanvasText.text_size_cache[style][text]);
             }
         }
 
@@ -281,3 +284,7 @@ export default class CanvasText {
 
 // Extract font size and units
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
+
+// Cache sizes of rendered text
+CanvasText.text_size_cache = {}; // by text style, then text string
+CanvasText.cache = { hits: 0, misses: 0 };
