@@ -1,7 +1,6 @@
 // Text label rendering methods, can be mixed into a rendering style
 
 import {StyleParser} from '../style_parser';
-import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';

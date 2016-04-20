@@ -7,7 +7,6 @@ import VertexLayout from '../../gl/vertex_layout';
 import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
-import WorkerBroker from '../../utils/worker_broker';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
@@ -80,7 +79,6 @@ Object.assign(Points, {
 
     reset () {
         this.queues = {};
-        this.links = {};
         this.resetText();
     },
 
@@ -218,7 +216,6 @@ Object.assign(Points, {
     // Override
     startData (tile) {
         this.queues[tile.key] = [];
-        this.links[tile.key] = {};
         return Style.startData.call(this, tile);
     },
 
@@ -243,7 +240,7 @@ Object.assign(Points, {
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
-                let link = Points.link_id++;
+                let link = Collision.nextLinkId();
                 boxes.push({
                     feature,
                     draw: q.draw,
@@ -277,7 +274,6 @@ Object.assign(Points, {
                     boxes.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
-                        this.links[tile.key][q.link] = true; // mark linked labels as visible
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
@@ -288,11 +284,6 @@ Object.assign(Points, {
                 if (labels && texts) {
                     // Build queued features
                     labels.forEach(q => {
-                        // Only build visible links
-                        if (!this.links[tile.key][q.link]) {
-                            return;
-                        }
-
                         let text_settings_key = q.text_settings_key;
                         let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
 
@@ -525,5 +516,3 @@ Object.assign(Points, {
     }
 
 });
-
-Points.link_id = 0;
