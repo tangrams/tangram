@@ -337,7 +337,7 @@ class SpotLight extends PointLight {
         super.setupProgram(_program);
 
         _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
-        _program.uniform('1fv', `u_${this.name}.spotCosCutoff`, [Math.cos(this.angle * 3.14159 / 180)]);
+        _program.uniform('1f', `u_${this.name}.spotCosCutoff`, Math.cos(this.angle * 3.14159 / 180));
         _program.uniform('1f', `u_${this.name}.spotExponent`, this.exponent);
     }
 

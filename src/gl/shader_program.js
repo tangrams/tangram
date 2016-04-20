@@ -365,7 +365,7 @@ export default class ShaderProgram {
             let uniform = this.uniforms[u];
             if (uniform && uniform.saved_value) {
                 uniform.value = uniform.saved_value;
-                this.updateUniform(u);
+                this.updateUniform(uniform);
             }
         }
         this.texture_unit = this.saved_texture_unit || 0;
@@ -384,7 +384,7 @@ export default class ShaderProgram {
         this.texture_unit++; // TODO: track max texture units and log/throw errors
     }
 
-    // ex: program.uniform('3f', 'position', x, y, z);
+    // ex: program.uniform('3fv', 'position', [x, y, z]);
     // TODO: only update uniforms when changed
     uniform(method, name, value) { // 'value' is a method-appropriate arguments list
         if (!this.compiled) {
@@ -399,16 +399,15 @@ export default class ShaderProgram {
         }
         uniform.method = method;
         uniform.value = value;
-        this.updateUniform(name);
+        this.updateUniform(uniform);
     }
 
     // Set a single uniform
-    updateUniform(name) {
+    updateUniform(uniform) {
         if (!this.compiled) {
             return;
         }
 
-        var uniform = this.uniforms[name];
         if (!uniform || uniform.location == null) {
             return;
         }
@@ -471,8 +470,9 @@ export default class ShaderProgram {
         }
 
         for (var u in this.uniforms) {
-            this.uniforms[u].location = this.gl.getUniformLocation(this.program, u);
-            this.updateUniform(u);
+            let uniform = this.uniforms[u];
+            uniform.location = this.gl.getUniformLocation(this.program, u);
+            this.updateUniform(uniform);
         }
     }
 
