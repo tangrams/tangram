@@ -341,7 +341,7 @@ export default class ShaderProgram {
                 this.setTextureUniform(uniform.name, uniform.value);
             }
             else {
-                this.uniform(uniform.method, uniform.name, uniform.value);
+                this.uniform(uniform.method, uniform.name, [uniform.value]);
             }
         }
     }
@@ -380,13 +380,13 @@ export default class ShaderProgram {
         }
 
         texture.bind(this.texture_unit);
-        this.uniform('1i', uniform_name, this.texture_unit);
+        this.uniform('1i', uniform_name, [this.texture_unit]);
         this.texture_unit++; // TODO: track max texture units and log/throw errors
     }
 
     // ex: program.uniform('3f', 'position', x, y, z);
     // TODO: only update uniforms when changed
-    uniform(method, name, ...value) { // 'value' is a method-appropriate arguments list
+    uniform(method, name, value) { // 'value' is a method-appropriate arguments list
         if (!this.compiled) {
             return;
         }

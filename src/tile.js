@@ -445,15 +445,15 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.coords.z);
-        program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
+        program.uniform('4f', 'u_tile_origin', [this.min.x, this.min.y, this.style_zoom, this.coords.z]);
+        program.uniform('1f', 'u_tile_proxy_depth', [this.proxy_depth]);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
         mat4.identity(model);
         mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
         mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
-        program.uniform('Matrix4fv', 'u_model', false, model32);
+        program.uniform('Matrix4fv', 'u_model', [false, model32]);
     }
 
     // Slice a subset of keys out of a tile

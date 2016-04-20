@@ -163,9 +163,9 @@ export default class Light {
     // pass for feature selection, etc.)
     setupProgram (_program) {
         //  Three common light properties
-        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
-        _program.uniform('4fv', `u_${this.name}.diffuse`, this.diffuse);
-        _program.uniform('4fv', `u_${this.name}.specular`, this.specular);
+        _program.uniform('4f', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('4f', `u_${this.name}.diffuse`, this.diffuse);
+        _program.uniform('4f', `u_${this.name}.specular`, this.specular);
     }
 
 }
@@ -190,7 +190,7 @@ class AmbientLight extends Light {
     }
 
     setupProgram (_program) {
-        _program.uniform('4fv', `u_${this.name}.ambient`, this.ambient);
+        _program.uniform('4f', `u_${this.name}.ambient`, this.ambient);
     }
 
 }
@@ -213,7 +213,7 @@ class DirectionalLight extends Light {
 
     setupProgram (_program) {
         super.setupProgram(_program);
-        _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
+        _program.uniform('3f', `u_${this.name}.direction`, this.direction);
     }
 
 }
@@ -229,6 +229,7 @@ class PointLight extends Light {
 
         this.position = config.position || [0, 0, '100px'];
         this.position_eye = []; // position in eyespace
+        this.position_eye[3] = 1;
         this.origin = config.origin || 'ground';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
 
@@ -293,23 +294,22 @@ class PointLight extends Light {
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('4f', `u_${this.name}.position`,
-            this.position_eye[0], this.position_eye[1], this.position_eye[2], 1);
+        _program.uniform('4f', `u_${this.name}.position`, this.position_eye);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
-            _program.uniform('1f', `u_${this.name}.attenuationExponent`, this.attenuation);
+            _program.uniform('1f', `u_${this.name}.attenuationExponent`, [this.attenuation]);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_INNER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.innerRadius`,
-                StyleParser.convertUnits(this.radius[0],
-                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) }));
+                [StyleParser.convertUnits(this.radius[0],
+                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) })]);
         }
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_OUTER_RADIUS']) {
             _program.uniform('1f', `u_${this.name}.outerRadius`,
-                StyleParser.convertUnits(this.radius[1],
-                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) }));
+                [StyleParser.convertUnits(this.radius[1],
+                    { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) })]);
         }
     }
 }
@@ -336,9 +336,9 @@ class SpotLight extends PointLight {
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('3fv', `u_${this.name}.direction`, this.direction);
-        _program.uniform('1f', `u_${this.name}.spotCosCutoff`, Math.cos(this.angle * 3.14159 / 180));
-        _program.uniform('1f', `u_${this.name}.spotExponent`, this.exponent);
+        _program.uniform('3f', `u_${this.name}.direction`, this.direction);
+        _program.uniform('1f', `u_${this.name}.spotCosCutoff`, [Math.cos(this.angle * 3.14159 / 180)]);
+        _program.uniform('1f', `u_${this.name}.spotExponent`, [this.exponent]);
     }
 
 }

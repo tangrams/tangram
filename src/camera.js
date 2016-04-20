@@ -51,13 +51,13 @@ export default class Camera {
     setupMatrices (matrices, program) {
         // Model view matrix - transform tile space into view space (meters, relative to camera)
         mat4.multiply(matrices.model_view32, this.view_matrix, matrices.model);
-        program.uniform('Matrix4fv', 'u_modelView', false, matrices.model_view32);
+        program.uniform('Matrix4fv', 'u_modelView', [false, matrices.model_view32]);
 
         // Normal matrices - transforms surface normals into view space
         mat3.normalFromMat4(matrices.normal32, matrices.model_view32);
         mat3.invert(matrices.inverse_normal32, matrices.normal32);
-        program.uniform('Matrix3fv', 'u_normalMatrix', false, matrices.normal32);
-        program.uniform('Matrix3fv', 'u_inverseNormalMatrix', false, matrices.inverse_normal32);
+        program.uniform('Matrix3fv', 'u_normalMatrix', [false, matrices.normal32]);
+        program.uniform('Matrix3fv', 'u_inverseNormalMatrix', [false, matrices.inverse_normal32]);
     }
 
 }
@@ -199,9 +199,9 @@ class PerspectiveCamera extends Camera {
     }
 
     setupProgram(program) {
-        program.uniform('Matrix4fv', 'u_projection', false, this.projection_matrix);
-        program.uniform('3f', 'u_eye', 0, 0, this.position_meters[2]);
-        program.uniform('2fv', 'u_vanishing_point', this.vanishing_point_skew);
+        program.uniform('Matrix4fv', 'u_projection', [false, this.projection_matrix]);
+        program.uniform('3f', 'u_eye', [0, 0, this.position_meters[2]]);
+        program.uniform('2f', 'u_vanishing_point', this.vanishing_point_skew);
     }
 
 }
@@ -274,11 +274,11 @@ class IsometricCamera extends Camera {
     }
 
     setupProgram(program) {
-        program.uniform('Matrix4fv', 'u_projection', false, this.projection_matrix);
+        program.uniform('Matrix4fv', 'u_projection', [false, this.projection_matrix]);
 
-        program.uniform('3f', 'u_eye', 0, 0, this.viewport_height);
+        program.uniform('3f', 'u_eye', [0, 0, this.viewport_height]);
         // program.uniform('3f', 'u_eye', this.viewport_height * this.axis.x, this.viewport_height * this.axis.y, this.viewport_height);
-        program.uniform('2f', 'u_vanishing_point', 0, 0);
+        program.uniform('2f', 'u_vanishing_point', [0, 0]);
     }
 
 }

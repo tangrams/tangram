@@ -103,24 +103,24 @@ export default class Material {
             if (this[prop]) {
                 if (this[prop].texture) {
                     _program.setTextureUniform(`u_material_${prop}_texture`, this[prop].texture);
-                    _program.uniform('3fv', `u_material.${prop}Scale`, this[prop].scale);
-                    _program.uniform('4fv', `u_material.${prop}`, this[prop].amount);
+                    _program.uniform('3f', `u_material.${prop}Scale`, this[prop].scale);
+                    _program.uniform('4f', `u_material.${prop}`, this[prop].amount);
                 } else if (this[prop].amount) {
-                    _program.uniform('4fv', `u_material.${prop}`, this[prop].amount);
+                    _program.uniform('4f', `u_material.${prop}`, this[prop].amount);
                 }
             }
         }
 
         // Extra specular props
         if (this.specular) {
-            _program.uniform('1f', 'u_material.shininess', this.specular.shininess);
+            _program.uniform('1f', 'u_material.shininess', [this.specular.shininess]);
         }
 
         // Normal mapping
         if (this.normal && this.normal.texture) {
             _program.setTextureUniform('u_material_normal_texture', this.normal.texture);
-            _program.uniform('3fv', 'u_material.normalScale', this.normal.scale);
-            _program.uniform('1f', 'u_material.normalAmount', this.normal.amount);
+            _program.uniform('3f', 'u_material.normalScale', this.normal.scale);
+            _program.uniform('1f', 'u_material.normalAmount', [this.normal.amount]);
         }
     }
 }
