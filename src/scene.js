@@ -520,7 +520,7 @@ export default class Scene {
                 this.styles[style].setup();
 
                 // TODO: don't set uniforms when they haven't changed
-                program.uniform('1f', 'u_time', [this.animated ? (((+new Date()) - this.start_time) / 1000) : 0]);
+                program.uniform('1f', 'u_time', this.animated ? (((+new Date()) - this.start_time) / 1000) : 0);
                 this.view.setupProgram(program);
                 for (let i in this.lights) {
                     this.lights[i].setupProgram(program);

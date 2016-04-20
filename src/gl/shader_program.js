@@ -341,7 +341,7 @@ export default class ShaderProgram {
                 this.setTextureUniform(uniform.name, uniform.value);
             }
             else {
-                this.uniform(uniform.method, uniform.name, [uniform.value]);
+                this.uniform(uniform.method, uniform.name, uniform.value);
             }
         }
     }
@@ -380,7 +380,7 @@ export default class ShaderProgram {
         }
 
         texture.bind(this.texture_unit);
-        this.uniform('1i', uniform_name, [this.texture_unit]);
+        this.uniform('1i', uniform_name, this.texture_unit);
         this.texture_unit++; // TODO: track max texture units and log/throw errors
     }
 
@@ -397,7 +397,7 @@ export default class ShaderProgram {
         if (uniform.location === undefined) {
             uniform.location = this.gl.getUniformLocation(this.program, name);
         }
-        uniform.method = 'uniform' + method;
+        uniform.method = method;
         uniform.value = value;
         this.updateUniform(name);
     }
@@ -414,7 +414,54 @@ export default class ShaderProgram {
         }
 
         this.use();
-        this.gl[uniform.method].apply(this.gl, [uniform.location].concat(uniform.value)); // call appropriate GL uniform method and pass through arguments
+        this.commitUniform(uniform);
+    }
+
+    commitUniform(uniform){
+        let location = uniform.location;
+        let value = uniform.value;
+
+        switch (uniform.method) {
+            case '1i':
+                this.gl.uniform1i(location, value);
+                break;
+            case '1f':
+                this.gl.uniform1f(location, value);
+                break;
+            case '2f':
+                this.gl.uniform2f(location, value[0], value[1]);
+                break;
+            case '3f':
+                this.gl.uniform3f(location, value[0], value[1], value[2]);
+                break;
+            case '4f':
+                this.gl.uniform4f(location, value[0], value[1], value[2], value[3]);
+                break;
+            case '1iv':
+                this.gl.uniform1iv(location, value);
+                break;
+            case '3iv':
+                this.gl.uniform3iv(location, value);
+                break;
+            case '1fv':
+                this.gl.uniform1fv(location, value);
+                break;
+            case '2fv':
+                this.gl.uniform2fv(location, value);
+                break;
+            case '3fv':
+                this.gl.uniform3fv(location, value);
+                break;
+            case '4fv':
+                this.gl.uniform4fv(location, value);
+                break;
+            case 'Matrix3fv':
+                this.gl.uniformMatrix3fv(location, false, value);
+                break;
+            case 'Matrix4fv':
+                this.gl.uniformMatrix4fv(location, false, value);
+                break;
+        }
     }
 
     // Refresh uniform locations and set to last cached values
