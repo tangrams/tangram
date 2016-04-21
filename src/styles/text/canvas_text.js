@@ -37,12 +37,17 @@ export default class CanvasText {
     textSizes (texts) {
         for (let style in texts) {
             let text_infos = texts[style];
+            let first = true;
 
             for (let text in text_infos) {
                 // Use cached size, or compute via canvas
                 if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
                     let text_settings = text_infos[text].text_settings;
-                    this.setFont(text_settings); // TODO: only set once above
+                    if (first) {
+                        this.setFont(text_settings);
+                        first = false;
+                    }
+
                     CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
                     CanvasText.text_cache[style][text] =
                         this.textSize(text, text_settings.transform, text_settings.text_wrap);
@@ -182,16 +187,22 @@ export default class CanvasText {
     rasterize (texts, texture_size) {
         for (let style in texts) {
             let text_infos = texts[style];
+            let first = true;
 
             for (let text in text_infos) {
                 let info = text_infos[text];
+                let text_settings = info.text_settings;
                 let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
 
-                this.setFont(info.text_settings); // TODO: only set once above
+                if (first) {
+                    this.setFont(text_settings);
+                    first = false;
+                }
+
                 this.drawText(lines, info.position, info.size, {
-                    stroke: info.text_settings.stroke,
-                    transform: info.text_settings.transform,
-                    align: info.text_settings.align
+                    stroke: text_settings.stroke,
+                    transform: text_settings.transform,
+                    align: text_settings.align
                 });
 
                 info.texcoords = Texture.getTexcoordsForSprite(
