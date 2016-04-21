@@ -283,7 +283,6 @@ export default class Scene {
             var worker = new Worker(url);
             this.workers[id] = worker;
 
-            worker.addEventListener('message', this.workerLogMessage.bind(this));
             WorkerBroker.addWorker(worker);
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
@@ -1060,23 +1059,6 @@ export default class Scene {
 
 
     // Stats/debug/profiling methods
-
-    // Log messages pass through from web workers
-    workerLogMessage(event) {
-        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
-        if (data.type !== 'log') {
-            return;
-        }
-
-        var { worker_id, level, msg } = data;
-
-        if (log[level]) {
-            log[level](`worker ${worker_id}:`,  ...msg);
-        }
-        else {
-            log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
-        }
-    }
 
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {
