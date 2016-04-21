@@ -19,7 +19,8 @@ export default TextSettings = {
             settings.stroke_width,
             settings.transform,
             settings.text_wrap,
-            settings.align
+            settings.align,
+            Utils.device_pixel_ratio
         ].join('/');
     },
 
