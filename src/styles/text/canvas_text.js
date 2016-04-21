@@ -40,19 +40,21 @@ export default class CanvasText {
 
             for (let text in text_infos) {
                 // Use cached size, or compute via canvas
-                if (!CanvasText.text_size_cache[style] || !CanvasText.text_size_cache[style][text]) {
+                if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
                     let text_settings = text_infos[text].text_settings;
                     this.setFont(text_settings); // TODO: only set once above
-                    CanvasText.text_size_cache[style] = CanvasText.text_size_cache[style] || {};
-                    CanvasText.text_size_cache[style][text] =
+                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                    CanvasText.text_cache[style][text] =
                         this.textSize(text, text_settings.transform, text_settings.text_wrap);
-                    CanvasText.cache.hits++;
+                    CanvasText.cache_stats.misses++;
                 }
                 else {
-                    CanvasText.cache.misses++;
+                    CanvasText.cache_stats.hits++;
                 }
 
-                Object.assign(text_infos[text], CanvasText.text_size_cache[style][text]);
+                // Only send text sizes back to worker (keep computed text line info
+                // on main thread, for future rendering)
+                text_infos[text].size = CanvasText.text_cache[style][text].size;
             }
         }
 
@@ -183,9 +185,10 @@ export default class CanvasText {
 
             for (let text in text_infos) {
                 let info = text_infos[text];
+                let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
 
                 this.setFont(info.text_settings); // TODO: only set once above
-                this.drawText(info.lines, info.position, info.size, {
+                this.drawText(lines, info.position, info.size, {
                     stroke: info.text_settings.stroke,
                     transform: info.text_settings.transform,
                     align: info.text_settings.align
@@ -286,5 +289,5 @@ export default class CanvasText {
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
 // Cache sizes of rendered text
-CanvasText.text_size_cache = {}; // by text style, then text string
-CanvasText.cache = { hits: 0, misses: 0 };
+CanvasText.text_cache = {}; // by text style, then text string
+CanvasText.cache_stats = { hits: 0, misses: 0 };
