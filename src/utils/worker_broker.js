@@ -171,73 +171,91 @@ function setupMainThread () {
         // Keep track of all registered workers
         workers.set(worker, worker_id++);
 
-        // Listen for messages coming back from the worker, and fulfill that message's promise
         worker.addEventListener('message', (event) => {
             let data = maybeDecode(event.data);
-            if (data.type !== 'worker_reply') {
-                return;
-            }
+            let id = data.message_id;
 
-            // Pass the result to the promise
-            var id = data.message_id;
-            if (messages[id]) {
-                if (data.error) {
-                    messages[id].reject(data.error);
+            // Listen for messages coming back from the worker, and fulfill that message's promise
+            if (data.type === 'worker_reply') {
+                // Pass the result to the promise
+                if (messages[id]) {
+                    if (data.error) {
+                        messages[id].reject(data.error);
+                    }
+                    else {
+                        messages[id].resolve(data.message);
+                    }
+                    delete messages[id];
                 }
-                else {
-                    messages[id].resolve(data.message);
-                }
-                delete messages[id];
             }
-        });
-
-        // Listen for messages initiating a call from the worker, dispatch them,
-        // and send any return value back to the worker
-        worker.addEventListener('message', (event) => {
-            let data = maybeDecode(event.data);
-
+            // Listen for messages initiating a call from the worker, dispatch them,
+            // and send any return value back to the worker
             // Unique id for this message & return call to main thread
-            var id = data.message_id;
-            if (data.type !== 'worker_send' || id == null) {
-                return;
-            }
+            else if (data.type === 'worker_send' && id != null) {
+                // Call the requested method and save the return value
+                // var target = targets[data.target];
+                var [method_name, target] = findTarget(data.method);
+                if (!target) {
+                    throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+                }
 
-            // Call the requested method and save the return value
-            // var target = targets[data.target];
-            var [method_name, target] = findTarget(data.method);
-            if (!target) {
-                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-            }
+                var method = (typeof target[method_name] === 'function') && target[method_name];
+                if (!method) {
+                    throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
+                }
 
-            var method = (typeof target[method_name] === 'function') && target[method_name];
-            if (!method) {
-                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
-            }
+                var result, error;
+                try {
+                    result = method.apply(target, data.message);
+                }
+                catch(e) {
+                    // Thrown errors will be passed back (in string form) to worker
+                    error = e;
+                }
 
-            var result, error;
-            try {
-                result = method.apply(target, data.message);
-            }
-            catch(e) {
-                // Thrown errors will be passed back (in string form) to worker
-                error = e;
-            }
+                // Send return value to worker
+                let payload, transferables = [];
 
-            // Send return value to worker
-            let payload, transferables = [];
+                // Async result
+                if (result instanceof Promise) {
+                    result.then((value) => {
+                        if (value instanceof WorkerBroker.returnWithTransferables) {
+                            transferables = value.transferables;
+                            value = value.value;
+                        }
 
-            // Async result
-            if (result instanceof Promise) {
-                result.then((value) => {
-                    if (value instanceof WorkerBroker.returnWithTransferables) {
-                        transferables = value.transferables;
-                        value = value.value;
+                        payload = {
+                            type: 'main_reply',
+                            message_id: id,
+                            message: value
+                        };
+                        payload = maybeEncode(payload, transferables);
+                        worker.postMessage(payload, transferables.map(t => t.object));
+                        freeTransferables(transferables);
+                        // if (transferables.length > 0) {
+                        //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+                        // }
+
+                    }, (error) => {
+                        worker.postMessage({
+                            type: 'main_reply',
+                            message_id: id,
+                            error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
+                        });
+                    });
+                }
+                // Immediate result
+                else {
+                    if (result instanceof WorkerBroker.returnWithTransferables) {
+                        transferables = result.transferables;
+                        result = result.value;
                     }
 
                     payload = {
                         type: 'main_reply',
                         message_id: id,
-                        message: value
+                        message: result,
+                        error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                     };
                     payload = maybeEncode(payload, transferables);
                     worker.postMessage(payload, transferables.map(t => t.object));
@@ -245,34 +263,7 @@ function setupMainThread () {
                     // if (transferables.length > 0) {
                     //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
                     // }
-
-                }, (error) => {
-                    worker.postMessage({
-                        type: 'main_reply',
-                        message_id: id,
-                        error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-                    });
-                });
-            }
-            // Immediate result
-            else {
-                if (result instanceof WorkerBroker.returnWithTransferables) {
-                    transferables = result.transferables;
-                    result = result.value;
                 }
-
-                payload = {
-                    type: 'main_reply',
-                    message_id: id,
-                    message: result,
-                    error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-                };
-                payload = maybeEncode(payload, transferables);
-                worker.postMessage(payload, transferables.map(t => t.object));
-                freeTransferables(transferables);
-                // if (transferables.length > 0) {
-                //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-                // }
             }
         });
 
@@ -318,72 +309,89 @@ function setupWorkerThread () {
         return promise;
     };
 
-    // Listen for messages coming back from the main thread, and fulfill that message's promise
     self.addEventListener('message', (event) => {
         let data = maybeDecode(event.data);
-        if (data.type !== 'main_reply') {
-            return;
-        }
+        let id = data.message_id;
 
-        // Pass the result to the promise
-        var id = data.message_id;
-        if (messages[id]) {
-            if (data.error) {
-                messages[id].reject(data.error);
+        // Listen for messages coming back from the main thread, and fulfill that message's promise
+        if (data.type === 'main_reply') {
+            // Pass the result to the promise
+            if (messages[id]) {
+                if (data.error) {
+                    messages[id].reject(data.error);
+                }
+                else {
+                    messages[id].resolve(data.message);
+                }
+                delete messages[id];
             }
-            else {
-                messages[id].resolve(data.message);
-            }
-            delete messages[id];
         }
-    });
-
-    // Receive messages from main thread, dispatch them, and send back a reply
-    self.addEventListener('message', (event) => {
-        let data = maybeDecode(event.data);
-
+        // Receive messages from main thread, dispatch them, and send back a reply
         // Unique id for this message & return call to main thread
-        var id = data.message_id;
-        if (data.type !== 'main_send' || id == null) {
-            return;
-        }
+        else if (data.type === 'main_send' && id != null) {
+            // Call the requested worker method and save the return value
+            var [method_name, target] = findTarget(data.method);
+            if (!target) {
+                throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+            }
 
-        // Call the requested worker method and save the return value
-        var [method_name, target] = findTarget(data.method);
-        if (!target) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
-        }
+            var method = (typeof target[method_name] === 'function') && target[method_name];
 
-        var method = (typeof target[method_name] === 'function') && target[method_name];
+            if (!method) {
+                throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
+            }
 
-        if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
-        }
+            var result, error;
+            try {
+                result = method.apply(target, data.message);
+            }
+            catch(e) {
+                // Thrown errors will be passed back (in string form) to main thread
+                error = e;
+            }
 
-        var result, error;
-        try {
-            result = method.apply(target, data.message);
-        }
-        catch(e) {
-            // Thrown errors will be passed back (in string form) to main thread
-            error = e;
-        }
+            // Send return value to main thread
+            let payload, transferables = [];
 
-        // Send return value to main thread
-        let payload, transferables = [];
+            // Async result
+            if (result instanceof Promise) {
+                result.then((value) => {
+                    if (value instanceof WorkerBroker.returnWithTransferables) {
+                        transferables = value.transferables;
+                        value = value.value;
+                    }
 
-        // Async result
-        if (result instanceof Promise) {
-            result.then((value) => {
-                if (value instanceof WorkerBroker.returnWithTransferables) {
-                    transferables = value.transferables;
-                    value = value.value;
+                    payload = {
+                        type: 'worker_reply',
+                        message_id: id,
+                        message: value
+                    };
+                    payload = maybeEncode(payload, transferables);
+                    self.postMessage(payload, transferables.map(t => t.object));
+                    freeTransferables(transferables);
+                    // if (transferables.length > 0) {
+                    //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+                    // }
+                }, (error) => {
+                    self.postMessage({
+                        type: 'worker_reply',
+                        message_id: id,
+                        error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
+                    });
+                });
+            }
+            // Immediate result
+            else {
+                if (result instanceof WorkerBroker.returnWithTransferables) {
+                    transferables = result.transferables;
+                    result = result.value;
                 }
 
                 payload = {
                     type: 'worker_reply',
                     message_id: id,
-                    message: value
+                    message: result,
+                    error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
                 };
                 payload = maybeEncode(payload, transferables);
                 self.postMessage(payload, transferables.map(t => t.object));
@@ -391,33 +399,7 @@ function setupWorkerThread () {
                 // if (transferables.length > 0) {
                 //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
                 // }
-            }, (error) => {
-                self.postMessage({
-                    type: 'worker_reply',
-                    message_id: id,
-                    error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-                });
-            });
-        }
-        // Immediate result
-        else {
-            if (result instanceof WorkerBroker.returnWithTransferables) {
-                transferables = result.transferables;
-                result = result.value;
             }
-
-            payload = {
-                type: 'worker_reply',
-                message_id: id,
-                message: result,
-                error: (error instanceof Error ? `${error.message}: ${error.stack}` : error)
-            };
-            payload = maybeEncode(payload, transferables);
-            self.postMessage(payload, transferables.map(t => t.object));
-            freeTransferables(transferables);
-            // if (transferables.length > 0) {
-            //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-            // }
         }
     });
 
