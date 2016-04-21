@@ -416,6 +416,7 @@ export default class ShaderProgram {
         this.commitUniform(uniform);
     }
 
+    // Commits the uniform to the GPU
     commitUniform(uniform){
         let location = uniform.location;
         let value = uniform.value;
