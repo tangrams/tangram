@@ -201,7 +201,7 @@ class PerspectiveCamera extends Camera {
     setupProgram(program) {
         program.uniform('Matrix4fv', 'u_projection', this.projection_matrix);
         program.uniform('3f', 'u_eye', [0, 0, this.position_meters[2]]);
-        program.uniform('2f', 'u_vanishing_point', this.vanishing_point_skew);
+        program.uniform('2fv', 'u_vanishing_point', this.vanishing_point_skew);
     }
 
 }
@@ -276,9 +276,9 @@ class IsometricCamera extends Camera {
     setupProgram(program) {
         program.uniform('Matrix4fv', 'u_projection', this.projection_matrix);
 
-        program.uniform('3f', 'u_eye', [0, 0, this.viewport_height]);
+        program.uniform('3fv', 'u_eye', [0, 0, this.viewport_height]);
         // program.uniform('3f', 'u_eye', this.viewport_height * this.axis.x, this.viewport_height * this.axis.y, this.viewport_height);
-        program.uniform('2f', 'u_vanishing_point', [0, 0]);
+        program.uniform('2fv', 'u_vanishing_point', [0, 0]);
     }
 
 }

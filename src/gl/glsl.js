@@ -59,7 +59,7 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                 else if (uniform.length > 4) {
                     parsed.push({
                         type: 'float[]',
-                        method: '1f',
+                        method: '1fv',
                         name: name + '[0]',
                         value: uniform,
                         key,
