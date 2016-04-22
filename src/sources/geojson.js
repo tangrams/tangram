@@ -101,7 +101,56 @@ export class GeoJSONSource extends NetworkSource {
     }
 
     parseSourceData (tile, source, response) {
-        source.layers = this.getLayers(JSON.parse(response));
+        let parsed_response = JSON.parse(response);
+        this.preprocessFeatures(parsed_response.features);
+        source.layers = this.getLayers(parsed_response);
+    }
+
+    // Preprocess features. Currently used to add a new "centroid" feature for polygon labeling
+    preprocessFeatures (features){
+        // Define centroids for polygons for centroid label placement
+        // Avoids redundant label placement for each generated tile at higher zoom levels
+        var features_centroid = [];
+        var label_key = 'label_centroid';
+
+        features.forEach(feature => {
+            let coordinates;
+            switch (feature.geometry.type) {
+                case 'Polygon':
+                    coordinates = feature.geometry.coordinates;
+                    features_centroid.push(getCentroidFeatureForPolygon(coordinates, feature.properties));
+                    break;
+                case 'MultiPolygon':
+                    coordinates = feature.geometry.coordinates;
+                    for (let i = 0; i < coordinates.length; i++) {
+                        features_centroid.push(getCentroidFeatureForPolygon(coordinates[i], feature.properties));
+                    }
+                    break;
+            }
+        });
+
+        // create centroid point feature from polygon coordinates and provided feature meta-data
+        function getCentroidFeatureForPolygon (coordinates, properties) {
+            let centroid = Geo.centroid(coordinates[0]);
+
+            // clone properties and add {label_key : "yes"}
+            let centroid_properties = Object.create(properties);
+            centroid_properties[label_key] = "yes";
+
+            return {
+                type: "Feature",
+                properties: centroid_properties,
+                geometry: {
+                    type: "Point",
+                    coordinates: centroid
+                }
+            };
+        }
+
+        // append centroid features to features array
+        Array.prototype.push.apply(features, features_centroid);
+
+        return features;
     }
 
     // Detect single or multiple layers in returned data
