@@ -76,7 +76,7 @@ export default class View {
             }
         }
 
-        this.scene.updateConfig();
+        this.scene.updateConfig({ rebuild: false });
         return this.getActiveCamera();
     }
 
@@ -302,8 +302,8 @@ export default class View {
 
     // Set general uniforms that must be updated once per program
     setupProgram (program) {
-        program.uniform('2f', 'u_resolution', this.size.device.width, this.size.device.height);
-        program.uniform('3f', 'u_map_position', this.center.meters.x, this.center.meters.y, this.zoom);
+        program.uniform('2fv', 'u_resolution', [this.size.device.width, this.size.device.height]);
+        program.uniform('3fv', 'u_map_position', [this.center.meters.x, this.center.meters.y, this.zoom]);
         program.uniform('1f', 'u_meters_per_pixel', this.meters_per_pixel);
         program.uniform('1f', 'u_device_pixel_ratio', Utils.device_pixel_ratio);
 

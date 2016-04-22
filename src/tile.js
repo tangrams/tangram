@@ -190,8 +190,7 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, config, rules, styles) {
-        let layers = config.layers;
+    static buildGeometry (tile, { layers, rules, styles, global }) {
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -230,9 +229,10 @@ export default class Tile {
                         continue; // skip features w/o geometry (valid GeoJSON)
                     }
 
-                    let context = StyleParser.getFeatureParseContext(feature, tile, config);
+                    let context = StyleParser.getFeatureParseContext(feature, tile, global);
                     context.winding = tile.default_winding;
-                    context.layer = source_layer.layer; // add data source layer name
+                    context.source = tile.source;        // add data source name
+                    context.layer = source_layer.layer;  // add data source layer name
 
                     // Get draw groups for this feature
                     let layer_rules = rules[layer_name];
@@ -307,7 +307,6 @@ export default class Tile {
             // If no layer specified, and a default source layer exists
             if (!source_config.layer && source_data.layers._default) {
                 layers.push({
-                    layer: '_default',
                     geom: source_data.layers._default
                 });
             }
@@ -446,7 +445,7 @@ export default class Tile {
     // Update model matrix and tile uniforms
     setupProgram ({ model, model32 }, program) {
         // Tile origin
-        program.uniform('4f', 'u_tile_origin', this.min.x, this.min.y, this.style_zoom, this.coords.z);
+        program.uniform('4fv', 'u_tile_origin', [this.min.x, this.min.y, this.style_zoom, this.coords.z]);
         program.uniform('1f', 'u_tile_proxy_depth', this.proxy_depth);
 
         // Model - transform tile space into world space (meters, absolute mercator position)
@@ -454,7 +453,7 @@ export default class Tile {
         mat4.translate(model, model, vec3.fromValues(this.min.x, this.min.y, 0));
         mat4.scale(model, model, vec3.fromValues(this.span.x / Geo.tile_scale, -1 * this.span.y / Geo.tile_scale, 1)); // scale tile local coords to meters
         mat4.copy(model32, model);
-        program.uniform('Matrix4fv', 'u_model', false, model32);
+        program.uniform('Matrix4fv', 'u_model', model32);
     }
 
     // Slice a subset of keys out of a tile

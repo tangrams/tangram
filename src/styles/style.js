@@ -8,11 +8,13 @@ import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import {RasterTileSource} from '../sources/raster';
-import shaderSources from '../gl/shader_sources'; // built-in shaders
 import Utils from '../utils/utils';
 import WorkerBroker from '../utils/worker_broker';
-
 import log from 'loglevel';
+
+let fs = require('fs');
+const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
+const shaderSrc_rasters = fs.readFileSync(__dirname + '/../gl/shaders/rasters.glsl', 'utf8');
 
 // Base class
 
@@ -321,8 +323,8 @@ export var Style = {
         try {
             this.program = new ShaderProgram(
                 this.gl,
-                shaderSources[this.vertex_shader_key],
-                shaderSources[this.fragment_shader_key],
+                this.vertex_shader_src,
+                this.fragment_shader_src,
                 {
                     name: this.name,
                     defines,
@@ -337,8 +339,8 @@ export var Style = {
             if (this.selection) {
                 this.selection_program = new ShaderProgram(
                     this.gl,
-                    shaderSources[this.vertex_shader_key],
-                    shaderSources['gl/shaders/selection_fragment'],
+                    this.vertex_shader_src,
+                    shaderSrc_selectionFragment,
                     {
                         name: (this.name + ' (selection)'),
                         defines: selection_defines,
@@ -445,7 +447,7 @@ export var Style = {
             this.defines.TANGRAM_MODEL_POSITION_BASE_ZOOM_VARYING = true;
 
             // Uniforms and macros for raster samplers
-            this.replaceShaderBlock('raster', shaderSources['gl/shaders/rasters'], 'Raster');
+            this.replaceShaderBlock('raster', shaderSrc_rasters, 'Raster');
         }
     },
 

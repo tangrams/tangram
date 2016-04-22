@@ -1,8 +1,14 @@
 import ShaderProgram from './gl/shader_program';
-import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
+
+let fs = require('fs');
+
+const shaderSrc_ambientLight = fs.readFileSync(__dirname + '/gl/shaders/ambientLight.glsl', 'utf8');
+const shaderSrc_directionalLight = fs.readFileSync(__dirname + '/gl/shaders/directionalLight.glsl', 'utf8');
+const shaderSrc_pointLight = fs.readFileSync(__dirname + '/gl/shaders/pointLight.glsl', 'utf8');
+const shaderSrc_spotLight = fs.readFileSync(__dirname + '/gl/shaders/spotLight.glsl', 'utf8');
 
 // Abstract light
 export default class Light {
@@ -180,7 +186,7 @@ class AmbientLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/ambientLight']);
+        ShaderProgram.addBlock(Light.block, shaderSrc_ambientLight);
     }
 
     setupProgram (_program) {
@@ -202,7 +208,7 @@ class DirectionalLight extends Light {
 
     // Inject struct and calculate function
     static inject() {
-        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/directionalLight']);
+        ShaderProgram.addBlock(Light.block, shaderSrc_directionalLight);
     }
 
     setupProgram (_program) {
@@ -241,7 +247,7 @@ class PointLight extends Light {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/pointLight']);
+        ShaderProgram.addBlock(Light.block, shaderSrc_pointLight);
     }
 
     // Inject isntance-specific settings
@@ -270,7 +276,7 @@ class PointLight extends Light {
                 { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
             this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
         }
-        if (this.origin === 'ground' || this.origin === 'camera') {
+        else if (this.origin === 'ground' || this.origin === 'camera') {
             // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
@@ -282,13 +288,13 @@ class PointLight extends Light {
                 this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
             }
         }
+        this.position_eye[3] = 1;
     }
 
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('4f', `u_${this.name}.position`,
-            this.position_eye[0], this.position_eye[1], this.position_eye[2], 1);
+        _program.uniform('4fv', `u_${this.name}.position`, this.position_eye);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
             _program.uniform('1f', `u_${this.name}.attenuationExponent`, this.attenuation);
@@ -324,7 +330,7 @@ class SpotLight extends PointLight {
 
     // Inject struct and calculate function
     static inject () {
-        ShaderProgram.addBlock(Light.block, shaderSources['gl/shaders/spotLight']);
+        ShaderProgram.addBlock(Light.block, shaderSrc_spotLight);
     }
 
     setupProgram (_program) {

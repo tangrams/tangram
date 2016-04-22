@@ -32,6 +32,7 @@ import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
 import FeatureSelection from './selection';
+import CanvasText from './styles/text/canvas_text';
 
 import yaml from 'js-yaml';
 
@@ -56,16 +57,12 @@ var debug = {
     StyleManager,
     StyleParser,
     Collision,
-    FeatureSelection
+    FeatureSelection,
+    CanvasText
 };
 
-// Window can only be set in main thread
 if (Utils.isMainThread) {
-    window.Tangram = module.exports = {
-        leafletLayer,
-        debug,
-        version: version.string
-    };
+    Utils.requestAnimationFramePolyfill();
 
     // Attach Promise polyfill to window
     // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
@@ -74,22 +71,17 @@ if (Utils.isMainThread) {
     }
 }
 
-if (Utils.isWorkerThread) {
-    self.Tangram = {
-        debug,
-        version: version.string
-    };
-}
-
-if (Utils.isMainThread) {
-    Utils.requestAnimationFramePolyfill();
-}
-
 // Setup logging to prefix with Tangram version
 var originalFactory = log.methodFactory;
-log.methodFactory = function (methodName, logLevel) {
+log.methodFactory = function(methodName, logLevel) {
     var rawMethod = originalFactory(methodName, logLevel);
-    return function (...message) {
+    return function(...message) {
         rawMethod(`Tangram ${version.string}:`, ...message);
     };
+};
+
+module.exports = {
+    leafletLayer,
+    debug,
+    version: version.string
 };

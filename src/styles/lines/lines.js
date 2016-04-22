@@ -5,17 +5,18 @@ import {StyleParser} from '../style_parser';
 import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
+import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
 export var Lines = Object.create(Style);
 
 Object.assign(Lines, {
     name: 'lines',
     built_in: true,
-    vertex_shader_key: 'styles/polygons/polygons_vertex', // re-use polygon shaders
-    fragment_shader_key: 'styles/polygons/polygons_fragment',
+    vertex_shader_src: shaderSrc_polygonsVertex,
+    fragment_shader_src: shaderSrc_polygonsFragment,
     selection: true, // turn feature selection on
 
     init() {
@@ -245,7 +246,7 @@ Object.assign(Lines, {
         // Main line
         this.feature_style = this.inline_feature_style; // restore calculated style for inline
         let vertex_template = this.makeVertexTemplate(style);
-        Builders.buildPolylines(
+        buildPolylines(
             lines,
             style.width,
             vertex_data,

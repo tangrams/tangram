@@ -69,6 +69,15 @@ describe('Styles:', () => {
                 assert.ok(Styles.rainbow_child.program.compiled);
             });
 
+            it('compiles a style with the same style mixed by multiple ancestors', () => {
+                Styles.descendant.setGL(gl);
+                Styles.descendant.compile();
+                assert.equal(Styles.descendant.constructor, Style.constructor);
+                assert.equal(Styles.descendant.base, 'polygons');
+                assert.ok(Styles.descendant.compiled);
+                assert.ok(Styles.descendant.program.compiled);
+            });
+
         });
 
     });

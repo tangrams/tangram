@@ -4,16 +4,26 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildPolygons, buildExtrudedPolygons} from '../../builders/polygons';
 import Geo from '../../geo';
 
+let fs = require('fs');
+const shaderSrc_polygonsVertex = fs.readFileSync(__dirname + '/polygons_vertex.glsl', 'utf8');
+const shaderSrc_polygonsFragment = fs.readFileSync(__dirname + '/polygons_fragment.glsl', 'utf8');
+
 export var Polygons = Object.create(Style);
+
+// export shaders for use in lines.js
+export {
+    shaderSrc_polygonsVertex,
+    shaderSrc_polygonsFragment
+};
 
 Object.assign(Polygons, {
     name: 'polygons',
     built_in: true,
-    vertex_shader_key: 'styles/polygons/polygons_vertex',
-    fragment_shader_key: 'styles/polygons/polygons_fragment',
+    vertex_shader_src: shaderSrc_polygonsVertex,
+    fragment_shader_src: shaderSrc_polygonsFragment,
     selection: true, // turn feature selection on
 
     init() {
@@ -150,7 +160,7 @@ Object.assign(Polygons, {
 
         // Extruded polygons (e.g. 3D buildings)
         if (style.extrude && style.height) {
-            Builders.buildExtrudedPolygons(
+            buildExtrudedPolygons(
                 polygons,
                 style.z, style.height, style.min_height,
                 vertex_data, vertex_template,
@@ -161,7 +171,7 @@ Object.assign(Polygons, {
         }
         // Regular polygons
         else {
-            Builders.buildPolygons(
+            buildPolygons(
                 polygons,
                 vertex_data, vertex_template,
                 options

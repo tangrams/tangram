@@ -1,6 +1,8 @@
-import shaderSources from './gl/shader_sources'; // built-in shaders
 import GLSL from './gl/glsl';
 import {StyleParser} from './styles/style_parser';
+
+let fs = require('fs');
+const shaderSrc_material = fs.readFileSync(__dirname + '/gl/shaders/material.glsl', 'utf8');
 
 export default class Material {
     constructor (config) {
@@ -9,23 +11,24 @@ export default class Material {
 
         // These properties all have the same defaults, so they can be set in bulk
         for (let prop of ['emission', 'ambient', 'diffuse', 'specular']) {
-            if (config[prop] != null) {
-                if (config[prop].texture) {
+            const value = config[prop];
+            if (value != null) {
+                if (value.texture) {
                     this[prop] = {
-                        texture: config[prop].texture,
-                        mapping: config[prop].mapping || 'spheremap',
-                        scale: GLSL.expandVec3(config[prop].scale != null ? config[prop].scale : 1),
-                        amount: GLSL.expandVec4(config[prop].amount != null ? config[prop].amount : 1)
+                        texture: value.texture,
+                        mapping: value.mapping || 'spheremap',
+                        scale: GLSL.expandVec3(value.scale != null ? value.scale : 1),
+                        amount: GLSL.expandVec4(value.amount != null ? value.amount : 1)
                     };
                 }
-                else if (typeof config[prop] === 'number') {
-                    this[prop] = { amount: GLSL.expandVec4(config[prop]) };
+                else if (typeof value === 'number' || Array.isArray(value)) {
+                    this[prop] = { amount: GLSL.expandVec4(value) };
                 }
-                else if (typeof config[prop] === 'string') {
-                    this[prop] = { amount: StyleParser.parseColor(config[prop]) };
+                else if (typeof value === 'string') {
+                    this[prop] = { amount: StyleParser.parseColor(value) };
                 }
                 else {
-                    this[prop] = config[prop];
+                    this[prop] = value;
                 }
             }
         }
@@ -90,7 +93,7 @@ export default class Material {
             style.texcoords = style.texcoords || (this.normal.mapping === 'uv');
         }
 
-        style.replaceShaderBlock(Material.block, shaderSources['gl/shaders/material'], 'Material');
+        style.replaceShaderBlock(Material.block, shaderSrc_material, 'Material');
         style.addShaderBlock('setup', '\nmaterial = u_material;\n', 'Material');
     }
 

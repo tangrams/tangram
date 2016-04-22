@@ -131,7 +131,7 @@ export default class Scene {
 
                 // Only retain visible tiles for rebuilding
                 this.tile_manager.pruneToVisibleTiles();
-                return this.updateConfig({ rebuild: true });
+                return this.updateConfig();
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -283,7 +283,6 @@ export default class Scene {
             var worker = new Worker(url);
             this.workers[id] = worker;
 
-            worker.addEventListener('message', this.workerLogMessage.bind(this));
             WorkerBroker.addWorker(worker);
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
@@ -330,19 +329,9 @@ export default class Scene {
 
     resizeMap(width, height) {
         this.dirty = true;
-
         this.view.setViewportSize(width, height);
-
-        if (this.canvas) {
-            this.canvas.style.width = this.view.size.css.width + 'px';
-            this.canvas.style.height = this.view.size.css.height + 'px';
-            this.canvas.width = this.view.size.device.width;
-            this.canvas.height = this.view.size.device.height;
-
-            if (this.gl) {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-            }
+        if (this.gl) {
+            Context.resize(this.gl, width, height, Utils.device_pixel_ratio);
         }
     }
 
@@ -487,7 +476,8 @@ export default class Scene {
         // Render styles
         let count = 0; // how many primitives were rendered
         let last_blend;
-        for (let style of styles) {
+        for (let s=0; s < styles.length; s++) {
+            let style = styles[s];
             // Only update render state when blend mode changes
             if (style.blend !== last_blend) {
                 let state = Object.assign({},
@@ -557,17 +547,10 @@ export default class Scene {
         clear_color = (clear_color === false) ? false : true; // default true
         clear_depth = (clear_depth === false) ? false : true; // default true
 
-        // Reset frame state
+        // Set GL state
+        RenderState.depth_write.set({ depth_write: clear_depth });
+
         let gl = this.gl;
-
-        if (clear_color) {
-            gl.clearColor(...this.background.color);
-        }
-
-        if (clear_depth) {
-            gl.depthMask(true); // always clear depth if requested, even if depth write will be turned off
-        }
-
         if (clear_color || clear_depth) {
             let mask = (clear_color && gl.COLOR_BUFFER_BIT) | (clear_depth && gl.DEPTH_BUFFER_BIT);
             gl.clear(mask);
@@ -589,7 +572,7 @@ export default class Scene {
         // Reset frame state
         let gl = this.gl;
 
-        RenderState.depth_test.set({ depth_test: depth_test, depth_func: RenderState.defaults.depth_func });
+        RenderState.depth_test.set({ depth_test: depth_test });
         RenderState.depth_write.set({ depth_write: depth_write });
         RenderState.culling.set({ cull: cull_face, face: RenderState.defaults.culling_face });
 
@@ -950,11 +933,13 @@ export default class Scene {
         else {
             this.canvas.style.backgroundColor = 'transparent';
         }
+
+        this.gl.clearColor(...this.background.color);
     }
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild } = {}) {
+    updateConfig({ rebuild = true } = {}) {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};
@@ -1074,23 +1059,6 @@ export default class Scene {
 
 
     // Stats/debug/profiling methods
-
-    // Log messages pass through from web workers
-    workerLogMessage(event) {
-        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
-        if (data.type !== 'log') {
-            return;
-        }
-
-        var { worker_id, level, msg } = data;
-
-        if (log[level]) {
-            log[level](`worker ${worker_id}:`,  ...msg);
-        }
-        else {
-            log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
-        }
-    }
 
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {

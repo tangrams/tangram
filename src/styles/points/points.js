@@ -4,15 +4,18 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
-import Builders from '../builders';
+import {buildQuadsForPoints} from '../../builders/points';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
-
 import log from 'loglevel';
+
+let fs = require('fs');
+const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
+const shaderSrc_pointsFragment = fs.readFileSync(__dirname + '/points_fragment.glsl', 'utf8');
 
 export var Points = Object.create(Style);
 
@@ -26,8 +29,8 @@ Object.assign(Points, {
         Style.init.apply(this, arguments);
 
         // Base shaders
-        this.vertex_shader_key = 'styles/points/points_vertex';
-        this.fragment_shader_key = 'styles/points/points_fragment';
+        this.vertex_shader_src = shaderSrc_pointsVertex;
+        this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [
             { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
@@ -349,7 +352,7 @@ Object.assign(Points, {
     },
 
     buildQuad (points, size, angle, offset, texcoord_scale, vertex_data, vertex_template) {
-        Builders.buildQuadsForPoints(
+        buildQuadsForPoints(
             points,
             vertex_data,
             vertex_template,

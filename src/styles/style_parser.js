@@ -71,11 +71,11 @@ StyleParser.macros = {
 };
 
 // A context object that is passed to style parsing functions to provide a scope of commonly used values
-StyleParser.getFeatureParseContext = function (feature, tile, config) {
+StyleParser.getFeatureParseContext = function (feature, tile, global) {
     return {
         feature,
         tile,
-        global: config.global,
+        global,
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,

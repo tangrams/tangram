@@ -140,8 +140,7 @@ Object.assign(TextStyle, {
 
         // first call to main thread, ask for text pixel sizes
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes',
-            tile.key, this.texts[tile.key], this.fonts[tile.key]).then(texts => {
-
+            this.texts[tile.key], this.fonts[tile.key]).then(texts => {
             if (tile.canceled) {
                 Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return;
@@ -251,8 +250,8 @@ Object.assign(TextStyle, {
     // Called on main thread from worker, to compute the size of each text string,
     // were it to be rendered. This info is then used to perform initial label culling, *before*
     // labels are actually rendered.
-    calcTextSizes (tile_key, texts, fonts) {
-        return this.canvas.textSizes(tile_key, texts, fonts);
+    calcTextSizes (texts, fonts) {
+        return this.canvas.textSizes(texts, fonts);
     },
 
     // Called on main thread from worker, to create atlas of labels for a tile
@@ -265,7 +264,7 @@ Object.assign(TextStyle, {
         if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
             // update canvas size & rasterize all the text strings we need
             canvas.resize(...texture_size);
-            canvas.rasterize(tile_key, texts, texture_size);
+            canvas.rasterize(texts, texture_size);
         }
         else {
             log.error([

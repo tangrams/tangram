@@ -1,6 +1,6 @@
 {
   "name": "tangram",
-  "version": "0.1.2",
+  "version": "0.7.0",
   "description": "WebGL Maps for Vector Tiles",
   "repository": {
     "type": "git",
@@ -17,7 +17,21 @@
     "OpenStreetMap"
   ],
   "scripts": {
-    "test": "make test-ci"
+    "start": "npm run watch",
+    "test": "npm run lint && npm run build-test && npm run test-local",
+    "test-ci": "npm run lint && npm run build-test && npm run test-remote",
+    "test-remote": "./node_modules/karma/bin/karma start --browsers SL_Firefox --single-run",
+    "test-local": "./node_modules/karma/bin/karma start --browsers Chrome --single-run",
+    "karma-start": "./node_modules/karma/bin/karma start --browsers Chrome --no-watch",
+    "karma-run": "./node_modules/karma/bin/karma run --browsers Chrome",
+    "lint": "$(npm bin)/jshint src/ && jshint test/",
+    "build": "npm run build-bundle -- -o dist/tangram.debug.js && npm run build-minify",
+    "build-test": "npm run build-bundle -- -o dist/tangram.test.js",
+    "build-debug": "npm run build-bundle -- -o dist/tangram.debug.js",
+    "build-bundle": "$(npm bin)/browserify src/module.js -t [ babelify --optional runtime ] -t brfs -s Tangram -p browserify-derequire",
+    "build-minify": "$(npm bin)/uglifyjs dist/tangram.debug.js -c warnings=false -m -o dist/tangram.min.js && npm run build-size",
+    "build-size": "gzip dist/tangram.min.js -c | wc -c | awk '{kb=$1/1024; print kb}' OFMT='%.0fk minified+gzipped'",
+    "watch": "$(npm bin)/budo src/module.js:dist/tangram.debug.js --port 8000 --cors --live -- -t [ babelify --optional runtime ] -t brfs -s Tangram"
   },
   "author": {
     "name": "Mapzen",
@@ -41,12 +55,16 @@
     },
     {
       "name": "Lou Huang"
+    },
+    {
+      "name": "David Valdman"
     }
   ],
   "license": "MIT",
   "dependencies": {
     "babel": "5.8.29",
     "box-intersect": "1.0.0",
+    "brfs": "1.4.3",
     "csscolorparser": "1.0.2",
     "earcut": "1.2.0",
     "fontfaceobserver": "tangrams/fontfaceobserver#check-before-load",
@@ -65,19 +83,21 @@
   "devDependencies": {
     "babel-runtime": "5.8.29",
     "babelify": "6.4.0",
-    "browserify": "6.1.0",
+    "browserify": "10.0.0",
+    "browserify-derequire": "0.9.4",
+    "budo": "8.2.1",
     "chai": "1.9.2",
     "chai-as-promised": "4.1.1",
-    "derequire": "2.0.3",
     "glob": "4.0.6",
     "jshint": "jshint/jshint#3a8efa979dbb157bfb5c10b5826603a55a33b9ad",
     "karma": "0.12.23",
+    "karma-browserify": "5.0.3",
     "karma-chrome-launcher": "0.1.4",
     "karma-mocha": "0.1.9",
     "karma-mocha-reporter": "1.0.0",
     "karma-sauce-launcher": "tangrams/karma-sauce-launcher#firefox-profiles",
     "karma-sinon": "1.0.4",
-    "lodash": "2.4.1",
+    "lodash": "4.0.0",
     "mocha": "1.21.4",
     "sinon": "1.10.3",
     "uglify-js": "2.4.14",

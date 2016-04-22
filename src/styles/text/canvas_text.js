@@ -1,5 +1,5 @@
 import Utils from '../../utils/utils';
-import Builders from '../builders';
+import Texture from '../../gl/texture';
 
 import FontFaceObserver from 'fontfaceobserver';
 import log from 'loglevel';
@@ -19,7 +19,7 @@ export default class CanvasText {
     }
 
     // Set font style params for canvas drawing
-    setFont (tile, { font_css, fill, stroke, stroke_width, px_size }) {
+    setFont ({ font_css, fill, stroke, stroke_width, px_size }) {
         this.px_size = px_size;
         this.text_buffer = 8; // pixel padding around text
         let ctx = this.context;
@@ -70,24 +70,33 @@ export default class CanvasText {
         return Promise.all(queue);
     }
 
-    textSizes (tile, texts, fonts) {
+    textSizes (texts, fonts) {
         return this.loadFonts(fonts).then(() => {
             for (let style in texts) {
                 let text_infos = texts[style];
+                let first = true;
 
                 for (let text in text_infos) {
-                    let text_settings = text_infos[text].text_settings;
-                    // update text sizes
-                    this.setFont(tile, text_settings);
-                    Object.assign(
-                        text_infos[text],
-                        this.textSize(
-                            text,
-                            tile,
-                            text_settings.transform,
-                            text_settings.text_wrap
-                        )
-                    );
+                    // Use cached size, or compute via canvas
+                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
+                        let text_settings = text_infos[text].text_settings;
+                        if (first) {
+                            this.setFont(text_settings);
+                            first = false;
+                        }
+
+                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                        CanvasText.text_cache[style][text] =
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                        CanvasText.cache_stats.misses++;
+                    }
+                    else {
+                        CanvasText.cache_stats.hits++;
+                    }
+
+                    // Only send text sizes back to worker (keep computed text line info
+                    // on main thread, for future rendering)
+                    text_infos[text].size = CanvasText.text_cache[style][text].size;
                 }
             }
 
@@ -97,7 +106,7 @@ export default class CanvasText {
 
     // Computes width and height of text based on current font style
     // Includes word wrapping, returns size info for whole text block and individual lines
-    textSize (text, tile, transform, text_wrap) {
+    textSize (text, transform, text_wrap) {
         let str = this.applyTextTransform(text, transform);
         let ctx = this.context;
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
@@ -180,7 +189,7 @@ export default class CanvasText {
     }
 
     // Draw one or more lines of text at specified location, adjusting for buffer and baseline
-    drawText (lines, [x, y], size, tile, { stroke, transform, align }) {
+    drawText (lines, [x, y], size, { stroke, transform, align }) {
         align = align || 'center';
 
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -213,21 +222,28 @@ export default class CanvasText {
         }
     }
 
-    rasterize (tile, texts, texture_size) {
+    rasterize (texts, texture_size) {
         for (let style in texts) {
             let text_infos = texts[style];
+            let first = true;
 
             for (let text in text_infos) {
                 let info = text_infos[text];
+                let text_settings = info.text_settings;
+                let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
 
-                this.setFont(tile, info.text_settings);
-                this.drawText(info.lines, info.position, info.size, tile, {
-                    stroke: info.text_settings.stroke,
-                    transform: info.text_settings.transform,
-                    align: info.text_settings.align
+                if (first) {
+                    this.setFont(text_settings);
+                    first = false;
+                }
+
+                this.drawText(lines, info.position, info.size, {
+                    stroke: text_settings.stroke,
+                    transform: text_settings.transform,
+                    align: text_settings.align
                 });
 
-                info.texcoords = Builders.getTexcoordsForSprite(
+                info.texcoords = Texture.getTexcoordsForSprite(
                     info.position,
                     info.size.texture_size,
                     texture_size
@@ -321,4 +337,9 @@ export default class CanvasText {
 // Extract font size and units
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 
-CanvasText.fonts = {}; // detected fonts
+// Detected fonts
+CanvasText.fonts = {};
+
+// Cache sizes of rendered text
+CanvasText.text_cache = {}; // by text style, then text string
+CanvasText.cache_stats = { hits: 0, misses: 0 };

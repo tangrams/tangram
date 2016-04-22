@@ -1,7 +1,7 @@
 sources:
     osm:
         type: GeoJSON
-        url: http://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
+        url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.json
 
 layers:
     earth:
