@@ -276,7 +276,7 @@ class PointLight extends Light {
                 { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
             this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
         }
-        if (this.origin === 'ground' || this.origin === 'camera') {
+        else if (this.origin === 'ground' || this.origin === 'camera') {
             // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
@@ -288,13 +288,13 @@ class PointLight extends Light {
                 this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
             }
         }
+        this.position_eye[3] = 1;
     }
 
     setupProgram (_program) {
         super.setupProgram(_program);
 
-        _program.uniform('4f', `u_${this.name}.position`,
-            this.position_eye[0], this.position_eye[1], this.position_eye[2], 1);
+        _program.uniform('4fv', `u_${this.name}.position`, this.position_eye);
 
         if(ShaderProgram.defines['TANGRAM_POINTLIGHT_ATTENUATION_EXPONENT']) {
             _program.uniform('1f', `u_${this.name}.attenuationExponent`, this.attenuation);
