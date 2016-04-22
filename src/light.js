@@ -277,7 +277,7 @@ class PointLight extends Light {
                 { zoom: this.view.zoom, meters_per_pixel: Geo.metersPerPixel(this.view.zoom) });
             this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
         }
-        if (this.origin === 'ground' || this.origin === 'camera') {
+        else if (this.origin === 'ground' || this.origin === 'camera') {
             // For camera or ground origin, format is: [x, y, z] in meters (default) or pixels w/px units
 
             // Light is in camera space by default
@@ -289,6 +289,7 @@ class PointLight extends Light {
                 this.position_eye[2] = this.position_eye[2] - this.view.camera.position_meters[2];
             }
         }
+        this.position_eye[3] = 1;
     }
 
     setupProgram (_program) {
