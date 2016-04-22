@@ -229,7 +229,6 @@ class PointLight extends Light {
 
         this.position = config.position || [0, 0, '100px'];
         this.position_eye = []; // position in eyespace
-        this.position_eye[3] = 1;
         this.origin = config.origin || 'ground';
         this.attenuation = !isNaN(parseFloat(config.attenuation)) ? parseFloat(config.attenuation) : 0;
 
