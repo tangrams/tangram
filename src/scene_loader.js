@@ -201,6 +201,7 @@ export default SceneLoader = {
         config.lights = config.lights || {};
         config.styles = config.styles || {};
         config.layers = config.layers || {};
+        config.fonts = config.fonts || {};
 
         return config;
     }

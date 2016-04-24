@@ -15,6 +15,7 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
+import CanvasText from './styles/text/canvas_text';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -973,6 +974,7 @@ export default class Scene {
         this.createDataSources();
         this.loadTextures();
         this.setBackground();
+        CanvasText.loadFonts(this.config.fonts);
 
         // TODO: detect changes to styles? already (currently) need to recompile anyway when camera or lights change
         this.updateStyles();

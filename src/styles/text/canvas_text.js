@@ -1,6 +1,9 @@
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 
+import FontFaceObserver from 'fontfaceobserver';
+import log from 'loglevel';
+
 export default class CanvasText {
 
     constructor () {
@@ -35,35 +38,37 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
-        for (let style in texts) {
-            let text_infos = texts[style];
-            let first = true;
+        return CanvasText.fonts_loaded.then(() => {
+            for (let style in texts) {
+                let text_infos = texts[style];
+                let first = true;
 
-            for (let text in text_infos) {
-                // Use cached size, or compute via canvas
-                if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
-                    let text_settings = text_infos[text].text_settings;
-                    if (first) {
-                        this.setFont(text_settings);
-                        first = false;
+                for (let text in text_infos) {
+                    // Use cached size, or compute via canvas
+                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
+                        let text_settings = text_infos[text].text_settings;
+                        if (first) {
+                            this.setFont(text_settings);
+                            first = false;
+                        }
+
+                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                        CanvasText.text_cache[style][text] =
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                        CanvasText.cache_stats.misses++;
+                    }
+                    else {
+                        CanvasText.cache_stats.hits++;
                     }
 
-                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                    CanvasText.text_cache[style][text] =
-                        this.textSize(text, text_settings.transform, text_settings.text_wrap);
-                    CanvasText.cache_stats.misses++;
+                    // Only send text sizes back to worker (keep computed text line info
+                    // on main thread, for future rendering)
+                    text_infos[text].size = CanvasText.text_cache[style][text].size;
                 }
-                else {
-                    CanvasText.cache_stats.hits++;
-                }
-
-                // Only send text sizes back to worker (keep computed text line info
-                // on main thread, for future rendering)
-                text_infos[text].size = CanvasText.text_cache[style][text].size;
             }
-        }
 
-        return texts;
+            return texts;
+        });
     }
 
     // Computes width and height of text based on current font style
@@ -294,6 +299,39 @@ export default class CanvasText {
         return px_size;
     }
 
+    // Check availability of font faces (asynchronous, returns a promise)
+    // `fonts` is an object with keys corresponding to font face names
+    // For now, only the key is used, the value is ignored. In the future
+    // the value may be used to dynamically load font faces via CSS injection.
+    static loadFonts (fonts) {
+        let queue = [];
+        for (let face in fonts) {
+            if (CanvasText.fonts[face] === undefined) { // only check each font face once
+                CanvasText.fonts[face] =
+                    (new FontFaceObserver(face)).load().then(
+                        () => {
+                            // Promise resolves, font is available
+                            CanvasText.fonts[face] = true;
+                            log.debug(`Font face '${face}' is available`);
+                        },
+                        () => {
+                            // Promise rejects, font is not available
+                            CanvasText.fonts[face] = false;
+                            log.debug(`Font face '${face}' is NOT available`);
+                        }
+                    );
+                log.debug(`Check availability for font face '${face}'`);
+            }
+
+            if (CanvasText.fonts[face] instanceof Promise) {
+                queue.push(CanvasText.fonts[face]);
+            }
+        }
+
+        CanvasText.fonts_loaded = Promise.all(queue);
+        return CanvasText.fonts_loaded;
+    }
+
 }
 
 // Extract font size and units
@@ -302,3 +340,7 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+
+// Font detection
+CanvasText.fonts = {}; // detected availability of fonts, keyed by face name
+CanvasText.fonts_loaded = Promise.resolve(); // resolves when all requested fonts have been detected
