@@ -475,10 +475,9 @@ layers:
                     text:
                         text_source: global.language_text_source
                         font:
-                            family: Helvetica
+                            family: Montserrat
                             size: 12px
                             fill: black
-                            weight: bold
 
         # add generic icon at high zoom
         generic:
