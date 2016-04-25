@@ -80,7 +80,6 @@ Object.assign(Lines, {
                 this.dash_space_color = StyleParser.parseColor(this.dash_space_color).map(c => c * 255);
             }
 
-            // TODO: add dasharray to style mixing
             let dasharray = renderDasharray(this.dasharray, this.dash_space_color);
             let texname = this.name + '_dasharray';
             Texture.create(this.gl, texname, {
