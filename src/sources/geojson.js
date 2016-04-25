@@ -107,46 +107,30 @@ export class GeoJSONSource extends NetworkSource {
     }
 
     // Preprocess features. Currently used to add a new "centroid" feature for polygon labeling
-    preprocessFeatures (features){
+    preprocessFeatures (features) {
         // Define centroids for polygons for centroid label placement
         // Avoids redundant label placement for each generated tile at higher zoom levels
         if (this.config.generate_label_centroids){
             let features_centroid = [];
-            let label_key = 'label_placement';
+            let centroid_properties = {"label_placement" : "yes"};
 
             features.forEach(feature => {
-                let coordinates;
+                let coordinates, centroid_feature;
                 switch (feature.geometry.type) {
                     case 'Polygon':
                         coordinates = feature.geometry.coordinates;
-                        features_centroid.push(getCentroidFeatureForPolygon(coordinates, feature.properties));
+                        centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+                        features_centroid.push(centroid_feature);
                         break;
                     case 'MultiPolygon':
                         coordinates = feature.geometry.coordinates;
                         for (let i = 0; i < coordinates.length; i++) {
-                            features_centroid.push(getCentroidFeatureForPolygon(coordinates[i], feature.properties));
+                            centroid_feature = getCentroidFeatureForPolygon(coordinates[i], feature.properties, centroid_properties);
+                            features_centroid.push(centroid_feature);
                         }
                         break;
                 }
             });
-
-            // create centroid point feature from polygon coordinates and provided feature meta-data
-            function getCentroidFeatureForPolygon (coordinates, properties) {
-                let centroid = Geo.centroid(coordinates[0]);
-
-                // clone properties and add {label_key : "yes"}
-                let centroid_properties = Object.create(properties);
-                centroid_properties[label_key] = "yes";
-
-                return {
-                    type: "Feature",
-                    properties: centroid_properties,
-                    geometry: {
-                        type: "Point",
-                        coordinates: centroid
-                    }
-                };
-            }
 
             // append centroid features to features array
             Array.prototype.push.apply(features, features_centroid);
@@ -218,3 +202,21 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
 DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
 DataSource.register(GeoJSONTileSource, 'GeoJSONTiles'); // for backwards-compatibility
+
+// Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
+function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
+    let centroid = Geo.centroid(coordinates[0]);
+
+    // clone properties and mixix newProperties
+    let centroid_properties = {};
+    Object.assign(centroid_properties, properties, newProperties);
+
+    return {
+        type: "Feature",
+        properties: centroid_properties,
+        geometry: {
+            type: "Point",
+            coordinates: centroid
+        }
+    };
+}
