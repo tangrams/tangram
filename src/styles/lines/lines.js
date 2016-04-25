@@ -75,8 +75,13 @@ Object.assign(Lines, {
     parseLineTexture () {
         // Specify a line pattern
         if (this.dasharray) {
+            // Optional color for spaces in dahs pattern (defaults transparent)
+            if (this.dash_space_color) {
+                this.dash_space_color = StyleParser.parseColor(this.dash_space_color).map(c => c * 255);
+            }
+
             // TODO: add dasharray to style mixing
-            let dasharray = renderDasharray(this.dasharray);
+            let dasharray = renderDasharray(this.dasharray, this.dash_space_color);
             let texname = this.name + '_dasharray';
             Texture.create(this.gl, texname, {
                 data: dasharray.pixels,
@@ -86,7 +91,9 @@ Object.assign(Lines, {
             });
 
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_ALPHA_DISCARD = 0.5;
+            if (!this.dash_space_color || this.dash_space_color[3] === 0) {
+                this.defines.TANGRAM_ALPHA_DISCARD = 0.5; // discard is on when spaces are transparent
+            }
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = texname;
             this.shaders.uniforms.u_texture_ratio = dasharray.length;

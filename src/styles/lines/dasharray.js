@@ -1,4 +1,4 @@
-// Renders an array specifying a line pattern of alternating dashes and gaps,
+// Renders an array specifying a line pattern of alternating dashes and spaces,
 // similar to an SVG `dasharray`, into a byte array of RGBA pixels
 // Returns:
 // {
@@ -10,9 +10,8 @@
 // https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
 
 const dash_pixel = [255, 255, 255, 255];
-const gap_pixel = [0, 0, 0, 0];
 
-export default function renderDasharray (dasharray) {
+export default function renderDasharray (dasharray, space_pixel = [0, 0, 0, 0]) {
     let dashes = dasharray;
 
     // If pattern is odd, repeat it to make it even (see SVG spec)
@@ -25,9 +24,9 @@ export default function renderDasharray (dasharray) {
     for (let i=0; i < dashes.length; i++) {
         let segment = dashes[i];
         for (let s=0; s < segment; s++) {
-            Array.prototype.push.apply(pixels, dash ? dash_pixel : gap_pixel);
+            Array.prototype.push.apply(pixels, dash ? dash_pixel : space_pixel);
         }
-        dash = !dash; // alternate between dashes and gaps
+        dash = !dash; // alternate between dashes and spaces
     }
 
     pixels = new Uint8Array(pixels); // convert to typed array
