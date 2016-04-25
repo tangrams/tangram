@@ -111,7 +111,7 @@ export class GeoJSONSource extends NetworkSource {
         // Define centroids for polygons for centroid label placement
         // Avoids redundant label placement for each generated tile at higher zoom levels
         let features_centroid = [];
-        let label_key = 'label_centroid';
+        let label_key = 'label_placement';
 
         features.forEach(feature => {
             let coordinates;
