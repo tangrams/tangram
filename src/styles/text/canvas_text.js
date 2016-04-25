@@ -343,7 +343,7 @@ export default class CanvasText {
         let css = `
             @font-face {
                 font-family: '${face}';
-                src: url(${url});
+                src: url(${encodeURI(url)});
             }
         `;
 
