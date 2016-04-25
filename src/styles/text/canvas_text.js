@@ -301,12 +301,18 @@ export default class CanvasText {
 
     // Check availability of font faces (asynchronous, returns a promise)
     // `fonts` is an object with keys corresponding to font face names
-    // For now, only the key is used, the value is ignored. In the future
-    // the value may be used to dynamically load font faces via CSS injection.
+    // If the object value is a string, it indicates a URL to load the font from.
+    // Other values simply indicate that the font face has been loaded externally (e.g. through a CSS stylesheet).
     static loadFonts (fonts) {
         let queue = [];
         for (let face in fonts) {
             if (CanvasText.fonts[face] === undefined) { // only check each font face once
+                // Dynamically loads font face if URL specified
+                if (typeof fonts[face] === 'string') {
+                    this.injectFont(face, fonts[face]);
+                }
+
+                // Check font load status
                 CanvasText.fonts[face] =
                     (new FontFaceObserver(face)).load().then(
                         () => {
@@ -330,6 +336,20 @@ export default class CanvasText {
 
         CanvasText.fonts_loaded = Promise.all(queue);
         return CanvasText.fonts_loaded;
+    }
+
+    // Loads a font face via CSS injection
+    static injectFont (face, url) {
+        let css = `
+            @font-face {
+                font-family: '${face}';
+                src: url(${url});
+            }
+        `;
+
+        let style = document.createElement('style');
+        document.head.appendChild(style);
+        style.sheet.insertRule(css, 0);
     }
 
 }
