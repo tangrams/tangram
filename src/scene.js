@@ -946,7 +946,7 @@ export default class Scene {
     // Turn introspection mode on/off
     setIntrospection (val) {
         this.introspection = val || false;
-        this.updateConfig({ rebuild: true });
+        this.updateConfig();
     }
 
     // Update scene config, and optionally rebuild geometry
