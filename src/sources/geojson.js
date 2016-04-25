@@ -131,11 +131,19 @@ export class GeoJSONSource extends NetworkSource {
                         features_centroid.push(centroid_feature);
                         break;
                     case 'MultiPolygon':
+                        // Add centroid feature for largest polygon
                         coordinates = feature.geometry.coordinates;
-                        for (let i = 0; i < coordinates.length; i++) {
-                            centroid_feature = getCentroidFeatureForPolygon(coordinates[i], feature.properties, centroid_properties);
-                            features_centroid.push(centroid_feature);
+                        let max_area = -Infinity;
+                        let max_area_index = 0;
+                        for (let index = 0; index < coordinates.length; index++) {
+                            let area = Geo.polygonArea(coordinates[index]);
+                            if (area > max_area) {
+                                max_area = area;
+                                max_area_index = index;
+                            }
                         }
+                        centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+                        features_centroid.push(centroid_feature);
                         break;
                 }
             });
