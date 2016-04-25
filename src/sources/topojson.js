@@ -13,8 +13,10 @@ export class TopoJSONSource extends GeoJSONSource {
     parseSourceData (tile, source, response) {
         let data = JSON.parse(response);
         data = this.toGeoJSON(data);
-        super.preprocessFeatures(data.features);
-        source.layers = this.getLayers(data);
+
+        let layers = this.getLayers(data);
+        super.preprocessLayers(layers);
+        source.layers = layers;
     }
 
     toGeoJSON (data) {
