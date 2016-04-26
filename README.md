@@ -29,7 +29,7 @@ var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
 layer.addTo(map);
 ```
 
-Read on for more info, or see the [documentation](https://github.com/tangrams/tangram-docs).
+Read on for more info, or see the [documentation](https://mapzen.com/documentation/tangram/).
 
 ## Demos
 
@@ -59,7 +59,7 @@ The scene file is written in YAML, which is a data-serialization format like JSO
 
 ## Documentation
 
-👉 [Tangram Documentation](https://github.com/tangrams/tangram-docs) 👈.
+👉 [Tangram Documentation](https://mapzen.com/documentation/tangram) 👈.
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
 
