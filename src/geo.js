@@ -178,18 +178,22 @@ Geo.geometryType = function(type) {
 };
 
 Geo.centroid = function (polygon) {
-    let n = polygon.length;
-    let centroid = [0, 0];
+    // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
+    let p0, p1, f;
+    let x = 0, y = 0, area = 0;
+    let len = polygon.length;
 
-    for (let p=0; p < polygon.length; p++) {
-        centroid[0] += polygon[p][0];
-        centroid[1] += polygon[p][1];
+    for (let i = 0, j = len - 1; i < len; j = i, i++) {
+        let p0 = polygon[i];
+        let p1 = polygon[j];
+        let f = p0[1] * p1[0] - p1[1] * p0[0];
+
+        x += (p0[0] + p1[0]) * f;
+        y += (p0[1] + p1[1]) * f;
+        area += f * 3;
     }
 
-    centroid[0] /= n;
-    centroid[1] /= n;
-
-    return centroid;
+    return [x / area, y / area];
 };
 
 Geo.multiCentroid = function (polygons) {
