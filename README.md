@@ -11,6 +11,8 @@ Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser
 
 Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/simple-demo)) with a basic example of a Tangram map. 
 
+_[Tangram-ES](https://github.com/tangrams/tangram-es) is a native mobile version of the Tangram library._
+
 ## Quickstart
 
 The current version of Tangram can be included in your page with:
@@ -43,6 +45,8 @@ Read on for more info, or see the [documentation](https://mapzen.com/documentati
 
 [**Tangram-sandbox**](http://github.com/tangrams/tangram-sandbox) - More complex glsl shaders
 
+More examples are available on our documentation's [Demos](https://mapzen.com/documentation/tangram/Demos/) page.
+
 ## Vector Tiles
 
 Instead of loading traditional bitmap tiles, Tangram draws its own tiles from scratch, based on *vector tiles* that contain the source data.
@@ -59,7 +63,7 @@ The scene file is written in YAML, which is a data-serialization format like JSO
 
 ## Documentation
 
-👉 [Tangram Documentation](https://mapzen.com/documentation/tangram) 👈.
+👉 [Tangram Documentation](https://mapzen.com/documentation/tangram) 👈
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
 
