@@ -296,7 +296,7 @@ Object.assign(Points, {
         else if (geometry.type === "Polygon") {
             // Point at polygon centroid (of outer ring)
             if (options.centroid) {
-                let centroid = Geo.centroid(geometry.coordinates[0]);
+                let centroid = Geo.centroid(geometry.coordinates);
                 labels.push(new LabelPoint(centroid, size, options));
             }
             // Point at each polygon vertex (all rings)

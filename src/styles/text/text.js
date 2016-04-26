@@ -396,7 +396,7 @@ Object.assign(TextStyle, {
                 labels.push(new LabelPoint(points[i], size, options));
             }
         } else if (geometry.type === "Polygon") {
-            let centroid = Geo.centroid(geometry.coordinates[0]);
+            let centroid = Geo.centroid(geometry.coordinates);
             labels.push(new LabelPoint(centroid, size, options));
         } else if (geometry.type === "MultiPolygon") {
             let centroid = Geo.multiCentroid(geometry.coordinates);
