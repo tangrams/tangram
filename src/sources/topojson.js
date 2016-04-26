@@ -24,13 +24,13 @@ export class TopoJSONSource extends GeoJSONSource {
         if (data.objects &&
             Object.keys(data.objects).length === 1) {
             let layer = Object.keys(data.objects)[0];
-            data = topojson.feature(data, data.objects[layer]);
+            data = getTopoJSONFeature(data, data.objects[layer]);
         }
         // Multiple layers
         else {
             let layers = {};
             for (let key in data.objects) {
-                layers[key] = topojson.feature(data, data.objects[key]);
+                layers[key] = getTopoJSONFeature(data, data.objects[key]);
             }
             data = layers;
         }
@@ -38,6 +38,20 @@ export class TopoJSONSource extends GeoJSONSource {
     }
 
 }
+
+function getTopoJSONFeature (topology, object) {
+    let feature = topojson.feature(topology, object);
+
+    // Convert single feature to a feature collection
+    if (feature.type === 'Feature') {
+        feature = {
+            type: 'FeatureCollection',
+            features: [feature]
+        };
+    }
+    return feature;
+}
+
 
 /**
  Mapzen/OSM.US-style TopoJSON vector tiles
