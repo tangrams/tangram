@@ -221,7 +221,7 @@ DataSource.register(GeoJSONTileSource, 'GeoJSONTiles'); // for backwards-compati
 
 // Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
 function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
-    let centroid = Geo.centroid(coordinates[0]);
+    let centroid = Geo.centroid(coordinates);
 
     // clone properties and mixix newProperties
     let centroid_properties = {};

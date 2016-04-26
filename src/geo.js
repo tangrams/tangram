@@ -181,11 +181,12 @@ Geo.centroid = function (polygon) {
     // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
     let p0, p1, f;
     let x = 0, y = 0, area = 0;
-    let len = polygon.length;
+    let ring = polygon[0]; // only use first ring for now
+    let len = ring.length;
 
     for (let i = 0, j = len - 1; i < len; j = i, i++) {
-        let p0 = polygon[i];
-        let p1 = polygon[j];
+        let p0 = ring[i];
+        let p1 = ring[j];
         let f = p0[1] * p1[0] - p1[1] * p0[0];
 
         x += (p0[0] + p1[0]) * f;
@@ -201,8 +202,7 @@ Geo.multiCentroid = function (polygons) {
     let centroid = [0, 0];
 
     for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        let c = Geo.centroid(polygon);
+        let c = Geo.centroid(polygons[p]);
         centroid[0] += c[0];
         centroid[1] += c[1];
     }
@@ -213,39 +213,42 @@ Geo.multiCentroid = function (polygons) {
     return centroid;
 };
 
-Geo.signedPolygonAreaSum = function (polygon) {
+Geo.signedPolygonRingAreaSum = function (ring) {
     let area = 0;
-    let n = polygon.length;
+    let n = ring.length;
 
     for (let i = 0; i < n - 1; i++) {
-        let p0 = polygon[i];
-        let p1 = polygon[i+1];
+        let p0 = ring[i];
+        let p1 = ring[i+1];
 
         area += p0[0] * p1[1] - p1[0] * p0[1];
     }
 
-    area += polygon[n - 1][0] * polygon[0][1] - polygon[0][0] * polygon[n - 1][1];
+    area += ring[n - 1][0] * ring[0][1] - ring[0][0] * ring[n - 1][1];
     return area;
 };
 
-// TODO: subtract inner ring areas
+Geo.polygonRingArea = function (ring) {
+    return Math.abs(Geo.signedPolygonRingAreaSum(ring)) / 2;
+};
+
+// TODO: subtract inner rings
 Geo.polygonArea = function (polygon) {
-    return Math.abs(Geo.signedPolygonAreaSum(polygon)) / 2;
+    return Geo.polygonRingArea(polygon[0]);
 };
 
 Geo.multiPolygonArea = function (polygons) {
     let area = 0;
 
     for (let p=0; p < polygons.length; p++) {
-        let polygon = polygons[p][0];
-        area += Geo.polygonArea(polygon);
+        area += Geo.polygonArea(polygons[p]);
     }
 
     return area;
 };
 
 Geo.ringWinding = function (ring) {
-    let area = Geo.signedPolygonAreaSum(ring);
+    let area = Geo.signedPolygonRingAreaSum(ring);
     if (area > 0) {
         return 'CW';
     }
