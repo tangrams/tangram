@@ -179,7 +179,6 @@ Geo.geometryType = function(type) {
 
 Geo.centroid = function (polygon) {
     // Adapted from https://github.com/Leaflet/Leaflet/blob/c10f405a112142b19785967ce0e142132a6095ad/src/layer/vector/Polygon.js#L57
-    let p0, p1, f;
     let x = 0, y = 0, area = 0;
     let ring = polygon[0]; // only use first ring for now
     let len = ring.length;
