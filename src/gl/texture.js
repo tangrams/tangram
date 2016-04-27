@@ -4,6 +4,8 @@ import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
 
+import browser from 'bowser';
+
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
 export default class Texture {
 
@@ -156,7 +158,13 @@ export default class Texture {
                 Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 resolve(this);
             };
-            image.crossOrigin = 'anonymous';
+
+            // Safari has a bug loading data-URL images with CORS enabled, so it must be disabled in that case
+            // https://bugs.webkit.org/show_bug.cgi?id=123978
+            if (!(browser.safari && this.source.slice(0, 5) === 'data:')) {
+                image.crossOrigin = 'anonymous';
+            }
+
             image.src = this.source;
         });
         return this.loading;

@@ -63,6 +63,7 @@
   "license": "MIT",
   "dependencies": {
     "babel": "5.8.29",
+    "bowser": "1.0.0",
     "box-intersect": "1.0.0",
     "brfs": "1.4.3",
     "csscolorparser": "1.0.2",
