@@ -40,12 +40,13 @@ Object.assign(self, {
     },
 
     // Starts a config refresh
-    updateConfig ({ config, generation }) {
+    updateConfig ({ config, generation, introspection }) {
         config = JSON.parse(config);
 
         self.last_config = mergeObjects({}, self.config);
         self.config = mergeObjects({}, config);
         self.generation = generation;
+        self.introspection = introspection;
 
         // Data block functions are not context wrapped like the rest of the style functions are
         // TODO: probably want a cleaner way to exclude these
@@ -101,7 +102,11 @@ Object.assign(self, {
 
         // Expand styles
         config.styles = Utils.stringsToFunctions(config.styles, StyleParser.wrapFunction);
-        self.styles = StyleManager.build(config.styles, { generation: self.generation, sources: self.sources.tiles });
+        self.styles = StyleManager.build(config.styles, {
+            generation: self.generation,
+            sources: self.sources.tiles,
+            introspection: self.introspection
+        });
 
         // Parse each top-level layer as a separate rule tree
         self.layers = Utils.stringsToFunctions(config.layers, StyleParser.wrapFunction);

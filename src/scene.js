@@ -76,6 +76,7 @@ export default class Scene {
         this.frame = 0;
         this.queue_screenshot = null;
         this.selection = null;
+        this.introspection = false;
         this.resetTime();
 
         this.container = options.container;
@@ -937,6 +938,12 @@ export default class Scene {
         this.gl.clearColor(...this.background.color);
     }
 
+    // Turn introspection mode on/off
+    setIntrospection (val) {
+        this.introspection = val || false;
+        this.updateConfig();
+    }
+
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
     updateConfig({ rebuild = true } = {}) {
@@ -973,7 +980,8 @@ export default class Scene {
         this.config_serialized = Utils.serializeWithFunctions(this.config);
         return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
             config: this.config_serialized,
-            generation: this.generation
+            generation: this.generation,
+            introspection: this.introspection
         });
     }
 
