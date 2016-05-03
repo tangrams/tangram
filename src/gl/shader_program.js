@@ -9,6 +9,10 @@ import log from 'loglevel';
 import strip from 'strip-comments';
 import { default as parseShaderErrors } from 'gl-shader-errors';
 
+// Regex patterns
+const re_pragma = /^\s*#pragma.*$/gm;   // for removing unused pragmas after shader block injection
+const re_continue_line = /\\\s*\n/mg;   // for removing backslash line continuations
+
 export default class ShaderProgram {
 
     constructor(gl, vertex_source, fragment_source, options) {
@@ -135,9 +139,8 @@ export default class ShaderProgram {
         }
 
         // Clean-up any #pragmas that weren't replaced (to prevent compiler warnings)
-        regexp = new RegExp('^\\s*#pragma.*$', 'gm');
-        this.computed_vertex_source = this.computed_vertex_source.replace(regexp, '');
-        this.computed_fragment_source = this.computed_fragment_source.replace(regexp, '');
+        this.computed_vertex_source = this.computed_vertex_source.replace(re_pragma, '');
+        this.computed_fragment_source = this.computed_fragment_source.replace(re_pragma, '');
 
         // Detect uniform definitions, inject any missing ones
         this.ensureUniforms(this.dependent_uniforms);
@@ -174,6 +177,10 @@ export default class ShaderProgram {
             precision +
             ShaderProgram.buildDefineString(defines) +
             this.computed_fragment_source;
+
+        // Replace multi-line backslashes
+        this.computed_vertex_source = this.computed_vertex_source.replace(re_continue_line, '');
+        this.computed_fragment_source = this.computed_fragment_source.replace(re_continue_line, '');
 
         // Compile & set uniforms to cached values
         try {
