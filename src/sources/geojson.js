@@ -101,7 +101,58 @@ export class GeoJSONSource extends NetworkSource {
     }
 
     parseSourceData (tile, source, response) {
-        source.layers = this.getLayers(JSON.parse(response));
+        let parsed_response = JSON.parse(response);
+        let layers = this.getLayers(parsed_response);
+        this.preprocessLayers(layers);
+        source.layers = layers;
+    }
+
+    preprocessLayers (layers){
+        for (let key in layers) {
+            let layer = layers[key];
+            this.preprocessFeatures(layer.features);
+        }
+    }
+
+    // Preprocess features. Currently used to add a new "centroid" feature for polygon labeling
+    preprocessFeatures (features) {
+        // Define centroids for polygons for centroid label placement
+        // Avoids redundant label placement for each generated tile at higher zoom levels
+        if (this.config.generate_label_centroids){
+            let features_centroid = [];
+            let centroid_properties = {"label_placement" : "yes"};
+
+            features.forEach(feature => {
+                let coordinates, centroid_feature;
+                switch (feature.geometry.type) {
+                    case 'Polygon':
+                        coordinates = feature.geometry.coordinates;
+                        centroid_feature = getCentroidFeatureForPolygon(coordinates, feature.properties, centroid_properties);
+                        features_centroid.push(centroid_feature);
+                        break;
+                    case 'MultiPolygon':
+                        // Add centroid feature for largest polygon
+                        coordinates = feature.geometry.coordinates;
+                        let max_area = -Infinity;
+                        let max_area_index = 0;
+                        for (let index = 0; index < coordinates.length; index++) {
+                            let area = Geo.polygonArea(coordinates[index]);
+                            if (area > max_area) {
+                                max_area = area;
+                                max_area_index = index;
+                            }
+                        }
+                        centroid_feature = getCentroidFeatureForPolygon(coordinates[max_area_index], feature.properties, centroid_properties);
+                        features_centroid.push(centroid_feature);
+                        break;
+                }
+            });
+
+            // append centroid features to features array
+            Array.prototype.push.apply(features, features_centroid);
+        }
+
+        return features;
     }
 
     // Detect single or multiple layers in returned data
@@ -167,3 +218,21 @@ export class GeoJSONTileSource extends NetworkTileSource {
 
 DataSource.register(GeoJSONTileSource, 'GeoJSON');      // prefered shorter name
 DataSource.register(GeoJSONTileSource, 'GeoJSONTiles'); // for backwards-compatibility
+
+// Helper function to create centroid point feature from polygon coordinates and provided feature meta-data
+function getCentroidFeatureForPolygon (coordinates, properties, newProperties) {
+    let centroid = Geo.centroid(coordinates);
+
+    // clone properties and mixix newProperties
+    let centroid_properties = {};
+    Object.assign(centroid_properties, properties, newProperties);
+
+    return {
+        type: "Feature",
+        properties: centroid_properties,
+        geometry: {
+            type: "Point",
+            coordinates: centroid
+        }
+    };
+}

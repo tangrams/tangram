@@ -65,6 +65,7 @@ function extendLeaflet(options) {
                         continuousZoom: (LeafletLayer.leafletVersion === '1.x'),
                         highDensityDisplay: this.options.highDensityDisplay,
                         logLevel: this.options.logLevel,
+                        introspection: this.options.introspection,
                         // advanced option, app will have to manually called scene.update() per frame
                         disableRenderLoop: this.options.disableRenderLoop,
                         // advanced option, will require library to be served as same host as page
@@ -212,52 +213,9 @@ function extendLeaflet(options) {
             // default behavior is presumably improved
             modifyScrollWheelBehavior: function (map) {
                 if (this.scene.view.continuous_zoom && map.scrollWheelZoom && this.options.modifyScrollWheel !== false) {
-                    let layer = this;
-                    let enabled = map.scrollWheelZoom.enabled();
-                    if (enabled) {
-                        map.scrollWheelZoom.disable(); // disable before modifying
-                    }
-
-                    // modify prototype and current instance, so add/remove hooks work on existing references
-                    L.Map.ScrollWheelZoom._onWheelScroll = map.scrollWheelZoom._onWheelScroll = function(e) {
-                        // modify to skip debounce, as it seems to cause animation-sync issues in Chrome
-                        // with Tangram continuous rendering
-                        this._delta += L.DomEvent.getWheelDelta(e);
-                        this._lastMousePos = this._map.mouseEventToContainerPoint(e);
-                        this._performZoom();
-                        L.DomEvent.stop(e);
-                    };
-
-                    L.Map.ScrollWheelZoom._performZoom = map.scrollWheelZoom._performZoom = function () {
-                        var map = this._map,
-                            delta = this._delta,
-                            zoom = map.getZoom();
-
-                        map.stop(); // stop panning and fly animations if any
-
-                        // NOTE: this is the only real modification to default leaflet behavior
-                        delta /= 40;
-
-                        delta = Math.max(Math.min(delta, 4), -4);
-                        delta = map._limitZoom(zoom + delta) - zoom;
-
-                        this._delta = 0;
-                        this._startTime = null;
-
-                        if (!delta) { return; }
-
-                        if (map.options.scrollWheelZoom === 'center') {
-                            map.setZoom(zoom + delta);
-                        } else {
-                            map.setZoomAround(this._lastMousePos, zoom + delta);
-                        }
-
-                        layer.debounceViewReset();
-                    };
-
-                    if (enabled) {
-                        map.scrollWheelZoom.enable(); // re-enable after modifying
-                    }
+                    map.options.zoomSnap = 0;
+                    map.options.wheelPxPerZoomLevel = 1000;
+                    map.options.wheelDebounceTime = 10;
                 }
             },
 

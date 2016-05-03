@@ -76,6 +76,7 @@ export default class Scene {
         this.frame = 0;
         this.queue_screenshot = null;
         this.selection = null;
+        this.introspection = false;
         this.resetTime();
 
         this.container = options.container;
@@ -283,7 +284,6 @@ export default class Scene {
             var worker = new Worker(url);
             this.workers[id] = worker;
 
-            worker.addEventListener('message', this.workerLogMessage.bind(this));
             WorkerBroker.addWorker(worker);
 
             log.debug(`Scene.makeWorkers: initializing worker ${id}`);
@@ -938,6 +938,12 @@ export default class Scene {
         this.gl.clearColor(...this.background.color);
     }
 
+    // Turn introspection mode on/off
+    setIntrospection (val) {
+        this.introspection = val || false;
+        this.updateConfig();
+    }
+
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
     updateConfig({ rebuild = true } = {}) {
@@ -974,7 +980,8 @@ export default class Scene {
         this.config_serialized = Utils.serializeWithFunctions(this.config);
         return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
             config: this.config_serialized,
-            generation: this.generation
+            generation: this.generation,
+            introspection: this.introspection
         });
     }
 
@@ -1060,23 +1067,6 @@ export default class Scene {
 
 
     // Stats/debug/profiling methods
-
-    // Log messages pass through from web workers
-    workerLogMessage(event) {
-        let data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; // optional un-stringify
-        if (data.type !== 'log') {
-            return;
-        }
-
-        var { worker_id, level, msg } = data;
-
-        if (log[level]) {
-            log[level](`worker ${worker_id}:`,  ...msg);
-        }
-        else {
-            log.error(`Scene.workerLogMessage: unrecognized log level ${level}`);
-        }
-    }
 
     // Profile helpers, issues a profile on main thread & all workers
     _profile(name) {

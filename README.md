@@ -9,7 +9,9 @@ Tangram: WebGL Maps for Vector Data
 
 Tangram is a JavaScript library for rendering 2D & 3D maps live in a web browser with WebGL. It is tuned for OpenStreetMap but supports any source of GeoJSON/TopoJSON or binary vector data, including tilesets and single files.
 
-Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/tangram-demo)) with a basic example of a Tangram map. 
+Here's a [simple demo](https://tangrams.github.io/simple-demo/) ([repo here](https://github.com/tangrams/simple-demo)) with a basic example of a Tangram map. 
+
+_[Tangram-ES](https://github.com/tangrams/tangram-es) is a native mobile version of the Tangram library._
 
 ## Quickstart
 
@@ -29,7 +31,7 @@ var layer = Tangram.leafletLayer({ scene: 'scene.yaml' });
 layer.addTo(map);
 ```
 
-Read on for more info, or see the [documentation](https://github.com/tangrams/tangram-docs).
+Read on for more info, or see the [documentation](https://mapzen.com/documentation/tangram/).
 
 ## Demos
 
@@ -43,6 +45,8 @@ Read on for more info, or see the [documentation](https://github.com/tangrams/ta
 
 [**Tangram-sandbox**](http://github.com/tangrams/tangram-sandbox) - More complex glsl shaders
 
+More examples are available on our documentation's [Demos](https://mapzen.com/documentation/tangram/Demos/) page.
+
 ## Vector Tiles
 
 Instead of loading traditional bitmap tiles, Tangram draws its own tiles from scratch, based on *vector tiles* that contain the source data.
@@ -53,13 +57,13 @@ Tangram currently supports [GeoJSON](http://geojson.org/) & [TopoJSON](https://g
 
 ## Styling
 
-The *scene file* is where you specify data sources and layers, filter the data, and define and apply styles. (In our demos, this file is named scene.yaml.) The rules for doing these things are many and various, but the basics are pretty easy, and they are all meticulously documented in the Tangram Documentation https://github.com/tangrams/tangram-docs.
+The *scene file* is where you specify data sources and layers, filter the data, and define and apply styles. (In our demos, this file is named scene.yaml.) The rules for doing these things are many and various, but the basics are pretty easy, and they are all meticulously documented in the [Tangram Documentation](https://mapzen.com/documentation/tangram/).
 
 The scene file is written in YAML, which is a data-serialization format like JSON, but with less punctuation. Instead, data structures are specified with whitespace, like Python. One neat side benefit is that the format is super friendly to strings, which means you can write inline JavaScript and GLSL code straight into the scene file, without needing to wrap it in quotes or concatenate anything.
 
 ## Documentation
 
-👉 [Tangram Documentation](https://github.com/tangrams/tangram-docs) 👈.
+👉 [Tangram Documentation](https://mapzen.com/documentation/tangram) 👈
 
 For questions, comments, suggestions, or to report a bug, please open a [new issue](https://github.com/tangrams/tangram/issues).
 
