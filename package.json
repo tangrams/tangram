@@ -67,6 +67,7 @@
     "brfs": "1.4.3",
     "csscolorparser": "1.0.2",
     "earcut": "1.2.0",
+    "fontfaceobserver": "tangrams/fontfaceobserver#check-before-load",
     "geojson-vt": "2.1.6",
     "gl-mat3": "1.0.0",
     "gl-mat4": "1.1.4",

@@ -63,6 +63,12 @@ var debug = {
 
 if (Utils.isMainThread) {
     Utils.requestAnimationFramePolyfill();
+
+    // Attach Promise polyfill to window
+    // Allows FontFaceObserver to use polyfill (without needing to include its own duplicate polyfill)
+    if (window.Promise === undefined) {
+        window.Promise = Promise;
+    }
 }
 
 // Setup logging to prefix with Tangram version

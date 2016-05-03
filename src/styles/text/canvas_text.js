@@ -1,6 +1,9 @@
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 
+import FontFaceObserver from 'fontfaceobserver';
+import log from 'loglevel';
+
 export default class CanvasText {
 
     constructor () {
@@ -34,36 +37,71 @@ export default class CanvasText {
         ctx.miterLimit = 2;
     }
 
-    textSizes (texts) {
-        for (let style in texts) {
-            let text_infos = texts[style];
-            let first = true;
+    // Check availability of font face set (asynchronous)
+    loadFonts (fonts) {
+        let queue = [];
+        for (let key in fonts) {
+            let face = fonts[key];
+            if (CanvasText.fonts[key] === undefined) { // only check each font face once
+                CanvasText.fonts[key] =
+                    // `face` contains `style` and `weight` params
+                    (new FontFaceObserver(face.family, face))
+                    .check()
+                    .then(
+                        () => {
+                            // Promise resolves, font is available
+                            CanvasText.fonts[key] = true;
+                            log.debug(`Font face '${key}' is available`);
+                        },
+                        () => {
+                            // Promise rejects, font is not available
+                            CanvasText.fonts[key] = false;
+                            log.debug(`Font face '${key}' is NOT available`);
+                        }
+                    );
+                log.debug(`Check availability for font face '${key}'`);
+            }
 
-            for (let text in text_infos) {
-                // Use cached size, or compute via canvas
-                if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
-                    let text_settings = text_infos[text].text_settings;
-                    if (first) {
-                        this.setFont(text_settings);
-                        first = false;
-                    }
-
-                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                    CanvasText.text_cache[style][text] =
-                        this.textSize(text, text_settings.transform, text_settings.text_wrap);
-                    CanvasText.cache_stats.misses++;
-                }
-                else {
-                    CanvasText.cache_stats.hits++;
-                }
-
-                // Only send text sizes back to worker (keep computed text line info
-                // on main thread, for future rendering)
-                text_infos[text].size = CanvasText.text_cache[style][text].size;
+            if (CanvasText.fonts[key] instanceof Promise) {
+                queue.push(CanvasText.fonts[key]);
             }
         }
 
-        return texts;
+        return Promise.all(queue);
+    }
+
+    textSizes (texts, fonts) {
+        return this.loadFonts(fonts).then(() => {
+            for (let style in texts) {
+                let text_infos = texts[style];
+                let first = true;
+
+                for (let text in text_infos) {
+                    // Use cached size, or compute via canvas
+                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
+                        let text_settings = text_infos[text].text_settings;
+                        if (first) {
+                            this.setFont(text_settings);
+                            first = false;
+                        }
+
+                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                        CanvasText.text_cache[style][text] =
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                        CanvasText.cache_stats.misses++;
+                    }
+                    else {
+                        CanvasText.cache_stats.hits++;
+                    }
+
+                    // Only send text sizes back to worker (keep computed text line info
+                    // on main thread, for future rendering)
+                    text_infos[text].size = CanvasText.text_cache[style][text].size;
+                }
+            }
+
+            return texts;
+        });
     }
 
     // Computes width and height of text based on current font style
@@ -298,6 +336,9 @@ export default class CanvasText {
 
 // Extract font size and units
 CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
+
+// Detected fonts
+CanvasText.fonts = {};
 
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string

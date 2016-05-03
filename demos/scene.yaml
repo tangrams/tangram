@@ -376,6 +376,7 @@ layers:
     road_labels:
         data: { source: mapzen, layer: roads }
         filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
+
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
@@ -578,7 +579,7 @@ layers:
                     move_into_tile: false
                     priority: 6
                     font:
-                        family: Helvetica
+                        family: Montserrat
                         size: 12px
                         fill: black
 

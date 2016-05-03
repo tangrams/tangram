@@ -25,7 +25,7 @@ export default TextSettings = {
     },
 
     defaults: {
-        style: 'normal',
+        style: null,
         weight: null,
         size: '12px',
         px_size: 12,
@@ -49,16 +49,33 @@ export default TextSettings = {
         // - style: normal, italic, oblique
         // - weight: normal, bold, etc.
         // - transform: capitalize, uppercase, lowercase
-        style.style = draw.font.style || this.defaults.style;
-        style.weight = draw.font.weight || this.defaults.weight;
         if (draw.font.family) {
             style.family = draw.font.family;
+            style.first_family = style.family.split(',')[0];
             if (style.family !== this.defaults.family) {
                 style.family += ', ' + this.defaults.family;
             }
         }
         else {
             style.family = this.defaults.family;
+            style.first_family = this.defaults.family;
+        }
+        style.font_face_key = style.first_family;
+
+        if (draw.font.style) {
+            style.style = draw.font.style;
+            style.font_face_key += ' ' + style.style;
+        }
+        else {
+            style.style = this.defaults.style;
+        }
+
+        if (draw.font.weight) {
+            style.weight = draw.font.weight;
+            style.font_face_key += ' ' + style.weight;
+        }
+        else {
+            style.weight = this.defaults.weight;
         }
 
         style.transform = draw.font.transform;
