@@ -253,8 +253,7 @@ Enjoy!
                     var layers = scene.config.layers;
                     layers.earth.draw.polygons.style = 'halftone_polygons';
                     layers.water.draw.polygons.style = 'halftone_polygons';
-                    // layers.water.outlines.draw.lines.style = 'halftone_lines';
-                    layers.landuse.draw.polygons.style = 'halftone_polygons';
+                    layers.landuse.areas.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.extruded.draw.polygons.style = 'halftone_polygons';
                     layers.buildings.draw.polygons.color = 'Style.color.pseudoRandomColor()';
