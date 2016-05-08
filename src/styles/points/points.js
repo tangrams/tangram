@@ -489,9 +489,9 @@ Object.assign(Points, {
             },
             {
                 quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
-                quad_scale: sampler,
                 offset,
                 angle: Utils.scaleInt16(angle, 360),
+                shape_w: sampler,
                 texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535
             }
