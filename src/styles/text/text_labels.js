@@ -12,6 +12,9 @@ import CanvasText from '../text/canvas_text';
 
 import log from 'loglevel';
 
+// namespaces label textures (ensures new texture name when a tile is built multiple times)
+let text_texture_id = 0;
+
 export const TextLabels = {
 
     resetText () {
@@ -198,7 +201,7 @@ export const TextLabels = {
         }
 
         // create a texture
-        let t = 'labels-' + tile_key + '-' + (TextLabels.text_texture_id++);
+        let t = 'labels-' + tile_key + '-' + (text_texture_id++);
         Texture.create(this.gl, t, {
             element: canvas.canvas,
             filtering: 'linear',
@@ -283,6 +286,3 @@ export const TextLabels = {
     }
 
 };
-
-// namespaces label textures (ensures new texture name when a tile is built multiple times)
-TextLabels.text_texture_id = 0;
