@@ -304,8 +304,11 @@ Object.assign(Points, {
                 return Style.endData.call(this, tile).then(tile_data => {
                     // Attach tile-specific label atlas to mesh as a texture uniform
                     if (texture && tile_data) {
-                        tile_data.uniforms = { u_label_texture: texture };
-                        tile_data.textures = [texture]; // assign texture ownership to tile
+                        tile_data.uniforms = tile_data.uniforms || {};
+                        tile_data.textures = tile_data.textures || [];
+
+                        tile_data.uniforms.u_label_texture = texture;
+                        tile_data.textures.push(texture); // assign texture ownership to tile
                     }
                     return tile_data;
                 });
