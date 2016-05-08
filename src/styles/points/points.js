@@ -5,6 +5,7 @@ import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
 import VertexLayout from '../../gl/vertex_layout';
 import {buildQuadsForPoints} from '../../builders/points';
+import ShaderProgram from '../../gl/shader_program';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
 import Utils from '../../utils/utils';
@@ -465,6 +466,14 @@ Object.assign(Points, {
         }
 
         return this.vertex_template;
+    },
+
+    // Override (style-specific rendering behavior)
+    render (mesh) {
+        // ensure a value is always bound to label texture
+        // avoids 'no texture bound to unit' warnings in Chrome 50+
+        ShaderProgram.current.uniform('1i', 'u_label_texture', 0);
+        Style.render.call(this, mesh);
     },
 
     buildQuad (points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {

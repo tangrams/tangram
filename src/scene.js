@@ -532,7 +532,7 @@ export default class Scene {
             this.view.setupTile(tile, program);
 
             // Render tile
-            tile.meshes[style].render();
+            this.styles[style].render(tile.meshes[style]);
             render_count += tile.meshes[style].geometry_count;
         }
 
