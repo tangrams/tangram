@@ -59,7 +59,7 @@ void main (void) {
     #ifdef TANGRAM_MULTI_SAMPLER
     }
     else { // label sampler
-        color *= texture2D(u_label_texture, v_texcoord);
+        color = texture2D(u_label_texture, v_texcoord);
         color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
     }
     #endif
