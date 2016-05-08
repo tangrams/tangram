@@ -23,6 +23,9 @@ Object.assign(TextStyle, {
         // (labels are always drawn with textures)
         this.defines.TANGRAM_POINT_TEXTURE = true;
 
+        // Disable dual point/text mode
+        this.defines.TANGRAM_MULTI_SAMPLER = false;
+
         // Manually un-multiply alpha, because Canvas text rasterization is pre-multiplied
         this.defines.TANGRAM_UNMULTIPLY_ALPHA = true;
 
