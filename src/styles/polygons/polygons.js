@@ -151,7 +151,6 @@ Object.assign(Polygons, {
         let vertex_template = this.makeVertexTemplate(style);
         let options = {
             texcoord_index: this.vertex_layout.index.a_texcoord,
-            texcoord_scale: this.texcoord_scale,
             texcoord_normalize: 65535, // scale UVs to unsigned shorts
             remove_tile_edges: !style.tile_edges,
             tile_edge_tolerance: Geo.tile_scale * context.tile.pad_scale * 4,
