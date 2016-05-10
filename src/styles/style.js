@@ -291,6 +291,10 @@ export var Style = {
         return new VBOMesh(this.gl, vertex_data, this.vertex_layout, { uniforms });
     },
 
+    render (mesh) {
+        mesh.render();
+    },
+
     compile () {
         if (!this.gl) {
             throw(new Error(`style.compile(): skipping for ${this.name} because no GL context`));

@@ -8,16 +8,17 @@ export default class LabelPoint extends Label {
     constructor (position, size, options) {
         super(size, options);
         this.position = [position[0], position[1]];
+        this.offset = [this.options.offset[0], this.options.offset[1]];
         this.update();
     }
 
     update() {
-        this.options.offset = this.computeOffset();
+        this.offset = this.computeOffset();
         this.updateBBoxes();
     }
 
     computeOffset () {
-        return PointAnchor.computeOffset(this.options.offset, this.size, this.options.anchor);
+        return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
     }
 
     updateBBoxes () {
@@ -25,8 +26,8 @@ export default class LabelPoint extends Label {
         let height = (this.size[1] + this.options.buffer[1] * 2) * this.options.units_per_pixel * Label.epsilon;
 
         let p = [
-            this.position[0] + (this.options.offset[0] * this.options.units_per_pixel),
-            this.position[1] - (this.options.offset[1] * this.options.units_per_pixel)
+            this.position[0] + (this.offset[0] * this.options.units_per_pixel),
+            this.position[1] - (this.offset[1] * this.options.units_per_pixel)
         ];
 
         this.obb = new OBB(p[0], p[1], 0, width, height);

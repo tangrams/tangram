@@ -38,10 +38,6 @@ export default class VBOMesh  {
             return false;
         }
 
-        if (typeof this._render_setup === 'function') {
-            this._render_setup();
-        }
-
         var program = options.program || ShaderProgram.current;
         program.use();
 

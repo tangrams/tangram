@@ -10,6 +10,11 @@ uniform mat3 u_inverseNormalMatrix;
 
 uniform sampler2D u_texture;
 
+#ifdef TANGRAM_MULTI_SAMPLER
+uniform sampler2D u_label_texture;
+varying float v_sampler;
+#endif
+
 varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
@@ -39,20 +44,29 @@ void main (void) {
 
     vec4 color = v_color;
 
-    // Apply a texture
-    #ifdef TANGRAM_POINT_TEXTURE
-        color *= texture2D(u_texture, v_texcoord);
-
-        // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
-        #ifdef TANGRAM_UNMULTIPLY_ALPHA
-            color.rgb /= max(color.a, 0.001);
+    #ifdef TANGRAM_MULTI_SAMPLER
+    if (v_sampler == 0.) { // sprite sampler
+    #endif
+        #ifdef TANGRAM_POINT_TEXTURE
+            // Draw sprite
+            color *= texture2D(u_texture, v_texcoord);
+        #else
+            // Draw a point
+            vec2 uv = v_texcoord * 2. - 1.; // fade alpha near circle edge
+            float point_dist = length(uv);
+            color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
         #endif
-    // Draw a point
-    #else
-        // Fade alpha near circle edge
-        vec2 uv = v_texcoord * 2. - 1.;
-        float point_dist = length(uv);
-        color.a = clamp(color.a - (smoothstep(0., TANGRAM_FADE_RANGE, (point_dist - TANGRAM_FADE_START)) / TANGRAM_FADE_RANGE), 0., color.a);
+    #ifdef TANGRAM_MULTI_SAMPLER
+    }
+    else { // label sampler
+        color = texture2D(u_label_texture, v_texcoord);
+        color.rgb /= max(color.a, 0.001); // un-multiply canvas texture
+    }
+    #endif
+
+    // Manually un-multiply alpha, for cases where texture has pre-multiplied alpha
+    #ifdef TANGRAM_UNMULTIPLY_ALPHA
+        color.rgb /= max(color.a, 0.001);
     #endif
 
     // If blending is off, use alpha discard as a lower-quality substitute

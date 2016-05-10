@@ -8,6 +8,7 @@ export default class LabelLine extends Label {
         super(size, options);
 
         this.lines = lines;
+        this.offset = [this.options.offset[0], this.options.offset[1]];
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -80,7 +81,7 @@ export default class LabelLine extends Label {
         let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
         // apply offset, x positive, y pointing down
-        let offset = Vector.rot(this.options.offset, this.angle);
+        let offset = Vector.rot(this.offset, this.angle);
         let p = [
             this.position[0] + (offset[0] * upp),
             this.position[1] - (offset[1] * upp)

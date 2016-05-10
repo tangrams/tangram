@@ -1,12 +1,17 @@
 import RepeatGroup from './repeat_group';
-
-import log from 'loglevel';
+import Utils from '../utils/utils';
 
 var Collision;
 
 export default Collision = {
 
     tiles: {},
+    links: {},
+    link_id: 0,
+
+    nextLinkId() {
+        return this.link_id++;
+    },
 
     startTile (tile) {
         let state = this.tiles[tile] = {
@@ -39,7 +44,7 @@ export default Collision = {
     collide (objects, style, tile) {
         let state = this.tiles[tile];
         if (!state) {
-            log.trace('Collision.collide() called with null tile', tile, this.tiles, style, objects);
+            Utils.log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
             return Promise.reject(Error('Collision.collide() called with null tile', tile, this.tiles, style, objects));
         }
 
@@ -88,14 +93,20 @@ export default Collision = {
                 keep[style] = keep[style] || [];
 
                 for (let i = 0; i < objects.length; i++) {
-                    let { label, layout } = objects[i]; // TODO: `label` should be generic
+                    let { label, layout, link } = objects[i]; // TODO: `label` should be generic
+
+                    // Skip if linked label not visible
+                    if (link && this.links[link] === false) {
+                        // Utils.log('trace', 'discard label because linked parent is not visible', label);
+                        continue;
+                    }
 
                     // test the label for intersections with other labels in the tile
                     if (!layout.collide || !label.discard(bboxes)) {
                         // check for repeats
                         let check = RepeatGroup.check(label, layout, tile);
                         if (check) {
-                            // log.trace(`discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                            // Utils.log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
                             continue;
                         }
                         // register as placed for future repeat culling
@@ -103,10 +114,17 @@ export default Collision = {
 
                         label.add(bboxes); // add label to currently visible set
                         keep[style].push(objects[i]);
+
+                        if (link) {
+                            this.links[link] = true; // mark visibility for linked labels
+                        }
                     }
-                    // else if (layout.collide) {
-                    //     log.trace(`discard label '${label.text}' due to collision`);
-                    // }
+                    else if (layout.collide) {
+                        // Utils.log('trace', `discard label '${label.text}' due to collision`);
+                        if (link) {
+                            this.links[link] = false; // mark visibility for linked labels
+                        }
+                    }
                 }
             }
         }

@@ -23,6 +23,10 @@ varying vec4 v_color;
 varying vec2 v_texcoord;
 varying vec4 v_world_position;
 
+#ifdef TANGRAM_MULTI_SAMPLER
+varying float v_sampler;
+#endif
+
 #pragma tangram: camera
 #pragma tangram: material
 #pragma tangram: lighting
@@ -45,11 +49,13 @@ void main() {
     vec4 position = u_modelView * vec4(SHORT(a_position.xyz), 1.);
 
     // Apply positioning and scaling in screen space
-    float zscale = fract(u_map_position.z) * (SCALE_8(a_shape.w) - 1.) + 1.;
-    // float zscale = log(fract(u_map_position.z) + 1.) / log(2.) * (a_shape.w - 1.) + 1.;
-    vec2 shape = SCALE_8(a_shape.xy) * zscale;     //
+    vec2 shape = SCALE_8(a_shape.xy);
     vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
     float theta = radians(a_shape.z * 360.);
+
+    #ifdef TANGRAM_MULTI_SAMPLER
+    v_sampler = a_shape.w * 32767.; // texture sampler
+    #endif
 
     shape = rotate2D(shape, theta);             // apply rotation to vertex
     shape += rotate2D(SHORT(offset), theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
