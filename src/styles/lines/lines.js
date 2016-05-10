@@ -78,6 +78,7 @@ Object.assign(Lines, {
             // Optional color for spaces in dahs pattern (defaults transparent)
             if (this.dash_space_color) {
                 this.dash_space_color = StyleParser.parseColor(this.dash_space_color).map(c => c * 255);
+                this.dash_space_color[3] = 0; // alpha value is used to test if pixel is dash or space
             }
 
             let dasharray = renderDasharray(this.dasharray, this.dash_space_color);
@@ -90,9 +91,8 @@ Object.assign(Lines, {
             });
 
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            if (!this.dash_space_color || this.dash_space_color[3] === 0) {
-                this.defines.TANGRAM_ALPHA_DISCARD = 0.5; // discard is on when spaces are transparent
-            }
+            this.defines.TANGRAM_LINE_SPACE_COLOR = (this.dash_space_color != null);
+            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are line "spaces"
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = texname;
             this.shaders.uniforms.u_texture_ratio = dasharray.length;
@@ -100,6 +100,7 @@ Object.assign(Lines, {
         // Specify a texture directly
         else if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
+            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = this.texture;
             this.shaders.uniforms.u_texture_ratio = 1;
