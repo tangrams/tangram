@@ -79,7 +79,7 @@ StyleParser.getFeatureParseContext = function (feature, tile, global) {
         zoom: tile.style_zoom,
         geometry: Geo.geometryType(feature.geometry.type),
         meters_per_pixel: tile.meters_per_pixel,
-        units_per_meter: tile.units_per_meter
+        units_per_meter_overzoom: tile.units_per_meter_overzoom
     };
 };
 
