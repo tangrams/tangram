@@ -489,8 +489,9 @@ Object.assign(Points, {
             },
             {
                 quad: size,
+                quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
-                angle,
+                angle: angle * 32,      // values have a 5-bit fraction
                 shape_w: sampler,
                 texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535

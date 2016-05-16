@@ -7,7 +7,6 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
 import Geo from '../../geo';
-import Utils from '../../utils/utils';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
 export var Lines = Object.create(Style);
@@ -256,7 +255,7 @@ Object.assign(Lines, {
                 join: style.join,
                 miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
-                scaling_normalize: 256, // scale extrusion normals to 8.8 fixed point
+                scaling_normalize: 256, // values have an 8-bit fraction
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts

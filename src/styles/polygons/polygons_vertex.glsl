@@ -77,7 +77,7 @@ void main() {
     vec4 position = vec4(a_position.xyz, 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = a_extrude.xy / 256.; // extrusion normals are scaled to 8.8 fixed point
+        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
         float width = a_extrude.z;
         float dwdz = a_extrude.w;
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 1.);

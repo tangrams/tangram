@@ -49,16 +49,16 @@ void main() {
     vec4 position = u_modelView * vec4(a_position.xyz, 1.);
 
     // Apply positioning and scaling in screen space
-    vec2 shape = a_shape.xy;
-    vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
-    float theta = radians(a_shape.z);
+    vec2 shape = a_shape.xy / 256.;                 // values have an 8-bit fraction
+    vec2 offset = vec2(a_offset.x, -a_offset.y);    // flip y to make it point down
+    float theta = radians(a_shape.z / 32.);         // values have a 5-bit fraction
 
     #ifdef TANGRAM_MULTI_SAMPLER
     v_sampler = a_shape.w; // texture sampler
     #endif
 
-    shape = rotate2D(shape, theta);             // apply rotation to vertex
-    shape += rotate2D(offset, theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
+    shape = rotate2D(shape, theta);     // apply rotation to vertex
+    shape += rotate2D(offset, theta);   // apply offset on rotated axis (e.g. so line labels follow text axis)
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
