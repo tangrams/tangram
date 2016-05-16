@@ -1,6 +1,5 @@
 // Text rendering style
 
-import Utils from '../../utils/utils';
 import Geo from '../../geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
@@ -111,7 +110,7 @@ Object.assign(TextStyle, {
                     let style = this.feature_style;
                     style.label = q.label;
                     style.size = text_info.size.logical_size;
-                    style.angle = Utils.radToDeg(q.label.angle) || 0;
+                    style.angle = q.label.angle || 0;
                     style.texcoords = text_info.texcoords;
 
                     Style.addFeature.call(this, q.feature, q.draw, q.context);

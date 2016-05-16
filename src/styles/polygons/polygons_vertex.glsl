@@ -74,12 +74,12 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(SHORT(a_position.xyz), 1.);
+    vec4 position = vec4(a_position.xyz, 1.);
 
     #ifdef TANGRAM_EXTRUDE_LINES
-        vec2 extrude = SCALE_8(a_extrude.xy);
-        float width = SHORT(a_extrude.z);
-        float dwdz = SHORT(a_extrude.w);
+        vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
+        float width = a_extrude.z;
+        float dwdz = a_extrude.w;
         float dz = clamp(u_map_position.z - u_tile_origin.z, 0., 1.);
 
         // Interpolate between zoom levels
@@ -123,7 +123,7 @@ void main() {
     cameraProjection(position);
 
     // +1 is to keep all layers including proxies > 0
-    applyLayerOrder(SHORT(a_position.w) + u_tile_proxy_depth + 1., position);
+    applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);
 
     gl_Position = position;
 }

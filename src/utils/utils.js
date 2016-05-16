@@ -471,17 +471,6 @@ Utils.recurseValues = function* (obj) {
     }
 };
 
-// Scale a *signed* short for use in a GL VBO
-// `unit` is an optional scaling factor to mimic fixed point, since these values will be
-// normalized to 0-1, e.g. divide input by unit on the way in, multiply it back in the shader
-Utils.scaleInt16 = function (val, unit) {
-    return (val / unit) * 32767;
-};
-
-Utils.degToRad = function (degrees) {
-    return degrees * Math.PI / 180;
-};
-
 Utils.radToDeg = function (radians) {
     return radians * 180 / Math.PI;
 };

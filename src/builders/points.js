@@ -6,9 +6,10 @@ import { default_uvs } from './common';
 // of a sprite between two zoom levels.
 export function buildQuadsForPoints (points, vertex_data, vertex_template,
     { texcoord_index, position_index, shape_index, offset_index },
-    { quad, offset, angle, shape_w, texcoord_scale, texcoord_normalize }) {
-    let w2 = quad[0] / 2;
-    let h2 = quad[1] / 2;
+    { quad, quad_normalize, offset, angle, shape_w, texcoord_scale, texcoord_normalize }) {
+    quad_normalize = quad_normalize || 1;
+    let w2 = quad[0] / 2 * quad_normalize;
+    let h2 = quad[1] / 2 * quad_normalize;
     let scaling = [
         [-w2, -h2],
         [w2, -h2],
