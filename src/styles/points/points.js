@@ -292,7 +292,7 @@ Object.assign(Points, {
                         let style = this.feature_style;
                         style.label = q.label;
                         style.size = text_info.size.logical_size;
-                        style.angle = Utils.radToDeg(q.label.angle) || 0;
+                        style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
                         style.texcoords = text_info.texcoords;
 
@@ -491,7 +491,7 @@ Object.assign(Points, {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
-                angle: angle * 32,      // values have a 5-bit fraction
+                angle: angle * 4096,    // values have a 12-bit fraction
                 shape_w: sampler,
                 texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535
