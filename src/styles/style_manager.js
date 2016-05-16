@@ -9,7 +9,6 @@ import log from 'loglevel';
 
 let fs = require('fs');
 const shaderSrc_accessors = fs.readFileSync(__dirname + '/../gl/shaders/accessors.glsl', 'utf8');
-const shaderSrc_unpack = fs.readFileSync(__dirname + '/../gl/shaders/unpack.glsl', 'utf8');
 const shaderSrc_layerOrder = fs.readFileSync(__dirname + '/../gl/shaders/layer_order.glsl', 'utf8');
 const shaderSrc_selectionGlobals = fs.readFileSync(__dirname + '/../gl/shaders/selection_globals.glsl', 'utf8');
 const shaderSrc_selectionVertex = fs.readFileSync(__dirname + '/../gl/shaders/selection_vertex.glsl', 'utf8');
@@ -27,9 +26,6 @@ StyleManager.baseStyle = Style;
 StyleManager.init = function () {
     ShaderProgram.removeBlock('global');
     ShaderProgram.removeBlock('setup');
-
-    // Unpacking functions (for normalized vertex attributes)
-    ShaderProgram.addBlock('global', shaderSrc_unpack);
 
     // Model and world position accessors
     ShaderProgram.addBlock('global', shaderSrc_accessors);

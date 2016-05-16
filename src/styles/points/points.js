@@ -40,10 +40,10 @@ Object.assign(Points, {
         this.fragment_shader_src = shaderSrc_pointsFragment;
 
         var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
-            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
-            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: true },
+            { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -488,9 +488,9 @@ Object.assign(Points, {
                 offset_index: this.vertex_layout.index.a_offset
             },
             {
-                quad: [ Utils.scaleInt16(size[0], 256), Utils.scaleInt16(size[1], 256) ],
+                quad: size,
                 offset,
-                angle: Utils.scaleInt16(angle, 360),
+                angle,
                 shape_w: sampler,
                 texcoord_scale: texcoord_scale,
                 texcoord_normalize: 65535

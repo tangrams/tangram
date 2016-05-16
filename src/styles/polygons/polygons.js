@@ -31,7 +31,7 @@ Object.assign(Polygons, {
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_normal', size: 3, type: gl.BYTE, normalized: true }, // gets padded to 4-bytes
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];

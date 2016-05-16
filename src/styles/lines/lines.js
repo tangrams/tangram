@@ -24,8 +24,8 @@ Object.assign(Lines, {
 
         // Basic attributes, others can be added (see texture UVs below)
         var attribs = [
-            { name: 'a_position', size: 4, type: gl.SHORT, normalized: true },
-            { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: true },
+            { name: 'a_position', size: 4, type: gl.SHORT, normalized: false },
+            { name: 'a_extrude', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -256,7 +256,7 @@ Object.assign(Lines, {
                 join: style.join,
                 miter_limit: style.miter_limit,
                 scaling_index: this.vertex_layout.index.a_extrude,
-                scaling_normalize: Utils.scaleInt16(1, 256), // scale extrusion normals to signed shorts w/256 unit basis
+                scaling_normalize: 256, // scale extrusion normals to 8.8 fixed point
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 texcoord_scale: this.texcoord_scale,
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts

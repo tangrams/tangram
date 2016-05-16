@@ -46,19 +46,19 @@ void main() {
     v_texcoord = a_texcoord;
 
     // Position
-    vec4 position = u_modelView * vec4(SHORT(a_position.xyz), 1.);
+    vec4 position = u_modelView * vec4(a_position.xyz, 1.);
 
     // Apply positioning and scaling in screen space
-    vec2 shape = SCALE_8(a_shape.xy);
+    vec2 shape = a_shape.xy;
     vec2 offset = vec2(a_offset.x, -a_offset.y); // flip y to make it point down
-    float theta = radians(a_shape.z * 360.);
+    float theta = radians(a_shape.z);
 
     #ifdef TANGRAM_MULTI_SAMPLER
-    v_sampler = a_shape.w * 32767.; // texture sampler
+    v_sampler = a_shape.w; // texture sampler
     #endif
 
     shape = rotate2D(shape, theta);             // apply rotation to vertex
-    shape += rotate2D(SHORT(offset), theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
+    shape += rotate2D(offset, theta);  // apply offset on rotated axis (e.g. so line labels follow text axis)
 
     // World coordinates for 3d procedural textures
     v_world_position = u_model * position;
@@ -72,7 +72,7 @@ void main() {
 
     #ifdef TANGRAM_LAYER_ORDER
         // +1 is to keep all layers including proxies > 0
-        applyLayerOrder(SHORT(a_position.w) + u_tile_proxy_depth + 1., position);
+        applyLayerOrder(a_position.w + u_tile_proxy_depth + 1., position);
     #endif
 
     // Apply pixel offset in screen-space
