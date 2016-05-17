@@ -86,7 +86,8 @@ void main() {
         width += dwdz * dz;
 
         // Scale pixel dimensions to be consistent in screen space
-        width *= exp2(-dz);
+        // Scale from style zoom units back to tile zoom
+        width *= exp2(-dz - (u_tile_origin.z - u_tile_origin.w));
 
         // Modify line width before extrusion
         #pragma tangram: width

@@ -42,11 +42,9 @@ export default class Tile {
         this.bounds = { sw: { x: this.min.x, y: this.max.y }, ne: { x: this.max.x, y: this.min.y } };
         this.center_dist = 0;
 
-        // Units per pixel needs to account for over-zooming
-        this.units_per_pixel = Geo.units_per_pixel / this.overzoom2;
-
         this.meters_per_pixel = Geo.metersPerPixel(this.coords.z);
-        this.units_per_meter = Geo.unitsPerMeter(this.coords.z);
+        this.units_per_pixel = Geo.units_per_pixel / this.overzoom2; // adjusted for overzoom
+        this.units_per_meter_overzoom = Geo.unitsPerMeter(this.coords.z) * this.overzoom2; // adjusted for overzoom
 
         this.meshes = {}; // renderable VBO meshes keyed by style
         this.textures = []; // textures that the tile owns (labels, etc.)
@@ -152,7 +150,7 @@ export default class Tile {
             max: this.max,
             units_per_pixel: this.units_per_pixel,
             meters_per_pixel: this.meters_per_pixel,
-            units_per_meter: this.units_per_meter,
+            units_per_meter_overzoom: this.units_per_meter_overzoom,
             style_zoom: this.style_zoom,
             overzoom: this.overzoom,
             overzoom2: this.overzoom2,
