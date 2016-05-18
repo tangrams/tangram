@@ -75,14 +75,14 @@ Object.assign(Lines, {
     parseLineTexture () {
         // Specify a line pattern
         if (this.dasharray) {
-            // Optional color for spaces in dahs pattern (defaults transparent)
-            if (this.dash_space_color) {
-                this.dash_space_color = StyleParser.parseColor(this.dash_space_color).map(c => c * 255);
-                this.dash_space_color[3] = 0; // alpha value is used to test if pixel is dash or space
+            // Optional background color for dash pattern (defaults transparent)
+            if (this.dash_background_color) {
+                this.dash_background_color = StyleParser.parseColor(this.dash_background_color).map(c => c * 255);
+                this.dash_background_color[3] = 0; // alpha value is used to test if pixel is dash or space
             }
 
             // Render line pattern
-            let dasharray = renderDasharray(this.dasharray, { space_color: this.dash_space_color });
+            let dasharray = renderDasharray(this.dasharray, { background_color: this.dash_background_color });
             let texname = this.name + '_dasharray';
             Texture.create(this.gl, texname, {
                 data: dasharray.pixels,
@@ -92,7 +92,7 @@ Object.assign(Lines, {
             });
 
             this.defines.TANGRAM_LINE_TEXTURE = true;
-            this.defines.TANGRAM_LINE_SPACE_COLOR = (this.dash_space_color != null);
+            this.defines.TANGRAM_LINE_BACKGROUND_COLOR = (this.dash_background_color != null);
             this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are line "spaces"
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = texname;

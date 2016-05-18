@@ -111,7 +111,7 @@ StyleManager.mix = function (style, styles) {
     style.texture = sources.map(x => x.texture).filter(x => x).pop();
     style.raster = sources.map(x => x.raster).filter(x => x != null).pop();
     style.dasharray = sources.map(x => x.dasharray).filter(x => x != null).pop();
-    style.dash_space_color = sources.map(x => x.dash_space_color).filter(x => x != null).pop();
+    style.dash_background_color = sources.map(x => x.dash_background_color).filter(x => x != null).pop();
     if (sources.some(x => x.hasOwnProperty('blend') && x.blend)) {
         // only mix blend if explicitly set, otherwise let base style choose blending mode
         // hasOwnProperty check gives preference to base style prototype
