@@ -7,7 +7,7 @@ import gl from '../../gl/constants'; // web workers don't have access to GL cont
 import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
-import renderDasharray from './dasharray';
+import renderDashArray from './dasharray';
 import Geo from '../../geo';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
@@ -39,9 +39,9 @@ Object.assign(Lines, {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
-        // Optional line texture or dasharray
+        // Optional line texture or dash array
         // (latter will be rendered at compile-time, when GL context available)
-        if (this.texture || this.dasharray) {
+        if (this.texture || this.dash) {
             this.texcoords = true;
         }
 
@@ -71,10 +71,10 @@ Object.assign(Lines, {
         return Style.compile.apply(this, arguments);
     },
 
-    // Optionally apply a dasharray pattern to this line
+    // Optionally apply a dash array pattern to this line
     parseLineTexture () {
         // Specify a line pattern
-        if (this.dasharray) {
+        if (this.dash) {
             // Optional background color for dash pattern (defaults transparent)
             if (this.dash_background_color) {
                 this.dash_background_color = StyleParser.parseColor(this.dash_background_color).map(c => c * 255);
@@ -82,11 +82,11 @@ Object.assign(Lines, {
             }
 
             // Render line pattern
-            let dasharray = renderDasharray(this.dasharray, { background_color: this.dash_background_color });
+            let dash = renderDashArray(this.dash, { background_color: this.dash_background_color });
             let texname = this.name + '_dasharray';
             Texture.create(this.gl, texname, {
-                data: dasharray.pixels,
-                height: dasharray.length,
+                data: dash.pixels,
+                height: dash.length,
                 width: 1,
                 filtering: 'nearest'
             });
@@ -96,7 +96,7 @@ Object.assign(Lines, {
             this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are line "spaces"
             this.shaders.uniforms = this.shaders.uniforms || {};
             this.shaders.uniforms.u_texture = texname;
-            this.shaders.uniforms.u_texture_ratio = dasharray.length;
+            this.shaders.uniforms.u_texture_ratio = dash.length;
         }
         // Specify a texture directly
         else if (this.texture) {

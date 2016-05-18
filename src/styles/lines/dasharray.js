@@ -1,22 +1,22 @@
 // Renders an array specifying a line pattern of alternating dashes and spaces,
-// similar to an SVG `dasharray`, into a byte array of RGBA pixels
+// similar to an SVG `dasharray` or Canvas setLineDash(), into a byte array of RGBA pixels
 // Returns:
 // {
 //    pixel: rendered image in Uint8Array buffer
-//    length: pixel length of rendered dasharray pattern (sum of all dashes and spaces)
+//    length: pixel length of rendered dash pattern (sum of all dashes and spaces)
 // }
 //
 // https://www.w3.org/TR/SVG/painting.html#StrokeDasharrayProperty
 // https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
+// https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash
 
 const default_dash_color = [255, 255, 255, 255];
 const default_background_color = [0, 0, 0, 0];
 
-export default function renderDasharray (dasharray, options) {
+export default function renderDashArray (pattern, options) {
     const dash_pixel = options.dash_color || default_dash_color;
     const background_color = options.background_color || default_background_color;
-
-    let dashes = dasharray;
+    const dashes = pattern;
 
     // If pattern is odd, repeat it to make it even (see SVG spec)
     if (dashes.length % 2 === 1) {
