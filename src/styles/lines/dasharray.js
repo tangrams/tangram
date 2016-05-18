@@ -9,9 +9,13 @@
 // https://www.w3.org/TR/SVG/painting.html#StrokeDasharrayProperty
 // https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dasharray
 
-const dash_pixel = [255, 255, 255, 255];
+const default_dash_color = [255, 255, 255, 255];
+const default_space_color = [0, 0, 0, 0];
 
-export default function renderDasharray (dasharray, space_pixel = [0, 0, 0, 0]) {
+export default function renderDasharray (dasharray, options) {
+    const dash_pixel = options.dash_color || default_dash_color;
+    const space_color = options.space_color || default_space_color;
+
     let dashes = dasharray;
 
     // If pattern is odd, repeat it to make it even (see SVG spec)
@@ -24,7 +28,7 @@ export default function renderDasharray (dasharray, space_pixel = [0, 0, 0, 0]) 
     for (let i=0; i < dashes.length; i++) {
         let segment = dashes[i];
         for (let s=0; s < segment; s++) {
-            Array.prototype.push.apply(pixels, dash ? dash_pixel : space_pixel);
+            Array.prototype.push.apply(pixels, dash ? dash_pixel : space_color);
         }
         dash = !dash; // alternate between dashes and spaces
     }

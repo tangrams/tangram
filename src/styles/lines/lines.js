@@ -81,7 +81,8 @@ Object.assign(Lines, {
                 this.dash_space_color[3] = 0; // alpha value is used to test if pixel is dash or space
             }
 
-            let dasharray = renderDasharray(this.dasharray, this.dash_space_color);
+            // Render line pattern
+            let dasharray = renderDasharray(this.dasharray, { space_color: this.dash_space_color });
             let texname = this.name + '_dasharray';
             Texture.create(this.gl, texname, {
                 data: dasharray.pixels,
