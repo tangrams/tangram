@@ -314,7 +314,7 @@ Object.assign(Lines, {
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: 256, // values have an 8-bit fraction
                 texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_width: style.width || style.next_width, // UVs can't calc for zero-width, use next zoom width in that case
+                texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,
