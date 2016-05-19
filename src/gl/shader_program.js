@@ -620,7 +620,7 @@ ShaderProgram.blocks = {};
 ShaderProgram.buildDefineString = function (defines) {
     var define_str = "";
     for (var d in defines) {
-        if (defines[d] === false) {
+        if (defines[d] == null || defines[d] === false) {
             continue;
         }
         else if (typeof defines[d] === 'boolean' && defines[d] === true) { // booleans are simple defines with no value
