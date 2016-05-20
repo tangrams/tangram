@@ -83,23 +83,19 @@ Object.assign(Lines, {
 
             // Render line pattern
             let dash = renderDashArray(this.dash, { background_color: this.dash_background_color });
-            let texname = this.name + '_dasharray';
-            Texture.create(this.gl, texname, {
+            this.texture = '_' + this.name + '_dasharray';
+            Texture.create(this.gl, this.texture, {
                 data: dash.pixels,
                 height: dash.length,
                 width: 1,
                 filtering: 'nearest'
             });
 
-            this.defines.TANGRAM_LINE_TEXTURE = true;
             this.defines.TANGRAM_LINE_BACKGROUND_COLOR = (this.dash_background_color != null);
-            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are line "spaces"
-            this.shaders.uniforms = this.shaders.uniforms || {};
-            this.shaders.uniforms.u_texture = texname;
-            this.shaders.uniforms.u_texture_ratio = dash.length;
         }
-        // Specify a texture directly
-        else if (this.texture) {
+
+        // Specify a line texture (either directly, or rendered dash pattern from above)
+        if (this.texture) {
             this.defines.TANGRAM_LINE_TEXTURE = true;
             this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
             this.shaders.uniforms = this.shaders.uniforms || {};
