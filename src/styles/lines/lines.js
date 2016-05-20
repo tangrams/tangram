@@ -79,6 +79,7 @@ Object.assign(Lines, {
             if (this.dash_background_color) {
                 this.dash_background_color = StyleParser.parseColor(this.dash_background_color).map(c => c * 255);
                 this.dash_background_color[3] = 0; // alpha value is used to test if pixel is dash or space
+                this.defines.TANGRAM_LINE_BACKGROUND_COLOR = true;
             }
 
             // Render line pattern
@@ -90,8 +91,6 @@ Object.assign(Lines, {
                 width: 1,
                 filtering: 'nearest'
             });
-
-            this.defines.TANGRAM_LINE_BACKGROUND_COLOR = (this.dash_background_color != null);
         }
 
         // Specify a line texture (either directly, or rendered dash pattern from above)
