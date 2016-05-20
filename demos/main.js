@@ -390,7 +390,7 @@ Enjoy!
                 add(layer_controls, l).
                 onChange(function(value) {
                     layer.scene.config.layers[l].visible = value;
-                    layer.scene.rebuildGeometry();
+                    layer.scene.rebuild();
                 });
         });
 
