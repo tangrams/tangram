@@ -107,7 +107,12 @@ class Rule {
 
         try {
             this.buildZooms();
-            this.filter = this.filter && match(this.filter);
+            if (this.filter != null && Object.keys(this.filter).length > 0) {
+                this.filter = match(this.filter);
+            }
+            else {
+                this.filter = null;
+            }
         }
         catch(e) {
             // Invalid filter
@@ -348,7 +353,7 @@ function doesMatch(rule, context) {
         return false;
     }
 
-    return ((typeof rule.filter === 'function' && rule.filter(context)) || (rule.filter == null));
+    return rule.filter == null || rule.filter(context);
 }
 
 export function matchFeature(context, rules, collectedRules, collectedRulesIds) {
