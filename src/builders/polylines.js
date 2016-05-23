@@ -2,30 +2,33 @@
 
 import Vector from '../vector';
 import Geo from '../geo';
-import { default_uvs, outsideTile } from './common';
+import { default_uvs, outsideTile, isCoordOutsideTile} from './common';
 
 const zero_vec2 = [0, 0];
 
 // Build tessellated triangles for a polyline
-const corners_for_cap = {
-    butt: 0,
-    square: 2,
-    round: 3
+const CAP_TYPE = {
+    BUTT: 0,
+    SQUARE: 2,
+    ROUND: 3
 };
 
-const triangles_for_join = {
-    miter: 0,
-    bevel: 1,
-    round: 3
+const JOIN_TYPE = {
+    MITER: 0,
+    BEVEL: 1,
+    ROUND: 3
+};
+
+const DEFAULT = {
+    MITER_LIMIT: 3,
+    TEXCOORD_NORMALIZE: 1,
+    TEXCOORD_RATIO: 1
 };
 
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
 const v_scale_adjust = Geo.tile_scale;
 
-export function buildPolylines (
-    lines,
-    width,
-    vertex_data, vertex_template,
+export function buildPolylines (lines, width, vertex_data, vertex_template,
     {
         closed_polygon,
         remove_tile_edges,
@@ -40,249 +43,305 @@ export function buildPolylines (
         miter_limit
     }) {
 
-    var cornersOnCap = corners_for_cap[cap] || 0;         // default 'butt'
-    var trianglesOnJoin = triangles_for_join[join] || 0;  // default 'miter'
+    var cap_type = cap ? CAP_TYPE[cap.toUpperCase()] : CAP_TYPE.BUTT;
+    var join_type = join ? JOIN_TYPE[join.toUpperCase()] : JOIN_TYPE.MITER;
 
     // Configure miter limit
-    if (trianglesOnJoin === 0) {
-        miter_limit = miter_limit || 3; // default miter limit
+    if (join_type === JOIN_TYPE.MITER) {
+        miter_limit = miter_limit || DEFAULT.MITER_LIMIT; // default miter limit
         var miter_len_sq = miter_limit * miter_limit;
     }
 
     // Build variables
     if (texcoord_index) {
-        texcoord_normalize = texcoord_normalize || 1;
-        texcoord_ratio = texcoord_ratio || 1;
+        texcoord_normalize = texcoord_normalize || DEFAULT.TEXCOORD_NORMALIZE;
+        texcoord_ratio = texcoord_ratio || DEFAULT.TEXCOORD_RATIO;
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
     }
+
+    var v_scale = 1 / (width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
 
     // Values that are constant for each line and are passed to helper functions
     var context = {
         vertex_data,
         vertex_template,
-        half_width: width/2,
-        vertices: [],
+        half_width: width / 2,
         scaling_index,
         scaling_normalize,
-        scalingVecs: scaling_index && [],
         texcoord_index,
-        texcoords: texcoord_index && [],
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
-        v_scale: 1 / ((width * texcoord_ratio) * v_scale_adjust), // scales line texture as a ratio of the line's width
-        total_dist: 0,
-        num_pairs: 0
+        miter_len_sq
     };
 
-    for (var ln = 0; ln < lines.length; ln++) {
-        // Remove dupe points from lines
-        var line = dedupeLine(lines[ln], closed_polygon);
-        if (!line) {
-            continue; // skip if no valid line remaining
+    var coordCurr, coordNext, normPrev, normNext, v;
+
+    for (var index = 0; index < lines.length; index++) {
+        var line = lines[index];
+
+        // Skip if line is not valid
+        if (line.length < 2) continue;
+
+        // Loop backwards through line to a tile boundary if found
+        if (closed_polygon && join_type == JOIN_TYPE.MITER){
+            var boundaryIndex = getTileBoundaryIndex(line);
+
+            if (boundaryIndex !== 0){
+                // create new line that is a cyclic permutation of the original
+                var newLine = line.splice(boundaryIndex);
+                Array.prototype.push.apply(newLine, line.slice(1));
+                newLine[newLine.length] = newLine[0];
+                lines.push(newLine);
+                continue;
+            }
         }
 
-        var lineSize = line.length;
+        // FIRST POINT
+        coordCurr = line[0];
+        coordNext = line[1];
+        normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
-        // Ignore non-lines
-        if (lineSize < 2) {
+        // Skip tile boundary lines and append a new line if needed
+        if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+            var nonBoundarySegment = getNextNonBoundarySegment(line, 0, tile_edge_tolerance);
+            if (nonBoundarySegment) lines.push(nonBoundarySegment);
             continue;
         }
 
-        //  Initialize variables
-        var coordPrev = [0, 0], // Previous point coordinates
-            coordCurr = [0, 0], // Current point coordinates
-            coordNext = [0, 0]; // Next point coordinates
+        if (closed_polygon){
+            var normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
+            startPolygon(coordCurr, normPrev, normNext, join_type, context);
+        }
+        else {
+            // If line begins at edge, don't add a cap
+            if (!isCoordOutsideTile(coordCurr))
+                addCap(coordCurr, 0, normNext, cap_type, true, context);
 
-        var normPrev = [0, 0],  // Right normal to segment between previous and current m_points
-            normCurr = [0, 0],  // Right normal at current point, scaled for miter joint
-            normNext = [0, 0];  // Right normal to segment between current and next m_points
-
-        var isPrev = false,
-            isNext = true;
-
-        // Add vertices to buffer according to their index
-        indexPairs(context);
-
-        // Do this with the rest (except the last one)
-        for (let i = 0; i < lineSize ; i++) {
-
-            // There is a next one?
-            isNext = i+1 < lineSize;
-
-            if (isPrev) {
-                // If there is a previous one, copy the current (previous) values on *Prev
-                coordPrev = coordCurr;
-                normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
-            } else if (i === 0 && closed_polygon === true) {
-                // If it's the first point and is a closed polygon
-
-                var needToClose = true;
-                if (remove_tile_edges) {
-                    if(outsideTile(line[i], line[lineSize-2], tile_edge_tolerance)) {
-                        needToClose = false;
-                    }
-                }
-
-                if (needToClose) {
-                    coordPrev = line[lineSize-2];
-                    normPrev = Vector.normalize(Vector.perp(coordPrev, line[i]));
-                    isPrev = true;
-                }
-            }
-
-            // Assign current coordinate
-            coordCurr = line[i];
-
-            if (isNext) {
-                coordNext = line[i+1];
-            } else if (closed_polygon === true) {
-                // If it's the last point in a closed polygon
-                coordNext = line[1];
-                isNext = true;
-            }
-
-            if (isNext) {
-                // If it's not the last one get next coordinates and calculate the right normal
-
-                normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-                if (remove_tile_edges) {
-                    if (outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-                        normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
-                        if (isPrev) {
-                            addVertexPair(
-                                coordCurr, normCurr,
-                                context.texcoords && Vector.length(Vector.sub(coordCurr, coordPrev)),
-                                context);
-                            context.num_pairs++;
-
-                            // Add vertices to buffer acording their index
-                            indexPairs(context);
-                        }
-                        isPrev = false;
-                        continue;
-                    }
-                }
-            }
-
-            //  Compute current normal
-            if (isPrev) {
-                //  If there is a PREVIOUS ...
-                if (isNext) {
-                    // ... and a NEXT ONE, compute previous and next normals (scaled by the angle with the last prev)
-                    normCurr = Vector.normalize(Vector.add(normPrev, normNext));
-                    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-                    normCurr = Vector.mult(normCurr,scale*scale);
-                } else {
-                    // ... and there is NOT a NEXT ONE, copy the previous next one (which is the current one)
-                    normCurr = Vector.normalize(Vector.perp(coordPrev, coordCurr));
-                }
-            } else {
-                // If there is NO PREVIOUS ...
-                if (isNext) {
-                    // ... and a NEXT ONE,
-                    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-                    normCurr = normNext;
-                } else {
-                    // ... and NO NEXT ONE, nothing to do (without prev or next one this is just a point)
-                    continue;
-                }
-            }
-
-            if (isPrev || isNext) {
-                // If it's the BEGINNING of a LINE
-                if (i === 0 && !isPrev && !closed_polygon) {
-                    addCap(coordCurr, normCurr, cornersOnCap, true, context);
-                }
-
-                //  Miter limit: if miter join is too sharp, convert to bevel instead
-                if (trianglesOnJoin === 0 && Vector.lengthSq(normCurr) > miter_len_sq) {
-                    trianglesOnJoin = triangles_for_join['bevel']; // switch to bevel
-                }
-
-                // If it's a JOIN
-                if (trianglesOnJoin !== 0 && isPrev && isNext) {
-                    addJoin([coordPrev, coordCurr, coordNext],
-                            [normPrev,normCurr, normNext],
-                            trianglesOnJoin,
-                            context);
-                } else {
-                    addVertexPair(
-                        coordCurr, normCurr,
-                        context.texcoords && Vector.length(Vector.sub(coordCurr, coordPrev)),
-                        context);
-                }
-
-                if (isNext) {
-                   context.num_pairs++;
-                }
-
-                isPrev = true;
-            }
+            addVertex(coordCurr, normNext, [1, 0], context);
+            addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
         }
 
-        // Add vertices to buffer according to their index
-        indexPairs(context);
+        // INTERMEDIARY POINTS
+        v = v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
+        for (var i = 1; i < line.length - 1; i++) {
+            var currIndex = i;
+            var nextIndex = i + 1;
+            coordCurr = line[currIndex];
+            coordNext = line[nextIndex];
 
-         // If it's the END of a LINE
-        if(!closed_polygon) {
-            addCap(coordCurr, normCurr, cornersOnCap , false, context);
+            if (coordNext[0] == coordCurr[0] && coordNext[1] == coordCurr[1])
+                continue;
+
+            if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+                addVertex(coordCurr, normNext, [1, v], context);
+                addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+                indexPairs(1, context);
+
+                var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
+                if (nonBoundaryLines) lines.push(nonBoundaryLines);
+
+                break;
+            }
+
+            normPrev = normNext;
+            normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+
+            if (join_type == JOIN_TYPE.MITER){
+                addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
+            }
+            else {
+                addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
+            }
+
+            v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
+        }
+
+        // LAST POINT
+        coordCurr = coordNext;
+        normPrev = normNext;
+
+        if (closed_polygon) {
+            normNext = Vector.normalize(Vector.perp(coordCurr, line[1]));
+            endPolygon(coordCurr, normPrev, normNext, join_type, v, context);
+        }
+        else {
+            addVertex(coordCurr, normPrev, [1, v], context);
+            addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+            indexPairs(1, context);
+
+            // If line ends at edge, don't add a cap
+            if (!isCoordOutsideTile(coordCurr))
+                addCap(coordCurr, v, normPrev, cap_type, false, context);
         }
     }
 }
 
-// Remove duplicate points from a line, creating a new line only when points must be removed
-function dedupeLine (line, closed) {
-    let i, dupes;
+function getTileBoundaryIndex(line){
+    if (isCoordOutsideTile(line[0])) return 0;
 
-    // Collect dupe points
-    for (i=0; i < line.length - 1; i++) {
-        if (line[i][0] === line[i+1][0] && line[i][1] === line[i+1][1]) {
-            dupes = dupes || [];
-            dupes.push(i);
+    for (var backIndex = 0; backIndex < line.length; backIndex++) {
+        var coordCurr = line[line.length - 1 - backIndex];
+        if (isCoordOutsideTile(coordCurr)) {
+            return line.length - 1 - backIndex;
         }
     }
 
-    // Remove dupe points
-    if (dupes) {
-        line = line.slice(0);
-        dupes.forEach(d => line.splice(d, 1));
-    }
-
-    // Line needs at least 2 points, polygon needs at least 3 (+1 to close)
-    if (!closed && line.length < 2 || closed && line.length < 4) {
-        return;
-    }
-    return line;
+    return 0;
 }
 
-// Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertex(coord, normal, uv, { half_width, vertices, scalingVecs, texcoords }) {
-    if (scalingVecs) {
-        //  a. If scaling is on add the vertex (the currCoord) and the scaling Vecs (normals pointing where to extrude the vertices)
-        vertices.push(coord);
-        scalingVecs.push(normal);
-    } else {
-        //  b. Add the extruded vertices
-        vertices.push([coord[0] + normal[0] * half_width,
-                       coord[1] + normal[1] * half_width]);
+function getNextNonBoundarySegment (line, startIndex, tolerance) {
+    var endIndex = startIndex;
+    while (line[endIndex + 1] && outsideTile(line[endIndex], line[endIndex + 1], tolerance)) {
+        endIndex++;
     }
 
-    // c) Add UVs if they are enabled
-    if (texcoords) {
-        texcoords.push(uv);
+    // If there is a line segment remaining that is within the tile, push it to the lines array
+    if (line.length - endIndex >= 2) {
+        return line.slice(endIndex);
     }
+    else return false;
 }
 
-//  Add to equidistant pairs of vertices (internal method for polyline builder)
-function addVertexPair (coord, normal, dist, context) {
-    if (context.texcoords) {
-        context.total_dist += dist * context.v_scale;
-        addVertex(coord, normal, [context.max_u, context.total_dist], context);
-        addVertex(coord, Vector.neg(normal), [context.min_u, context.total_dist], context);
+function startPolygon(coordCurr, normPrev, normNext, join_type, context){
+    // If polygon starts on a tile boundary, don't add a join
+    if (isCoordOutsideTile(coordCurr)){
+        addVertex(coordCurr, normNext, [1, 0], context);
+        addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
     }
     else {
-        addVertex(coord, normal, null, context);
-        addVertex(coord, Vector.neg(normal), null, context);
+        // If polygon starts within a tile, add a join
+        var v = 0;
+        if (join_type === JOIN_TYPE.MITER) {
+            addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context)
+        }
+        else {
+            addJoin(join_type, v, coordCurr, normPrev, normNext, true, context);
+        }
+    }
+}
+
+function endPolygon(coordCurr, normPrev, normNext, join_type, v, context){
+    // If polygon ends on a tile boundary, don't add a join
+    if (isCoordOutsideTile(coordCurr)){
+        addVertex(coordCurr, normNext, [1, 0], context);
+        addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
+    }
+    else {
+        // If polygon ends within a tile, add Miter or no joint (join added on startPolygon)
+        var miterVec = createMiterVec(normPrev, normNext);
+
+        if (join_type === JOIN_TYPE.MITER && Vector.lengthSq(miterVec) > context.miter_len_sq) {
+            join_type = JOIN_TYPE.BEVEL; // switch to bevel
+        }
+
+        if (join_type === JOIN_TYPE.MITER) {
+            addVertex(coordCurr, miterVec, [0, v], context);
+            addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
+            indexPairs(1, context);
+        }
+        else {
+            addVertex(coordCurr, normPrev, [0, v], context);
+            addVertex(coordCurr, Vector.neg(normPrev), [1, v], context);
+            indexPairs(1, context);
+        }
+    }
+}
+
+function createMiterVec(normPrev, normNext){
+    // TODO: decide
+    // var miterVec = Vector.add(normPrev, normNext);
+    //
+    // var lengthSq = Vector.lengthSq(miterVec);
+    // return (lengthSq < 1e-2)
+    //     ? Vector.perp(normNext, normPrev)
+    //     : Vector.mult(miterVec, 2 / lengthSq);
+
+    var miterVec = Vector.normalize(Vector.add(normPrev, normNext));
+    var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, miterVec)));
+    return Vector.mult(miterVec, scale * scale);
+}
+
+function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
+    var miterVec = createMiterVec(normPrev, normNext);
+
+    //  Miter limit: if miter join is too sharp, convert to bevel instead
+    if (Vector.lengthSq(miterVec) > miter_len_sq) {
+        addJoin(JOIN_TYPE.MITER, v, coordCurr, normPrev, normNext, isBeginning, context);
+    }
+    else {
+        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
+        if (!isBeginning) indexPairs(1, context);
+    }
+}
+
+function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context){
+    var miterVec = createMiterVec(normPrev, normNext);
+
+    if (!isBeginning) {
+        addVertex(coordCurr, miterVec, [0, v], context);
+        addVertex(coordCurr, Vector.neg(normPrev), [1, v], context);
+        indexPairs(1, context);
+    }
+
+    if (join_type == JOIN_TYPE.BEVEL) {
+        addBevel(coordCurr,
+            Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+            [1, v], [0, v], [1, v],
+            context
+        );
+    }
+    else if (join_type == JOIN_TYPE.ROUND) {
+        addFan(coordCurr,
+            Vector.neg(normPrev), miterVec, Vector.neg(normNext),
+            [1, v], [0, v], [1, v],
+            context
+        );
+    }
+
+    addVertex(coordCurr, miterVec, [0, v], context);
+    addVertex(coordCurr, Vector.neg(normNext), [1, v], context);
+}
+
+function indexPairs(num_pairs, context){
+    var vertex_elements = context.vertex_data.vertex_elements;
+    var num_vertices = context.vertex_data.vertex_count;
+    var offset = num_vertices - 2 * num_pairs - 2;
+
+    for (var i = 0; i < num_pairs; i++){
+        vertex_elements.push(offset + 2 * i + 2);
+        vertex_elements.push(offset + 2 * i + 1);
+        vertex_elements.push(offset + 2 * i + 0);
+        vertex_elements.push(offset + 2 * i + 2);
+        vertex_elements.push(offset + 2 * i + 3);
+        vertex_elements.push(offset + 2 * i + 1);
+    }
+}
+
+function addVertex(coordinate, normal, uv, context){
+    var vertex_template = context.vertex_template;
+    var vertex_data = context.vertex_data;
+
+    buildVertexTemplate(vertex_template, coordinate, uv, normal, context);
+    vertex_data.addVertex(vertex_template);
+}
+
+function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, context) {
+    // set vertex position
+    vertex_template[0] = vertex[0];
+    vertex_template[1] = vertex[1];
+
+    // set UVs
+    if (context.texcoord_index && texture_coord) {
+        vertex_template[context.texcoord_index + 0] = texture_coord[0] * context.texcoord_normalize;
+        vertex_template[context.texcoord_index + 1] = texture_coord[1] * context.texcoord_normalize;
+    }
+
+    // set Scaling vertex (X, Y normal direction + Z half_width as attribute)
+    if (context.scaling_index) {
+        vertex_template[context.scaling_index + 0] = scale[0] * context.scaling_normalize;
+        vertex_template[context.scaling_index + 1] = scale[1] * context.scaling_normalize;
+        vertex_template[context.scaling_index + 2] = context.half_width;
     }
 }
 
@@ -290,75 +349,39 @@ function addVertexPair (coord, normal, dist, context) {
 //  using their normals from a center        \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
-//                                              C
-function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, context) {
+function addFan (coord, nA, nC, nB, uA, uC, uB, context) {
+    var cross = nA[0] * nB[1] - nA[1] * nB[0];
+    var dot = Vector.dot(nA, nB);
+    var angle = -2*Math.PI + mod(Math.atan2(cross, dot), 2*Math.PI);
 
-    if (numTriangles < 1) {
-        return;
-    }
+    var numTriangles = trianglesPerArc(angle, context.half_width);
+    if (numTriangles < 1) return;
 
-    // Add previous vertices to buffer and clear the buffers and index pairs
-    // because we are going to add more triangles.
-    indexPairs(context);
-
-    // Initial parameters
-    var normCurr = Vector.set(nA);
-    var normPrev = [0,0];
-
-    // Calculate the angle between A and B
-    var angle_delta = Vector.angleBetween(nA, nB);
-
-    // Calculate the angle for each triangle
-    var angle_step = angle_delta/numTriangles;
-
-    // Joins that turn left or right behave diferently...
-    // triangles need to be rotated in diferent directions
-    if (!signed) {
-        angle_step *= -1;
-    }
-
-    if (context.texcoords) {
+    if (context.texcoord_index !== undefined) {
         var uvCurr = Vector.set(uA);
-        var uv_delta = Vector.div(Vector.sub(uB,uA), numTriangles);
+        var uv_delta = Vector.div(Vector.sub(uB, uA), numTriangles);
     }
 
-    //  Add the FIRST and CENTER vertex
-    //  The triangles will be composed in a FAN style around it
-    addVertex(coord, nC, uC, context);
+    var pivotIndex = context.vertex_data.vertex_count;
+    var vertex_elements = context.vertex_data.vertex_elements;
 
-    //  Add first corner
-    addVertex(coord, normCurr, uA, context);
+    addVertex(coord, nC, uC, context);
+    addVertex(coord, nA, uA, context);
 
     // Iterate through the rest of the corners
-    for (var t = 0; t < numTriangles; t++) {
-        normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot(Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
-        if (context.texcoords) {
-            uvCurr = Vector.add(uvCurr,uv_delta);
-        }
-        addVertex(coord, normCurr, uvCurr, context);      //  Add computed corner
-    }
-
-    // Index the vertices
+    var blade = nA;
+    var angle_step = angle / numTriangles;
     for (var i = 0; i < numTriangles; i++) {
-        if (signed) {
-            addIndex(i+2, context);
-            addIndex(0, context);
-            addIndex(i+1, context);
-        } else {
-            addIndex(i+1, context);
-            addIndex(0, context);
-            addIndex(i+2, context);
-        }
-    }
+        blade = Vector.rot(blade, angle_step);
 
-    // Clear the buffer
-    context.vertices = [];
-    if (context.scalingVecs) {
-        context.scalingVecs = [];
-    }
-    if (context.texcoords) {
-        context.texcoords = [];
+        addVertex(coord, blade, uvCurr, context);
+
+        if (context.texcoord_index !== undefined)
+            uvCurr = Vector.add(uvCurr, uv_delta);
+
+        vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
+        vertex_elements.push(pivotIndex);
+        vertex_elements.push(pivotIndex + i + ((cross > 0) ? 1 : 2));
     }
 }
 
@@ -367,252 +390,76 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, signed, numTriangles, context) {
 //           /   /\   /\  \
 //              /  \ /   \ \
 //                / C \
-function addBevel (coord, nA, nC, nB, uA, uC, uB, signed, context) {
-    // Add previous vertices to buffer and clear the buffers and index pairs
-    // because we are going to add more triangles.
-    indexPairs(context);
+function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
+    var pivotIndex = context.vertex_data.vertex_count;
 
-    //  Add the FIRST and CENTER vertex
     addVertex(coord, nC, uC, context);
     addVertex(coord, nA, uA, context);
     addVertex(coord, nB, uB, context);
 
-    if (signed) {
-        addIndex(2, context);
-        addIndex(0, context);
-        addIndex(1, context);
+    var orientation = nA[0] * nB[1] - nA[1] * nB[0] > 0;
+
+    var vertex_elements = context.vertex_data.vertex_elements;
+
+    if (orientation) {
+        vertex_elements.push(pivotIndex + 2);
+        vertex_elements.push(pivotIndex + 0);
+        vertex_elements.push(pivotIndex + 1);
     } else {
-        addIndex(1, context);
-        addIndex(0, context);
-        addIndex(2, context);
-    }
-
-    // Clear the buffer
-    context.vertices = [];
-    if (context.scalingVecs) {
-        context.scalingVecs = [];
-    }
-    if (context.texcoords) {
-        context.texcoords = [];
-    }
-}
-
-
-//  Tessalate a SQUARE geometry between A and B     + ........+
-//  and interpolating their UVs                     : \  2  / :
-//                                                  : 1\   /3 :
-//                                                  A -- C -- B
-function addSquare (coord, nA, nB, uA, uC, uB, signed, context) {
-
-    // Add previous vertices to buffer and clear the buffers and index pairs
-    // because we are going to add more triangles.
-    indexPairs(context);
-
-    // Initial parameters
-    var normCurr = Vector.set(nA);
-    var normPrev = [0,0];
-    if (context.texcoords) {
-        var uvCurr = Vector.set(uA);
-        var uv_delta = Vector.div(Vector.sub(uB,uA), 4);
-    }
-
-    // First and last cap have different directions
-    var angle_step = 0.78539816339; // PI/4 = 45 degrees
-    if (!signed) {
-        angle_step *= -1;
-    }
-
-    //  Add the FIRST and CENTER vertex
-    //  The triangles will be add in a FAN style around it
-    //
-    //                       A -- C
-    addVertex(coord, zero_vec2, uC, context);
-
-    //  Add first corner     +
-    //                       :
-    //                       A -- C
-    addVertex(coord, normCurr, uA, context);
-
-    // Iterate through the rest of the coorners completing the triangles
-    // (except the corner 1 to save one triangle to be draw )
-    for (var t = 0; t < 4; t++) {
-
-        // 0     1     2
-        //  + ........+
-        //  : \     / :
-        //  :  \   /  :
-        //  A -- C -- B  3
-
-        normPrev = Vector.normalize(normCurr);
-        normCurr = Vector.rot( Vector.normalize(normCurr), angle_step);     //  Rotate the extrusion normal
-
-        if (t === 0 || t === 2) {
-            // In order to make this "fan" look like a square the mitters need to be streach
-            var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, normCurr)));
-            normCurr = Vector.mult(normCurr, scale*scale);
-        }
-
-        if (context.texcoords) {
-            uvCurr = Vector.add(uvCurr,uv_delta);
-        }
-
-        if (t !== 1) {
-            //  Add computed corner (except the corner 1)
-            addVertex(coord, normCurr, uvCurr, context);
-        }
-    }
-
-    for (var i = 0; i < 3; i++) {
-        if (signed) {
-            addIndex(i+2, context);
-            addIndex(0, context);
-            addIndex(i+1, context);
-        } else {
-            addIndex(i+1, context);
-            addIndex(0, context);
-            addIndex(i+2, context);
-        }
-    }
-
-    // Clear the buffer
-    context.vertices = [];
-    if (context.scalingVecs) {
-        context.scalingVecs = [];
-    }
-    if (context.texcoords) {
-        context.texcoords = [];
-    }
-}
-
-//  Add special joins (not miter) types that require FAN tessellations
-//  Using http://www.codeproject.com/Articles/226569/Drawing-polylines-by-tessellation as reference
-function addJoin (coords, normals, nTriangles, context) {
-    var signed = Vector.signed_area(coords[0], coords[1], coords[2]) > 0;
-    var nA = normals[0],              // normal to point A (aT)
-        nC = Vector.neg(normals[1]),  // normal to center (-vP)
-        nB = normals[2];              // normal to point B (bT)
-    var uA, uB, uC;
-
-    if (context.texcoords) {
-        context.total_dist += Vector.length(Vector.sub(coords[1], coords[0])) * context.v_scale;
-        uA = [context.max_u, context.total_dist];
-        uC = [context.min_u, context.total_dist];
-        uB = uA;
-    }
-
-    if (signed) {
-        addVertex(coords[1], nA, uA, context);
-        addVertex(coords[1], nC, uC, context);
-    } else {
-        nA = Vector.neg(normals[0]);
-        nC = normals[1];
-        nB = Vector.neg(normals[2]);
-
-        if (context.texcoords) {
-            uA = [context.min_u, context.total_dist];
-            uC = [context.max_u, context.total_dist];
-            uB = uA;
-        }
-        addVertex(coords[1], nC, uC, context);
-        addVertex(coords[1], nA, uA, context);
-    }
-
-    if (nTriangles === 1) {
-        addBevel(coords[1], nA, nC, nB, uA, uC, uB, signed, context);
-    } else if (nTriangles > 1){
-        addFan(coords[1], nA, nC, nB, uA, uC, uB, signed, nTriangles, context);
-    }
-
-    if (signed) {
-        addVertex(coords[1], nB, uB, context);
-        addVertex(coords[1], nC, uC, context);
-    } else {
-        addVertex(coords[1], nC, uC, context);
-        addVertex(coords[1], nB, uB, context);
+        vertex_elements.push(pivotIndex + 1);
+        vertex_elements.push(pivotIndex + 0);
+        vertex_elements.push(pivotIndex + 2);
     }
 }
 
 //  Function to add the vertex need for line caps,
 //  because re-use the buffers needs to be at the end
-function addCap (coord, normal, numCorners, isBeginning, context) {
-
-    if (numCorners < 1) {
-        return;
+function addCap (coord, v, normal, type, isBeginning, context) {
+    if (context.texcoord_index !== undefined) {
+        var uvC = [0.5, v];   // Center point UVs
+        var uvA = [0, v];   // Beginning angle UVs
+        var uvB = [1, v];   // Ending angle UVs
     }
 
-    // UVs
-    var uvA, uvB, uvC;
-    if (context.texcoords) {
-        uvC = [context.min_u+(context.max_u-context.min_u)/2, context.total_dist];   // Center point UVs
-        uvA = [context.min_u, context.total_dist];                                   // Beginning angle UVs
-        uvB = [context.max_u, context.total_dist];                                   // Ending angle UVs
-    }
+    switch (type){
+        case CAP_TYPE.SQUARE:
+            var tangent = (isBeginning)
+                ? [normal[1], -normal[0]]
+                : [-normal[1], normal[0]];
 
-    if ( numCorners === 2 ){
-        // If caps are set as squares
-        addSquare( coord,
-                   Vector.neg(normal), normal,
-                   uvA, uvC, uvB,
-                   isBeginning,
-                   context);
-    } else {
-        // If caps are set as round ( numCorners===3 )
-        addFan( coord,
-                Vector.neg(normal), zero_vec2, normal,
+            //TODO: put correct uv coords
+            addVertex(coord, Vector.add(normal, tangent), uvC, context);
+            addVertex(coord, Vector.add(Vector.neg(normal), tangent), uvA, context);
+
+            // If starting a line, there are no previously batched vertices
+            if (!isBeginning) indexPairs(1, context);
+            break;
+        case CAP_TYPE.ROUND:
+            var nA = isBeginning ? normal : Vector.neg(normal);
+            var nB = isBeginning ? Vector.neg(normal) : normal;
+
+            addFan(coord,
+                nA, zero_vec2, nB,
                 uvA, uvC, uvB,
-                isBeginning, numCorners*2, context);
+                context
+            );
+            break;
+        case CAP_TYPE.BUTT:
+            return;
     }
 }
 
-// Add a vertex based on the index position into the VBO (internal method for polyline builder)
-function addIndex (index, { vertex_data, vertex_template, half_width, vertices, scaling_index, scaling_normalize, scalingVecs, texcoord_index, texcoords, texcoord_normalize }) {
-    // Prevent access to undefined vertices
-    if (index >= vertices.length) {
-        return;
-    }
+var min_width = 5;
+function trianglesPerArc (angle, width) {
+    if (angle < 0) angle = -angle;
 
-    // set vertex position
-    vertex_template[0] = vertices[index][0];
-    vertex_template[1] = vertices[index][1];
+    var numTriangles = (width > 2*min_width)
+        ? Math.log2(width / min_width)
+        : 1;
 
-    // set UVs
-    if (texcoord_index) {
-        vertex_template[texcoord_index + 0] = texcoords[index][0] * texcoord_normalize;
-        vertex_template[texcoord_index + 1] = texcoords[index][1] * texcoord_normalize;
-    }
-
-    // set Scaling vertex (X, Y normal direction + Z half_width as attribute)
-    if (scaling_index) {
-        vertex_template[scaling_index + 0] = scalingVecs[index][0] * scaling_normalize;
-        vertex_template[scaling_index + 1] = scalingVecs[index][1] * scaling_normalize;
-        vertex_template[scaling_index + 2] = half_width;
-    }
-
-    //  Add vertex to VBO
-    vertex_data.addVertex(vertex_template);
+    return Math.ceil(angle / Math.PI * numTriangles);
 }
 
-// Add the index vertex to the VBO and clean the buffers
-function indexPairs (context) {
-    // Add vertices to buffer acording their index
-    for (var i = 0; i < context.num_pairs; i++) {
-        addIndex(2*i+2, context);
-        addIndex(2*i+1, context);
-        addIndex(2*i+0, context);
-
-        addIndex(2*i+2, context);
-        addIndex(2*i+3, context);
-        addIndex(2*i+1, context);
-    }
-
-    context.num_pairs = 0;
-
-    // Clean the buffer
-    context.vertices = [];
-    if (context.scalingVecs) {
-        context.scalingVecs = [];
-    }
-    if (context.texcoords) {
-        context.texcoords = [];
-    }
+function mod (value, modulus) {
+    return ((value % modulus) + modulus) % modulus;
 }
