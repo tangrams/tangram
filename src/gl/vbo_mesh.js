@@ -111,7 +111,7 @@ export default class VBOMesh  {
 
         if (this.elementBuffer) {
             this.gl.deleteBuffer(this.elementBuffer);
-            this.elementBuffer = null
+            this.elementBuffer = null;
         }
 
         delete this.vertex_data;

@@ -14,7 +14,6 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
-import VertexElements from './gl/vertex_elements';
 
 import log from 'loglevel';
 

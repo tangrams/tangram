@@ -80,13 +80,15 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         var line = lines[index];
 
         // Skip if line is not valid
-        if (line.length < 2) continue;
+        if (line.length < 2) {
+            continue;
+        }
 
         // Loop backwards through line to a tile boundary if found
-        if (closed_polygon && join_type == JOIN_TYPE.MITER){
+        if (closed_polygon && join_type === JOIN_TYPE.MITER) {
             var boundaryIndex = getTileBoundaryIndex(line);
 
-            if (boundaryIndex !== 0){
+            if (boundaryIndex !== 0) {
                 // create new line that is a cyclic permutation of the original
                 var newLine = line.splice(boundaryIndex);
                 Array.prototype.push.apply(newLine, line.slice(1));
@@ -104,18 +106,21 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         // Skip tile boundary lines and append a new line if needed
         if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
             var nonBoundarySegment = getNextNonBoundarySegment(line, 0, tile_edge_tolerance);
-            if (nonBoundarySegment) lines.push(nonBoundarySegment);
+            if (nonBoundarySegment) {
+                lines.push(nonBoundarySegment);
+            }
             continue;
         }
 
         if (closed_polygon){
-            var normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
+            normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
             startPolygon(coordCurr, normPrev, normNext, join_type, context);
         }
         else {
             // If line begins at edge, don't add a cap
-            if (!isCoordOutsideTile(coordCurr))
+            if (!isCoordOutsideTile(coordCurr)) {
                 addCap(coordCurr, 0, normNext, cap_type, true, context);
+            }
 
             addVertex(coordCurr, normNext, [1, 0], context);
             addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
@@ -129,8 +134,9 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
             coordCurr = line[currIndex];
             coordNext = line[nextIndex];
 
-            if (coordNext[0] == coordCurr[0] && coordNext[1] == coordCurr[1])
+            if (coordNext[0] === coordCurr[0] && coordNext[1] === coordCurr[1]) {
                 continue;
+            }
 
             if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                 addVertex(coordCurr, normNext, [1, v], context);
@@ -138,7 +144,9 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
                 indexPairs(1, context);
 
                 var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
-                if (nonBoundaryLines) lines.push(nonBoundaryLines);
+                if (nonBoundaryLines) {
+                    lines.push(nonBoundaryLines);
+                }
 
                 break;
             }
@@ -146,7 +154,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
             normPrev = normNext;
             normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
-            if (join_type == JOIN_TYPE.MITER){
+            if (join_type === JOIN_TYPE.MITER) {
                 addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
             }
             else {
@@ -170,14 +178,17 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
             indexPairs(1, context);
 
             // If line ends at edge, don't add a cap
-            if (!isCoordOutsideTile(coordCurr))
+            if (!isCoordOutsideTile(coordCurr)) {
                 addCap(coordCurr, v, normPrev, cap_type, false, context);
+            }
         }
     }
 }
 
 function getTileBoundaryIndex(line){
-    if (isCoordOutsideTile(line[0])) return 0;
+    if (isCoordOutsideTile(line[0])) {
+        return 0;
+    }
 
     for (var backIndex = 0; backIndex < line.length; backIndex++) {
         var coordCurr = line[line.length - 1 - backIndex];
@@ -196,15 +207,12 @@ function getNextNonBoundarySegment (line, startIndex, tolerance) {
     }
 
     // If there is a line segment remaining that is within the tile, push it to the lines array
-    if (line.length - endIndex >= 2) {
-        return line.slice(endIndex);
-    }
-    else return false;
+    return (line.length - endIndex >= 2) ? line.slice(endIndex) : false;
 }
 
 function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     // If polygon starts on a tile boundary, don't add a join
-    if (isCoordOutsideTile(coordCurr)){
+    if (isCoordOutsideTile(coordCurr)) {
         addVertex(coordCurr, normNext, [1, 0], context);
         addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
     }
@@ -212,7 +220,7 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
         // If polygon starts within a tile, add a join
         var v = 0;
         if (join_type === JOIN_TYPE.MITER) {
-            addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context)
+            addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context);
         }
         else {
             addJoin(join_type, v, coordCurr, normPrev, normNext, true, context);
@@ -220,9 +228,9 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     }
 }
 
-function endPolygon(coordCurr, normPrev, normNext, join_type, v, context){
+function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     // If polygon ends on a tile boundary, don't add a join
-    if (isCoordOutsideTile(coordCurr)){
+    if (isCoordOutsideTile(coordCurr)) {
         addVertex(coordCurr, normNext, [1, 0], context);
         addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
     }
@@ -247,7 +255,7 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context){
     }
 }
 
-function createMiterVec(normPrev, normNext){
+function createMiterVec(normPrev, normNext) {
     // TODO: decide
     // var miterVec = Vector.add(normPrev, normNext);
     //
@@ -271,11 +279,13 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
     else {
         addVertex(coordCurr, miterVec, [1, v], context);
         addVertex(coordCurr, Vector.neg(miterVec), [0, v], context);
-        if (!isBeginning) indexPairs(1, context);
+        if (!isBeginning) {
+            indexPairs(1, context);
+        }
     }
 }
 
-function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context){
+function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
 
     if (!isBeginning) {
@@ -284,14 +294,14 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         indexPairs(1, context);
     }
 
-    if (join_type == JOIN_TYPE.BEVEL) {
+    if (join_type === JOIN_TYPE.BEVEL) {
         addBevel(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
             [1, v], [0, v], [1, v],
             context
         );
     }
-    else if (join_type == JOIN_TYPE.ROUND) {
+    else if (join_type === JOIN_TYPE.ROUND) {
         addFan(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
             [1, v], [0, v], [1, v],
@@ -318,7 +328,7 @@ function indexPairs(num_pairs, context){
     }
 }
 
-function addVertex(coordinate, normal, uv, context){
+function addVertex(coordinate, normal, uv, context) {
     var vertex_template = context.vertex_template;
     var vertex_data = context.vertex_data;
 
@@ -355,7 +365,9 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, context) {
     var angle = -2*Math.PI + mod(Math.atan2(cross, dot), 2*Math.PI);
 
     var numTriangles = trianglesPerArc(angle, context.half_width);
-    if (numTriangles < 1) return;
+    if (numTriangles < 1) {
+        return;
+    }
 
     if (context.texcoord_index !== undefined) {
         var uvCurr = Vector.set(uA);
@@ -376,8 +388,9 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, context) {
 
         addVertex(coord, blade, uvCurr, context);
 
-        if (context.texcoord_index !== undefined)
+        if (context.texcoord_index !== undefined) {
             uvCurr = Vector.add(uvCurr, uv_delta);
+        }
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
@@ -423,16 +436,16 @@ function addCap (coord, v, normal, type, isBeginning, context) {
 
     switch (type){
         case CAP_TYPE.SQUARE:
-            var tangent = (isBeginning)
-                ? [normal[1], -normal[0]]
-                : [-normal[1], normal[0]];
+            var tangent = (isBeginning) ? [normal[1], -normal[0]] : [-normal[1], normal[0]];
 
             //TODO: put correct uv coords
             addVertex(coord, Vector.add(normal, tangent), uvC, context);
             addVertex(coord, Vector.add(Vector.neg(normal), tangent), uvA, context);
 
             // If starting a line, there are no previously batched vertices
-            if (!isBeginning) indexPairs(1, context);
+            if (!isBeginning) {
+                indexPairs(1, context);
+            }
             break;
         case CAP_TYPE.ROUND:
             var nA = isBeginning ? normal : Vector.neg(normal);
@@ -451,12 +464,11 @@ function addCap (coord, v, normal, type, isBeginning, context) {
 
 var min_width = 5;
 function trianglesPerArc (angle, width) {
-    if (angle < 0) angle = -angle;
+    if (angle < 0) {
+        angle = -angle;
+    }
 
-    var numTriangles = (width > 2*min_width)
-        ? Math.log2(width / min_width)
-        : 1;
-
+    var numTriangles = (width > 2*min_width) ? Math.log2(width / min_width) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
 }
 

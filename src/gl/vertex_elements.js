@@ -9,7 +9,9 @@ export default class VertexElements {
         this.hasOverflown = false;
     }
     push (value) {
-        if (value > MAX_VALUE) this.hasOverflown = true;
+        if (value > MAX_VALUE) {
+            this.hasOverflown = true;
+        }
         this.array.push(value);
     }
     end () {
@@ -19,18 +21,18 @@ export default class VertexElements {
             this.hasOverflown = false;
             return buffer;
         }
-        else return false;
+        else {
+            return false;
+        }
     }
 }
 
-VertexElements.setUint32Flag = function(flag){
+VertexElements.setUint32Flag = function(flag) {
     Uint32_flag = flag;
-}
+};
 
-function createBuffer(array, overflown){
-    var typedArray = (overflown && Uint32_flag)
-        ? Uint32Array
-        : Uint16Array;
+function createBuffer(array, overflown) {
+    var typedArray = (overflown && Uint32_flag) ? Uint32Array : Uint16Array;
     return new typedArray(array);
 }
 

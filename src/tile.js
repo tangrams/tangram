@@ -368,8 +368,9 @@ export default class Tile {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
                     this.debug.buffer_size += mesh_data[s].vertex_data.byteLength;
-                    if (mesh_data[s].vertex_elements)
+                    if (mesh_data[s].vertex_elements) {
                         this.debug.buffer_size += mesh_data[s].vertex_elements.byteLength;
+                    }
                     if (!styles[s]) {
                         log.warn(`Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
                         break;
