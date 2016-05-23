@@ -50,24 +50,20 @@ void main (void) {
         vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));
         vec4 _line_color = texture2D(u_texture, _line_st);
 
-        #ifdef TANGRAM_ALPHA_TEST
-            if (_line_color.a < TANGRAM_ALPHA_TEST) {
-                #ifdef TANGRAM_LINE_BACKGROUND_COLOR
-                    color.rgb = _line_color.rgb;
+        if (_line_color.a < TANGRAM_ALPHA_TEST) {
+            #ifdef TANGRAM_LINE_BACKGROUND_COLOR
+                color.rgb = _line_color.rgb;
+            #else
+                #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
+                    discard; // use discard when alpha blending is unavailable
                 #else
-                    #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
-                        discard;
-                    #else
-                        color.a = 0.;
-                    #endif
+                    color.a = 0.; // use alpha channel when blending is available
                 #endif
-            }
-            else {
-                color *= _line_color;
-            }
-        #else
+            #endif
+        }
+        else {
             color *= _line_color;
-        #endif
+        }
     #endif
 
     // First, get normal from raster tile (if applicable)
