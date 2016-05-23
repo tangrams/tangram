@@ -53,12 +53,10 @@ void main (void) {
         if (_line_color.a < TANGRAM_ALPHA_TEST) {
             #ifdef TANGRAM_LINE_BACKGROUND_COLOR
                 color.rgb = _line_color.rgb;
+            #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
+                discard; // use discard when alpha blending is unavailable
             #else
-                #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
-                    discard; // use discard when alpha blending is unavailable
-                #else
-                    color.a = 0.; // use alpha channel when blending is available
-                #endif
+                color.a = 0.; // use alpha channel when blending is available
             #endif
         }
         else {
