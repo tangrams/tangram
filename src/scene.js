@@ -14,6 +14,7 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
+import VertexElements from './gl/vertex_elements';
 
 import log from 'loglevel';
 
@@ -249,6 +250,10 @@ export default class Scene {
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
         RenderState.initialize(this.gl);
+
+        // Let VertexElements know if 32 bit indices for element arrays are available
+        var Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
+        WorkerBroker.postMessage(this.workers, 'VertexElements.setUint32Flag', Uint32_flag);
     }
 
     // Get the URL to load the web worker from
