@@ -30,6 +30,7 @@ Enjoy!
     var
         map = L.map('map', {
             maxZoom: 20,
+            zoomSnap: 0,
             trackResize: true,
             keyboard: false
         }),
