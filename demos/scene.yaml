@@ -333,6 +333,7 @@ layers:
             filter: { kind: ferry }
             draw:
                 lines:
+                    style: dashed
                     color: '#8db3ce'
                     width: [[14, 1px], [18, 2px]]
                     outline:
