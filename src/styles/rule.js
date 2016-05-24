@@ -107,7 +107,7 @@ class Rule {
 
         try {
             this.buildZooms();
-            if (this.filter != null && Object.keys(this.filter).length > 0) {
+            if (this.filter != null && (typeof this.filter === 'function' || Object.keys(this.filter).length > 0)) {
                 this.filter = match(this.filter);
             }
             else {
