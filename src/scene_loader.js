@@ -66,6 +66,10 @@ export default SceneLoader = {
 
         for (let source of  Utils.values(config.sources)) {
             source.url = Utils.addBaseURL(source.url, path);
+
+            if (Array.isArray(source.scripts)) {
+                source.scripts = source.scripts.map(url => Utils.addBaseURL(url, path));
+            }
         }
 
         return config;
