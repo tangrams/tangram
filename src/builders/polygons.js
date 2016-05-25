@@ -15,7 +15,6 @@ export function buildPolygons (
     { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
     var vertex_elements = vertex_data.vertex_elements;
-    var element_offset = vertex_data.vertex_count;
 
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
@@ -24,6 +23,8 @@ export function buildPolygons (
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
+        var element_offset = vertex_data.vertex_count;
+
         var polygon = polygons[p];
 
         // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
