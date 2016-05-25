@@ -21,17 +21,20 @@ export default class VBOMesh  {
         this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
-        this.geometry_count = this.vertex_count / this.vertices_per_geometry;
         this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
 
         this.toggleElementArray = false;
         if (this.vertex_elements){
             this.toggleElementArray = true;
             this.element_count = this.vertex_elements.length;
+            this.geometry_count = this.element_count / this.vertices_per_geometry;
             this.element_type = (this.vertex_elements.constructor === Uint16Array) ? this.gl.UNSIGNED_SHORT: this.gl.UNSIGNED_INT;
             this.elementBuffer = this.gl.createBuffer();
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
             this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.vertex_elements, this.data_usage);
+        }
+        else {
+            this.geometry_count = this.vertex_count / this.vertices_per_geometry;
         }
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
