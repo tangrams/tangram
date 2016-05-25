@@ -104,7 +104,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         coordNext = line[1];
 
         // If first pair of points is redundant, slice and push to the lines array
-        if (coordCurr[0] == coordNext[0] && coordCurr[1] == coordNext[1]) {
+        if (Vector.isEqual(coordCurr, coordNext)) {
             if (line.length > 2) {
                 lines.push(line.slice(1));
             }

@@ -39,7 +39,7 @@ export function buildPolygons (
         for (var ring_index = 0; ring_index < polygon.length; ring_index++){
             // Add vertex data
             var polygon_ring = polygon[ring_index];
-            for (var i = 0; i < polygon_ring.length; i++) {
+            for (let i = 0; i < polygon_ring.length; i++) {
                 var vertex = polygon_ring[i];
                 vertex_template[0] = vertex[0];
                 vertex_template[1] = vertex[1];
@@ -56,7 +56,7 @@ export function buildPolygons (
 
         // Add element indices
         var indices = triangulatePolygon(earcut.flatten(polygon));
-        for (var i = 0; i < indices.length; i++){
+        for (let i = 0; i < indices.length; i++){
             vertex_elements.push(element_offset + indices[i]);
         }
     }
