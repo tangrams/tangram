@@ -14,6 +14,8 @@ export function buildPolygons (
     vertex_data, vertex_template,
     { texcoord_index, texcoord_scale, texcoord_normalize }) {
 
+    var vertex_elements = vertex_data.vertex_elements;
+
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || 1;
         var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
@@ -21,6 +23,8 @@ export function buildPolygons (
 
     var num_polygons = polygons.length;
     for (var p=0; p < num_polygons; p++) {
+        var element_offset = vertex_data.vertex_count;
+
         var polygon = polygons[p];
 
         // Find polygon extents to calculate UVs, fit them to the axis-aligned bounding box
@@ -32,23 +36,28 @@ export function buildPolygons (
             var scale_v = (max_v - min_v) / span_y;
         }
 
-        // Tessellate
-        var vertices = triangulatePolygon(polygon);
+        for (var ring_index = 0; ring_index < polygon.length; ring_index++){
+            // Add vertex data
+            var polygon_ring = polygon[ring_index];
+            for (var i = 0; i < polygon_ring.length; i++) {
+                var vertex = polygon_ring[i];
+                vertex_template[0] = vertex[0];
+                vertex_template[1] = vertex[1];
 
-        // Add vertex data
-        var num_vertices = vertices.length;
-        for (var v=0; v < num_vertices; v++) {
-            var vertex = vertices[v];
-            vertex_template[0] = vertex[0];
-            vertex_template[1] = vertex[1];
+                // Add UVs
+                if (texcoord_index) {
+                    vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
+                    vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
+                }
 
-            // Add UVs
-            if (texcoord_index) {
-                vertex_template[texcoord_index + 0] = ((vertex[0] - min_x) * scale_u + min_u) * texcoord_normalize;
-                vertex_template[texcoord_index + 1] = ((vertex[1] - min_y) * scale_v + min_v) * texcoord_normalize;
+                vertex_data.addVertex(vertex_template);
             }
+        }
 
-            vertex_data.addVertex(vertex_template);
+        // Add element indices
+        var indices = triangulatePolygon(earcut.flatten(polygon));
+        for (var i = 0; i < indices.length; i++){
+            vertex_elements.push(element_offset + indices[i]);
         }
     }
 }
@@ -75,6 +84,9 @@ export function buildExtrudedPolygons (
     vertex_template[2] = max_z;
     buildPolygons(polygons, vertex_data, vertex_template, { texcoord_index, texcoord_scale, texcoord_normalize });
 
+    var vertex_elements = vertex_data.vertex_elements;
+    var element_offset = vertex_data.vertex_count;
+
     // Walls
     // Fit UVs to wall quad
     if (texcoord_index) {
@@ -84,10 +96,7 @@ export function buildExtrudedPolygons (
             [min_u, max_v],
             [min_u, min_v],
             [max_u, min_v],
-
-            [max_u, min_v],
-            [max_u, max_v],
-            [min_u, max_v]
+            [max_u, max_v]
         ];
     }
 
@@ -116,14 +125,10 @@ export function buildExtrudedPolygons (
 
                 // Two triangles for the quad formed by each vertex pair, going from bottom to top height
                 var wall_vertices = [
-                    // Triangle
                     [contour[w1][0], contour[w1][1], max_z],
                     [contour[w1][0], contour[w1][1], min_z],
                     [contour[w0][0], contour[w0][1], min_z],
-                    // Triangle
-                    [contour[w0][0], contour[w0][1], min_z],
-                    [contour[w0][0], contour[w0][1], max_z],
-                    [contour[w1][0], contour[w1][1], max_z]
+                    [contour[w0][0], contour[w0][1], max_z]
                 ];
 
                 // Calc the normal of the wall from up vector and one segment of the wall triangles
@@ -147,6 +152,15 @@ export function buildExtrudedPolygons (
 
                     vertex_data.addVertex(vertex_template);
                 }
+
+                vertex_elements.push(element_offset + 0);
+                vertex_elements.push(element_offset + 1);
+                vertex_elements.push(element_offset + 2);
+                vertex_elements.push(element_offset + 2);
+                vertex_elements.push(element_offset + 3);
+                vertex_elements.push(element_offset + 0);
+
+                element_offset += 4;
             }
         }
     }
@@ -154,6 +168,6 @@ export function buildExtrudedPolygons (
 
 // Triangulation using earcut
 // https://github.com/mapbox/earcut
-export function triangulatePolygon (contours) {
-    return earcut(contours);
+export function triangulatePolygon (data) {
+    return earcut(data.vertices, data.holes, data.dimensions);
 }

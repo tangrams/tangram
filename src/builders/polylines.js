@@ -74,7 +74,8 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         miter_len_sq
     };
 
-    var coordCurr, coordNext, normPrev, normNext, v;
+    var coordCurr, coordNext, normPrev, normNext;
+    var v = 0;
 
     for (var index = 0; index < lines.length; index++) {
         var line = lines[index];
@@ -101,6 +102,15 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         // FIRST POINT
         coordCurr = line[0];
         coordNext = line[1];
+
+        // If first pair of points is redundant, slice and push to the lines array
+        if (coordCurr[0] == coordNext[0] && coordCurr[1] == coordNext[1]) {
+            if (line.length > 2) {
+                lines.push(line.slice(1));
+            }
+            continue;
+        }
+
         normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
         // Skip tile boundary lines and append a new line if needed
@@ -113,31 +123,35 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         }
 
         if (closed_polygon){
+            // Begin the polygon with a join (connecting the first and last segments)
             normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
             startPolygon(coordCurr, normPrev, normNext, join_type, context);
         }
         else {
             // If line begins at edge, don't add a cap
             if (!isCoordOutsideTile(coordCurr)) {
-                addCap(coordCurr, 0, normNext, cap_type, true, context);
+                addCap(coordCurr, v, normNext, cap_type, true, context);
             }
 
-            addVertex(coordCurr, normNext, [1, 0], context);
-            addVertex(coordCurr, Vector.neg(normNext), [0, 0], context);
+            // Add first pair of points for the line strip
+            addVertex(coordCurr, normNext, [1, v], context);
+            addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
         }
 
         // INTERMEDIARY POINTS
-        v = v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
+        v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
         for (var i = 1; i < line.length - 1; i++) {
             var currIndex = i;
             var nextIndex = i + 1;
             coordCurr = line[currIndex];
             coordNext = line[nextIndex];
 
-            if (coordNext[0] === coordCurr[0] && coordNext[1] === coordCurr[1]) {
+            // Skip redundant vertices
+            if (Vector.isEqual(coordCurr, coordNext)) {
                 continue;
             }
 
+            // Remove tile boundaries
             if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
                 addVertex(coordCurr, normNext, [1, v], context);
                 addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
@@ -154,6 +168,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
             normPrev = normNext;
             normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
+            // Add join
             if (join_type === JOIN_TYPE.MITER) {
                 addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
             }
@@ -169,10 +184,12 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         normPrev = normNext;
 
         if (closed_polygon) {
+            // Close the polygon with a miter joint or butt cap if on a tile boundary
             normNext = Vector.normalize(Vector.perp(coordCurr, line[1]));
             endPolygon(coordCurr, normPrev, normNext, join_type, v, context);
         }
         else {
+            // Finish the line strip
             addVertex(coordCurr, normPrev, [1, v], context);
             addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
             indexPairs(1, context);
@@ -256,14 +273,6 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
 }
 
 function createMiterVec(normPrev, normNext) {
-    // TODO: decide
-    // var miterVec = Vector.add(normPrev, normNext);
-    //
-    // var lengthSq = Vector.lengthSq(miterVec);
-    // return (lengthSq < 1e-2)
-    //     ? Vector.perp(normNext, normPrev)
-    //     : Vector.mult(miterVec, 2 / lengthSq);
-
     var miterVec = Vector.normalize(Vector.add(normPrev, normNext));
     var scale = 2 / (1 + Math.abs(Vector.dot(normPrev, miterVec)));
     return Vector.mult(miterVec, scale * scale);

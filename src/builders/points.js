@@ -13,11 +13,11 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
         [-w2, -h2],
         [w2, -h2],
         [w2, h2],
-
-        [-w2, -h2],
-        [w2, h2],
         [-w2, h2]
     ];
+
+    let vertex_elements = vertex_data.vertex_elements;
+    let element_offset = vertex_data.vertex_count;
 
     let texcoords;
     if (texcoord_index) {
@@ -28,9 +28,6 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
             [min_u, min_v],
             [max_u, min_v],
             [max_u, max_v],
-
-            [min_u, min_v],
-            [max_u, max_v],
             [min_u, max_v]
         ];
     }
@@ -39,7 +36,7 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
     for (let p=0; p < num_points; p++) {
         let point = points[p];
 
-        for (let pos=0; pos < 6; pos++) {
+        for (let pos=0; pos < 4; pos++) {
             // Add texcoords
             if (texcoord_index) {
                 vertex_template[texcoord_index + 0] = texcoords[pos][0] * texcoord_normalize;
@@ -59,5 +56,14 @@ export function buildQuadsForPoints (points, vertex_data, vertex_template,
 
             vertex_data.addVertex(vertex_template);
         }
+
+        vertex_elements.push(element_offset + 0);
+        vertex_elements.push(element_offset + 1);
+        vertex_elements.push(element_offset + 2);
+        vertex_elements.push(element_offset + 2);
+        vertex_elements.push(element_offset + 3);
+        vertex_elements.push(element_offset + 0);
+
+        element_offset += 4;
     }
 }
