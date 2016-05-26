@@ -107,6 +107,7 @@ class Rule {
 
         try {
             this.buildZooms();
+            this.buildPropMatches();
             if (this.filter != null && (typeof this.filter === 'function' || Object.keys(this.filter).length > 0)) {
                 this.filter = match(this.filter);
             }
@@ -149,6 +150,32 @@ class Rule {
         }
     }
 
+    buildPropMatches() {
+        if (!this.filter) {
+            return;
+        }
+
+        Object.keys(this.filter).forEach(key => {
+            if (blacklist.indexOf(key) === -1 && key[0] !== '$') {
+                let val = this.filter[key];
+                let type = typeof val;
+                let array = Array.isArray(val);
+                if (type !== 'boolean') {
+                    this.prop_matches = this.prop_matches || [];
+                    this.prop_matches.push([key, array ? val : [val]]);
+                    delete this.filter[key];
+                    prop_rules++;
+                }
+                // else if (type !== 'boolean') {
+                //     this.prop_matches = this.prop_matches || [];
+                //     this.prop_matches.push([key, [val]]);
+                //     delete this.filter[key];
+                //     prop_rules++;
+                // }
+            }
+        });
+    }
+
     toJSON() {
         return {
             name: this.name,
@@ -157,6 +184,9 @@ class Rule {
     }
 
 }
+
+const blacklist = ['any', 'all', 'not', 'none'];
+let prop_rules = 0;
 
 Rule.id = 0;
 
@@ -343,6 +373,8 @@ export function parseRules(rules) {
         }
     }
 
+    // console.log(`*** ${prop_rules} have prop filters ***`);
+
     return ruleTrees;
 }
 
@@ -353,6 +385,21 @@ function doesMatch(rule, context) {
         return false;
     }
 
+    if (rule.prop_matches) {
+        for (let r=0; r < rule.prop_matches.length; r++) {
+            let match = rule.prop_matches[r];
+            let val = context.feature.properties[match[0]];
+            if (!val) {
+                return false;
+            }
+
+            if (match[1].indexOf(val) === -1) {
+                return false;
+            }
+        }
+    }
+
+    // return ((typeof rule.filter === 'function' && rule.filter(context)) || (rule.filter == null));
     return rule.filter == null || rule.filter(context);
 }
 
