@@ -100,15 +100,9 @@ function buildPolyline(line, context, extra_lines){
         return;
     }
 
-    var v = 0;
-    var join_type = context.join_type;
-    var cap_type = context.cap_type;
-    var closed_polygon = context.closed_polygon;
-    var remove_tile_edges = context.remove_tile_edges;
-    var tile_edge_tolerance = context.tile_edge_tolerance
-    var v_scale = context.v_scale;
-    var miter_len_sq = context.miter_len_sq;
     var coordCurr, coordNext, normPrev, normNext;
+    var {join_type, cap_type, closed_polygon, remove_tile_edges, tile_edge_tolerance, v_scale, miter_len_sq} = context;
+    var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found
     if (closed_polygon && join_type === JOIN_TYPE.MITER) {
@@ -116,14 +110,8 @@ function buildPolyline(line, context, extra_lines){
 
         if (boundaryIndex !== 0) {
             // create new line that is a cyclic permutation of the original
-            var newLine = [];
-            for (let i = 0; i < line.length; i++){
-                var index = (i + boundaryIndex) % line.length;
-                if (index === 0) continue;
-                newLine.push(line[index]);
-            }
-            newLine.push(newLine[0]);
-            extra_lines.push(newLine);
+            var permutedLine = permuteLine(line, boundaryIndex);
+            extra_lines.push(permutedLine);
             return;
         }
     }
@@ -509,4 +497,16 @@ function trianglesPerArc (angle, width) {
 
 function mod (value, modulus) {
     return ((value % modulus) + modulus) % modulus;
+}
+
+// Cyclically permute closed line starting at an index
+function permuteLine(line, index){
+    var newLine = [];
+    for (let i = 0; i < line.length; i++){
+        var index = (i + index) % line.length;
+        if (index === 0) continue;
+        newLine.push(line[index]);
+    }
+    newLine.push(newLine[0]);
+    return newLine;
 }
