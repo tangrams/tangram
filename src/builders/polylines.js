@@ -8,15 +8,15 @@ const zero_vec2 = [0, 0];
 
 // Build tessellated triangles for a polyline
 const CAP_TYPE = {
-    BUTT: 0,
-    SQUARE: 1,
-    ROUND: 2
+    butt: 0,
+    square: 1,
+    round: 2
 };
 
 const JOIN_TYPE = {
-    MITER: 0,
-    BEVEL: 1,
-    ROUND: 2
+    miter: 0,
+    bevel: 1,
+    round: 2
 };
 
 const DEFAULT = {
@@ -44,11 +44,11 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         miter_limit
     }) {
 
-    var cap_type = cap ? CAP_TYPE[cap.toUpperCase()] : CAP_TYPE.BUTT;
-    var join_type = join ? JOIN_TYPE[join.toUpperCase()] : JOIN_TYPE.MITER;
+    var cap_type = cap ? CAP_TYPE[cap] : CAP_TYPE.butt;
+    var join_type = join ? JOIN_TYPE[join] : JOIN_TYPE.miter;
 
     // Configure miter limit
-    if (join_type === JOIN_TYPE.MITER) {
+    if (join_type === JOIN_TYPE.miter) {
         miter_limit = miter_limit || DEFAULT.MITER_LIMIT; // default miter limit
         var miter_len_sq = miter_limit * miter_limit;
     }
@@ -106,7 +106,7 @@ function buildPolyline(line, context, extra_lines){
     var v = 0; // Texture v-coordinate
 
     // Loop backwards through line to a tile boundary if found
-    if (closed_polygon && join_type === JOIN_TYPE.MITER) {
+    if (closed_polygon && join_type === JOIN_TYPE.miter) {
         var boundaryIndex = getTileBoundaryIndex(line);
 
         if (boundaryIndex !== 0) {
@@ -185,7 +185,7 @@ function buildPolyline(line, context, extra_lines){
         normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
 
         // Add join
-        if (join_type === JOIN_TYPE.MITER) {
+        if (join_type === JOIN_TYPE.miter) {
             addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
         }
         else {
@@ -253,7 +253,7 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     else {
         // If polygon starts within a tile, add a join
         var v = 0;
-        if (join_type === JOIN_TYPE.MITER) {
+        if (join_type === JOIN_TYPE.miter) {
             addMiter(v, coordCurr, normPrev, normNext, context.miter_len_sq, true, context);
         }
         else {
@@ -273,11 +273,11 @@ function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
         // If polygon ends within a tile, add Miter or no joint (join added on startPolygon)
         var miterVec = createMiterVec(normPrev, normNext);
 
-        if (join_type === JOIN_TYPE.MITER && Vector.lengthSq(miterVec) > context.miter_len_sq) {
-            join_type = JOIN_TYPE.BEVEL; // switch to bevel
+        if (join_type === JOIN_TYPE.miter && Vector.lengthSq(miterVec) > context.miter_len_sq) {
+            join_type = JOIN_TYPE.bevel; // switch to bevel
         }
 
-        if (join_type === JOIN_TYPE.MITER) {
+        if (join_type === JOIN_TYPE.miter) {
             addVertex(coordCurr, miterVec, [0, v], context);
             addVertex(coordCurr, Vector.neg(miterVec), [1, v], context);
             indexPairs(1, context);
@@ -302,7 +302,7 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
 
     //  Miter limit: if miter join is too sharp, convert to bevel instead
     if (Vector.lengthSq(miterVec) > miter_len_sq) {
-        addJoin(JOIN_TYPE.MITER, v, coordCurr, normPrev, normNext, isBeginning, context);
+        addJoin(JOIN_TYPE.miter, v, coordCurr, normPrev, normNext, isBeginning, context);
     }
     else {
         addVertex(coordCurr, miterVec, [1, v], context);
@@ -323,14 +323,14 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         indexPairs(1, context);
     }
 
-    if (join_type === JOIN_TYPE.BEVEL) {
+    if (join_type === JOIN_TYPE.bevel) {
         addBevel(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
             [1, v], [0, v], [1, v],
             context
         );
     }
-    else if (join_type === JOIN_TYPE.ROUND) {
+    else if (join_type === JOIN_TYPE.round) {
         addFan(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
             [1, v], [0, v], [1, v],
@@ -465,7 +465,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
     }
 
     switch (type){
-        case CAP_TYPE.SQUARE:
+        case CAP_TYPE.square:
             var tangent = (isBeginning) ? [normal[1], -normal[0]] : [-normal[1], normal[0]];
 
             //TODO: put correct uv coords
@@ -477,7 +477,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 indexPairs(1, context);
             }
             break;
-        case CAP_TYPE.ROUND:
+        case CAP_TYPE.round:
             var nA = isBeginning ? normal : Vector.neg(normal);
             var nB = isBeginning ? Vector.neg(normal) : normal;
 
@@ -487,7 +487,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 context
             );
             break;
-        case CAP_TYPE.BUTT:
+        case CAP_TYPE.butt:
             return;
     }
 }
