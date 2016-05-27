@@ -460,22 +460,34 @@ function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
 function addCap (coord, v, normal, type, isBeginning, context) {
     if (context.texcoord_index !== undefined) {
         var uvC = [0.5, v];   // Center point UVs
-        var uvA = [0, v];   // Beginning angle UVs
-        var uvB = [1, v];   // Ending angle UVs
+        var uvA = isBeginning ? [1, v] : [0, v];   // Beginning angle UVs
+        var uvB = isBeginning ? [0, v] : [1, v];   // Ending angle UVs
     }
 
     switch (type){
         case CAP_TYPE.square:
-            var tangent = (isBeginning) ? [normal[1], -normal[0]] : [-normal[1], normal[0]];
+            var tangent;
+            var neg_normal = Vector.neg(normal);
+            if (isBeginning){
+                tangent = [normal[1], -normal[0]];
 
-            //TODO: put correct uv coords
-            addVertex(coord, Vector.add(normal, tangent), uvC, context);
-            addVertex(coord, Vector.add(Vector.neg(normal), tangent), uvA, context);
+                addVertex(coord, Vector.add(normal, tangent), uvA, context);
+                addVertex(coord, Vector.add(neg_normal, tangent), uvB, context);
 
-            // If starting a line, there are no previously batched vertices
-            if (!isBeginning) {
-                indexPairs(1, context);
+                addVertex(coord, normal, uvA, context);
+                addVertex(coord, neg_normal, uvB, context);
             }
+            else {
+                tangent = [-normal[1], normal[0]];
+
+                addVertex(coord, normal, uvB, context);
+                addVertex(coord, neg_normal, uvA, context);
+
+                addVertex(coord, Vector.add(normal, tangent), uvB, context);
+                addVertex(coord, Vector.add(neg_normal, tangent), uvA, context);
+            }
+
+            indexPairs(1, context);
             break;
         case CAP_TYPE.round:
             var nA = isBeginning ? normal : Vector.neg(normal);
