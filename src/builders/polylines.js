@@ -9,20 +9,21 @@ const zero_vec2 = [0, 0];
 // Build tessellated triangles for a polyline
 const CAP_TYPE = {
     BUTT: 0,
-    SQUARE: 2,
-    ROUND: 3
+    SQUARE: 1,
+    ROUND: 2
 };
 
 const JOIN_TYPE = {
     MITER: 0,
     BEVEL: 1,
-    ROUND: 3
+    ROUND: 2
 };
 
 const DEFAULT = {
     MITER_LIMIT: 3,
     TEXCOORD_NORMALIZE: 1,
-    TEXCOORD_RATIO: 1
+    TEXCOORD_RATIO: 1,
+    MIN_FAN_WIDTH: 5        // Width of line in tile units to place 1 triangle per fan
 };
 
 // Scaling factor to add precision to line texture V coordinate packed as normalized short
@@ -231,6 +232,7 @@ function getTileBoundaryIndex(line){
     return 0;
 }
 
+// Iterate through line from startIndex to find a segment not on a tile boundary, if any.
 function getNextNonBoundarySegment (line, startIndex, tolerance) {
     var endIndex = startIndex;
     while (line[endIndex + 1] && outsideTile(line[endIndex], line[endIndex + 1], tolerance)) {
@@ -241,6 +243,7 @@ function getNextNonBoundarySegment (line, startIndex, tolerance) {
     return (line.length - endIndex >= 2) ? line.slice(endIndex) : false;
 }
 
+// Begin a polygon with a join connecting to the last segment (if valid join-type specified)
 function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     // If polygon starts on a tile boundary, don't add a join
     if (isCoordOutsideTile(coordCurr)) {
@@ -259,6 +262,7 @@ function startPolygon(coordCurr, normPrev, normNext, join_type, context){
     }
 }
 
+// End a polygon appropriately
 function endPolygon(coordCurr, normPrev, normNext, join_type, v, context) {
     // If polygon ends on a tile boundary, don't add a join
     if (isCoordOutsideTile(coordCurr)) {
@@ -292,6 +296,7 @@ function createMiterVec(normPrev, normNext) {
     return Vector.mult(miterVec, scale * scale);
 }
 
+// Add a miter vector or a join if the miter is too sharp
 function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
 
@@ -308,6 +313,7 @@ function addMiter (v, coordCurr, normPrev, normNext, miter_len_sq, isBeginning, 
     }
 }
 
+// Add a bevel or round join
 function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, context) {
     var miterVec = createMiterVec(normPrev, normNext);
 
@@ -336,6 +342,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     addVertex(coordCurr, Vector.neg(normNext), [1, v], context);
 }
 
+// Add indices to vertex_elements
 function indexPairs(num_pairs, context){
     var vertex_elements = context.vertex_data.vertex_elements;
     var num_vertices = context.vertex_data.vertex_count;
@@ -422,9 +429,9 @@ function addFan (coord, nA, nC, nB, uA, uC, uB, context) {
 }
 
 //  addBevel    A ----- B
-//             / \ , . / \
+//             / \     / \
 //           /   /\   /\  \
-//              /  \ /   \ \
+//              /  \ /  \  \
 //                / C \
 function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
     var pivotIndex = context.vertex_data.vertex_count;
@@ -485,27 +492,30 @@ function addCap (coord, v, normal, type, isBeginning, context) {
     }
 }
 
-var min_width = 5;
+// Calculate number of triangles for a fan given an angle and line width
 function trianglesPerArc (angle, width) {
     if (angle < 0) {
         angle = -angle;
     }
 
-    var numTriangles = (width > 2*min_width) ? Math.log2(width / min_width) : 1;
+    var numTriangles = (width > 2 * DEFAULT.MIN_FAN_WIDTH) ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
 }
 
+// Calculate modular arithmetic valid for negative numbers
 function mod (value, modulus) {
     return ((value % modulus) + modulus) % modulus;
 }
 
 // Cyclically permute closed line starting at an index
-function permuteLine(line, index){
+function permuteLine(line, startIndex){
     var newLine = [];
     for (let i = 0; i < line.length; i++){
-        var index = (i + index) % line.length;
-        if (index === 0) continue;
-        newLine.push(line[index]);
+        var index = (i + startIndex) % line.length;
+        // skip the first (repeated) index
+        if (index !== 0) {
+            newLine.push(line[index]);
+        }
     }
     newLine.push(newLine[0]);
     return newLine;
