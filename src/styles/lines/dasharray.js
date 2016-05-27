@@ -13,7 +13,7 @@
 const default_dash_color = [255, 255, 255, 255];
 const default_background_color = [0, 0, 0, 0];
 
-export default function renderDashArray (pattern, options) {
+export default function renderDashArray (pattern, options = {}) {
     const dash_pixel = options.dash_color || default_dash_color;
     const background_color = options.background_color || default_background_color;
     const dashes = pattern;

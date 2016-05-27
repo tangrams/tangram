@@ -77,13 +77,13 @@ Object.assign(Lines, {
         if (this.dash) {
             // Optional background color for dash pattern (defaults transparent)
             if (this.dash_background_color) {
-                this.dash_background_color = StyleParser.parseColor(this.dash_background_color).map(c => c * 255);
-                this.dash_background_color[3] = 0; // alpha value is used to test if pixel is dash or space
-                this.defines.TANGRAM_LINE_BACKGROUND_COLOR = true;
+                this.dash_background_color = StyleParser.parseColor(this.dash_background_color);
+                this.defines.TANGRAM_LINE_BACKGROUND_COLOR =
+                    `vec3(${this.dash_background_color.slice(0, 3).join(', ')})`;
             }
 
             // Render line pattern
-            let dash = renderDashArray(this.dash, { background_color: this.dash_background_color });
+            let dash = renderDashArray(this.dash);
             this.texture = '_' + this.name + '_dasharray';
             Texture.create(this.gl, this.texture, {
                 data: dash.pixels,

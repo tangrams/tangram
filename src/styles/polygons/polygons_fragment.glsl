@@ -52,7 +52,7 @@ void main (void) {
 
         if (_line_color.a < TANGRAM_ALPHA_TEST) {
             #ifdef TANGRAM_LINE_BACKGROUND_COLOR
-                color.rgb = _line_color.rgb;
+                color.rgb = TANGRAM_LINE_BACKGROUND_COLOR;
             #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
                 discard; // use discard when alpha blending is unavailable
             #else
