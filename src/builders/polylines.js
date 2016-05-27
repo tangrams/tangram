@@ -52,152 +52,178 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         var miter_len_sq = miter_limit * miter_limit;
     }
 
-    // Build variables
+    // Texture Variables
+    var min_u, min_v, max_u, max_v, v_scale;
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || DEFAULT.TEXCOORD_NORMALIZE;
         texcoord_ratio = texcoord_ratio || DEFAULT.TEXCOORD_RATIO;
-        var [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
+        [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
+        v_scale = 1 / (width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
     }
-
-    var v_scale = 1 / (width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
 
     // Values that are constant for each line and are passed to helper functions
     var context = {
+        closed_polygon,
+        remove_tile_edges,
+        tile_edge_tolerance,
+        miter_len_sq,
+        join_type,
+        cap_type,
         vertex_data,
         vertex_template,
         half_width: width / 2,
         scaling_index,
         scaling_normalize,
+        v_scale,
         texcoord_index,
         texcoord_normalize,
-        min_u, min_v, max_u, max_v,
-        miter_len_sq
+        min_u, min_v, max_u, max_v
     };
 
-    var coordCurr, coordNext, normPrev, normNext;
+    // Buffer for extra lines to process
+    var extra_lines = [];
+
+    // Process lines
+    for (let index = 0; index < lines.length; index++) {
+        buildPolyline(lines[index], context, extra_lines);
+    }
+
+    // Process extra lines
+    for (let index = 0; index < extra_lines.length; index++) {
+        buildPolyline(extra_lines[index], context, extra_lines);
+    }
+}
+
+function buildPolyline(line, context, extra_lines){
+    // Skip if line is not valid
+    if (line.length < 2) {
+        return;
+    }
+
     var v = 0;
+    var join_type = context.join_type;
+    var cap_type = context.cap_type;
+    var closed_polygon = context.closed_polygon;
+    var remove_tile_edges = context.remove_tile_edges;
+    var tile_edge_tolerance = context.tile_edge_tolerance
+    var v_scale = context.v_scale;
+    var miter_len_sq = context.miter_len_sq;
+    var coordCurr, coordNext, normPrev, normNext;
 
-    for (var index = 0; index < lines.length; index++) {
-        var line = lines[index];
+    // Loop backwards through line to a tile boundary if found
+    if (closed_polygon && join_type === JOIN_TYPE.MITER) {
+        var boundaryIndex = getTileBoundaryIndex(line);
 
-        // Skip if line is not valid
-        if (line.length < 2) {
-            continue;
-        }
-
-        // Loop backwards through line to a tile boundary if found
-        if (closed_polygon && join_type === JOIN_TYPE.MITER) {
-            var boundaryIndex = getTileBoundaryIndex(line);
-
-            if (boundaryIndex !== 0) {
-                // create new line that is a cyclic permutation of the original
-                var newLine = line.splice(boundaryIndex);
-                Array.prototype.push.apply(newLine, line.slice(1));
-                newLine[newLine.length] = newLine[0];
-                lines.push(newLine);
-                continue;
+        if (boundaryIndex !== 0) {
+            // create new line that is a cyclic permutation of the original
+            var newLine = [];
+            for (let i = 0; i < line.length; i++){
+                var index = (i + boundaryIndex) % line.length;
+                if (index === 0) continue;
+                newLine.push(line[index]);
             }
+            newLine.push(newLine[0]);
+            extra_lines.push(newLine);
+            return;
+        }
+    }
+
+    // FIRST POINT
+    coordCurr = line[0];
+    coordNext = line[1];
+
+    // If first pair of points is redundant, slice and push to the lines array
+    if (Vector.isEqual(coordCurr, coordNext)) {
+        if (line.length > 2) {
+            extra_lines.push(line.slice(1));
+        }
+        return;
+    }
+
+    normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+
+    // Skip tile boundary lines and append a new line if needed
+    if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
+        var nonBoundarySegment = getNextNonBoundarySegment(line, 0, tile_edge_tolerance);
+        if (nonBoundarySegment) {
+            extra_lines.push(nonBoundarySegment);
+        }
+        return;
+    }
+
+    if (closed_polygon){
+        // Begin the polygon with a join (connecting the first and last segments)
+        normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
+        startPolygon(coordCurr, normPrev, normNext, join_type, context);
+    }
+    else {
+        // If line begins at edge, don't add a cap
+        if (!isCoordOutsideTile(coordCurr)) {
+            addCap(coordCurr, v, normNext, cap_type, true, context);
         }
 
-        // FIRST POINT
-        coordCurr = line[0];
-        coordNext = line[1];
+        // Add first pair of points for the line strip
+        addVertex(coordCurr, normNext, [1, v], context);
+        addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
+    }
 
-        // If first pair of points is redundant, slice and push to the lines array
+    // INTERMEDIARY POINTS
+    v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
+    for (var i = 1; i < line.length - 1; i++) {
+        var currIndex = i;
+        var nextIndex = i + 1;
+        coordCurr = line[currIndex];
+        coordNext = line[nextIndex];
+
+        // Skip redundant vertices
         if (Vector.isEqual(coordCurr, coordNext)) {
-            if (line.length > 2) {
-                lines.push(line.slice(1));
-            }
             continue;
         }
 
-        normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-
-        // Skip tile boundary lines and append a new line if needed
+        // Remove tile boundaries
         if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-            var nonBoundarySegment = getNextNonBoundarySegment(line, 0, tile_edge_tolerance);
-            if (nonBoundarySegment) {
-                lines.push(nonBoundarySegment);
-            }
-            continue;
-        }
-
-        if (closed_polygon){
-            // Begin the polygon with a join (connecting the first and last segments)
-            normPrev = Vector.normalize(Vector.perp(line[line.length - 2], coordCurr));
-            startPolygon(coordCurr, normPrev, normNext, join_type, context);
-        }
-        else {
-            // If line begins at edge, don't add a cap
-            if (!isCoordOutsideTile(coordCurr)) {
-                addCap(coordCurr, v, normNext, cap_type, true, context);
-            }
-
-            // Add first pair of points for the line strip
             addVertex(coordCurr, normNext, [1, v], context);
             addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
-        }
-
-        // INTERMEDIARY POINTS
-        v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
-        for (var i = 1; i < line.length - 1; i++) {
-            var currIndex = i;
-            var nextIndex = i + 1;
-            coordCurr = line[currIndex];
-            coordNext = line[nextIndex];
-
-            // Skip redundant vertices
-            if (Vector.isEqual(coordCurr, coordNext)) {
-                continue;
-            }
-
-            // Remove tile boundaries
-            if (remove_tile_edges && outsideTile(coordCurr, coordNext, tile_edge_tolerance)) {
-                addVertex(coordCurr, normNext, [1, v], context);
-                addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
-                indexPairs(1, context);
-
-                var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
-                if (nonBoundaryLines) {
-                    lines.push(nonBoundaryLines);
-                }
-
-                break;
-            }
-
-            normPrev = normNext;
-            normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
-
-            // Add join
-            if (join_type === JOIN_TYPE.MITER) {
-                addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
-            }
-            else {
-                addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
-            }
-
-            v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
-        }
-
-        // LAST POINT
-        coordCurr = coordNext;
-        normPrev = normNext;
-
-        if (closed_polygon) {
-            // Close the polygon with a miter joint or butt cap if on a tile boundary
-            normNext = Vector.normalize(Vector.perp(coordCurr, line[1]));
-            endPolygon(coordCurr, normPrev, normNext, join_type, v, context);
-        }
-        else {
-            // Finish the line strip
-            addVertex(coordCurr, normPrev, [1, v], context);
-            addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
             indexPairs(1, context);
 
-            // If line ends at edge, don't add a cap
-            if (!isCoordOutsideTile(coordCurr)) {
-                addCap(coordCurr, v, normPrev, cap_type, false, context);
+            var nonBoundaryLines = getNextNonBoundarySegment(line, currIndex + 1, tile_edge_tolerance);
+            if (nonBoundaryLines) {
+                extra_lines.push(nonBoundaryLines);
             }
+        }
+
+        normPrev = normNext;
+        normNext = Vector.normalize(Vector.perp(coordCurr, coordNext));
+
+        // Add join
+        if (join_type === JOIN_TYPE.MITER) {
+            addMiter(v, coordCurr, normPrev, normNext, miter_len_sq, false, context);
+        }
+        else {
+            addJoin(join_type, v, coordCurr, normPrev, normNext, false, context);
+        }
+
+        v += v_scale * Vector.length(Vector.sub(coordNext, coordCurr));
+    }
+
+    // LAST POINT
+    coordCurr = coordNext;
+    normPrev = normNext;
+
+    if (closed_polygon) {
+        // Close the polygon with a miter joint or butt cap if on a tile boundary
+        normNext = Vector.normalize(Vector.perp(coordCurr, line[1]));
+        endPolygon(coordCurr, normPrev, normNext, join_type, v, context);
+    }
+    else {
+        // Finish the line strip
+        addVertex(coordCurr, normPrev, [1, v], context);
+        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
+        indexPairs(1, context);
+
+        // If line ends at edge, don't add a cap
+        if (!isCoordOutsideTile(coordCurr)) {
+            addCap(coordCurr, v, normPrev, cap_type, false, context);
         }
     }
 }
