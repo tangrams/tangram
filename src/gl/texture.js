@@ -170,6 +170,11 @@ export default class Texture {
         this.source = data;
         this.source_type = 'data';
 
+        // Convert regular array to typed array
+        if (Array.isArray(this.source)) {
+            this.source = new Uint8Array(this.source);
+        }
+
         this.update(options);
         this.setFiltering(options);
 

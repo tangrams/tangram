@@ -32,8 +32,9 @@ export function buildPolylines (
         tile_edge_tolerance,
         texcoord_index,
         texcoord_scale,
-        texcoord_normalize,
+        texcoord_width,
         texcoord_ratio,
+        texcoord_normalize,
         scaling_index,
         scaling_normalize,
         join, cap,
@@ -69,7 +70,7 @@ export function buildPolylines (
         texcoords: texcoord_index && [],
         texcoord_normalize,
         min_u, min_v, max_u, max_v,
-        v_scale: 1 / ((width * texcoord_ratio) * v_scale_adjust), // scales line texture as a ratio of the line's width
+        v_scale: 1 / ((texcoord_width * texcoord_ratio) * v_scale_adjust), // scales line texture as a ratio of the line's width
         total_dist: 0,
         num_pairs: 0
     };

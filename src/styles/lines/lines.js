@@ -4,8 +4,10 @@ import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import {StyleManager} from '../style_manager';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
+import Texture from '../../gl/texture';
 import VertexLayout from '../../gl/vertex_layout';
 import {buildPolylines} from '../../builders/polylines';
+import renderDashArray from './dasharray';
 import Geo from '../../geo';
 import {shaderSrc_polygonsVertex, shaderSrc_polygonsFragment} from '../polygons/polygons';
 
@@ -37,6 +39,12 @@ Object.assign(Lines, {
             attribs.push({ name: 'a_selection_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true });
         }
 
+        // Optional line texture or dash array
+        // (latter will be rendered at compile-time, when GL context available)
+        if (this.texture || this.dash) {
+            this.texcoords = true;
+        }
+
         // Optional texture UVs
         if (this.texcoords) {
             this.defines.TANGRAM_TEXTURE_COORDS = true;
@@ -55,6 +63,51 @@ Object.assign(Lines, {
         // inline properties (outline call is made *within* the inline call)
         this.outline_feature_style = {};
         this.inline_feature_style = this.feature_style; // save reference to main computed style object
+    },
+
+    // Override
+    compile () {
+        this.parseLineTexture();
+        return Style.compile.apply(this, arguments);
+    },
+
+    // Optionally apply a dash array pattern to this line
+    parseLineTexture () {
+        // Specify a line pattern
+        if (this.dash) {
+            // Optional background color for dash pattern (defaults transparent)
+            if (this.dash_background_color) {
+                this.dash_background_color = StyleParser.parseColor(this.dash_background_color);
+                this.defines.TANGRAM_LINE_BACKGROUND_COLOR =
+                    `vec3(${this.dash_background_color.slice(0, 3).join(', ')})`;
+            }
+
+            // Render line pattern
+            let dash = renderDashArray(this.dash);
+            this.texture = '_' + this.name + '_dasharray';
+            Texture.create(this.gl, this.texture, {
+                data: dash.pixels,
+                height: dash.length,
+                width: 1,
+                filtering: 'nearest'
+            });
+        }
+
+        // Specify a line texture (either directly, or rendered dash pattern from above)
+        if (this.texture) {
+            this.defines.TANGRAM_LINE_TEXTURE = true;
+            this.defines.TANGRAM_ALPHA_TEST = 0.5; // pixels below this threshold are transparent
+            this.shaders.uniforms = this.shaders.uniforms || {};
+            this.shaders.uniforms.u_texture = this.texture;
+            this.shaders.uniforms.u_texture_ratio = 1;
+
+            // update line pattern aspect ratio after texture loads
+            Texture.getInfo(this.texture).then(texture => {
+                if (texture) {
+                    this.shaders.uniforms.u_texture_ratio = texture.height / texture.width;
+                }
+            });
+        }
     },
 
     // Calculate width at zoom given in `context`
@@ -257,7 +310,7 @@ Object.assign(Lines, {
                 scaling_index: this.vertex_layout.index.a_extrude,
                 scaling_normalize: 256, // values have an 8-bit fraction
                 texcoord_index: this.vertex_layout.index.a_texcoord,
-                texcoord_scale: this.texcoord_scale,
+                texcoord_width: (style.width || style.next_width) / context.tile.overzoom2, // UVs can't calc for zero-width, use next zoom width in that case
                 texcoord_normalize: 65535, // scale UVs to unsigned shorts
                 closed_polygon: options && options.closed_polygon,
                 remove_tile_edges: !style.tile_edges && options && options.remove_tile_edges,

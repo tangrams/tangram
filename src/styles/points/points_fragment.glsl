@@ -22,8 +22,8 @@ varying vec4 v_world_position;
 #define TANGRAM_NORMAL vec3(0., 0., 1.)
 
 // Alpha discard threshold (substitute for alpha blending)
-#ifndef TANGRAM_ALPHA_DISCARD
-#define TANGRAM_ALPHA_DISCARD 0.5
+#ifndef TANGRAM_ALPHA_TEST
+#define TANGRAM_ALPHA_TEST 0.5
 #endif
 
 // Alpha fade range for edges of points
@@ -71,7 +71,7 @@ void main (void) {
 
     // If blending is off, use alpha discard as a lower-quality substitute
     #if !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
-        if (color.a < TANGRAM_ALPHA_DISCARD) {
+        if (color.a < TANGRAM_ALPHA_TEST) {
             discard;
         }
     #endif

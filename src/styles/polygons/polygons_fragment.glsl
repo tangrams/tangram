@@ -45,6 +45,25 @@ void main (void) {
         color *= sampleRaster(0); // multiplied to tint texture color
     #endif
 
+    // Apply line texture
+    #ifdef TANGRAM_LINE_TEXTURE
+        vec2 _line_st = vec2(v_texcoord.x, fract(v_texcoord.y / u_texture_ratio));
+        vec4 _line_color = texture2D(u_texture, _line_st);
+
+        if (_line_color.a < TANGRAM_ALPHA_TEST) {
+            #ifdef TANGRAM_LINE_BACKGROUND_COLOR
+                color.rgb = TANGRAM_LINE_BACKGROUND_COLOR;
+            #elif !defined(TANGRAM_BLEND_OVERLAY) && !defined(TANGRAM_BLEND_INLAY)
+                discard; // use discard when alpha blending is unavailable
+            #else
+                color.a = 0.; // use alpha channel when blending is available
+            #endif
+        }
+        else {
+            color *= _line_color;
+        }
+    #endif
+
     // First, get normal from raster tile (if applicable)
     #ifdef TANGRAM_RASTER_TEXTURE_NORMAL
         normal = normalize(sampleRaster(0).rgb * 2. - 1.);

@@ -493,7 +493,7 @@ Object.assign(Points, {
                 offset,
                 angle: angle * 4096,    // values have a 12-bit fraction
                 shape_w: sampler,
-                texcoord_scale: texcoord_scale,
+                texcoord_scale,
                 texcoord_normalize: 65535
             }
         );

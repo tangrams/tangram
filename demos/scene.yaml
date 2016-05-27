@@ -140,6 +140,9 @@ styles:
                     // Just visualize the grid lines directly
                     color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
 
+    dashed:
+        base: lines
+        dash: [2, 1]
 
 sources:
     mapzen:
@@ -321,14 +324,16 @@ layers:
             filter: { kind: path }
             draw:
                 lines:
-                    color: '#bbb'
-                    width: [[15, 0px], [18, 2px]]
+                    style: dashed
+                    color: white
+                    width: [[15, 0px], [18, 3px]]
                     outline:
                         width: 0
         ferry:
             filter: { kind: ferry }
             draw:
                 lines:
+                    style: dashed
                     color: '#8db3ce'
                     width: [[14, 1px], [18, 2px]]
                     outline:
