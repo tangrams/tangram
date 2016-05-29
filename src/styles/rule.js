@@ -270,26 +270,6 @@ function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
 
-export function walkUp(rule, cb) {
-
-    if (rule.parent) {
-        walkUp(rule.parent, cb);
-    }
-
-    cb(rule);
-}
-
-export function walkDown(rule, cb) {
-
-    if (rule.rules) {
-        rule.rules.forEach((r) => {
-            walkDown(r, cb);
-        });
-    }
-
-    cb(rule);
-}
-
 export function groupProps(obj) {
     let whiteListed = {}, nonWhiteListed = {};
 
