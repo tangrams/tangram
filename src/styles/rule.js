@@ -194,6 +194,7 @@ Rule.id = 0;
 export class RuleLeaf extends Rule {
     constructor({name, parent, draw, visible, filter}) {
         super({name, parent, draw, visible, filter});
+        this.is_leaf = true;
     }
 
 }
@@ -201,6 +202,7 @@ export class RuleLeaf extends Rule {
 export class RuleTree extends Rule {
     constructor({name, parent, draw, visible, rules, filter}) {
         super({name, parent, draw, visible, filter});
+        this.is_tree = true;
         this.rules = rules || [];
     }
 
@@ -392,15 +394,14 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
     for (let r=0; r < rules.length; r++) {
         let current = rules[r];
 
-        if (current instanceof RuleLeaf) {
-
+        if (current.is_leaf) {
             if (doesMatch(current, context)) {
                 matched = true;
                 collectedRules.push(current);
                 collectedRulesIds.push(current.id);
             }
 
-        } else if (current instanceof RuleTree) {
+        } else if (current.is_tree) {
             if (doesMatch(current, context)) {
                 matched = true;
 
