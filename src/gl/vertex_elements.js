@@ -9,9 +9,19 @@ export default class VertexElements {
         this.hasOverflown = false;
     }
     push (value) {
+        // If values have overflown and no Uint32 option is available, do not push values
+        if (this.hasOverflown && !Uint32_flag) {
+            return;
+        }
+
+        // Trigger overflow if value is greater than Uint16 max
         if (value > MAX_VALUE) {
             this.hasOverflown = true;
+            if (!Uint32_flag) {
+                return;
+            }
         }
+
         this.array.push(value);
     }
     end () {
