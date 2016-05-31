@@ -318,28 +318,28 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
     var miterVec = createMiterVec(normPrev, normNext);
 
     if (!isBeginning) {
-        addVertex(coordCurr, miterVec, [0, v], context);
-        addVertex(coordCurr, Vector.neg(normPrev), [1, v], context);
+        addVertex(coordCurr, miterVec, [1, v], context);
+        addVertex(coordCurr, Vector.neg(normPrev), [0, v], context);
         indexPairs(1, context);
     }
 
     if (join_type === JOIN_TYPE.bevel) {
         addBevel(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-            [1, v], [0, v], [1, v],
+            [0, v], [1, v], [0, v],
             context
         );
     }
     else if (join_type === JOIN_TYPE.round) {
         addFan(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
-            [1, v], [0, v], [1, v],
+            [0, v], [1, v], [0, v],
             context
         );
     }
 
-    addVertex(coordCurr, miterVec, [0, v], context);
-    addVertex(coordCurr, Vector.neg(normNext), [1, v], context);
+    addVertex(coordCurr, miterVec, [1, v], context);
+    addVertex(coordCurr, Vector.neg(normNext), [0, v], context);
 }
 
 // Add indices to vertex_elements
