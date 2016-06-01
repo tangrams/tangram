@@ -118,7 +118,7 @@ describe('.mergeTrees()', () => {
 
 describe('.parseRules(rules)', () => {
 
-    const {parseRules, walkDown}= require('../src/styles/rule');
+    const {parseRules}= require('../src/styles/rule');
     const ruleTree   = require('./fixtures/sample-style');
 
     describe('when given a raw ruleTree', () => {
@@ -129,12 +129,19 @@ describe('.parseRules(rules)', () => {
 
         it('returns the correct number of children rules', () => {
             let tree = parseRules(ruleTree).root;
-            let number = 0;
+            let children = 0;
 
-            walkDown(tree, (rule) => {
-                number += 1;
-            });
-            assert.equal(number, 4);
+            function walkDown (rule) {
+                if (rule.rules) {
+                    rule.rules.forEach((r) => {
+                        walkDown(r);
+                    });
+                }
+                children++;
+            }
+            walkDown(tree);
+
+            assert.equal(children, 4);
         });
     });
 });
