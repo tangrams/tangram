@@ -45,7 +45,6 @@ export default class Scene {
         this.tile_manager = TileManager;
         this.tile_manager.init({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
-        this.allow_cross_domain_workers = (options.allowCrossDomainWorkers === false ? false : true);
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
             VertexArrayObject.disabled = true;
@@ -265,11 +264,16 @@ export default class Scene {
             throw new Error("Can't load worker because couldn't find base URL that library was loaded from");
         }
 
-        if (this.allow_cross_domain_workers) {
-            let body = `importScripts('${worker_url}');`;
-            return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
-        }
-        return worker_url;
+        // Import custom data source scripts alongside core library
+        // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
+        // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
+        // in one call at at worker creation time has not exhibited the same issue.
+        let source_scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
+        log.debug('loading custom data source scripts in worker:', ...[].concat(...source_scripts));
+
+        let urls = [worker_url].concat(...source_scripts);
+        let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
+        return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
     }
 
     // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
