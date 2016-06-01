@@ -132,7 +132,12 @@ export default class Scene {
 
                 // Only retain visible tiles for rebuilding
                 this.tile_manager.pruneToVisibleTiles();
-                return this.updateConfig();
+
+                // Scene loaded from a JS object may contain functions which need to be serialized,
+                // while one loaded from a URL does not
+                return this.updateConfig({
+                    serialize_funcs: (typeof config_source === 'object')
+                });
             }).then(() => {
                 this.updating--;
                 this.initializing = null;
@@ -646,7 +651,7 @@ export default class Scene {
     // Rebuild all tiles
     // sync: boolean of whether to sync the config object to the worker
     // sources: optional array of data sources to selectively rebuild (by default all our rebuilt)
-    rebuildGeometry({ sync = true, sources = null } = {}) {
+    rebuildGeometry({ sync = true, sources = null, serialize_funcs } = {}) {
         return new Promise((resolve, reject) => {
             // Skip rebuild if already in progress
             if (this.building) {
@@ -673,7 +678,7 @@ export default class Scene {
 
             // Update config (in case JS objects were manipulated directly)
             if (sync) {
-                this.syncConfigToWorker();
+                this.syncConfigToWorker({ serialize_funcs });
                 StyleManager.compile(this.updateActiveStyles(), this); // only recompile newly active styles
             }
             this.resetFeatureSelection();
@@ -946,7 +951,7 @@ export default class Scene {
 
     // Update scene config, and optionally rebuild geometry
     // rebuild can be boolean, or an object containing rebuild options to passthrough
-    updateConfig({ rebuild = true } = {}) {
+    updateConfig({ rebuild = true, serialize_funcs } = {}) {
         this.generation++;
         this.updating++;
         this.config.scene = this.config.scene || {};
@@ -963,8 +968,8 @@ export default class Scene {
 
         // Optionally rebuild geometry
         let done = rebuild ?
-            this.rebuildGeometry(typeof rebuild === 'object' && rebuild) :
-            this.syncConfigToWorker(); // rebuildGeometry() also syncs config
+            this.rebuildGeometry(Object.assign({ serialize_funcs }, typeof rebuild === 'object' && rebuild)) :
+            this.syncConfigToWorker({ serialize_funcs }); // rebuildGeometry() also syncs config
 
         // Finish by updating bounds and re-rendering
         return done.then(() => {
@@ -975,9 +980,10 @@ export default class Scene {
     }
 
     // Serialize config and send to worker
-    syncConfigToWorker() {
+    syncConfigToWorker({ serialize_funcs = true } = {}) {
         // Tell workers we're about to rebuild (so they can update styles, etc.)
-        this.config_serialized = Utils.serializeWithFunctions(this.config);
+        this.config_serialized =
+            serialize_funcs ? Utils.serializeWithFunctions(this.config) : JSON.stringify(this.config);
         return WorkerBroker.postMessage(this.workers, 'self.updateConfig', {
             config: this.config_serialized,
             generation: this.generation,

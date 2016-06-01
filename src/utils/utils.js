@@ -237,7 +237,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
         obj = Utils.stringToFunction(obj, wrap);
     }
     // Loop through object properties
-    else if (typeof obj === 'object') {
+    else if (obj != null && typeof obj === 'object') {
         for (let p in obj) {
             obj[p] = Utils.stringsToFunctions(obj[p], wrap);
         }
@@ -249,7 +249,7 @@ Utils.stringsToFunctions = function(obj, wrap) {
 // TODO: make function matching tolerant of whitespace and multilines
 Utils.stringToFunction = function(val, wrap) {
     // Convert strings back into functions
-    if (val.match(/^\s*function\s*\w*\s*\([\s\S]*\)\s*\{[\s\S]*\}/m) != null) {
+    if (typeof val === 'string' && val.match(/^\s*function\s*\w*\s*\([\s\S]*\)\s*\{[\s\S]*\}/m) != null) {
         var f;
         try {
             if (typeof wrap === 'function') {

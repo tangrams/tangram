@@ -1,7 +1,8 @@
 import {Styles} from './style_manager';
+import {StyleParser} from './style_parser';
+import Utils from '../utils/utils';
 import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
-import log from 'loglevel';
 
 export const whiteList = ['filter', 'draw', 'visible', 'data'];
 
@@ -77,6 +78,7 @@ class Rule {
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
         this.draw = draw;
         this.filter = filter;
+        this.is_built = false;
         this.visible = visible !== undefined ? visible : (this.parent && this.parent.visible);
 
         // Denormalize layer name to draw groups
@@ -86,27 +88,35 @@ class Rule {
                 this.draw[group].layer_name = this.full_name;
             }
         }
+    }
 
+    build () {
+        Utils.log('debug', `Building layer '${this.full_name}'`);
         this.buildFilter();
         this.buildDraw();
+        this.is_built = true;
     }
 
     buildDraw() {
+        this.draw = Utils.stringsToFunctions(this.draw, StyleParser.wrapFunction);
         this.calculatedDraw = calculateDraw(this);
     }
 
     buildFilter() {
+        this.filter = Utils.stringsToFunctions(this.filter, StyleParser.wrapFunction);
+
         let type = typeof this.filter;
         if (this.filter != null && type !== 'object' && type !== 'function') {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
             msg += `but was set to \`filter: ${this.filter}\` instead`;
-            log.warn(msg);
+            Utils.log('warn', msg);
             return;
         }
 
         try {
             this.buildZooms();
+            this.buildPropMatches();
             if (this.filter != null && (typeof this.filter === 'function' || Object.keys(this.filter).length > 0)) {
                 this.filter = match(this.filter);
             }
@@ -118,7 +128,7 @@ class Rule {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
             msg += `failed with error ${e.message}, ${e.stack}`;
-            log.warn(msg);
+            Utils.log('warn', msg);
         }
     }
 
@@ -149,14 +159,64 @@ class Rule {
         }
     }
 
-    toJSON() {
-        return {
-            name: this.name,
-            draw: this.draw
-        };
+    buildPropMatches() {
+        if (!this.filter || Array.isArray(this.filter) || typeof this.filter === 'function') {
+            return;
+        }
+
+        Object.keys(this.filter).forEach(key => {
+            if (blacklist.indexOf(key) === -1) {
+                let val = this.filter[key];
+                let type = typeof val;
+                let array = Array.isArray(val);
+
+                if (!(array || type === 'string' || type === 'number')) {
+                    return;
+                }
+
+                if (key[0] === '$') {
+                    // Context property
+                    this.context_prop_matches = this.context_prop_matches || [];
+                    this.context_prop_matches.push([key.substring(1), array ? val : [val]]);
+                }
+                else {
+                    // Feature property
+                    this.feature_prop_matches = this.feature_prop_matches || [];
+                    this.feature_prop_matches.push([key, array ? val : [val]]);
+                }
+
+                delete this.filter[key];
+            }
+        });
+    }
+
+    doPropMatches (context) {
+        if (this.feature_prop_matches) {
+            for (let r=0; r < this.feature_prop_matches.length; r++) {
+                let match = this.feature_prop_matches[r];
+                let val = context.feature.properties[match[0]];
+                if (!val || match[1].indexOf(val) === -1) {
+                    return false;
+                }
+            }
+        }
+
+        if (this.context_prop_matches) {
+            for (let r=0; r < this.context_prop_matches.length; r++) {
+                let match = this.context_prop_matches[r];
+                let val = context[match[0]];
+                if (!val || match[1].indexOf(val) === -1) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
 }
+
+const blacklist = ['any', 'all', 'not', 'none'];
 
 Rule.id = 0;
 
@@ -164,6 +224,7 @@ Rule.id = 0;
 export class RuleLeaf extends Rule {
     constructor({name, parent, draw, visible, filter}) {
         super({name, parent, draw, visible, filter});
+        this.is_leaf = true;
     }
 
 }
@@ -171,6 +232,7 @@ export class RuleLeaf extends Rule {
 export class RuleTree extends Rule {
     constructor({name, parent, draw, visible, rules, filter}) {
         super({name, parent, draw, visible, filter});
+        this.is_tree = true;
         this.rules = rules || [];
     }
 
@@ -180,7 +242,6 @@ export class RuleTree extends Rule {
 
     buildDrawGroups(context) {
         let rules = [], rule_ids = [];
-        //TODO, should this function take a RuleTree
         matchFeature(context, [this], rules, rule_ids);
 
         if (rules.length > 0) {
@@ -240,26 +301,6 @@ function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
 
-export function walkUp(rule, cb) {
-
-    if (rule.parent) {
-        walkUp(rule.parent, cb);
-    }
-
-    cb(rule);
-}
-
-export function walkDown(rule, cb) {
-
-    if (rule.rules) {
-        rule.rules.forEach((r) => {
-            walkDown(r, cb);
-        });
-    }
-
-    cb(rule);
-}
-
 export function groupProps(obj) {
     let whiteListed = {}, nonWhiteListed = {};
 
@@ -312,7 +353,7 @@ export function parseRuleTree(name, rule, parent) {
                 parseRuleTree(key, property, r);
             } else {
                 // Invalid layer
-                let msg = `Layer value must be an object: can't create layer '${key}: ${JSON.stringify(property)}'`;
+                let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
                 msg += `, under parent layer '${r.full_name}'.`;
 
                 // If the parent is a style name, this may be an incorrectly nested layer
@@ -323,7 +364,7 @@ export function parseRuleTree(name, rule, parent) {
                     }
                     msg += ` instead?`;
                 }
-                log.warn(msg);
+                Utils.log('warn', msg);
             }
         }
 
@@ -348,11 +389,21 @@ export function parseRules(rules) {
 
 
 function doesMatch(rule, context) {
+    if (!rule.is_built) {
+        rule.build();
+    }
+
     // zoom pre-filter: skip rest of filter if out of rule zoom range
     if (rule.zooms != null && !rule.zooms[context.zoom]) {
         return false;
     }
 
+    // direct feature property matches
+    if (!rule.doPropMatches(context)) {
+        return false;
+    }
+
+    // any remaining filter (more complex matches or dynamic function)
     return rule.filter == null || rule.filter(context);
 }
 
@@ -365,15 +416,14 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
     for (let r=0; r < rules.length; r++) {
         let current = rules[r];
 
-        if (current instanceof RuleLeaf) {
-
+        if (current.is_leaf) {
             if (doesMatch(current, context)) {
                 matched = true;
                 collectedRules.push(current);
                 collectedRulesIds.push(current.id);
             }
 
-        } else if (current instanceof RuleTree) {
+        } else if (current.is_tree) {
             if (doesMatch(current, context)) {
                 matched = true;
 

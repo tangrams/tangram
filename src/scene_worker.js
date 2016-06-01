@@ -109,7 +109,7 @@ Object.assign(self, {
         });
 
         // Parse each top-level layer as a separate rule tree
-        self.layers = Utils.stringsToFunctions(config.layers, StyleParser.wrapFunction);
+        self.layers = config.layers;
         self.rules = parseRules(self.layers);
 
         // Sync tetxure info from main thread

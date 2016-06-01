@@ -70,7 +70,7 @@ export class MVTSource extends NetworkTileSource {
                     }
                 }
                 else if (VectorTileFeature.types[feature.type] === 'Polygon') {
-                    geometry = MVTSource.decodeMultiPolygon(geometry); // un-flatten rings
+                    geometry = decodeMultiPolygon(geometry); // un-flatten rings
                 }
 
                 layer_geojson.features.push(feature_geojson);
@@ -80,44 +80,45 @@ export class MVTSource extends NetworkTileSource {
         return layers;
     }
 
-    // Decode multipolygons, which are encoded as a single set of rings
-    // Winding order of first ring is assumed to indicate exterior ring,
-    // the opposite winding order indicates the start of a new polygon.
-    static decodeMultiPolygon (geom) {
-        let polys = [];
-        let poly = [];
-        let outer_winding;
-        for (let ring of geom.coordinates) {
-            let winding = Geo.ringWinding(ring);
-            if (winding == null) {
-                continue; // skip zero-area rings
-            }
+}
 
-            outer_winding = outer_winding || winding; // assume first ring indicates outer ring winding
-
-            if (winding === outer_winding && poly.length > 0) {
-                polys.push(poly);
-                poly = [];
-            }
-            poly.push(ring);
+// Decode multipolygons, which are encoded as a single set of rings
+// Winding order of first ring is assumed to indicate exterior ring,
+// the opposite winding order indicates the start of a new polygon.
+export function decodeMultiPolygon (geom) {
+    let polys = [];
+    let poly = [];
+    let outer_winding;
+    for (let r=0; r < geom.coordinates.length; r++) {
+        let ring = geom.coordinates[r];
+        let winding = Geo.ringWinding(ring);
+        if (winding == null) {
+            continue; // skip zero-area rings
         }
-        if (poly.length > 0) {
+
+        outer_winding = outer_winding || winding; // assume first ring indicates outer ring winding
+
+        if (winding === outer_winding && poly.length > 0) {
             polys.push(poly);
+            poly = [];
         }
-
-        // Single or multi?
-        if (polys.length === 1) {
-            geom.type = 'Polygon';
-            geom.coordinates = polys[0];
-        }
-        else {
-            geom.type = 'MultiPolygon';
-            geom.coordinates = polys;
-        }
-
-        return geom;
+        poly.push(ring);
+    }
+    if (poly.length > 0) {
+        polys.push(poly);
     }
 
+    // Single or multi?
+    if (polys.length === 1) {
+        geom.type = 'Polygon';
+        geom.coordinates = polys[0];
+    }
+    else {
+        geom.type = 'MultiPolygon';
+        geom.coordinates = polys;
+    }
+
+    return geom;
 }
 
 DataSource.register(MVTSource, 'MVT');

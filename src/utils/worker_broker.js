@@ -3,7 +3,7 @@
 // WorkerBroker routes messages between web workers and the main thread, allowing for simpler
 // async code via promises. Example usage:
 //
-// In web worker, register self as target define a method:
+// In web worker, register self as a callable "target", and define a method:
 //
 //     WorkerBroker.addTarget('self', self);
 //
@@ -171,7 +171,7 @@ function setupMainThread () {
         // Keep track of all registered workers
         workers.set(worker, worker_id++);
 
-        worker.addEventListener('message', (event) => {
+        worker.addEventListener('message', function WorkerBrokerMainThreadHandler(event) {
             let data = maybeDecode(event.data);
             let id = data.message_id;
 
@@ -309,7 +309,7 @@ function setupWorkerThread () {
         return promise;
     };
 
-    self.addEventListener('message', (event) => {
+    self.addEventListener('message', function WorkerBrokerWorkerThreadHandler(event) {
         let data = maybeDecode(event.data);
         let id = data.message_id;
 

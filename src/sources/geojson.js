@@ -1,5 +1,5 @@
 import DataSource, {NetworkSource, NetworkTileSource} from './data_source';
-import {MVTSource} from './mvt';
+import {decodeMultiPolygon} from './mvt';
 import Geo from '../geo';
 
 // For tiling GeoJSON client-side
@@ -82,7 +82,7 @@ export class GeoJSONSource extends NetworkSource {
                         f.geometry.type = 'MultiLineString';
                     }
                     else  {
-                        f.geometry = MVTSource.decodeMultiPolygon(f.geometry); // un-flatten rings
+                        f.geometry = decodeMultiPolygon(f.geometry); // un-flatten rings
                     }
                 }
                 else {
