@@ -149,6 +149,7 @@ function buildPolyline(line, context, extra_lines){
         // If line begins at edge, don't add a cap
         if (!isCoordOutsideTile(coordCurr)) {
             addCap(coordCurr, v, normNext, cap_type, true, context);
+            v += v_scale * context.scaling_normalize;
         }
 
         // Add first pair of points for the line strip
@@ -389,38 +390,46 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
 //  using their normals from a center        \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
-function addFan (coord, nA, nC, nB, uA, uC, uB, context) {
+function addFan (coord, nA, nC, nB, uvA, uvC, uvB, context) {
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
-    var angle = -2*Math.PI + mod(Math.atan2(cross, dot), 2*Math.PI);
+
+    var angle = Math.atan2(cross, dot);
+    while (angle >= Math.PI) {
+        angle -= 2*Math.PI;
+    }
 
     var numTriangles = trianglesPerArc(angle, context.half_width);
     if (numTriangles < 1) {
         return;
     }
 
-    if (context.texcoord_index !== undefined) {
-        var uvCurr = Vector.set(uA);
-        var uv_delta = Vector.div(Vector.sub(uB, uA), numTriangles);
-    }
-
     var pivotIndex = context.vertex_data.vertex_count;
     var vertex_elements = context.vertex_data.vertex_elements;
 
-    addVertex(coord, nC, uC, context);
-    addVertex(coord, nA, uA, context);
+    addVertex(coord, nC, uvC, context);
+    addVertex(coord, nA, uvA, context);
 
     // Iterate through the rest of the corners
     var blade = nA;
+    var uvCurr;
+
+    if (context.texcoord_index !== undefined) {
+        var affine_uvCurr = Vector.sub(uvA, uvC);
+        uvCurr = [];
+    }
+
     var angle_step = angle / numTriangles;
     for (var i = 0; i < numTriangles; i++) {
         blade = Vector.rot(blade, angle_step);
 
-        addVertex(coord, blade, uvCurr, context);
-
         if (context.texcoord_index !== undefined) {
-            uvCurr = Vector.add(uvCurr, uv_delta);
+            affine_uvCurr = Vector.rot(affine_uvCurr, angle_step);
+            uvCurr[0] = affine_uvCurr[0] + uvC[0];
+            uvCurr[1] = affine_uvCurr[1] * context.half_width * context.v_scale + uvC[1];
         }
+
+        addVertex(coord, blade, uvCurr, context);
 
         vertex_elements.push(pivotIndex + i + ((cross > 0) ? 2 : 1));
         vertex_elements.push(pivotIndex);
@@ -458,46 +467,68 @@ function addBevel (coord, nA, nC, nB, uA, uC, uB, context) {
 //  Function to add the vertex need for line caps,
 //  because re-use the buffers needs to be at the end
 function addCap (coord, v, normal, type, isBeginning, context) {
-    if (context.texcoord_index !== undefined) {
-        var uvC = [0.5, v];   // Center point UVs
-        var uvA = isBeginning ? [1, v] : [0, v];   // Beginning angle UVs
-        var uvB = isBeginning ? [0, v] : [1, v];   // Ending angle UVs
-    }
+    var neg_normal = Vector.neg(normal);
 
     switch (type){
         case CAP_TYPE.square:
             var tangent;
-            var neg_normal = Vector.neg(normal);
             if (isBeginning){
                 tangent = [normal[1], -normal[0]];
 
-                addVertex(coord, Vector.add(normal, tangent), uvA, context);
-                addVertex(coord, Vector.add(neg_normal, tangent), uvB, context);
+                addVertex(coord, Vector.add(normal, tangent), [1, v], context);
+                addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
 
-                addVertex(coord, normal, uvA, context);
-                addVertex(coord, neg_normal, uvB, context);
+                // Add length of square cap to texture coordinate
+                v += context.scaling_normalize * context.v_scale;
+
+                addVertex(coord, normal, [1, v], context);
+                addVertex(coord, neg_normal, [0, v], context);
             }
             else {
                 tangent = [-normal[1], normal[0]];
 
-                addVertex(coord, normal, uvB, context);
-                addVertex(coord, neg_normal, uvA, context);
+                addVertex(coord, normal, [1, v], context);
+                addVertex(coord, neg_normal, [0, v], context);
 
-                addVertex(coord, Vector.add(normal, tangent), uvB, context);
-                addVertex(coord, Vector.add(neg_normal, tangent), uvA, context);
+                // Add length of square cap to texture coordinate
+                v += context.scaling_normalize * context.v_scale;
+
+                addVertex(coord, Vector.add(normal, tangent), [1, v], context);
+                addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
             }
 
             indexPairs(1, context);
             break;
         case CAP_TYPE.round:
-            var nA = isBeginning ? normal : Vector.neg(normal);
-            var nB = isBeginning ? Vector.neg(normal) : normal;
+            var nA, nB, uvA, uvB, uvC;
+            if (isBeginning) {
+                nA = normal;
+                nB = neg_normal;
+
+                if (context.texcoord_index !== undefined){
+                    v += context.scaling_normalize * context.v_scale;
+                    uvA = [1, v];
+                    uvB = [0, v];
+                    uvC = [0.5, v];
+                }
+            }
+            else {
+                nA = neg_normal;
+                nB = normal;
+
+                if (context.texcoord_index !== undefined){
+                    uvA = [0, v];
+                    uvB = [1, v];
+                    uvC = [0.5, v];
+                }
+            }
 
             addFan(coord,
                 nA, zero_vec2, nB,
                 uvA, uvC, uvB,
                 context
             );
+
             break;
         case CAP_TYPE.butt:
             return;
@@ -512,11 +543,6 @@ function trianglesPerArc (angle, width) {
 
     var numTriangles = (width > 2 * DEFAULT.MIN_FAN_WIDTH) ? Math.log2(width / DEFAULT.MIN_FAN_WIDTH) : 1;
     return Math.ceil(angle / Math.PI * numTriangles);
-}
-
-// Calculate modular arithmetic valid for negative numbers
-function mod (value, modulus) {
-    return ((value % modulus) + modulus) % modulus;
 }
 
 // Cyclically permute closed line starting at an index
