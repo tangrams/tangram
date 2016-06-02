@@ -335,7 +335,7 @@ function addJoin(join_type, v, coordCurr, normPrev, normNext, isBeginning, conte
         addFan(coordCurr,
             Vector.neg(normPrev), miterVec, Vector.neg(normNext),
             [0, v], [1, v], [0, v],
-            context
+            false, context
         );
     }
 
@@ -390,7 +390,7 @@ function buildVertexTemplate (vertex_template, vertex, texture_coord, scale, con
 //  using their normals from a center        \ . . /
 //  and interpolating their UVs               \ p /
 //                                             \./
-function addFan (coord, nA, nC, nB, uvA, uvC, uvB, context) {
+function addFan (coord, nA, nC, nB, uvA, uvC, uvB, isCap, context) {
     var cross = nA[0] * nB[1] - nA[1] * nB[0];
     var dot = Vector.dot(nA, nB);
 
@@ -410,13 +410,18 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, context) {
     addVertex(coord, nC, uvC, context);
     addVertex(coord, nA, uvA, context);
 
-    // Iterate through the rest of the corners
     var blade = nA;
-    var uvCurr;
 
     if (context.texcoord_index !== undefined) {
-        var affine_uvCurr = Vector.sub(uvA, uvC);
-        uvCurr = [];
+        var uvCurr;
+        if (isCap){
+            uvCurr = [];
+            var affine_uvCurr = Vector.sub(uvA, uvC);
+        }
+        else {
+            uvCurr = Vector.set(uvA);
+            var uv_delta = Vector.div(Vector.sub(uvB, uvA), numTriangles);
+        }
     }
 
     var angle_step = angle / numTriangles;
@@ -424,9 +429,14 @@ function addFan (coord, nA, nC, nB, uvA, uvC, uvB, context) {
         blade = Vector.rot(blade, angle_step);
 
         if (context.texcoord_index !== undefined) {
-            affine_uvCurr = Vector.rot(affine_uvCurr, angle_step);
-            uvCurr[0] = affine_uvCurr[0] + uvC[0];
-            uvCurr[1] = affine_uvCurr[1] * context.half_width * context.v_scale + uvC[1];
+            if (isCap){
+                affine_uvCurr = Vector.rot(affine_uvCurr, angle_step);
+                uvCurr[0] = affine_uvCurr[0] + uvC[0];
+                uvCurr[1] = affine_uvCurr[1] * context.half_width * context.v_scale + uvC[1];
+            }
+            else {
+                uvCurr = Vector.add(uvCurr, uv_delta);
+            }
         }
 
         addVertex(coord, blade, uvCurr, context);
@@ -526,7 +536,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
             addFan(coord,
                 nA, zero_vec2, nB,
                 uvA, uvC, uvB,
-                context
+                true, context
             );
 
             break;
