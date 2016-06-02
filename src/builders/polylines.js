@@ -2,7 +2,7 @@
 
 import Vector from '../vector';
 import Geo from '../geo';
-import { default_uvs, outsideTile, isCoordOutsideTile} from './common';
+import {outsideTile, isCoordOutsideTile} from './common';
 
 const zero_vec2 = [0, 0];
 
@@ -54,11 +54,10 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
     }
 
     // Texture Variables
-    var min_u, min_v, max_u, max_v, v_scale;
+    var v_scale;
     if (texcoord_index) {
         texcoord_normalize = texcoord_normalize || DEFAULT.TEXCOORD_NORMALIZE;
         texcoord_ratio = texcoord_ratio || DEFAULT.TEXCOORD_RATIO;
-        [min_u, min_v, max_u, max_v] = texcoord_scale || default_uvs;
         v_scale = 1 / (width * texcoord_ratio * v_scale_adjust); // scales line texture as a ratio of the line's width
     }
 
@@ -77,8 +76,7 @@ export function buildPolylines (lines, width, vertex_data, vertex_template,
         scaling_normalize,
         v_scale,
         texcoord_index,
-        texcoord_normalize,
-        min_u, min_v, max_u, max_v
+        texcoord_normalize
     };
 
     // Buffer for extra lines to process
