@@ -6,13 +6,13 @@ import log from 'loglevel';
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 export default class VBOMesh  {
 
-    constructor(gl, vertex_data, vertex_layout, options) {
+    constructor(gl, vertex_data, vertex_elements, vertex_layout, options) {
         options = options || {};
 
         this.gl = gl;
         this.vertex_data = vertex_data; // typed array
+        this.vertex_elements = vertex_elements; // typed array
         this.vertex_layout = vertex_layout;
-        this.vertex_elements = options.vertex_elements;
         this.buffer = this.gl.createBuffer();
         this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
         this.data_usage = options.data_usage || this.gl.STATIC_DRAW;

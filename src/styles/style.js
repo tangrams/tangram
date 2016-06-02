@@ -287,8 +287,8 @@ export var Style = {
         this.max_texture_size = Texture.getMaxTextureSize(this.gl);
     },
 
-    makeMesh (vertex_data, options) {
-        return new VBOMesh(this.gl, vertex_data, this.vertex_layout, options);
+    makeMesh (vertex_data, vertex_elements, { uniforms } = {}) {
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, { uniforms });
     },
 
     compile () {

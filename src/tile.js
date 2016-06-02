@@ -375,7 +375,7 @@ export default class Tile {
                         log.warn(`Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
                         break;
                     }
-                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
                     this.debug.geometries += meshes[s].geometry_count;
                 }
 
