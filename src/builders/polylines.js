@@ -147,7 +147,7 @@ function buildPolyline(line, context, extra_lines){
         // If line begins at edge, don't add a cap
         if (!isCoordOutsideTile(coordCurr)) {
             addCap(coordCurr, v, normNext, cap_type, true, context);
-            v += v_scale * context.scaling_normalize;
+            v += v_scale * context.half_width;
         }
 
         // Add first pair of points for the line strip
@@ -489,7 +489,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
 
                 // Add length of square cap to texture coordinate
-                v += context.scaling_normalize * context.v_scale;
+                v += context.half_width * context.v_scale;
 
                 addVertex(coord, normal, [1, v], context);
                 addVertex(coord, neg_normal, [0, v], context);
@@ -501,7 +501,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 addVertex(coord, neg_normal, [0, v], context);
 
                 // Add length of square cap to texture coordinate
-                v += context.scaling_normalize * context.v_scale;
+                v += context.half_width * context.v_scale;
 
                 addVertex(coord, Vector.add(normal, tangent), [1, v], context);
                 addVertex(coord, Vector.add(neg_normal, tangent), [0, v], context);
@@ -516,7 +516,7 @@ function addCap (coord, v, normal, type, isBeginning, context) {
                 nB = neg_normal;
 
                 if (context.texcoord_index !== undefined){
-                    v += context.scaling_normalize * context.v_scale;
+                    v += context.half_width * context.v_scale;
                     uvA = [1, v];
                     uvB = [0, v];
                     uvC = [0.5, v];
