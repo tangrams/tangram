@@ -6,17 +6,17 @@ let Uint32_flag = false;
 export default class VertexElements {
     constructor () {
         this.array = [];
-        this.hasOverflown = false;
+        this.has_overflown = false;
     }
     push (value) {
         // If values have overflown and no Uint32 option is available, do not push values
-        if (this.hasOverflown && !Uint32_flag) {
+        if (this.has_overflown && !Uint32_flag) {
             return;
         }
 
         // Trigger overflow if value is greater than Uint16 max
         if (value > MAX_VALUE) {
-            this.hasOverflown = true;
+            this.has_overflown = true;
             if (!Uint32_flag) {
                 return;
             }
@@ -26,9 +26,9 @@ export default class VertexElements {
     }
     end () {
         if (this.array.length){
-            let buffer = createBuffer(this.array, this.hasOverflown);
+            let buffer = createBuffer(this.array, this.has_overflown);
             this.array = [];
-            this.hasOverflown = false;
+            this.has_overflown = false;
             return buffer;
         }
         else {

@@ -23,14 +23,14 @@ export default class VBOMesh  {
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
         this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
 
-        this.toggleElementArray = false;
+        this.toggle_element_array = false;
         if (this.vertex_elements){
-            this.toggleElementArray = true;
+            this.toggle_element_array = true;
             this.element_count = this.vertex_elements.length;
             this.geometry_count = this.element_count / this.vertices_per_geometry;
             this.element_type = (this.vertex_elements.constructor === Uint16Array) ? this.gl.UNSIGNED_SHORT: this.gl.UNSIGNED_INT;
-            this.elementBuffer = this.gl.createBuffer();
-            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
+            this.element_buffer = this.gl.createBuffer();
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
             this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.vertex_elements, this.data_usage);
         }
         else {
@@ -67,7 +67,7 @@ export default class VBOMesh  {
 
         this.bind(program);
 
-        if (this.toggleElementArray){
+        if (this.toggle_element_array){
             this.gl.drawElements(this.draw_mode, this.element_count, this.element_type, 0);
         }
         else {
@@ -93,8 +93,8 @@ export default class VBOMesh  {
         else {
             this.vaos.set(program, VertexArrayObject.create((force) => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-                if (this.toggleElementArray) {
-                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
+                if (this.toggle_element_array) {
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
                 }
                 this.vertex_layout.enable(this.gl, program, force);
             }));
@@ -112,9 +112,9 @@ export default class VBOMesh  {
         this.gl.deleteBuffer(this.buffer);
         this.buffer = null;
 
-        if (this.elementBuffer) {
-            this.gl.deleteBuffer(this.elementBuffer);
-            this.elementBuffer = null;
+        if (this.element_buffer) {
+            this.gl.deleteBuffer(this.element_buffer);
+            this.element_buffer = null;
         }
 
         delete this.vertex_data;
