@@ -99,7 +99,7 @@ export default class VertexData {
     end () {
         // Clip the buffer to size used for this VBO
         this.buffer = this.buffer.subarray(0, this.buffer_offset);
-        this.elementBuffer = this.vertex_elements.end();
+        this.element_buffer = this.vertex_elements.end();
 
         log('trace', `VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
 

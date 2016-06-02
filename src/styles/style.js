@@ -128,7 +128,7 @@ export var Style = {
         if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
-            tile_data.vertex_elements = tile_data.vertex_data.elementBuffer;
+            tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
             tile_data.vertex_data = tile_data.vertex_data.buffer;
 
             // Load raster tiles passed from data source
