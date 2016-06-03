@@ -26,6 +26,7 @@ Geo.metersPerTile = function (z) {
 // Conversion functions based on an defined tile scale
 Geo.tile_scale = 4096; // coordinates are locally scaled to the range [0, tile_scale]
 Geo.units_per_pixel = Geo.tile_scale / Geo.tile_size;
+Geo.height_scale = 16;  // provides sub-meter precision for height values (16ths of a meters)
 
 let units_per_meter = [];
 Geo.unitsPerMeter = function (z) {

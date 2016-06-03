@@ -167,6 +167,9 @@ Object.assign(Lines, {
             style.z += style.height;
         }
 
+        style.z *= Geo.height_scale;        // provide sub-meter precision of height values
+        style.height *= Geo.height_scale;
+
         style.cap = rule_style.cap;
         style.join = rule_style.join;
         style.miter_limit = rule_style.miter_limit;

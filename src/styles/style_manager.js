@@ -42,12 +42,17 @@ StyleManager.init = function () {
     // Minimum value for float comparisons
     ShaderProgram.defines.TANGRAM_EPSILON = 0.00001;
 
-    // assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
+    // Minimum depth buffer value separating each `order` unit
+    // Assume min 16-bit depth buffer, in practice uses 14-bits, 1 extra bit to handle virtual half-layers
     // for outlines (inserted in between layers), another extra bit to prevent precision loss
     ShaderProgram.defines.TANGRAM_LAYER_DELTA = 1 / (1 << 14);
 
     // Internal tile scale
-    ShaderProgram.defines.TANGRAM_TILE_SCALE = `vec3(${Geo.tile_scale}., ${Geo.tile_scale}., u_meters_per_pixel * ${Geo.tile_size}.)`;
+    ShaderProgram.defines.TANGRAM_TILE_SCALE =
+        `vec3(${Geo.tile_scale}., ${Geo.tile_scale}., u_meters_per_pixel * ${Geo.tile_size}.)`;
+
+    // Increases precision for height values
+    ShaderProgram.defines.TANGRAM_HEIGHT_SCALE = Geo.height_scale;
 };
 
 // Destroy all styles for a given GL context

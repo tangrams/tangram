@@ -74,7 +74,7 @@ void main() {
     #endif
 
     // Position
-    vec4 position = vec4(a_position.xyz, 1.);
+    vec4 position = vec4(a_position.xy, a_position.z / TANGRAM_HEIGHT_SCALE, 1.); // convert height back to meters
 
     #ifdef TANGRAM_EXTRUDE_LINES
         vec2 extrude = a_extrude.xy / 256.; // values have an 8-bit fraction
