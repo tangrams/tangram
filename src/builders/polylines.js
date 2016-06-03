@@ -149,7 +149,9 @@ function buildPolyline(line, context, extra_lines){
         // If line begins at edge, don't add a cap
         if (!isCoordOutsideTile(coordCurr)) {
             addCap(coordCurr, v, normNext, cap_type, true, context);
-            if (cap_type !== CAP_TYPE.butt) v += 0.5 * v_scale * context.texcoord_width;
+            if (cap_type !== CAP_TYPE.butt) {
+                v += 0.5 * v_scale * context.texcoord_width;
+            }
         }
 
         // Add first pair of points for the line strip
