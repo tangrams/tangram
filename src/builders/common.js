@@ -24,3 +24,14 @@ export function outsideTile (_a, _b, tolerance) {
 
     return false;
 }
+
+export function isCoordOutsideTile (coord, tolerance) {
+    tolerance = tolerance || 0;
+    let tile_min = tile_bounds[0];
+    let tile_max = tile_bounds[1];
+
+    return coord[0] <= tile_min.x + tolerance ||
+           coord[0] >= tile_max.x - tolerance ||
+           coord[1] >= tile_min.y - tolerance ||
+           coord[1] <= tile_max.y + tolerance;
+}

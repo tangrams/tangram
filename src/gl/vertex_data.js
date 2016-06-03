@@ -1,5 +1,6 @@
 import gl from './constants'; // web workers don't have access to GL context, so import all GL constants
 import {log} from '../utils/utils';
+import VertexElements from './vertex_elements';
 
 // Maps GL types to JS array types
 let array_types = {
@@ -18,6 +19,7 @@ export default class VertexData {
 
     constructor (vertex_layout, { prealloc } = {}) {
         this.vertex_layout = vertex_layout;
+        this.vertex_elements = new VertexElements();
 
         if (VertexData.array_pool.length > 0) {
             this.buffer = VertexData.array_pool.pop();
@@ -97,7 +99,10 @@ export default class VertexData {
     end () {
         // Clip the buffer to size used for this VBO
         this.buffer = this.buffer.subarray(0, this.buffer_offset);
+        this.element_buffer = this.vertex_elements.end();
+
         log('trace', `VertexData: ${this.buffer_size} vertices total, realloc count ${this.realloc_count}`);
+
         return this;
     }
 

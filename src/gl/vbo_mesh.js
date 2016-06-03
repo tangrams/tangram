@@ -6,11 +6,12 @@ import log from 'loglevel';
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 export default class VBOMesh  {
 
-    constructor(gl, vertex_data, vertex_layout, options) {
+    constructor(gl, vertex_data, vertex_elements, vertex_layout, options) {
         options = options || {};
 
         this.gl = gl;
         this.vertex_data = vertex_data; // typed array
+        this.vertex_elements = vertex_elements; // typed array
         this.vertex_layout = vertex_layout;
         this.buffer = this.gl.createBuffer();
         this.draw_mode = options.draw_mode || this.gl.TRIANGLES;
@@ -20,14 +21,28 @@ export default class VBOMesh  {
         this.retain = options.retain || false; // whether to retain mesh data in CPU after uploading to GPU
 
         this.vertex_count = this.vertex_data.byteLength / this.vertex_layout.stride;
-        this.geometry_count = this.vertex_count / this.vertices_per_geometry;
         this.vaos = new Map(); // map of VertexArrayObjects, keyed by program
+
+        this.toggle_element_array = false;
+        if (this.vertex_elements){
+            this.toggle_element_array = true;
+            this.element_count = this.vertex_elements.length;
+            this.geometry_count = this.element_count / this.vertices_per_geometry;
+            this.element_type = (this.vertex_elements.constructor === Uint16Array) ? this.gl.UNSIGNED_SHORT: this.gl.UNSIGNED_INT;
+            this.element_buffer = this.gl.createBuffer();
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
+            this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.vertex_elements, this.data_usage);
+        }
+        else {
+            this.geometry_count = this.vertex_count / this.vertices_per_geometry;
+        }
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, this.vertex_data, this.data_usage);
 
         if (!this.retain) {
             delete this.vertex_data;
+            delete this.vertex_elements;
         }
         this.valid = true;
     }
@@ -48,8 +63,13 @@ export default class VBOMesh  {
 
         this.bind(program);
 
-        // TODO: support element array mode
-        this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
+        if (this.toggle_element_array){
+            this.gl.drawElements(this.draw_mode, this.element_count, this.element_type, 0);
+        }
+        else {
+            this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
+        }
+
         VertexArrayObject.bind(null);
 
         if (this.uniforms) {
@@ -69,6 +89,9 @@ export default class VBOMesh  {
         else {
             this.vaos.set(program, VertexArrayObject.create((force) => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+                if (this.toggle_element_array) {
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
+                }
                 this.vertex_layout.enable(this.gl, program, force);
             }));
         }
@@ -84,7 +107,14 @@ export default class VBOMesh  {
 
         this.gl.deleteBuffer(this.buffer);
         this.buffer = null;
+
+        if (this.element_buffer) {
+            this.gl.deleteBuffer(this.element_buffer);
+            this.element_buffer = null;
+        }
+
         delete this.vertex_data;
+        delete this.vertex_elements;
 
         return true;
     }

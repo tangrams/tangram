@@ -129,6 +129,7 @@ export var Style = {
         if (tile_data && tile_data.vertex_data && tile_data.vertex_data.vertex_count > 0) {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
+            tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
             tile_data.vertex_data = tile_data.vertex_data.buffer;
 
             // Load raster tiles passed from data source
@@ -287,8 +288,8 @@ export var Style = {
         this.max_texture_size = Texture.getMaxTextureSize(this.gl);
     },
 
-    makeMesh (vertex_data, { uniforms } = {}) {
-        return new VBOMesh(this.gl, vertex_data, this.vertex_layout, { uniforms });
+    makeMesh (vertex_data, vertex_elements, { uniforms } = {}) {
+        return new VBOMesh(this.gl, vertex_data, vertex_elements, this.vertex_layout, { uniforms });
     },
 
     render (mesh) {

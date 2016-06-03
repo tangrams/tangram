@@ -277,6 +277,7 @@ export default class Tile {
                 if (style_data) {
                     tile.mesh_data[style_name] = {
                         vertex_data: style_data.vertex_data,
+                        vertex_elements: style_data.vertex_elements,
                         uniforms: style_data.uniforms,
                         textures: style_data.textures
                     };
@@ -365,11 +366,14 @@ export default class Tile {
             for (var s in mesh_data) {
                 if (mesh_data[s].vertex_data) {
                     this.debug.buffer_size += mesh_data[s].vertex_data.byteLength;
+                    if (mesh_data[s].vertex_elements) {
+                        this.debug.buffer_size += mesh_data[s].vertex_elements.byteLength;
+                    }
                     if (!styles[s]) {
                         log.warn(`Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
                         break;
                     }
-                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s]);
+                    meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
                     this.debug.geometries += meshes[s].geometry_count;
                 }
 
