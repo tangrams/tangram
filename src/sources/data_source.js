@@ -25,18 +25,8 @@ export default class DataSource {
         this.extra_data = config.extra_data;
 
         // Optional additional scripts made available to the transform function
-        if (typeof importScripts === 'function' && config.scripts) {
-            config.scripts.forEach(function(s, si) {
-                try {
-                    importScripts(s);
-                    Utils.log('info', 'DataSource: loaded library: ' + s);
-                }
-                catch (e) {
-                    Utils.log('error', 'DataSource: failed to load library: ' + s);
-                    Utils.log('error', e);
-                }
-            });
-        }
+        // NOTE: these are loaded alongside the library when the workers are instantiated
+        this.scripts = config.scripts;
 
         // overzoom will apply for zooms higher than this
         this.max_zoom = config.max_zoom || Geo.default_source_max_zoom;
