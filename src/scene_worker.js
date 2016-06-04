@@ -1,5 +1,7 @@
 /*jshint worker: true*/
+import Thread from './utils/thread';
 import Utils from './utils/utils';
+import log from './utils/log';
 import WorkerBroker from './utils/worker_broker'; // jshint ignore:line
 import mergeObjects from './utils/merge';
 import Tile from './tile';
@@ -13,7 +15,7 @@ import Texture from './gl/texture';
 export var SceneWorker = self;
 
 // Worker functionality will only be defined in worker thread
-if (Utils.isWorkerThread) {
+if (Thread.is_worker) {
 
 Object.assign(self, {
 
@@ -117,7 +119,7 @@ Object.assign(self, {
 
         // Return promise for when config refresh finishes
         self.configuring = self.syncing_textures.then(() => {
-            Utils.log('debug', `updated config`);
+            log('debug', `updated config`);
         });
     },
 
@@ -152,13 +154,13 @@ Object.assign(self, {
 
                     self.loadTileSourceData(tile).then(() => {
                         if (!self.getTile(tile.key)) {
-                            Utils.log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
+                            log('trace', `stop tile build after data source load because tile was removed: ${tile.key}`);
                             return;
                         }
 
                         // Warn and continue on data source error
                         if (tile.source_data.error) {
-                            Utils.log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
+                            log('warn', `tile load error(s) for ${tile.key}: ${tile.source_data.error}`);
                         }
 
                         tile.loading = false;
@@ -170,7 +172,7 @@ Object.assign(self, {
                         tile.loading = false;
                         tile.loaded = false;
                         tile.error = error.toString();
-                        Utils.log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
+                        log('error', `tile load error for ${tile.key}: ${tile.error} at: ${error.stack}`);
 
                         resolve({ tile: Tile.slice(tile) });
                     });
@@ -178,7 +180,7 @@ Object.assign(self, {
             }
             // Tile already loaded, just rebuild
             else {
-                Utils.log('trace', `used worker cache for tile ${tile.key}`);
+                log('trace', `used worker cache for tile ${tile.key}`);
 
                 // Build geometry
                 return Tile.buildGeometry(tile, self).then(keys => {
@@ -210,7 +212,7 @@ Object.assign(self, {
         if (tile != null) {
             // Cancel if loading
             if (tile.loading === true) {
-                Utils.log('trace', `cancel tile load for ${key}`);
+                log('trace', `cancel tile load for ${key}`);
                 tile.loading = false;
             }
 
@@ -219,7 +221,7 @@ Object.assign(self, {
             // Remove from cache
             FeatureSelection.clearTile(key);
             delete self.tiles[key];
-            Utils.log('trace', `remove tile from cache for ${key}`);
+            log('trace', `remove tile from cache for ${key}`);
         }
     },
 
@@ -250,7 +252,7 @@ Object.assign(self, {
             textures.push(...Object.keys(tex_config));
         }
 
-        Utils.log('trace', 'sync textures to worker:', textures);
+        log('trace', 'sync textures to worker:', textures);
         if (textures.length > 0) {
             return Texture.syncTexturesToWorker(textures);
         }

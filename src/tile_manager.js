@@ -1,7 +1,6 @@
 import Tile from './tile';
 import TilePyramid from './tile_pyramid';
-
-import log from 'loglevel';
+import log from './utils/log';
 
 const TileManager = {
 
@@ -47,7 +46,7 @@ const TileManager = {
 
     // Remove a single tile
     removeTile(key) {
-        log.trace(`tile unload for ${key}`);
+        log('trace', `tile unload for ${key}`);
 
         var tile = this.tiles[key];
 
@@ -261,7 +260,7 @@ const TileManager = {
                 }
             })
             .catch(e => {
-                log.error(`Error building tile ${tile.key}:`, e);
+                log('error', `Error building tile ${tile.key}:`, e);
                 this.forgetTile(tile.key);
                 Tile.abortBuild(tile);
             });
@@ -271,13 +270,13 @@ const TileManager = {
     buildTileCompleted({ tile }) {
         // Removed this tile during load?
         if (this.tiles[tile.key] == null) {
-            log.trace(`discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
+            log('trace', `discarded tile ${tile.key} in TileManager.buildTileCompleted because previously removed`);
             Tile.abortBuild(tile);
             this.updateTileStates();
         }
         // Built with an outdated scene configuration?
         else if (tile.generation !== this.scene.generation) {
-            log.debug(`discarded tile ${tile.key} in TileManager.buildTileCompleted because built with ` +
+            log('debug', `discarded tile ${tile.key} in TileManager.buildTileCompleted because built with ` +
                 `scene config gen ${tile.generation}, current ${this.scene.generation}`);
             this.forgetTile(tile.key);
             Tile.abortBuild(tile);
@@ -301,13 +300,13 @@ const TileManager = {
     tileBuildStart(key) {
         this.building_tiles = this.building_tiles || {};
         this.building_tiles[key] = true;
-        log.trace(`tileBuildStart for ${key}: ${Object.keys(this.building_tiles).length}`);
+        log('trace', `tileBuildStart for ${key}: ${Object.keys(this.building_tiles).length}`);
     },
 
     tileBuildStop(key) {
         // Done building?
         if (this.building_tiles) {
-            log.trace(`tileBuildStop for ${key}: ${Object.keys(this.building_tiles).length}`);
+            log('trace', `tileBuildStop for ${key}: ${Object.keys(this.building_tiles).length}`);
             delete this.building_tiles[key];
             this.checkBuildQueue();
         }

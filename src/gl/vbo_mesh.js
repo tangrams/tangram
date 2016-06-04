@@ -1,7 +1,7 @@
 // Manage rendering for primitives
+import log from '../utils/log';
 import ShaderProgram from './shader_program';
 import VertexArrayObject from './vao';
-import log from 'loglevel';
 
 // A single mesh/VBO, described by a vertex layout, that can be drawn with one or more programs
 export default class VBOMesh  {
@@ -103,7 +103,7 @@ export default class VBOMesh  {
         }
         this.valid = false;
 
-        log.trace('VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
+        log('trace', 'VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
 
         this.gl.deleteBuffer(this.buffer);
         this.buffer = null;

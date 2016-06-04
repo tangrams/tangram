@@ -1,3 +1,4 @@
+import log from './utils/log';
 import Utils from './utils/utils';
 import WorkerBroker from './utils/worker_broker';
 import subscribeMixin from './utils/subscribe';
@@ -14,8 +15,6 @@ import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import RenderState from './gl/render_state';
-
-import log from 'loglevel';
 
 import {Polygons} from './styles/polygons/polygons';
 import {Lines} from './styles/lines/lines';
@@ -166,11 +165,11 @@ export default class Scene {
 
             message = `Scene.load() failed to load ${this.config_source}: ${error.message}`;
             if (this.last_valid_config_source) {
-                log.warn(message, error);
-                log.info(`Scene.load() reverting to last valid configuration`);
+                log('warn', message, error);
+                log('info', `Scene.load() reverting to last valid configuration`);
                 return this.load(this.last_valid_config_source, this.last_valid_config_path);
             }
-            log.error(message, error);
+            log('error', message, error);
             throw error;
         });
 
@@ -273,7 +272,7 @@ export default class Scene {
         // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
         // in one call at at worker creation time has not exhibited the same issue.
         let source_scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
-        log.debug('loading custom data source scripts in worker:', ...[].concat(...source_scripts));
+        log('debug', 'loading custom data source scripts in worker:', ...[].concat(...source_scripts));
 
         let urls = [worker_url].concat(...source_scripts);
         let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
@@ -299,15 +298,15 @@ export default class Scene {
 
             WorkerBroker.addWorker(worker);
 
-            log.debug(`Scene.makeWorkers: initializing worker ${id}`);
+            log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
             queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, Utils.device_pixel_ratio).then(
                 (id) => {
-                    log.debug(`Scene.makeWorkers: initialized worker ${id}`);
+                    log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;
                 },
                 (error) => {
-                    log.error(`Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
+                    log('error', `Scene.makeWorkers: failed to initialize worker ${_id}:`, error);
                     return Promise.reject(error);
                 })
             );
@@ -424,7 +423,7 @@ export default class Scene {
         }
 
         this.frame++;
-        log.trace('Scene.render()');
+        log('trace', 'Scene.render()');
         return true;
     }
 
@@ -466,7 +465,7 @@ export default class Scene {
             this.render_count_changed = true;
 
             this.getFeatureSelectionMapSize().then(size => {
-                log.info(`Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
+                log('info', `Scene: rendered ${this.render_count} primitives (${size} features in selection map)`);
             }, () => {}); // no op when promise rejects (only print last response)
         }
         this.last_render_count = this.render_count;
@@ -634,7 +633,7 @@ export default class Scene {
     // Request feature selection at given pixel. Runs async and returns results via a promise.
     getFeatureAt(pixel) {
         if (!this.initialized) {
-            log.debug("Scene.getFeatureAt() called before scene was initialized");
+            log('debug', "Scene.getFeatureAt() called before scene was initialized");
             return Promise.resolve();
         }
 
@@ -666,13 +665,13 @@ export default class Scene {
                 // Queue up to one rebuild call at a time, only save last request
                 if (this.building.queued && this.building.queued.reject) {
                     // notify previous request that it did not complete
-                    log.debug('Scene.rebuildGeometry: request superceded by a newer call');
+                    log('debug', 'Scene.rebuildGeometry: request superceded by a newer call');
                     this.building.queued.resolve(false); // false flag indicates rebuild request was superceded
                 }
 
                 // Save queued request
                 this.building.queued = { resolve, reject };
-                log.trace(`Scene.rebuildGeometry(): queuing request`);
+                log('trace', `Scene.rebuildGeometry(): queuing request`);
                 return;
             }
 
@@ -713,7 +712,7 @@ export default class Scene {
     // TODO move to tile manager
     tileManagerBuildDone() {
         if (this.building) {
-            log.info(`Scene: build geometry finished`);
+            log('info', `Scene: build geometry finished`);
             if (this.building.resolve) {
                 this.building.resolve(true);
             }
@@ -722,7 +721,7 @@ export default class Scene {
             var queued = this.building.queued;
             this.building = null;
             if (queued) {
-                log.debug(`Scene: starting queued rebuildGeometry() request`);
+                log('debug', `Scene: starting queued rebuildGeometry() request`);
                 this.rebuildGeometry().then(queued.resolve, queued.reject);
             }
         }
@@ -764,7 +763,7 @@ export default class Scene {
     //
     setDataSource (name, config) {
         if (!name || !config || !config.type || (!config.url && !config.data)) {
-            log.error("No name provided or not a valid config:", name, config);
+            log('error', "No name provided or not a valid config:", name, config);
             return;
         }
 
@@ -800,7 +799,7 @@ export default class Scene {
             catch(e) {
                 delete this.sources[name];
                 let message = `Could not create data source: ${e.message}`;
-                log.warn(`Scene: ${message}`, source);
+                log('warn', `Scene: ${message}`, source);
                 this.trigger('warning', { type: 'sources', source, message });
             }
 
@@ -1114,7 +1113,7 @@ export default class Scene {
                         }
                         else {
                             let avg = ~~(times.reduce((a, b) => a + b) / times.length);
-                            log.info(`Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
+                            log('info', `Profiled rebuild ${num} times: ${avg} avg (${Math.min(...times)} min, ${Math.max(...times)} max)`);
                         }
                     });
                 };

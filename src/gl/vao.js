@@ -1,6 +1,6 @@
 // Creates a Vertex Array Object if the extension is available, or falls back on standard attribute calls
 
-import log from 'loglevel';
+import log from '../utils/log';
 
 var VertexArrayObject;
 export default VertexArrayObject = {};
@@ -15,13 +15,13 @@ VertexArrayObject.init = function (gl) {
         }
 
         if (VertexArrayObject.ext != null) {
-            log.info('Vertex Array Object extension available');
+            log('info', 'Vertex Array Object extension available');
         }
         else if (VertexArrayObject.disabled !== true) {
-            log.warn('Vertex Array Object extension NOT available');
+            log('warn', 'Vertex Array Object extension NOT available');
         }
         else {
-            log.warn('Vertex Array Object extension force disabled');
+            log('warn', 'Vertex Array Object extension force disabled');
         }
     }
 };

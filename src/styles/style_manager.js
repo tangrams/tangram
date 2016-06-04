@@ -5,7 +5,7 @@ import ShaderProgram from '../gl/shader_program';
 import {Style} from './style';
 import mergeObjects from '../utils/merge';
 import Geo from '../geo';
-import log from 'loglevel';
+import log from '../utils/log';
 
 let fs = require('fs');
 const shaderSrc_accessors = fs.readFileSync(__dirname + '/../gl/shaders/accessors.glsl', 'utf8');
@@ -60,7 +60,7 @@ StyleManager.destroy = function (gl) {
     Object.keys(Styles).forEach((_name) => {
         var style = Styles[_name];
         if (style.gl === gl) {
-            log.trace(`StyleManager.destroy: destroying render style ${style.name}`);
+            log('trace', `StyleManager.destroy: destroying render style ${style.name}`);
 
             if (!style.isBuiltIn()) {
                 StyleManager.remove(style.name);
@@ -363,10 +363,10 @@ StyleManager.compile = function (keys, scene) {
         let style = Styles[key];
         try {
             style.compile();
-            log.trace(`StyleManager.compile(): compiled style ${key}`);
+            log('trace', `StyleManager.compile(): compiled style ${key}`);
         }
         catch(error) {
-            log.error(`StyleManager.compile(): error compiling style ${key}:`, error);
+            log('error', `StyleManager.compile(): error compiling style ${key}:`, error);
 
             scene.trigger('warning', {
                 type: 'styles',
@@ -377,7 +377,7 @@ StyleManager.compile = function (keys, scene) {
         }
     }
 
-    log.debug(`StyleManager.compile(): compiled all styles`);
+    log('debug', `StyleManager.compile(): compiled all styles`);
 };
 
 // Get all styles with mesh data for a given tile

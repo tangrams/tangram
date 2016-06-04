@@ -8,9 +8,9 @@ import Texture from '../gl/texture';
 import Material from '../material';
 import Light from '../light';
 import {RasterTileSource} from '../sources/raster';
-import Utils from '../utils/utils';
+import log from '../utils/log';
+import Thread from '../utils/thread';
 import WorkerBroker from '../utils/worker_broker';
-import log from 'loglevel';
 
 let fs = require('fs');
 const shaderSrc_selectionFragment = fs.readFileSync(__dirname + '/../gl/shaders/selection_fragment.glsl', 'utf8');
@@ -40,7 +40,7 @@ export var Style = {
 
         // Provide a hook for this object to be called from worker threads
         this.main_thread_target = 'Style-' + this.name;
-        if (Utils.isMainThread) {
+        if (Thread.is_main) {
             WorkerBroker.addTarget(this.main_thread_target, this);
         }
 
@@ -99,7 +99,7 @@ export var Style = {
 
         let index = this.vertex_layout.index[attribute];
         if (index === undefined) {
-            log.warn(`Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);
+            log('warn', `Style: in style '${this.name}', no index found in vertex layout for attribute '${attribute}'`);
             return;
         }
 
@@ -225,7 +225,7 @@ export var Style = {
             return style;
         }
         catch(error) {
-            log.error('Style.parseFeature: style parsing error', feature, style, error);
+            log('error', 'Style.parseFeature: style parsing error', feature, style, error);
         }
     },
 

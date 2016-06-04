@@ -1,5 +1,5 @@
 import RepeatGroup from './repeat_group';
-import Utils from '../utils/utils';
+import log from '../utils/log';
 
 var Collision;
 
@@ -44,7 +44,7 @@ export default Collision = {
     collide (objects, style, tile) {
         let state = this.tiles[tile];
         if (!state) {
-            Utils.log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
+            log('trace', 'Collision.collide() called with null tile', tile, this.tiles, style, objects);
             return Promise.reject(Error('Collision.collide() called with null tile', tile, this.tiles, style, objects));
         }
 
@@ -97,7 +97,7 @@ export default Collision = {
 
                     // Skip if linked label not visible
                     if (link && this.links[link] === false) {
-                        // Utils.log('trace', 'discard label because linked parent is not visible', label);
+                        // log('trace', 'discard label because linked parent is not visible', label);
                         continue;
                     }
 
@@ -106,7 +106,7 @@ export default Collision = {
                         // check for repeats
                         let check = RepeatGroup.check(label, layout, tile);
                         if (check) {
-                            // Utils.log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                            // log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
                             continue;
                         }
                         // register as placed for future repeat culling
@@ -120,7 +120,7 @@ export default Collision = {
                         }
                     }
                     else if (layout.collide) {
-                        // Utils.log('trace', `discard label '${label.text}' due to collision`);
+                        // log('trace', `discard label '${label.text}' due to collision`);
                         if (link) {
                             this.links[link] = false; // mark visibility for linked labels
                         }

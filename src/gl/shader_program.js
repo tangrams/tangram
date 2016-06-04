@@ -1,11 +1,11 @@
 // GL program wrapper to cache uniform locations/values, do compile-time pre-processing
 // (injecting #defines and #pragma blocks into shaders), etc.
 
+import log from '../utils/log';
 import GLSL from './glsl';
 import Texture from './texture';
 import getExtension from './extensions';
 
-import log from 'loglevel';
 import strip from 'strip-comments';
 import { default as parseShaderErrors } from 'gl-shader-errors';
 
@@ -296,7 +296,7 @@ export default class ShaderProgram {
                 if (!inject) {
                     inject = GLSL.defineUniform(name, uniforms[name]);
                 }
-                log.trace(`Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
+                log('trace', `Program ${this.name}: ${name} not defined in vertex shader, injecting: '${inject}'`);
                 vs_injections.push(inject);
 
             }
@@ -305,7 +305,7 @@ export default class ShaderProgram {
                 if (!inject) {
                     inject = GLSL.defineUniform(name, uniforms[name]);
                 }
-                log.trace(`Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
+                log('trace', `Program ${this.name}: ${name} not defined in fragment shader, injecting: '${inject}'`);
                 fs_injections.push(inject);
             }
         }
@@ -383,7 +383,7 @@ export default class ShaderProgram {
     setTextureUniform(uniform_name, texture_name) {
         var texture = Texture.textures[texture_name];
         if (texture == null) {
-            log.warn(`Can't find texture '${texture_name}'`);
+            log('warn', `Cannot find texture '${texture_name}'`);
             return;
         }
 
@@ -597,7 +597,7 @@ export default class ShaderProgram {
                 exts.push(name);
             }
             else {
-                log.debug(`Could not enable extension '${name}'`);
+                log('debug', `Could not enable extension '${name}'`);
             }
         }
         return exts;
@@ -669,7 +669,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
         var fragment_shader = ShaderProgram.createShader(gl, fragment_shader_source, gl.FRAGMENT_SHADER);
     }
     catch(err) {
-        log.error(err.message);
+        log('error', err.message);
         throw err;
     }
 
@@ -706,7 +706,7 @@ ShaderProgram.updateProgram = function (gl, program, vertex_shader_source, fragm
             ${fragment_shader_source}`);
 
         let error = { type: 'program', message };
-        log.error(error.message);
+        log('error', error.message);
         throw error;
     }
 

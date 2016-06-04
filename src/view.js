@@ -3,7 +3,6 @@ import Tile from './tile';
 import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
-
 import log from 'loglevel';
 
 export default class View {
@@ -265,11 +264,11 @@ export default class View {
 
             // Discard tiles outside an area surrounding the viewport
             if (Math.abs(coords.x - this.center.tile.x) - border_tiles[0] > this.buffer) {
-                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
+                log('trace', `View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             else if (Math.abs(coords.y - this.center.tile.y) - border_tiles[1] > this.buffer) {
-                log.trace(`View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
+                log('trace', `View: remove tile ${tile.key} (as ${coords.x}/${coords.y}/${this.tile_zoom}) for being too far out of visible area ***`);
                 return true;
             }
             return false;

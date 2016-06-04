@@ -1,5 +1,6 @@
 // Point + text label rendering style
 
+import log from '../../utils/log';
 import {Style} from '../style';
 import {StyleParser} from '../style_parser';
 import gl from '../../gl/constants'; // web workers don't have access to GL context, so import all GL constants
@@ -8,14 +9,11 @@ import {buildQuadsForPoints} from '../../builders/points';
 import ShaderProgram from '../../gl/shader_program';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
-import Utils from '../../utils/utils';
 import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
 import PointAnchor from './point_anchor';
-
-import log from 'loglevel';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
@@ -120,18 +118,18 @@ Object.assign(Points, {
                 if (style.sprite_default) {
                     sprite = style.sprite_default;
                     if (!Texture.textures[this.texture].sprites[sprite]) {
-                        log.warn(`Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
+                        log('warn', `Style: in style '${this.name}', could not find default sprite '${sprite}' for texture '${this.texture}'`);
                         return;
                     }
                 }
                 else {
-                    log.warn(`Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
+                    log('warn', `Style: in style '${this.name}', could not find sprite '${sprite}' for texture '${this.texture}'`);
                     return;
                 }
             }
         }
         else if (sprite) {
-            log.warn(`Style: in style '${this.name}', sprite '${sprite}' was specified, but texture '${this.texture}' has no sprites`);
+            log('warn', `Style: in style '${this.name}', sprite '${sprite}' was specified, but texture '${this.texture}' has no sprites`);
             sprite = null;
         }
 
@@ -223,7 +221,7 @@ Object.assign(Points, {
     // Override
     endData (tile) {
         if (tile.canceled) {
-            Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
+            log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}`);
             return;
         }
 

@@ -1,3 +1,4 @@
+import log from './utils/log';
 import Geo from './geo';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
@@ -6,7 +7,6 @@ import WorkerBroker from './utils/worker_broker';
 import Texture from './gl/texture';
 
 import {mat4, vec3} from './utils/gl-matrix';
-import log from 'loglevel';
 
 export default class Tile {
 
@@ -201,7 +201,7 @@ export default class Tile {
             let layer = layers[layer_name];
             // Skip layers with no data source defined
             if (!layer || !layer.data) {
-                log.warn(`Layer ${layer} was defined without a geometry data source and will not be rendered.`);
+                log('warn', `Layer ${layer} was defined without a geometry data source and will not be rendered.`);
                 continue;
             }
 
@@ -251,7 +251,7 @@ export default class Tile {
                         let style = styles[style_name];
 
                         if (!style) {
-                            log.warn(`Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
+                            log('warn', `Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
                             continue;
                         }
 
@@ -370,7 +370,7 @@ export default class Tile {
                         this.debug.buffer_size += mesh_data[s].vertex_elements.byteLength;
                     }
                     if (!styles[s]) {
-                        log.warn(`Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
+                        log('warn', `Could not create mesh because style '${s}' not found, for tile ${this.key}, aborting tile`);
                         break;
                     }
                     meshes[s] = styles[s].makeMesh(mesh_data[s].vertex_data, mesh_data[s].vertex_elements, mesh_data[s]);
@@ -413,7 +413,7 @@ export default class Tile {
                     for (let t of textures) {
                         let texture = Texture.textures[t];
                         if (texture) {
-                            log.trace(`releasing texture ${t} for tile ${tile.key}`);
+                            log('trace', `releasing texture ${t} for tile ${tile.key}`);
                             texture.release();
                         }
                     }
@@ -494,7 +494,7 @@ export default class Tile {
     }
 
     printDebug () {
-        log.debug(`Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
+        log('debug', `Tile: debug for ${this.key}: [  ${JSON.stringify(this.debug)} ]`);
     }
 
 }

@@ -1,8 +1,7 @@
 import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
-
-// import log from 'loglevel';
+// import log from '../utils/log';
 
 export default class Label {
 
@@ -23,18 +22,18 @@ export default class Label {
         // Broad phase
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
-                // log.trace('collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
+                // log('trace', 'collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
 
                 // Skip narrow phase collision if no rotation
                 if (this.obb.angle === 0 && obbs[j].angle === 0) {
-                    // log.trace('collision: skip narrow phase collide because neither is rotated', this.options.id, this, this.obb, obbs[j]);
+                    // log('trace', 'collision: skip narrow phase collide because neither is rotated', this.options.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }
 
                 // Narrow phase
                 if (OBB.intersect(this.obb, obbs[j])) {
-                    // log.trace('collision: narrow phase collide', this.options.id, this, this.obb, obbs[j]);
+                    // log('trace', 'collision: narrow phase collide', this.options.id, this, this.obb, obbs[j]);
                     intersect = true;
                     return true;
                 }

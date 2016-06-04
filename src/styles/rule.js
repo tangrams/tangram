@@ -1,6 +1,7 @@
 import {Styles} from './style_manager';
 import {StyleParser} from './style_parser';
 import Utils from '../utils/utils';
+import log from '../utils/log';
 import mergeObjects from '../utils/merge';
 import {match} from 'match-feature';
 
@@ -91,7 +92,7 @@ class Rule {
     }
 
     build () {
-        Utils.log('debug', `Building layer '${this.full_name}'`);
+        log('trace', `Building layer '${this.full_name}'`);
         this.buildFilter();
         this.buildDraw();
         this.is_built = true;
@@ -110,7 +111,7 @@ class Rule {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, filter value must be an object or function, `;
             msg += `but was set to \`filter: ${this.filter}\` instead`;
-            Utils.log('warn', msg);
+            log('warn', msg);
             return;
         }
 
@@ -128,7 +129,7 @@ class Rule {
             // Invalid filter
             let msg = `Filter for layer ${this.full_name} is invalid, \`filter: ${JSON.stringify(this.filter)}\` `;
             msg += `failed with error ${e.message}, ${e.stack}`;
-            Utils.log('warn', msg);
+            log('warn', msg);
         }
     }
 
@@ -364,7 +365,7 @@ export function parseRuleTree(name, rule, parent) {
                     }
                     msg += ` instead?`;
                 }
-                Utils.log('warn', msg);
+                log('warn', msg);
             }
         }
 

@@ -1,8 +1,8 @@
 // Texture management
+import log from '../utils/log';
 import Utils from '../utils/utils';
 import subscribeMixin from '../utils/subscribe';
 import WorkerBroker from '../utils/worker_broker';
-import log from 'loglevel';
 
 // GL texture wrapper object for keeping track of a global set of textures, keyed by a unique user-defined name
 export default class Texture {
@@ -44,13 +44,13 @@ export default class Texture {
         Texture.texture_configs[this.name] = Object.assign({ name }, options);
 
         this.load(options);
-        log.trace(`creating Texture ${this.name}`);
+        log('trace', `creating Texture ${this.name}`);
     }
 
     // Destroy a single texture instance
     destroy() {
         if (this.retain_count > 0) {
-            log.error(`Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
+            log('error', `Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
             return;
         }
 
@@ -63,7 +63,7 @@ export default class Texture {
         this.data = null;
         delete Texture.textures[this.name];
         this.valid = false;
-        log.trace(`destroying Texture ${this.name}`);
+        log('trace', `destroying Texture ${this.name}`);
     }
 
     retain () {
@@ -72,7 +72,7 @@ export default class Texture {
 
     release () {
         if (this.retain_count <= 0) {
-            log.error(`Texture '${this.name}': releasing texture with retain count of '${this.retain_count}'`);
+            log('error', `Texture '${this.name}': releasing texture with retain count of '${this.retain_count}'`);
         }
 
         this.retain_count--;
@@ -142,7 +142,7 @@ export default class Texture {
                 }
                 catch (e) {
                     this.loaded = false;
-                    log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
+                    log('warn', `Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                     Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 }
 
@@ -152,7 +152,7 @@ export default class Texture {
             image.onerror = e => {
                 // Warn and resolve on error
                 this.loaded = false;
-                log.warn(`Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
+                log('warn', `Texture '${this.name}': failed to load url: '${this.source}'`, e, options);
                 Texture.trigger('warning', { message: `Failed to load texture from ${this.source}`, error: e, texture: options });
                 resolve(this);
             };
@@ -205,7 +205,7 @@ export default class Texture {
             this.loaded = false;
             let msg = `the 'element' parameter (\`element: ${JSON.stringify(el)}\`) must be a CSS `;
             msg += `selector string, or a <canvas>, <image> or <video> object`;
-            log.warn(`Texture '${this.name}': ${msg}`, options);
+            log('warn', `Texture '${this.name}': ${msg}`, options);
             Texture.trigger('warning', { message: `Failed to load texture because ${msg}`, texture: options });
         }
 

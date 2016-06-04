@@ -1,7 +1,6 @@
+import log from './utils/log';
 import Texture from './gl/texture';
 import WorkerBroker from './utils/worker_broker';
-
-import log from 'loglevel';
 
 export default class FeatureSelection {
 
@@ -158,7 +157,7 @@ export default class FeatureSelection {
     finishRead (message) {
         var request = this.requests[message.id];
         if (!request) {
-            log.error("FeatureSelection.finishRead(): could not find message", message);
+            log('error', "FeatureSelection.finishRead(): could not find message", message);
             return; // request was cleared before it returned
         }
 

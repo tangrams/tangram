@@ -1,3 +1,4 @@
+import Thread from './utils/thread';
 import Utils from './utils/utils';
 import Scene from './scene';
 import Geo from './geo';
@@ -17,7 +18,7 @@ function extendLeaflet(options) {
     }
 
     // Leaflet layer functionality is only defined in main thread
-    if (Utils.isMainThread) {
+    if (Thread.is_main) {
 
         let L = options.leaflet || window.L;
 

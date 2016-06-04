@@ -1,8 +1,5 @@
 /*jshint worker: true*/
 
-// Modules and dependencies to expose in the public Tangram module
-import Utils from './utils/utils';
-
 // The leaflet layer plugin is currently the primary public API
 import {leafletLayer} from './leaflet_layer';
 
@@ -12,7 +9,9 @@ import {SceneWorker} from './scene_worker';
 
 // Additional modules are exposed for debugging
 import version from './utils/version';
-import log from 'loglevel';
+import log from './utils/log';
+import Thread from './utils/thread';
+import Utils from './utils/utils';
 import Geo from './geo';
 import DataSource from './sources/data_source';
 import './sources/geojson';
@@ -40,6 +39,7 @@ import yaml from 'js-yaml';
 var debug = {
     log,
     yaml,
+    Thread,
     Utils,
     Geo,
     DataSource,
@@ -61,18 +61,9 @@ var debug = {
     CanvasText
 };
 
-if (Utils.isMainThread) {
+if (Thread.is_main) {
     Utils.requestAnimationFramePolyfill();
 }
-
-// Setup logging to prefix with Tangram version
-var originalFactory = log.methodFactory;
-log.methodFactory = function(methodName, logLevel) {
-    var rawMethod = originalFactory(methodName, logLevel);
-    return function(...message) {
-        rawMethod(`Tangram ${version.string}:`, ...message);
-    };
-};
 
 module.exports = {
     leafletLayer,

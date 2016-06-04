@@ -85,7 +85,8 @@
 //     -> prints 5
 //
 
-import Utils from './utils';
+import Thread from './thread';
+import log from './log';
 
 var WorkerBroker;
 export default WorkerBroker = {};
@@ -110,7 +111,6 @@ function findTarget (method) {
         method = chain.pop();
     }
 
-    // target = target || (Utils.isMainThread && window) || (Utils.isWorkerThread && self);
     var target = targets;
 
     for (let m=0; m < chain.length; m++) {
@@ -232,9 +232,9 @@ function setupMainThread () {
                         payload = maybeEncode(payload, transferables);
                         worker.postMessage(payload, transferables.map(t => t.object));
                         freeTransferables(transferables);
-                        // if (transferables.length > 0) {
-                        //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-                        // }
+                        if (transferables.length > 0) {
+                            log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+                        }
 
                     }, (error) => {
                         worker.postMessage({
@@ -260,9 +260,9 @@ function setupMainThread () {
                     payload = maybeEncode(payload, transferables);
                     worker.postMessage(payload, transferables.map(t => t.object));
                     freeTransferables(transferables);
-                    // if (transferables.length > 0) {
-                    //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-                    // }
+                    if (transferables.length > 0) {
+                        log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+                    }
                 }
             }
         });
@@ -369,9 +369,9 @@ function setupWorkerThread () {
                     payload = maybeEncode(payload, transferables);
                     self.postMessage(payload, transferables.map(t => t.object));
                     freeTransferables(transferables);
-                    // if (transferables.length > 0) {
-                    //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-                    // }
+                    if (transferables.length > 0) {
+                        log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+                    }
                 }, (error) => {
                     self.postMessage({
                         type: 'worker_reply',
@@ -396,9 +396,9 @@ function setupWorkerThread () {
                 payload = maybeEncode(payload, transferables);
                 self.postMessage(payload, transferables.map(t => t.object));
                 freeTransferables(transferables);
-                // if (transferables.length > 0) {
-                //     Utils.log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-                // }
+                if (transferables.length > 0) {
+                    log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+                }
             }
         }
     });
@@ -472,10 +472,10 @@ function maybeDecode (data) {
 }
 
 // Setup this thread as appropriate
-if (Utils.isMainThread) {
+if (Thread.is_main) {
     setupMainThread();
 }
 
-if (Utils.isWorkerThread) {
+if (Thread.is_worker) {
     setupWorkerThread();
 }

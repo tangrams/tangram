@@ -1,9 +1,11 @@
 // Miscellaneous utilities
 /*jshint worker: true*/
 
-import log from 'loglevel';
-import yaml from 'js-yaml';
+import Thread from './thread';
+import log from './log';
 import Geo from '../geo';
+
+import yaml from 'js-yaml';
 
 var Utils;
 export default Utils = {};
@@ -118,7 +120,7 @@ Utils.createObjectURL = function (url) {
 
         if (typeof Utils._createObjectURL !== 'function') {
             Utils._createObjectURL = null;
-            log.warn(`window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
+            log('warn', `window.URL.createObjectURL (or vendor prefix) not found, unable to create local blob URLs`);
         }
     }
 
@@ -268,22 +270,6 @@ Utils.stringToFunction = function(val, wrap) {
     return val;
 };
 
-// Log wrapper, sends message to main thread for display, and includes worker id #
-Utils.log = function (level, ...msg) {
-    level = level || 'info';
-    if (Utils.isWorkerThread) {
-        self.postMessage(JSON.stringify({
-            type: 'log',
-            level: level,
-            worker_id: self._worker_id,
-            msg: msg
-        }));
-    }
-    else if (typeof log[level] === 'function') {
-        log[level](...msg);
-    }
-};
-
 // Default to allowing high pixel density
 // Returns true if display density changed
 Utils.use_high_density_display = true;
@@ -293,22 +279,9 @@ Utils.updateDevicePixelRatio = function () {
     return Utils.device_pixel_ratio !== prev;
 };
 
-// Mark thread as main or worker
-(function() {
-    try {
-        if (window.document !== undefined) {
-            Utils.isWorkerThread = false;
-            Utils.isMainThread   = true;
-            Utils.updateDevicePixelRatio();
-        }
-    }
-    catch (e) {
-        if (self !== undefined) {
-            Utils.isWorkerThread = true;
-            Utils.isMainThread   = false;
-        }
-    }
-})();
+if (Thread.is_main) {
+    Utils.updateDevicePixelRatio();
+}
 
 // Get URL that the current script was loaded from
 // If currentScript is not available, loops through <script> elements searching for a list of provided paths

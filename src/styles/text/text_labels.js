@@ -3,14 +3,13 @@
 import {StyleParser} from '../style_parser';
 import Texture from '../../gl/texture';
 import Geo from '../../geo';
-import Utils from '../../utils/utils';
+import log from '../../utils/log';
+import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import TextSettings from '../text/text_settings';
 import CanvasText from '../text/canvas_text';
-
-import log from 'loglevel';
 
 // namespaces label textures (ensures new texture name when a tile is built multiple times)
 let text_texture_id = 0;
@@ -18,10 +17,10 @@ let text_texture_id = 0;
 export const TextLabels = {
 
     resetText () {
-        if (Utils.isMainThread) {
+        if (Thread.is_main) {
             this.canvas = new CanvasText();
         }
-        else if (Utils.isWorkerThread) {
+        else if (Thread.is_worker) {
             this.texts = {}; // unique texts, grouped by tile, by style
         }
     },
@@ -100,7 +99,7 @@ export const TextLabels = {
         return WorkerBroker.postMessage(this.main_thread_target+'.calcTextSizes', this.texts[tile.key]).then(texts => {
 
             if (tile.canceled) {
-                Utils.log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
+                log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
                 return {};
             }
 
@@ -114,7 +113,7 @@ export const TextLabels = {
 
             return Collision.collide(labels, collision_group, tile.key).then(labels => {
                 if (tile.canceled) {
-                    Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
                     return {};
                 }
 
@@ -127,7 +126,7 @@ export const TextLabels = {
                 // second call to main thread, for rasterizing the set of texts
                 return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
                     if (tile.canceled) {
-                        Utils.log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
+                        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
                         return {};
                     }
 
@@ -160,7 +159,6 @@ export const TextLabels = {
             for (let text in texts[style]) {
                 // no labels for this text
                 if (texts[style][text].ref < 1) {
-                    // console.log(`drop label text ${text} in style ${style}`);
                     delete texts[style][text];
                 }
             }
@@ -169,7 +167,6 @@ export const TextLabels = {
         for (let style in texts) {
             // no labels for this style
             if (Object.keys(texts[style]).length === 0) {
-                // console.log(`drop label text style ${style}`);
                 delete texts[style];
             }
         }
@@ -186,7 +183,7 @@ export const TextLabels = {
     rasterizeTexts (tile_key, texts) {
         let canvas = new CanvasText();
         let texture_size = canvas.setTextureTextPositions(texts, this.max_texture_size);
-        log.trace(`text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
+        log('trace', `text summary for tile ${tile_key}: fits in ${texture_size[0]}x${texture_size[1]}px`);
 
         // fits in max texture size?
         if (texture_size[0] < this.max_texture_size && texture_size[1] < this.max_texture_size) {
@@ -195,7 +192,7 @@ export const TextLabels = {
             canvas.rasterize(texts, texture_size);
         }
         else {
-            log.error([
+            log('error', [
                 `Label atlas for tile ${tile_key} is ${texture_size[0]}x${texture_size[1]}px, `,
                 `but max GL texture size is ${this.max_texture_size}x${this.max_texture_size}px`].join(''));
         }
