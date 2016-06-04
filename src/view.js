@@ -3,7 +3,7 @@ import Tile from './tile';
 import Camera from './camera';
 import Utils from './utils/utils';
 import subscribeMixin from './utils/subscribe';
-import log from 'loglevel';
+import log from './utils/log';
 
 export default class View {
 
