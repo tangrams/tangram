@@ -79,6 +79,10 @@ Object.assign(Polygons, {
             }
         }
 
+        style.z *= Geo.height_scale;            // provide sub-meter precision of height values
+        style.height *= Geo.height_scale;
+        style.min_height *= Geo.height_scale;
+
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // style.outline = style.outline || {};
