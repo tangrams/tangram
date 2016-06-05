@@ -26,7 +26,7 @@ import Texture from './gl/texture';
 import Material from './material';
 import Light from './light';
 import WorkerBroker from './utils/worker_broker';
-import {ruleCache} from './styles/rule';
+import {layer_cache} from './styles/layer';
 import {StyleManager} from './styles/style_manager';
 import {StyleParser} from './styles/style_parser';
 import Collision from './labels/collision';
@@ -53,7 +53,7 @@ var debug = {
     Scene,
     SceneWorker,
     WorkerBroker,
-    ruleCache,
+    layer_cache,
     StyleManager,
     StyleParser,
     Collision,

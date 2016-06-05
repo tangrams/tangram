@@ -56,19 +56,19 @@ Object.assign(Polygons, {
         this.vertex_layout = new VertexLayout(attribs);
     },
 
-    _parseFeature (feature, rule_style, context) {
+    _parseFeature (feature, draw, context) {
         var style = this.feature_style;
 
-        style.color = this.parseColor(rule_style.color, context);
+        style.color = this.parseColor(draw.color, context);
         if (!style.color) {
             return null;
         }
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
         style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
-        style.extrude = StyleParser.evalProp(rule_style.extrude, context);
+        style.extrude = StyleParser.evalProp(draw.extrude, context);
         if (style.extrude) {
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
@@ -83,7 +83,7 @@ Object.assign(Polygons, {
         style.height *= Geo.height_scale;
         style.min_height *= Geo.height_scale;
 
-        style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
+        style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
         return style;
     },

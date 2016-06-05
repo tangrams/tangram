@@ -123,15 +123,15 @@ Object.assign(Lines, {
         return val;
     },
 
-    _parseFeature (feature, rule_style, context) {
+    _parseFeature (feature, draw, context) {
         var style = this.feature_style;
 
         // line width in meters
-        let width = this.calcWidth(rule_style.width, context);
+        let width = this.calcWidth(draw.width, context);
         if (width < 0) {
             return; // skip lines with negative width
         }
-        let next_width = this.calcWidthNextZoom(rule_style.next_width, context);
+        let next_width = this.calcWidthNextZoom(draw.next_width, context);
 
         if ((width === 0 && next_width === 0) || next_width < 0) {
             return; // skip lines that don't interpolate to a positive value at next zoom
@@ -144,15 +144,15 @@ Object.assign(Lines, {
         style.next_width *= context.units_per_meter_overzoom;
         style.next_width /= 2; // NB: divide by 2 because extrusion width is halved in builder - remove?
 
-        style.color = this.parseColor(rule_style.color, context);
+        style.color = this.parseColor(draw.color, context);
         if (!style.color) {
             return;
         }
 
         // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
-        style.z = (rule_style.z && StyleParser.cacheDistance(rule_style.z || 0, context)) || StyleParser.defaults.z;
+        style.z = (draw.z && StyleParser.cacheDistance(draw.z || 0, context)) || StyleParser.defaults.z;
         style.height = feature.properties.height || StyleParser.defaults.height;
-        style.extrude = StyleParser.evalProp(rule_style.extrude, context);
+        style.extrude = StyleParser.evalProp(draw.extrude, context);
         if (style.extrude) {
             if (typeof style.extrude === 'number') {
                 style.height = style.extrude;
@@ -170,20 +170,20 @@ Object.assign(Lines, {
         style.z *= Geo.height_scale;        // provide sub-meter precision of height values
         style.height *= Geo.height_scale;
 
-        style.cap = rule_style.cap;
-        style.join = rule_style.join;
-        style.miter_limit = rule_style.miter_limit;
-        style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
+        style.cap = draw.cap;
+        style.join = draw.join;
+        style.miter_limit = draw.miter_limit;
+        style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
         // Construct an outline style
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
         style.outline = style.outline || { width: {}, next_width: {}, preprocessed: true };
 
-        if (rule_style.outline && rule_style.outline.color && rule_style.outline.width) {
+        if (draw.outline && draw.outline.color && draw.outline.width) {
             // outline width in meters
             // NB: multiply by 2 because outline is applied on both sides of line
-            let outline_width = this.calcWidth(rule_style.outline.width, context) * 2;
-            let outline_next_width = this.calcWidthNextZoom(rule_style.outline.next_width, context) * 2;
+            let outline_width = this.calcWidth(draw.outline.width, context) * 2;
+            let outline_next_width = this.calcWidthNextZoom(draw.outline.next_width, context) * 2;
 
             if ((outline_width === 0 && outline_next_width === 0) || outline_width < 0 || outline_next_width < 0) {
                 // skip lines that don't interpolate between zero or greater width
@@ -196,15 +196,15 @@ Object.assign(Lines, {
                 style.outline.width.value = outline_width + width;
                 style.outline.next_width.value = outline_next_width + next_width;
 
-                style.outline.color = rule_style.outline.color;
-                style.outline.cap = rule_style.outline.cap || rule_style.cap;
-                style.outline.join = rule_style.outline.join || rule_style.join;
-                style.outline.miter_limit = rule_style.outline.miter_limit || rule_style.miter_limit;
-                style.outline.style = rule_style.outline.style || this.name;
+                style.outline.color = draw.outline.color;
+                style.outline.cap = draw.outline.cap || draw.cap;
+                style.outline.join = draw.outline.join || draw.join;
+                style.outline.miter_limit = draw.outline.miter_limit || draw.miter_limit;
+                style.outline.style = draw.outline.style || this.name;
 
                 // Explicitly defined outline order, or inherited from inner line
-                if (rule_style.outline.order) {
-                    style.outline.order = this.parseOrder(rule_style.outline.order, context);
+                if (draw.outline.order) {
+                    style.outline.order = this.parseOrder(draw.outline.order, context);
                 }
                 else {
                     style.outline.order = style.order;

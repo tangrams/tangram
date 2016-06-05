@@ -146,7 +146,7 @@ export var Style = {
         return this.tile_data[tile_key] != null;
     },
 
-    addFeature (feature, rule, context) {
+    addFeature (feature, draw, context) {
         let tile = context.tile;
         if (tile.generation !== this.generation) {
             return;
@@ -156,7 +156,7 @@ export var Style = {
             this.startData(tile);
         }
 
-        let style = this.parseFeature.apply(this, arguments); // allow subclasses to pass extra args
+        let style = this.parseFeature(feature, draw, context);
 
         // Skip feature?
         if (!style) {
@@ -192,21 +192,21 @@ export var Style = {
         }
     },
 
-    parseFeature (feature, rule_style, context) {
+    parseFeature (feature, draw, context) {
         try {
             var style = this.feature_style;
 
-            rule_style = this.preprocess(rule_style);
-            if (!rule_style) {
+            draw = this.preprocess(draw);
+            if (!draw) {
                 return;
             }
 
             // Calculate order if it was not cached
-            style.order = this.parseOrder(rule_style.order, context);
+            style.order = this.parseOrder(draw.order, context);
 
             // Feature selection (only if style supports it)
             var selectable = false;
-            style.interactive = this.introspection || rule_style.interactive;
+            style.interactive = this.introspection || draw.interactive;
             if (this.selection) {
                 selectable = StyleParser.evalProp(style.interactive, context);
             }
@@ -220,7 +220,7 @@ export var Style = {
             }
 
             // Subclass implementation
-            style = this._parseFeature.apply(this, arguments); // allow subclasses to pass extra args
+            style = this._parseFeature(feature, draw, context);
 
             return style;
         }
@@ -229,25 +229,25 @@ export var Style = {
         }
     },
 
-    _parseFeature (feature, rule_style, context) {
+    _parseFeature (feature, draw, context) {
         return this.feature_style;
     },
 
-    preprocess (rule_style) {
+    preprocess (draw) {
         // Preprocess first time
-        if (!rule_style.preprocessed) {
-            rule_style = this._preprocess(rule_style); // optional subclass implementation
-            if (!rule_style) {
+        if (!draw.preprocessed) {
+            draw = this._preprocess(draw); // optional subclass implementation
+            if (!draw) {
                 return;
             }
-            rule_style.preprocessed = true;
+            draw.preprocessed = true;
         }
-        return rule_style;
+        return draw;
     },
 
     // optionally implemented by subclass
-    _preprocess (rule_style) {
-        return rule_style;
+    _preprocess (draw) {
+        return draw;
     },
 
     // Parse an order value

@@ -7,21 +7,21 @@ import {match} from 'match-feature';
 
 export const whiteList = ['filter', 'draw', 'visible', 'data'];
 
-export let ruleCache = {};
+export const layer_cache = {};
 
-function cacheKey (rules) {
-    if (rules.length > 1) {
-        var k = rules[0];
-        for (var i=1; i < rules.length; i++) {
-            k += '/' + rules[i];
+function cacheKey (layers) {
+    if (layers.length > 1) {
+        var k = layers[0];
+        for (var i=1; i < layers.length; i++) {
+            k += '/' + layers[i];
         }
 
         return k;
     }
-    return rules[0];
+    return layers[0];
 }
 
-// Merge matching layer rule trees into a final draw group
+// Merge matching layer trees into a final draw group
 export function mergeTrees(matchingTrees, group) {
     let draws, treeDepth = 0;
 
@@ -36,7 +36,7 @@ export function mergeTrees(matchingTrees, group) {
         }
     }
 
-    // No rules to parse
+    // No layers to parse
     if (treeDepth === 0) {
         return null;
     }
@@ -49,8 +49,8 @@ export function mergeTrees(matchingTrees, group) {
             continue;
         }
 
-        // Sort by layer name before merging, so rules are applied deterministically
-        // when multiple rules modify the same properties
+        // Sort by layer name before merging, so layers are applied deterministically
+        // when multiple layers modify the same properties
         draws.sort((a, b) => (a && a.layer_name) > (b && b.layer_name) ? 1 : -1);
 
         // Merge draw objects
@@ -69,11 +69,13 @@ export function mergeTrees(matchingTrees, group) {
     return draw;
 }
 
+const blacklist = ['any', 'all', 'not', 'none'];
 
-class Rule {
+class Layer {
 
-    constructor({name, parent, draw, visible, filter}) {
-        this.id = Rule.id++;
+    constructor({ layer, name, parent, draw, visible, filter }) {
+        this.id = Layer.id++;
+        this.config = layer;
         this.parent = parent;
         this.name = name;
         this.full_name = this.parent ? (this.parent.full_name + ':' + this.name) : this.name;
@@ -133,7 +135,7 @@ class Rule {
         }
     }
 
-    // Zooms often cull large swaths of the layer rule tree, so they get special treatment and are checked first
+    // Zooms often cull large swaths of the layer tree, so they get special treatment and are checked first
     buildZooms() {
         let zoom = this.filter && this.filter.$zoom;
         let ztype = typeof zoom;
@@ -217,51 +219,49 @@ class Rule {
 
 }
 
-const blacklist = ['any', 'all', 'not', 'none'];
-
-Rule.id = 0;
+Layer.id = 0;
 
 
-export class RuleLeaf extends Rule {
-    constructor({name, parent, draw, visible, filter}) {
-        super({name, parent, draw, visible, filter});
+export class LayerLeaf extends Layer {
+    constructor (config) {
+        super(config);
         this.is_leaf = true;
     }
 
 }
 
-export class RuleTree extends Rule {
-    constructor({name, parent, draw, visible, rules, filter}) {
-        super({name, parent, draw, visible, filter});
+export class LayerTree extends Layer {
+    constructor (config) {
+        super(config);
         this.is_tree = true;
-        this.rules = rules || [];
+        this.layers = config.layers || [];
     }
 
-    addRule(rule) {
-        this.rules.push(rule);
+    addLayer (layer) {
+        this.layers.push(layer);
     }
 
-    buildDrawGroups(context) {
-        let rules = [], rule_ids = [];
-        matchFeature(context, [this], rules, rule_ids);
+    buildDrawGroups (context) {
+        let layers = [], layer_ids = [];
+        matchFeature(context, [this], layers, layer_ids);
 
-        if (rules.length > 0) {
-            let cache_key = cacheKey(rule_ids);
+        if (layers.length > 0) {
+            let cache_key = cacheKey(layer_ids);
 
-            // Only evaluate each rule combination once (undefined means not yet evaluated,
+            // Only evaluate each layer combination once (undefined means not yet evaluated,
             // null means evaluated with no draw object)
-            if (ruleCache[cache_key] === undefined) {
-                // Find all the unique visible draw blocks for this rule tree
-                let draw_rules = rules.map(x => x && x.visible !== false && x.calculatedDraw);
+            if (layer_cache[cache_key] === undefined) {
+                // Find all the unique visible draw blocks for this layer tree
+                let draw_groups = layers.map(x => x && x.visible !== false && x.calculatedDraw);
                 let draw_keys = {};
 
-                for (let r=0; r < draw_rules.length; r++) {
-                    let rule = draw_rules[r];
-                    if (!rule) {
+                for (let r=0; r < draw_groups.length; r++) {
+                    let layer = draw_groups[r];
+                    if (!layer) {
                         continue;
                     }
-                    for (let g=0; g < rule.length; g++) {
-                        let group = rule[g];
+                    for (let g=0; g < layer.length; g++) {
+                        let group = layer[g];
                         for (let key in group) {
                             draw_keys[key] = true;
                         }
@@ -270,25 +270,25 @@ export class RuleTree extends Rule {
 
                 // Calculate each draw group
                 for (let draw_key in draw_keys) {
-                    ruleCache[cache_key] = ruleCache[cache_key] || {};
-                    ruleCache[cache_key][draw_key] = mergeTrees(draw_rules, draw_key);
+                    layer_cache[cache_key] = layer_cache[cache_key] || {};
+                    layer_cache[cache_key][draw_key] = mergeTrees(draw_groups, draw_key);
 
                     // Only save the ones that weren't null
-                    if (!ruleCache[cache_key][draw_key]) {
-                        delete ruleCache[cache_key][draw_key];
+                    if (!layer_cache[cache_key][draw_key]) {
+                        delete layer_cache[cache_key][draw_key];
                     }
                     else {
-                        ruleCache[cache_key][draw_key].key = cache_key + '/' + draw_key;
-                        ruleCache[cache_key][draw_key].layers = rules.map(x => x && x.full_name);
+                        layer_cache[cache_key][draw_key].key = cache_key + '/' + draw_key;
+                        layer_cache[cache_key][draw_key].layers = layers.map(x => x && x.full_name);
                     }
                 }
 
-                // No rules evaluated
-                if (ruleCache[cache_key] && Object.keys(ruleCache[cache_key]).length === 0) {
-                    ruleCache[cache_key] = null;
+                // No layers evaluated
+                if (layer_cache[cache_key] && Object.keys(layer_cache[cache_key]).length === 0) {
+                    layer_cache[cache_key] = null;
                 }
             }
-            return ruleCache[cache_key];
+            return layer_cache[cache_key];
         }
     }
 
@@ -315,43 +315,43 @@ export function groupProps(obj) {
     return [whiteListed, nonWhiteListed];
 }
 
-export function calculateDraw(rule) {
+export function calculateDraw(layer) {
 
     let draw  = [];
 
-    if (rule.parent) {
-        let cs = rule.parent.calculatedDraw || [];
+    if (layer.parent) {
+        let cs = layer.parent.calculatedDraw || [];
         draw.push(...cs);
     }
 
-    draw.push(rule.draw);
+    draw.push(layer.draw);
     return draw;
 }
 
-export function parseRuleTree(name, rule, parent) {
+export function parseLayerTree(name, layer, parent) {
 
-    let properties = {name, parent};
-    let [whiteListed, nonWhiteListed] = groupProps(rule);
+    let properties = { name, layer, parent };
+    let [whiteListed, nonWhiteListed] = groupProps(layer);
     let empty = isEmpty(nonWhiteListed);
     let Create;
 
     if (empty && parent != null) {
-        Create = RuleLeaf;
+        Create = LayerLeaf;
     } else {
-        Create = RuleTree;
+        Create = LayerTree;
     }
 
     let r = new Create(Object.assign(properties, whiteListed));
 
     if (parent) {
-        parent.addRule(r);
+        parent.addLayer(r);
     }
 
     if (!empty) {
         for (let key in nonWhiteListed) {
             let property = nonWhiteListed[key];
             if (typeof property === 'object' && !Array.isArray(property)) {
-                parseRuleTree(key, property, r);
+                parseLayerTree(key, property, r);
             } else {
                 // Invalid layer
                 let msg = `Layer value must be an object: cannot create layer '${key}: ${JSON.stringify(property)}'`;
@@ -375,53 +375,53 @@ export function parseRuleTree(name, rule, parent) {
 }
 
 
-export function parseRules(rules) {
-    let ruleTrees = {};
+export function parseLayers (layers) {
+    let layer_trees = {};
 
-    for (let key in rules) {
-        let rule = rules[key];
-        if (rule) {
-            ruleTrees[key] = parseRuleTree(key, rule);
+    for (let key in layers) {
+        let layer = layers[key];
+        if (layer) {
+            layer_trees[key] = parseLayerTree(key, layer);
         }
     }
 
-    return ruleTrees;
+    return layer_trees;
 }
 
 
-function doesMatch(rule, context) {
-    if (!rule.is_built) {
-        rule.build();
+function doesMatch(layer, context) {
+    if (!layer.is_built) {
+        layer.build();
     }
 
-    // zoom pre-filter: skip rest of filter if out of rule zoom range
-    if (rule.zooms != null && !rule.zooms[context.zoom]) {
+    // zoom pre-filter: skip rest of filter if out of layer zoom range
+    if (layer.zooms != null && !layer.zooms[context.zoom]) {
         return false;
     }
 
     // direct feature property matches
-    if (!rule.doPropMatches(context)) {
+    if (!layer.doPropMatches(context)) {
         return false;
     }
 
     // any remaining filter (more complex matches or dynamic function)
-    return rule.filter == null || rule.filter(context);
+    return layer.filter == null || layer.filter(context);
 }
 
-export function matchFeature(context, rules, collectedRules, collectedRulesIds) {
+export function matchFeature(context, layers, collected_layers, collected_layers_ids) {
     let matched = false;
     let childMatched = false;
 
-    if (rules.length === 0) { return; }
+    if (layers.length === 0) { return; }
 
-    for (let r=0; r < rules.length; r++) {
-        let current = rules[r];
+    for (let r=0; r < layers.length; r++) {
+        let current = layers[r];
 
         if (current.is_leaf) {
             if (doesMatch(current, context)) {
                 matched = true;
-                collectedRules.push(current);
-                collectedRulesIds.push(current.id);
+                collected_layers.push(current);
+                collected_layers_ids.push(current.id);
             }
 
         } else if (current.is_tree) {
@@ -430,14 +430,14 @@ export function matchFeature(context, rules, collectedRules, collectedRulesIds) 
 
                 childMatched = matchFeature(
                     context,
-                    current.rules,
-                    collectedRules,
-                    collectedRulesIds
+                    current.layers,
+                    collected_layers,
+                    collected_layers_ids
                 );
 
                 if (!childMatched) {
-                    collectedRules.push(current);
-                    collectedRulesIds.push(current.id);
+                    collected_layers.push(current);
+                    collected_layers_ids.push(current.id);
                 }
             }
         }

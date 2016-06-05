@@ -188,7 +188,7 @@ export default class Tile {
 
     // Process geometry for tile - called by web worker
     // Returns a set of tile keys that should be sent to the main thread (so that we can minimize data exchange between worker and main thread)
-    static buildGeometry (tile, { layers, rules, styles, global }) {
+    static buildGeometry (tile, { layers, styles, global }) {
         tile.debug.rendering = +new Date();
         tile.debug.features = 0;
 
@@ -196,22 +196,22 @@ export default class Tile {
 
         Collision.startTile(tile.key);
 
-        // Treat top-level style rules as 'layers'
+        // Process each top-level layer
         for (let layer_name in layers) {
             let layer = layers[layer_name];
             // Skip layers with no data source defined
-            if (!layer || !layer.data) {
-                log('warn', `Layer ${layer} was defined without a geometry data source and will not be rendered.`);
+            if (!layer || !layer.config.data) {
+                log('warn', `Layer ${layer_name} was defined without a geometry data source and will not be rendered.`);
                 continue;
             }
 
             // Source names don't match
-            if (layer.data.source !== tile.source) {
+            if (layer.config.data.source !== tile.source) {
                 continue;
             }
 
             // Get data for one or more layers from source
-            let source_layers = Tile.getDataForSource(data, layer.data, layer_name);
+            let source_layers = Tile.getDataForSource(data, layer.config.data, layer_name);
 
             // Render features in layer
             for (let s=0; s < source_layers.length; s++) {
@@ -233,8 +233,7 @@ export default class Tile {
                     context.layer = source_layer.layer;  // add data source layer name
 
                     // Get draw groups for this feature
-                    let layer_rules = rules[layer_name];
-                    let draw_groups = layer_rules.buildDrawGroups(context, true);
+                    let draw_groups = layer.buildDrawGroups(context, true);
                     if (!draw_groups) {
                         continue;
                     }
@@ -251,7 +250,7 @@ export default class Tile {
                         let style = styles[style_name];
 
                         if (!style) {
-                            log('warn', `Style '${style_name}' not found for rule in layer '${layer_name}':`, group, feature);
+                            log('warn', `Style '${style_name}' not found, skipping layer '${layer_name}':`, group, feature);
                             continue;
                         }
 

@@ -130,7 +130,7 @@ Object.assign(TextStyle, {
         });
     },
 
-    // Sets up caching for draw rule properties
+    // Sets up caching for draw properties
     _preprocess (draw) {
         return this.preprocessText(draw);
     },

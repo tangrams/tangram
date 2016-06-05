@@ -9,7 +9,7 @@ import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
 import {StyleParser} from './styles/style_parser';
 import {StyleManager} from './styles/style_manager';
-import {parseRules} from './styles/rule';
+import {parseLayers} from './styles/layer';
 import Texture from './gl/texture';
 
 export var SceneWorker = self;
@@ -26,7 +26,6 @@ Object.assign(self, {
         objects: {}
     },
     styles: {},
-    rules: {},
     layers: {},
     tiles: {},
     objects: {},
@@ -111,9 +110,8 @@ Object.assign(self, {
             introspection: self.introspection
         });
 
-        // Parse each top-level layer as a separate rule tree
-        self.layers = config.layers;
-        self.rules = parseRules(self.layers);
+        // Parse each top-level layer as a separate tree
+        self.layers = parseLayers(config.layers);
 
         // Sync tetxure info from main thread
         self.syncing_textures = self.syncTextures(config.textures);

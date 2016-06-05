@@ -862,14 +862,14 @@ export default class Scene {
     }
 
     updateActiveStyles() {
-        // Make a set of currently active styles (used in a draw rule)
-        // Note: doesn't actually check if any geometry matches the rule, just that the style is potentially renderable
+        // Make a set of currently active styles (used in a layer)
+        // Note: doesn't actually check if any geometry matches the layer, just that the style is potentially renderable
         let prev_styles = Object.keys(this.active_styles || {});
         this.active_styles = {};
-        var animated = false; // is any active style animated?
-        for (var rule of Utils.recurseValues(this.config.layers)) {
-            if (rule && rule.draw) {
-                for (let [name, group] of Utils.entries(rule.draw)) {
+        let animated = false; // is any active style animated?
+        for (let layer of Utils.recurseValues(this.config.layers)) {
+            if (layer && layer.draw) {
+                for (let [name, group] of Utils.entries(layer.draw)) {
                     // TODO: warn on non-object draw group
                     if (group != null && typeof group === 'object' && group.visible !== false) {
                         let style_name = group.style || name;
