@@ -130,6 +130,9 @@ function findTarget (method) {
 // - Receive messages from workers, and optionally send an async response back as a promise
 function setupMainThread () {
 
+    var worker_id = 0;
+    var workers = new Map();
+
     // Send a message to a worker, and optionally get an async response
     // Arguments:
     //   - worker: one or more web worker instances to send the message to (single value or array)
@@ -162,9 +165,12 @@ function setupMainThread () {
         return promise;
     };
 
+    // Send a message to all registered workers
+    WorkerBroker.postMessageToAllWorkers = function (method, ...message) {
+        WorkerBroker.postMessage([...workers.values()], method, ...message);
+    };
+
     // Add a worker to communicate with - each worker must be registered from the main thread
-    var worker_id = 0;
-    var workers = new Map();
 
     WorkerBroker.addWorker = function (worker) {
 

@@ -95,8 +95,8 @@ export default class Scene {
         this.last_complete_generation = 0; // last generation id with a complete view
         this.setupDebug();
 
-        this.logLevel = options.logLevel || 'warn';
-        log.setLevel(this.logLevel);
+        this.log_level = options.logLevel || 'warn';
+        log.setLevel(this.log_level);
     }
 
     static create (config, options = {}) {
@@ -272,7 +272,9 @@ export default class Scene {
         // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
         // in one call at at worker creation time has not exhibited the same issue.
         let source_scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
-        log('debug', 'loading custom data source scripts in worker:', ...[].concat(...source_scripts));
+        if (source_scripts.length > 0) {
+            log('debug', 'loading custom data source scripts in worker:', source_scripts);
+        }
 
         let urls = [worker_url].concat(...source_scripts);
         let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
@@ -300,7 +302,7 @@ export default class Scene {
 
             log('debug', `Scene.makeWorkers: initializing worker ${id}`);
             let _id = id;
-            queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, Utils.device_pixel_ratio).then(
+            queue.push(WorkerBroker.postMessage(worker, 'self.init', id, this.num_workers, this.log_level, Utils.device_pixel_ratio).then(
                 (id) => {
                     log('debug', `Scene.makeWorkers: initialized worker ${id}`);
                     return id;

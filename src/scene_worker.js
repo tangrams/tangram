@@ -33,9 +33,10 @@ Object.assign(self, {
     config: {},     // raw config (e.g. functions, etc. not expanded)
 
     // Initialize worker
-    init (worker_id, num_workers, device_pixel_ratio) {
+    init (worker_id, num_workers, log_level, device_pixel_ratio) {
         self._worker_id = worker_id;
         self.num_workers = num_workers;
+        log.setLevel(log_level);
         Utils.device_pixel_ratio = device_pixel_ratio;
         FeatureSelection.setPrefix(self._worker_id);
         return worker_id;
