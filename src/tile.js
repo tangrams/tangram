@@ -334,13 +334,6 @@ export default class Tile {
                     }
                 });
             }
-            // Assemble a custom layer via a function, which is called with all source layers
-            else if (typeof source_config.layer === 'function') {
-                layers.push({
-                    geom: source_config.layer(source_data.layers)
-                    // custom layer has no name
-                });
-            }
         }
 
         return layers;
