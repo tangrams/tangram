@@ -85,20 +85,6 @@ Object.assign(Polygons, {
 
         style.tile_edges = rule_style.tile_edges; // usually activated for debugging, or rare visualization needs
 
-        // style.outline = style.outline || {};
-        // if (rule_style.outline) {
-        //     style.outline.color = StyleParser.parseColor(rule_style.outline.color, context);
-        //     style.outline.width = StyleParser.parseDistance(rule_style.outline.width, context);
-        //     style.outline.tile_edges = rule_style.outline.tile_edges;
-        //     style.outline.cap = rule_style.outline.cap || rule_style.cap;
-        //     style.outline.join = rule_style.outline.join || rule_style.join;
-        // }
-        // else {
-        //     style.outline.color = null;
-        //     style.outline.width = null;
-        //     style.outline.tile_edges = false;
-        // }
-
         return style;
     },
 
