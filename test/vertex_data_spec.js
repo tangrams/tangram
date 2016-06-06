@@ -26,8 +26,8 @@ describe('VertexData', () => {
             assert.instanceOf(subject, VertexData);
         });
         it('sets up buffer views', () => {
-            assert.instanceOf(subject.buffer_views[gl.FLOAT], Float32Array);
-            assert.instanceOf(subject.buffer_views[gl.UNSIGNED_BYTE], Uint8Array);
+            assert.instanceOf(subject.views[gl.FLOAT], Float32Array);
+            assert.instanceOf(subject.views[gl.UNSIGNED_BYTE], Uint8Array);
         });
     });
 
@@ -47,12 +47,12 @@ describe('VertexData', () => {
         });
 
         it('advances the buffer offset', () => {
-            assert.equal(subject.buffer_offset, layout.stride);
+            assert.equal(subject.offset, layout.stride);
         });
         it('sets a vertex attribute value in the buffer', () => {
-            assert.equal(subject.buffer_views[gl.FLOAT][0], vertex[0]);
-            assert.equal(subject.buffer_views[gl.FLOAT][1], vertex[1]);
-            assert.equal(subject.buffer_views[gl.FLOAT][2], vertex[2]);
+            assert.equal(subject.views[gl.FLOAT][0], vertex[0]);
+            assert.equal(subject.views[gl.FLOAT][1], vertex[1]);
+            assert.equal(subject.views[gl.FLOAT][2], vertex[2]);
         });
     });
 
