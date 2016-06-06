@@ -35,6 +35,7 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
+        // debugger
         for (let style in texts) {
             let text_infos = texts[style];
             let first = true;
@@ -97,6 +98,15 @@ export default class CanvasText {
             if (line.text.length > 0) {
                 line.width = ctx.measureText(line.text).width;
                 max_width = Math.max(max_width, Math.ceil(line.width));
+
+                var segments = line.text.split(' ');
+                line.segments = [];
+                for (var i = 0; i < segments.length; i++){
+                    var str = segments[i];
+                    if (i > 0 && i < segments.length) str += ' ';
+                    line.segments.push(ctx.measureText(str).width);
+                }
+
                 lines.push(line);
             }
             if (new_line) {
