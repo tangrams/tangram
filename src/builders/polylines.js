@@ -182,6 +182,7 @@ function buildPolyline(line, context, extra_lines){
             if (nonBoundaryLines) {
                 extra_lines.push(nonBoundaryLines);
             }
+            return;
         }
 
         normPrev = normNext;
