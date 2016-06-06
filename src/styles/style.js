@@ -130,7 +130,7 @@ export var Style = {
             // Only keep final byte buffer
             tile_data.vertex_data.end();
             tile_data.vertex_elements = tile_data.vertex_data.element_buffer;
-            tile_data.vertex_data = tile_data.vertex_data.buffer;
+            tile_data.vertex_data = tile_data.vertex_data.vertex_buffer; // convert from instance to raw typed array
 
             // Load raster tiles passed from data source
             // Blocks mesh completion to avoid flickering
