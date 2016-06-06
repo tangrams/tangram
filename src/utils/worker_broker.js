@@ -165,13 +165,7 @@ function setupMainThread () {
         return promise;
     };
 
-    // Send a message to all registered workers
-    WorkerBroker.postMessageToAllWorkers = function (method, ...message) {
-        WorkerBroker.postMessage([...workers.values()], method, ...message);
-    };
-
     // Add a worker to communicate with - each worker must be registered from the main thread
-
     WorkerBroker.addWorker = function (worker) {
 
         // Keep track of all registered workers
@@ -199,7 +193,6 @@ function setupMainThread () {
             // Unique id for this message & return call to main thread
             else if (data.type === 'worker_send' && id != null) {
                 // Call the requested method and save the return value
-                // var target = targets[data.target];
                 var [method_name, target] = findTarget(data.method);
                 if (!target) {
                     throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
@@ -273,6 +266,11 @@ function setupMainThread () {
             }
         });
 
+    };
+
+    WorkerBroker.removeWorker = function (worker) {
+        workers.delete(worker);
+        // TODO: remove event handlers from worker as well?
     };
 
     // Expose for debugging

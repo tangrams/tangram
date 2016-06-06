@@ -270,12 +270,12 @@ describe('Scene', function () {
                 };
             });
 
-            it('doesn\'t compile if the style isn\'t referenced by a style rule', () => {
+            it('doesn\'t compile if the style isn\'t referenced by a layer', () => {
                 subject.updateStyles();
                 assert.isFalse(subject.styles.elevator.compiled);
             });
 
-            it('does compile if the style is referenced by a style rule', () => {
+            it('does compile if the style is referenced by a layer', () => {
                 subject.config.layers.buildings.draw.polygons.style = 'elevator';
                 subject.updateStyles();
                 assert.isTrue(subject.styles.elevator.compiled);

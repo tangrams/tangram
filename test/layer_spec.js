@@ -3,23 +3,23 @@ let assert = chai.assert;
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-describe('RuleLeaf', () => {
-    const {RuleLeaf} = require('../src/styles/rule');
+describe('LayerLeaf', () => {
+    const {LayerLeaf} = require('../src/styles/layer');
 
     it('returns an new instanceof', () => {
-        let subject = new RuleLeaf({name: 'test'});
-        assert.instanceOf(subject, RuleLeaf);
+        let subject = new LayerLeaf({name: 'test'});
+        assert.instanceOf(subject, LayerLeaf);
         assert.propertyVal(subject, 'name', 'test');
     });
 
 });
 
-describe('RuleGroup', () => {
-    const {RuleTree} = require('../src/styles/rule');
+describe('LayerTree', () => {
+    const {LayerTree} = require('../src/styles/layer');
 
     it('returns an new instanceof', () => {
-        let subject = new RuleTree({name: 'test'});
-        assert.instanceOf(subject, RuleTree);
+        let subject = new LayerTree({name: 'test'});
+        assert.instanceOf(subject, LayerTree);
         assert.propertyVal(subject, 'name', 'test');
     });
 });
@@ -32,7 +32,7 @@ describe('.mergeTrees()', () => {
         [ { group: { s: 3.14 } }, { group: { t: 2.71828 } }, { group:{ u: 0.0001 } }, { group: { v: 'x' } } ]
     ];
 
-    const {mergeTrees} = require('../src/styles/rule');
+    const {mergeTrees} = require('../src/styles/layer');
 
     describe('when given an array of arrays to merged', () => {
 
@@ -103,7 +103,7 @@ describe('.mergeTrees()', () => {
             [ { group: { a: 3, layer_name: 'y' } } ]
         ];
 
-        it('the lexically sorted highest rule wins', () => {
+        it('the lexically sorted highest layer wins', () => {
             let result = mergeTrees(subject, 'group');
             let compare = {
                 a: 2,
@@ -116,24 +116,24 @@ describe('.mergeTrees()', () => {
 
 });
 
-describe('.parseRules(rules)', () => {
+describe('.parseLayer(layers)', () => {
 
-    const {parseRules}= require('../src/styles/rule');
-    const ruleTree   = require('./fixtures/sample-style');
+    const {parseLayers}= require('../src/styles/layer');
+    const LayerTree   = require('./fixtures/sample-style');
 
-    describe('when given a raw ruleTree', () => {
+    describe('when given a raw LayerTree', () => {
 
-        it('returns a RuleGroup', () => {
-            assert.instanceOf(parseRules(ruleTree), Object);
+        it('returns a LayerTree', () => {
+            assert.instanceOf(parseLayers(LayerTree), Object);
         });
 
-        it('returns the correct number of children rules', () => {
-            let tree = parseRules(ruleTree).root;
+        it('returns the correct number of children layers', () => {
+            let tree = parseLayers(LayerTree).root;
             let children = 0;
 
-            function walkDown (rule) {
-                if (rule.rules) {
-                    rule.rules.forEach((r) => {
+            function walkDown (layer) {
+                if (layer.layers) {
+                    layer.layers.forEach((r) => {
                         walkDown(r);
                     });
                 }
@@ -148,7 +148,7 @@ describe('.parseRules(rules)', () => {
 
 
 describe('.groupProps()', () => {
-    let {groupProps} = require('../src/styles/rule');
+    let {groupProps} = require('../src/styles/layer');
 
     describe('given an object ', () => {
         let subject = {
@@ -175,7 +175,7 @@ describe('.groupProps()', () => {
 });
 
 describe('.calculateDraw()', () => {
-    const {calculateDraw} = require('../src/styles/rule');
+    const {calculateDraw} = require('../src/styles/layer');
 
 
     let b = {
@@ -194,7 +194,7 @@ describe('.calculateDraw()', () => {
         }
     };
 
-    it('calculates a rules inherited draw group', () => {
+    it('calculates a layers inherited draw group', () => {
         assert.deepEqual(
             calculateDraw(c),
             [{ group: { a: true } }, { group: { b: true } }, { group: { c: true } }]
@@ -203,13 +203,13 @@ describe('.calculateDraw()', () => {
 });
 
 
-describe('RuleTree.buildDrawGroups(context)', () => {
+describe('LayerTree.buildDrawGroups(context)', () => {
     let subject;
-    const {parseRules} = require('../src/styles/rule');
-    const {RuleTree}   = require('../src/styles/rule');
+    const {parseLayers} = require('../src/styles/layer');
+    const {LayerTree}   = require('../src/styles/layer');
 
     beforeEach(() => {
-        subject = parseRules(
+        subject = parseLayers(
             {
                 root: {
                     filter: {
@@ -285,7 +285,7 @@ describe('RuleTree.buildDrawGroups(context)', () => {
         subject = null;
     });
 
-    describe('when the context matches and we ask to merge the sibling rules', () => {
+    describe('when the context matches and we ask to merge the sibling layers', () => {
         let context = {
             feature: {
                 properties: {
@@ -298,11 +298,11 @@ describe('RuleTree.buildDrawGroups(context)', () => {
         };
 
         it('returns a single object', () => {
-            let rule = subject.root.buildDrawGroups(context);
-            assert.equal(Object.keys(rule).length, 1);
-            assert.deepEqual(rule.group.color, [1, 2, 3]);
-            assert.equal(rule.group.width, 20);
-            assert.equal(rule.group.order, 1);
+            let layer = subject.root.buildDrawGroups(context);
+            assert.equal(Object.keys(layer).length, 1);
+            assert.deepEqual(layer.group.color, [1, 2, 3]);
+            assert.equal(layer.group.width, 20);
+            assert.equal(layer.group.order, 1);
         });
     });
 
@@ -318,12 +318,12 @@ describe('RuleTree.buildDrawGroups(context)', () => {
             zoom: 3
         };
 
-        it('returns the correct number of matching rules', () => {
-            let rule = subject.root.buildDrawGroups(context);
-            assert.equal(Object.keys(rule).length, 1);
-            assert.deepEqual(rule.group.color, [1, 2, 3]);
-            assert.equal(rule.group.width, 20);
-            assert.equal(rule.group.order, 1);
+        it('returns the correct number of matching layers', () => {
+            let layer = subject.root.buildDrawGroups(context);
+            assert.equal(Object.keys(layer).length, 1);
+            assert.deepEqual(layer.group.color, [1, 2, 3]);
+            assert.equal(layer.group.width, 20);
+            assert.equal(layer.group.order, 1);
         });
     });
 
@@ -337,16 +337,16 @@ describe('RuleTree.buildDrawGroups(context)', () => {
         };
 
         it('returns undefined', () => {
-            const rule = subject.root.buildDrawGroups(context);
-            assert.isUndefined(rule);
+            const layer = subject.root.buildDrawGroups(context);
+            assert.isUndefined(layer);
         });
     });
 
 
-    describe('parseRules', () => {
+    describe('parseLayers', () => {
 
         it('returns a tree', () => {
-            let subject = parseRules({
+            let subject = parseLayers({
                 root: {
                     filter: {
                         id: 10
@@ -358,11 +358,11 @@ describe('RuleTree.buildDrawGroups(context)', () => {
                     }
                 }
             });
-            assert.instanceOf(subject.root, RuleTree);
+            assert.instanceOf(subject.root, LayerTree);
         });
 
         describe('when there no draw groups on the parent', () => {
-            let subject = parseRules({
+            let subject = parseLayers({
                 root: {
                     filter: {
                         name: 'ivan'
@@ -389,9 +389,9 @@ describe('RuleTree.buildDrawGroups(context)', () => {
             };
 
             it('returns only the child\'s draw', () => {
-                let rule = subject.root.buildDrawGroups(context);
-                assert.equal(Object.keys(rule).length, 1);
-                assert.deepEqual(rule.group.color, [1, 2, 3]);
+                let layer = subject.root.buildDrawGroups(context);
+                assert.equal(Object.keys(layer).length, 1);
+                assert.deepEqual(layer.group.color, [1, 2, 3]);
             });
 
         });
@@ -399,5 +399,3 @@ describe('RuleTree.buildDrawGroups(context)', () => {
     });
 
 });
-
-

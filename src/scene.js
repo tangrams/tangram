@@ -214,6 +214,7 @@ export default class Scene {
         if (Array.isArray(this.workers)) {
             this.workers.forEach((worker) => {
                 worker.terminate();
+                WorkerBroker.removeWorker(worker);
             });
             this.workers = null;
         }
@@ -315,7 +316,7 @@ export default class Scene {
         }
 
         this.next_worker = 0;
-        return Promise.all(queue);
+        return Promise.all(queue).then(() => log.setWorkers(this.workers));
     }
 
     // Round robin selection of next worker

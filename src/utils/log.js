@@ -45,12 +45,16 @@ log.level = 'info';
 log.setLevel = function (level) {
     log.level = level;
 
-    if (Thread.is_main) {
-        WorkerBroker.postMessageToAllWorkers('_logSetLevel', level);
+    if (Thread.is_main && Array.isArray(log.workers)) {
+        WorkerBroker.postMessage(log.workers, '_logSetLevel', level);
     }
 };
 
 if (Thread.is_main) {
+    log.setWorkers = function (workers) {
+        log.workers = workers;
+    };
+
     WorkerBroker.addTarget('_logProxy', log);
     WorkerBroker.addTarget('_logSetLevel', log.setLevel);
 }
