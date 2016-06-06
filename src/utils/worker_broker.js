@@ -167,6 +167,9 @@ function setupMainThread () {
 
     // Add a worker to communicate with - each worker must be registered from the main thread
     WorkerBroker.addWorker = function (worker) {
+        if (!(worker instanceof Worker)) {
+            throw Error(`Worker broker could not add non-Worker object`, worker);
+        }
 
         // Keep track of all registered workers
         workers.set(worker, worker_id++);
@@ -269,6 +272,10 @@ function setupMainThread () {
     };
 
     WorkerBroker.removeWorker = function (worker) {
+        if (!workers.has(worker)) {
+            throw Error(`Worker broker could not remove unregistered object`, worker);
+        }
+
         workers.delete(worker);
         // TODO: remove event handlers from worker as well?
     };

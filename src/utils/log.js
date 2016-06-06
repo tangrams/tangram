@@ -23,7 +23,7 @@ function methodForLevel (level) {
 export default function log (msg_level, ...msg) {
     if (LEVELS[msg_level] <= LEVELS[log.level]) {
         if (Thread.is_worker) {
-            // Proxy to worker
+            // Proxy to main thread
             WorkerBroker.postMessage('_logProxy', msg_level, ...msg);
         }
         else {
@@ -41,12 +41,13 @@ export default function log (msg_level, ...msg) {
 }
 
 log.level = 'info';
+log.workers = null;
 
 log.setLevel = function (level) {
     log.level = level;
 
     if (Thread.is_main && Array.isArray(log.workers)) {
-        WorkerBroker.postMessage(log.workers, '_logSetLevel', level);
+        WorkerBroker.postMessage(log.workers, '_logSetLevelProxy', level);
     }
 };
 
@@ -55,6 +56,8 @@ if (Thread.is_main) {
         log.workers = workers;
     };
 
-    WorkerBroker.addTarget('_logProxy', log);
-    WorkerBroker.addTarget('_logSetLevel', log.setLevel);
+
 }
+
+WorkerBroker.addTarget('_logProxy', log);                   // proxy log messages from worker to main thread
+WorkerBroker.addTarget('_logSetLevelProxy', log.setLevel);  // proxy log level setting from main to worker thread

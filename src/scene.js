@@ -212,6 +212,7 @@ export default class Scene {
         this.sources = {};
 
         if (Array.isArray(this.workers)) {
+            log.setWorkers(null);
             this.workers.forEach((worker) => {
                 worker.terminate();
                 WorkerBroker.removeWorker(worker);
