@@ -56,6 +56,7 @@ export default SceneLoader = {
     // Normalize properties that should be adjust within each local scene file (usually by path)
     normalize(config, path) {
         SceneLoader.normalizeDataSources(config, path);
+        SceneLoader.normalizeFonts(config, path);
         SceneLoader.normalizeTextures(config, path);
         return config;
     },
@@ -69,6 +70,19 @@ export default SceneLoader = {
 
             if (Array.isArray(source.scripts)) {
                 source.scripts = source.scripts.map(url => Utils.addBaseURL(url, path));
+            }
+        }
+
+        return config;
+    },
+
+    // Expand paths for fonts
+    normalizeFonts(config, path) {
+        config.fonts = config.fonts || {};
+
+        for (let val of Utils.recurseValues(config.fonts)) {
+            if (val.url) {
+                val.url = Utils.addBaseURL(val.url, path);
             }
         }
 
@@ -201,7 +215,6 @@ export default SceneLoader = {
         config.lights = config.lights || {};
         config.styles = config.styles || {};
         config.layers = config.layers || {};
-        config.fonts = config.fonts || {};
 
         return config;
     }

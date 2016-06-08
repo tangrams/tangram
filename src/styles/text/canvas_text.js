@@ -1,8 +1,8 @@
+import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
 
 import FontFaceObserver from 'fontfaceobserver';
-import log from 'loglevel';
 
 export default class CanvasText {
 
@@ -299,38 +299,17 @@ export default class CanvasText {
         return px_size;
     }
 
-    // Check availability of font faces (asynchronous, returns a promise)
-    // `fonts` is an object with keys corresponding to font face names
-    // If the object value is a string, it indicates a URL to load the font from.
-    // Other values simply indicate that the font face has been loaded externally (e.g. through a CSS stylesheet).
+    // Load set of custom font faces
+    // `fonts` is an object where the key is a font family name, and the value is one or more font face
+    // definitions. The value can be either a single object, or an array of such objects.
     static loadFonts (fonts) {
         let queue = [];
-        for (let face in fonts) {
-            if (CanvasText.fonts[face] === undefined) { // only check each font face once
-                // Dynamically loads font face if URL specified
-                if (typeof fonts[face] === 'string') {
-                    this.injectFont(face, fonts[face]);
-                }
-
-                // Check font load status
-                CanvasText.fonts[face] =
-                    (new FontFaceObserver(face)).load().then(
-                        () => {
-                            // Promise resolves, font is available
-                            CanvasText.fonts[face] = true;
-                            log.debug(`Font face '${face}' is available`);
-                        },
-                        () => {
-                            // Promise rejects, font is not available
-                            CanvasText.fonts[face] = false;
-                            log.debug(`Font face '${face}' is NOT available`);
-                        }
-                    );
-                log.debug(`Check availability for font face '${face}'`);
+        for (let family in fonts) {
+            if (Array.isArray(fonts[family])) {
+                fonts[family].forEach(face => queue.push(this.loadFontFace(family, face)));
             }
-
-            if (CanvasText.fonts[face] instanceof Promise) {
-                queue.push(CanvasText.fonts[face]);
+            else {
+                queue.push(this.loadFontFace(family, fonts[family]));
             }
         }
 
@@ -338,18 +317,53 @@ export default class CanvasText {
         return CanvasText.fonts_loaded;
     }
 
+    // Load a single font face
+    // `face` contains the font face definition, with optional parameters for `weight`, `style`, and `url`.
+    // If the `url` is defined, the font is injected into the document as a CSS font-face. If no `url` is defined,
+    // the font face is assumed is assumed to been loaded externally (e.g. through a CSS stylesheet).
+    // In either case, the function returns a promise that resolves when the font face has loaded, or times out.
+    static loadFontFace (family, face) {
+        let options = { family };
+
+        if (typeof face === 'object') {
+            Object.assign(options, face);
+
+            // If URL is defined, inject font into document
+            if (typeof face.url === 'string') {
+                this.injectFont(options);
+            }
+        }
+
+        // Wait for font to load
+        return (new FontFaceObserver(family, options)).load().then(
+            () => {
+                // Promise resolves, font is available
+                log('debug', `Font face '${family}' is available`, options);
+            },
+            () => {
+                // Promise rejects, font is not available
+                log('debug', `Font face '${family}' is NOT available`, options);
+            }
+        );
+    }
+
     // Loads a font face via CSS injection
-    static injectFont (face, url) {
+    // TODO: consider support for multiple format URLs per face, unicode ranges
+    static injectFont ({ family, url, weight, style }) {
         let css = `
             @font-face {
-                font-family: '${face}';
+                font-family: '${family}';
+                font-weight: ${weight || 'normal'};
+                font-style: ${style || 'normal'};
                 src: url(${encodeURI(url)});
             }
         `;
 
-        let style = document.createElement('style');
-        document.head.appendChild(style);
-        style.sheet.insertRule(css, 0);
+        let style_el = document.createElement('style');
+        style_el.appendChild(document.createTextNode(""));
+        document.head.appendChild(style_el);
+        style_el.sheet.insertRule(css, 0);
+        log('trace', 'Injecting CSS font face:', css);
     }
 
 }
@@ -362,5 +376,4 @@ CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
 
 // Font detection
-CanvasText.fonts = {}; // detected availability of fonts, keyed by face name
 CanvasText.fonts_loaded = Promise.resolve(); // resolves when all requested fonts have been detected
