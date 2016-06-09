@@ -99,11 +99,29 @@ export default class CanvasText {
                 line.width = ctx.measureText(line.text).width;
                 max_width = Math.max(max_width, Math.ceil(line.width));
 
-                var segments = line.text.split(' ');
+                // debugger
+                var text = line.text;
+                var stopOnSpaces = false;
+                var groupByN = 1;
+
+                if (stopOnSpaces){
+                    var segments = line.text.split(' ');
+                }
+                else {
+                    var num_segments = Math.ceil(text.length / groupByN);
+                    var segments = [];
+                    var startIndex = 0;
+                    for (var i = 0; i < num_segments; i++){
+                        var substr = text.slice(startIndex, startIndex + groupByN);
+                        segments.push(substr);
+                        startIndex += groupByN;
+                    }
+                }
+
                 line.segments = [];
                 for (var i = 0; i < segments.length; i++){
                     var str = segments[i];
-                    if (i > 0 && i < segments.length) str += ' ';
+                    if (stopOnSpaces && i > 0 && i < segments.length) str += ' ';
                     line.segments.push(ctx.measureText(str).width);
                 }
 
@@ -153,10 +171,25 @@ export default class CanvasText {
 
         let logical_size = texture_size.map(v => v / Utils.device_pixel_ratio);
 
+        // debugger
+        var segments = lines[0].segments;
+        var segment_size = [];
+        var segment_texture_size = [];
+        for (var i = 0; i < segments.length; i++){
+            if (i == 0 || i == segments.length - 1){
+                segment_size[i] = (segments[i] + buffer) / Utils.device_pixel_ratio;
+                segment_texture_size[i] = (segments[i] + buffer);
+            }
+            else{
+                segment_size[i] = segments[i] / Utils.device_pixel_ratio;
+                segment_texture_size[i] = segments[i];
+            }
+        }
+
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
             lines,
-            size: { collision_size, texture_size, logical_size, line_height }
+            size: { collision_size, texture_size, logical_size, line_height, segment_size, segment_texture_size}
         };
     }
 
@@ -215,11 +248,37 @@ export default class CanvasText {
                     align: text_settings.align
                 });
 
+                // debugger
+
                 info.texcoords = Texture.getTexcoordsForSprite(
                     info.position,
                     info.size.texture_size,
                     texture_size
                 );
+
+                info.multi_texcoords = [];
+                var text_position = info.position.slice();
+                var text_texture_size = info.size.texture_size.slice();
+                var x = text_position[0];
+                var y = text_position[1];
+
+                // debugger
+
+                for (var i = 0; i < info.size.segment_texture_size.length; i++){
+                    var w = info.size.segment_texture_size[i];
+                    text_texture_size[0] = w;
+                    text_position[0] = x;
+
+                    var texcoord = Texture.getTexcoordsForSprite(
+                        text_position,
+                        text_texture_size,
+                        texture_size
+                    );
+
+                    info.multi_texcoords.push(texcoord);
+
+                    x += w;
+                }
             }
         }
     }

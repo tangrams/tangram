@@ -10,6 +10,10 @@ export default class LabelLine extends Label {
         this.lines = lines;
         this.offset = [this.options.offset[0], this.options.offset[1]];
 
+        // debugger
+        this.segment_size = options.segment_size
+        this.segment_texture_size = options.segment_texture_size;
+
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
         this.segment_index = options.segment_start || 0;
@@ -21,6 +25,23 @@ export default class LabelLine extends Label {
         let segment = this.currentSegment();
         this.angle = this.computeAngle();
         this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
+
+        var num_segments = this.segment_size.length;
+        this.multiPosition = [];
+        var dw = 1 / (num_segments + 1);
+        var w = dw;
+
+        for (var i = 0; i < num_segments; i++){
+            var pt = [
+                (1 - w) * segment[0][0] + w * segment[1][0],
+                (1 - w) * segment[0][1] + w * segment[1][1]
+            ];
+
+            this.multiPosition.push(pt);
+
+            w += dw;
+        }
+
         this.updateBBoxes();
     }
 
@@ -71,7 +92,6 @@ export default class LabelLine extends Label {
     currentSegment () {
         let p1 = this.lines[this.segment_index];
         let p2 = this.lines[this.segment_index + 1];
-
         return [ p1, p2 ];
     }
 

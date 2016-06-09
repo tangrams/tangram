@@ -498,24 +498,48 @@ Object.assign(Points, {
     },
 
     // Build quad for point sprite
-    build (style, vertex_data) {
+    build (style, vertex_data, flag) {
         let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
 
-        this.buildQuad(
-            [label.position],               // position
-            style.size,                     // size in pixels
-            style.angle,                    // angle in degrees
-            style.sampler,                  // texture sampler to use
-            label.offset,                   // offset from center in pixels
-            style.texcoords,                // texture UVs
-            vertex_data, vertex_template    // VBO and data for current vertex
-        );
+        if (flag){
+            // debugger
+            var positions = label.multiPosition
+            var size = style.size.slice();
+            for (var i = 0; i < positions.length; i++){
+                // debugger
+                var position = positions[i];
+                var texcoords = style.multi_texcoords[i];
+                var angle = style.angle + (Math.random() - .5) / 2;
+                size[0] = style.segment_size[i];
+
+                this.buildQuad(
+                    [position],               // position
+                    size,                     // size in pixels
+                    angle,                    // angle in degrees
+                    style.sampler,                  // texture sampler to use
+                    label.offset,                   // offset from center in pixels
+                    texcoords,                // texture UVs
+                    vertex_data, vertex_template    // VBO and data for current vertex
+                );
+            }
+        }
+        else {
+            this.buildQuad(
+                [label.position],               // position
+                style.size,                     // size in pixels
+                style.angle,                    // angle in degrees
+                style.sampler,                  // texture sampler to use
+                label.offset,                   // offset from center in pixels
+                style.texcoords,                // texture UVs
+                vertex_data, vertex_template    // VBO and data for current vertex
+            );
+        }
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, vertex_data) {
-        this.build(style, vertex_data);
+    buildLines (lines, style, vertex_data, flag) {
+        this.build(style, vertex_data, flag);
     },
 
     buildPoints (points, style, vertex_data) {

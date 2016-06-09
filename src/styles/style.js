@@ -172,6 +172,12 @@ export var Style = {
     },
 
     buildGeometry (geometry, style, vertex_data, context) {
+        var flag = false;
+        if (style.label && style.label.constructor.name === "LabelLine") {
+            flag = true;
+            // debugger
+        }
+
         if (geometry.type === 'Polygon') {
             this.buildPolygons([geometry.coordinates], style, vertex_data, context);
         }
@@ -179,7 +185,7 @@ export var Style = {
             this.buildPolygons(geometry.coordinates, style, vertex_data, context);
         }
         else if (geometry.type === 'LineString') {
-            this.buildLines([geometry.coordinates], style, vertex_data, context);
+            this.buildLines([geometry.coordinates], style, vertex_data, context, flag);
         }
         else if (geometry.type === 'MultiLineString') {
             this.buildLines(geometry.coordinates, style, vertex_data, context);
