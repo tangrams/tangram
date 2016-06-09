@@ -302,6 +302,7 @@ export default class CanvasText {
     // Load set of custom font faces
     // `fonts` is an object where the key is a font family name, and the value is one or more font face
     // definitions. The value can be either a single object, or an array of such objects.
+    // If the special string value 'external' is used, it indicates the the font will be loaded via external CSS.
     static loadFonts (fonts) {
         let queue = [];
         for (let family in fonts) {
@@ -313,16 +314,21 @@ export default class CanvasText {
             }
         }
 
-        CanvasText.fonts_loaded = Promise.all(queue);
+        CanvasText.fonts_loaded = Promise.all(queue.filter(x => x));
         return CanvasText.fonts_loaded;
     }
 
     // Load a single font face
     // `face` contains the font face definition, with optional parameters for `weight`, `style`, and `url`.
-    // If the `url` is defined, the font is injected into the document as a CSS font-face. If no `url` is defined,
-    // the font face is assumed is assumed to been loaded externally (e.g. through a CSS stylesheet).
-    // In either case, the function returns a promise that resolves when the font face has loaded, or times out.
+    // If the `url` is defined, the font is injected into the document as a CSS font-face.
+    // If the object's value is the special string 'external', or if no `url` is defined, then the font face
+    // is assumed is assumed to been loaded via external CSS. In either case, the function returns a promise
+    // that resolves when the font face has loaded, or times out.
     static loadFontFace (family, face) {
+        if (face == null || (typeof face !== 'object' && face !== 'external')) {
+            return;
+        }
+
         let options = { family };
 
         if (typeof face === 'object') {
