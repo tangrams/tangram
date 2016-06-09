@@ -1,5 +1,8 @@
+import log from '../../utils/log';
 import Utils from '../../utils/utils';
 import Texture from '../../gl/texture';
+
+import FontFaceObserver from 'fontfaceobserver';
 
 export default class CanvasText {
 
@@ -35,35 +38,37 @@ export default class CanvasText {
     }
 
     textSizes (texts) {
-        for (let style in texts) {
-            let text_infos = texts[style];
-            let first = true;
+        return CanvasText.fonts_loaded.then(() => {
+            for (let style in texts) {
+                let text_infos = texts[style];
+                let first = true;
 
-            for (let text in text_infos) {
-                // Use cached size, or compute via canvas
-                if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
-                    let text_settings = text_infos[text].text_settings;
-                    if (first) {
-                        this.setFont(text_settings);
-                        first = false;
+                for (let text in text_infos) {
+                    // Use cached size, or compute via canvas
+                    if (!CanvasText.text_cache[style] || !CanvasText.text_cache[style][text]) {
+                        let text_settings = text_infos[text].text_settings;
+                        if (first) {
+                            this.setFont(text_settings);
+                            first = false;
+                        }
+
+                        CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
+                        CanvasText.text_cache[style][text] =
+                            this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                        CanvasText.cache_stats.misses++;
+                    }
+                    else {
+                        CanvasText.cache_stats.hits++;
                     }
 
-                    CanvasText.text_cache[style] = CanvasText.text_cache[style] || {};
-                    CanvasText.text_cache[style][text] =
-                        this.textSize(text, text_settings.transform, text_settings.text_wrap);
-                    CanvasText.cache_stats.misses++;
+                    // Only send text sizes back to worker (keep computed text line info
+                    // on main thread, for future rendering)
+                    text_infos[text].size = CanvasText.text_cache[style][text].size;
                 }
-                else {
-                    CanvasText.cache_stats.hits++;
-                }
-
-                // Only send text sizes back to worker (keep computed text line info
-                // on main thread, for future rendering)
-                text_infos[text].size = CanvasText.text_cache[style][text].size;
             }
-        }
 
-        return texts;
+            return texts;
+        });
     }
 
     // Computes width and height of text based on current font style
@@ -294,6 +299,79 @@ export default class CanvasText {
         return px_size;
     }
 
+    // Load set of custom font faces
+    // `fonts` is an object where the key is a font family name, and the value is one or more font face
+    // definitions. The value can be either a single object, or an array of such objects.
+    // If the special string value 'external' is used, it indicates the the font will be loaded via external CSS.
+    static loadFonts (fonts) {
+        let queue = [];
+        for (let family in fonts) {
+            if (Array.isArray(fonts[family])) {
+                fonts[family].forEach(face => queue.push(this.loadFontFace(family, face)));
+            }
+            else {
+                queue.push(this.loadFontFace(family, fonts[family]));
+            }
+        }
+
+        CanvasText.fonts_loaded = Promise.all(queue.filter(x => x));
+        return CanvasText.fonts_loaded;
+    }
+
+    // Load a single font face
+    // `face` contains the font face definition, with optional parameters for `weight`, `style`, and `url`.
+    // If the `url` is defined, the font is injected into the document as a CSS font-face.
+    // If the object's value is the special string 'external', or if no `url` is defined, then the font face
+    // is assumed is assumed to been loaded via external CSS. In either case, the function returns a promise
+    // that resolves when the font face has loaded, or times out.
+    static loadFontFace (family, face) {
+        if (face == null || (typeof face !== 'object' && face !== 'external')) {
+            return;
+        }
+
+        let options = { family };
+
+        if (typeof face === 'object') {
+            Object.assign(options, face);
+
+            // If URL is defined, inject font into document
+            if (typeof face.url === 'string') {
+                this.injectFontFace(options);
+            }
+        }
+
+        // Wait for font to load
+        return (new FontFaceObserver(family, options)).load().then(
+            () => {
+                // Promise resolves, font is available
+                log('debug', `Font face '${family}' is available`, options);
+            },
+            () => {
+                // Promise rejects, font is not available
+                log('debug', `Font face '${family}' is NOT available`, options);
+            }
+        );
+    }
+
+    // Loads a font face via CSS injection
+    // TODO: consider support for multiple format URLs per face, unicode ranges
+    static injectFontFace ({ family, url, weight, style }) {
+        let css = `
+            @font-face {
+                font-family: '${family}';
+                font-weight: ${weight || 'normal'};
+                font-style: ${style || 'normal'};
+                src: url(${encodeURI(url)});
+            }
+        `;
+
+        let style_el = document.createElement('style');
+        style_el.appendChild(document.createTextNode(""));
+        document.head.appendChild(style_el);
+        style_el.sheet.insertRule(css, 0);
+        log('trace', 'Injecting CSS font face:', css);
+    }
+
 }
 
 // Extract font size and units
@@ -302,3 +380,6 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+
+// Font detection
+CanvasText.fonts_loaded = Promise.resolve(); // resolves when all requested fonts have been detected
