@@ -34,13 +34,11 @@ import FeatureSelection from './selection';
 import CanvasText from './styles/text/canvas_text';
 
 import yaml from 'js-yaml';
-import browser from 'bowser';
 
 // Make some modules accessible for debugging
 var debug = {
     log,
     yaml,
-    browser,
     Thread,
     Utils,
     Geo,

@@ -112,6 +112,12 @@ Utils.addParamsToURL = function (url, params) {
     return url;
 };
 
+// Basic Safari detection
+// http://stackoverflow.com/questions/7944460/detect-safari-browser
+Utils.isSafari = function () {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+};
+
 // Polyfill (for Safari compatibility)
 Utils._createObjectURL = undefined;
 Utils.createObjectURL = function (url) {
