@@ -330,7 +330,7 @@ export default class CanvasText {
 
             // If URL is defined, inject font into document
             if (typeof face.url === 'string') {
-                this.injectFont(options);
+                this.injectFontFace(options);
             }
         }
 
@@ -349,7 +349,7 @@ export default class CanvasText {
 
     // Loads a font face via CSS injection
     // TODO: consider support for multiple format URLs per face, unicode ranges
-    static injectFont ({ family, url, weight, style }) {
+    static injectFontFace ({ family, url, weight, style }) {
         let css = `
             @font-face {
                 font-family: '${family}';
