@@ -17,17 +17,13 @@ export default GLSL;
     for actually setting the uniforms). For example, this could be used as a key into a dictionary of
     known texture names, or it could simply be used as a URL to dynamically load the texture from.
 */
-GLSL.parseUniforms = function (uniforms, prefix = null) {
+GLSL.parseUniforms = function (uniforms) {
     var parsed = [];
 
     for (var name in uniforms) {
         var key = name; // save the original name
         var uniform = uniforms[name];
         var u;
-
-        if (prefix) {
-            name = prefix + '.' + name;
-        }
 
         // Single float
         if (typeof uniform === 'number') {
@@ -40,7 +36,7 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                 uniforms
             });
         }
-        // Array: vector, array of floats, array of textures, or array of structs
+        // Array: vector, array of floats, array of textures
         else if (Array.isArray(uniform)) {
             // Numeric values
             if (typeof uniform[0] === 'number') {
@@ -81,31 +77,7 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                     });
                 }
             }
-            // Array of arrays - but only arrays of vectors are allowed in this case
-            else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
-                // float vectors (vec2, vec3, vec4)
-                if (uniform[0].length >= 2 && uniform[0].length <= 4) {
-                    // Set each vector in the array
-                    for (u=0; u < uniform.length; u++) {
-                        parsed.push({
-                            type: 'vec' + uniform[0].length,
-                            method: uniform[u].length + 'fv',
-                            name: name + '[' + u + ']',
-                            value: uniform[u],
-                            key: u,
-                            uniforms: uniform
-                        });
-                    }
-                }
-                // else error?
-            }
-            // Array of structures
-            else if (typeof uniform[0] === 'object') {
-                for (u=0; u < uniform.length; u++) {
-                    // Set each struct in the array
-                    parsed.push(...GLSL.parseUniforms(uniform[u], name + '[' + u + ']'));
-                }
-            }
+            // TODO: else warning
         }
         // Boolean
         else if (typeof uniform === 'boolean') {
@@ -129,13 +101,6 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
                 uniforms
             });
         }
-        // Structure
-        else if (typeof uniform === 'object') {
-            // Set each field in the struct
-            parsed.push(...GLSL.parseUniforms(uniform, name));
-        }
-
-        // TODO: support other non-float types? (int, etc.)
     }
 
     return parsed;
@@ -144,10 +109,8 @@ GLSL.parseUniforms = function (uniforms, prefix = null) {
 /**
     Generate a GLSL variable definition from a JS object
 */
-GLSL.defineVariable = function (name, value, prefix = null) {
+GLSL.defineVariable = function (name, value) {
     var type, array;
-    var structs = '';
-    prefix = prefix ? prefix + '_' + name : name;
 
     // Single float
     if (typeof value === 'number') {
@@ -173,21 +136,6 @@ GLSL.defineVariable = function (name, value, prefix = null) {
             type = 'sampler2D';
             array = value.length;
         }
-        // Array of arrays - but only arrays of vectors are allowed in this case
-        else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
-            // float vectors (vec2, vec3, vec4)
-            if (value[0].length >= 2 && value[0].length <= 4) {
-                type = 'vec' + value[0].length;
-            }
-            // else error?
-            array = value[0].length;
-        }
-        // Array of structures
-        else if (typeof value[0] === 'object') {
-            type = '_type_' + prefix; // custom struct name
-            array = value.length;
-            structs += GLSL.defineStruct(type, value[0], prefix) + '\n'; // build & add to list of dependent structs
-        }
     }
     // Boolean
     else if (typeof value === 'boolean') {
@@ -196,11 +144,6 @@ GLSL.defineVariable = function (name, value, prefix = null) {
     // Texture
     else if (typeof value === 'string') {
         type = 'sampler2D';
-    }
-    // Structure
-    else if (typeof value === 'object') {
-        type = '_type_' + prefix; // custom struct name
-        structs += GLSL.defineStruct(type, value, prefix) + '\n'; // build & add to list of dependent structs
     }
 
     // Construct variable definition
@@ -211,33 +154,14 @@ GLSL.defineVariable = function (name, value, prefix = null) {
     }
     variable += ';\n';
 
-    // Return the variable definition itself, and any dependent struct definitions
-    return { variable, structs };
-};
-
-/**
-    Generate a GLSL structure definition from a JS object
-*/
-GLSL.defineStruct = function (type, value, prefix = null) {
-    var struct = `struct ${type} {\n`;
-    var dependents = '';
-    for (var field in value) {
-        var subvar = GLSL.defineVariable(field, value[field], prefix);
-        struct += '    ' + subvar.variable;
-        dependents += subvar.structs;
-    }
-    struct += '};\n';
-    struct = dependents + struct;
-    return struct;
+    return variable;
 };
 
 /**
     Generate a GLSL uniform definition from a JS object
 */
 GLSL.defineUniform = function (name, value) {
-    var def = GLSL.defineVariable(name, value);
-    def = def.structs + 'uniform ' + def.variable;
-    return def;
+    return 'uniform ' + GLSL.defineVariable(name, value);
 };
 
 /**
