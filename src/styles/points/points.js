@@ -503,14 +503,13 @@ Object.assign(Points, {
         let label = style.label;
 
         if (flag){
-            // debugger
             var positions = label.multiPosition
             var size = style.size.slice();
             for (var i = 0; i < positions.length; i++){
                 // debugger
                 var position = positions[i];
                 var texcoords = style.multi_texcoords[i];
-                var angle = style.angle + (Math.random() - .5) / 2;
+                var angle = style.angle[i] || style.angle[0];
                 size[0] = style.segment_size[i];
 
                 this.buildQuad(
@@ -528,7 +527,7 @@ Object.assign(Points, {
             this.buildQuad(
                 [label.position],               // position
                 style.size,                     // size in pixels
-                style.angle,                    // angle in degrees
+                style.angle[0],                    // angle in degrees
                 style.sampler,                  // texture sampler to use
                 label.offset,                   // offset from center in pixels
                 style.texcoords,                // texture UVs

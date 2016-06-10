@@ -92,6 +92,18 @@ export default class CanvasText {
         let lines = []; // completed lines
         let max_width = 0; // max width to fit all lines
 
+
+
+        var TYPES = {
+            ON_SPACE : 0,
+            GROUP_BY : 1,
+            NUM_CHUNKS : 2
+        };
+
+        var type = TYPES.ON_SPACE;
+
+
+
         // add current line buffer to completed lines, optionally start new line
         function addLine (new_line) {
             line.text = line.text.trim();
@@ -100,28 +112,46 @@ export default class CanvasText {
                 max_width = Math.max(max_width, Math.ceil(line.width));
 
                 // debugger
+
                 var text = line.text;
+                var segments = [];
+
+                switch (type){
+                    case TYPES.ON_SPACE:
+                        segments = line.text.split(' ');
+                        break;
+                    case TYPES.GROUP_BY:
+                        var groupByN = 3;
+
+                        var num_segments = Math.ceil(text.length / groupByN);
+                        var startIndex = 0;
+                        for (var i = 0; i < num_segments; i++){
+                            var substr = text.slice(startIndex, startIndex + groupByN);
+                            segments.push(substr);
+                            startIndex += groupByN;
+                        }
+                        break;
+                    case TYPES.NUM_CHUNKS:
+                        var num_chunks = 2;
+
+                        var charsPerChunk = Math.ceil(text.length / num_chunks);
+                        var startIndex = 0;
+                        for (var i = 0; i < num_chunks; i++){
+                            var segment = text.slice(startIndex, startIndex + charsPerChunk);
+                            segments.push(segment);
+                            startIndex += charsPerChunk;
+                        }
+
+                        break;
+                }
+
                 var stopOnSpaces = false;
                 var groupByN = 1;
-
-                if (stopOnSpaces){
-                    var segments = line.text.split(' ');
-                }
-                else {
-                    var num_segments = Math.ceil(text.length / groupByN);
-                    var segments = [];
-                    var startIndex = 0;
-                    for (var i = 0; i < num_segments; i++){
-                        var substr = text.slice(startIndex, startIndex + groupByN);
-                        segments.push(substr);
-                        startIndex += groupByN;
-                    }
-                }
 
                 line.segments = [];
                 for (var i = 0; i < segments.length; i++){
                     var str = segments[i];
-                    if (stopOnSpaces && i > 0 && i < segments.length) str += ' ';
+                    if (type === TYPES.ON_SPACE && i > 0 && i < segments.length) str += ' ';
                     line.segments.push(ctx.measureText(str).width);
                 }
 
