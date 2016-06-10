@@ -150,7 +150,7 @@ sources:
         url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
         url_params:
             api_key: vector-tiles-HqUVidw
-        max_zoom: 16
+        max_zoom: 20
         # # Data filtering demo with 'scripts' and 'transform' properties:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
