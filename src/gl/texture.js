@@ -85,13 +85,13 @@ export default class Texture {
         if (!this.valid) {
             return;
         }
-        if (typeof unit === 'number') {
-            if (Texture.activeUnit !== unit) {
-                this.gl.activeTexture(this.gl.TEXTURE0 + unit);
-                Texture.activeUnit = unit;
-                Texture.boundTexture = null; // texture must be re-bound when unit changes
-            }
+
+        if (Texture.activeUnit !== unit) {
+            this.gl.activeTexture(this.gl.TEXTURE0 + unit);
+            Texture.activeUnit = unit;
+            Texture.boundTexture = null; // texture must be re-bound when unit changes
         }
+
         if (Texture.boundTexture !== this.texture) {
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
             Texture.boundTexture = this.texture;
