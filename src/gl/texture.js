@@ -396,6 +396,13 @@ Texture.createFromObject = function (gl, textures) {
     return Promise.all(loading);
 };
 
+// Create a 'default' texture (1x1 pixel) that can be used as a placeholder
+// (for example to prevent GL from complaining about unbound textures)
+Texture.default = '__default';
+Texture.createDefault = function (gl) {
+    return Texture.create(gl, Texture.default);
+};
+
 // Indicate if a texture definition would be a change from the current cache
 Texture.changed = function (name, config) {
     let texture = Texture.textures[name];

@@ -840,7 +840,8 @@ export default class Scene {
 
     // Load all textures in the scene definition
     loadTextures() {
-        return Texture.createFromObject(this.gl, this.config.textures);
+        return Texture.createFromObject(this.gl, this.config.textures).
+            then(() => Texture.createDefault(this.gl)); // create a 'default' texture for placeholders
     }
 
     // Called (currently manually) after styles are updated in stylesheet
