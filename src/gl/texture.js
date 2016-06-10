@@ -81,7 +81,7 @@ export default class Texture {
         }
     }
 
-    bind(unit) {
+    bind(unit = 0) {
         if (!this.valid) {
             return;
         }
