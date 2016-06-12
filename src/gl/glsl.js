@@ -77,6 +77,23 @@ GLSL.parseUniforms = function (uniforms) {
                     });
                 }
             }
+            // Array of arrays - but only arrays of vectors are allowed in this case
+            else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
+                // float vectors (vec2, vec3, vec4)
+                if (uniform[0].length >= 2 && uniform[0].length <= 4) {
+                    // Set each vector in the array
+                    for (u=0; u < uniform.length; u++) {
+                        parsed.push({
+                            type: 'vec' + uniform[0].length,
+                            method: uniform[u].length + 'fv',
+                            name: name + '[' + u + ']',
+                            value: uniform[u],
+                            key: u,
+                            uniforms: uniform
+                        });
+                    }
+                }
+            }
             // TODO: else warning
         }
         // Boolean
