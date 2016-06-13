@@ -173,7 +173,7 @@ Object.assign(TextStyle, {
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels (size, line, options, labels) {
+    buildLineLabels(size, line, options, labels) {
         let subdiv = Math.min(options.subdiv, line.length - 1);
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
@@ -181,14 +181,16 @@ Object.assign(TextStyle, {
             let seg_per_div = (line.length - 1) / subdiv;
             for (let i=0; i < subdiv; i++) {
                 options.segment_start = Math.floor(i * seg_per_div);
-                options.segment_end = Math.floor((i+1) * seg_per_div);
-                labels.push(new LabelLine(size, line, options));
+                options.segment_end = Math.floor((i + 1) * seg_per_div);
+                var label = new LabelLine(size, line, options);
+                if (!label.throw_away) labels.push(label);
             }
             options.segment_start = null;
             options.segment_end = null;
         }
         else {
-            labels.push(new LabelLine(size, line, options));
+            var label = new LabelLine(size, line, options);
+            if (!label.throw_away) labels.push(label);
         }
     }
 

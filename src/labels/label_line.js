@@ -15,11 +15,31 @@ export default class LabelLine extends Label {
         this.segment_size = options.segment_size
         this.segment_texture_size = options.segment_texture_size;
 
+        this.segment_index = 0;
+
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
         this.segment_index = options.segment_start || 0;
         this.segment_max = options.segment_end || this.lines.length;
-        this.update();
+
+        // get first good segment
+        var segment = this.nextFittingSegment();
+
+        if (!segment) {
+            this.throw_away = true;
+        }
+        else {
+            this.update();
+        }
+    }
+
+    nextFittingSegment() {
+        var segment = this.currentSegment();
+        while (!this.doesSegmentFit(segment)) {
+            segment = this.incrementSegment();
+            if (!segment) return false;
+        }
+        return segment;
     }
 
     update () {
@@ -30,7 +50,8 @@ export default class LabelLine extends Label {
             this.getAngle(this.segment_index + 1)
         ];
 
-        this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
+        // this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
+        this.position = segment[1].slice();
 
         // kink on join if two works and there are at least 3 line segments
         var onJoin = (this.segment_size.length === 2) && this.lines.length >= 3;
@@ -71,15 +92,12 @@ export default class LabelLine extends Label {
         this.updateBBoxes();
     }
 
-    moveNextSegment () {
+    incrementSegment() {
         if (this.segment_index + 1 >= this.segment_max - 1) {
             return false;
         }
 
-        this.segment_index++;
-        this.update();
-
-        return true;
+        return this.getSegment(this.segment_index++);
     }
 
     computeAngle () {
@@ -118,8 +136,7 @@ export default class LabelLine extends Label {
         return theta;
     }
 
-    fitToSegment () {
-        let segment = this.currentSegment();
+    doesSegmentFit (segment) {
         let p0p1 = Vector.sub(segment[0], segment[1]);
         let length = Vector.length(p0p1);
 
@@ -174,33 +191,21 @@ export default class LabelLine extends Label {
     // Returns true if label was moved into tile, false if it couldn't be moved
     moveIntoTile () {
         let in_tile = false;
-        let fits_to_segment = this.fitToSegment();
+        let fits_to_segment = false;
 
-        // Try line segments until we find one that fits the label (and is inside the tile)
-        while (!in_tile || !fits_to_segment) {
-            if (!this.moveNextSegment()) {
-                break; // we can't move further in this line
+        while (!in_tile) {
+            let segment = this.nextFittingSegment();
+            if (segment) {
+                this.update();
+                in_tile = this.inTileBounds();
+                if (!in_tile) segment = this.incrementSegment();
+                if (!segment) return false;
             }
-
-            in_tile = this.inTileBounds();
-            fits_to_segment = this.fitToSegment();
-        }
-
-        return in_tile && fits_to_segment;
-    }
-
-    discard (bboxes) {
-        // First find a line segment that fits the label
-        if (this.lines && !this.fitToSegment()) {
-            while (!this.fitToSegment()) {
-                if (!this.moveNextSegment()) {
-                    return true;
-                }
+            else {
+                return false;
             }
         }
 
-        // If label fits in line, run standard discard tests
-        return super.discard(bboxes);
+        return true;
     }
-
 }
