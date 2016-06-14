@@ -503,13 +503,13 @@ Object.assign(Points, {
         let label = style.label;
 
         if (flag) {
-            // debugger
             var positions = label.multiPosition
             var size = style.size.slice();
+
             for (var i = 0; i < positions.length; i++){
                 var position = positions[i];
                 var texcoords = style.multi_texcoords[i];
-                var angle = style.angle[i] || style.angle[0];
+                var angle = style.angle[i];
                 size[0] = style.segment_size[i];
 
                 this.buildQuad(

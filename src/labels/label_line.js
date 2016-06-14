@@ -26,6 +26,7 @@ export default class LabelLine extends Label {
 
         this.position = null;
         this.multiPosition = null;
+        this.kink_index = 0;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -92,7 +93,8 @@ export default class LabelLine extends Label {
     }
 
     doesSegmentFit(segment) {
-        let doesFit = false;
+        let excess = 1 + this.options.line_exceed / 100;
+        let does_fit = false;
         let p0p1
 
         switch (this.placement) {
@@ -100,38 +102,43 @@ export default class LabelLine extends Label {
                 p0p1 = Vector.sub(segment[0], segment[1]);
                 let p1p2 = Vector.sub(segment[1], segment[2]);
 
-                let length1 = Vector.length(p0p1);
-                let length2 = Vector.length(p1p2);
+                let line_length1 = Vector.length(p0p1);
+                let line_length2 = Vector.length(p1p2);
 
-                let label_length1 = this.segment_size[0] * this.options.units_per_pixel;
-                let label_length2 = this.segment_size[1] * this.options.units_per_pixel;
+                // break up multiple segments into two chunks (N-1 options)
+                var label_length1 = this.size[0];
+                var label_length2 = 0;
+                var width2, index;
+                var index = 0;
+                while (!does_fit && index < this.segment_size.length - 1) {
+                    width2 = this.segment_size[this.segment_size.length - index - 1];
 
-                if (label_length1 > length1 && label_length2 > length2) {
-                    // an exceed heurestic of 100% would let the label fit in any cases
-                    let exceed1 = (1 - (length1 / label_length1)) * 100;
-                    let exceed2 = (1 - (length2 / label_length2)) * 100;
-                    return Math.max(exceed1, exceed2) < this.options.line_exceed;
+                    label_length1 -= width2 * this.options.units_per_pixel;
+                    label_length2 += width2 * this.options.units_per_pixel;
+
+                    does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
+                    index++;
                 }
+                this.kink_index = this.segment_size.length - index;
 
-                doesFit = label_length1 <= length1 && label_length2 <= length2;
+                // var width1 = this.segment_size[0];
+                // while (this.segment_size.length - 1) {
+                //     width1 += this.segment_size.shift();
+                // }
+
+                // this.segment_size[0] = width1;
+                // this.segment_size[1] = width2;
                 break;
             case PLACEMENT.MID_POINT:
                 p0p1 = Vector.sub(segment[0], segment[1]);
-                let length = Vector.length(p0p1);
+                let line_length = Vector.length(p0p1);
 
                 let label_length = this.size[0] * this.options.units_per_pixel;
-
-                if (label_length > length) {
-                    // an exceed heurestic of 100% would let the label fit in any cases
-                    let exceed = (1 - (length / label_length)) * 100;
-                    return exceed < this.options.line_exceed;
-                }
-
-                doesFit = label_length <= length;
+                does_fit = (label_length < excess * line_length)
                 break;
         }
 
-        return doesFit;
+        return does_fit;
     }
 
     update() {
@@ -140,23 +147,42 @@ export default class LabelLine extends Label {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.position = segment[1].slice();
-                this.angle = [
-                    this.getAngleAtIndex(this.segment_index - 1),
-                    this.getAngleAtIndex(this.segment_index)
-                ];
 
+                this.angle = [];
                 this.multiPosition = [];
                 var upp = Geo.units_per_pixel;
-                for (var i = 0; i < this.segment_size.length; i++){
-                    var direction = (i === 0) ? -1 : 1;
-                    var offset = Vector.rot([upp * direction * .5 * this.segment_size[i], 0], -this.angle[i]);
+
+                // backwards
+                var width = 0;
+                var angle = this.getAngleAtIndex(this.segment_index - 1);
+                for (var i = this.kink_index - 1; i >= 0; i--){
+                    width += this.segment_size[i];
+
+                    var offset = Vector.rot([-upp * .5 * width, 0], -angle);
                     var pt = Vector.add(segment[1], offset);
 
+                    this.angle.unshift(angle);
+                    this.multiPosition.unshift(pt);
+
+                    width += width;
+                }
+
+                // forwards
+                var width = 0;
+                angle = this.getAngleAtIndex(this.segment_index);
+                for (i = this.kink_index; i < this.segment_size.length; i++){
+                    width += this.segment_size[i];
+
+                    var offset = Vector.rot([upp * .5 * width, 0], -angle);
+                    var pt = Vector.add(segment[1], offset);
+
+                    this.angle.push(angle);
                     this.multiPosition.push(pt);
                 }
 
                 break;
             case PLACEMENT.MID_POINT:
+                this.multiPosition = null;
                 this.position = [
                     (segment[0][0] + segment[1][0]) / 2,
                     (segment[0][1] + segment[1][1]) / 2
