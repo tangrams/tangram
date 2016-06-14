@@ -329,8 +329,9 @@ Object.assign(Points, {
         // Buffer (1d value or 2d array, expand 1d to 2d)
         draw.buffer = StyleParser.cacheObject(draw.buffer, v => (Array.isArray(v) ? v : [v, v]).map(parseFloat) || 0);
 
+        // Optional text styling
+        draw.text = this.preprocessText(draw.text); // will return null if valid text styling wasn't provided
         if (draw.text) {
-            draw.text = this.preprocessText(draw.text);
             draw.text.key = draw.key; // copy layer key for use as label repeat group
             draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
         }
