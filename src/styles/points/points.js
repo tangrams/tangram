@@ -502,11 +502,11 @@ Object.assign(Points, {
         let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
 
-        if (flag){
+        if (flag) {
+            // debugger
             var positions = label.multiPosition
             var size = style.size.slice();
             for (var i = 0; i < positions.length; i++){
-                // debugger
                 var position = positions[i];
                 var texcoords = style.multi_texcoords[i];
                 var angle = style.angle[i] || style.angle[0];
@@ -537,15 +537,15 @@ Object.assign(Points, {
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, vertex_data, flag) {
+    buildLines (lines, style, vertex_data, context, flag) {
         this.build(style, vertex_data, flag);
     },
 
-    buildPoints (points, style, vertex_data) {
+    buildPoints (points, style, vertex_data, context) {
         this.build(style, vertex_data);
     },
 
-    buildPolygons (points, style, vertex_data) {
+    buildPolygons (points, style, vertex_data, context) {
         this.build(style, vertex_data);
     }
 

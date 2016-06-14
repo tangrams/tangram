@@ -173,7 +173,7 @@ export var Style = {
 
     buildGeometry (geometry, style, vertex_data, context) {
         var flag = false;
-        if (style.label && style.label.constructor.name === "LabelLine") {
+        if (style.label && style.label.constructor.name === "LabelLine" && style.label.multiPosition) {
             flag = true;
             // debugger
         }
