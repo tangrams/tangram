@@ -79,16 +79,18 @@ Object.assign(TextStyle, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            // debugger
+
             fq.layout.segment_size = text_info.size.segment_size;
             fq.layout.segment_texture_size = text_info.size.segment_texture_size;
             let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
-                let fql = Object.create(fq);
-                fql.label = feature_labels[i];
-                labels.push(fql);
+                // TODO: why are we copying object?
+                // let fql = Object.create(fq);
+                fq.label = feature_labels[i];
+                labels.push(fq);
             }
         }
+        // debugger
         return labels;
     },
 
