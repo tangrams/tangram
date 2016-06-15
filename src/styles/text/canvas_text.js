@@ -151,7 +151,7 @@ export default class CanvasText {
                 line.segments = [];
                 for (var i = 0; i < segments.length; i++){
                     var str = segments[i];
-                    if (type === TYPES.ON_SPACE && i > 0 && i < segments.length) str += ' ';
+                    if (type === TYPES.ON_SPACE && i >= 0 && i < segments.length - 1) str += ' ';
                     line.segments.push(ctx.measureText(str).width);
                 }
 
@@ -227,12 +227,13 @@ export default class CanvasText {
     drawText (lines, [x, y], size, { stroke, transform, align }) {
         align = align || 'center';
 
+        let buffer = this.text_buffer * Utils.device_pixel_ratio;
+        let texture_size = size.texture_size;
+        let line_height = size.line_height;
+
         for (let line_num=0; line_num < lines.length; line_num++) {
             let line = lines[line_num];
             let str = this.applyTextTransform(line.text, transform);
-            let buffer = this.text_buffer * Utils.device_pixel_ratio;
-            let texture_size = size.texture_size;
-            let line_height = size.line_height;
 
             // Text alignment
             let tx;
@@ -254,12 +255,13 @@ export default class CanvasText {
                 this.context.strokeText(str, tx, ty);
             }
             this.context.fillText(str, tx, ty);
-
-            var lineWidth = 2;
-            this.context.strokeStyle = '#000';
-            this.context.lineWidth = lineWidth;
-            this.context.strokeRect(tx, ty, 0.85 * texture_size[0], -.4 * texture_size[1]);
+            // this.context.lineWidth = 0;
         }
+
+        var lineWidth = 5;
+        this.context.strokeStyle = '#000';
+        this.context.lineWidth = lineWidth;
+        this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
     }
 
     rasterize (texts, texture_size) {
