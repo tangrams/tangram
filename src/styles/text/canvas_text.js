@@ -254,6 +254,11 @@ export default class CanvasText {
                 this.context.strokeText(str, tx, ty);
             }
             this.context.fillText(str, tx, ty);
+
+            var lineWidth = 2;
+            this.context.strokeStyle = '#000';
+            this.context.lineWidth = lineWidth;
+            this.context.strokeRect(tx, ty, 0.85 * texture_size[0], -.4 * texture_size[1]);
         }
     }
 
