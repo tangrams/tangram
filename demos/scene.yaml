@@ -63,6 +63,16 @@ textures:
             bookstore: [0, 333, 32, 32]
 
 styles:
+    custom-text:
+        base: text
+        texcoords: true
+        shaders:
+            blocks:
+                color: |
+                    vec2 st = v_texcoord.xy;
+                    float pattern = 0.;
+                    pattern = step(.8,fract(st.x*15.));
+                    color += vec4(0.,0.,0.,1.)*pattern;
     rainbow:
         base: polygons
         animated: true
@@ -407,7 +417,7 @@ layers:
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
-                text:
+                custom-text:
                     text_source: global.language_text_source
                     priority: 2
                     font:
@@ -419,7 +429,7 @@ layers:
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
-                text:
+                custom-text:
                     text_source: global.language_text_source
                     priority: 5
                     font:
@@ -431,7 +441,7 @@ layers:
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
                 draw:
-                    text:
+                    custom-text:
                         priority: 3
                         font:
                             family: Helvetica
@@ -441,7 +451,7 @@ layers:
             ferry:
                 filter: { kind: ferry }
                 draw:
-                    text:
+                    custom-text:
                         text_wrap: 20
                         font:
                             fill: '#8db3ce'
