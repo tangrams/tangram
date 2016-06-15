@@ -158,13 +158,11 @@ export default class LabelLine extends Label {
                 for (var i = this.kink_index - 1; i >= 0; i--){
                     width += this.segment_size[i];
 
-                    var offset = Vector.rot([-upp * .5 * width, 0], -angle);
+                    var offset = Vector.rot([-upp * .25 * width, 0], -angle);
                     var pt = Vector.add(segment[1], offset);
 
                     this.angle.unshift(angle);
                     this.multiPosition.unshift(pt);
-
-                    width += width;
                 }
 
                 // forwards
@@ -173,7 +171,7 @@ export default class LabelLine extends Label {
                 for (i = this.kink_index; i < this.segment_size.length; i++){
                     width += this.segment_size[i];
 
-                    var offset = Vector.rot([upp * .5 * width, 0], -angle);
+                    var offset = Vector.rot([upp * .25 * width, 0], -angle);
                     var pt = Vector.add(segment[1], offset);
 
                     this.angle.push(angle);
