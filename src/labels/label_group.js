@@ -7,7 +7,7 @@ export default class LabelGroup {
     }
 
     occluded (bboxes) {
-        for (var i = this.labels.length - 1; i >= 0; i++){
+        for (var i = this.labels.length - 1; i >= 0; i--){
             var label = this.labels[i];
             var isOccluded = Label.prototype.occluded.apply(label, arguments);
             if (isOccluded) this.remove(i);
@@ -33,7 +33,7 @@ export default class LabelGroup {
     }
 
     discard (bboxes) {
-        for (var i = 0; i < this.labels.length; i++){
+        for (var i = this.labels.length - 1; i >= 0; i--){
             var label = this.labels[i];
             var isDiscarded = Label.prototype.discard.apply(label, arguments);
             if (isDiscarded) {
