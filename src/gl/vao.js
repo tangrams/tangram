@@ -61,3 +61,12 @@ VertexArrayObject.bind = function (vao) {
         VertexArrayObject.bound_vao = null;
     }
 };
+
+VertexArrayObject.destroy = function (vao) {
+    let ext = VertexArrayObject.ext;
+    if (ext != null && vao != null && vao._vao != null) {
+        ext.deleteVertexArrayOES(vao._vao);
+        vao._vao = null;
+    }
+    // destroy is a no-op if VAO extension isn't available
+};
