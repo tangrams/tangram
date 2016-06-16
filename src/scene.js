@@ -202,6 +202,8 @@ export default class Scene {
             this.selection.destroy();
         }
 
+        this.tile_manager.destroy();
+
         if (this.gl) {
             Texture.destroy(this.gl);
             StyleManager.destroy(this.gl);
@@ -220,8 +222,6 @@ export default class Scene {
             });
             this.workers = null;
         }
-
-        this.tile_manager.destroy();
     }
 
     createCanvas() {
