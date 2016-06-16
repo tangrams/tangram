@@ -50,6 +50,14 @@ export default class Label {
 
     // checks whether the label is within the tile boundaries
     inTileBounds () {
+        // TODO: check obb for intersection instead?
+        // let quad = this.obb.quad;
+        // for (var i = 0; i < quad.length; i++){
+        //     var inTile = Utils.pointInTile(quad[i]);
+        //     if (!inTile) return false;
+        // }
+        // return true;
+
         let min = [ this.aabb[0], this.aabb[1] ];
         let max = [ this.aabb[2], this.aabb[3] ];
 
