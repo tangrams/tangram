@@ -6,6 +6,7 @@ import {Points} from '../points/points';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
+import LabelGroup from '../../labels/label_group';
 
 export let TextStyle = Object.create(Points);
 
@@ -185,14 +186,33 @@ Object.assign(TextStyle, {
                 options.segment_start = Math.floor(i * seg_per_div);
                 options.segment_end = Math.floor((i + 1) * seg_per_div);
                 var label = new LabelLine(size, line, options);
-                if (!label.throw_away) labels.push(label);
+
+                if (!label.throw_away) {
+                    labelsForGroup.push(label);
+                }
             }
             options.segment_start = null;
             options.segment_end = null;
         }
         else {
+            // var label = new LabelLine(size, line, options);
+            // if (!label.throw_away) labels.push(label);
+            // return;
+
+            var labelsForGroup = [];
+            options.segment_index = undefined;
+            options.placement = undefined;
             var label = new LabelLine(size, line, options);
-            if (!label.throw_away) labels.push(label);
+
+            while (label && !label.throw_away){
+                labelsForGroup.push(label);
+                label = label.next();
+            }
+
+            if (labelsForGroup.length > 0) {
+                var group = new LabelGroup(labelsForGroup);
+                labels.push(group);
+            }
         }
     }
 

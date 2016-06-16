@@ -20,9 +20,10 @@ export default class LabelLine extends Label {
         this.segment_size = options.segment_size
         this.segment_texture_size = options.segment_texture_size;
 
-        this.segment_index = 0;
-
-        this.placement = PLACEMENT.MID_POINT;
+        if (options.placement === undefined)
+            this.placement = PLACEMENT.MID_POINT;
+        else
+            this.placement = options.placement;
 
         this.position = null;
         this.multiPosition = null;
@@ -30,21 +31,38 @@ export default class LabelLine extends Label {
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
-        this.segment_index = options.segment_start || 0;
+        this.segment_index = options.segment_index || 0;
         this.segment_max = options.segment_end || this.lines.length;
 
-        // get first good segment
-        var segment = this.getNextFittingSegment();
+        this.throw_away = false;
 
-        if (!segment) {
-            this.throw_away = true;
+        // get first good segment
+        if (this.segment_index >= this.lines.length - 1) debugger
+        var segment = this.getCurrentSegment();
+
+        if (this.doesSegmentFit(segment)) {
+            this.update();
         }
         else {
-            this.update();
+            segment = this.getNextFittingSegment();
+            if (!segment) {
+                this.throw_away = true;
+            }
+            else this.update();
         }
     }
 
     next() {
+        var hasNext = this.nextSegment();
+        if (!hasNext) return false;
+
+        this.options.segment_index = this.segment_index;
+        this.options.placement = this.placement;
+
+        return new LabelLine(this.size, this.lines, this.options);
+    }
+
+    nextSegment() {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.placement = PLACEMENT.MID_POINT;
@@ -56,7 +74,7 @@ export default class LabelLine extends Label {
                 break;
         }
 
-        return true;
+        return this.getCurrentSegment();
     }
 
     getCurrentSegment() {
@@ -78,15 +96,12 @@ export default class LabelLine extends Label {
         return segment;
     }
 
-    getNextSegment() {
-        var hasNext = this.next();
-        return (!hasNext) ? false : this.getCurrentSegment();
-    }
-
     getNextFittingSegment() {
-        var segment = this.getCurrentSegment();
+        var segment = this.nextSegment();
+        if (!segment) return false;
+
         while (!this.doesSegmentFit(segment)) {
-            segment = this.getNextSegment();
+            segment = this.nextSegment();
             if (!segment) return false;
         }
         return segment;
@@ -247,7 +262,7 @@ export default class LabelLine extends Label {
                 this.update();
                 in_tile = this.inTileBounds();
                 if (!in_tile) {
-                    segment = this.getNextSegment();
+                    segment = this.nextSegment();
                     if (!segment) return false;
                 }
             }

@@ -499,46 +499,64 @@ Object.assign(Points, {
 
     // Build quad for point sprite
     build (style, vertex_data, flag) {
-        let vertex_template = this.makeVertexTemplate(style);
         let label = style.label;
 
-        if (flag) {
-            var positions = label.multiPosition
-            var size = style.size.slice();
-
-            for (var i = 0; i < positions.length; i++){
-                var position = positions[i];
-                var texcoords = style.multi_texcoords[i];
-                var angle = style.angle[i];
-                size[0] = style.segment_size[i];
-
-                this.buildQuad(
-                    [position],               // position
-                    size,                     // size in pixels
-                    angle,                    // angle in degrees
-                    style.sampler,                  // texture sampler to use
-                    label.offset,                   // offset from center in pixels
-                    texcoords,                // texture UVs
-                    vertex_data, vertex_template    // VBO and data for current vertex
-                );
+        if (label.labels) {
+            for (var i = 0; i < label.labels.length; i++){
+                var label0 = label.labels[i];
+                if (label0.multiPosition)
+                    this.buildArticulatedLabel(label0, style, vertex_data);
+                else
+                    this.buildLabel(label0, style, vertex_data);
             }
         }
         else {
+            if (label.multiPosition)
+                this.buildArticulatedLabel(label, style, vertex_data);
+            else
+                this.buildLabel(label, style, vertex_data);
+        }
+    },
+    buildLabel(label, style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        var angle = label.angle ? label.angle[0] : style.angle[0];
+        this.buildQuad(
+            [label.position],               // position
+            style.size,                     // size in pixels
+            angle,                 // angle in degrees
+            style.sampler,                  // texture sampler to use
+            label.offset,                   // offset from center in pixels
+            style.texcoords,                // texture UVs
+            vertex_data, vertex_template    // VBO and data for current vertex
+        );
+    },
+    buildArticulatedLabel(label, style, vertex_data) {
+        let vertex_template = this.makeVertexTemplate(style);
+        var positions = label.multiPosition;
+        var size = style.size.slice();
+
+        for (var i = 0; i < positions.length; i++){
+            var position = positions[i];
+            var texcoords = style.multi_texcoords[i];
+            var angle = label.angle[i];
+            size[0] = label.segment_size[i];
+
+
             this.buildQuad(
-                [label.position],               // position
-                style.size,                     // size in pixels
-                style.angle[0],                    // angle in degrees
+                [position],               // position
+                size,                     // size in pixels
+                angle,                    // angle in degrees
                 style.sampler,                  // texture sampler to use
                 label.offset,                   // offset from center in pixels
-                style.texcoords,                // texture UVs
+                texcoords,                // texture UVs
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
         }
     },
 
     // Override to pass-through to generic point builder
-    buildLines (lines, style, vertex_data, context, flag) {
-        this.build(style, vertex_data, flag);
+    buildLines (lines, style, vertex_data, context) {
+        this.build(style, vertex_data);
     },
 
     buildPoints (points, style, vertex_data, context) {
