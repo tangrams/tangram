@@ -121,7 +121,7 @@ export default class LabelLine extends Label {
                 let line_length2 = Vector.length(p1p2);
 
                 // break up multiple segments into two chunks (N-1 options)
-                var label_length1 = this.size[0];
+                var label_length1 = this.size[0] * this.options.units_per_pixel;
                 var label_length2 = 0;
                 var width2, index;
                 var index = 0;
@@ -173,7 +173,7 @@ export default class LabelLine extends Label {
                 for (var i = this.kink_index - 1; i >= 0; i--){
                     width += this.segment_size[i];
 
-                    var offset = Vector.rot([-upp * .25 * width, 0], -angle);
+                    var offset = Vector.rot([-upp * .5 * width, 0], -angle);
                     var pt = Vector.add(segment[1], offset);
 
                     this.angle.unshift(angle);
@@ -186,7 +186,7 @@ export default class LabelLine extends Label {
                 for (i = this.kink_index; i < this.segment_size.length; i++){
                     width += this.segment_size[i];
 
-                    var offset = Vector.rot([upp * .25 * width, 0], -angle);
+                    var offset = Vector.rot([upp * .5 * width, 0], -angle);
                     var pt = Vector.add(segment[1], offset);
 
                     this.angle.push(angle);
