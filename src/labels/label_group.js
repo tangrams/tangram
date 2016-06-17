@@ -4,6 +4,8 @@ export default class LabelGroup {
 
     constructor (labels) {
         this.labels = labels || [];
+        this.aabbs = [];
+        this.obbs = [];
     }
 
     occluded (bboxes) {
@@ -17,6 +19,8 @@ export default class LabelGroup {
     }
 
     add (boxes) {
+        // discard before adding
+        this.internalDiscard();
         for (var i = 0; i < this.labels.length; i++){
             var label = this.labels[i];
             Label.prototype.add.apply(label, arguments);
@@ -38,10 +42,28 @@ export default class LabelGroup {
             var isDiscarded = Label.prototype.discard.apply(label, arguments);
             if (isDiscarded) {
                 this.remove(i);
-                return true;
             }
         }
         return (this.labels.length === 0);
+    }
+
+    internalDiscard () {
+        if (this.labels.length < 2) return;
+
+        for (var i = this.labels.length - 1; i >= 0; i--) {
+            var label = this.labels[i];
+            var isDiscarded = label.occluded({ aabb: this.aabbs, obb: this.obbs });
+            if (isDiscarded) {
+                this.remove(i);
+            }
+            else {
+                this.aabbs.push(label.aabb);
+                this.obbs.push(label.obb);
+            }
+        }
+
+        this.aabbs = [];
+        this.obbs = [];
     }
 
     remove (index) {
