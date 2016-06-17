@@ -1,5 +1,16 @@
 # Contributing to Tangram
 
+The easiest way to help out is to submit bug reports and feature requests on our [issues](http://github.com/tangrams/tangram/issues) page.
+
+When submitting a bug report, please list:
+
+- your specific browser and operating system versions
+- steps required to recreate the issue
+- what happened
+- what you expected to happen
+
+Thanks, and happy mapping!
+
 ## Quickstart
 
 To get Tangram up and running locally:
