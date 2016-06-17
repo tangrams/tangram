@@ -6,6 +6,10 @@ export default class LabelGroup {
         this.labels = labels || [];
         this.aabbs = [];
         this.obbs = [];
+
+        for (var i = 1; i < labels.length; i++){
+            this.labels[i].options.priority--;
+        }
     }
 
     occluded (bboxes) {
