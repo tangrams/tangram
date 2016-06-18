@@ -210,7 +210,8 @@ export const TextLabels = {
     },
 
     preprocessText (draw) {
-        if (!draw.font) {
+        // Font settings are required
+        if (!draw || !draw.font || typeof draw.font !== 'object') {
             return;
         }
 
