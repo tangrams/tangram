@@ -263,7 +263,7 @@ export default class CanvasText {
     applyTextTransform (text, transform) {
         if (transform === 'capitalize') {
             return text.replace(/\w\S*/g, function (txt) {
-                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                return txt.charAt(0).toUpperCase() + txt.substr(1);
             });
         }
         else if (transform === 'uppercase') {
