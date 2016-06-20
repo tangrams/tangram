@@ -153,10 +153,41 @@ export default SceneLoader = {
         return config;
     },
 
+    // Substitutes global scene properties (those defined in the `config.global` object) for any style values
+    // of the form `global.`, for example `color: global.park_color` would be replaced with the value (if any)
+    // defined for the `park_color` property in `config.global.park_color`.
+    applyGlobalProperties(config) {
+        if (!config.global || Object.keys(config.global).length === 0) {
+            return config; // no global properties to transform
+        }
+
+        const separator = ':';
+        const props = flattenProperties(config.global, separator);
+
+        function applyProps (obj) {
+            // Convert string
+            if (typeof obj === 'string') {
+                let key = (obj.slice(0, 7) === 'global.') && (obj.slice(7).replace(/\./g, separator));
+                if (key && props[key]) {
+                    obj = props[key];
+                }
+            }
+            // Loop through object properties
+            else if (typeof obj === 'object') {
+                for (let p in obj) {
+                    obj[p] = applyProps(obj[p]);
+                }
+            }
+            return obj;
+        }
+
+        return applyProps(config);
+    },
+
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize(config) {
         // Replace global scene properties
-        config = StyleParser.applyGlobalProperties(config);
+        config = SceneLoader.applyGlobalProperties(config);
 
         // Assign ids to data sources
         let source_id = 0;
@@ -197,3 +228,20 @@ export default SceneLoader = {
     }
 
 };
+
+// Flatten nested properties for simpler string look-ups
+// e.g. global.background.color -> 'global:background:color'
+function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
+    prefix = prefix ? (prefix + separator) : '';
+
+    for (let p in obj) {
+        let key = prefix + p;
+        let val = obj[p];
+        props[key] = val;
+
+        if (typeof val === 'object' && !Array.isArray(val)) {
+            flattenProperties(val, separator, key, props);
+        }
+    }
+    return props;
+}
