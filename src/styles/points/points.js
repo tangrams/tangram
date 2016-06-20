@@ -177,7 +177,7 @@ Object.assign(Points, {
         if (tf) {
             // Text labels have a default priority of 0.5 below their parent point (+0.5, priority is lower-is-better)
             // This can be overriden, as long as it is less than or equal to the default
-            tf.layout.priority = Math.min(tf.layout.priority, style.priority + 0.5);
+            tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
             // Additional anchor/offset for point:
             // point's own anchor, text anchor applied to point, additional point offset
