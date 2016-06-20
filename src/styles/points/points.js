@@ -348,13 +348,15 @@ Object.assign(Points, {
         // collision flag
         layout.collide = (draw.collide === false) ? false : true;
 
-        // tile boundary handling - d
+        // tile boundary handling
         layout.cull_from_tile = (draw.cull_from_tile != null) ? draw.cull_from_tile : false;
         layout.move_into_tile = (draw.move_into_tile != null) ? draw.move_into_tile : false;
 
-        // polygons rendering as points will render at the polygon's centroid by default,
-        // but can be set to render at each individual polygon point instead
-        layout.vertex = draw.vertex || (draw.centroid !== undefined && !draw.centroid) || false;
+        // polygons rendering as points will render at each of the polygon's vertices by default,
+        // but can be set to render at the polygon's centroid instead
+        // TODO: change default to be centroid, and/or replace with more flexible 'placement'
+        // parameter to allow placement on vertex, along a line, or at a polygon centroid
+        layout.centroid = draw.centroid;
 
         // label anchors (point labels only)
         // label position will be adjusted in the given direction, relative to its original point
