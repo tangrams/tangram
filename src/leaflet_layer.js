@@ -28,10 +28,17 @@ function extendLeaflet(options) {
         let leafletVersion = layerBaseClass === L.GridLayer ? '1.x' : '0.7.x';
         let layerClassConfig = {};
 
-        // If extending leaflet 0.7.x TileLayer, make add/remove tile no ops
+        // If extending leaflet 0.7.x TileLayer, additional modifications are needed
         if (layerBaseClass === L.TileLayer) {
             layerClassConfig._addTile = function(){};
             layerClassConfig._removeTile = function(){};
+            layerClassConfig._reset = function() {
+                layerBaseClass.prototype._reset.apply(this, arguments);
+                // re-add the canvas since base class `viewreset` event can remove it
+                if (this.scene && this.scene.container && this.scene.canvas) {
+                    this.scene.container.appendChild(this.scene.canvas);
+                }
+            };
         }
 
         // Define custom layer methods
