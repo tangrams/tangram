@@ -9,20 +9,18 @@ VertexArrayObject.disabled = false; // set to true to disable VAOs even if exten
 VertexArrayObject.bound_vao = null; // currently bound VAO
 
 VertexArrayObject.init = function (gl) {
-    if (VertexArrayObject.ext == null) {
-        if (VertexArrayObject.disabled !== true) {
-            VertexArrayObject.ext = gl.getExtension("OES_vertex_array_object");
-        }
+    if (VertexArrayObject.disabled !== true) {
+        VertexArrayObject.ext = gl.getExtension("OES_vertex_array_object");
+    }
 
-        if (VertexArrayObject.ext != null) {
-            log('info', 'Vertex Array Object extension available');
-        }
-        else if (VertexArrayObject.disabled !== true) {
-            log('warn', 'Vertex Array Object extension NOT available');
-        }
-        else {
-            log('warn', 'Vertex Array Object extension force disabled');
-        }
+    if (VertexArrayObject.ext != null) {
+        log('info', 'Vertex Array Object extension available');
+    }
+    else if (VertexArrayObject.disabled !== true) {
+        log('warn', 'Vertex Array Object extension NOT available');
+    }
+    else {
+        log('warn', 'Vertex Array Object extension force disabled');
     }
 };
 
@@ -62,4 +60,13 @@ VertexArrayObject.bind = function (vao) {
         }
         VertexArrayObject.bound_vao = null;
     }
+};
+
+VertexArrayObject.destroy = function (vao) {
+    let ext = VertexArrayObject.ext;
+    if (ext != null && vao != null && vao._vao != null) {
+        ext.deleteVertexArrayOES(vao._vao);
+        vao._vao = null;
+    }
+    // destroy is a no-op if VAO extension isn't available
 };
