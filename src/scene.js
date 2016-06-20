@@ -279,7 +279,8 @@ export default class Scene {
             log('debug', 'loading custom data source scripts in worker:', source_scripts);
         }
 
-        let urls = [worker_url].concat(...source_scripts);
+        let urls = [].concat(...source_scripts);
+        urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
         let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
         return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
     }
