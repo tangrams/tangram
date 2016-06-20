@@ -1,6 +1,5 @@
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
-import {StyleParser} from './styles/style_parser';
 import mergeObjects from './utils/merge';
 
 var SceneLoader;
