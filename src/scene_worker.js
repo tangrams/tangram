@@ -213,9 +213,8 @@ Object.assign(self, {
             if (tile.loading === true) {
                 log('trace', `cancel tile load for ${key}`);
                 tile.loading = false;
+                Tile.cancel(tile);
             }
-
-            Tile.cancel(tile);
 
             // Remove from cache
             FeatureSelection.clearTile(key);
