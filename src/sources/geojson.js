@@ -30,7 +30,7 @@ export class GeoJSONSource extends NetworkSource {
                         maxZoom: this.max_zoom,  // max zoom to preserve detail on
                         tolerance: 3, // simplification tolerance (higher means simpler)
                         extent: Geo.tile_scale, // tile extent (both width and height)
-                        buffer: 0     // tile buffer on each side
+                        buffer: 0.0001     // tile buffer on each side
                     });
                 }
 
