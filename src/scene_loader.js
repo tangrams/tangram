@@ -2,6 +2,7 @@ import log from './utils/log';
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
+import subscribeMixin from './utils/subscribe';
 
 var SceneLoader;
 
@@ -9,7 +10,7 @@ export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
     loadScene(url, path = null) {
-        return SceneLoader.loadSceneRecursive(url, path).then(SceneLoader.finalize);
+        return this.loadSceneRecursive(url, path).then(config => this.finalize(config));
     },
 
     // Loads scene files from URL, recursively loading 'import' scenes
@@ -32,7 +33,7 @@ export default SceneLoader = {
             }
 
             if (!Array.isArray(config.import)) {
-                SceneLoader.normalize(config, path);
+                this.normalize(config, path);
                 return config;
             }
 
@@ -44,23 +45,24 @@ export default SceneLoader = {
             delete config.import; // don't want to merge this property
 
             return Promise.
-                all(imports.map(url => SceneLoader.loadSceneRecursive(url))).
+                all(imports.map(url => this.loadSceneRecursive(url))).
                 then(configs => {
                     config = mergeObjects({}, ...configs, config);
-                    SceneLoader.normalize(config, path);
+                    this.normalize(config, path);
                     return config;
                 });
         }).catch(error => {
-            // TODO: publish an event that clients like Play can consume to be aware of load failures
-            log('error', `Failed to load scene URL: ${url}`, error);
+            let message = `Failed to load scene URL: ${url}`;
+            log('error', message, error);
+            this.trigger('error', { message, error, url });
         });
     },
 
     // Normalize properties that should be adjust within each local scene file (usually by path)
     normalize(config, path) {
-        SceneLoader.normalizeDataSources(config, path);
-        SceneLoader.normalizeFonts(config, path);
-        SceneLoader.normalizeTextures(config, path);
+        this.normalizeDataSources(config, path);
+        this.normalizeFonts(config, path);
+        this.normalizeTextures(config, path);
         return config;
     },
 
@@ -190,7 +192,7 @@ export default SceneLoader = {
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize(config) {
         // Replace global scene properties
-        config = SceneLoader.applyGlobalProperties(config);
+        config = this.applyGlobalProperties(config);
 
         // Assign ids to data sources
         let source_id = 0;
@@ -248,3 +250,5 @@ function flattenProperties (obj, separator = ':', prefix = null, props = {}) {
     }
     return props;
 }
+
+subscribeMixin(SceneLoader);

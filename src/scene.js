@@ -83,14 +83,7 @@ export default class Scene {
         this.lights = null;
         this.background = null;
 
-        // Listen to related objects
-        this.listeners = {
-            view: {
-                move: () => this.trigger('move')
-            }
-        };
-        this.view.subscribe(this.listeners.view);
-
+        this.createListeners();
         this.updating = 0;
         this.generation = 0; // an id that is incremented each time the scene config is invalidated
         this.last_complete_generation = 0; // last generation id with a complete view
@@ -120,14 +113,6 @@ export default class Scene {
             .then(() => {
                 this.createCanvas();
                 this.resetFeatureSelection();
-
-                if (!this.listeners.texture) {
-                    this.listeners.texture = {
-                        update: () => this.dirty = true,
-                        warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
-                    };
-                    Texture.subscribe(this.listeners.texture);
-                }
 
                 // Only retain visible tiles for rebuilding
                 this.tile_manager.pruneToVisibleTiles();
@@ -186,11 +171,7 @@ export default class Scene {
         this.initialized = false;
         this.render_loop_stop = true; // schedule render loop to stop
 
-        this.unsubscribeAll(); // clear all event listeners
-
-        this.view.unsubscribe(this.listeners.view);
-        Texture.unsubscribe(this.listeners.texture);
-        this.listeners = null;
+        this.destroyListeners();
 
         if (this.canvas && this.canvas.parentNode) {
             this.canvas.parentNode.removeChild(this.canvas);
@@ -1027,6 +1008,35 @@ export default class Scene {
             generation: this.generation,
             introspection: this.introspection
         });
+    }
+
+    // Listen to related objects
+    createListeners () {
+        this.listeners = {};
+
+        this.listeners.view = {
+            move: () => this.trigger('move')
+        };
+        this.view.subscribe(this.listeners.view);
+
+        this.listeners.texture = {
+            update: () => this.dirty = true,
+            warning: (data) => this.trigger('warning', Object.assign({ type: 'textures' }, data))
+        };
+        Texture.subscribe(this.listeners.texture);
+
+        this.listeners.scene_loader = {
+            error: (data) => this.trigger('error', Object.assign({ type: 'scene' }, data))
+        };
+        SceneLoader.subscribe(this.listeners.scene_loader);
+    }
+
+    destroyListeners () {
+        this.unsubscribeAll();
+        this.view.unsubscribe(this.listeners.view);
+        Texture.unsubscribe(this.listeners.texture);
+        SceneLoader.unsubscribe(this.listeners.scene_loader);
+        this.listeners = null;
     }
 
     resetFeatureSelection() {
