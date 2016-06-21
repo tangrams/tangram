@@ -188,6 +188,7 @@ sources:
     # schools:
     #     type: GeoJSON
     #     url: data/school-districts-polygon.geojson
+    #     generate_label_centroids: true
     # counties:
     #     type: TopoJSON
     #     url: https://gist.githubusercontent.com/mbostock/4090846/raw/c899e3d4f3353924e495667c842f54a07090cfab/us.json
@@ -603,13 +604,17 @@ layers:
     #             color: red
     #             width: [[7, .5px], [9, 1px], [14, 5px]]
     #             interactive: true
-    #         text:
-    #             text_source: schoolDistrict
-    #             font:
-    #                 fill: white
-    #                 family: Futura
-    #                 size: 16px
-    #                 stroke: { color: black, width: 4 }
+
+    #     labels:
+    #         filter: { label_placement: yes }
+    #         draw:
+    #             text:
+    #                 text_source: schoolDistrict
+    #                 font:
+    #                     fill: white
+    #                     family: Futura
+    #                     size: 16px
+    #                     stroke: { color: black, width: 4 }
 
     # counties:
     #     data: { source: counties }
