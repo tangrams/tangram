@@ -11,7 +11,12 @@ export default function mergeObjects (dest, ...sources) {
             // (e.g. don't merge arrays, those are treated as scalar values; null values will overwrite/erase
             // the previous destination value)
             if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-                dest[key] = mergeObjects(dest[key] || {}, value);
+                if (dest[key] !== null && typeof dest[key] === 'object' && !Array.isArray(dest[key])) {
+                    dest[key] = mergeObjects(dest[key], value);
+                }
+                else {
+                    dest[key] = mergeObjects({}, value); // destination not an object, overwrite
+                }
             }
             // Overwrite the previous destination value if the source property is: a scalar (number/string),
             // an array, or a null value
