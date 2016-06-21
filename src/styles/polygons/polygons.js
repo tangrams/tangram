@@ -64,24 +64,31 @@ Object.assign(Polygons, {
             return null;
         }
 
-        // height defaults to feature height, but extrude style can dynamically adjust height by returning a number or array (instead of a boolean)
         style.z = (draw.z && StyleParser.cacheDistance(draw.z, context)) || StyleParser.defaults.z;
-        style.height = feature.properties.height || StyleParser.defaults.height;
-        style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
+        style.z *= Geo.height_scale; // provide sub-meter precision of height values
+
         style.extrude = StyleParser.evalProp(draw.extrude, context);
         if (style.extrude) {
-            if (typeof style.extrude === 'number') {
-                style.height = style.extrude;
+            // use feature's height and min_height properties
+            if (style.extrude === true) {
+                style.height = feature.properties.height || StyleParser.defaults.height;
+                style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
+
             }
+            // explicit height, no min_height
+            else if (typeof style.extrude === 'number') {
+                style.height = style.extrude;
+                style.min_height = 0;
+            }
+            // explicit height and min_height
             else if (Array.isArray(style.extrude)) {
                 style.min_height = style.extrude[0];
                 style.height = style.extrude[1];
             }
-        }
 
-        style.z *= Geo.height_scale;            // provide sub-meter precision of height values
-        style.height *= Geo.height_scale;
-        style.min_height *= Geo.height_scale;
+            style.height *= Geo.height_scale;       // provide sub-meter precision of height values
+            style.min_height *= Geo.height_scale;
+        }
 
         style.tile_edges = draw.tile_edges; // usually activated for debugging, or rare visualization needs
 
