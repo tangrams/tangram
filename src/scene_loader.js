@@ -1,3 +1,4 @@
+import log from './utils/log';
 import Utils from './utils/utils';
 import GLSL from './gl/glsl';
 import mergeObjects from './utils/merge';
@@ -49,6 +50,9 @@ export default SceneLoader = {
                     SceneLoader.normalize(config, path);
                     return config;
                 });
+        }).catch(error => {
+            // TODO: publish an event that clients like Play can consume to be aware of load failures
+            log('error', `Failed to load scene URL: ${url}`, error);
         });
     },
 
