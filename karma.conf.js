@@ -23,7 +23,6 @@ module.exports = function (config) {
         basePath: '',
         frameworks: ['browserify', 'mocha', 'sinon'],
         files: [
-            'node_modules/topojson/topojson.js',
             'node_modules/lodash/lodash.js',
             'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js',
             {
