@@ -113,9 +113,12 @@ export function decodeMultiPolygon (geom) {
         geom.type = 'Polygon';
         geom.coordinates = polys[0];
     }
-    else {
+    else if (polys.length > 1) {
         geom.type = 'MultiPolygon';
         geom.coordinates = polys;
+    }
+    else {
+        geom = null;
     }
 
     return geom;

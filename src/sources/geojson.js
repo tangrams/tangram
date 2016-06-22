@@ -83,6 +83,9 @@ export class GeoJSONSource extends NetworkSource {
                     }
                     else  {
                         f.geometry = decodeMultiPolygon(f.geometry); // un-flatten rings
+                        if (f.geometry == null) { // skip polys that couldn't be decoded (e.g. degenerate)
+                            continue;
+                        }
                     }
                 }
                 else {
