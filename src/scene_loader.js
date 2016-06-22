@@ -10,14 +10,31 @@ export default SceneLoader = {
 
     // Load scenes definitions from URL & proprocess
     loadScene(url, path = null) {
-        return this.loadSceneRecursive(url, path).then(config => this.finalize(config));
+        let errors = [];
+        return this.loadSceneRecursive(url, path, errors).
+            then(config => this.finalize(config)).
+            then(config => {
+                if (!config) {
+                    // root scene failed to load, reject with first error
+                    return Promise.reject(errors[0]);
+                }
+                else if (errors.length > 0) {
+                    // scene loaded, but some imports had errors
+                    errors.forEach(error => {
+                        let message = `Failed to import scene: ${error.url}`;
+                        log('error', message, error);
+                        this.trigger('error', { type: 'scene_import', message, error, url: error.url });
+                    });
+                }
+                return config;
+            });
     },
 
     // Loads scene files from URL, recursively loading 'import' scenes
     // Optional *initial* path only (won't be passed to recursive 'import' calls)
     // Useful for loading resources in base scene file from a separate location
     // (e.g. in Tangram Play, when modified local scene should still refer to original resource URLs)
-    loadSceneRecursive(url, path = null) {
+    loadSceneRecursive(url, path = null, errors = []) {
         if (!url) {
             return Promise.resolve({});
         }
@@ -45,16 +62,16 @@ export default SceneLoader = {
             delete config.import; // don't want to merge this property
 
             return Promise.
-                all(imports.map(url => this.loadSceneRecursive(url))).
+                all(imports.map(url => this.loadSceneRecursive(url, null, errors))).
                 then(configs => {
                     config = mergeObjects({}, ...configs, config);
                     this.normalize(config, path);
                     return config;
                 });
         }).catch(error => {
-            let message = `Failed to load scene URL: ${url}`;
-            log('error', message, error);
-            this.trigger('error', { message, error, url });
+            // Collect scene load errors as we go
+            error.url = url;
+            errors.push(error);
         });
     },
 
@@ -191,6 +208,10 @@ export default SceneLoader = {
 
     // Normalize some scene-wide settings that apply to the final, merged scene
     finalize(config) {
+        if (!config) {
+            return;
+        }
+
         // Replace global scene properties
         config = this.applyGlobalProperties(config);
 
