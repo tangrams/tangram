@@ -179,7 +179,7 @@ Object.assign(Lines, {
         // Reusable outline style object, marked as already wrapped in cache objects (preprocessed = true)
         style.outline = style.outline || { width: {}, next_width: {}, preprocessed: true };
 
-        if (draw.outline && draw.outline.color && draw.outline.width) {
+        if (draw.outline && draw.outline.visible !== false && draw.outline.color && draw.outline.width) {
             // outline width in meters
             // NB: multiply by 2 because outline is applied on both sides of line
             let outline_width = this.calcWidth(draw.outline.width, context) * 2;
