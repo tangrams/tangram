@@ -195,23 +195,35 @@ Object.assign(TextStyle, {
             options.segment_end = null;
         }
         else {
+            // old code
             // var label = new LabelLine(size, line, options);
             // if (!label.throw_away) labels.push(label);
             // return;
 
-            var labelsForGroup = [];
+            // multiple labels, grouped
+            // var labelsForGroup = [];
+            // options.segment_index = undefined;
+            // options.placement = undefined;
+            // var label = new LabelLine(size, line, options);
+
+            // while (label && !label.throw_away){
+            //     labelsForGroup.push(label);
+            //     label = label.next();
+            // }
+
+            // if (labelsForGroup.length > 0) {
+            //     var group = new LabelGroup(labelsForGroup);
+            //     labels.push(group);
+            // }
+
+            // multiple labels, no group
             options.segment_index = undefined;
             options.placement = undefined;
             var label = new LabelLine(size, line, options);
 
             while (label && !label.throw_away){
-                labelsForGroup.push(label);
+                labels.push(label);
                 label = label.next();
-            }
-
-            if (labelsForGroup.length > 0) {
-                var group = new LabelGroup(labelsForGroup);
-                labels.push(group);
             }
         }
     }
