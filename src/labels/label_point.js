@@ -34,6 +34,10 @@ export default class LabelPoint extends Label {
         this.aabb = this.obb.getExtent();
     }
 
+    getNextFittingSegment() {
+        return this.moveIntoTile();
+    }
+
     // Try to move the label into the tile bounds
     // Returns true if label was moved into tile, false if it couldn't be moved
     moveIntoTile () {
@@ -63,7 +67,7 @@ export default class LabelPoint extends Label {
             this.updateBBoxes();
         }
 
-        return this.inTileBounds();
+        return updated;
     }
 
 }
