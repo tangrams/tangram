@@ -173,7 +173,11 @@ Object.assign(Points, {
         this.computeLayout(style, feature, draw, context, tile);
 
         // Text styling
-        let tf = draw.text && this.parseTextFeature(feature, draw.text, context, tile);
+        let tf =
+            draw.text &&
+            draw.text.visible !== false && // explicitly handle `visible` property for nested text
+            this.parseTextFeature(feature, draw.text, context, tile);
+
         if (tf) {
             // Text labels have a default priority of 0.5 below their parent point (+0.5, priority is lower-is-better)
             // This can be overriden, as long as it is less than or equal to the default
