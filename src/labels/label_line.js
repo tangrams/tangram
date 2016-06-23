@@ -37,19 +37,9 @@ export default class LabelLine extends Label {
         this.throw_away = false;
 
         // get first good segment
-        if (this.segment_index >= this.lines.length - 1) debugger
-        var segment = this.getCurrentSegment();
+        var segment = this.getNextFittingSegment(this.getCurrentSegment());
 
-        if (this.doesSegmentFit(segment)) {
-            this.update();
-        }
-        else {
-            segment = this.getNextFittingSegment();
-            if (!segment) {
-                this.throw_away = true;
-            }
-            else this.update();
-        }
+        if (!segment) this.throw_away = true;
     }
 
     next() {
@@ -96,13 +86,16 @@ export default class LabelLine extends Label {
         return segment;
     }
 
-    getNextFittingSegment() {
-        var segment = this.nextSegment();
-        if (!segment) return false;
+    getNextFittingSegment(segment) {
+        segment = segment || this.nextSegment();
 
-        while (!this.doesSegmentFit(segment)) {
+        if (!segment) return false;
+        else this.update();
+
+        while (!this.doesSegmentFit(segment) || !this.inTileBounds()) {
             segment = this.nextSegment();
             if (!segment) return false;
+            else this.update();
         }
         return segment;
     }
@@ -261,10 +254,6 @@ export default class LabelLine extends Label {
             if (segment) {
                 this.update();
                 in_tile = this.inTileBounds();
-                if (!in_tile) {
-                    segment = this.nextSegment();
-                    if (!segment) return false;
-                }
             }
             else {
                 return false;
