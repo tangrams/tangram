@@ -6,7 +6,6 @@ var Collision;
 export default Collision = {
 
     tiles: {},
-    links: {},
     link_id: 0,
 
     nextLinkId() {
@@ -93,36 +92,20 @@ export default Collision = {
                 keep[style] = keep[style] || [];
 
                 for (let i = 0; i < objects.length; i++) {
-                    let { label, layout, link } = objects[i]; // TODO: `label` should be generic
+                    let object = objects[i];
+                    let { label, layout, linked } = object;
 
-                    // Skip if linked label not visible
-                    if (link && this.links[link] === false) {
-                        // log('trace', 'discard label because linked parent is not visible', label);
-                        continue;
-                    }
-
-                    // test the label for intersections with other labels in the tile
-                    if (!layout.collide || !label.discard(bboxes)) {
-                        // check for repeats
-                        let check = RepeatGroup.check(label, layout, tile);
-                        if (check) {
-                            // log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
-                            continue;
+                    if (this.canBePlaced(object, tile)) {
+                        // Keep object if it isn't dependent on a parent object
+                        if (!linked) {
+                            keep[style].push(object);
+                            this.place(object, tile);
                         }
-                        // register as placed for future repeat culling
-                        RepeatGroup.add(label, layout, tile);
-
-                        label.add(bboxes); // add label to currently visible set
-                        keep[style].push(objects[i]);
-
-                        if (link) {
-                            this.links[link] = true; // mark visibility for linked labels
-                        }
-                    }
-                    else if (layout.collide) {
-                        // log('trace', `discard label '${label.text}' due to collision`);
-                        if (link) {
-                            this.links[link] = false; // mark visibility for linked labels
+                        // If object is dependent on a parent, only keep if both can be placed
+                        else if (this.canBePlaced(linked, tile)) {
+                            keep[style].push(object);
+                            this.place(object, tile);
+                            this.place(linked, tile);
                         }
                     }
                 }
@@ -131,6 +114,45 @@ export default Collision = {
 
         delete this.tiles[tile];
         state.resolve();
+    },
+
+    // Run collision and repeat check to see if label can currently be placed
+    canBePlaced ({ label, layout }, tile) {
+        // Skip if already processed (e.g. by parent object)
+        if (label.placed != null) {
+            return label.placed;
+        }
+
+        // Test the label for intersections with other labels in the tile
+        let bboxes = this.tiles[tile].bboxes;
+        if (!layout.collide || !label.discard(bboxes)) {
+            // check for repeats
+            let repeat = RepeatGroup.check(label, layout, tile);
+            if (repeat) {
+                // log('trace', `discard label '${label.text}', (one_per_group: ${repeat.one_per_group}), dist ${Math.sqrt(repeat.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(repeat.repeat_dist_sq)/layout.units_per_pixel}`);
+                label.placed = false;
+            }
+            else {
+                return true;
+            }
+        }
+        else if (layout.collide) {
+            // log('trace', `discard label '${label.text}' due to collision`);
+            label.placed = false;
+        }
+        return label.placed;
+    },
+
+    // Place label
+    place ({ label, layout }, tile) {
+        // Skip if already processed (e.g. by parent object)
+        if (label.placed != null) {
+            return;
+        }
+
+        // Register as placed for future collision and repeat culling
+        RepeatGroup.add(label, layout, tile);
+        label.add(this.tiles[tile].bboxes);
     }
 
 };

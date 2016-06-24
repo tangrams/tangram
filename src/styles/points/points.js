@@ -201,6 +201,9 @@ Object.assign(Points, {
             // (they should stay fixed relative to the point)
             tf.layout.move_into_tile = false;
 
+            // Require text to be visible to draw parent point?
+            tf.layout.required = (draw.text.required != null) ? draw.text.required : false;
+
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
@@ -251,8 +254,9 @@ Object.assign(Points, {
         this.queues[tile.key] = [];
 
         // For each point feature, create one or more labels
-        let text_features = [];
-        let boxes = [];
+        let text_objs = [];
+        let point_objs = [];
+
         queue.forEach(q => {
             let style = q.style;
             let feature = q.feature;
@@ -261,19 +265,18 @@ Object.assign(Points, {
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
-                let link = Collision.nextLinkId();
-                boxes.push({
+                let point_obj = {
                     feature,
                     draw: q.draw,
                     context: q.context,
                     style,
                     layout: style,
-                    label,
-                    link
-                });
+                    label
+                };
+                point_objs.push(point_obj);
 
                 if (q.text_feature) {
-                    text_features.push({
+                    let text_obj = {
                         feature,
                         draw: q.text_feature.draw,
                         context: q.context,
@@ -281,8 +284,15 @@ Object.assign(Points, {
                         text_settings_key: q.text_feature.text_settings_key,
                         layout: q.text_feature.layout,
                         point_label: label,
-                        link
-                    });
+                        linked: point_obj   // link so text only renders when parent point is placed
+                    };
+                    text_objs.push(text_obj);
+
+                    // If text feature is required, create a two-way link so that parent
+                    // point will only render when text is also placed
+                    if (q.text_feature.layout.required === true) {
+                        point_obj.linked = text_obj; // two-way link
+                    }
                 }
             }
         });
@@ -291,15 +301,15 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(boxes, this.collision_group_points, tile.key).then(boxes => {
-                    boxes.forEach(q => {
+                Collision.collide(point_objs, this.collision_group_points, tile.key).then(point_objs => {
+                    point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
                 // Labels
-                this.renderTextLabels(tile, this.collision_group_text, text_features)
+                this.renderTextLabels(tile, this.collision_group_text, text_objs)
             ]).then(([, { labels, texts, texture }]) => {
                 // Process labels
                 if (labels && texts) {

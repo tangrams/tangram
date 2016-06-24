@@ -9,6 +9,7 @@ export default class Label {
         this.size = size;
         this.options = options;
         this.position = null;
+        this.placed = null;
         this.aabb = null;
         this.obb = null;
     }
@@ -44,6 +45,7 @@ export default class Label {
 
     // Add this label's bounding box to the provided set
     add (bboxes) {
+        this.placed = true;
         bboxes.aabb.push(this.aabb);
         bboxes.obb.push(this.obb);
     }
