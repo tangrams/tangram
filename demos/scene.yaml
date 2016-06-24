@@ -3,7 +3,6 @@ import:
     - styles/windows.yaml
     - styles/water.yaml
     - styles/popup.yaml
-    # - transit.yaml
 
 global:
     language: en # OSM language code
@@ -143,6 +142,15 @@ styles:
 
                     // Just visualize the grid lines directly
                     color = vec4(vec3(1.0 - min(line, 1.0)), 1.0);
+
+    line-alpha:
+        base: lines
+        blend: overlay
+        blend_order: -2
+        shaders:
+            blocks:
+                filter:
+                    color.a = 0.5;
 
     dashed:
         base: lines
@@ -579,6 +587,26 @@ layers:
         minor-places:
             filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 14 } }
             visible: false
+
+    transit:
+        data: { source: mapzen }
+        filter: { $zoom: { min: 16 } }
+        draw:
+            lines:
+                style: line-alpha
+                order: 400
+                color: gray
+                width: 6px
+                outline:
+                    color: [.8, .8, .8]
+                    width: 1px
+                interactive: true
+
+        colored:
+            filter: { colour: true }
+            draw:
+                lines:
+                    color: function() { return feature.colour; }
 
     # building_labels:
     #     data: { source: mapzen, layer: buildings }
