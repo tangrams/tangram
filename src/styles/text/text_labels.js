@@ -7,7 +7,6 @@ import log from '../../utils/log';
 import Thread from '../../utils/thread';
 import WorkerBroker from '../../utils/worker_broker';
 import Collision from '../../labels/collision';
-import LabelPoint from '../../labels/label_point';
 import TextSettings from '../text/text_settings';
 import CanvasText from '../text/canvas_text';
 
@@ -109,7 +108,7 @@ export const TextLabels = {
             }
             this.texts[tile.key] = texts;
 
-            let labels = this.createLabels(tile.key, queue);
+            let labels = this.createTextLabels(tile.key, queue);
 
             return Collision.collide(labels, collision_group, tile.key).then(labels => {
                 if (tile.canceled) {
@@ -134,17 +133,6 @@ export const TextLabels = {
                 });
             });
         });
-    },
-
-    createLabels (tile_key, feature_queue) {
-        let labels = [];
-        for (let f=0; f < feature_queue.length; f++) {
-            let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            labels.push(fq);
-        }
-        return labels;
     },
 
     // Remove unused text/style combinations to avoid unnecessary rasterization

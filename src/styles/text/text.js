@@ -73,8 +73,8 @@ Object.assign(TextStyle, {
         Collision.addStyle(this.name, tile.key);
     },
 
-    // Override
-    createLabels (tile_key, feature_queue) {
+    // Implements label creation for TextLabels mixin
+    createTextLabels (tile_key, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];

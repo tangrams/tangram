@@ -218,6 +218,22 @@ Object.assign(Points, {
         Collision.addStyle(this.collision_group_points, tile.key);
     },
 
+    // Implements label creation for TextLabels mixin
+    createTextLabels (tile_key, feature_queue) {
+        let labels = [];
+        for (let f=0; f < feature_queue.length; f++) {
+            let fq = feature_queue[f];
+            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+            labels.push(fq);
+
+            if (fq.parent) {
+                fq.parent.child = fq;
+            }
+        }
+        return labels;
+    },
+
     // Override
     startData (tile) {
         this.queues[tile.key] = [];
