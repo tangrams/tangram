@@ -252,24 +252,4 @@ export default class LabelLine extends Label {
         this.obb = new OBB(p[0], p[1], -this.angle[0], width, height);
         this.aabb = this.obb.getExtent();
     }
-
-    // Try to move the label into the tile bounds
-    // Returns true if label was moved into tile, false if it couldn't be moved
-    moveIntoTile () {
-        let in_tile = false;
-        let fits_to_segment = false;
-
-        while (!in_tile) {
-            let segment = this.getNextFittingSegment();
-            if (segment) {
-                this.update();
-                in_tile = this.inTileBounds();
-            }
-            else {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
