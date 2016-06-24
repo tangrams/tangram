@@ -123,6 +123,8 @@ export default class LabelLine extends Label {
 
     fitKinkedSegment(segment) {
         let excess = 1 + this.options.line_exceed / 100;
+        let opp = this.options.units_per_pixel;
+
         let does_fit = false;
 
         let p0p1 = Vector.sub(segment[0], segment[1]);
@@ -132,7 +134,7 @@ export default class LabelLine extends Label {
         let line_length2 = Vector.length(p1p2);
 
         // break up multiple segments into two chunks (N-1 options)
-        let label_length1 = this.size[0] * this.options.units_per_pixel;
+        let label_length1 = this.size[0];
         let label_length2 = 0;
         let width;
 
@@ -141,14 +143,22 @@ export default class LabelLine extends Label {
         while (!does_fit) {
             width = this.segment_size[this.kink_index];
 
-            label_length1 -= width * this.options.units_per_pixel;
-            label_length2 += width * this.options.units_per_pixel;
+            label_length1 -= width;
+            label_length2 += width;
 
-            does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
+            does_fit = (opp * label_length1 < excess * line_length1 && opp * label_length2 < excess * line_length2);
             this.kink_index--;
 
             if (this.kink_index == 0) return false;
         }
+
+        var collapsed_size = [0, 0];
+        for (var i = 0; i < this.kink_index; i++){
+            collapsed_size[0] += this.segment_size[i];
+        }
+        collapsed_size[1] = this.size[0] - collapsed_size[0] + 16;
+
+        this.segment_size = collapsed_size;
 
         return true;
     }
@@ -159,43 +169,18 @@ export default class LabelLine extends Label {
         switch (this.placement) {
             case PLACEMENT.CORNER:
                 this.position = segment[1].slice();
-
-                this.angle = [];
-                this.multiPosition = [];
                 var upp = Geo.units_per_pixel;
 
-                // backwards
-                var width = 0;
-                var angle = this.getAngleAtIndex(this.segment_index - 1);
-                for (var i = this.kink_index - 1; i >= 0; i--){
-                    var half_width = 0.5 * this.segment_size[i];
-                    width += half_width;
+                var angle_left = this.getAngleAtIndex(this.segment_index - 1);
+                var offset_left = Vector.rot([-upp * 0.5 * this.segment_size[0], 0], -angle_left);
+                var position_left = Vector.add(segment[1], offset_left);
 
-                    var offset = Vector.rot([-upp * width, 0], -angle);
-                    var pt = Vector.add(segment[1], offset);
+                var angle_right = this.getAngleAtIndex(this.segment_index);
+                var offset_right = Vector.rot([upp * .5 * this.segment_size[1], 0], -angle_right);
+                var position_right = Vector.add(segment[1], offset_right);
 
-                    this.angle.unshift(angle);
-                    this.multiPosition.unshift(pt);
-
-                    width += half_width;
-                }
-
-                // forwards
-                var width = 0;
-                angle = this.getAngleAtIndex(this.segment_index);
-                for (i = this.kink_index; i < this.segment_size.length; i++){
-                    var half_width = 0.5 * this.segment_size[i];
-                    width += half_width;
-
-                    var offset = Vector.rot([upp * width, 0], -angle);
-                    var pt = Vector.add(segment[1], offset);
-
-                    this.angle.push(angle);
-                    this.multiPosition.push(pt);
-
-                    width += half_width;
-                }
-
+                this.angle = [angle_left, angle_right];
+                this.multiPosition = [position_left, position_right];
                 break;
             case PLACEMENT.MID_POINT:
                 this.multiPosition = null;

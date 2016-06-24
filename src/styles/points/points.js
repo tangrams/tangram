@@ -535,9 +535,16 @@ Object.assign(Points, {
         var positions = label.multiPosition;
         var size = style.size.slice();
 
+        var a = style.multi_texcoords[0].slice();
+        a[2] = style.multi_texcoords[label.kink_index - 1][2];
+
+        var b = style.multi_texcoords[label.kink_index].slice();
+        b[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
+        var tex_coords = [a, b];
+
         for (var i = 0; i < positions.length; i++){
             var position = positions[i];
-            var texcoords = style.multi_texcoords[i];
+            var texcoords = tex_coords[i];
             var angle = label.angle[i];
             size[0] = label.segment_size[i];
 
