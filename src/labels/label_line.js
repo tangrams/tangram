@@ -16,7 +16,6 @@ export default class LabelLine extends Label {
         this.lines = lines;
         this.offset = [this.options.offset[0], this.options.offset[1]];
 
-        // debugger
         this.segment_size = options.segment_size
         this.segment_texture_size = options.segment_texture_size;
 
@@ -27,7 +26,7 @@ export default class LabelLine extends Label {
 
         this.position = null;
         this.multiPosition = null;
-        this.kink_index = 0;
+        this.kink_index = undefined;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -88,57 +87,27 @@ export default class LabelLine extends Label {
 
     getNextFittingSegment(segment) {
         segment = segment || this.nextSegment();
-
         if (!segment) return false;
-        else this.update();
 
-        while (!this.doesSegmentFit(segment) || !this.inTileBounds()) {
-            segment = this.nextSegment();
-            if (!segment) return false;
-            else this.update();
+        if (this.doesSegmentFit(segment)) {
+            this.update();
+            if (this.inTileBounds())
+                return segment;
         }
-        return segment;
+
+        return this.getNextFittingSegment();
     }
 
     doesSegmentFit(segment) {
-        let excess = 1 + this.options.line_exceed / 100;
         let does_fit = false;
-        let p0p1
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                p0p1 = Vector.sub(segment[0], segment[1]);
-                let p1p2 = Vector.sub(segment[1], segment[2]);
-
-                let line_length1 = Vector.length(p0p1);
-                let line_length2 = Vector.length(p1p2);
-
-                // break up multiple segments into two chunks (N-1 options)
-                var label_length1 = this.size[0] * this.options.units_per_pixel;
-                var label_length2 = 0;
-                var width2, index;
-                var index = 0;
-                while (!does_fit && index < this.segment_size.length - 1) {
-                    width2 = this.segment_size[this.segment_size.length - index - 1];
-
-                    label_length1 -= width2 * this.options.units_per_pixel;
-                    label_length2 += width2 * this.options.units_per_pixel;
-
-                    does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
-                    index++;
-                }
-                this.kink_index = this.segment_size.length - index;
-
-                // var width1 = this.segment_size[0];
-                // while (this.segment_size.length - 1) {
-                //     width1 += this.segment_size.shift();
-                // }
-
-                // this.segment_size[0] = width1;
-                // this.segment_size[1] = width2;
+                does_fit = this.fitKinkedSegment(segment);
                 break;
             case PLACEMENT.MID_POINT:
-                p0p1 = Vector.sub(segment[0], segment[1]);
+                let excess = 1 + this.options.line_exceed / 100;
+                let p0p1 = Vector.sub(segment[0], segment[1]);
                 let line_length = Vector.length(p0p1);
 
                 let label_length = this.size[0] * this.options.units_per_pixel;
@@ -147,6 +116,35 @@ export default class LabelLine extends Label {
         }
 
         return does_fit;
+    }
+
+    fitKinkedSegment(segment) {
+        let excess = 1 + this.options.line_exceed / 100;
+        let does_fit = false;
+
+        let p0p1 = Vector.sub(segment[0], segment[1]);
+        let p1p2 = Vector.sub(segment[1], segment[2]);
+
+        let line_length1 = Vector.length(p0p1);
+        let line_length2 = Vector.length(p1p2);
+
+        // break up multiple segments into two chunks (N-1 options)
+        let label_length1 = this.size[0] * this.options.units_per_pixel;
+        let label_length2 = 0;
+        let index = 0;
+        let width;
+
+        while (!does_fit && index < this.segment_size.length - 1) {
+            width = this.segment_size[this.segment_size.length - index - 1];
+
+            label_length1 -= width * this.options.units_per_pixel;
+            label_length2 += width * this.options.units_per_pixel;
+
+            does_fit = (label_length1 < excess * line_length1 && label_length2 < excess * line_length2);
+            index++;
+        }
+
+        return (index == this.segment_size.length - 1) ? false : this.segment_size.length - index;
     }
 
     update() {
