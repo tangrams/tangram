@@ -481,10 +481,13 @@ layers:
 
         # add text label at higher zoom
         labels:
-            filter: { $zoom: { min: 17 } }
+            filter:
+                - { $zoom: { min: 17 } }
+                - { $zoom: { min: 16 }, kind: station }
             draw:
                 icons:
                     text:
+                        required: true
                         text_source: global.language_text_source
                         font:
                             family: Montserrat
@@ -512,7 +515,7 @@ layers:
                 draw: { icons: { sprite: museum } }
             station:
                 filter: { kind: [station] }
-                draw: { icons: { sprite: train } }
+                draw: { icons: { sprite: train, priority: 2 } }
             hospital:
                 filter: { kind: [hospital, pharmacy] }
                 draw: { icons: { sprite: hospital } }
