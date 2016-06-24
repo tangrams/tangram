@@ -195,18 +195,21 @@ Object.assign(TextStyle, {
             options.segment_end = null;
         }
         else {
-            // old code
-            // var label = new LabelLine(size, line, options);
-            // if (!label.throw_away) labels.push(label);
-            // return;
+            var label = new LabelLine(size, line, options);
+            if (label.throw_away) return;
 
-            // multiple labels, grouped
+            // push only first label
+            // label.push(label);
+
+            // push all labels
+            while (label) {
+                labels.push(label);
+                label = label.nextLabelLine();
+            }
+
+            // push group label
             // var labelsForGroup = [];
-            // options.segment_index = undefined;
-            // options.placement = undefined;
-            // var label = new LabelLine(size, line, options);
-
-            // while (label && !label.throw_away){
+            // while (label){
             //     labelsForGroup.push(label);
             //     label = label.next();
             // }
@@ -215,16 +218,6 @@ Object.assign(TextStyle, {
             //     var group = new LabelGroup(labelsForGroup);
             //     labels.push(group);
             // }
-
-            // multiple labels, no group
-            options.segment_index = undefined;
-            options.placement = undefined;
-            var label = new LabelLine(size, line, options);
-
-            while (label && !label.throw_away){
-                labels.push(label);
-                label = label.nextLabelLine();
-            }
         }
     }
 
