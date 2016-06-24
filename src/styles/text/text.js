@@ -223,7 +223,7 @@ Object.assign(TextStyle, {
 
             while (label && !label.throw_away){
                 labels.push(label);
-                label = label.next();
+                label = label.nextLabelLine();
             }
         }
     }

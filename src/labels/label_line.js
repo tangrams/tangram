@@ -41,7 +41,7 @@ export default class LabelLine extends Label {
         if (!segment) this.throw_away = true;
     }
 
-    next() {
+    nextLabelLine() {
         var hasNext = this.nextSegment();
         if (!hasNext) return false;
 
