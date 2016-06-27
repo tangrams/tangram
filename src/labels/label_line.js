@@ -141,7 +141,7 @@ export default class LabelLine extends Label {
 
         this.kink_index = this.segment_size.length - 1;
 
-        while (!does_fit && this.kink_index > 1) {
+        while (!does_fit && this.kink_index > 0) {
             width = this.segment_size[this.kink_index];
 
             label_length1 -= width;
@@ -151,7 +151,9 @@ export default class LabelLine extends Label {
             this.kink_index--;
         }
 
-        if (does_fit) {
+        this.kink_index++;
+
+        if (does_fit && this.kink_index > 0) {
             var collapsed_size = [0, 0];
             for (var i = 0; i < this.kink_index; i++) {
                 collapsed_size[0] += this.segment_size[i];
