@@ -48,8 +48,8 @@ export default class Texture {
     }
 
     // Destroy a single texture instance
-    destroy() {
-        if (this.retain_count > 0) {
+    destroy({ force } = {}) {
+        if (this.retain_count > 0 && !force) {
             log('error', `Texture '${this.name}': destroying texture with retain count of '${this.retain_count}'`);
             return;
         }
@@ -352,7 +352,7 @@ Texture.destroy = function (gl) {
     for (var t of textures) {
         var texture = Texture.textures[t];
         if (texture.gl === gl) {
-            texture.destroy();
+            texture.destroy({ force: true });
         }
     }
 };
