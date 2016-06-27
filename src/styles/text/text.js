@@ -86,9 +86,9 @@ Object.assign(TextStyle, {
             let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
                 // TODO: why are we copying object?
-                // let fql = Object.create(fq);
-                fq.label = feature_labels[i];
-                labels.push(fq);
+                let fql = Object.create(fq);
+                fql.label = feature_labels[i];
+                labels.push(fql);
             }
         }
         // debugger
@@ -199,7 +199,7 @@ Object.assign(TextStyle, {
             if (label.throw_away) return;
 
             // push only first label
-            // label.push(label);
+            // labels.push(label);
 
             // push all labels
             while (label) {
