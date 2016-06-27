@@ -209,6 +209,12 @@ export default class Scene {
             StyleManager.destroy(this.gl);
             this.styles = {};
 
+            // Force context loss
+            let ext = this.gl.getExtension('WEBGL_lose_context');
+            if (ext) {
+                ext.loseContext();
+            }
+
             this.gl = null;
         }
 
