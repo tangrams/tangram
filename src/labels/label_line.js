@@ -140,7 +140,7 @@ export default class LabelLine extends Label {
 
         this.kink_index = this.segment_size.length - 1;
 
-        while (!does_fit) {
+        while (!does_fit && this.kink_index > 1) {
             width = this.segment_size[this.kink_index];
 
             label_length1 -= width;
@@ -148,19 +148,19 @@ export default class LabelLine extends Label {
 
             does_fit = (opp * label_length1 < excess * line_length1 && opp * label_length2 < excess * line_length2);
             this.kink_index--;
-
-            if (this.kink_index == 0) return false;
         }
 
-        var collapsed_size = [0, 0];
-        for (var i = 0; i < this.kink_index; i++){
-            collapsed_size[0] += this.segment_size[i];
+        if (does_fit) {
+            var collapsed_size = [0, 0];
+            for (var i = 0; i < this.kink_index; i++) {
+                collapsed_size[0] += this.segment_size[i];
+            }
+            collapsed_size[1] = this.size[0] - collapsed_size[0] + 16;
+
+            this.segment_size = collapsed_size;
+            return true;
         }
-        collapsed_size[1] = this.size[0] - collapsed_size[0] + 16;
-
-        this.segment_size = collapsed_size;
-
-        return true;
+        else return false;
     }
 
     update() {
