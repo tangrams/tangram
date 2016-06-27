@@ -16,7 +16,7 @@ export default class LabelLine extends Label {
         this.lines = lines;
         this.offset = [this.options.offset[0], this.options.offset[1]];
 
-        this.segment_size = options.segment_size
+        this.segment_size = options.segment_size;
         this.segment_texture_size = options.segment_texture_size;
 
         this.placement = (options.placement === undefined) ? PLACEMENT.MID_POINT : options.placement;
@@ -62,7 +62,7 @@ export default class LabelLine extends Label {
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;
-                this.placement = PLACEMENT.CORNER;
+                if (this.segment_size.length > 1) this.placement = PLACEMENT.CORNER;
                 this.segment_index++;
                 break;
         }
