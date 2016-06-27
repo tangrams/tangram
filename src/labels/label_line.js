@@ -23,6 +23,7 @@ export default class LabelLine extends Label {
 
         this.position = null;
         this.multiPosition = null;
+        this.pre_offset = [[0,0], [0,0]];
         this.kink_index = 0;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
@@ -158,6 +159,10 @@ export default class LabelLine extends Label {
             collapsed_size[1] = this.size[0] - collapsed_size[0] + 16;
 
             this.segment_size = collapsed_size;
+
+            this.pre_offset[0][0] = -collapsed_size[0]/2;
+            this.pre_offset[1][0] = collapsed_size[1]/2;
+
             return true;
         }
         else return false;
@@ -180,7 +185,8 @@ export default class LabelLine extends Label {
                 var position_right = Vector.add(segment[1], offset_right);
 
                 this.angle = [angle_left, angle_right];
-                this.multiPosition = [position_left, position_right];
+                // this.multiPosition = [position_left, position_right];
+                this.multiPosition = [this.position, this.position];
                 break;
             case PLACEMENT.MID_POINT:
                 this.multiPosition = null;

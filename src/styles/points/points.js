@@ -42,6 +42,7 @@ Object.assign(Points, {
             { name: 'a_shape', size: 4, type: gl.SHORT, normalized: false },
             { name: 'a_texcoord', size: 2, type: gl.UNSIGNED_SHORT, normalized: true },
             { name: 'a_offset', size: 2, type: gl.SHORT, normalized: false },
+            { name: 'a_pre_offset', size: 2, type: gl.SHORT, normalized: false },
             { name: 'a_color', size: 4, type: gl.UNSIGNED_BYTE, normalized: true }
         ];
 
@@ -454,6 +455,7 @@ Object.assign(Points, {
 
         // offsets
         this.fillVertexTemplate('a_offset', 0, { size: 2 });
+        this.fillVertexTemplate('a_pre_offset', 0, { size: 2 });
 
         // color
         this.fillVertexTemplate('a_color', Vector.mult(color, 255), { size: 4 });
@@ -474,7 +476,7 @@ Object.assign(Points, {
         Style.render.call(this, mesh);
     },
 
-    buildQuad (points, size, angle, sampler, offset, texcoord_scale, vertex_data, vertex_template) {
+    buildQuad(points, size, angle, sampler, offset, pre_offset, texcoord_scale, vertex_data, vertex_template) {
         buildQuadsForPoints(
             points,
             vertex_data,
@@ -483,12 +485,14 @@ Object.assign(Points, {
                 texcoord_index: this.vertex_layout.index.a_texcoord,
                 position_index: this.vertex_layout.index.a_position,
                 shape_index: this.vertex_layout.index.a_shape,
-                offset_index: this.vertex_layout.index.a_offset
+                offset_index: this.vertex_layout.index.a_offset,
+                pre_offset_index: this.vertex_layout.index.a_pre_offset
             },
             {
                 quad: size,
                 quad_normalize: 256,    // values have an 8-bit fraction
                 offset,
+                pre_offset,
                 angle: angle * 4096,    // values have a 12-bit fraction
                 shape_w: sampler,
                 texcoord_scale,
@@ -520,12 +524,15 @@ Object.assign(Points, {
     buildLabel(label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
+        var pre_offset = label.pre_offset[0];
+
         this.buildQuad(
             [label.position],               // position
             style.size,                     // size in pixels
             angle,                 // angle in degrees
             style.sampler,                  // texture sampler to use
             label.offset,                   // offset from center in pixels
+            pre_offset,
             style.texcoords,                // texture UVs
             vertex_data, vertex_template    // VBO and data for current vertex
         );
@@ -547,7 +554,7 @@ Object.assign(Points, {
             var texcoords = tex_coords[i];
             var angle = label.angle[i];
             size[0] = label.segment_size[i];
-
+            var pre_offset = label.pre_offset[i];
 
             this.buildQuad(
                 [position],               // position
@@ -555,6 +562,7 @@ Object.assign(Points, {
                 angle,                    // angle in degrees
                 style.sampler,                  // texture sampler to use
                 label.offset,                   // offset from center in pixels
+                pre_offset,
                 texcoords,                // texture UVs
                 vertex_data, vertex_template    // VBO and data for current vertex
             );
