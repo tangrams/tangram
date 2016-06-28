@@ -218,15 +218,7 @@ export default class Scene {
 
         this.sources = {};
 
-        if (Array.isArray(this.workers)) {
-            log.setWorkers(null);
-            this.workers.forEach((worker) => {
-                worker.terminate();
-                WorkerBroker.removeWorker(worker);
-            });
-            this.workers = null;
-        }
-
+        this.destroyWorkers();
         this.tile_manager.destroy();
     }
 
@@ -280,19 +272,33 @@ export default class Scene {
         // NOTE: workaround for issue where large libraries intermittently fail to load in web workers,
         // when multiple importScripts() calls are used. Loading all scripts (including Tangram itself)
         // in one call at at worker creation time has not exhibited the same issue.
-        let source_scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
-        if (source_scripts.length > 0) {
-            log('debug', 'loading custom data source scripts in worker:', source_scripts);
-        }
-
-        let urls = [].concat(...source_scripts);
+        let urls = [...this.data_source_scripts];
         urls.push(worker_url); // load Tangram *last* (has been more reliable, though reason unknown)
         let body = `importScripts(${urls.map(url => `'${url}'`).join(',')});`;
         return Utils.createObjectURL(new Blob([body], { type: 'application/javascript' }));
     }
 
+    // Update list of any custom data source scripts (if any)
+    updateDataSourceScripts () {
+        let prev_scripts = [...(this.data_source_scripts||[])]; // save list of previously loaded scripts
+        let scripts = Object.keys(this.config.sources).map(s => this.config.sources[s].scripts).filter(x => x);
+        if (scripts.length > 0) {
+            log('debug', 'loading custom data source scripts in worker:', scripts);
+        }
+        this.data_source_scripts = [].concat(...scripts).sort();
+
+        // Scripts changed?
+        return !(this.data_source_scripts.length === prev_scripts.length &&
+            this.data_source_scripts.every((v, i) => v === prev_scripts[i]));
+    }
+
     // Web workers handle heavy duty tile construction: networking, geometry processing, etc.
     createWorkers() {
+        // Reset old workers (if any) if we need to re-instantiate with new external scripts
+        if (this.updateDataSourceScripts()) {
+            this.destroyWorkers();
+        }
+
         if (!this.workers) {
             return this.makeWorkers(this.getWorkerUrl());
         }
@@ -326,6 +332,17 @@ export default class Scene {
 
         this.next_worker = 0;
         return Promise.all(queue).then(() => log.setWorkers(this.workers));
+    }
+
+    destroyWorkers() {
+        if (Array.isArray(this.workers)) {
+            log.setWorkers(null);
+            this.workers.forEach((worker) => {
+                worker.terminate();
+                WorkerBroker.removeWorker(worker);
+            });
+            this.workers = null;
+        }
     }
 
     // Round robin selection of next worker
