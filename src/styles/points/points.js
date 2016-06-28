@@ -522,7 +522,6 @@ Object.assign(Points, {
         }
     },
     buildLabel(label, style, vertex_data) {
-        console.log(label.kink_index)
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
         var pre_offset = label.pre_offset[0];

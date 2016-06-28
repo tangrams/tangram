@@ -150,10 +150,8 @@ export default class LabelLine extends Label {
             label_length2 += width;
 
             does_fit = (opp * label_length1 < excess * line_length1 && opp * label_length2 < excess * line_length2);
-            this.kink_index--;
+            if (!does_fit) this.kink_index--;
         }
-
-        this.kink_index++;
 
         if (does_fit && this.kink_index > 0) {
             var collapsed_size = [0, 0];
