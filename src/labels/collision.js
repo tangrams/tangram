@@ -81,7 +81,7 @@ export default Collision = {
         let keep = state.keep;
 
         collideSerial.call(this, tile);
-        // collideParallel.call(this, tile, 'text-new');
+        // collideParallel.call(this, tile);
 
         delete this.tiles[tile];
         state.resolve();
