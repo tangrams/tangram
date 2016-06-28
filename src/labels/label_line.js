@@ -22,7 +22,6 @@ export default class LabelLine extends Label {
         this.placement = (options.placement === undefined) ? PLACEMENT.MID_POINT : options.placement;
 
         this.position = null;
-        this.multiPosition = null;
         this.pre_offset = [[0,0], [0,0]];
         this.kink_index = 0;
 
@@ -62,7 +61,10 @@ export default class LabelLine extends Label {
                 break;
             case PLACEMENT.MID_POINT:
                 if (this.segment_index >= this.lines.length - 2) return false;
-                if (this.segment_size.length > 1) this.placement = PLACEMENT.CORNER;
+                if (this.segment_size.length > 1) {
+                    this.placement = PLACEMENT.CORNER;
+                    this.kink_index = 0;
+                }
                 this.segment_index++;
                 break;
         }
@@ -162,8 +164,8 @@ export default class LabelLine extends Label {
 
             this.segment_size = collapsed_size;
 
-            this.pre_offset[0][0] = -collapsed_size[0]/2;
-            this.pre_offset[1][0] = collapsed_size[1]/2;
+            this.pre_offset[0][0] = -0.5 * collapsed_size[0];
+            this.pre_offset[1][0] = 0.5 * collapsed_size[1];
 
             return true;
         }
@@ -187,11 +189,8 @@ export default class LabelLine extends Label {
                 var position_right = Vector.add(segment[1], offset_right);
 
                 this.angle = [angle_left, angle_right];
-                // this.multiPosition = [position_left, position_right];
-                this.multiPosition = [this.position, this.position];
                 break;
             case PLACEMENT.MID_POINT:
-                this.multiPosition = null;
                 this.position = [
                     (segment[0][0] + segment[1][0]) / 2,
                     (segment[0][1] + segment[1][1]) / 2

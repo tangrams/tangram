@@ -508,20 +508,21 @@ Object.assign(Points, {
         if (label.labels) {
             for (var i = 0; i < label.labels.length; i++){
                 var label0 = label.labels[i];
-                if (label0.multiPosition)
+                if (label0.angle.length > 1)
                     this.buildArticulatedLabel(label0, style, vertex_data);
                 else
                     this.buildLabel(label0, style, vertex_data);
             }
         }
         else {
-            if (label.multiPosition)
+            if (label.angle.length > 1)
                 this.buildArticulatedLabel(label, style, vertex_data);
             else
                 this.buildLabel(label, style, vertex_data);
         }
     },
     buildLabel(label, style, vertex_data) {
+        console.log(label.kink_index)
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
         var pre_offset = label.pre_offset[0];
@@ -539,7 +540,6 @@ Object.assign(Points, {
     },
     buildArticulatedLabel(label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
-        var positions = label.multiPosition;
         var size = style.size.slice();
 
         var a = style.multi_texcoords[0].slice();
@@ -549,15 +549,14 @@ Object.assign(Points, {
         b[2] = style.multi_texcoords[style.multi_texcoords.length - 1][2];
         var tex_coords = [a, b];
 
-        for (var i = 0; i < positions.length; i++){
-            var position = positions[i];
+        for (var i = 0; i < 2; i++){
             var texcoords = tex_coords[i];
             var angle = label.angle[i];
             size[0] = label.segment_size[i];
             var pre_offset = label.pre_offset[i];
 
             this.buildQuad(
-                [position],               // position
+                [label.position],               // position
                 size,                     // size in pixels
                 angle,                    // angle in degrees
                 style.sampler,                  // texture sampler to use
