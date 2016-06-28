@@ -15,7 +15,7 @@ export default class Label {
     }
 
     // check for overlaps with other labels in the tile
-    occluded (bboxes) {
+    occluded (bboxes, exclude = null) {
         let intersect = false;
         let aabbs = bboxes.aabb;
         let obbs = bboxes.obb;
@@ -24,6 +24,12 @@ export default class Label {
         if (aabbs.length > 0) {
             boxIntersect([this.aabb], aabbs, (i, j) => {
                 // log('trace', 'collision: broad phase collide', this.options.id, this, this.aabb, aabbs[j]);
+
+                // Skip if colliding with excluded label
+                if (exclude && aabbs[j] === exclude.aabb) {
+                    log('trace', 'collision: skipping due to explicit exclusion', this, exclude);
+                    return;
+                }
 
                 // Skip narrow phase collision if no rotation
                 if (this.obb.angle === 0 && obbs[j].angle === 0) {
@@ -64,7 +70,9 @@ export default class Label {
 
     // Whether the label should be discarded
     // Depends on whether label must fit in the tile bounds, and if so, can it be moved to fit there
-    discard (bboxes) {
+    // `exclude` is an optional label to exclude from collisions with this label
+    // (e.g. useful for linked objects that shouldn't affect each other's placement)
+    discard (bboxes, exclude = null) {
         // Should the label be culled if it can't fit inside the tile bounds?
         if (this.options.cull_from_tile) {
             let in_tile = this.inTileBounds();
@@ -81,7 +89,7 @@ export default class Label {
         }
 
         // If the label hasn't been discarded yet, check to see if it's occluded by other labels
-        return this.occluded(bboxes);
+        return this.occluded(bboxes, exclude);
     }
 }
 

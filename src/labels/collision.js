@@ -95,14 +95,14 @@ export default Collision = {
                     let object = objects[i];
                     let { label, layout, linked } = object;
 
-                    if (this.canBePlaced(object, tile)) {
+                    if (this.canBePlaced(object, tile, linked)) {
                         // Keep object if it isn't dependent on a parent object
                         if (!linked) {
                             keep[style].push(object);
                             this.place(object, tile);
                         }
                         // If object is dependent on a parent, only keep if both can be placed
-                        else if (this.canBePlaced(linked, tile)) {
+                        else if (this.canBePlaced(linked, tile, object)) {
                             keep[style].push(object);
                             this.place(object, tile);
                             this.place(linked, tile);
@@ -117,7 +117,7 @@ export default Collision = {
     },
 
     // Run collision and repeat check to see if label can currently be placed
-    canBePlaced ({ label, layout }, tile) {
+    canBePlaced ({ label, layout }, tile, exclude = null) {
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return label.placed;
@@ -125,7 +125,7 @@ export default Collision = {
 
         // Test the label for intersections with other labels in the tile
         let bboxes = this.tiles[tile].bboxes;
-        if (!layout.collide || !label.discard(bboxes)) {
+        if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {
             // check for repeats
             let repeat = RepeatGroup.check(label, layout, tile);
             if (repeat) {
