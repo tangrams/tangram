@@ -62,19 +62,6 @@ Utils.pathForURL = function (url) {
     return './';
 };
 
-Utils.cacheBusterForUrl = function (url) {
-    if (url.search(/^(data|blob):/) > -1) {
-        return url; // no cache-busting on object or data URLs
-    }
-    if (url.indexOf('?') > -1) {
-        url += '&' + (+new Date());
-    }
-    else {
-        url += '?' + (+new Date());
-    }
-    return url;
-};
-
 // Add a set of query string params to a URL
 // params: hash of key/value pairs of query string parameters
 Utils.addParamsToURL = function (url, params) {
@@ -189,7 +176,7 @@ Utils.parseResource = function (body) {
 Utils.loadResource = function (source) {
     return new Promise((resolve, reject) => {
         if (typeof source === 'string') {
-            Utils.io(Utils.cacheBusterForUrl(source)).then((body) => {
+            Utils.io(source).then((body) => {
                 try {
                     let data = Utils.parseResource(body);
                     resolve(data);

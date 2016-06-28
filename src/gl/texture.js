@@ -131,7 +131,7 @@ export default class Texture {
             url = Utils.addBaseURL(url, Texture.base_url);
         }
 
-        this.url = Utils.cacheBusterForUrl(url); // save URL reference (will be overwritten when element is loaded below)
+        this.url = url; // save URL reference (will be overwritten when element is loaded below)
         this.source = this.url;
         this.source_type = 'url';
 
