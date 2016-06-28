@@ -201,9 +201,6 @@ Object.assign(Points, {
             // (they should stay fixed relative to the point)
             tf.layout.move_into_tile = false;
 
-            // Require text to be visible to draw parent point?
-            tf.layout.required = (draw.text.required != null) ? draw.text.required : false;
-
             Collision.addStyle(this.collision_group_text, tile.key);
         }
 
@@ -290,7 +287,7 @@ Object.assign(Points, {
 
                     // If text feature is required, create a two-way link so that parent
                     // point will only render when text is also placed
-                    if (q.text_feature.layout.required === true) {
+                    if (q.draw.text.required === true) {
                         point_obj.linked = text_obj; // two-way link
                     }
                 }
