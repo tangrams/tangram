@@ -171,59 +171,47 @@ export default class LabelLine extends Label {
     }
 
     update() {
-        let segment = this.getCurrentSegment();
-
-        switch (this.placement) {
-            case PLACEMENT.CORNER:
-                this.position = segment[1].slice();
-                var upp = Geo.units_per_pixel;
-
-                var angle_left = this.getAngleAtIndex(this.segment_index - 1);
-                var offset_left = Vector.rot([-upp * 0.5 * this.segment_size[0], 0], -angle_left);
-                var position_left = Vector.add(segment[1], offset_left);
-
-                var angle_right = this.getAngleAtIndex(this.segment_index);
-                var offset_right = Vector.rot([upp * .5 * this.segment_size[1], 0], -angle_right);
-                var position_right = Vector.add(segment[1], offset_right);
-
-                this.angle = [angle_left, angle_right];
-                break;
-            case PLACEMENT.MID_POINT:
-                this.position = [
-                    (segment[0][0] + segment[1][0]) / 2,
-                    (segment[0][1] + segment[1][1]) / 2
-                ];
-
-                this.angle = [this.getAngleAtIndex(this.segment_index)];
-                break;
-        }
-
+        this.angle = this.getCurrentAngle();
+        this.position = this.getCurrentPosition();
         this.updateBBoxes();
     }
 
-    getAngleAtIndex (index) {
-        let segment = this.getSegmentAtIndex(index);
-        if (!segment) return;
+    getCurrentAngle() {
+        var segment = this.getCurrentSegment();
+        var angle;
 
-        let p0p1 = Vector.sub(segment[0], segment[1]);
+        switch (this.placement) {
+            case PLACEMENT.CORNER:
+                var theta1 = getAngleFromSegment(segment[0], segment[1]);
+                var theta2 = getAngleFromSegment(segment[1], segment[2]);
+                angle = [theta2, theta1];
+                break;
+            case PLACEMENT.MID_POINT:
+                var theta = getAngleFromSegment(segment[0], segment[1]);
+                angle = [theta];
+                break;
+        }
 
-        p0p1 = Vector.normalize(p0p1);
-
-        let PI_2 = Math.PI / 2;
-        let theta = Math.atan2(p0p1[0], p0p1[1]) + PI_2;
-
-        // if (theta > PI_2 || theta < -PI_2) {
-        //     theta += Math.PI;
-        // }
-        // theta %= Math.PI * 2;
-
-        return theta;
+        return angle;
     }
 
-    getSegmentAtIndex(index){
-        let p1 = this.lines[index];
-        let p2 = this.lines[index + 1];
-        return [ p1, p2 ];
+    getCurrentPosition() {
+        let segment = this.getCurrentSegment();
+        let position;
+
+        switch (this.placement) {
+            case PLACEMENT.CORNER:
+                position = segment[1].slice();
+                break;
+            case PLACEMENT.MID_POINT:
+                position = [
+                    (segment[0][0] + segment[1][0]) / 2,
+                    (segment[0][1] + segment[1][1]) / 2
+                ];
+                break;
+        }
+
+        return position;
     }
 
     updateBBoxes () {
@@ -242,4 +230,17 @@ export default class LabelLine extends Label {
         this.obb = new OBB(p[0], p[1], -this.angle[0], width, height);
         this.aabb = this.obb.getExtent();
     }
+}
+
+function getAngleFromSegment(pt1, pt2) {
+    let PI = Math.PI;
+    let PI_2 = PI / 2;
+    let p0p1 = Vector.sub(pt1, pt2);
+    let theta = Math.atan2(p0p1[0], p0p1[1]) + PI_2;
+
+    if (theta > PI_2 || theta < -PI_2) {
+        theta += PI;
+    }
+
+    return theta;
 }
