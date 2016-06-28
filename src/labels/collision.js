@@ -73,7 +73,6 @@ export default Collision = {
     // When two collide, discard the lower-priority label
     endTile (tile) {
         let state = this.tiles[tile];
-        let bboxes = state.bboxes;
         let keep = state.keep;
 
         RepeatGroup.clear(tile);
@@ -93,19 +92,17 @@ export default Collision = {
 
                 for (let i = 0; i < objects.length; i++) {
                     let object = objects[i];
-                    let { label, layout, linked } = object;
-
-                    if (this.canBePlaced(object, tile, linked)) {
+                    if (this.canBePlaced(object, tile, object.linked)) {
                         // Keep object if it isn't dependent on a parent object
-                        if (!linked) {
+                        if (!object.linked) {
                             keep[style].push(object);
                             this.place(object, tile);
                         }
                         // If object is dependent on a parent, only keep if both can be placed
-                        else if (this.canBePlaced(linked, tile, object)) {
+                        else if (this.canBePlaced(object.linked, tile, object)) {
                             keep[style].push(object);
                             this.place(object, tile);
-                            this.place(linked, tile);
+                            this.place(object.linked, tile);
                         }
                     }
                 }

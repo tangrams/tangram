@@ -27,7 +27,7 @@ export default class Label {
 
                 // Skip if colliding with excluded label
                 if (exclude && aabbs[j] === exclude.aabb) {
-                    log('trace', 'collision: skipping due to explicit exclusion', this, exclude);
+                    // log('trace', 'collision: skipping due to explicit exclusion', this, exclude);
                     return;
                 }
 
