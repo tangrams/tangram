@@ -46,7 +46,7 @@ fonts:
 
 textures:
     pois:
-        url: images/poi_icons_32.png
+        url: images/pois.png
         filtering: mipmap
         sprites:
             # define sprites: [x origin, y origin, width, height]
@@ -64,6 +64,7 @@ textures:
             info: [0, 1110, 32, 32]
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
+            shield: [0, 1142, 32, 32]
 
 styles:
     rainbow:
@@ -464,6 +465,41 @@ layers:
             small:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
+
+        shields:
+            filter:
+                all:
+                    - highway: motorway
+                    - |
+                        function() {
+                            var m = feature.ref &&
+                                feature.ref[0] === 'I' &&
+                                feature.ref.match(/\d+/);
+                            //var m = feature.ref && feature.ref.match(/\d+/);
+                            return m && m[0];
+                        }
+            draw:
+                icons:
+                    sprite: shield
+                    priority: 1
+                    interactive: true
+                    color: white
+                    size: 24px
+                    cull_from_tile: true
+                    text:
+                        required: true
+                        anchor: center
+                        text_source: |
+                            function() {
+                                var m = feature.ref &&
+                                    feature.ref[0] === 'I' &&
+                                    feature.ref.match(/\d+/);
+                                // var m = feature.ref && feature.ref.match(/\d+/);
+                                return m && m[0];
+                            }
+                        font:
+                            family: Helvetica
+                            size: 11px
 
     pois:
         # visible: false
