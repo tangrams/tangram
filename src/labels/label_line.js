@@ -188,12 +188,11 @@ export default class LabelLine extends Label {
                 var orientation1 = getOrientationFromSegment(segment[0], segment[1]);
                 var orientation2 = getOrientationFromSegment(segment[1], segment[2]);
 
-                if (orientation1 === orientation2) {
-                    angle = (orientation1) ? [theta2, theta1] : [theta1, theta2];
+                if (orientation1 !== orientation2) {
+                    theta2 -= Math.PI;
                 }
-                else {
-                    angle = (orientation1) ? [theta2 - Math.PI, theta1] : [theta2, theta1 - Math.PI];
-                }
+
+                angle = (orientation1) ? [theta2, theta1] : [theta1, theta2];
 
                 break;
             case PLACEMENT.MID_POINT:
@@ -229,15 +228,17 @@ export default class LabelLine extends Label {
         let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
         let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
+        var angle = this.angle[1] ? this.angle[1] : this.angle[0];
+
         // apply offset, x positive, y pointing down
-        let offset = Vector.rot(this.offset, this.angle[0]);
+        let offset = Vector.rot(this.offset, angle);
         let p = [
             this.position[0] + (offset[0] * upp),
             this.position[1] - (offset[1] * upp)
         ];
 
         // the angle of the obb is negative since it's the tile system y axis is pointing down
-        this.obb = new OBB(p[0], p[1], -this.angle[0], width, height);
+        this.obb = new OBB(p[0], p[1], -angle, width, height);
         this.aabb = this.obb.getExtent();
     }
 }
