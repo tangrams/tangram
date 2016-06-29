@@ -14,7 +14,7 @@ export default class LabelLine extends Label {
         super(size, options);
 
         this.lines = lines;
-        this.offset = [this.options.offset[0], this.options.offset[1]];
+        this.offset = this.options.offset;
 
         this.segment_size = options.segment_size;
         this.segment_texture_size = options.segment_texture_size;
@@ -184,7 +184,10 @@ export default class LabelLine extends Label {
             case PLACEMENT.CORNER:
                 var theta1 = getAngleFromSegment(segment[0], segment[1]);
                 var theta2 = getAngleFromSegment(segment[1], segment[2]);
-                angle = [theta2, theta1];
+
+                var orientation = getOrientationFromSegment(segment[0], segment[1]);
+                angle = (orientation) ? [theta2, theta1] : [theta1, theta2];
+
                 break;
             case PLACEMENT.MID_POINT:
                 var theta = getAngleFromSegment(segment[0], segment[1]);
@@ -235,12 +238,32 @@ export default class LabelLine extends Label {
 function getAngleFromSegment(pt1, pt2) {
     let PI = Math.PI;
     let PI_2 = PI / 2;
-    let p0p1 = Vector.sub(pt1, pt2);
-    let theta = Math.atan2(p0p1[0], p0p1[1]) + PI_2;
+    let p1p2 = Vector.sub(pt1, pt2);
+    let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
 
-    if (theta > PI_2 || theta < -PI_2) {
+    // If in 2nd quadrant, move to 4th quadrant
+    if (theta > PI_2) {
         theta += PI;
     }
 
+    // If in 4th quadrant, make a positive angle
+    if (theta < 0) {
+        theta += 2 * PI
+    }
+
     return theta;
+}
+
+function getOrientationFromSegment(pt1, pt2) {
+    let PI = Math.PI;
+    let PI_2 = PI / 2;
+    let p1p2 = Vector.sub(pt1, pt2);
+    let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
+
+    // if outside first quadrant
+    if (theta > PI_2 || theta < 0) {
+        return true;
+    }
+
+    return false;
 }
