@@ -223,24 +223,85 @@ export default class LabelLine extends Label {
         return position;
     }
 
-    updateBBoxes () {
+    updateBBoxes() {
+        // TODO: should really only run once the boxes are coalesced
         let upp = this.options.units_per_pixel;
-        let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
         let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
-        var angle = this.angle[1] ? this.angle[1] : this.angle[0];
+        this.obbs = [];
+        this.aabbs = [];
 
-        // apply offset, x positive, y pointing down
-        let offset = Vector.rot(this.offset, angle);
-        let p = [
-            this.position[0] + (offset[0] * upp),
-            this.position[1] - (offset[1] * upp)
-        ];
+        switch (this.placement) {
+            case PLACEMENT.CORNER:
+                for (var i = 0; i < this.segment_size.length; i++){
+                    var size = this.segment_size[i];
+                    var angle = this.angle[i];
 
-        // the angle of the obb is negative since it's the tile system y axis is pointing down
-        this.obb = new OBB(p[0], p[1], -angle, width, height);
-        this.aabb = this.obb.getExtent();
+                    let width = (size) * upp * Label.epsilon;
+
+                    var direction = (i == 0) ? -1 : 1;
+                    var offset = Vector.rot([direction * 0.5 * width, 0], -angle);
+                    var position = Vector.add(this.position, offset);
+
+                    var obb = getOBB(position, width, height, angle, this.offset, upp);
+                    var aabb = obb.getExtent();
+
+                    this.obbs.push(obb);
+                    this.aabbs.push(aabb);
+                }
+                break;
+            case PLACEMENT.MID_POINT:
+                let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
+
+                var angle = this.angle[0];
+                var obb = getOBB(this.position, width, height, angle, this.offset, upp);
+                var aabb = obb.getExtent();
+
+                this.obbs.push(obb);
+                this.aabbs.push(aabb);
+                break;
+        }
     }
+
+    inTileBounds() {
+        for (var i = 0; i < this.aabbs.length; i++) {
+            var aabb = this.aabbs[i];
+            var obj = { aabb };
+            var in_bounds = super.inTileBounds.call(obj);
+            if (!in_bounds) return false;
+        }
+        return true;
+    }
+
+    add(bboxes) {
+        for (var i = 0; i < this.aabbs.length; i++){
+            var aabb = this.aabbs[i];
+            var obb = this.obbs[i];
+            var obj = { aabb, obb };
+            super.add.call(obj, bboxes);
+        }
+    }
+
+    discard(bboxes) {
+        for (var i = 0; i < this.obbs.length; i++){
+            var aabb = this.aabbs[i];
+            var obb = this.obbs[i];
+            var obj = { aabb, obb };
+            var shouldDiscard = super.occluded.call(obj, bboxes);
+            if (shouldDiscard) return true;
+        }
+        return false;
+    }
+}
+
+function getOBB(position, width, height, angle, offset, upp) {
+    // apply offset, x positive, y pointing down
+    offset = Vector.rot(offset, angle);
+    let p0 = position[0] + (offset[0] * upp);
+    let p1 = position[1] - (offset[1] * upp);
+
+    // the angle of the obb is negative since it's the tile system y axis is pointing down
+    return new OBB(p0, p1, -angle, width, height);
 }
 
 function getAngleFromSegment(pt1, pt2) {
