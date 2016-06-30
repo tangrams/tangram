@@ -402,10 +402,6 @@ Object.assign(Points, {
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
             labels.push(fq);
-
-            if (fq.parent) {
-                fq.parent.child = fq;
-            }
         }
         return labels;
     },
