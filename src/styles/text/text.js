@@ -94,12 +94,23 @@ Object.assign(TextStyle, {
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
-                        style.label = q.label;
+                        // style.label = q.label;
                         style.size = text_info.size.logical_size;
-                        style.angle = q.label.angle || 0;
+                        // style.angle = q.label.angle || 0;
                         style.texcoords = text_info.texcoords;
 
-                        Style.addFeature.call(this, q.feature, q.draw, q.context);
+                        // if (q.label instanceof LabelGroup) {
+                        //     q.label.labels.forEach(label => {
+                        //         style.label = label;
+                        //         style.angle = label.angle || 0;
+                        //         Style.addFeature.call(this, q.feature, q.draw, q.context);
+                        //     });
+                        // }
+                        // else {
+                            style.label = q.label;
+                            style.angle = q.label.angle || 0;
+                            Style.addFeature.call(this, q.feature, q.draw, q.context);
+                        // }
                     });
                 }
                 this.freeText(tile);
@@ -149,7 +160,24 @@ Object.assign(TextStyle, {
                 this.buildLineLabels(size, lines[i], options, labels);
             }
         } else if (geometry.type === "Point") {
-            labels.push(new LabelPoint(geometry.coordinates, size, options));
+            // labels.push(new LabelPoint(geometry.coordinates, size, options));
+
+            if (Array.isArray(options.anchor)) {
+                let anchors = options.anchor;
+                // let group = [];
+                for (let a=0; a < anchors.length; a++) {
+                    options.anchor = anchors[a];
+                    // group.push(new LabelPoint(geometry.coordinates, size, options));
+                    labels.push(new LabelPoint(geometry.coordinates, size, options));
+                }
+                // labels.push(new LabelGroup(group));
+                options.anchor = anchors; // restore anchors
+
+                labels.forEach(label => label.alternates = labels);
+            }
+            else {
+                labels.push(new LabelPoint(geometry.coordinates, size, options));
+            }
         } else if (geometry.type === "MultiPoint") {
             let points = geometry.coordinates;
 

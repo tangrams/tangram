@@ -120,6 +120,11 @@ export default Collision = {
             return label.placed;
         }
 
+        // Skip if an alternate placement was already placed
+        if (label.alternates && label.alternates.some(x => x.placed)) {
+            return false;
+        }
+
         // Test the label for intersections with other labels in the tile
         let bboxes = this.tiles[tile].bboxes;
         if (!layout.collide || !label.discard(bboxes, exclude && exclude.label)) {

@@ -54,7 +54,7 @@ export const TextLabels = {
         }
 
         return {
-            draw, text, text_settings_key, layout
+            draw, text, text_settings, text_settings_key, layout
         };
     },
 

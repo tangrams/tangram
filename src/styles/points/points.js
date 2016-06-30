@@ -12,6 +12,7 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
+import TextSettings from '../text/text_settings';
 import PointAnchor from './point_anchor';
 
 let fs = require('fs');
@@ -183,19 +184,20 @@ Object.assign(Points, {
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
 
-            // Additional anchor/offset for point:
-            // point's own anchor, text anchor applied to point, additional point offset
-            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.anchor);
-            tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, draw.text.anchor);
-            if (style.offset !== StyleParser.zeroPair) {        // point has an offset
-                if (tf.layout.offset === StyleParser.zeroPair) { // no text offset, use point's
-                    tf.layout.offset = style.offset;
-                }
-                else {                                          // text has offset, add point's
-                    tf.layout.offset[0] += style.offset[0];
-                    tf.layout.offset[1] += style.offset[1];
-                }
-            }
+            // // Additional anchor/offset for point:
+            // // point's own anchor, text anchor applied to point, additional point offset
+            // tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, style.anchor);
+            // tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, tf.layout.anchor);
+            // if (style.offset !== StyleParser.zeroPair) {        // point has an offset
+            //     if (tf.layout.offset === StyleParser.zeroPair) { // no text offset, use point's
+            //         tf.layout.offset = style.offset;
+            //     }
+            //     else {                                          // text has offset, add point's
+            //         tf.layout.offset[0] += style.offset[0];
+            //         tf.layout.offset[1] += style.offset[1];
+            //     }
+            // }
+            tf.layout.parent = style;
 
             // Text labels attached to points should not be moved into tile
             // (they should stay fixed relative to the point)
@@ -263,6 +265,7 @@ Object.assign(Points, {
                         context: q.context,
                         text: q.text_feature.text,
                         text_settings_key: q.text_feature.text_settings_key,
+                        text_settings: q.text_feature.text_settings, // TODO: ideally we shouldn't send this to main thread
                         layout: q.text_feature.layout,
                         point_label: label,
                         linked: point_obj   // link so text only renders when parent point is placed
@@ -401,8 +404,49 @@ Object.assign(Points, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            labels.push(fq);
+
+            // fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+
+            if (Array.isArray(fq.layout.anchor)) {
+                let alternates = [];
+                let anchors = fq.layout.anchor;
+                for (let a=0; a < anchors.length; a++) {
+                    let fql = Object.create(fq);
+                    fql.layout = Object.create(fql.layout);
+                    fql.layout.anchor = anchors[a];
+
+                    // if (!fql.text_settings.align && fql.layout.anchor && fql.layout.anchor !== 'center') {
+                    if (fql.layout.anchor !== 'center') {
+                        fql.text_settings = Object.create(fql.text_settings);
+
+                        if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
+                            fql.text_settings.align = 'right';
+                        }
+                        else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
+                            fql.text_settings.align = 'left';
+                        }
+
+                        // TODO: can't update text settings key because corresponding entry in texts may be missing
+                        // fql.text_settings_key = TextSettings.key(fql.text_settings);
+                        // if (!this.texts[tile_key][fql.text_settings_key]) {
+                        //     this.texts[tile_key][fql.text_settings_key] = {};
+                        // }
+                        // if (!this.texts[tile_key][fql.text_settings_key][fq.text]) {
+                        //     this.texts[tile_key][fql.text_settings_key][fq.text] = this.texts[tile_key][fq.text_settings_key][fq.text];
+                        // }
+                    }
+
+                    fql.label = new LabelPoint(fql.point_label.position, text_info.size.collision_size, fql.layout);
+                    alternates.push(fql.label);
+                    labels.push(fql);
+                }
+                // fq.layout.anchor = anchors; // restore anchors
+                alternates.forEach(label => label.alternates = alternates);
+            }
+            else {
+                fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+                labels.push(fq);
+            }
         }
         return labels;
     },

@@ -197,7 +197,17 @@ export default class CanvasText {
             for (let text in text_infos) {
                 let info = text_infos[text];
                 let text_settings = info.text_settings;
-                let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
+                // let lines = CanvasText.text_cache[style][text].lines; // get previously computed lines of text
+
+                let lines;
+                if (!CanvasText.text_cache[style]) {
+                    CanvasText.text_cache[style] = {};
+                }
+                if (!CanvasText.text_cache[style][text]) {
+                    CanvasText.text_cache[style][text] =
+                        this.textSize(text, text_settings.transform, text_settings.text_wrap);
+                }
+                lines = CanvasText.text_cache[style][text].lines;
 
                 if (first) {
                     this.setFont(text_settings);

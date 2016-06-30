@@ -2,6 +2,7 @@ import Label from './label';
 import Geo from '../geo';
 import OBB from '../utils/obb';
 import PointAnchor from '../styles/points/point_anchor';
+import {StyleParser} from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
 
@@ -18,6 +19,25 @@ export default class LabelPoint extends Label {
     }
 
     computeOffset () {
+        // return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
+
+        // Additional anchor/offset for point:
+        if (this.options.parent) {
+            let parent = this.options.parent;
+            // point's own anchor, text anchor applied to point, additional point offset
+            this.offset = PointAnchor.computeOffset(this.offset, parent.size, parent.anchor);
+            this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.options.anchor);
+            if (parent.offset !== StyleParser.zeroPair) {        // point has an offset
+                if (this.offset === StyleParser.zeroPair) { // no text offset, use point's
+                    this.offset = parent.offset;
+                }
+                else {                                          // text has offset, add point's
+                    this.offset[0] += parent.offset[0];
+                    this.offset[1] += parent.offset[1];
+                }
+            }
+        }
+
         return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
     }
 
