@@ -23,6 +23,7 @@ export default class LabelLine extends Label {
 
         this.position = null;
         this.pre_offset = [[0,0], [0,0]];
+        this.collapsed_size = [];
         this.kink_index = 0;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
@@ -154,16 +155,18 @@ export default class LabelLine extends Label {
         }
 
         if (does_fit && this.kink_index > 0) {
-            var collapsed_size = [0, 0];
+            var width1 = 0;
+            var width2 = this.size[0] + 16;
             for (var i = 0; i < this.kink_index; i++) {
-                collapsed_size[0] += this.segment_size[i];
+                var segment_width = this.segment_size[i];
+                width1 += segment_width;
+                width2 -= segment_width;
             }
-            collapsed_size[1] = this.size[0] - collapsed_size[0] + 16;
+            this.collapsed_size[0] = width1;
+            this.collapsed_size[1] = width2;
 
-            this.segment_size = collapsed_size;
-
-            this.pre_offset[0][0] = -0.5 * collapsed_size[0];
-            this.pre_offset[1][0] = 0.5 * collapsed_size[1];
+            this.pre_offset[0][0] = -0.5 * this.collapsed_size[0];
+            this.pre_offset[1][0] = 0.5 * this.collapsed_size[1];
 
             return true;
         }
@@ -193,7 +196,6 @@ export default class LabelLine extends Label {
                 }
 
                 angle = (orientation1) ? [theta2, theta1] : [theta1, theta2];
-
                 break;
             case PLACEMENT.MID_POINT:
                 var theta = getAngleFromSegment(segment[0], segment[1]);
@@ -224,7 +226,6 @@ export default class LabelLine extends Label {
     }
 
     updateBBoxes() {
-        // TODO: should really only run once the boxes are coalesced
         let upp = this.options.units_per_pixel;
         let height = (this.size[1] + this.options.buffer[1] * 2) * upp * Label.epsilon;
 
@@ -233,8 +234,8 @@ export default class LabelLine extends Label {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
-                for (var i = 0; i < this.segment_size.length; i++){
-                    var size = this.segment_size[i];
+                for (var i = 0; i < this.collapsed_size.length; i++){
+                    var size = this.collapsed_size[i];
                     var angle = this.angle[i];
 
                     let width = (size) * upp * Label.epsilon;
@@ -324,4 +325,13 @@ function getAngleFromSegment(pt1, pt2) {
 
 function getOrientationFromSegment(pt1, pt2) {
     return pt1[0] >= pt2[0];
+}
+
+function nudge(){
+    var height = this.size[1];
+    var nudge0 = height / 2 * Math.cos(Math.PI/2 - this.angle[0]);
+    var nudge1 = height / 2 * Math.cos(Math.PI/2 - this.angle[1]);
+
+    this.pre_offset[0][0] += nudge0*this.options.units_per_pixel;
+    this.pre_offset[1][0] -= nudge1*this.options.units_per_pixel;
 }

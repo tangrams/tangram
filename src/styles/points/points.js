@@ -551,7 +551,7 @@ Object.assign(Points, {
         for (var i = 0; i < 2; i++){
             var texcoords = tex_coords[i];
             var angle = label.angle[i];
-            size[0] = label.segment_size[i];
+            size[0] = label.collapsed_size[i];
             var pre_offset = label.pre_offset[i];
 
             this.buildQuad(
