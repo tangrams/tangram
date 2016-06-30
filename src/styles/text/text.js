@@ -73,8 +73,56 @@ Object.assign(TextStyle, {
         Collision.addStyle(this.name, tile.key);
     },
 
-    // Implements label creation for TextLabels mixin
-    createTextLabels (tile_key, feature_queue) {
+    // Override
+    startData (tile) {
+        this.queues[tile.key] = [];
+        return Style.startData.call(this, tile);
+    },
+
+    // Override
+    endData (tile) {
+        return this.prepareTextLabels(tile, this.name, this.queues[tile.key]).
+            then(labels => this.collideAndRenderTextLabels(tile, this.name, labels)).
+            then(({ labels, texts, texture }) => {
+                if (texts) {
+                    this.texts[tile.key] = texts;
+
+                    // Build queued features
+                    labels.forEach(q => {
+                        let text_settings_key = q.text_settings_key;
+                        let text_info = this.texts[tile.key] && this.texts[tile.key][text_settings_key] && this.texts[tile.key][text_settings_key][q.text];
+
+                        // setup styling object expected by Style class
+                        let style = this.feature_style;
+                        style.label = q.label;
+                        style.size = text_info.size.logical_size;
+                        style.angle = q.label.angle || 0;
+                        style.texcoords = text_info.texcoords;
+
+                        Style.addFeature.call(this, q.feature, q.draw, q.context);
+                    });
+                }
+                this.freeText(tile);
+
+                // Finish tile mesh
+                return Style.endData.call(this, tile).then(tile_data => {
+                    // Attach tile-specific label atlas to mesh as a texture uniform
+                    if (texture && tile_data) {
+                        tile_data.uniforms.u_texture = texture;
+                        tile_data.textures.push(texture); // assign texture ownership to tile
+                        return tile_data;
+                    }
+                });
+            });
+    },
+
+    // Sets up caching for draw properties
+    _preprocess (draw) {
+        return this.preprocessText(draw);
+    },
+
+    // Implements label building for TextLabels mixin
+    buildTextLabels (tile_key, feature_queue) {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
@@ -87,52 +135,6 @@ Object.assign(TextStyle, {
             }
         }
         return labels;
-    },
-
-    // Override
-    startData (tile) {
-        this.queues[tile.key] = [];
-        return Style.startData.call(this, tile);
-    },
-
-    // Override
-    endData (tile) {
-        return this.renderTextLabels(tile, this.name, this.queues[tile.key]).then(({ labels, texts, texture }) => {
-            if (texts) {
-                this.texts[tile.key] = texts;
-
-                // Build queued features
-                labels.forEach(q => {
-                    let text_settings_key = q.text_settings_key;
-                    let text_info = this.texts[tile.key] && this.texts[tile.key][text_settings_key] && this.texts[tile.key][text_settings_key][q.text];
-
-                    // setup styling object expected by Style class
-                    let style = this.feature_style;
-                    style.label = q.label;
-                    style.size = text_info.size.logical_size;
-                    style.angle = q.label.angle || 0;
-                    style.texcoords = text_info.texcoords;
-
-                    Style.addFeature.call(this, q.feature, q.draw, q.context);
-                });
-            }
-            this.freeText(tile);
-
-            // Finish tile mesh
-            return Style.endData.call(this, tile).then(tile_data => {
-                // Attach tile-specific label atlas to mesh as a texture uniform
-                if (texture && tile_data) {
-                    tile_data.uniforms.u_texture = texture;
-                    tile_data.textures.push(texture); // assign texture ownership to tile
-                    return tile_data;
-                }
-            });
-        });
-    },
-
-    // Sets up caching for draw properties
-    _preprocess (draw) {
-        return this.preprocessText(draw);
     },
 
     // Builds one or more labels for a geometry

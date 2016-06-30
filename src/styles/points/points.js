@@ -218,22 +218,6 @@ Object.assign(Points, {
         Collision.addStyle(this.collision_group_points, tile.key);
     },
 
-    // Implements label creation for TextLabels mixin
-    createTextLabels (tile_key, feature_queue) {
-        let labels = [];
-        for (let f=0; f < feature_queue.length; f++) {
-            let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            labels.push(fq);
-
-            if (fq.parent) {
-                fq.parent.child = fq;
-            }
-        }
-        return labels;
-    },
-
     // Override
     startData (tile) {
         this.queues[tile.key] = [];
@@ -306,7 +290,8 @@ Object.assign(Points, {
                     });
                 }),
                 // Labels
-                this.renderTextLabels(tile, this.collision_group_text, text_objs)
+                this.prepareTextLabels(tile, this.collision_group_text, text_objs).
+                    then(labels => this.collideAndRenderTextLabels(tile, this.collision_group_text, labels))
             ]).then(([, { labels, texts, texture }]) => {
                 // Process labels
                 if (labels && texts) {
@@ -407,6 +392,22 @@ Object.assign(Points, {
         layout.priority = priority;
 
         return layout;
+    },
+
+    // Implements label building for TextLabels mixin
+    buildTextLabels (tile_key, feature_queue) {
+        let labels = [];
+        for (let f=0; f < feature_queue.length; f++) {
+            let fq = feature_queue[f];
+            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+            labels.push(fq);
+
+            if (fq.parent) {
+                fq.parent.child = fq;
+            }
+        }
+        return labels;
     },
 
     // Builds one or more point labels for a geometry

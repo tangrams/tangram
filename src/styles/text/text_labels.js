@@ -89,7 +89,7 @@ export const TextLabels = {
         return text;
     },
 
-    renderTextLabels (tile, collision_group, queue) {
+    prepareTextLabels (tile, collision_group, queue) {
         if (Object.keys(this.texts[tile.key]||{}).length === 0) {
             return Promise.resolve({});
         }
@@ -99,38 +99,45 @@ export const TextLabels = {
 
             if (tile.canceled) {
                 log('trace', `Style ${this.name}: stop tile build because tile was canceled: ${tile.key}, post-calcTextSizes()`);
-                return {};
+                return;
             }
 
-            if (!texts) {
-                Collision.collide({}, collision_group, tile.key);
-                return {};
-            }
             this.texts[tile.key] = texts;
+            if (!texts) {
+                return;
+            }
 
-            let labels = this.createTextLabels(tile.key, queue);
+            return this.buildTextLabels(tile.key, queue);
+        });
+    },
 
-            return Collision.collide(labels, collision_group, tile.key).then(labels => {
+    collideAndRenderTextLabels (tile, collision_group, labels) {
+        if (!labels) {
+            Collision.collide({}, collision_group, tile.key);
+            return Promise.resolve({});
+        }
+
+        return Collision.collide(labels, collision_group, tile.key).then(labels => {
+            if (tile.canceled) {
+                log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+                return {};
+            }
+
+            if (labels.length === 0) {
+                return {};
+            }
+
+            let texts = this.texts[tile.key];
+            this.cullTextStyles(texts, labels);
+
+            // second call to main thread, for rasterizing the set of texts
+            return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
                 if (tile.canceled) {
-                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-collide()`);
+                    log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
                     return {};
                 }
 
-                if (labels.length === 0) {
-                    return {};
-                }
-
-                this.cullTextStyles(texts, labels);
-
-                // second call to main thread, for rasterizing the set of texts
-                return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
-                    if (tile.canceled) {
-                        log('trace', `stop tile build because tile was canceled: ${tile.key}, post-rasterizeTexts()`);
-                        return {};
-                    }
-
-                    return { labels, texts, texture };
-                });
+                return { labels, texts, texture };
             });
         });
     },
