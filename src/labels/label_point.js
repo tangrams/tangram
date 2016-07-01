@@ -16,13 +16,11 @@ export default class LabelPoint extends Label {
     }
 
     update() {
-        this.offset = this.computeOffset();
+        this.computeOffset();
         this.updateBBoxes();
     }
 
     computeOffset () {
-        // return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
-
         // Additional anchor/offset for point:
         if (this.parent) {
             let parent = this.parent;
@@ -40,7 +38,7 @@ export default class LabelPoint extends Label {
             }
         }
 
-        return PointAnchor.computeOffset(this.offset, this.size, this.anchor);
+        this.offset = PointAnchor.computeOffset(this.offset, this.size, this.anchor);
     }
 
     updateBBoxes () {
