@@ -415,7 +415,6 @@ layers:
                     color: '#bddec5'
 
     road_labels:
-        visible: false
         data: { source: mapzen, layer: roads }
         filter: { name: true, aeroway: false, tunnel: false, railway: false, not: { kind: rail }, $zoom: { min: 10 } }
         highway:
@@ -467,183 +466,161 @@ layers:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
 
-        # shields:
-        #     filter:
-        #         all:
-        #             - highway: motorway
-        #             - |
-        #                 function() {
-        #                     var m = feature.ref &&
-        #                         feature.ref[0] === 'I' &&
-        #                         feature.ref.match(/\d+/);
-        #                     //var m = feature.ref && feature.ref.match(/\d+/);
-        #                     return m && m[0];
-        #                 }
-        #     draw:
-        #         icons:
-        #             sprite: shield
-        #             priority: 2
-        #             interactive: true
-        #             color: white
-        #             size: 24px
-        #             cull_from_tile: true
-        #             text:
-        #                 required: true
-        #                 anchor: center
-        #                 text_source: |
-        #                     function() {
-        #                         var m = feature.ref &&
-        #                             feature.ref[0] === 'I' &&
-        #                             feature.ref.match(/\d+/);
-        #                         // var m = feature.ref && feature.ref.match(/\d+/);
-        #                         return m && m[0];
-        #                     }
-        #                 font:
-        #                     family: Helvetica
-        #                     size: 11px
+        shields:
+            filter:
+                all:
+                    - highway: motorway
+                    - |
+                        function() {
+                            var m = feature.ref &&
+                                feature.ref[0] === 'I' &&
+                                feature.ref.match(/\d+/);
+                            //var m = feature.ref && feature.ref.match(/\d+/);
+                            return m && m[0];
+                        }
+            draw:
+                icons:
+                    sprite: shield
+                    priority: 2
+                    interactive: true
+                    color: white
+                    size: 24px
+                    cull_from_tile: true
+                    text:
+                        required: true
+                        anchor: center
+                        text_source: |
+                            function() {
+                                var m = feature.ref &&
+                                    feature.ref[0] === 'I' &&
+                                    feature.ref.match(/\d+/);
+                                // var m = feature.ref && feature.ref.match(/\d+/);
+                                return m && m[0];
+                            }
+                        font:
+                            family: Helvetica
+                            size: 11px
 
     pois:
-        # visible: false
         data: { source: mapzen }
         filter: { name: true, not: { kind: [peak, viewpoint, bicycle_rental, car_sharing] }, $zoom: { min: 15 }, $geometry: point }
         draw:
-            # icons:
-            #     size: [[13, 12px], [15, 18px]]
-            #     interactive: true
-            #     priority: 6
-            points:
-                # visible: false # turn on for debug
-                color: red
-                size: 8px
-                # collide: false
+            icons:
+                size: [[13, 12px], [15, 18px]]
+                interactive: true
+                priority: 6
+
+        # add text label at higher zoom
+        labels:
+            filter:
+                - { $zoom: { min: 17 } }
+                - { $zoom: { min: 16 }, kind: station }
+            draw:
+                icons:
+                    text:
+                        required: true
+                        anchor: [bottom, right, left, top]
+                        text_source: global.language_text_source
+                        font:
+                            family: Montserrat
+                            size: 12px
+                            fill: black
+
+        # add generic icon at high zoom
+        generic:
+            filter: { $zoom: { min: 18 } }
+            draw: { icons: { sprite: info } }
+
+        # examples of different icons mapped to feature properties
+        icons:
+            restaurant:
+                filter: { kind: [restaurant] }
+                draw: { icons: { sprite: restaurant } }
+            cafe:
+                filter: { kind: [cafe, convenience] }
+                draw: { icons: { sprite: cafe } }
+            bar:
+                filter: { kind: [bar, pub] }
+                draw: { icons: { sprite: bar } }
+            culture:
+                filter: { kind: [museum, library, church, place_of_worship, bank] }
+                draw: { icons: { sprite: museum } }
+            station:
+                filter: { kind: [station] }
+                draw: { icons: { sprite: train, priority: 2 } }
+            hospital:
+                filter: { kind: [hospital, pharmacy] }
+                draw: { icons: { sprite: hospital } }
+            hotel:
+                filter: { kind: [hotel, hostel] }
+                draw: { icons: { sprite: hotel } }
+            bus_stop:
+                filter: { kind: [bus_stop] }
+                draw: { icons: { sprite: bus } }
+            bookstore:
+                filter: { kind: [bookstore] }
+                draw: { icons: { sprite: bookstore } }
+
+    places:
+        data: { source: mapzen }
+        filter:
+            name: true
+            not: { kind: [county, state, island] }
+            any:
+                - { $zoom: { min: 1 }, kind: ocean }
+                - { $zoom: { min: 2, max: 5 }, kind: continent }
+                - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
+                - { $zoom: { min: 5 }, kind: country }
+                - { $zoom: { min: 7 }, kind: [city, town, neighbourhood, macrohood] }
+
+        visible: false
+        draw:
+            text:
+                text_source: global.language_text_source
+                priority: 1
+                font:
+                    family: Helvetica
+                    size: 12px
+                    fill: [0, 0, 0, .8]
+                    stroke: { color: white, width: 4 }
+                    transform: uppercase
+
+        continents:
+            filter: { kind: continent }
+            visible: true
+
+        countries:
+            filter: { kind: country }
+            visible: true
+
+        oceans:
+            filter: { kind: ocean }
+            visible: true
+            draw:
                 text:
-                    anchor: [bottom, right, left, top]
-                    # anchor: [left, right, top]
-                    # anchor: right
-                    # collide: false
-                    required: true
-                    text_source: global.language_text_source
-                    # text_source: function(){ return 'Align test string' }
-                    repeat_distance: 0
                     font:
-                        family: Montserrat
-                        size: 12px
-                        fill: black
+                        family: Baskerville
+                        size: 14pt
+                        style: italic
 
-        # even:
-        #     filter: function(){ return feature.id % 2 }
-        #     draw: { points: { text: { anchor: left }}}
+        cities:
+            filter: { kind: [city] }
+            visible: true
+            draw:
+                text:
+                    font:
+                        weight: bold
+                        size: [[6, 12px], [9, 16px]]
 
-        # # add text label at higher zoom
-        # labels:
-        #     filter:
-        #         - { $zoom: { min: 17 } }
-        #         - { $zoom: { min: 16 }, kind: station }
-        #     draw:
-        #         icons:
-        #             text:
-        #                 required: true
-        #                 text_source: global.language_text_source
-        #                 font:
-        #                     family: Montserrat
-        #                     size: 12px
-        #                     fill: black
-
-        # # add generic icon at high zoom
-        # generic:
-        #     filter: { $zoom: { min: 18 } }
-        #     draw: { icons: { sprite: info } }
-
-        # # examples of different icons mapped to feature properties
-        # icons:
-        #     restaurant:
-        #         filter: { kind: [restaurant] }
-        #         draw: { icons: { sprite: restaurant } }
-        #     cafe:
-        #         filter: { kind: [cafe, convenience] }
-        #         draw: { icons: { sprite: cafe } }
-        #     bar:
-        #         filter: { kind: [bar, pub] }
-        #         draw: { icons: { sprite: bar } }
-        #     culture:
-        #         filter: { kind: [museum, library, church, place_of_worship, bank] }
-        #         draw: { icons: { sprite: museum } }
-        #     station:
-        #         filter: { kind: [station] }
-        #         draw: { icons: { sprite: train, priority: 2 } }
-        #     hospital:
-        #         filter: { kind: [hospital, pharmacy] }
-        #         draw: { icons: { sprite: hospital } }
-        #     hotel:
-        #         filter: { kind: [hotel, hostel] }
-        #         draw: { icons: { sprite: hotel } }
-        #     bus_stop:
-        #         filter: { kind: [bus_stop] }
-        #         draw: { icons: { sprite: bus } }
-        #     bookstore:
-        #         filter: { kind: [bookstore] }
-        #         draw: { icons: { sprite: bookstore } }
-
-    # places:
-    #     data: { source: mapzen }
-    #     filter:
-    #         name: true
-    #         not: { kind: [county, state, island] }
-    #         any:
-    #             - { $zoom: { min: 1 }, kind: ocean }
-    #             - { $zoom: { min: 2, max: 5 }, kind: continent }
-    #             - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
-    #             - { $zoom: { min: 5 }, kind: country }
-    #             - { $zoom: { min: 7 }, kind: [city, town, neighbourhood, macrohood] }
-
-    #     visible: false
-    #     draw:
-    #         text:
-    #             text_source: global.language_text_source
-    #             priority: 1
-    #             font:
-    #                 family: Helvetica
-    #                 size: 12px
-    #                 fill: [0, 0, 0, .8]
-    #                 stroke: { color: white, width: 4 }
-    #                 transform: uppercase
-
-    #     continents:
-    #         filter: { kind: continent }
-    #         visible: true
-
-    #     countries:
-    #         filter: { kind: country }
-    #         visible: true
-
-    #     oceans:
-    #         filter: { kind: ocean }
-    #         visible: true
-    #         draw:
-    #             text:
-    #                 font:
-    #                     family: Baskerville
-    #                     size: 14pt
-    #                     style: italic
-
-    #     cities:
-    #         filter: { kind: [city] }
-    #         visible: true
-    #         draw:
-    #             text:
-    #                 font:
-    #                     weight: bold
-    #                     size: [[6, 12px], [9, 16px]]
-
-    #     neighborhoods:
-    #         filter: { kind: [macrohood, neighbourhood], $zoom: { min: 13 } }
-    #         visible: true
-    #         draw:
-    #             text:
-    #                 font:
-    #                     size: [[13, 11px], [14, 11px], [15, 13px]]
-    #                     style: italic
-    #                     fill: rgba(136, 45, 23, 0.9)
+        neighborhoods:
+            filter: { kind: [macrohood, neighbourhood], $zoom: { min: 13 } }
+            visible: true
+            draw:
+                text:
+                    font:
+                        size: [[13, 11px], [14, 11px], [15, 13px]]
+                        style: italic
+                        fill: rgba(136, 45, 23, 0.9)
 
 
     transit:
