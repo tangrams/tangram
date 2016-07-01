@@ -124,8 +124,9 @@ export default Collision = {
         if (!label) {
             if (Array.isArray(placements)) {
                 for (let p=0; p < placements.length; p++) {
-                    if (this.canBePlaced({ label: placements[p], layout }, tile, exclude)) {
-                        object.label = placements[p]; // assign placed label
+                    if (this.canBePlaced(placements[p], tile, exclude)) {
+                        object.label = placements[p].label; // assign placed label
+                        object.align = placements[p].align;
                         object.placements = null; // don't check placements again
                         return true;
                     }
@@ -141,11 +142,6 @@ export default Collision = {
         // Skip if already processed (e.g. by parent object)
         if (label.placed != null) {
             return label.placed;
-        }
-
-        // Skip if an alternate placement was already placed
-        if (label.alternates && label.alternates.some(x => x.placed)) {
-            return false;
         }
 
         // Test the label for intersections with other labels in the tile
