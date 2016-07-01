@@ -392,36 +392,32 @@ Object.assign(Points, {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
 
-            // fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-
             if (Array.isArray(fq.layout.anchor)) {
                 let alternates = [];
                 let anchors = fq.layout.anchor;
                 for (let a=0; a < anchors.length; a++) {
-                    let fql = Object.create(fq);
-                    fql.layout.anchor = anchors[a];
+                    fq.layout.anchor = anchors[a];
 
                     // TODO: move align calc to function, separate from TextSettings
-                    fql.align = fql.text_settings.align;
-                    if (!fql.align) {
-                        if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
-                            fql.align = 'right';
+                    let align = fq.text_settings.align;
+                    if (!align) {
+                        if (PointAnchor.isLeftAnchor(fq.layout.anchor)) {
+                            align = 'right';
                         }
-                        else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
-                            fql.align = 'left';
+                        else if (PointAnchor.isRightAnchor(fq.layout.anchor)) {
+                            align = 'left';
                         }
                         else {
-                            fql.align = 'center';
+                            align = 'center';
                         }
                     }
 
-                    fql.label = new LabelPoint(fql.point_label.position, text_info.size.collision_size, fql.layout);
-                    alternates.push(fql.label);
-                    labels.push(fql);
+                    let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+                    alternates.push({ label, align, layout: fq.layout });
                 }
                 fq.layout.anchor = anchors; // restore anchors (TODO: will this be accessed again?)
-                alternates.forEach(label => label.alternates = alternates);
                 fq.placements = alternates;
+                labels.push(fq);
             }
             else {
                 fq.align = fq.text_settings.align || 'center';
