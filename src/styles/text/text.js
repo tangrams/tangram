@@ -90,7 +90,9 @@ Object.assign(TextStyle, {
                     // Build queued features
                     labels.forEach(q => {
                         let text_settings_key = q.text_settings_key;
-                        let text_info = this.texts[tile.key] && this.texts[tile.key][text_settings_key] && this.texts[tile.key][text_settings_key][q.text];
+                        let text_info =
+                            this.texts[tile.key][text_settings_key] &&
+                            this.texts[tile.key][text_settings_key][q.text];
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;

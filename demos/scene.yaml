@@ -521,12 +521,18 @@ layers:
                     # anchor: [left, right, top]
                     # anchor: right
                     # collide: false
+                    required: true
                     text_source: global.language_text_source
+                    # text_source: function(){ return 'Align test string' }
                     repeat_distance: 0
                     font:
                         family: Montserrat
                         size: 12px
                         fill: black
+
+        # even:
+        #     filter: function(){ return feature.id % 2 }
+        #     draw: { points: { text: { anchor: left }}}
 
         # # add text label at higher zoom
         # labels:

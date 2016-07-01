@@ -19,7 +19,6 @@ export default TextSettings = {
             settings.stroke_width,
             settings.transform,
             settings.text_wrap,
-            settings.align,
             Utils.device_pixel_ratio
         ].join('/');
     },
@@ -93,6 +92,7 @@ export default TextSettings = {
         }
         style.text_wrap = text_wrap;
 
+        // TODO: probably move aligment code out of here, since it's not part of the key anymore
         // default alignment to match anchor
         if (!draw.align && draw.anchor && draw.anchor !== 'center') {
             if (PointAnchor.isLeftAnchor(draw.anchor)) {

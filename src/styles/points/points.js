@@ -180,24 +180,11 @@ Object.assign(Points, {
             this.parseTextFeature(feature, draw.text, context, tile);
 
         if (tf) {
+            tf.layout.parent = style; // parent point will apply additional anchor/offset to text
+
             // Text labels have a default priority of 0.5 below their parent point (+0.5, priority is lower-is-better)
             // This can be overriden, as long as it is less than or equal to the default
             tf.layout.priority = draw.text.priority ? Math.max(tf.layout.priority, style.priority + 0.5) : (style.priority + 0.5);
-
-            // // Additional anchor/offset for point:
-            // // point's own anchor, text anchor applied to point, additional point offset
-            // tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, style.anchor);
-            // tf.layout.offset = PointAnchor.computeOffset(tf.layout.offset, style.size, tf.layout.anchor);
-            // if (style.offset !== StyleParser.zeroPair) {        // point has an offset
-            //     if (tf.layout.offset === StyleParser.zeroPair) { // no text offset, use point's
-            //         tf.layout.offset = style.offset;
-            //     }
-            //     else {                                          // text has offset, add point's
-            //         tf.layout.offset[0] += style.offset[0];
-            //         tf.layout.offset[1] += style.offset[1];
-            //     }
-            // }
-            tf.layout.parent = style;
 
             // Text labels attached to points should not be moved into tile
             // (they should stay fixed relative to the point)
@@ -309,7 +296,7 @@ Object.assign(Points, {
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
                         style.sampler = 1; // non-0 = labels
-                        style.texcoords = text_info.texcoords;
+                        style.texcoords = text_info.align[q.align].texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -412,38 +399,29 @@ Object.assign(Points, {
                 let anchors = fq.layout.anchor;
                 for (let a=0; a < anchors.length; a++) {
                     let fql = Object.create(fq);
-                    fql.layout = Object.create(fql.layout);
                     fql.layout.anchor = anchors[a];
 
-                    // if (!fql.text_settings.align && fql.layout.anchor && fql.layout.anchor !== 'center') {
-                    if (fql.layout.anchor !== 'center') {
-                        fql.text_settings = Object.create(fql.text_settings);
-
-                        if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
-                            fql.text_settings.align = 'right';
-                        }
-                        else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
-                            fql.text_settings.align = 'left';
-                        }
-
-                        // TODO: can't update text settings key because corresponding entry in texts may be missing
-                        // fql.text_settings_key = TextSettings.key(fql.text_settings);
-                        // if (!this.texts[tile_key][fql.text_settings_key]) {
-                        //     this.texts[tile_key][fql.text_settings_key] = {};
-                        // }
-                        // if (!this.texts[tile_key][fql.text_settings_key][fq.text]) {
-                        //     this.texts[tile_key][fql.text_settings_key][fq.text] = this.texts[tile_key][fq.text_settings_key][fq.text];
-                        // }
+                    // TODO: move align calc to function, separate from TextSettings
+                    if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
+                        fql.align = 'right';
+                    }
+                    else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
+                        fql.align = 'left';
+                    }
+                    else {
+                        fql.align = 'center';
                     }
 
                     fql.label = new LabelPoint(fql.point_label.position, text_info.size.collision_size, fql.layout);
                     alternates.push(fql.label);
                     labels.push(fql);
                 }
-                // fq.layout.anchor = anchors; // restore anchors
+                fq.layout.anchor = anchors; // restore anchors (TODO: will this be accessed again?)
                 alternates.forEach(label => label.alternates = alternates);
+                fq.placements = alternates;
             }
             else {
+                fq.align = fq.text_settings.align;
                 fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
                 labels.push(fq);
             }

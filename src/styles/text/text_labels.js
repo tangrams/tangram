@@ -39,15 +39,16 @@ export const TextLabels = {
         let layout = this.computeTextLayout({}, feature, draw, context, tile, text);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
+        text_settings.key = text_settings_key;
 
         // first label in tile, or with this style?
-        this.texts[tile.key] = this.texts[tile.key] || {};
-        this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
+        this.texts[tile.key] = this.texts[tile.key] || { sizes: {} };
+        let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
         // unique text strings, grouped by text drawing style
-        if (!this.texts[tile.key][text_settings_key][text]) {
+        if (!sizes[text]) {
             // first label with this text/style/tile combination, make a new label entry
-            this.texts[tile.key][text_settings_key][text] = {
+            sizes[text] = {
                 text_settings,
                 ref: 0 // # of times this text/style combo appears in tile
             };
@@ -130,6 +131,14 @@ export const TextLabels = {
             let texts = this.texts[tile.key];
             this.cullTextStyles(texts, labels);
 
+            // set alignments
+            labels.forEach(q => {
+                let text_settings_key = q.text_settings_key;
+                let text_info = texts[text_settings_key] && texts[text_settings_key][q.text];
+                text_info.align = text_info.align || {};
+                text_info.align[q.align] = {};
+            });
+
             // second call to main thread, for rasterizing the set of texts
             return WorkerBroker.postMessage(this.main_thread_target+'.rasterizeTexts', tile.key, texts).then(({ texts, texture }) => {
                 if (tile.canceled) {
@@ -146,7 +155,8 @@ export const TextLabels = {
     cullTextStyles(texts, labels) {
         // Count how many times each text/style combination is used
         for (let i=0; i < labels.length; i++) {
-            texts[labels[i].text_settings_key][labels[i].text].ref++;
+            let label = labels[i];
+            texts[label.text_settings_key][label.text].ref++;
         }
 
         // Remove text/style combinations that have no visible labels

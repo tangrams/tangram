@@ -10,6 +10,8 @@ export default class LabelPoint extends Label {
         super(size, options);
         this.position = [position[0], position[1]];
         this.offset = [this.options.offset[0], this.options.offset[1]];
+        this.anchor = this.options.anchor;
+        this.parent = this.options.parent;
         this.update();
     }
 
@@ -22,11 +24,11 @@ export default class LabelPoint extends Label {
         // return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
 
         // Additional anchor/offset for point:
-        if (this.options.parent) {
-            let parent = this.options.parent;
+        if (this.parent) {
+            let parent = this.parent;
             // point's own anchor, text anchor applied to point, additional point offset
             this.offset = PointAnchor.computeOffset(this.offset, parent.size, parent.anchor);
-            this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.options.anchor);
+            this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.anchor);
             if (parent.offset !== StyleParser.zeroPair) {        // point has an offset
                 if (this.offset === StyleParser.zeroPair) { // no text offset, use point's
                     this.offset = parent.offset;
@@ -38,7 +40,7 @@ export default class LabelPoint extends Label {
             }
         }
 
-        return PointAnchor.computeOffset(this.offset, this.size, this.options.anchor);
+        return PointAnchor.computeOffset(this.offset, this.size, this.anchor);
     }
 
     updateBBoxes () {
