@@ -103,7 +103,7 @@ export default TextSettings = {
             }
         }
 
-        style.align = draw.align || this.defaults.align;
+        style.align = draw.align; // || this.defaults.align;
 
         return style;
     },

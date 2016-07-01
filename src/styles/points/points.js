@@ -402,14 +402,17 @@ Object.assign(Points, {
                     fql.layout.anchor = anchors[a];
 
                     // TODO: move align calc to function, separate from TextSettings
-                    if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
-                        fql.align = 'right';
-                    }
-                    else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
-                        fql.align = 'left';
-                    }
-                    else {
-                        fql.align = 'center';
+                    fql.align = fql.text_settings.align;
+                    if (!fql.align) {
+                        if (PointAnchor.isLeftAnchor(fql.layout.anchor)) {
+                            fql.align = 'right';
+                        }
+                        else if (PointAnchor.isRightAnchor(fql.layout.anchor)) {
+                            fql.align = 'left';
+                        }
+                        else {
+                            fql.align = 'center';
+                        }
                     }
 
                     fql.label = new LabelPoint(fql.point_label.position, text_info.size.collision_size, fql.layout);
@@ -421,7 +424,7 @@ Object.assign(Points, {
                 fq.placements = alternates;
             }
             else {
-                fq.align = fq.text_settings.align;
+                fq.align = fq.text_settings.align || 'center';
                 fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
                 labels.push(fq);
             }
