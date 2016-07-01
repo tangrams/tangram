@@ -515,7 +515,7 @@ Object.assign(Points, {
             }
         }
         else {
-            if (label.angle.length > 1)
+            if (label.angle && label.angle.length > 1)
                 this.buildArticulatedLabel(label, style, vertex_data);
             else
                 this.buildLabel(label, style, vertex_data);
@@ -524,7 +524,7 @@ Object.assign(Points, {
     buildLabel(label, style, vertex_data) {
         let vertex_template = this.makeVertexTemplate(style);
         var angle = label.angle ? label.angle[0] : style.angle[0];
-        var pre_offset = label.pre_offset[0];
+        var pre_offset = label.pre_offset ? label.pre_offset[0] : [0,0];
 
         this.buildQuad(
             [label.position],               // position
