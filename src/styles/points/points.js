@@ -397,33 +397,20 @@ Object.assign(Points, {
                 let anchors = fq.layout.anchor;
                 for (let a=0; a < anchors.length; a++) {
                     fq.layout.anchor = anchors[a];
-
-                    // TODO: move align calc to function, separate from TextSettings
-                    let align = fq.text_settings.align;
-                    if (!align) {
-                        if (PointAnchor.isLeftAnchor(fq.layout.anchor)) {
-                            align = 'right';
-                        }
-                        else if (PointAnchor.isRightAnchor(fq.layout.anchor)) {
-                            align = 'left';
-                        }
-                        else {
-                            align = 'center';
-                        }
-                    }
-
+                    let align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
                     let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
                     alternates.push({ label, align, layout: fq.layout });
                 }
-                fq.layout.anchor = anchors; // restore anchors (TODO: will this be accessed again?)
+                fq.layout.anchor = anchors; // restore anchors
                 fq.placements = alternates;
-                labels.push(fq);
             }
             else {
-                fq.align = fq.text_settings.align || 'center';
+                // Single-anchor label
+                fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
                 fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-                labels.push(fq);
             }
+
+            labels.push(fq);
         }
         return labels;
     },

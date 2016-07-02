@@ -3,6 +3,7 @@
 import Geo from '../../geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
+import PointAnchor from '../points/point_anchor';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
@@ -96,23 +97,12 @@ Object.assign(TextStyle, {
 
                         // setup styling object expected by Style class
                         let style = this.feature_style;
-                        // style.label = q.label;
+                        style.label = q.label;
                         style.size = text_info.size.logical_size;
-                        // style.angle = q.label.angle || 0;
-                        style.texcoords = text_info.texcoords;
+                        style.angle = q.label.angle || 0;
+                        style.texcoords = text_info.align[q.align].texcoords;
 
-                        // if (q.label instanceof LabelGroup) {
-                        //     q.label.labels.forEach(label => {
-                        //         style.label = label;
-                        //         style.angle = label.angle || 0;
-                        //         Style.addFeature.call(this, q.feature, q.draw, q.context);
-                        //     });
-                        // }
-                        // else {
-                            style.label = q.label;
-                            style.angle = q.label.angle || 0;
-                            Style.addFeature.call(this, q.feature, q.draw, q.context);
-                        // }
+                        Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }
                 this.freeText(tile);
@@ -131,6 +121,7 @@ Object.assign(TextStyle, {
 
     // Sets up caching for draw properties
     _preprocess (draw) {
+        draw.anchor = Array.isArray(draw.anchor) ? draw.anchor[0] : draw.anchor; // TODO: support multi anchors
         return this.preprocessText(draw);
     },
 
@@ -139,6 +130,7 @@ Object.assign(TextStyle, {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
+            fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.draw.anchor); // TODO: support multi anchors
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
@@ -151,69 +143,51 @@ Object.assign(TextStyle, {
     },
 
     // Builds one or more labels for a geometry
-    buildLabels (size, geometry, options) {
+    buildLabels (size, geometry, layout) {
         let labels = [];
 
         if (geometry.type === "LineString") {
-            this.buildLineLabels(size, geometry.coordinates, options, labels);
+            this.buildLineLabels(geometry.coordinates, size, layout, labels);
         } else if (geometry.type === "MultiLineString") {
             let lines = geometry.coordinates;
             for (let i = 0; i < lines.length; ++i) {
-                this.buildLineLabels(size, lines[i], options, labels);
+                this.buildLineLabels(lines[i], size, layout, labels);
             }
         } else if (geometry.type === "Point") {
-            // labels.push(new LabelPoint(geometry.coordinates, size, options));
-
-            if (Array.isArray(options.anchor)) {
-                let anchors = options.anchor;
-                // let group = [];
-                for (let a=0; a < anchors.length; a++) {
-                    options.anchor = anchors[a];
-                    // group.push(new LabelPoint(geometry.coordinates, size, options));
-                    labels.push(new LabelPoint(geometry.coordinates, size, options));
-                }
-                // labels.push(new LabelGroup(group));
-                options.anchor = anchors; // restore anchors
-
-                labels.forEach(label => label.alternates = labels);
-            }
-            else {
-                labels.push(new LabelPoint(geometry.coordinates, size, options));
-            }
+            labels.push(new LabelPoint(geometry.coordinates, size, layout));
         } else if (geometry.type === "MultiPoint") {
             let points = geometry.coordinates;
-
             for (let i = 0; i < points.length; ++i) {
-                labels.push(new LabelPoint(points[i], size, options));
+                labels.push(new LabelPoint(points[i], size, layout));
             }
         } else if (geometry.type === "Polygon") {
             let centroid = Geo.centroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, options));
+            labels.push(new LabelPoint(centroid, size, layout));
         } else if (geometry.type === "MultiPolygon") {
             let centroid = Geo.multiCentroid(geometry.coordinates);
-            labels.push(new LabelPoint(centroid, size, options));
+            labels.push(new LabelPoint(centroid, size, layout));
         }
 
         return labels;
     },
 
     // Build one or more labels for a line geometry
-    buildLineLabels (size, line, options, labels) {
-        let subdiv = Math.min(options.subdiv, line.length - 1);
+    buildLineLabels (line, size, layout, labels) {
+        let subdiv = Math.min(layout.subdiv, line.length - 1);
         if (subdiv > 1) {
             // Create multiple labels for line, with each allotted a range of segments
             // in which it will attempt to place
             let seg_per_div = (line.length - 1) / subdiv;
             for (let i=0; i < subdiv; i++) {
-                options.segment_start = Math.floor(i * seg_per_div);
-                options.segment_end = Math.floor((i+1) * seg_per_div);
-                labels.push(new LabelLine(size, line, options));
+                layout.segment_start = Math.floor(i * seg_per_div);
+                layout.segment_end = Math.floor((i+1) * seg_per_div);
+                labels.push(new LabelLine(size, line, layout)); // TODO: swap constructor arg order
             }
-            options.segment_start = null;
-            options.segment_end = null;
+            layout.segment_start = null;
+            layout.segment_end = null;
         }
         else {
-            labels.push(new LabelLine(size, line, options));
+            labels.push(new LabelLine(size, line, layout)); // TODO: swap constructor arg order
         }
     }
 

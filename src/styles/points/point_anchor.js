@@ -34,6 +34,18 @@ export default PointAnchor = {
         return offset2;
     },
 
+    alignForAnchor (anchor) {
+        if (anchor && anchor !== 'center') {
+            if (this.isLeftAnchor(anchor)) {
+                return 'right';
+            }
+            else if (this.isRightAnchor(anchor)) {
+                return 'left';
+            }
+        }
+        return 'center';
+    },
+
     isLeftAnchor (anchor) {
         return (lefts.indexOf(anchor) > -1);
     },
