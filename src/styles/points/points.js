@@ -12,7 +12,6 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
-import TextSettings from '../text/text_settings';
 import PointAnchor from './point_anchor';
 
 let fs = require('fs');
