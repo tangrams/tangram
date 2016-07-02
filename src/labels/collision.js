@@ -114,7 +114,6 @@ export default Collision = {
     },
 
     // Run collision and repeat check to see if label can currently be placed
-    // canBePlaced ({ label, placements, layout }, tile, exclude = null) {
     canBePlaced (object, tile, exclude = null) {
         let label = object.label;
         let layout = object.layout;

@@ -251,7 +251,6 @@ Object.assign(Points, {
                         context: q.context,
                         text: q.text_feature.text,
                         text_settings_key: q.text_feature.text_settings_key,
-                        text_settings: q.text_feature.text_settings, // TODO: ideally we shouldn't send this to main thread
                         layout: q.text_feature.layout,
                         point_label: label,
                         linked: point_obj   // link so text only renders when parent point is placed

@@ -39,10 +39,9 @@ export const TextLabels = {
         let layout = this.computeTextLayout({}, feature, draw, context, tile, text);
         let text_settings = TextSettings.compute(feature, draw, context);
         let text_settings_key = TextSettings.key(text_settings);
-        text_settings.key = text_settings_key;
 
         // first label in tile, or with this style?
-        this.texts[tile.key] = this.texts[tile.key] || { sizes: {} };
+        this.texts[tile.key] = this.texts[tile.key] || {};
         let sizes = this.texts[tile.key][text_settings_key] = this.texts[tile.key][text_settings_key] || {};
 
         // unique text strings, grouped by text drawing style
@@ -55,7 +54,7 @@ export const TextLabels = {
         }
 
         return {
-            draw, text, text_settings, text_settings_key, layout
+            draw, text, text_settings_key, layout
         };
     },
 

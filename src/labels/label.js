@@ -8,7 +8,6 @@ export default class Label {
     constructor (size, options = {}) {
         this.size = size;
         this.options = options;
-        // this.layout = options; // TODO: reduce dupe with options
         this.position = null;
         this.placed = null;
         this.aabb = null;
