@@ -346,6 +346,7 @@ Object.assign(Points, {
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
             draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
+            draw.text.required = (draw.text.required !== undefined) ? draw.text.required : true; // default text to required
         }
 
         return draw;
