@@ -118,7 +118,28 @@ export default class CanvasText {
 
                 switch (type){
                     case TYPES.ON_SPACE:
-                        segments = line.text.split(' ');
+                        var words = text.split(' ');
+                        var rtl_words = [];
+
+                        // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
+                        for (var i = 0; i < words.length; i++){
+                            var str = words[i];
+                            var rtl = isRTL(str);
+                            if (rtl){
+                                rtl_words.push(str);
+                            }
+                            else {
+                                while (rtl_words.length > 0){
+                                    segments.push(rtl_words.pop());
+                                }
+                                segments.push(str);
+                            }
+                        }
+
+                        while (rtl_words.length > 0){
+                            segments.push(rtl_words.pop());
+                        }
+
                         break;
                     case TYPES.GROUP_BY:
                         var groupByN = 3;
@@ -151,7 +172,7 @@ export default class CanvasText {
                 line.segments = [];
                 for (var i = 0; i < segments.length; i++){
                     var str = segments[i];
-                    if (type === TYPES.ON_SPACE && i >= 0 && i < segments.length - 1) str += ' ';
+                    if (type === TYPES.ON_SPACE && i < segments.length - 1) str += ' ';
                     line.segments.push(ctx.measureText(str).width);
                 }
 
@@ -215,6 +236,18 @@ export default class CanvasText {
                 segment_texture_size[i] = segments[i];
             }
         }
+
+        // TESTING BUG
+        var width = 0;
+        for (let j = 0; j < segment_texture_size.length; j++){
+            width += segment_texture_size[j];
+        }
+
+        if (Math.abs(width - (line.width + 2*buffer)) > .0001){
+            console.log(width, (line.width + 2*buffer))
+            debugger
+        }
+
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
@@ -408,3 +441,18 @@ CanvasText.font_size_re = /((?:[0-9]*\.)?[0-9]+)\s*(px|pt|em|%)?/;
 // Cache sizes of rendered text
 CanvasText.text_cache = {}; // by text style, then text string
 CanvasText.cache_stats = { hits: 0, misses: 0 };
+
+function isRTL(s){
+    var weakChars       = '\u0000-\u0040\u005B-\u0060\u007B-\u00BF\u00D7\u00F7\u02B9-\u02FF\u2000-\u2BFF\u2010-\u2029\u202C\u202F-\u2BFF',
+        rtlChars        = '\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC',
+        rtlDirCheck     = new RegExp('^['+weakChars+']*['+rtlChars+']');
+
+    return rtlDirCheck.test(s);
+};
+
+try {
+    if (window.document !== undefined) {
+        window.isRTL = isRTL;
+    }
+}
+catch (e) {}
