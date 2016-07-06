@@ -200,6 +200,7 @@ export default class CanvasText {
 
         let buffer = this.text_buffer * Utils.device_pixel_ratio;
         let texture_size = size.texture_size;
+        let collision_size = size.collision_size;
         let line_height = size.line_height;
 
         for (let line_num=0; line_num < lines.length; line_num++) {
@@ -229,10 +230,10 @@ export default class CanvasText {
             // this.context.lineWidth = 0;
         }
 
-        var lineWidth = 5;
+        var lineWidth = 1;
         this.context.strokeStyle = '#000';
         this.context.lineWidth = lineWidth;
-        this.context.strokeRect(x, y, texture_size[0], texture_size[1]);
+        this.context.strokeRect(x + 16, y + 16, 2*collision_size[0], 2*collision_size[1]);
     }
 
     rasterize (texts, texture_size) {
