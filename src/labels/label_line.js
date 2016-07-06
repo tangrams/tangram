@@ -327,11 +327,20 @@ function getOrientationFromSegment(pt1, pt2) {
     return pt1[0] >= pt2[0];
 }
 
-function nudge(){
-    var height = this.size[1];
-    var nudge0 = height / 2 * Math.cos(Math.PI/2 - this.angle[0]);
-    var nudge1 = height / 2 * Math.cos(Math.PI/2 - this.angle[1]);
+function nudge() {
+    if (this.angle[1] === undefined) return;
 
-    this.pre_offset[0][0] += nudge0*this.options.units_per_pixel;
-    this.pre_offset[1][0] -= nudge1*this.options.units_per_pixel;
+    var height = this.size[1] / 2;
+    var angle_delta = Math.abs(this.angle[1] - this.angle[0]) % 2*Math.PI;
+    var dx = height * Math.sin(0.5 * angle_delta);
+
+    if (this.pre_offset[0][0] < 0)
+        this.pre_offset[0][0] -= dx;
+    else
+        this.pre_offset[0][0] += dx;
+
+    if (this.pre_offset[1][0] < 0)
+        this.pre_offset[1][0] -= dx;
+    else
+        this.pre_offset[1][0] += dx;
 }
