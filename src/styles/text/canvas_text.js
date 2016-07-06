@@ -92,95 +92,42 @@ export default class CanvasText {
         let lines = []; // completed lines
         let max_width = 0; // max width to fit all lines
 
-
-
-        var TYPES = {
-            ON_SPACE : 0,
-            GROUP_BY : 1,
-            NUM_CHUNKS : 2
-        };
-
-        var type = TYPES.ON_SPACE;
-
-
-
         // add current line buffer to completed lines, optionally start new line
         function addLine (new_line) {
             line.text = line.text.trim();
-            if (line.text.length > 0) {
-                // debugger
+            if (line.text.length === 0) {
+                return;
+            }
 
-                var text = line.text;
-                var segments = [];
+            var text = line.text;
+            let line_width = 0;
 
-                switch (type){
-                    case TYPES.ON_SPACE:
-                        var words = text.split(' ');
-                        var rtl_words = [];
+            if (!new_line) {
+                var words = text.split(' ');
 
-                        // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
-                        for (var i = 0; i < words.length; i++){
-                            var str = words[i];
-                            var rtl = isRTL(str);
-                            if (rtl){
-                                rtl_words.push(str);
-                            }
-                            else {
-                                while (rtl_words.length > 0){
-                                    segments.push(rtl_words.pop());
-                                }
-                                segments.push(str);
-                            }
-                        }
+                var words_LTR = reorderWordsLTR(words);
 
-                        while (rtl_words.length > 0){
-                            segments.push(rtl_words.pop());
-                        }
-
-                        break;
-                    case TYPES.GROUP_BY:
-                        var groupByN = 3;
-
-                        var num_segments = Math.ceil(text.length / groupByN);
-                        var startIndex = 0;
-                        for (var i = 0; i < num_segments; i++){
-                            var substr = text.slice(startIndex, startIndex + groupByN);
-                            segments.push(substr);
-                            startIndex += groupByN;
-                        }
-                        break;
-                    case TYPES.NUM_CHUNKS:
-                        var num_chunks = 2;
-
-                        var charsPerChunk = Math.ceil(text.length / num_chunks);
-                        var startIndex = 0;
-                        for (var i = 0; i < num_chunks; i++){
-                            var segment = text.slice(startIndex, startIndex + charsPerChunk);
-                            segments.push(segment);
-                            startIndex += charsPerChunk;
-                        }
-
-                        break;
-                }
-
-                var stopOnSpaces = false;
-                var groupByN = 1;
-
-                line.segments = [];
-                let line_width = 0;
-                for (var i = 0; i < segments.length; i++){
-                    var str = segments[i];
-                    if (type === TYPES.ON_SPACE && i < segments.length - 1) str += ' ';
+                let widths = [];
+                for (var i = 0; i < words_LTR.length; i++){
+                    var str = words_LTR[i];
+                    if (i < words_LTR.length - 1) str += ' ';
                     let width = ctx.measureText(str).width;
-                    line.segments.push(width);
+                    widths.push(width);
                     line_width += width;
                 }
 
-                line.width = line_width;
-                max_width = Math.max(max_width, Math.ceil(line_width));
-
-                lines.push(line);
+                line.segments = widths;
             }
+            else {
+                line_width = ctx.measureText(text).width;
+                line.segments = [line_width];
+            }
+
+            line.width = line_width;
+            lines.push(line);
+
+            max_width = Math.max(max_width, Math.ceil(line_width));
+
             if (new_line) {
                 line = Object.assign({}, new_line_template);
             }
@@ -440,6 +387,32 @@ function isRTL(s){
 
     return rtlDirCheck.test(s);
 };
+
+function reorderWordsLTR(words) {
+    var words_LTR = [];
+    var words_RTL = [];
+
+    // loop through words and re-order RTL groups in reverse order (but in LTR visual order)
+    for (var i = 0; i < words.length; i++){
+        var str = words[i];
+        var rtl = isRTL(str);
+        if (rtl){
+            words_RTL.push(str);
+        }
+        else {
+            while (words_RTL.length > 0){
+                words_LTR.push(words_RTL.pop());
+            }
+            words_LTR.push(str);
+        }
+    }
+
+    while (words_RTL.length > 0){
+        words_LTR.push(words_RTL.pop());
+    }
+
+    return words_LTR;
+}
 
 try {
     if (window.document !== undefined) {
