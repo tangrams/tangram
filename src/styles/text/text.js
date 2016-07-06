@@ -185,11 +185,11 @@ Object.assign(TextStyle, {
             for (let i=0; i < subdiv; i++) {
                 options.segment_start = Math.floor(i * seg_per_div);
                 options.segment_end = Math.floor((i + 1) * seg_per_div);
-                var label = new LabelLine(size, line, options);
 
-                if (!label.throw_away) {
-                    labelsForGroup.push(label);
-                }
+                var label = new LabelLine(size, line, options);
+                if (label.throw_away) return;
+
+                labels.push(label);
             }
             options.segment_start = null;
             options.segment_end = null;
