@@ -108,9 +108,6 @@ export default class CanvasText {
         function addLine (new_line) {
             line.text = line.text.trim();
             if (line.text.length > 0) {
-                line.width = ctx.measureText(line.text).width;
-                max_width = Math.max(max_width, Math.ceil(line.width));
-
                 // debugger
 
                 var text = line.text;
@@ -170,11 +167,17 @@ export default class CanvasText {
                 var groupByN = 1;
 
                 line.segments = [];
+                let line_width = 0;
                 for (var i = 0; i < segments.length; i++){
                     var str = segments[i];
                     if (type === TYPES.ON_SPACE && i < segments.length - 1) str += ' ';
-                    line.segments.push(ctx.measureText(str).width);
+                    let width = ctx.measureText(str).width;
+                    line.segments.push(width);
+                    line_width += width;
                 }
+
+                line.width = line_width;
+                max_width = Math.max(max_width, Math.ceil(line_width));
 
                 lines.push(line);
             }
@@ -236,18 +239,6 @@ export default class CanvasText {
                 segment_texture_size[i] = segments[i];
             }
         }
-
-        // TESTING BUG
-        var width = 0;
-        for (let j = 0; j < segment_texture_size.length; j++){
-            width += segment_texture_size[j];
-        }
-
-        if (Math.abs(width - (line.width + 2*buffer)) > .0001){
-            console.log(width, (line.width + 2*buffer))
-            debugger
-        }
-
 
         // Returns lines (w/per-line info for drawing) and text's overall bounding box + canvas size
         return {
