@@ -311,7 +311,7 @@ function getAngleFromSegment(pt1, pt2) {
     let p1p2 = Vector.sub(pt1, pt2);
     let theta = Math.atan2(p1p2[0], p1p2[1]) + PI_2;
 
-    if (theta > PI_2) {
+    if (theta >= PI_2) {
         // If in 2nd quadrant, move to 4th quadrant
         theta += PI;
     }
