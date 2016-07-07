@@ -10,6 +10,10 @@ export default class LabelPoint extends Label {
         this.position = [position[0], position[1]];
         this.offset = [this.options.offset[0], this.options.offset[1]];
         this.update();
+
+        if (!this.inTileBounds()) {
+            this.moveIntoTile();
+        }
     }
 
     update() {
@@ -32,10 +36,6 @@ export default class LabelPoint extends Label {
 
         this.obb = new OBB(p[0], p[1], 0, width, height);
         this.aabb = this.obb.getExtent();
-    }
-
-    getNextFittingSegment() {
-        return this.moveIntoTile();
     }
 
     // Try to move the label into the tile bounds
