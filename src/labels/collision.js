@@ -209,13 +209,13 @@ function collideSerial(tile, style_type) {
                 // test the label for intersections with other labels in the tile
                 if (!layout.collide || !label.discard(bboxes)) {
                     // check for repeats
-                    // let check = RepeatGroup.check(label, layout, tile);
-                    // if (check) {
-                    //     // log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
-                    //     continue;
-                    // }
-                    // // register as placed for future repeat culling
-                    // RepeatGroup.add(label, layout, tile);
+                    let check = RepeatGroup.check(label, layout, tile);
+                    if (check) {
+                        // log('trace', `discard label '${label.text}', (one_per_group: ${check.one_per_group}), dist ${Math.sqrt(check.dist_sq)/layout.units_per_pixel} < ${Math.sqrt(check.repeat_dist_sq)/layout.units_per_pixel}`);
+                        continue;
+                    }
+                    // register as placed for future repeat culling
+                    RepeatGroup.add(label, layout, tile);
 
                     label.add(bboxes); // add label to currently visible set
                     keep[style].push(objects[i]);
