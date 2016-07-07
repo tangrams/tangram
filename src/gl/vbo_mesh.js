@@ -70,7 +70,7 @@ export default class VBOMesh  {
             this.gl.drawArrays(this.draw_mode, 0, this.vertex_count);
         }
 
-        VertexArrayObject.bind(null);
+        VertexArrayObject.bind(this.gl, null);
 
         if (this.uniforms) {
             program.restoreUniforms(this.uniforms);
@@ -84,10 +84,10 @@ export default class VBOMesh  {
         // Bind VAO for this progam, or create one
         let vao = this.vaos.get(program);
         if (vao) {
-            VertexArrayObject.bind(vao);
+            VertexArrayObject.bind(this.gl, vao);
         }
         else {
-            this.vaos.set(program, VertexArrayObject.create((force) => {
+            this.vaos.set(program, VertexArrayObject.create(this.gl, (force) => {
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertex_buffer);
                 if (this.toggle_element_array) {
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.element_buffer);
@@ -104,7 +104,7 @@ export default class VBOMesh  {
         this.valid = false;
 
         for (let vao of this.vaos.values()) {
-            VertexArrayObject.destroy(vao);
+            VertexArrayObject.destroy(this.gl, vao);
         }
 
         log('trace', 'VBOMesh.destroy: delete buffer' + (this.vertex_data ? ` of size ${this.vertex_data.byteLength}` : ''));
