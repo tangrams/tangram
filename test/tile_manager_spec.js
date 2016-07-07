@@ -1,22 +1,19 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
-import TileManager from '../src/tile_manager';
-
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 let midtownTile = { x: 38603, y: 49255, z: 17 };
 let midtownTileKey = `${midtownTile.x}/${midtownTile.y}/${midtownTile.z}`;
 
-
 describe('TileManager', function () {
 
-    let scene, view;
+    let scene, view, tile_manager;
 
     beforeEach(() => {
         scene = makeScene({});
         view = scene.view;
-        TileManager.init({ scene, view });
+        tile_manager = scene.tile_manager;
         sinon.stub(view, 'findVisibleTileCoordinates').returns([]);
         view.setView(nycLatLng);
     });
@@ -31,16 +28,16 @@ describe('TileManager', function () {
         let coords = midtownTile;
 
         beforeEach(() => {
-            sinon.spy(TileManager, 'queueCoordinate');
+            sinon.spy(tile_manager, 'queueCoordinate');
 
             return scene.load().then(() => {
-                TileManager.queueCoordinate(coords);
-                TileManager.loadQueuedCoordinates();
+                tile_manager.queueCoordinate(coords);
+                tile_manager.loadQueuedCoordinates();
             });
         });
 
         it('calls queueCoordinate with the queued tile', () => {
-            sinon.assert.calledWith(TileManager.queueCoordinate, coords);
+            sinon.assert.calledWith(tile_manager.queueCoordinate, coords);
         });
     });
 
@@ -57,13 +54,13 @@ describe('TileManager', function () {
             let tile, tiles;
 
             beforeEach(() => {
-                TileManager.loadCoordinate(coords);
-                tiles = TileManager.tiles;
+                tile_manager.loadCoordinate(coords);
+                tiles = tile_manager.tiles;
                 tile = tiles[Object.keys(tiles)[0]];
             });
 
             it('loads and keeps the tile', () => {
-                TileManager.loadCoordinate(coords);
+                tile_manager.loadCoordinate(coords);
                 assert.isTrue(Object.keys(tiles).length === 1);
                 assert.instanceOf(tile, Tile);
             });
@@ -75,21 +72,21 @@ describe('TileManager', function () {
             let tile, tiles;
 
             beforeEach(() => {
-                TileManager.loadCoordinate(coords);
+                tile_manager.loadCoordinate(coords);
 
-                tiles = TileManager.tiles;
+                tiles = tile_manager.tiles;
                 tile = tiles[Object.keys(tiles)[0]];
 
-                sinon.spy(TileManager, 'keepTile');
+                sinon.spy(tile_manager, 'keepTile');
                 sinon.spy(tile, 'build');
 
-                TileManager.loadCoordinate(coords);
+                tile_manager.loadCoordinate(coords);
             });
 
             afterEach(() => {
-                TileManager.keepTile.restore();
+                tile_manager.keepTile.restore();
                 tile.build.restore();
-                TileManager.tiles[key] = undefined;
+                tile_manager.tiles[key] = undefined;
             });
 
             it('does not build the tile', () => {
@@ -97,7 +94,7 @@ describe('TileManager', function () {
             });
 
             it('does not keep the tile', () => {
-                assert.isFalse(TileManager.keepTile.called);
+                assert.isFalse(tile_manager.keepTile.called);
             });
 
         });

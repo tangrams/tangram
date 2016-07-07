@@ -1,7 +1,6 @@
 import chai from 'chai';
 let assert = chai.assert;
 import Tile from '../src/tile';
-import TileManager from '../src/tile_manager';
 
 let nycLatLng = { lng: -73.97229909896852, lat: 40.76456761707639, zoom: 17 };
 
@@ -10,12 +9,13 @@ describe('Tile', function() {
     let subject,
         scene,
         view,
+        tile_manager,
         coords = { x: 38603, y: 49255, z: 17 };
 
     beforeEach(() => {
         scene = makeScene({});
         view = scene.view;
-        TileManager.init({ scene, view });
+        tile_manager = scene.tile_manager;
         sinon.stub(view, 'findVisibleTileCoordinates').returns([]);
         view.setView(nycLatLng);
 
@@ -35,7 +35,7 @@ describe('Tile', function() {
             view.findVisibleTileCoordinates.restore();
         }
         scene.destroy();
-        TileManager.destroy();
+        tile_manager.destroy();
         scene   = null;
         view    = null;
         subject = null;
@@ -89,7 +89,7 @@ describe('Tile', function() {
                 view.findVisibleTileCoordinates.restore();
                 sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, view.zoom)]);
                 view.updateBounds();
-                TileManager.updateVisibility(subject);
+                tile_manager.updateVisibility(subject);
                 view.findVisibleTileCoordinates.restore();
 
                 assert.isTrue(subject.visible);
@@ -100,7 +100,7 @@ describe('Tile', function() {
                 view.findVisibleTileCoordinates.restore();
                 sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
-                TileManager.updateVisibility(subject);
+                tile_manager.updateVisibility(subject);
                 view.findVisibleTileCoordinates.restore();
 
                 assert.isFalse(subject.visible);
@@ -111,7 +111,7 @@ describe('Tile', function() {
                 view.findVisibleTileCoordinates.restore();
                 sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
-                TileManager.updateVisibility(subject);
+                tile_manager.updateVisibility(subject);
                 view.findVisibleTileCoordinates.restore();
 
                 assert.isFalse(subject.visible);
@@ -138,7 +138,7 @@ describe('Tile', function() {
                 sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
                 subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
-                TileManager.updateVisibility(subject);
+                tile_manager.updateVisibility(subject);
                 view.findVisibleTileCoordinates.restore();
 
                 assert.isTrue(subject.visible);
@@ -150,7 +150,7 @@ describe('Tile', function() {
                 sinon.stub(view, 'findVisibleTileCoordinates').returns([Tile.coordinateWithMaxZoom(subject.coords, z)]);
                 view.setZoom(z);
                 subject = Tile.create({coords: subject.coords, view: view, style_zoom: view.zoom, source: scene.sources.osm});
-                TileManager.updateVisibility(subject);
+                tile_manager.updateVisibility(subject);
 
                 assert.isFalse(subject.visible);
             });
