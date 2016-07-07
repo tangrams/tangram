@@ -8,8 +8,7 @@ export default class TileManager {
         this.scene = scene;
         this.view = view;
         this.tiles = {};
-        this.pyramid = TilePyramid;
-        this.pyramid.reset();
+        this.pyramid = new TilePyramid();
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
@@ -18,7 +17,7 @@ export default class TileManager {
     destroy() {
         this.forEachTile(tile => tile.destroy());
         this.tiles = {};
-        this.pyramid.reset();
+        this.pyramid = null;
         this.visible_coords = {};
         this.queued_coords = [];
         this.scene = null;

@@ -1,21 +1,19 @@
 import Geo from './geo';
 import Tile from './tile';
 
-const TilePyramid = {
+export default class TilePyramid {
 
-    coords: {},
-    max_proxy_descendant_depth: 3, // # of levels deep to search for descendant proxy tiles
-
-    reset() {
+    constructor() {
         this.coords = {};
-    },
+        this.max_proxy_descendant_depth = 3; // # of levels deep to search for descendant proxy tiles
+    }
 
     sourceTiles(coord, source) {
         return (
             this.coords[coord.key] &&
             this.coords[coord.key].sources &&
             this.coords[coord.key].sources.get(source.name));
-    },
+    }
 
     addTile(tile) {
         // Add target tile
@@ -42,7 +40,7 @@ const TilePyramid = {
             }
             this.coords[up.key].descendants++;
         }
-    },
+    }
 
     removeTile(tile) {
         // Remove target tile
@@ -75,7 +73,7 @@ const TilePyramid = {
                 }
             }
         }
-    },
+    }
 
     getAncestor ({ coords, style_zoom, source }) {
         // First check overzoomed tiles at same coordinate zoom
@@ -103,7 +101,7 @@ const TilePyramid = {
         if (parent.z > 0) {
             return this.getAncestor({ coords: parent, style_zoom, source });
         }
-    },
+    }
 
     getDescendants ({ coords, style_zoom, source }, level = 1) {
         let descendants = [];
@@ -141,6 +139,4 @@ const TilePyramid = {
         return descendants;
     }
 
-};
-
-export default TilePyramid;
+}
