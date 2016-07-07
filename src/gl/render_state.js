@@ -1,5 +1,5 @@
 
-export default class RenderState {
+export class RenderState {
 	constructor (value, setup) {
         setup(value);
         this.value = value;
@@ -13,28 +13,32 @@ export default class RenderState {
     		this.value = value;
     	}
     }
+}
 
-    static initialize (gl) {
-        RenderState.defaults = {};
+export default class RenderStateManager {
+
+    constructor (gl) {
+        this.defaults = {};
+
         // Culling
-        RenderState.defaults.culling = true;
-        RenderState.defaults.culling_face = gl.BACK;
+        this.defaults.culling = true;
+        this.defaults.culling_face = gl.BACK;
 
         // Blending
-        RenderState.defaults.blending = false;
-        RenderState.defaults.blending_src = gl.ONE_MINUS_SRC_ALPHA;
-        RenderState.defaults.blending_dst = gl.ONE_MINUS_SRC_ALPHA;
-        RenderState.defaults.blending_src_alpha = gl.ONE;
-        RenderState.defaults.blending_dst_alpha = gl.ONE_MINUS_SRC_ALPHA;
+        this.defaults.blending = false;
+        this.defaults.blending_src = gl.ONE_MINUS_SRC_ALPHA;
+        this.defaults.blending_dst = gl.ONE_MINUS_SRC_ALPHA;
+        this.defaults.blending_src_alpha = gl.ONE;
+        this.defaults.blending_dst_alpha = gl.ONE_MINUS_SRC_ALPHA;
 
         // Depth test/write
-        RenderState.defaults.depth_write = true;
-        RenderState.defaults.depth_test = true;
+        this.defaults.depth_write = true;
+        this.defaults.depth_test = true;
         gl.depthFunc(gl.LESS); // depth function only needs to be set once
 
     	// Culling
-    	RenderState.culling = new RenderState(
-    		{ cull: RenderState.defaults.culling, face: RenderState.defaults.culling_face },
+        this.culling = new RenderState(
+            { cull: this.defaults.culling, face: this.defaults.culling_face },
     		(value) => {
     			if (value.cull) {
     				gl.enable(gl.CULL_FACE);
@@ -46,12 +50,12 @@ export default class RenderState {
     	);
 
     	// Blending mode
-    	RenderState.blending = new RenderState({
-                blend: RenderState.defaults.blending,
-                src: RenderState.defaults.blending_src,
-                dst: RenderState.defaults.blending_dst,
-                src_alpha: RenderState.defaults.blending_src_alpha,
-                dst_alpha: RenderState.defaults.blending_dst_alpha
+        this.blending = new RenderState({
+                blend: this.defaults.blending,
+                src: this.defaults.blending_src,
+                dst: this.defaults.blending_dst,
+                src_alpha: this.defaults.blending_src_alpha,
+                dst_alpha: this.defaults.blending_dst_alpha
             },
             (value) => {
     			if (value.blend) {
@@ -70,16 +74,16 @@ export default class RenderState {
     	);
 
     	// Depth write
-    	RenderState.depth_write = new RenderState(
-    		{ depth_write: RenderState.defaults.depth_write },
+        this.depth_write = new RenderState(
+            { depth_write: this.defaults.depth_write },
     		(value) => {
         		gl.depthMask(value.depth_write);
     		}
     	);
 
     	// Depth test
-    	RenderState.depth_test = new RenderState(
-            { depth_test: RenderState.defaults.depth_test },
+        this.depth_test = new RenderState(
+            { depth_test: this.defaults.depth_test },
             (value) => {
     			if (value.depth_test) {
             		gl.enable(gl.DEPTH_TEST);
@@ -90,4 +94,5 @@ export default class RenderState {
     	);
 
     }
+
 }

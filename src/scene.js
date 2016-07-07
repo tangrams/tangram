@@ -14,7 +14,7 @@ import Light from './light';
 import TileManager from './tile_manager';
 import DataSource from './sources/data_source';
 import FeatureSelection from './selection';
-import RenderState from './gl/render_state';
+import RenderStateManager from './gl/render_state';
 import CanvasText from './styles/text/canvas_text';
 
 import {Polygons} from './styles/polygons/polygons';
@@ -234,7 +234,7 @@ export default class Scene {
 
         this.resizeMap(this.container.clientWidth, this.container.clientHeight);
         VertexArrayObject.init(this.gl);
-        RenderState.initialize(this.gl);
+        this.render_states = new RenderStateManager(this.gl);
 
         // Let VertexElements know if 32 bit indices for element arrays are available
         var Uint32_flag = this.gl.getExtension("OES_element_index_uint") ? true : false;
@@ -571,7 +571,7 @@ export default class Scene {
         clear_depth = (clear_depth === false) ? false : true; // default true
 
         // Set GL state
-        RenderState.depth_write.set({ depth_write: clear_depth });
+        this.render_states.depth_write.set({ depth_write: clear_depth });
 
         let gl = this.gl;
         if (clear_color || clear_depth) {
@@ -587,17 +587,18 @@ export default class Scene {
 
         // Defaults
         // TODO: when we abstract out support for multiple render passes, these can be per-pass config options
-        depth_test = (depth_test === false) ? false : RenderState.defaults.depth_test;      // default true
-        depth_write = (depth_write === false) ? false : RenderState.defaults.depth_write;   // default true
-        cull_face = (cull_face === false) ? false : RenderState.defaults.culling;           // default true
-        blend = (blend != null) ? blend : RenderState.defaults.blending;                    // default false
+        let render_states = this.render_states;
+        depth_test = (depth_test === false) ? false : render_states.defaults.depth_test;      // default true
+        depth_write = (depth_write === false) ? false : render_states.defaults.depth_write;   // default true
+        cull_face = (cull_face === false) ? false : render_states.defaults.culling;           // default true
+        blend = (blend != null) ? blend : render_states.defaults.blending;                    // default false
 
         // Reset frame state
         let gl = this.gl;
 
-        RenderState.depth_test.set({ depth_test: depth_test });
-        RenderState.depth_write.set({ depth_write: depth_write });
-        RenderState.culling.set({ cull: cull_face, face: RenderState.defaults.culling_face });
+        render_states.depth_test.set({ depth_test: depth_test });
+        render_states.depth_write.set({ depth_write: depth_write });
+        render_states.culling.set({ cull: cull_face, face: render_states.defaults.culling_face });
 
         // Blending of alpha channel is modified to account for WebGL alpha behavior, see:
         // http://webglfundamentals.org/webgl/lessons/webgl-and-alpha.html
@@ -605,14 +606,14 @@ export default class Scene {
         if (blend) {
             // Opaque: all source, no destination
             if (blend === 'opaque') {
-                RenderState.blending.set({
+                render_states.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ZERO
                 });
             }
             // Traditional alpha blending
             else if (blend === 'overlay' || blend === 'inlay') {
-                RenderState.blending.set({
+                render_states.blending.set({
                     blend: true,
                     src: gl.SRC_ALPHA, dst: gl.ONE_MINUS_SRC_ALPHA,
                     src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
@@ -620,7 +621,7 @@ export default class Scene {
             }
             // Additive blending
             else if (blend === 'add') {
-                RenderState.blending.set({
+                render_states.blending.set({
                     blend: true,
                     src: gl.ONE, dst: gl.ONE,
                     src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
@@ -628,7 +629,7 @@ export default class Scene {
             }
             // Multiplicative blending
             else if (blend === 'multiply') {
-                RenderState.blending.set({
+                render_states.blending.set({
                     blend: true,
                     src: gl.ZERO, dst: gl.SRC_COLOR,
                     src_alpha: gl.ONE, dst_alpha: gl.ONE_MINUS_SRC_ALPHA
@@ -636,7 +637,7 @@ export default class Scene {
             }
         }
         else {
-            RenderState.blending.set({ blend: false });
+            render_states.blending.set({ blend: false });
         }
     }
 
