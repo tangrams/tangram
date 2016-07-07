@@ -269,9 +269,9 @@ Object.assign(Points, {
                     };
                     text_objs.push(text_obj);
 
-                    // If text feature is required, create a two-way link so that parent
+                    // Unless text feature is optional, create a two-way link so that parent
                     // point will only render when text is also placed
-                    if (q.draw.text.required === true) {
+                    if (!q.draw.text.optional) {
                         point_obj.linked = text_obj; // two-way link
                     }
                 }
@@ -346,7 +346,7 @@ Object.assign(Points, {
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
             draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
-            draw.text.required = (draw.text.required !== undefined) ? draw.text.required : true; // default text to required
+            draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
 
         return draw;
