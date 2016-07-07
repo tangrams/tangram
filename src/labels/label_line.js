@@ -234,11 +234,38 @@ export default class LabelLine extends Label {
 
         switch (this.placement) {
             case PLACEMENT.CORNER:
+                var segment = this.getCurrentSegment();
+                var orientation1 = getOrientationFromSegment(segment[0], segment[1]);
+                var orientation2 = getOrientationFromSegment(segment[1], segment[2]);
+
+                var theta = Math.PI - Math.abs(this.angle[1] - this.angle[0]);
+                if (Math.abs(this.angle[1] - this.angle[0]) > Math.PI) {
+                    theta *= - 1;
+                }
+
+                // var s0 = this.lines[this.segment_index - 1];
+                // var s1 = this.lines[this.segment_index];
+                // var s2 = this.lines[this.segment_index + 1];
+
+                // var diff0 = [s1[0] - s0[0], s1[1] - s0[1]];
+                // var diff1 = [s2[0] - s1[0], s2[1] - s1[1]];
+
+                // var theta = Math.PI - Math.abs(Vector.angleBetween(
+                //     Vector.normalize(diff0),
+                //     Vector.normalize(diff1)
+                // ));
+
+                // if (Math.abs(theta2 - theta) > .001) console.log('different: ', theta2, theta, this.angle)
+                // else console.log('same: ', this.angle)
+
+                // factor to push apart labels so their corner's (defined by their height) touch
+                var dx = (this.size[1]) / Math.tan(0.5 * theta);
+
                 for (var i = 0; i < this.collapsed_size.length; i++){
                     var size = this.collapsed_size[i];
                     var angle = this.angle[i];
 
-                    let width = (size) * upp * Label.epsilon;
+                    let width = size * upp * Label.epsilon + dx;
 
                     var direction = (i == 0) ? -1 : 1;
                     var offset = Vector.rot([direction * 0.5 * width, 0], -angle);
@@ -250,6 +277,9 @@ export default class LabelLine extends Label {
                     this.obbs.push(obb);
                     this.aabbs.push(aabb);
                 }
+
+                this.pre_offset[0][0] = -0.5 * (this.collapsed_size[0] + dx);
+                this.pre_offset[1][0] = 0.5 * (this.collapsed_size[1] + dx);
                 break;
             case PLACEMENT.MID_POINT:
                 let width = (this.size[0] + this.options.buffer[0] * 2) * upp * Label.epsilon;
@@ -314,6 +344,7 @@ function getAngleFromSegment(pt1, pt2) {
     if (theta >= PI_2) {
         // If in 2nd quadrant, move to 4th quadrant
         theta += PI;
+        theta %= 2*Math.PI
     }
     else if (theta < 0) {
         // If in 4th quadrant, make a positive angle
