@@ -42,8 +42,7 @@ export default class Scene {
         this.sources = {};
 
         this.view = new View(this, options);
-        this.tile_manager = TileManager;
-        this.tile_manager.init({ scene: this, view: this.view });
+        this.tile_manager = new TileManager({ scene: this, view: this.view });
         this.num_workers = options.numWorkers || 2;
         this.worker_url = options.workerUrl;
         if (options.disableVertexArrayObjects === true) {
@@ -201,6 +200,7 @@ export default class Scene {
 
         this.destroyWorkers();
         this.tile_manager.destroy();
+        this.tile_manager = null;
     }
 
     createCanvas() {

@@ -2,9 +2,9 @@ import Tile from './tile';
 import TilePyramid from './tile_pyramid';
 import log from './utils/log';
 
-const TileManager = {
+export default class TileManager {
 
-    init({ scene, view }) {
+    constructor({ scene, view }) {
         this.scene = scene;
         this.view = view;
         this.tiles = {};
@@ -13,7 +13,7 @@ const TileManager = {
         this.visible_coords = {};
         this.queued_coords = [];
         this.building_tiles = null;
-    },
+    }
 
     destroy() {
         this.forEachTile(tile => tile.destroy());
@@ -23,16 +23,16 @@ const TileManager = {
         this.queued_coords = [];
         this.scene = null;
         this.view = null;
-    },
+    }
 
     keepTile(tile) {
         this.tiles[tile.key] = tile;
         this.pyramid.addTile(tile);
-    },
+    }
 
     hasTile(key) {
         return this.tiles[key] !== undefined;
-    },
+    }
 
     forgetTile(key) {
         if (this.hasTile(key)) {
@@ -42,7 +42,7 @@ const TileManager = {
 
         delete this.tiles[key];
         this.tileBuildStop(key);
-    },
+    }
 
     // Remove a single tile
     removeTile(key) {
@@ -56,14 +56,14 @@ const TileManager = {
 
         this.forgetTile(tile.key);
         this.scene.requestRedraw();
-    },
+    }
 
     // Run a function on each tile
     forEachTile(func) {
         for (let t in this.tiles) {
             func(this.tiles[t]);
         }
-    },
+    }
 
     // Remove tiles that pass a filter condition
     removeTiles(filter) {
@@ -78,7 +78,7 @@ const TileManager = {
             let key = remove_tiles[r];
             this.removeTile(key);
         }
-    },
+    }
 
     updateTilesForView() {
         // Find visible tiles and load new ones
@@ -106,7 +106,7 @@ const TileManager = {
         }
 
         this.updateTileStates();
-    },
+    }
 
     updateTileStates () {
         this.forEachTile(tile => {
@@ -117,7 +117,7 @@ const TileManager = {
         this.loadQueuedCoordinates();
         this.updateProxyTiles();
         this.view.pruneTilesForView();
-    },
+    }
 
     updateProxyTiles () {
         if (this.view.zoom_direction === 0) {
@@ -152,7 +152,7 @@ const TileManager = {
         if (!proxy) {
             this.view.zoom_direction = 0;
         }
-    },
+    }
 
     updateVisibility(tile) {
         tile.visible = false;
@@ -170,12 +170,12 @@ const TileManager = {
                 }
             }
         }
-    },
+    }
 
     // Remove tiles that aren't visible, and flag remaining visible ones to be updated (for loading, proxy, etc.)
     pruneToVisibleTiles () {
         this.removeTiles(tile => !tile.visible);
-    },
+    }
 
     getRenderableTiles() {
         let tiles = [];
@@ -186,16 +186,16 @@ const TileManager = {
             }
         }
         return tiles;
-    },
+    }
 
     isLoadingVisibleTiles() {
         return Object.keys(this.tiles).some(k => this.tiles[k].visible && this.tiles[k].loading);
-    },
+    }
 
     // Queue a tile for load
     queueCoordinate(coords) {
         this.queued_coords[this.queued_coords.length] = coords;
-    },
+    }
 
     // Load all queued tiles
     loadQueuedCoordinates() {
@@ -211,7 +211,7 @@ const TileManager = {
         });
         this.queued_coords.forEach(coords => this.loadCoordinate(coords));
         this.queued_coords = [];
-    },
+    }
 
     // Load all tiles to cover a given logical tile coordinate
     loadCoordinate(coords) {
@@ -241,13 +241,13 @@ const TileManager = {
                 this.buildTile(tile);
             }
         }
-    },
+    }
 
     // Sort and build a list of tiles
     buildTiles(tiles) {
         Tile.sort(tiles).forEach(tile => this.buildTile(tile));
         this.checkBuildQueue();
-    },
+    }
 
     buildTile(tile) {
         this.tileBuildStart(tile.key);
@@ -264,7 +264,7 @@ const TileManager = {
                 this.forgetTile(tile.key);
                 Tile.abortBuild(tile);
             });
-    },
+    }
 
     // Called on main thread when a web worker completes processing for a single tile (initial load, or rebuild)
     buildTileCompleted({ tile }) {
@@ -294,14 +294,14 @@ const TileManager = {
         }
 
         this.tileBuildStop(tile.key);
-    },
+    }
 
     // Track tile build state
     tileBuildStart(key) {
         this.building_tiles = this.building_tiles || {};
         this.building_tiles[key] = true;
         log('trace', `tileBuildStart for ${key}: ${Object.keys(this.building_tiles).length}`);
-    },
+    }
 
     tileBuildStop(key) {
         // Done building?
@@ -310,7 +310,7 @@ const TileManager = {
             delete this.building_tiles[key];
             this.checkBuildQueue();
         }
-    },
+    }
 
     // Check status of tile building queue and notify scene when we're done
     checkBuildQueue() {
@@ -318,7 +318,7 @@ const TileManager = {
             this.building_tiles = null;
             this.scene.tileManagerBuildDone();
         }
-    },
+    }
 
     // Sum of a debug property across tiles
     getDebugSum(prop, filter) {
@@ -329,13 +329,11 @@ const TileManager = {
             }
         }
         return sum;
-    },
+    }
 
     // Average of a debug property across tiles
     getDebugAverage(prop, filter) {
         return this.getDebugSum(prop, filter) / Object.keys(this.tiles).length;
     }
 
-};
-
-export default TileManager;
+}
