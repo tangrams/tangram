@@ -1,3 +1,4 @@
+import PointAnchor from './point_anchor';
 import boxIntersect from 'box-intersect'; // https://github.com/mikolalysenko/box-intersect
 import Utils from '../utils/utils';
 import OBB from '../utils/obb';
@@ -9,9 +10,14 @@ export default class Label {
         this.size = size;
         this.layout = layout;
         this.position = null;
+        this.anchor = Array.isArray(this.layout.anchor) ? this.layout.anchor[0] : this.layout.anchor; // initial anchor
         this.placed = null;
         this.aabb = null;
         this.obb = null;
+    }
+
+    update () {
+        this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor);
     }
 
     // check for overlaps with other labels in the tile

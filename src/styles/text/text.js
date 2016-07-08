@@ -3,7 +3,6 @@
 import Geo from '../../geo';
 import {Style} from '../style';
 import {Points} from '../points/points';
-import PointAnchor from '../points/point_anchor';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import LabelLine from '../../labels/label_line';
@@ -100,7 +99,7 @@ Object.assign(TextStyle, {
                         style.label = q.label;
                         style.size = text_info.size.logical_size;
                         style.angle = q.label.angle || 0;
-                        style.texcoords = text_info.align[q.align].texcoords;
+                        style.texcoords = text_info.align[q.label.align].texcoords;
 
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
@@ -121,7 +120,6 @@ Object.assign(TextStyle, {
 
     // Sets up caching for draw properties
     _preprocess (draw) {
-        draw.anchor = Array.isArray(draw.anchor) ? draw.anchor[0] : draw.anchor; // TODO: support multi anchors
         return this.preprocessText(draw);
     },
 
@@ -130,7 +128,6 @@ Object.assign(TextStyle, {
         let labels = [];
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
-            fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.draw.anchor); // TODO: support multi anchors
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
             let feature_labels = this.buildLabels(text_info.size.collision_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {

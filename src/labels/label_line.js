@@ -1,7 +1,6 @@
-import Vector from '../vector';
 import Label from './label';
+import Vector from '../vector';
 import OBB from '../utils/obb';
-import PointAnchor from '../styles/points/point_anchor';
 
 export default class LabelLine extends Label {
 
@@ -10,7 +9,6 @@ export default class LabelLine extends Label {
 
         this.lines = lines;
         this.offset = [this.layout.offset[0], this.layout.offset[1]];
-        this.anchor = this.layout.anchor;
 
         // optionally limit the line segments that the label may be placed in, by specifying a segment index range
         // used as a coarse subdivide for placing multiple labels per line geometry
@@ -20,10 +18,10 @@ export default class LabelLine extends Label {
     }
 
     update () {
+        super.update();
         let segment = this.currentSegment();
         this.angle = this.computeAngle();
         this.position = [(segment[0][0] + segment[1][0]) / 2, (segment[0][1] + segment[1][1]) / 2];
-        this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor); // TODO: move to parent Label class
         this.updateBBoxes();
     }
 

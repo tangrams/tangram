@@ -1,7 +1,7 @@
 import Label from './label';
+import PointAnchor from './point_anchor';
 import Geo from '../geo';
 import OBB from '../utils/obb';
-import PointAnchor from '../styles/points/point_anchor';
 import {StyleParser} from '../styles/style_parser';
 
 export default class LabelPoint extends Label {
@@ -9,25 +9,25 @@ export default class LabelPoint extends Label {
     constructor (position, size, layout) {
         super(size, layout);
         this.position = [position[0], position[1]];
-        this.offset = [this.layout.offset[0], this.layout.offset[1]];
-        this.anchor = this.layout.anchor;
         this.parent = this.layout.parent;
         this.update();
     }
 
     update() {
-        this.align = this.layout.align || PointAnchor.alignForAnchor(this.anchor); // TODO: move to parent Label class
+        super.update();
         this.computeOffset();
         this.updateBBoxes();
     }
 
     computeOffset () {
+        this.offset = [this.layout.offset[0], this.layout.offset[1]];
+
         // Additional anchor/offset for point:
         if (this.parent) {
             let parent = this.parent;
             // point's own anchor, text anchor applied to point, additional point offset
-            this.offset = PointAnchor.computeOffset(this.offset, parent.size, parent.anchor);
-            this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.anchor);
+            this.offset = PointAnchor.computeOffset(this.offset, parent.size, parent.anchor, PointAnchor.zero_buffer);
+            this.offset = PointAnchor.computeOffset(this.offset, parent.size, this.anchor, PointAnchor.zero_buffer);
             if (parent.offset !== StyleParser.zeroPair) {        // point has an offset
                 if (this.offset === StyleParser.zeroPair) { // no text offset, use point's
                     this.offset = parent.offset;
@@ -85,6 +85,29 @@ export default class LabelPoint extends Label {
         }
 
         return this.inTileBounds();
+    }
+
+    discard (bboxes, exclude = null) {
+        if (super.discard(bboxes, exclude)) {
+            // If more than one anchor specified, try them in order
+            if (Array.isArray(this.layout.anchor)) {
+                // Start on second anchor (first anchor was set on creation)
+                for (let i=1; i < this.layout.anchor.length; i++) {
+                    this.anchor = this.layout.anchor[i];
+                    this.update();
+
+                    if (this.layout.cull_from_tile && !this.inTileBounds()) {
+                        continue;
+                    }
+
+                    if (!super.discard(bboxes, exclude)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
 }

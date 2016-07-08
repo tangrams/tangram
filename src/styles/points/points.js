@@ -12,7 +12,6 @@ import Vector from '../../vector';
 import Collision from '../../labels/collision';
 import LabelPoint from '../../labels/label_point';
 import {TextLabels} from '../text/text_labels';
-import PointAnchor from './point_anchor';
 
 let fs = require('fs');
 const shaderSrc_pointsVertex = fs.readFileSync(__dirname + '/points_vertex.glsl', 'utf8');
@@ -388,26 +387,7 @@ Object.assign(Points, {
         for (let f=0; f < feature_queue.length; f++) {
             let fq = feature_queue[f];
             let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-
-            if (Array.isArray(fq.layout.anchor)) {
-                // let candidates = [];
-                // let anchors = fq.layout.anchor;
-                // for (let a=0; a < anchors.length; a++) {
-                //     fq.layout.anchor = anchors[a];
-                //     let align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
-                //     let label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-                //     candidates.push({ label, align, layout: fq.layout });
-                // }
-                // fq.layout.anchor = anchors; // restore anchors
-                // fq.candidates = candidates;
-                fq.layout.anchor = fq.layout.anchor[0];
-            }
-            // else {
-                // Single-anchor label
-                // fq.align = fq.draw.align || PointAnchor.alignForAnchor(fq.layout.anchor);
-                fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            // }
-
+            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
             labels.push(fq);
         }
         return labels;
