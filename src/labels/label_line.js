@@ -114,7 +114,7 @@ export default class LabelLine extends Label {
                 does_fit = this.fitKinkedSegment(segment);
                 break;
             case PLACEMENT.MID_POINT:
-                let excess = 1 + this.options.line_exceed / 100;
+                let excess = 100 / (100 - this.options.line_exceed);
                 let p0p1 = Vector.sub(segment[0], segment[1]);
                 let line_length = Vector.length(p0p1);
 
@@ -127,7 +127,7 @@ export default class LabelLine extends Label {
     }
 
     fitKinkedSegment(segment) {
-        let excess = 1 + this.options.line_exceed / 100;
+        let excess = 100 / (100 - this.options.line_exceed);
         let opp = this.options.units_per_pixel;
 
         let does_fit = false;
