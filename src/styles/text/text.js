@@ -83,7 +83,7 @@ Object.assign(TextStyle, {
 
             // debugger
             fq.layout.segment_size = text_info.size.segment_size;
-            fq.layout.collision_height = text_info.size.collision_size[1];
+            fq.layout.collision_size = text_info.size.collision_size;
 
             let feature_labels = this.buildLabels(text_info.size.logical_size, fq.feature.geometry, fq.layout);
             for (let i = 0; i < feature_labels.length; i++) {
