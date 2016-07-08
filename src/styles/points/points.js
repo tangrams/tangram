@@ -218,22 +218,6 @@ Object.assign(Points, {
         Collision.addStyle(this.collision_group_points, tile.key);
     },
 
-    // Implements label creation for TextLabels mixin
-    createTextLabels (tile_key, feature_queue) {
-        let labels = [];
-        for (let f=0; f < feature_queue.length; f++) {
-            let fq = feature_queue[f];
-            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
-            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
-            labels.push(fq);
-
-            if (fq.parent) {
-                fq.parent.child = fq;
-            }
-        }
-        return labels;
-    },
-
     // Override
     startData (tile) {
         this.queues[tile.key] = [];
@@ -251,8 +235,9 @@ Object.assign(Points, {
         this.queues[tile.key] = [];
 
         // For each point feature, create one or more labels
-        let text_features = [];
-        let boxes = [];
+        let text_objs = [];
+        let point_objs = [];
+
         queue.forEach(q => {
             let style = q.style;
             let feature = q.feature;
@@ -261,19 +246,18 @@ Object.assign(Points, {
             let feature_labels = this.buildLabels(style.size, geometry, style);
             for (let i = 0; i < feature_labels.length; i++) {
                 let label = feature_labels[i];
-                let link = Collision.nextLinkId();
-                boxes.push({
+                let point_obj = {
                     feature,
                     draw: q.draw,
                     context: q.context,
                     style,
                     layout: style,
-                    label,
-                    link
-                });
+                    label
+                };
+                point_objs.push(point_obj);
 
                 if (q.text_feature) {
-                    text_features.push({
+                    let text_obj = {
                         feature,
                         draw: q.text_feature.draw,
                         context: q.context,
@@ -281,8 +265,15 @@ Object.assign(Points, {
                         text_settings_key: q.text_feature.text_settings_key,
                         layout: q.text_feature.layout,
                         point_label: label,
-                        link
-                    });
+                        linked: point_obj   // link so text only renders when parent point is placed
+                    };
+                    text_objs.push(text_obj);
+
+                    // Unless text feature is optional, create a two-way link so that parent
+                    // point will only render when text is also placed
+                    if (!q.draw.text.optional) {
+                        point_obj.linked = text_obj; // two-way link
+                    }
                 }
             }
         });
@@ -291,15 +282,16 @@ Object.assign(Points, {
         return Promise.
             all([
                 // Points
-                Collision.collide(boxes, this.collision_group_points, tile.key).then(boxes => {
-                    boxes.forEach(q => {
+                Collision.collide(point_objs, this.collision_group_points, tile.key).then(point_objs => {
+                    point_objs.forEach(q => {
                         this.feature_style = q.style;
                         this.feature_style.label = q.label;
                         Style.addFeature.call(this, q.feature, q.draw, q.context);
                     });
                 }),
                 // Labels
-                this.renderTextLabels(tile, this.collision_group_text, text_features)
+                this.prepareTextLabels(tile, this.collision_group_text, text_objs).
+                    then(labels => this.collideAndRenderTextLabels(tile, this.collision_group_text, labels))
             ]).then(([, { labels, texts, texture }]) => {
                 // Process labels
                 if (labels && texts) {
@@ -354,6 +346,7 @@ Object.assign(Points, {
         if (draw.text) {
             draw.text.key = draw.key; // copy layer key for use as label repeat group
             draw.text.anchor = draw.text.anchor || 'bottom'; // Default text anchor to bottom
+            draw.text.optional = (typeof draw.text.optional === 'boolean') ? draw.text.optional : false; // default text to required
         }
 
         return draw;
@@ -400,6 +393,18 @@ Object.assign(Points, {
         layout.priority = priority;
 
         return layout;
+    },
+
+    // Implements label building for TextLabels mixin
+    buildTextLabels (tile_key, feature_queue) {
+        let labels = [];
+        for (let f=0; f < feature_queue.length; f++) {
+            let fq = feature_queue[f];
+            let text_info = this.texts[tile_key][fq.text_settings_key][fq.text];
+            fq.label = new LabelPoint(fq.point_label.position, text_info.size.collision_size, fq.layout);
+            labels.push(fq);
+        }
+        return labels;
     },
 
     // Builds one or more point labels for a geometry

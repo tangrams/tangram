@@ -46,7 +46,7 @@ fonts:
 
 textures:
     pois:
-        url: images/poi_icons_32.png
+        url: images/pois.png
         filtering: mipmap
         sprites:
             # define sprites: [x origin, y origin, width, height]
@@ -64,6 +64,7 @@ textures:
             info: [0, 1110, 32, 32]
             hotel: [0, 259, 32, 32]
             bookstore: [0, 333, 32, 32]
+            shield: [0, 1142, 32, 32]
 
 styles:
     rainbow:
@@ -447,7 +448,7 @@ layers:
                         priority: 3
                         font:
                             family: Helvetica
-                            size: 16px
+                            size: 14px
                             stroke: { color: white, width: 4 }
 
             ferry:
@@ -465,6 +466,41 @@ layers:
                 filter: { highway: [residential, unclassified], $zoom: { max: 15 } }
                 visible: false
 
+        shields:
+            filter:
+                all:
+                    - highway: motorway
+                    - |
+                        function() {
+                            var m = feature.ref &&
+                                feature.ref[0] === 'I' &&
+                                feature.ref.match(/\d+/);
+                            //var m = feature.ref && feature.ref.match(/\d+/);
+                            return m && m[0];
+                        }
+            draw:
+                icons:
+                    sprite: shield
+                    priority: 2
+                    interactive: true
+                    color: white
+                    size: 24px
+                    cull_from_tile: true
+                    text:
+                        required: true
+                        anchor: center
+                        text_source: |
+                            function() {
+                                var m = feature.ref &&
+                                    feature.ref[0] === 'I' &&
+                                    feature.ref.match(/\d+/);
+                                // var m = feature.ref && feature.ref.match(/\d+/);
+                                return m && m[0];
+                            }
+                        font:
+                            family: Helvetica
+                            size: 11px
+
     pois:
         # visible: false
         data: { source: mapzen }
@@ -481,10 +517,13 @@ layers:
 
         # add text label at higher zoom
         labels:
-            filter: { $zoom: { min: 17 } }
+            filter:
+                - { $zoom: { min: 17 } }
+                - { $zoom: { min: 16 }, kind: station }
             draw:
                 icons:
                     text:
+                        required: true
                         text_source: global.language_text_source
                         font:
                             family: Montserrat
@@ -512,7 +551,7 @@ layers:
                 draw: { icons: { sprite: museum } }
             station:
                 filter: { kind: [station] }
-                draw: { icons: { sprite: train } }
+                draw: { icons: { sprite: train, priority: 2 } }
             hospital:
                 filter: { kind: [hospital, pharmacy] }
                 draw: { icons: { sprite: hospital } }
@@ -534,37 +573,33 @@ layers:
             any:
                 - { $zoom: { min: 1 }, kind: ocean }
                 - { $zoom: { min: 2, max: 5 }, kind: continent }
-                # important countries
                 - { $zoom: { min: 4 }, name: ["United States of America", "Brasil", " Россия", "中华人民共和国"] }
-                # unimportant countries
                 - { $zoom: { min: 5 }, kind: country }
-                # this function matches the "cities" sublayer
-                - function() { return (feature.scalerank * .75) <= ($zoom - 4); }
+                - { $zoom: { min: 7 }, kind: [city, town, neighbourhood, macrohood] }
+
+        visible: false
         draw:
             text:
                 text_source: global.language_text_source
                 priority: 1
                 font:
                     family: Helvetica
-                    size: 11pt
-                    style: italic
+                    size: 12px
+                    fill: [0, 0, 0, .8]
+                    stroke: { color: white, width: 4 }
                     transform: uppercase
-                    fill: black
-                    stroke: { color: white, width: 3 }
+
         continents:
             filter: { kind: continent }
-            draw:
-                text:
-                    font:
-                        transform: uppercase
+            visible: true
+
         countries:
             filter: { kind: country }
-            draw:
-                text:
-                    font:
-                        transform: uppercase
+            visible: true
+
         oceans:
             filter: { kind: ocean }
+            visible: true
             draw:
                 text:
                     font:
@@ -573,20 +608,24 @@ layers:
                         style: italic
 
         cities:
-            # this filter shows lower scaleranks at higher zooms, starting at z4
-            filter: function() { return (feature.scalerank * .75) <= ($zoom - 4); }
+            filter: { kind: [city] }
+            visible: true
             draw:
                 text:
                     font:
-                        family: Helvetica
+                        weight: bold
                         size: [[6, 12px], [9, 16px]]
-                        style: normal
-                        fill: black
-                        stroke: { color: white, width: 3 }
 
-        minor-places:
-            filter: { kind: [hamlet, village, town, neighbourhood, suburb, quarter], $zoom: { max: 14 } }
-            visible: false
+        neighborhoods:
+            filter: { kind: [macrohood, neighbourhood], $zoom: { min: 13 } }
+            visible: true
+            draw:
+                text:
+                    font:
+                        size: [[13, 11px], [14, 11px], [15, 13px]]
+                        style: italic
+                        fill: rgba(136, 45, 23, 0.9)
+
 
     transit:
         data: { source: mapzen }
