@@ -63,16 +63,6 @@ textures:
             bookstore: [0, 333, 32, 32]
 
 styles:
-    custom-text:
-        base: text
-        # texcoords: true
-        # shaders:
-        #     blocks:
-        #         color: |
-        #             vec2 st = v_texcoord.xy;
-        #             float pattern = 0.;
-        #             pattern = step(.8,fract(st.x*15.));
-        #             color += vec4(0.,0.,0.,1.)*pattern;
     rainbow:
         base: polygons
         animated: true
@@ -160,7 +150,7 @@ sources:
         url: https://vector.mapzen.com/osm/all/{z}/{x}/{y}.topojson
         url_params:
             api_key: vector-tiles-HqUVidw
-        max_zoom: 20
+        max_zoom: 16
         # # Data filtering demo with 'scripts' and 'transform' properties:
         # Tile data is passed through a 'transform' pre-processing function before Tangram geometry is built.
         # 'transform' adds an 'intersects_park' property to each road that intersects a park feature.
@@ -417,7 +407,7 @@ layers:
         highway:
             filter: { kind: highway, $zoom: { min: 7 } }
             draw:
-                custom-text:
+                text:
                     text_source: global.language_text_source
                     priority: 2
                     font:
@@ -429,7 +419,7 @@ layers:
         not_highway:
             filter: { not: { kind: highway }, $zoom: { min: 13 } }
             draw:
-                custom-text:
+                text:
                     text_source: global.language_text_source
                     priority: 5
                     font:
@@ -441,7 +431,7 @@ layers:
             major_road:
                 filter: { kind: major_road, $zoom: { min: 14 } }
                 draw:
-                    custom-text:
+                    text:
                         priority: 3
                         font:
                             family: Helvetica
@@ -451,7 +441,7 @@ layers:
             ferry:
                 filter: { kind: ferry }
                 draw:
-                    custom-text:
+                    text:
                         text_wrap: 20
                         font:
                             fill: '#8db3ce'
