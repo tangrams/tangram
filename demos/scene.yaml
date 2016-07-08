@@ -65,14 +65,14 @@ textures:
 styles:
     custom-text:
         base: text
-        texcoords: true
-        shaders:
-            blocks:
-                color: |
-                    vec2 st = v_texcoord.xy;
-                    float pattern = 0.;
-                    pattern = step(.8,fract(st.x*15.));
-                    color += vec4(0.,0.,0.,1.)*pattern;
+        # texcoords: true
+        # shaders:
+        #     blocks:
+        #         color: |
+        #             vec2 st = v_texcoord.xy;
+        #             float pattern = 0.;
+        #             pattern = step(.8,fract(st.x*15.));
+        #             color += vec4(0.,0.,0.,1.)*pattern;
     rainbow:
         base: polygons
         animated: true
